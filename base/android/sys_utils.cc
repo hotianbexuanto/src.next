@@ -11,6 +11,7 @@
 #include "base/process/process_metrics.h"
 #include "base/system/sys_info.h"
 #include "base/trace_event/base_tracing.h"
+#include "base/android/jni_string.h"
 
 namespace base {
 namespace android {

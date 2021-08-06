@@ -79,7 +79,7 @@ export class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
 
       inDevMode: {
         type: Boolean,
-        value: false,
+        value: true,
         observer: 'onInDevModeChanged_',
         reflectToAttribute: true,
       },
@@ -187,6 +187,10 @@ export class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
           this.fire_('load-error', loadError);
         });
     chrome.metricsPrivate.recordUserAction('Options_LoadUnpackedExtension');
+  }
+
+  private openExtensionsWebStore_() {
+    window.open("https://chrome.google.com/webstore/category/extensions");
   }
 
   private onPackTap_() {

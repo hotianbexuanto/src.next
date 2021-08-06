@@ -332,6 +332,8 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
         try (TraceEvent tracing = TraceEvent.scoped("OmniboxSuggestionsList.Measure");
                 TimingMetric metric = SuggestionsMetrics.recordSuggestionListMeasureTime()) {
             int anchorBottomRelativeToContent = calculateAnchorBottomRelativeToContent();
+            if (ContextUtils.getAppSharedPreferences().getBoolean("enable_bottom_toolbar", false))
+              anchorBottomRelativeToContent = 0;
             maybeUpdateLayoutParams(anchorBottomRelativeToContent);
 
             int availableViewportHeight =

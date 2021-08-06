@@ -302,6 +302,12 @@ public class UrlUtilities {
      */
     public static boolean isNTPUrl(GURL gurl) {
         if (!gurl.isValid() || !isInternalScheme(gurl)) return false;
+        if ("local-ntp".equals(gurl.getHost()))
+          return true;
+        if (gurl.getSpec().startsWith("chrome-search://"))
+          return true;
+        if (gurl.getSpec().startsWith("kiwi-search://"))
+          return true;
         return UrlConstants.NTP_HOST.equals(gurl.getHost());
     }
 
@@ -349,7 +355,13 @@ public class UrlUtilities {
     public static boolean isCanonicalizedNTPUrl(String url) {
         return TextUtils.equals(url, UrlConstants.NTP_URL)
                 || TextUtils.equals(url, UrlConstants.NTP_NON_NATIVE_URL)
-                || TextUtils.equals(url, UrlConstants.NTP_ABOUT_URL);
+                || TextUtils.equals(url, UrlConstants.NTP_ABOUT_URL)
+                || TextUtils.equals(url, "chrome-search://local-ntp/local-ntp.html")
+                || TextUtils.equals(url, "chrome-search://local-ntp/incognito-ntp.html")
+                || TextUtils.equals(url, "chrome-search://local-ntp/new-ntp.html")
+                || TextUtils.equals(url, "kiwi-search://local-ntp/local-ntp.html")
+                || TextUtils.equals(url, "kiwi-search://local-ntp/incognito-ntp.html")
+                || TextUtils.equals(url, "kiwi-search://local-ntp/new-ntp.html");
     }
 
     public static String extractPublisherFromPublisherUrl(String publisherUrl) {

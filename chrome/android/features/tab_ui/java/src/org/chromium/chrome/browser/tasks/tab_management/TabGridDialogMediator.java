@@ -99,6 +99,8 @@ import org.chromium.ui.modelutil.PropertyModel;
 
 import java.util.List;
 
+import org.chromium.chrome.browser.homepage.HomepageManager;
+
 /**
  * A mediator for the TabGridDialog component, responsible for communicating
  * with the components' coordinator as well as managing the business logic
@@ -861,7 +863,7 @@ public class TabGridDialogMediator implements SnackbarManager.SnackbarController
 
             Tab parentTabToAttach = relatedTabs.get(relatedTabs.size() - 1);
             mTabCreatorManager.getTabCreator(currentTab.isIncognito())
-                    .createNewTab(new LoadUrlParams(UrlConstants.NTP_URL),
+                    .createNewTab(new LoadUrlParams("chrome-search://local-ntp/local-ntp.html"),
                             TabLaunchType.FROM_TAB_GROUP_UI, parentTabToAttach);
 >>>>>>> chromium
             RecordUserAction.record("MobileNewTabOpened." + mComponentName);
