@@ -16,12 +16,11 @@ import android.view.Window;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
-import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.CallbackController;
 import org.chromium.base.MathUtils;
 import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.chrome.R;
 <<<<<<< HEAD
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
@@ -83,7 +82,7 @@ class TabbedNavigationBarColorController
 /**
  * Controls the bottom system navigation bar color for the provided {@link Window}.
  */
-@TargetApi(Build.VERSION_CODES.O_MR1)
+@RequiresApi(Build.VERSION_CODES.O_MR1)
 class TabbedNavigationBarColorController implements VrModeObserver {
     private final Window mWindow;
     private final ViewGroup mRootView;
@@ -231,6 +230,7 @@ class TabbedNavigationBarColorController implements VrModeObserver {
     private @Nullable OverviewModeObserver mOverviewModeObserver;
     private CallbackController mCallbackController = new CallbackController();
 
+    private @ColorInt int mNavigationBarColor;
     private boolean mForceDarkNavigationBarColor;
     private boolean mOverviewModeHiding;
     private float mNavigationBarScrimFraction;
@@ -339,12 +339,12 @@ class TabbedNavigationBarColorController implements VrModeObserver {
     }
 
     /**
-     * @param overviewModeBehavior The {@link OverviewModeBehavior} used to determine whether
+     * @param layoutManager The {@link LayoutStateProvider} used to determine whether
      *                             overview mode is showing.
      */
-    private void setOverviewModeBehavior(OverviewModeBehavior overviewModeBehavior) {
-        if (mOverviewModeBehavior != null) {
-            mOverviewModeBehavior.removeOverviewModeObserver(mOverviewModeObserver);
+    private void setLayoutManager(LayoutManager layoutManager) {
+        if (mLayoutManager != null) {
+            mLayoutManager.removeObserver(mLayoutStateObserver);
         }
 
 <<<<<<< HEAD
@@ -380,12 +380,12 @@ class TabbedNavigationBarColorController implements VrModeObserver {
             }
 >>>>>>> chromium
 
-            @Override
-            public void onOverviewModeFinishedHiding() {
-                mOverviewModeHiding = false;
-            }
-        };
-        mOverviewModeBehavior.addOverviewModeObserver(mOverviewModeObserver);
+                    @Override
+                    public void onFinishedHiding(int layoutType) {
+                        mOverviewModeHiding = false;
+                    }
+                });
+        mLayoutManager.addObserver(mLayoutStateObserver);
         updateNavigationBarColor();
     }
 
@@ -393,7 +393,8 @@ class TabbedNavigationBarColorController implements VrModeObserver {
     public void onExitVr() {
         // The platform ignores the light navigation bar system UI flag when launching an Activity
         // in VR mode, so we need to restore it when VR is exited.
-        UiUtils.setNavigationBarIconColor(mRootView, !mForceDarkNavigationBarColor);
+        UiUtils.setNavigationBarIconColor(
+                mRootView, !mForceDarkNavigationBarColor && mLightNavigationBar);
     }
 
 <<<<<<< HEAD
@@ -493,13 +494,18 @@ class TabbedNavigationBarColorController implements VrModeObserver {
 
         forceDarkNavigation &= !UiUtils.isSystemUiThemingDisabled();
 
-        if (mForceDarkNavigationBarColor == forceDarkNavigation) return;
-
         mForceDarkNavigationBarColor = forceDarkNavigation;
+        final @ColorInt int navigationBarColor =
+                getNavigationBarColor(mForceDarkNavigationBarColor);
 
-        mWindow.setNavigationBarColor(getNavigationBarColor(mForceDarkNavigationBarColor));
+        if (navigationBarColor == mNavigationBarColor) return;
+
+        mNavigationBarColor = navigationBarColor;
+
+        mWindow.setNavigationBarColor(mNavigationBarColor);
         setNavigationBarDividerColor();
-        UiUtils.setNavigationBarIconColor(mRootView, !mForceDarkNavigationBarColor);
+        UiUtils.setNavigationBarIconColor(
+                mRootView, !mForceDarkNavigationBarColor && mLightNavigationBar);
     }
 
 <<<<<<< HEAD
@@ -643,9 +649,9 @@ class TabbedNavigationBarColorController implements VrModeObserver {
     }
 
     private @ColorInt int getNavigationBarColor(boolean forceDarkNavigationBar) {
-        return ApiCompatibilityUtils.getColor(mResources,
-                forceDarkNavigationBar ? R.color.toolbar_background_primary_dark
-                                       : R.color.bottom_system_nav_color);
+        return forceDarkNavigationBar
+                ? mContext.getColor(R.color.toolbar_background_primary_dark)
+                : SemanticColorUtils.getBottomSystemNavColor(mWindow.getContext());
     }
 
     private @ColorInt int getNavigationBarDividerColor(boolean forceDarkNavigationBar) {

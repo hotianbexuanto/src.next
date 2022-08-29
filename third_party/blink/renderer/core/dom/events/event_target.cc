@@ -34,6 +34,7 @@
 #include <memory>
 
 #include "base/format_macros.h"
+#include "base/time/time.h"
 #include "third_party/blink/public/web/web_settings.h"
 #include "third_party/blink/renderer/bindings/core/v8/js_based_event_listener.h"
 #include "third_party/blink/renderer/bindings/core/v8/js_event_listener.h"
@@ -492,42 +493,6 @@ void EventTarget::SetDefaultAddEventListenerOptions(
     }
   }
 
-  // For mousewheel event listeners that have the target as the window and
-  // a bound function name of "ssc_wheel" treat and no passive value default
-  // passive to true. See crbug.com/501568.
-  if (event_type == event_type_names::kMousewheel && ToLocalDOMWindow() &&
-      event_listener && !options->hasPassive()) {
-    JSBasedEventListener* v8_listener =
-        DynamicTo<JSBasedEventListener>(event_listener);
-    if (!v8_listener)
-      return;
-    v8::Local<v8::Value> callback_object =
-        v8_listener->GetListenerObject(*this);
-    if (!callback_object.IsEmpty() && callback_object->IsFunction() &&
-        strcmp(
-            "ssc_wheel",
-            *v8::String::Utf8Value(
-                v8::Isolate::GetCurrent(),
-                v8::Local<v8::Function>::Cast(callback_object)->GetName())) ==
-            0) {
-      options->setPassive(true);
-      if (executing_window) {
-        UseCounter::Count(executing_window->document(),
-                          WebFeature::kSmoothScrollJSInterventionActivated);
-
-        executing_window->GetFrame()->Console().AddMessage(
-            MakeGarbageCollected<ConsoleMessage>(
-                mojom::ConsoleMessageSource::kIntervention,
-                mojom::ConsoleMessageLevel::kWarning,
-                "Registering mousewheel event as passive due to "
-                "smoothscroll.js usage. The smoothscroll.js library is "
-                "buggy, no longer necessary and degrades performance. See "
-                "https://www.chromestatus.com/feature/5749447073988608"));
-      }
-      return;
-    }
-  }
-
   if (!options->hasPassive())
     options->setPassive(false);
 
@@ -698,8 +663,8 @@ bool EventTarget::AddEventListenerInternal(
     AddedEventListener(event_type, registered_listener);
     if (IsA<JSBasedEventListener>(listener) &&
         IsInstrumentedForAsyncStack(event_type)) {
-      probe::AsyncTaskScheduled(GetExecutionContext(), event_type,
-                                listener->async_task_id());
+      listener->async_task_context()->Schedule(GetExecutionContext(),
+                                               event_type);
     }
 >>>>>>> chromium
   }
@@ -886,8 +851,8 @@ bool EventTarget::SetAttributeEventListener(const AtomicString& event_type,
 =======
     if (IsA<JSBasedEventListener>(listener) &&
         IsInstrumentedForAsyncStack(event_type)) {
-      probe::AsyncTaskScheduled(GetExecutionContext(), event_type,
-                                listener->async_task_id());
+      listener->async_task_context()->Schedule(GetExecutionContext(),
+                                               event_type);
     }
 >>>>>>> chromium
     registered_listener->SetCallback(listener);
@@ -940,9 +905,9 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
 DispatchEventResult EventTarget::DispatchEventInternal(Event& event) {
   event.SetTarget(this);
   event.SetCurrentTarget(this);
-  event.SetEventPhase(Event::kAtTarget);
+  event.SetEventPhase(Event::PhaseType::kAtTarget);
   DispatchEventResult dispatch_result = FireEventListeners(event);
-  event.SetEventPhase(0);
+  event.SetEventPhase(Event::PhaseType::kNone);
   return dispatch_result;
 }
 
@@ -1191,7 +1156,7 @@ void EventTarget::EnqueueEvent(Event& event, TaskType task_type) {
   ExecutionContext* context = GetExecutionContext();
   if (!context)
     return;
-  probe::AsyncTaskScheduled(context, event.type(), event.async_task_id());
+  event.async_task_context()->Schedule(context, event.type());
   context->GetTaskRunner(task_type)->PostTask(
       FROM_HERE,
       WTF::Bind(&EventTarget::DispatchEnqueuedEvent, WrapPersistent(this),
@@ -1201,10 +1166,10 @@ void EventTarget::EnqueueEvent(Event& event, TaskType task_type) {
 void EventTarget::DispatchEnqueuedEvent(Event* event,
                                         ExecutionContext* context) {
   if (!GetExecutionContext()) {
-    probe::AsyncTaskCanceled(context, event->async_task_id());
+    event->async_task_context()->Cancel();
     return;
   }
-  probe::AsyncTask async_task(context, event->async_task_id());
+  probe::AsyncTask async_task(context, event->async_task_context());
   DispatchEvent(*event);
 }
 

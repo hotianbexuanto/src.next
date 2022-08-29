@@ -4,7 +4,6 @@
 
 package org.chromium.base;
 
-import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -177,7 +176,6 @@ public class SysUtils {
                 || pm.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
     }
 
-    @TargetApi(Build.VERSION_CODES.KITKAT)
     private static boolean detectLowEndDevice() {
         // Keep in sync with the native implementation of this function.
         // LINT.IfChange

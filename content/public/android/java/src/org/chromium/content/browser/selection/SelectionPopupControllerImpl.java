@@ -61,7 +61,6 @@ import org.chromium.build.annotations.Nullable;
 =======
 >>>>>>> chromium
 import org.chromium.content.R;
-import org.chromium.content.browser.ContentApiHelperForM;
 import org.chromium.content.browser.ContentClassFactory;
 import org.chromium.content.browser.GestureListenerManagerImpl;
 import org.chromium.content.browser.PopupController;
@@ -74,6 +73,7 @@ import org.chromium.content.browser.webcontents.WebContentsImpl.UserDataFactory;
 import org.chromium.content_public.browser.ActionModeCallbackHelper;
 import org.chromium.content_public.browser.ImeEventObserver;
 import org.chromium.content_public.browser.RenderFrameHost;
+import org.chromium.content_public.browser.SelectAroundCaretResult;
 import org.chromium.content_public.browser.SelectionClient;
 import org.chromium.content_public.browser.SelectionPopupController;
 import org.chromium.content_public.browser.WebContents;
@@ -174,6 +174,10 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
     private View mView;
     private ActionMode mActionMode;
 >>>>>>> chromium
+
+    // Supplier of whether action bar is showing now.
+    private final ObservableSupplierImpl<Boolean> mIsActionBarShowingSupplier =
+            new ObservableSupplierImpl<>();
 
     // Bit field for mappings from menu item to a flag indicating it is allowed.
     private int mAllowedMenuItems;
@@ -417,7 +421,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
     }
 
     @Override
-    public void setActionModeCallback(ActionMode.Callback callback) {
+    public void setActionModeCallback(ActionMode.Callback2 callback) {
         mCallback = callback;
     }
 
@@ -554,8 +558,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
 =======
 >>>>>>> chromium
         int offsetBottom = bottom;
-        // Legacy action mode expects the selection rectangle not to include touch handle.
-        if (supportsFloatingActionMode()) offsetBottom += handleHeight;
+        offsetBottom += handleHeight;
         mSelectionRect.set(left, top, right, offsetBottom);
         mEditable = isEditable;
         mLastSelectedText = selectionText;
@@ -631,23 +634,15 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
         destroyActionModeAndKeepSelection();
 
         assert mWebContents != null;
-        ActionMode actionMode = supportsFloatingActionMode() ? startFloatingActionMode()
-                                                             : mView.startActionMode(mCallback);
+        ActionMode actionMode = mView.startActionMode(mCallback, ActionMode.TYPE_FLOATING);
         if (actionMode != null) {
             // This is to work around an LGE email issue. See crbug.com/651706 for more details.
             LGEmailActionModeWorkaroundImpl.runIfNecessary(assumeNonNull(mContext), actionMode);
         }
-        mActionMode = actionMode;
+        setActionMode(actionMode);
         mUnselectAllOnDismiss = true;
 
         if (!isActionModeValid()) clearSelection();
-    }
-
-    private ActionMode startFloatingActionMode() {
-        assert mView != null;
-        assert Build.VERSION.SDK_INT >= Build.VERSION_CODES.M;
-        ActionMode actionMode = ContentApiHelperForM.startActionMode(mView, this, mCallback);
-        return actionMode;
     }
 
     private void dismissTextHandles() {
@@ -748,10 +743,6 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
             return;
         }
 
-        if (!supportsFloatingActionMode() && !Clipboard.getInstance().canPaste()
-                && mNonSelectionCallback == null) {
-            return;
-        }
         destroyPastePopup();
         PastePopupMenu.PastePopupMenuDelegate delegate =
                 new PastePopupMenu.PastePopupMenuDelegate() {
@@ -789,12 +780,8 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
                 };
         Context windowContext = mWindowAndroid.getContext().get();
         if (windowContext == null) return;
-        if (supportsFloatingActionMode()) {
-            mPastePopupMenu = new FloatingPastePopupMenu(
-                    windowContext, mView, delegate, mNonSelectionCallback);
-        } else {
-            mPastePopupMenu = new LegacyPastePopupMenu(windowContext, mView, delegate);
-        }
+        mPastePopupMenu =
+                new FloatingPastePopupMenu(windowContext, mView, delegate, mNonSelectionCallback);
         showPastePopup();
     }
 
@@ -803,11 +790,6 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
             mPastePopupMenu.show(getSelectionRectRelativeToContainingView());
         } catch (WindowManager.BadTokenException e) {
         }
-    }
-
-    @Override
-    public boolean supportsFloatingActionMode() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M;
     }
 
     // HideablePopup implementation
@@ -842,7 +824,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
             mActionMode.finish();
 
             // Should be nulled out in case #onDestroyActionMode() is not invoked in response.
-            mActionMode = null;
+            setActionMode(null);
         }
     }
 
@@ -850,16 +832,14 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
      * @see ActionMode#invalidateContentRect()
      */
     public void invalidateContentRect() {
-        if (supportsFloatingActionMode() && isActionModeValid()) {
-            ApiHelperForM.invalidateContentRectOnActionMode(mActionMode);
-        }
+        if (isActionModeValid()) ApiHelperForM.invalidateContentRectOnActionMode(mActionMode);
     }
 
     // WindowEventObserver
 
     @Override
     public void onWindowFocusChanged(boolean gainFocus) {
-        if (supportsFloatingActionMode() && isActionModeValid()) {
+        if (isActionModeValid()) {
             ApiHelperForM.onWindowFocusChangedOnActionMode(mActionMode, gainFocus);
         }
     }
@@ -956,15 +936,12 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
     }
 
     private boolean isFloatingActionMode() {
-        return supportsFloatingActionMode() && isActionModeValid()
+        return isActionModeValid()
                 && ApiHelperForM.getActionModeType(mActionMode) == ActionMode.TYPE_FLOATING;
     }
 
     private long getDefaultHideDuration() {
-        if (supportsFloatingActionMode()) {
-            return ApiHelperForM.getDefaultActionModeHideDuration();
-        }
-        return 2000;
+        return ApiHelperForM.getDefaultActionModeHideDuration();
     }
 
     // Default handlers for action mode callbacks.
@@ -1039,7 +1016,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
         new MenuInflater(context).inflate(R.menu.select_action_menu, menu);
     }
 
-    @TargetApi(Build.VERSION_CODES.O)
+    @RequiresApi(Build.VERSION_CODES.O)
     public static void setPasteAsPlainTextMenuItemTitle(Menu menu) {
         MenuItem item = menu.findItem(R.id.select_action_menu_paste_as_plain_text);
         if (item == null) return;
@@ -1099,7 +1076,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
             menu.removeItem(R.id.select_action_menu_web_search);
         }
 
-        if (isSelectionPassword()) {
+        if (isSelectionPassword() || !Clipboard.getInstance().canCopy()) {
             menu.removeItem(R.id.select_action_menu_copy);
             menu.removeItem(R.id.select_action_menu_cut);
         }
@@ -1321,12 +1298,12 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.M)
+    @RequiresApi(Build.VERSION_CODES.M)
     private static Intent createProcessTextIntent() {
         return new Intent().setAction(Intent.ACTION_PROCESS_TEXT).setType("text/plain");
     }
 
-    @TargetApi(Build.VERSION_CODES.M)
+    @RequiresApi(Build.VERSION_CODES.M)
     private Intent createProcessTextIntentForResolveInfo(ResolveInfo info) {
         boolean isReadOnly = !isFocusedNodeEditable();
         return createProcessTextIntent()
@@ -1420,7 +1397,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
 
     @Override
     public void onDestroyActionMode() {
-        mActionMode = null;
+        setActionMode(null);
         if (mUnselectAllOnDismiss) {
             clearSelection();
         }
@@ -1920,6 +1897,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
         if (mWebContents == null || !isActionModeSupported()) return;
         mWebContents.collapseSelection();
         mClassificationResult = null;
+        mHasSelection = false;
     }
 
     private PopupController getPopupController() {
@@ -1998,9 +1976,19 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
     }
 
     @CalledByNative
-    private void onSelectWordAroundCaretAck(boolean didSelect, int startAdjust, int endAdjust) {
+    private void onSelectAroundCaretSuccess(int extendedStartAdjust, int extendedEndAdjust,
+            int wordStartAdjust, int wordEndAdjust) {
         if (mSelectionClient != null) {
-            mSelectionClient.selectWordAroundCaretAck(didSelect, startAdjust, endAdjust);
+            SelectAroundCaretResult result = new SelectAroundCaretResult(
+                    extendedStartAdjust, extendedEndAdjust, wordStartAdjust, wordEndAdjust);
+            mSelectionClient.selectAroundCaretAck(result);
+        }
+    }
+
+    @CalledByNative
+    private void onSelectAroundCaretFailure() {
+        if (mSelectionClient != null) {
+            mSelectionClient.selectAroundCaretAck(null);
         }
     }
 
@@ -2108,6 +2096,11 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
     @Override
     public boolean isSelectActionBarShowing() {
         return isActionModeValid();
+    }
+
+    @Override
+    public ObservableSupplier<Boolean> isSelectActionBarShowingSupplier() {
+        return mIsActionBarShowingSupplier;
     }
 
     @Override

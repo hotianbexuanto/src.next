@@ -22,7 +22,7 @@
 
 #include "third_party/blink/renderer/core/css/resolver/style_resolver_state.h"
 
-#include "third_party/blink/public/mojom/web_feature/web_feature.mojom-blink.h"
+#include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
 #include "third_party/blink/renderer/core/animation/css/css_animations.h"
 #include "third_party/blink/renderer/core/css/css_light_dark_value_pair.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
@@ -48,7 +48,7 @@ bool CanCacheBaseStyle(const StyleRequest& style_request) {
 StyleResolverState::StyleResolverState(
     Document& document,
     Element& element,
-    const StyleRecalcContext& style_recalc_context,
+    const StyleRecalcContext* style_recalc_context,
     const StyleRequest& style_request)
     : element_context_(element),
       document_(&document),
@@ -57,7 +57,9 @@ StyleResolverState::StyleResolverState(
       layout_parent_style_(style_request.layout_parent_override),
       pseudo_request_type_(style_request.type),
       font_builder_(&document),
-      pseudo_element_(element.GetPseudoElement(style_request.pseudo_id)),
+      pseudo_element_(
+          element.GetNestedPseudoElement(style_request.pseudo_id,
+                                         style_request.pseudo_argument)),
       element_style_resources_(GetElement(),
                                document.DevicePixelRatio(),
                                pseudo_element_),
@@ -96,6 +98,9 @@ StyleResolverState::StyleResolverState(
     layout_parent_style_ = parent_style_;
 
   DCHECK(document.IsActive());
+
+  if (UsesHighlightPseudoInheritance())
+    DCHECK(originating_element_style_);
 }
 
 StyleResolverState::~StyleResolverState() {
@@ -107,9 +112,7 @@ StyleResolverState::~StyleResolverState() {
 void StyleResolverState::SetStyle(scoped_refptr<ComputedStyle> style) {
   // FIXME: Improve RAII of StyleResolverState to remove this function.
   style_ = std::move(style);
-  css_to_length_conversion_data_ = CSSToLengthConversionData(
-      style_.get(), RootElementStyle(), GetDocument().GetLayoutView(),
-      nearest_container_, style_->EffectiveZoom());
+  UpdateLengthConversionData();
 }
 
 scoped_refptr<ComputedStyle> StyleResolverState::TakeStyle() {
@@ -135,6 +138,15 @@ void StyleResolverState::UpdateLengthConversionData() {
 =======
   return std::move(style_);
 >>>>>>> chromium
+}
+
+void StyleResolverState::UpdateLengthConversionData() {
+  css_to_length_conversion_data_ = CSSToLengthConversionData(
+      Style(), RootElementStyle(), GetDocument().GetLayoutView(),
+      CSSToLengthConversionData::ContainerSizes(container_unit_context_),
+      Style()->EffectiveZoom());
+  element_style_resources_.UpdateLengthConversionData(
+      &css_to_length_conversion_data_);
 }
 
 CSSToLengthConversionData StyleResolverState::UnzoomedLengthConversionData(
@@ -255,6 +267,7 @@ void StyleResolverState::SetWritingMode(WritingMode new_writing_mode) {
     return;
   }
   style_->SetWritingMode(new_writing_mode);
+  UpdateLengthConversionData();
   font_builder_.DidChangeWritingMode();
 }
 
@@ -274,6 +287,11 @@ Element* StyleResolverState::GetAnimatingElement() const {
     return &GetElement();
   DCHECK_EQ(ElementType::kPseudoElement, element_type_);
   return pseudo_element_;
+}
+
+PseudoElement* StyleResolverState::GetPseudoElement() const {
+  return element_type_ == ElementType::kPseudoElement ? pseudo_element_
+                                                      : nullptr;
 }
 
 const CSSValue& StyleResolverState::ResolveLightDarkPair(

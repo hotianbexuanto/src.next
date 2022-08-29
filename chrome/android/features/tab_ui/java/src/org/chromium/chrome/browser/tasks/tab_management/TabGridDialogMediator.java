@@ -90,6 +90,7 @@ import org.chromium.components.tab_group_sync.TabGroupSyncService;
 import org.chromium.components.tab_groups.TabGroupColorId;
 =======
 import org.chromium.components.browser_ui.share.ShareParams;
+import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.content_public.browser.LoadUrlParams;
 >>>>>>> chromium
@@ -134,6 +135,11 @@ public class TabGridDialogMediator implements SnackbarManager.SnackbarController
          * @param showAnimation Whether to show an animation when hiding the dialog.
          */
         void hideDialog(boolean showAnimation);
+
+        /**
+         * Prepare the TabGridDialog before show.
+         */
+        void prepareDialog();
 
         /**
          * @return Whether or not the TabGridDialog consumed the event.
@@ -568,6 +574,7 @@ public class TabGridDialogMediator implements SnackbarManager.SnackbarController
             updateDialog();
             updateDialogScrollPosition();
             mModel.set(TabGridPanelProperties.SCRIMVIEW_CLICK_RUNNABLE, mScrimClickRunnable);
+            mDialogController.prepareDialog();
             mModel.set(TabGridPanelProperties.IS_DIALOG_VISIBLE, true);
         } else {
             mModel.set(TabGridPanelProperties.IS_DIALOG_VISIBLE, false);

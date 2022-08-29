@@ -101,7 +101,8 @@ void BrowserInstantController::OnSearchEngineBaseURLChanged(
       continue;
     }
 
-    GURL site_url = contents->GetMainFrame()->GetSiteInstance()->GetSiteURL();
+    GURL site_url =
+        contents->GetPrimaryMainFrame()->GetSiteInstance()->GetSiteURL();
     bool is_ntp = site_url == GURL(chrome::kChromeUINewTabPageURL) ||
                   site_url == GURL(chrome::kChromeUINewTabPageThirdPartyURL);
 
