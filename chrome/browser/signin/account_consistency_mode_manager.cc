@@ -172,6 +172,7 @@ bool AccountConsistencyModeManager::IsDiceMigrationCompleted(Profile* profile) {
 
 // static
 bool AccountConsistencyModeManager::IsDiceSignInAllowed() {
+#if 0
   return CanEnableDiceForBuild() && IsBrowserSigninAllowedByCommandLine();
 >>>>>>> chromium
 }

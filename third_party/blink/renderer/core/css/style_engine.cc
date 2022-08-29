@@ -123,6 +123,8 @@
 #include "third_party/blink/renderer/platform/theme/web_theme_engine_helper.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
+#include "third_party/blink/renderer/platform/graphics/dark_mode_settings_builder.h"
+
 namespace blink {
 
 namespace {

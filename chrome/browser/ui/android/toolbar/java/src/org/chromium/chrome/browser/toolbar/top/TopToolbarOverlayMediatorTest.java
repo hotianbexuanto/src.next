@@ -26,7 +26,6 @@ import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
-import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.theme.TopUiThemeColorProvider;
@@ -61,9 +60,6 @@ public class TopToolbarOverlayMediatorTest {
 
     @Captor
     private ArgumentCaptor<BrowserControlsStateProvider.Observer> mBrowserControlsObserverCaptor;
-
-    @Captor
-    private ArgumentCaptor<LayoutStateProvider.LayoutStateObserver> mLayoutObserverCaptor;
 
     @Mock
     private ObservableSupplier<Tab> mTabSupplier;
@@ -125,10 +121,6 @@ public class TopToolbarOverlayMediatorTest {
         verify(mTab).addObserver(mTabObserverCaptor.capture());
 
         verify(mBrowserControlsProvider).addObserver(mBrowserControlsObserverCaptor.capture());
-
-        verify(mLayoutStateProvider).addObserver(mLayoutObserverCaptor.capture());
-
-        mLayoutObserverCaptor.getValue().onStartedShowing(LayoutType.BROWSING, true);
     }
 
     /** Set the tab that will be returned by the supplier and trigger the observer event. */

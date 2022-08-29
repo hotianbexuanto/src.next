@@ -229,6 +229,7 @@ void ShowReauthForPrimaryAccountWithAuthError(
 void ShowReauthForAccount(Profile* profile,
                           const std::string& email,
                           signin_metrics::AccessPoint access_point) {
+#if 0
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   ::GetAccountManagerFacade(profile->GetPath().value())
       ->ShowReauthAccountDialog(
@@ -242,11 +243,13 @@ void ShowReauthForAccount(Profile* profile,
       /*enable_sync=*/false, access_point,
       signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO);
 #endif
+#endif
 }
 
 void ShowExtensionSigninPrompt(Profile* profile,
                                bool enable_sync,
                                const std::string& email_hint) {
+#if 0
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   NOTREACHED();
 #elif BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -279,6 +282,7 @@ void ShowExtensionSigninPrompt(Profile* profile,
       signin_metrics::AccessPoint::kExtensions,
       signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO);
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+#endif
 }
 
 void ShowSigninPromptFromPromo(Profile* profile,

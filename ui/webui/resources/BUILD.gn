@@ -17,6 +17,8 @@ import("//ui/webui/webui_features.gni")
 
 include_polymer = !is_android && !is_ios
 
+include_polymer = true
+
 generate_grd("build_grd") {
   grd_prefix = "webui_generated"
   out_grd = "$target_gen_dir/${grd_prefix}_resources.grd"
@@ -38,7 +40,7 @@ generate_grd("build_grd") {
     "$root_gen_dir/third_party/jstemplate/resources.grdp",
   ]
 
-  if (!is_chromeos_ash && !is_android) {
+  if (!is_chromeos_ash) {
     # Roboto Font. Roboto-Regular and Roboto-Light is already available on
     # Android, and Roboto-Medium is not used on Android. All 6 weights of
     # Roboto are available on Chrome OS.

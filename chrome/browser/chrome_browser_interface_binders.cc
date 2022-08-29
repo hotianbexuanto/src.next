@@ -925,6 +925,7 @@ void PopulateChromeWebUIFrameBinders(
 >>>>>>> chromium
   RegisterWebUIControllerInterfaceBinder<downloads::mojom::PageHandlerFactory,
                                          DownloadsUI>(map);
+#endif
 
   RegisterWebUIControllerInterfaceBinder<
       new_tab_page_third_party::mojom::PageHandlerFactory,

@@ -35,6 +35,10 @@ import org.chromium.ui.base.DeviceFormFactor;
 
 import java.util.Random;
 
+import java.util.Random;
+
+import org.chromium.base.ContextUtils;
+
 /**
  * A class to handle the state of flags for tab_management.
  */
@@ -100,7 +104,7 @@ public class TabUiFeatureUtilities {
 
     public static final BooleanCachedFieldTrialParameter ENABLE_TAB_GROUP_AUTO_CREATION =
             new BooleanCachedFieldTrialParameter(
-                    ChromeFeatureList.TAB_GRID_LAYOUT_ANDROID, TAB_GROUP_AUTO_CREATION_PARAM, true);
+                    ChromeFeatureList.TAB_GRID_LAYOUT_ANDROID, TAB_GROUP_AUTO_CREATION_PARAM, false);
 
     private static Boolean sTabManagementModuleSupportedForTesting;
 
@@ -186,6 +190,8 @@ public class TabUiFeatureUtilities {
      * @return Whether the conditional tab strip feature is enabled and available for use.
      */
     public static boolean isConditionalTabStripEnabled() {
+        if (true)
+            return false;
         // TODO(crbug.com/1222946): Deprecate this feature.
         return CachedFeatureFlags.isEnabled(ChromeFeatureList.CONDITIONAL_TAB_STRIP_ANDROID)
                 && isTabManagementModuleSupported()
@@ -207,6 +213,8 @@ public class TabUiFeatureUtilities {
      * @return Whether the Tab-to-Grid (and Grid-to-Tab) transition animation is enabled.
      */
     public static boolean isTabToGtsAnimationEnabled() {
+        if (true)
+           return false;
         Log.d(TAG, "GTS.MinSdkVersion = " + ZOOMING_MIN_SDK.getValue());
         Log.d(TAG, "GTS.MinMemoryMB = " + ZOOMING_MIN_MEMORY.getValue());
         return CachedFeatureFlags.isEnabled(ChromeFeatureList.TAB_TO_GTS_ANIMATION)
@@ -243,6 +251,8 @@ public class TabUiFeatureUtilities {
      * "Open in new tab" item.
      */
     public static boolean showContextMenuOpenNewTabInGroupItemFirst() {
+        if (true)
+          return false;
         assert !ENABLE_TAB_GROUP_AUTO_CREATION.getValue();
 
         SharedPreferencesManager sharedPreferencesManager = SharedPreferencesManager.getInstance();

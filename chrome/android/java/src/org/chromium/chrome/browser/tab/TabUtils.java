@@ -147,6 +147,8 @@ public class TabUtils {
                 tabUserAgent = TabUserAgent.DESKTOP;
             } else {
                 tabUserAgent = TabUserAgent.DEFAULT;
+                if (ContextUtils.getAppSharedPreferences().getBoolean("desktop_mode", false))
+                     tabUserAgent = TabUserAgent.DESKTOP;
             }
             CriticalPersistedTabData.from(tab).setUserAgent(tabUserAgent);
         }
@@ -204,6 +206,8 @@ public class TabUtils {
      * @return Whether the desktop site should be requested.
      */
     public static boolean isDesktopSiteGlobalEnabled(Profile profile) {
+        if (ContextUtils.getAppSharedPreferences().getBoolean("desktop_mode", false))
+            return true;
         return WebsitePreferenceBridge.isCategoryEnabled(
                 profile, ContentSettingsType.REQUEST_DESKTOP_SITE);
     }

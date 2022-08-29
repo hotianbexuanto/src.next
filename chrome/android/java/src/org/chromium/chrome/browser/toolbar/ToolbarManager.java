@@ -210,6 +210,10 @@ import org.chromium.url.GURL;
 import java.util.List;
 import java.util.Objects;
 
+import org.chromium.chrome.browser.toolbar.top.TabSwitcherActionMenuCoordinator;
+import android.view.View.OnLongClickListener;
+import org.chromium.base.ContextUtils;
+
 /**
  * Contains logic for managing the toolbar visual component.  This class manages the interactions
  * with the rest of the application to ensure the toolbar is always visually up to date.
@@ -1214,6 +1218,7 @@ public class ToolbarManager implements UrlFocusChangeListener, ThemeColorObserve
 
             @Override
             public void onUrlUpdated(Tab tab) {
+                mLocationBarModel.notifySecurityStateChanged();
                 // Update the SSL security state as a result of this notification as it will
                 // sometimes be the only update we receive.
                 updateTabLoadingState(true);
@@ -2309,7 +2314,7 @@ public class ToolbarManager implements UrlFocusChangeListener, ThemeColorObserve
     @VisibleForTesting
     static String homepageUrl() {
         String homePageUrl = HomepageManager.getHomepageUri();
-        if (TextUtils.isEmpty(homePageUrl)) homePageUrl = UrlConstants.NTP_URL;
+        if (TextUtils.isEmpty(homePageUrl)) homePageUrl = "chrome-search://local-ntp/local-ntp.html";
         return homePageUrl;
     }
 

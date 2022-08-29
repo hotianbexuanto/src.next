@@ -58,11 +58,9 @@ public class TopToolbarOverlayCoordinator implements SceneOverlay {
                          .with(TopToolbarOverlayProperties.URL_BAR_RESOURCE_ID,
                                  R.drawable.modern_location_bar)
                          .with(TopToolbarOverlayProperties.VISIBLE, true)
-                         .with(TopToolbarOverlayProperties.X_OFFSET, 0)
                          .with(TopToolbarOverlayProperties.Y_OFFSET,
                                  browserControlsStateProvider.getTopControlOffset()
                                          + browserControlsStateProvider.getTopControlsMinHeight())
-                         .with(TopToolbarOverlayProperties.ANONYMIZE, false)
                          .build();
         mSceneLayer = new TopToolbarSceneLayer(resourceManagerSupplier);
         mChangeProcessor =
@@ -70,7 +68,7 @@ public class TopToolbarOverlayCoordinator implements SceneOverlay {
 
         mMediator = new TopToolbarOverlayMediator(mModel, context, layoutManager,
                 progressInfoCallback, tabSupplier, browserControlsStateProvider,
-                topUiThemeColorProvider, layoutsToShowOn, isVisibilityManuallyControlled);
+                topUiThemeColorProvider, isGridTabSwitcherEnabled);
     }
 
     /**
@@ -79,21 +77,6 @@ public class TopToolbarOverlayCoordinator implements SceneOverlay {
      */
     public void setIsAndroidViewVisible(boolean isVisible) {
         mMediator.setIsAndroidViewVisible(isVisible);
-    }
-
-    /** @param visible Whether the overlay and shadow should be visible despite other signals. */
-    public void setManualVisibility(boolean visible) {
-        mMediator.setManualVisibility(visible);
-    }
-
-    /** @param xOffset The x offset of the toolbar. */
-    public void setXOffset(float xOffset) {
-        mMediator.setXOffset(xOffset);
-    }
-
-    /** @param anonymize Whether the URL should be hidden when the layer is rendered. */
-    public void setAnonymize(boolean anonymize) {
-        mMediator.setAnonymize(anonymize);
     }
 
     /** Clean up this component. */

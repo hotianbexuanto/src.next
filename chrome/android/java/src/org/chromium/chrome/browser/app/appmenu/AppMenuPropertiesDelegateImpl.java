@@ -99,6 +99,12 @@ import org.chromium.components.content_settings.ContentSettingValues;
 import org.chromium.chrome.browser.AppMenuBridge;
 import org.chromium.base.Log;
 
+import android.graphics.Color;
+import android.text.SpannableString;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.ForegroundColorSpan;
+import org.chromium.components.browser_ui.site_settings.ContentSettingsResources;
+
 /**
  * Base implementation of {@link AppMenuPropertiesDelegate} that handles hiding and showing menu
  * items based on activity state.
@@ -303,6 +309,7 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
 
         // Update the icon row items (shown in narrow form factors).
         boolean shouldShowIconRow = shouldShowIconRow();
+        if (menu.findItem(R.id.icon_row_menu_id) != null)
         menu.findItem(R.id.icon_row_menu_id).setVisible(shouldShowIconRow);
         if (shouldShowIconRow) {
             SubMenu actionBar = menu.findItem(R.id.icon_row_menu_id).getSubMenu();
@@ -329,6 +336,7 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
         }
 
         mUpdateMenuItemVisible = shouldShowUpdateMenuItem();
+        if (menu.findItem(R.id.update_menu_id) != null)
         menu.findItem(R.id.update_menu_id).setVisible(mUpdateMenuItemVisible);
         if (mUpdateMenuItemVisible) {
             mAppMenuInvalidator = () -> handler.invalidateAppMenu();
@@ -376,6 +384,7 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
         // Enable image descriptions if the feature flag is enabled, and if a screen reader
         // is currently running.
         if (ImageDescriptionsController.getInstance().shouldShowImageDescriptionsMenuItem()) {
+            if (menu.findItem(R.id.get_image_descriptions_id) != null)
             menu.findItem(R.id.get_image_descriptions_id).setVisible(true);
 
             int titleId = R.string.menu_stop_image_descriptions;
@@ -393,6 +402,7 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
 
             menu.findItem(R.id.get_image_descriptions_id).setTitle(titleId);
         } else {
+            if (menu.findItem(R.id.get_image_descriptions_id) != null)
             menu.findItem(R.id.get_image_descriptions_id).setVisible(false);
         }
 
@@ -423,9 +433,11 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
         MenuItem disableProxyMenu = menu.findItem(R.id.disable_proxy_id);
         boolean isProxyEnabled = AppMenuBridge.isProxyEnabled(Profile.getLastUsedRegularProfile());
         if (isProxyEnabled) {
-            disableProxyMenu.setVisible(true);
+            if (disableProxyMenu != null)
+                disableProxyMenu.setVisible(true);
         } else {
-            disableProxyMenu.setVisible(false);
+            if (disableProxyMenu != null)
+                disableProxyMenu.setVisible(false);
         }
 
         // Only display reader mode settings menu option if the current page is in reader mode.
@@ -570,6 +582,7 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
         MenuItem adblockMenuLabel = menu.findItem(R.id.adblock_id);
         MenuItem adblockMenuCheck = menu.findItem(R.id.adblock_check_id);
 
+        if (currentTab == null || currentTab.getUrl() == null) { if (adblockMenuRow != null) adblockMenuRow.setVisible(false); return ; }
         String url = currentTab.getUrl().getSpec();
         boolean isChromeScheme = url.startsWith(UrlConstants.CHROME_URL_PREFIX)
                 || url.startsWith(UrlConstants.CHROME_NATIVE_URL_PREFIX);
@@ -579,7 +592,8 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
         // adsEnabled means "adBlockingEnabled"
         boolean itemVisible = canShowAdblockMenu
                 && !isChromeScheme && !currentTab.isNativePage() && !isDistilledPage;
-        adblockMenuRow.setVisible(itemVisible);
+        if (adblockMenuRow != null)
+            adblockMenuRow.setVisible(itemVisible);
         if (!itemVisible) return;
 
         boolean adBlockIsActive = (WebsitePreferenceBridgeJni.get().isContentSettingEnabled(Profile.getLastUsedRegularProfile(), ContentSettingsType.ADS) == false);
@@ -763,6 +777,7 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
             Menu menu, Tab currentTab, boolean shouldShowHomeScreenMenuItem) {
         MenuItem homescreenItem = menu.findItem(R.id.add_to_homescreen_id);
         MenuItem openWebApkItem = menu.findItem(R.id.open_webapk_id);
+        if (homescreenItem == null || openWebApkItem == null) return ;
         mAddAppTitleShown = AppMenuVerbiage.APP_MENU_OPTION_UNKNOWN;
         if (shouldShowHomeScreenMenuItem) {
             Context context = ContextUtils.getApplicationContext();
@@ -820,6 +835,7 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
     protected void prepareTranslateMenuItem(Menu menu, Tab currentTab) {
         boolean isTranslateVisible = shouldShowTranslateMenuItem(currentTab);
         menu.findItem(R.id.translate_id).setVisible(isTranslateVisible);
+        if (currentTab == null || currentTab.getUrl() == null) return ;
         String url = currentTab.getUrl().getSpec();
             MenuItem translate_menu = menu.findItem(R.id.translate_id);
             if (translate_menu != null) {

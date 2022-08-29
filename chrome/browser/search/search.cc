@@ -34,7 +34,7 @@
 #include "chrome/browser/supervised_user/supervised_user_url_filter.h"  // nogncheck
 #endif
 
-#if !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID) || true
 #include "chrome/browser/search/instant_service.h"
 #include "chrome/browser/search/instant_service_factory.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
@@ -164,7 +164,7 @@ bool IsURLAllowedForSupervisedUser(const GURL& url, Profile* profile) {
 }
 
 bool ShouldShowLocalNewTab(Profile* profile) {
-#if !BUILDFLAG(IS_ANDROID)
+#if 0
   return DefaultSearchProviderIsGoogle(profile);
 #else
   return false;
@@ -185,6 +185,7 @@ struct NewTabURLDetails {
     if (profile->IsOffTheRecord())
       return NewTabURLDetails(GURL(), NEW_TAB_URL_INCOGNITO);
 
+#if 0
 #if BUILDFLAG(IS_ANDROID)
     const GURL local_url;
 #else
@@ -224,7 +225,7 @@ struct NewTabURLDetails {
 
 bool IsRenderedInInstantProcess(content::WebContents* contents,
                                 Profile* profile) {
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) && 0
   return false;
 #else
   content::RenderProcessHost* process_host =
@@ -263,7 +264,12 @@ bool IsNTPURL(const GURL& url) {
       url.host_piece() == chrome::kChromeSearchRemoteNtpHost) {
     return true;
   }
-#if BUILDFLAG(IS_ANDROID)
+  if (url.SchemeIs(chrome::kChromeSearchScheme) &&
+      url.host_piece() == "local-ntp") {
+    return true;
+  }
+
+#if BUILDFLAG(IS_ANDROID) && 0
   return false;
 #else
   return NewTabPageUI::IsNewTabPageOrigin(url) ||
@@ -325,7 +331,7 @@ GURL GetNewTabPageURL(Profile* profile) {
   return NewTabURLDetails::ForProfile(profile).url;
 }
 
-#if !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID) || true
 
 bool ShouldAssignURLToInstantRenderer(const GURL& url, Profile* profile) {
   if (url.SchemeIs(chrome::kChromeSearchScheme))

@@ -399,7 +399,9 @@ void ExtensionService::OnExternalProviderUpdateComplete(
     updater_->CheckNow(ExtensionUpdater::CheckParams());
   }
 
+#if 0
   error_controller_->ShowErrorIfNeeded();
+#endif
   external_install_manager_->UpdateExternalExtensionAlert();
 }
 
@@ -937,7 +939,9 @@ void ExtensionService::HandleMalwareOmahaAttribute(
   extension_prefs_->AddDisableReason(
       extension_id, disable_reason::DISABLE_REMOTELY_FOR_MALWARE);
   // Show an error for the newly blocklisted extension.
+#if 0
   error_controller_->ShowErrorIfNeeded();
+#endif
 }
 
 void ExtensionService::MaybeEnableRemotelyDisabledExtension(
@@ -1568,7 +1572,9 @@ void ExtensionService::OnAllExternalProvidersReady() {
       CheckExternalUninstall(info->extension_id);
   }
 
+#if 0
   error_controller_->ShowErrorIfNeeded();
+#endif
 
   external_install_manager_->UpdateExternalExtensionAlert();
 }
@@ -1940,7 +1946,9 @@ void ExtensionService::OnExtensionInstalled(
 }
 
 void ExtensionService::OnExtensionManagementSettingsChanged() {
+#if 0
   error_controller_->ShowErrorIfNeeded();
+#endif
 
   // Revokes blocked permissions from active_permissions for all extensions.
   ExtensionManagement* settings =
@@ -2550,6 +2558,7 @@ void ExtensionService::ManageBlocklist(
   safe_browsing_verdict_handler_.ManageBlocklist(state_map);
 
   error_controller_->ShowErrorIfNeeded();
+#endif
 }
 
 void ExtensionService::UpdateBlocklistedExtensions(

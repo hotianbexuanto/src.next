@@ -1047,7 +1047,7 @@ void BrowserProcessImpl::RegisterPrefs(PrefRegistrySimple* registry) {
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
   registry->RegisterBooleanPref(metrics::prefs::kMetricsReportingEnabled,
-                                GoogleUpdateSettings::GetCollectStatsConsent());
+                                false);
   registry->RegisterBooleanPref(prefs::kDevToolsRemoteDebuggingAllowed, true);
 }
 
@@ -1462,7 +1462,7 @@ void BrowserProcessImpl::CreateSafeBrowsingService() {
   // Set this flag to true so that we don't retry indefinitely to
   // create the service class if there was an error.
   created_safe_browsing_service_ = true;
-
+#if 0
   // The factory can be overridden in tests.
   if (!safe_browsing::SafeBrowsingServiceInterface::HasFactory()) {
     safe_browsing::SafeBrowsingServiceInterface::RegisterFactory(
@@ -1475,6 +1475,7 @@ void BrowserProcessImpl::CreateSafeBrowsingService() {
       safe_browsing::SafeBrowsingServiceInterface::CreateSafeBrowsingService());
   if (safe_browsing_service_)
     safe_browsing_service_->Initialize();
+#endif
 }
 #endif
 

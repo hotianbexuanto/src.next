@@ -44,6 +44,7 @@ constexpr std::array kValidSchemes = {
     url::kFileSystemScheme,    url::kWsScheme,
     url::kWssScheme,           url::kDataScheme,
     url::kUuidInPackageScheme,
+    content::kChromeSearchScheme
 };
 
 constexpr std::array kValidSchemeMasks = {
