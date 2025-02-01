@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,20 +7,19 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
-#include "base/values.h"
-#include "extensions/browser/embedder_user_script_loader.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_observer.h"
 #include "extensions/browser/extension_user_script_loader.h"
+#include "extensions/browser/web_ui_user_script_loader.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/mojom/host_id.mojom.h"
+#include "extensions/common/mojom/host_id.mojom-forward.h"
 #include "extensions/common/user_script.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "url/gurl.h"
 
 namespace content {
 class BrowserContext;
@@ -29,9 +28,9 @@ class BrowserContext;
 namespace extensions {
 class UserScriptLoader;
 
-// Manages user scripts for all extensions and webview scripts from embedder
-// pages. Owns one UserScriptLoader for manifest extension scripts, and a map
-// of mojom::HostID to UserScriptLoaders for declarative extension and embedder
+// Manages user scripts for all extensions and webview scripts from WebUI pages.
+// Owns one UserScriptLoader for manifest extension scripts, and a map of
+// mojom::HostID to UserScriptLoaders for declarative extension and WebUI
 // scripts. File loading and shared memory management operations are delegated
 // to these UserScriptLoaders.
 class UserScriptManager : public ExtensionRegistryObserver {
@@ -46,42 +45,33 @@ class UserScriptManager : public ExtensionRegistryObserver {
   ExtensionUserScriptLoader* GetUserScriptLoaderForExtension(
       const ExtensionId& extension_id);
 
-  EmbedderUserScriptLoader* GetUserScriptLoaderForEmbedder(
-      const mojom::HostID& host_id);
-
-  // Sets whether scripts of the given `source` should be enabled for
-  // (all) extensions. Does not affect embedder script loaders.
-  void SetUserScriptSourceEnabledForExtensions(UserScript::Source source,
-                                               bool enabled);
+  WebUIUserScriptLoader* GetUserScriptLoaderForWebUI(const GURL& url);
 
  private:
   // ExtensionRegistryObserver implementation.
-  void OnExtensionWillBeInstalled(content::BrowserContext* browser_context,
-                                  const Extension* extension,
-                                  bool is_update,
-                                  const std::string& old_name) override;
   void OnExtensionLoaded(content::BrowserContext* browser_context,
                          const Extension* extension) override;
   void OnExtensionUnloaded(content::BrowserContext* browser_context,
                            const Extension* extension,
                            UnloadedExtensionReason reason) override;
 
-  // Called when `loader` has finished loading its initial set of scripts. This
-  // is only fired for extension script loaders.
+  // Called when the |loader| has finished loading its initial set of scripts.
+  // This is only fired for extension script loaders.
   void OnInitialExtensionLoadComplete(UserScriptLoader* loader,
-                                      const std::optional<std::string>& error);
+                                      const absl::optional<std::string>& error);
 
-  // Removes the given ID from `pending_initial_extension_loads_` and if there
-  // are no more pending initial loads, signal to the UserScriptListener.
-  void RemovePendingExtensionLoadAndSignal(const ExtensionId& extension_id);
+  // Gets an extension's manifest scripts' metadata; i.e., gets a list of
+  // UserScript objects that contains script info, but not the contents of the
+  // scripts.
+  std::unique_ptr<UserScriptList> GetManifestScriptsMetadata(
+      const Extension* extension);
 
   // Creates a ExtensionUserScriptLoader object.
   ExtensionUserScriptLoader* CreateExtensionUserScriptLoader(
       const Extension* extension);
 
-  // Creates a EmbedderUserScriptLoader object.
-  EmbedderUserScriptLoader* CreateEmbedderUserScriptLoader(
-      const mojom::HostID& host_id);
+  // Creates a WebUIUserScriptLoader object.
+  WebUIUserScriptLoader* CreateWebUIUserScriptLoader(const GURL& url);
 
   // A map of ExtensionUserScriptLoader for each extension host, with one loader
   // per extension. Currently, each loader is lazily initialized and contains
@@ -89,17 +79,15 @@ class UserScriptManager : public ExtensionRegistryObserver {
   std::map<ExtensionId, std::unique_ptr<ExtensionUserScriptLoader>>
       extension_script_loaders_;
 
-  // A map of EmbedderUserScriptLoader for each embedder host, each loader
-  // contains webview content scripts for the corresponding embedder page and is
-  // lazily initialized.
-  std::map<mojom::HostID, std::unique_ptr<EmbedderUserScriptLoader>>
-      embedder_script_loaders_;
+  // A map of WebUIUserScriptLoader for each WebUI host, each loader contains
+  // webview content scripts for the corresponding WebUI page and is lazily
+  // initialized.
+  std::map<GURL, std::unique_ptr<WebUIUserScriptLoader>> webui_script_loaders_;
 
-  // Tracks the IDs of extensions with initial script loads (consisting of
-  // manifest and persistent dynamic scripts) in progress.
-  std::set<ExtensionId> pending_initial_extension_loads_;
+  // Tracks the number of manifest script loads currently in progress.
+  int pending_manifest_load_count_ = 0;
 
-  const raw_ptr<content::BrowserContext> browser_context_;
+  content::BrowserContext* const browser_context_;
 
   base::ScopedObservation<ExtensionRegistry, ExtensionRegistryObserver>
       extension_registry_observation_{this};

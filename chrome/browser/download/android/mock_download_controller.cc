@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright (c) 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,10 +6,11 @@
 
 #include <utility>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/location.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/threading/thread_task_runner_handle.h"
 
+namespace chrome {
 namespace android {
 
 MockDownloadController::MockDownloadController()
@@ -28,7 +29,7 @@ void MockDownloadController::StartContextMenuDownload(
 void MockDownloadController::AcquireFileAccessPermission(
     const content::WebContents::Getter& wc_getter,
     DownloadControllerBase::AcquireFileAccessPermissionCallback cb) {
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, base::BindOnce(std::move(cb), approve_file_access_request_));
 }
 
@@ -40,4 +41,9 @@ void MockDownloadController::SetApproveFileAccessRequestForTesting(
 void MockDownloadController::CreateAndroidDownload(
     const content::WebContents::Getter& wc_getter,
     const DownloadInfo& info) {}
+
+void MockDownloadController::AboutToResumeDownload(
+    download::DownloadItem* download_item) {}
+
 }  // namespace android
+}  // namespace chrome

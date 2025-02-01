@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,33 +10,38 @@
 #include <memory>
 #include <string>
 
-#include "base/functional/callback.h"
+#include "base/callback.h"
+#include "base/macros.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/system/data_pipe_drainer.h"
 #include "third_party/blink/public/mojom/blob/blob.mojom.h"
+#include "url/gurl.h"
+
+namespace content {
+class BrowserContext;
+}
 
 // This class may only be used from the UI thread.
 class BlobReader : public blink::mojom::BlobReaderClient,
                    public mojo::DataPipeDrainer::Client {
  public:
-  // `blob_data` contains the portion of the Blob requested. `blob_total_size`
-  // is the total size of the Blob, and may be larger than `blob_data->size()`.
-  // `blob_total_size` is 0 if it cannot be determined.
-  using BlobReadCallback =
-      base::OnceCallback<void(std::string blob_data, int64_t blob_total_size)>;
+  // |blob_data| contains the portion of the Blob requested. |blob_total_size|
+  // is the total size of the Blob, and may be larger than |blob_data->size()|.
+  // |blob_total_size| is -1 if it cannot be determined.
+  typedef base::OnceCallback<void(std::unique_ptr<std::string> blob_data,
+                                  int64_t blob_total_size)>
+      BlobReadCallback;
 
-  static void Read(mojo::PendingRemote<blink::mojom::Blob> blob,
+  static void Read(content::BrowserContext* browser_context,
+                   const std::string& blob_uuid,
                    BlobReadCallback callback,
-                   uint64_t offset,
-                   uint64_t length);
-
-  static void Read(mojo::PendingRemote<blink::mojom::Blob> blob,
+                   int64_t offset,
+                   int64_t length);
+  static void Read(content::BrowserContext* browser_context,
+                   const std::string& blob_uuid,
                    BlobReadCallback callback);
-
-  BlobReader(const BlobReader&) = delete;
-  BlobReader& operator=(const BlobReader&) = delete;
 
   ~BlobReader() override;
 
@@ -46,12 +51,13 @@ class BlobReader : public blink::mojom::BlobReaderClient,
     uint64_t length;
   };
 
-  static void Read(mojo::PendingRemote<blink::mojom::Blob> blob,
+  static void Read(content::BrowserContext* browser_context,
+                   const std::string& blob_uuid,
                    BlobReadCallback callback,
-                   std::optional<Range> range);
+                   absl::optional<BlobReader::Range> range);
 
   BlobReader(mojo::PendingRemote<blink::mojom::Blob> blob,
-             std::optional<Range> range);
+             absl::optional<Range> range);
   void Start(base::OnceClosure callback);
 
   // blink::mojom::BlobReaderClient:
@@ -60,7 +66,7 @@ class BlobReader : public blink::mojom::BlobReaderClient,
   void OnComplete(int32_t status, uint64_t data_length) override {}
 
   // mojo::DataPipeDrainer:
-  void OnDataAvailable(base::span<const uint8_t> data) override;
+  void OnDataAvailable(const void* data, size_t num_bytes) override;
   void OnDataComplete() override;
 
   void Failed();
@@ -68,14 +74,16 @@ class BlobReader : public blink::mojom::BlobReaderClient,
 
   base::OnceClosure callback_;
   mojo::Remote<blink::mojom::Blob> blob_;
-  std::optional<Range> read_range_;
+  absl::optional<Range> read_range_;
 
   mojo::Receiver<blink::mojom::BlobReaderClient> receiver_{this};
   std::unique_ptr<mojo::DataPipeDrainer> data_pipe_drainer_;
 
-  std::optional<uint64_t> blob_length_;
-  std::string blob_data_;
+  absl::optional<uint64_t> blob_length_;
+  std::unique_ptr<std::string> blob_data_;
   bool data_complete_ = false;
+
+  DISALLOW_COPY_AND_ASSIGN(BlobReader);
 };
 
 #endif  // EXTENSIONS_BROWSER_BLOB_READER_H_

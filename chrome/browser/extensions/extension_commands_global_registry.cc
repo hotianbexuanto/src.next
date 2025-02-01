@@ -1,11 +1,11 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/extension_commands_global_registry.h"
 
 #include "base/lazy_instance.h"
-#include "chrome/browser/extensions/commands/command_service.h"
+#include "chrome/browser/extensions/api/commands/command_service.h"
 #include "chrome/browser/extensions/global_shortcut_listener.h"
 #include "extensions/common/extension.h"
 

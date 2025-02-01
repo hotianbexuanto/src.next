@@ -37,7 +37,7 @@ class SinkDocumentParser : public RawDataDocumentParser {
 
  private:
   // Ignore all data.
-  void AppendBytes(base::span<const uint8_t>) override {}
+  void AppendBytes(const char*, size_t) override {}
 };
 
 SinkDocument::SinkDocument(const DocumentInit& initializer)

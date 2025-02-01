@@ -37,56 +37,28 @@ class ComputedStyle;
 
 class CORE_EXPORT PseudoElement : public Element {
  public:
-  // |view_transition_name| is used to uniquely identify a pseudo element
-  // from a set of pseudo elements which share the same |pseudo_id|. The current
-  // usage of this ID is limited to pseudo elements generated for a
-  // ViewTransition. See
-  // third_party/blink/renderer/core/view_transition/README.md
-  static PseudoElement* Create(
-      Element* parent,
-      PseudoId pseudo_id,
-      const AtomicString& view_transition_name = g_null_atom);
+  static PseudoElement* Create(Element* parent, PseudoId);
 
-  PseudoElement(Element*,
-                PseudoId,
-                const AtomicString& view_transition_name = g_null_atom);
+  PseudoElement(Element*, PseudoId);
 
-  bool IsPseudoElement() const final { return true; }
-
-  const AtomicString& view_transition_name() const {
-    return view_transition_name_;
-  }
-  const ComputedStyle* CustomStyleForLayoutObject(
+  scoped_refptr<ComputedStyle> CustomStyleForLayoutObject(
       const StyleRecalcContext&) override;
   void AttachLayoutTree(AttachContext&) override;
-  bool LayoutObjectIsNeeded(const DisplayStyle&) const override;
+  bool LayoutObjectIsNeeded(const ComputedStyle&) const override;
   bool CanGeneratePseudoElement(PseudoId) const override;
 
-  bool CanGenerateContent() const;
   bool CanStartSelection() const override { return false; }
   bool CanContainRangeEndPoint() const override { return false; }
   PseudoId GetPseudoId() const override { return pseudo_id_; }
-  // PseudoId that can be alias, e.g. kPseudoScrollMarkerGroupAfter is
-  // unresolved = alias, kPseudoScrollMarkerGroup is resolved.
-  // For styling and selector matching, return resolved version.
-  PseudoId GetPseudoIdForStyling() const override;
-  const ComputedStyle* LayoutStyleForDisplayContents(const ComputedStyle&);
+  scoped_refptr<ComputedStyle> LayoutStyleForDisplayContents(
+      const ComputedStyle&);
 
-  static AtomicString PseudoElementNameForEvents(Element*);
+  static const AtomicString& PseudoElementNameForEvents(PseudoId);
   static bool IsWebExposed(PseudoId, const Node*);
 
-  // Pseudo elements are not allowed to be the inner node for hit testing.
-  // Find the closest ancestor which is a real dom node.
-  virtual Node* InnerNodeForHitTesting();
-
-  void AccessKeyAction(SimulatedClickCreationScope creation_scope) override;
-
-  // Returns the DOM element that this pseudo element originates from. If the
-  // pseudo element is nested inside another pseudo element, this returns the
-  // DOM element which the pseudo element tree originates from.
-  // This is different from |parentElement()| which returns the element's direct
-  // ancestor.
-  Element* UltimateOriginatingElement() const;
+  // Pseudo element are not allowed to be the inner node for hit testing. Find
+  // the closest ancestor which is a real dom node.
+  virtual Node* InnerNodeForHitTesting() const;
 
   virtual void Dispose();
 
@@ -100,20 +72,15 @@ class CORE_EXPORT PseudoElement : public Element {
 
    private:
     PseudoElement* element_;
-    const ComputedStyle* original_style_{nullptr};
+    scoped_refptr<const ComputedStyle> original_style_;
   };
 
   PseudoId pseudo_id_;
-  const AtomicString view_transition_name_;
 };
 
-CORE_EXPORT const QualifiedName& PseudoElementTagName(PseudoId);
+const QualifiedName& PseudoElementTagName(PseudoId);
 
-bool PseudoElementLayoutObjectIsNeeded(PseudoId pseudo_id,
-                                       const ComputedStyle* pseudo_style,
-                                       const Element* originating_element);
-bool PseudoElementLayoutObjectIsNeeded(PseudoId pseudo_id,
-                                       const DisplayStyle& pseudo_style,
+bool PseudoElementLayoutObjectIsNeeded(const ComputedStyle* pseudo_style,
                                        const Element* originating_element);
 
 template <>

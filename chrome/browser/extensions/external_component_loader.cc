@@ -1,10 +1,9 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/external_component_loader.h"
 
-#include "base/values.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -17,12 +16,8 @@
 #include "extensions/common/feature_switch.h"
 #include "extensions/common/manifest.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/ash/crosapi/browser_util.h"
-#include "chrome/browser/chromeos/upload_office_to_cloud/upload_office_to_cloud.h"
+#if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/policy/profile_policy_connector.h"
-#include "chrome/browser/profiles/profile_manager.h"
-#include "chromeos/constants/chromeos_features.h"
 #endif
 
 namespace extensions {
@@ -33,23 +28,17 @@ ExternalComponentLoader::ExternalComponentLoader(Profile* profile)
 ExternalComponentLoader::~ExternalComponentLoader() {}
 
 void ExternalComponentLoader::StartLoading() {
-  auto prefs = base::Value::Dict();
+  auto prefs = std::make_unique<base::DictionaryValue>();
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  AddExternalExtension(extension_misc::kInAppPaymentsSupportAppId, prefs);
+  AddExternalExtension(extension_misc::kInAppPaymentsSupportAppId, prefs.get());
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   {
     // Only load the Assessment Assistant if the current session is managed.
-    if (profile_->GetProfilePolicyConnector()->IsManaged()) {
+    if (profile_->GetProfilePolicyConnector()->IsManaged())
       AddExternalExtension(extension_misc::kAssessmentAssistantExtensionId,
-                           prefs);
-    }
-
-    if (chromeos::cloud_upload::IsMicrosoftOfficeOneDriveIntegrationAllowed(
-            profile_)) {
-      AddExternalExtension(extension_misc::kODFSExtensionId, prefs);
-    }
+                           prefs.get());
   }
 #endif
 
@@ -58,12 +47,12 @@ void ExternalComponentLoader::StartLoading() {
 
 void ExternalComponentLoader::AddExternalExtension(
     const std::string& extension_id,
-    base::Value::Dict& prefs) {
+    base::DictionaryValue* prefs) {
   if (!IsComponentExtensionAllowlisted(extension_id))
     return;
 
-  prefs.SetByDottedPath(extension_id + ".external_update_url",
-                        extension_urls::GetWebstoreUpdateUrl().spec());
+  prefs->SetString(extension_id + ".external_update_url",
+                   extension_urls::GetWebstoreUpdateUrl().spec());
 }
 
 }  // namespace extensions

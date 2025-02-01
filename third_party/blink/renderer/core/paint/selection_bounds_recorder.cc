@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,11 +6,10 @@
 
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
-#include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/forms/text_control_element.h"
+#include "third_party/blink/renderer/core/layout/api/selection_state.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_rect.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
-#include "third_party/blink/renderer/core/layout/selection_state.h"
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_controller.h"
@@ -36,7 +35,6 @@ enum class RectEdge {
 struct BoundEdges {
   RectEdge start;
   RectEdge end;
-  DISALLOW_NEW();
 };
 
 // Based on the given WritingMode and direction, return the pair of start and
@@ -46,60 +44,53 @@ struct BoundEdges {
 // would be the end. However, this flips for RTL, and vertical writing modes
 // additionally complicated matters.
 BoundEdges GetBoundEdges(WritingMode writing_mode, bool is_ltr) {
-  switch (writing_mode) {
-    case WritingMode::kHorizontalTb:
-      return is_ltr ? BoundEdges{RectEdge::kTopLeftToBottomLeft,
-                                 RectEdge::kTopRightToBottomRight}
-                    : BoundEdges{RectEdge::kTopRightToBottomRight,
-                                 RectEdge::kTopLeftToBottomLeft};
-    case WritingMode::kVerticalRl:
-    case WritingMode::kSidewaysRl:
-      return is_ltr ? BoundEdges{RectEdge::kTopLeftToTopRight,
-                                 RectEdge::kBottomRightToBottomLeft}
-                    : BoundEdges{RectEdge::kBottomLeftToBottomRight,
-                                 RectEdge::kTopRightToTopLeft};
-    case WritingMode::kVerticalLr:
-      return is_ltr ? BoundEdges{RectEdge::kTopRightToTopLeft,
-                                 RectEdge::kBottomLeftToBottomRight}
-                    : BoundEdges{RectEdge::kBottomRightToBottomLeft,
-                                 RectEdge::kTopLeftToTopRight};
-    case WritingMode::kSidewaysLr:
-      return is_ltr ? BoundEdges{RectEdge::kBottomLeftToBottomRight,
-                                 RectEdge::kTopLeftToTopRight}
-                    : BoundEdges{RectEdge::kTopLeftToTopRight,
-                                 RectEdge::kBottomLeftToBottomRight};
+  if (IsHorizontalWritingMode(writing_mode)) {
+    if (is_ltr)
+      return {RectEdge::kTopLeftToBottomLeft, RectEdge::kTopRightToBottomRight};
+    else
+      return {RectEdge::kTopRightToBottomRight, RectEdge::kTopLeftToBottomLeft};
+  } else if (IsFlippedBlocksWritingMode(writing_mode)) {
+    if (is_ltr)
+      return {RectEdge::kTopLeftToTopRight, RectEdge::kBottomRightToBottomLeft};
+    else
+      return {RectEdge::kBottomLeftToBottomRight, RectEdge::kTopRightToTopLeft};
+  } else {
+    if (is_ltr)
+      return {RectEdge::kTopRightToTopLeft, RectEdge::kBottomLeftToBottomRight};
+    else
+      return {RectEdge::kBottomRightToBottomLeft, RectEdge::kTopLeftToTopRight};
   }
 }
 
 // Set the given bound's edge_start and edge_end, based on the provided
 // selection rect and edge.
-void SetBoundEdge(gfx::Rect selection_rect,
+void SetBoundEdge(IntRect selection_rect,
                   RectEdge edge,
                   PaintedSelectionBound& bound) {
   switch (edge) {
     case RectEdge::kTopLeftToBottomLeft:
-      bound.edge_start = selection_rect.origin();
-      bound.edge_end = selection_rect.bottom_left();
+      bound.edge_start = selection_rect.MinXMinYCorner();
+      bound.edge_end = selection_rect.MinXMaxYCorner();
       return;
     case RectEdge::kTopRightToBottomRight:
-      bound.edge_start = selection_rect.top_right();
-      bound.edge_end = selection_rect.bottom_right();
+      bound.edge_start = selection_rect.MaxXMinYCorner();
+      bound.edge_end = selection_rect.MaxXMaxYCorner();
       return;
     case RectEdge::kTopLeftToTopRight:
-      bound.edge_start = selection_rect.origin();
-      bound.edge_end = selection_rect.top_right();
+      bound.edge_start = selection_rect.MinXMinYCorner();
+      bound.edge_end = selection_rect.MaxXMinYCorner();
       return;
     case RectEdge::kBottomLeftToBottomRight:
-      bound.edge_start = selection_rect.bottom_left();
-      bound.edge_end = selection_rect.bottom_right();
+      bound.edge_start = selection_rect.MinXMaxYCorner();
+      bound.edge_end = selection_rect.MaxXMaxYCorner();
       return;
     case RectEdge::kTopRightToTopLeft:
-      bound.edge_start = selection_rect.top_right();
-      bound.edge_end = selection_rect.origin();
+      bound.edge_start = selection_rect.MaxXMinYCorner();
+      bound.edge_end = selection_rect.MinXMinYCorner();
       return;
     case RectEdge::kBottomRightToBottomLeft:
-      bound.edge_start = selection_rect.bottom_right();
-      bound.edge_end = selection_rect.bottom_left();
+      bound.edge_start = selection_rect.MaxXMaxYCorner();
+      bound.edge_end = selection_rect.MinXMaxYCorner();
       return;
     default:
       NOTREACHED();
@@ -109,12 +100,12 @@ void SetBoundEdge(gfx::Rect selection_rect,
 PhysicalOffset GetSamplePointForVisibility(const PhysicalOffset& edge_start,
                                            const PhysicalOffset& edge_end,
                                            float zoom_factor) {
-  gfx::Vector2dF diff(edge_start - edge_end);
+  FloatSize diff(edge_start - edge_end);
   // Adjust by ~1px to avoid integer snapping error. This logic is the same
   // as that in ComputeViewportSelectionBound in cc.
-  diff.Scale(zoom_factor / diff.Length());
+  diff.Scale(zoom_factor / diff.DiagonalLength());
   PhysicalOffset sample_point = edge_end;
-  sample_point += PhysicalOffset::FromVector2dFRound(diff);
+  sample_point += PhysicalOffset::FromFloatSizeRound(diff);
   return sample_point;
 }
 
@@ -132,17 +123,14 @@ SelectionBoundsRecorder::SelectionBoundsRecorder(
       paint_controller_(paint_controller),
       text_direction_(text_direction),
       writing_mode_(writing_mode),
-      selection_layout_object_(layout_object) {}
+      selection_layout_object_(layout_object) {
+  DCHECK(RuntimeEnabledFeatures::CompositeAfterPaintEnabled());
+}
 
 SelectionBoundsRecorder::~SelectionBoundsRecorder() {
-  paint_controller_.RecordAnySelectionWasPainted();
-
-  if (state_ == SelectionState::kInside)
-    return;
-
-  std::optional<PaintedSelectionBound> start;
-  std::optional<PaintedSelectionBound> end;
-  gfx::Rect selection_rect = ToPixelSnappedRect(selection_rect_);
+  absl::optional<PaintedSelectionBound> start;
+  absl::optional<PaintedSelectionBound> end;
+  auto selection_rect = PixelSnappedIntRect(selection_rect_);
   const bool is_ltr = IsLtr(text_direction_);
   BoundEdges edges = GetBoundEdges(writing_mode_, is_ltr);
   if (state_ == SelectionState::kStart ||
@@ -167,12 +155,15 @@ SelectionBoundsRecorder::~SelectionBoundsRecorder() {
                    PhysicalOffset(end->edge_end));
   }
 
-  paint_controller_.RecordSelection(start, end, "");
+  paint_controller_.RecordSelection(start, end);
 }
 
 bool SelectionBoundsRecorder::ShouldRecordSelection(
     const FrameSelection& frame_selection,
     SelectionState state) {
+  if (!RuntimeEnabledFeatures::CompositeAfterPaintEnabled())
+    return false;
+
   if (!frame_selection.IsHandleVisible() || frame_selection.IsHidden())
     return false;
 
@@ -186,7 +177,7 @@ bool SelectionBoundsRecorder::ShouldRecordSelection(
   if (local_frame != focused_frame)
     return false;
 
-  if (state == SelectionState::kNone)
+  if (state == SelectionState::kInside || state == SelectionState::kNone)
     return false;
 
   return true;
@@ -210,11 +201,8 @@ bool SelectionBoundsRecorder::IsVisible(const LayoutObject& rect_layout_object,
   if (!layout_object || !layout_object->IsBox())
     return true;
 
-  PhysicalOffset sample_point = GetSamplePointForVisibility(
-      edge_start, edge_end, rect_layout_object.GetFrame()->LayoutZoomFactor());
-
-  // Convert from paint coordinates to local layout coordinates.
-  sample_point -= layout_object->FirstFragment().PaintOffset();
+  const PhysicalOffset sample_point = GetSamplePointForVisibility(
+      edge_start, edge_end, rect_layout_object.GetFrame()->PageZoomFactor());
 
   auto* const text_control_object = To<LayoutBox>(layout_object);
   const PhysicalOffset position_in_input =

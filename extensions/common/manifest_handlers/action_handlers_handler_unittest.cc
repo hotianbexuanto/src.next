@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -33,7 +33,7 @@ class ActionHandlersManifestTest : public ManifestTest {
                                     "manifest_version": 2,
                                     "action_handlers": )json" +
                                                  action_handlers + "}");
-    return ManifestData(std::move(manifest).TakeDict());
+    return ManifestData(std::move(manifest), "test");
   }
 
   // Returns all action handlers associated with |extension|.
@@ -78,61 +78,61 @@ TEST_F(ActionHandlersManifestTest, VerifyParse) {
   EXPECT_TRUE(GetActionHandlers(none.get()).empty());
 
   EXPECT_FALSE(ActionHandlersInfo::HasActionHandler(
-      none.get(), app_runtime::ActionType::kNewNote));
+      none.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
   EXPECT_FALSE(ActionHandlersInfo::HasLockScreenActionHandler(
-      none.get(), app_runtime::ActionType::kNewNote));
+      none.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
 
   scoped_refptr<Extension> new_note =
       LoadAndExpectSuccess(CreateManifest("[\"new_note\"]"));
   EXPECT_EQ(
-      std::set<app_runtime::ActionType>{app_runtime::ActionType::kNewNote},
+      std::set<app_runtime::ActionType>{app_runtime::ACTION_TYPE_NEW_NOTE},
       GetActionHandlers(new_note.get()));
   EXPECT_TRUE(GetLockScreenActionHandlers(new_note.get()).empty());
   EXPECT_TRUE(ActionHandlersInfo::HasActionHandler(
-      new_note.get(), app_runtime::ActionType::kNewNote));
+      new_note.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
   EXPECT_FALSE(ActionHandlersInfo::HasLockScreenActionHandler(
-      new_note.get(), app_runtime::ActionType::kNewNote));
+      new_note.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
 }
 
 TEST_F(ActionHandlersManifestTest, ParseDictionaryActionValues) {
   scoped_refptr<Extension> no_enabled_on_lock_screen_key =
       LoadAndExpectSuccess(CreateManifest(R"([{"action": "new_note"}])"));
   EXPECT_EQ(
-      std::set<app_runtime::ActionType>{app_runtime::ActionType::kNewNote},
+      std::set<app_runtime::ActionType>{app_runtime::ACTION_TYPE_NEW_NOTE},
       GetActionHandlers(no_enabled_on_lock_screen_key.get()));
   EXPECT_TRUE(
       GetLockScreenActionHandlers(no_enabled_on_lock_screen_key.get()).empty());
   EXPECT_TRUE(ActionHandlersInfo::HasActionHandler(
-      no_enabled_on_lock_screen_key.get(), app_runtime::ActionType::kNewNote));
+      no_enabled_on_lock_screen_key.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
   EXPECT_FALSE(ActionHandlersInfo::HasLockScreenActionHandler(
-      no_enabled_on_lock_screen_key.get(), app_runtime::ActionType::kNewNote));
+      no_enabled_on_lock_screen_key.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
 
   scoped_refptr<Extension> enabled_on_lock_screen_false =
       LoadAndExpectSuccess(CreateManifest(
           R"([{"action": "new_note", "enabled_on_lock_screen": false}])"));
   EXPECT_EQ(
-      std::set<app_runtime::ActionType>{app_runtime::ActionType::kNewNote},
+      std::set<app_runtime::ActionType>{app_runtime::ACTION_TYPE_NEW_NOTE},
       GetActionHandlers(enabled_on_lock_screen_false.get()));
   EXPECT_TRUE(
       GetLockScreenActionHandlers(enabled_on_lock_screen_false.get()).empty());
   EXPECT_TRUE(ActionHandlersInfo::HasActionHandler(
-      enabled_on_lock_screen_false.get(), app_runtime::ActionType::kNewNote));
+      enabled_on_lock_screen_false.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
   EXPECT_FALSE(ActionHandlersInfo::HasLockScreenActionHandler(
-      enabled_on_lock_screen_false.get(), app_runtime::ActionType::kNewNote));
+      enabled_on_lock_screen_false.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
 
   scoped_refptr<Extension> enabled_on_lock_screen_true =
       LoadAndExpectSuccess(CreateManifest(
           R"([{"action": "new_note", "enabled_on_lock_screen": true}])"));
   EXPECT_EQ(
-      std::set<app_runtime::ActionType>{app_runtime::ActionType::kNewNote},
+      std::set<app_runtime::ActionType>{app_runtime::ACTION_TYPE_NEW_NOTE},
       GetActionHandlers(enabled_on_lock_screen_true.get()));
   EXPECT_EQ(
-      std::set<app_runtime::ActionType>{app_runtime::ActionType::kNewNote},
+      std::set<app_runtime::ActionType>{app_runtime::ACTION_TYPE_NEW_NOTE},
       GetLockScreenActionHandlers(enabled_on_lock_screen_true.get()));
   EXPECT_TRUE(ActionHandlersInfo::HasActionHandler(
-      enabled_on_lock_screen_true.get(), app_runtime::ActionType::kNewNote));
+      enabled_on_lock_screen_true.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
   EXPECT_TRUE(ActionHandlersInfo::HasLockScreenActionHandler(
-      enabled_on_lock_screen_true.get(), app_runtime::ActionType::kNewNote));
+      enabled_on_lock_screen_true.get(), app_runtime::ACTION_TYPE_NEW_NOTE));
 }
 
 TEST_F(ActionHandlersManifestTest, DuplicateHandlers) {

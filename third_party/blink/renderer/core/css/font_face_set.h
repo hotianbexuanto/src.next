@@ -1,4 +1,5 @@
-// Copyright 2017 The Chromium Authors
+
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,27 +10,20 @@
 #include "third_party/blink/renderer/bindings/core/v8/iterable.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_sync_iterator_font_face_set.h"
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/font_face.h"
 #include "third_party/blink/renderer/core/dom/events/event_listener.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
-#include "third_party/blink/renderer/core/event_target_names.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/fonts/font_selector.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_linked_hash_set.h"
 
 namespace blink {
 
-class Font;
 class FontFaceCache;
-class V8FontFaceSetLoadStatus;
 
-using FontFaceSetIterable = ValueSyncIterable<FontFaceSet>;
+using FontFaceSetIterable = SetlikeIterable<Member<FontFace>>;
 
-class CORE_EXPORT FontFaceSet : public EventTarget,
+class CORE_EXPORT FontFaceSet : public EventTargetWithInlineData,
                                 public ExecutionContextClient,
                                 public FontFaceSetIterable,
                                 public FontFace::LoadFontCallback {
@@ -48,10 +42,8 @@ class CORE_EXPORT FontFaceSet : public EventTarget,
   DEFINE_ATTRIBUTE_EVENT_LISTENER(loadingerror, kLoadingerror)
 
   bool check(const String& font, const String& text, ExceptionState&);
-  ScriptPromise<IDLSequence<FontFace>> load(ScriptState*,
-                                            const String& font,
-                                            const String& text);
-  virtual ScriptPromise<FontFaceSet> ready(ScriptState*) = 0;
+  ScriptPromise load(ScriptState*, const String& font, const String& text);
+  virtual ScriptPromise ready(ScriptState*) = 0;
 
   ExecutionContext* GetExecutionContext() const override {
     return ExecutionContextClient::GetExecutionContext();
@@ -69,13 +61,13 @@ class CORE_EXPORT FontFaceSet : public EventTarget,
   void AddFontFacesToFontFaceCache(FontFaceCache*);
 
   wtf_size_t size() const;
-  V8FontFaceSetLoadStatus status() const;
+  virtual AtomicString status() const = 0;
 
   void Trace(Visitor*) const override;
 
  protected:
   static const int kDefaultFontSize;
-  static const AtomicString& DefaultFontFamily();
+  static const char kDefaultFontFamily[];
 
   virtual bool ResolveFontStyle(const String&, Font&) = 0;
   virtual bool InActiveContext() const = 0;
@@ -94,7 +86,8 @@ class CORE_EXPORT FontFaceSet : public EventTarget,
   bool ShouldSignalReady() const;
   void FireDoneEvent();
 
-  using ReadyProperty = ScriptPromiseProperty<FontFaceSet, DOMException>;
+  using ReadyProperty = ScriptPromiseProperty<Member<FontFaceSet>,
+                                              Member<DOMException>>;
 
   bool is_loading_ = false;
   bool should_fire_loading_event_ = false;
@@ -107,11 +100,12 @@ class CORE_EXPORT FontFaceSet : public EventTarget,
 
   class IterationSource final : public FontFaceSetIterable::IterationSource {
    public:
-    explicit IterationSource(HeapVector<Member<FontFace>>&& font_faces)
-        : index_(0), font_faces_(std::move(font_faces)) {}
-    bool FetchNextItem(ScriptState* script_state,
-                       FontFace*& value,
-                       ExceptionState& exception_state) override;
+    explicit IterationSource(const HeapVector<Member<FontFace>>& font_faces)
+        : index_(0), font_faces_(font_faces) {}
+    bool Next(ScriptState*,
+              Member<FontFace>&,
+              Member<FontFace>&,
+              ExceptionState&) override;
 
     void Trace(Visitor* visitor) const override {
       visitor->Trace(font_faces_);
@@ -130,16 +124,12 @@ class CORE_EXPORT FontFaceSet : public EventTarget,
     LoadFontPromiseResolver(FontFaceArray* faces, ScriptState* script_state)
         : num_loading_(faces->size()),
           error_occured_(false),
-          resolver_(
-              MakeGarbageCollected<
-                  ScriptPromiseResolver<IDLSequence<FontFace>>>(script_state)) {
+          resolver_(MakeGarbageCollected<ScriptPromiseResolver>(script_state)) {
       font_faces_.swap(*faces);
     }
 
     void LoadFonts();
-    ScriptPromise<IDLSequence<FontFace>> Promise() {
-      return resolver_->Promise();
-    }
+    ScriptPromise Promise() { return resolver_->Promise(); }
 
     void NotifyLoaded(FontFace*) override;
     void NotifyError(FontFace*) override;
@@ -150,11 +140,11 @@ class CORE_EXPORT FontFaceSet : public EventTarget,
     HeapVector<Member<FontFace>> font_faces_;
     int num_loading_;
     bool error_occured_;
-    Member<ScriptPromiseResolver<IDLSequence<FontFace>>> resolver_;
+    Member<ScriptPromiseResolver> resolver_;
   };
 
  private:
-  FontFaceSetIterable::IterationSource* CreateIterationSource(
+  FontFaceSetIterable::IterationSource* StartIteration(
       ScriptState*,
       ExceptionState&) override;
 

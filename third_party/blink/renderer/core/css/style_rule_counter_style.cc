@@ -1,12 +1,9 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/style_rule_counter_style.h"
 
-#include "base/auto_reset.h"
-#include "base/memory/values_equivalent.h"
-#include "third_party/blink/renderer/core/css/cascade_layer.h"
 #include "third_party/blink/renderer/core/css/counter_style.h"
 #include "third_party/blink/renderer/core/css/css_counter_style_rule.h"
 #include "third_party/blink/renderer/core/css/css_value_list.h"
@@ -93,6 +90,7 @@ Member<const CSSValue>& StyleRuleCounterStyle::GetDescriptorReference(
       return speak_as_;
     default:
       NOTREACHED();
+      return speak_as_;
   }
 }
 
@@ -101,9 +99,8 @@ bool StyleRuleCounterStyle::NewValueInvalidOrEqual(
     const CSSValue* new_value) {
   Member<const CSSValue>& original_value =
       GetDescriptorReference(descriptor_id);
-  if (base::ValuesEquivalent(original_value.Get(), new_value)) {
+  if (DataEquivalent(original_value.Get(), new_value))
     return false;
-  }
 
   switch (descriptor_id) {
     case AtRuleDescriptorID::System:
@@ -141,7 +138,6 @@ void StyleRuleCounterStyle::TraceAfterDispatch(blink::Visitor* visitor) const {
   visitor->Trace(symbols_);
   visitor->Trace(additive_symbols_);
   visitor->Trace(speak_as_);
-  visitor->Trace(layer_);
   StyleRuleBase::TraceAfterDispatch(visitor);
 }
 

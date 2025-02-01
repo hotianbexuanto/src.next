@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,15 +14,16 @@ import android.text.TextUtils;
 import android.view.View;
 
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ui.favicon.FaviconHelper;
 import org.chromium.chrome.browser.ui.favicon.FaviconUtils;
 import org.chromium.components.browser_ui.widget.RoundedIconGenerator;
+import org.chromium.components.browser_ui.widget.TintedDrawable;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.content_public.browser.NavigationEntry;
 import org.chromium.content_public.browser.NavigationHistory;
-import org.chromium.ui.UiUtils;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyKey;
@@ -34,8 +35,12 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-/** Mediator class for navigation sheet. */
+/**
+ * Mediator class for navigation sheet.
+ */
 class NavigationSheetMediator {
+    private static final String INCOGNITO_HISTORY_ENTRIES_FLAG =
+            ChromeFeatureList.UPDATE_HISTORY_ENTRY_POINTS_IN_INCOGNITO;
     private final ClickListener mClickListener;
     private final FaviconHelper mFaviconHelper;
     private final RoundedIconGenerator mIconGenerator;
@@ -50,7 +55,9 @@ class NavigationSheetMediator {
 
     private NavigationHistory mHistory;
 
-    /** Performs an action when a navigation item is clicked. */
+    /**
+     * Performs an action when a navigation item is clicked.
+     */
     interface ClickListener {
         /**
          * @param index Index from {@link NavigationEntry#getIndex()}.
@@ -81,26 +88,20 @@ class NavigationSheetMediator {
         mClickListener = listener;
         mProfile = profile;
         mFaviconHelper = new FaviconHelper();
-        mIconGenerator = FaviconUtils.createCircularIconGenerator(context);
+        mIconGenerator = FaviconUtils.createCircularIconGenerator(context.getResources());
         mFaviconSize = context.getResources().getDimensionPixelSize(R.dimen.default_favicon_size);
-        mHistoryIcon =
-                UiUtils.getTintedDrawable(
-                        context,
-                        R.drawable.ic_history_googblue_24dp,
-                        R.color.default_icon_color_tint_list);
-        mDefaultIcon =
-                UiUtils.getTintedDrawable(
-                        context, R.drawable.ic_chrome, R.color.default_icon_color_tint_list);
-        mIncognitoIcon =
-                UiUtils.getTintedDrawable(
-                        context, R.drawable.incognito_small, R.color.default_icon_color_tint_list);
-        mNewTabText = context.getString(R.string.menu_new_tab);
-        mNewIncognitoTabText = context.getString(R.string.menu_new_incognito_tab);
+        mHistoryIcon = TintedDrawable.constructTintedDrawable(
+                context, R.drawable.ic_history_googblue_24dp, R.color.default_icon_color);
+        mDefaultIcon = TintedDrawable.constructTintedDrawable(
+                context, R.drawable.ic_chrome, R.color.default_icon_color);
+        mIncognitoIcon = TintedDrawable.constructTintedDrawable(
+                context, R.drawable.incognito_small, R.color.default_icon_color);
+        mNewTabText = context.getResources().getString(R.string.menu_new_tab);
+        mNewIncognitoTabText = context.getResources().getString(R.string.menu_new_incognito_tab);
     }
 
     /**
      * Populate the sheet with the navigation history.
-     *
      * @param history {@link NavigationHistory} object.
      */
     void populateEntries(NavigationHistory history) {
@@ -111,11 +112,8 @@ class NavigationSheetMediator {
             NavigationEntry entry = mHistory.getEntryAtIndex(i);
             model.set(ItemProperties.LABEL, getEntryText(entry));
             final int position = i;
-            model.set(
-                    ItemProperties.CLICK_LISTENER,
-                    (view) -> {
-                        mClickListener.click(position, entry.getIndex());
-                    });
+            model.set(ItemProperties.CLICK_LISTENER,
+                    (view) -> { mClickListener.click(position, entry.getIndex()); });
             mModelList.add(new ListItem(NAVIGATION_LIST_ITEM_TYPE_ID, model));
             if (entry.getFavicon() != null) continue;
             final GURL pageUrl = entry.getUrl();
@@ -133,7 +131,9 @@ class NavigationSheetMediator {
         }
     }
 
-    /** Remove the property model. */
+    /**
+     * Remove the property model.
+     */
     void clear() {
         mModelList.clear();
     }
@@ -151,11 +151,9 @@ class NavigationSheetMediator {
             if (pageUrl.equals(mHistory.getEntryAtIndex(i).getUrl())) {
                 Drawable drawable;
                 if (favicon == null) {
-                    drawable =
-                            UrlUtilities.isNtpUrl(pageUrl)
-                                    ? getNtpIcon()
-                                    : new BitmapDrawable(
-                                            mIconGenerator.generateIconForUrl(pageUrl));
+                    drawable = UrlUtilities.isNTPUrl(pageUrl)
+                            ? getNTPIcon()
+                            : new BitmapDrawable(mIconGenerator.generateIconForUrl(pageUrl));
                 } else {
                     drawable = new BitmapDrawable(favicon);
                 }
@@ -166,17 +164,23 @@ class NavigationSheetMediator {
 
     private String getEntryText(NavigationEntry entry) {
         String entryText = entry.getTitle();
-        if (UrlUtilities.isNtpUrl(entry.getUrl())) entryText = getNtpText();
+        if (UrlUtilities.isNTPUrl(entry.getUrl())) entryText = getNTPText();
         if (TextUtils.isEmpty(entryText)) entryText = entry.getVirtualUrl().getSpec();
         if (TextUtils.isEmpty(entryText)) entryText = entry.getUrl().getSpec();
         return entryText;
     }
 
-    private Drawable getNtpIcon() {
-        return mProfile.isOffTheRecord() ? mIncognitoIcon : mDefaultIcon;
+    private Drawable getNTPIcon() {
+        return mProfile.isOffTheRecord()
+                        && ChromeFeatureList.isEnabled(INCOGNITO_HISTORY_ENTRIES_FLAG)
+                ? mIncognitoIcon
+                : mDefaultIcon;
     }
 
-    private String getNtpText() {
-        return mProfile.isOffTheRecord() ? mNewIncognitoTabText : mNewTabText;
+    private String getNTPText() {
+        return mProfile.isOffTheRecord()
+                        && ChromeFeatureList.isEnabled(INCOGNITO_HISTORY_ENTRIES_FLAG)
+                ? mNewIncognitoTabText
+                : mNewTabText;
     }
 }

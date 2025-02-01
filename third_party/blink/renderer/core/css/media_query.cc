@@ -40,74 +40,57 @@ namespace blink {
 // https://drafts.csswg.org/cssom/#serialize-a-media-query
 String MediaQuery::Serialize() const {
   StringBuilder result;
-  switch (Restrictor()) {
-    case RestrictorType::kOnly:
+  switch (restrictor_) {
+    case MediaQuery::kOnly:
       result.Append("only ");
       break;
-    case RestrictorType::kNot:
+    case MediaQuery::kNot:
       result.Append("not ");
       break;
-    case RestrictorType::kNone:
+    case MediaQuery::kNone:
       break;
   }
 
-  const MediaQueryExpNode* exp_node = ExpNode();
-
-  if (!exp_node) {
-    result.Append(MediaType());
-    return result.ReleaseString();
+  if (expressions_.IsEmpty()) {
+    result.Append(media_type_);
+    return result.ToString();
   }
 
-  if (MediaType() != media_type_names::kAll ||
-      Restrictor() != RestrictorType::kNone) {
-    result.Append(MediaType());
+  if (media_type_ != media_type_names::kAll || restrictor_ != kNone) {
+    result.Append(media_type_);
     result.Append(" and ");
   }
 
-  if (exp_node) {
-    result.Append(exp_node->Serialize());
+  result.Append(expressions_.at(0).Serialize());
+  for (wtf_size_t i = 1; i < expressions_.size(); ++i) {
+    result.Append(" and ");
+    result.Append(expressions_.at(i).Serialize());
   }
-
-  return result.ReleaseString();
+  return result.ToString();
 }
 
-MediaQuery* MediaQuery::CreateNotAll() {
-  return MakeGarbageCollected<MediaQuery>(
-      RestrictorType::kNot, media_type_names::kAll, nullptr /* exp_node */);
+std::unique_ptr<MediaQuery> MediaQuery::CreateNotAll() {
+  return std::make_unique<MediaQuery>(MediaQuery::kNot, media_type_names::kAll,
+                                      ExpressionHeapVector());
 }
 
 MediaQuery::MediaQuery(RestrictorType restrictor,
                        String media_type,
-                       const MediaQueryExpNode* exp_node)
-    : media_type_(AttemptStaticStringCreation(media_type.LowerASCII())),
-      exp_node_(exp_node),
-      restrictor_(restrictor),
-      has_unknown_(exp_node_ ? exp_node_->HasUnknown() : false) {}
+                       ExpressionHeapVector expressions)
+    : restrictor_(restrictor),
+      media_type_(AttemptStaticStringCreation(media_type.LowerASCII())),
+      expressions_(std::move(expressions)) {}
 
 MediaQuery::MediaQuery(const MediaQuery& o)
-    : media_type_(o.media_type_),
-      serialization_cache_(o.serialization_cache_),
-      exp_node_(o.exp_node_),
-      restrictor_(o.restrictor_),
-      has_unknown_(o.has_unknown_) {}
+    : restrictor_(o.restrictor_),
+      media_type_(o.media_type_),
+      serialization_cache_(o.serialization_cache_) {
+  expressions_.ReserveInitialCapacity(o.expressions_.size());
+  for (unsigned i = 0; i < o.expressions_.size(); ++i)
+    expressions_.push_back(o.expressions_[i]);
+}
 
 MediaQuery::~MediaQuery() = default;
-
-void MediaQuery::Trace(Visitor* visitor) const {
-  visitor->Trace(exp_node_);
-}
-
-MediaQuery::RestrictorType MediaQuery::Restrictor() const {
-  return restrictor_;
-}
-
-const MediaQueryExpNode* MediaQuery::ExpNode() const {
-  return exp_node_.Get();
-}
-
-const String& MediaQuery::MediaType() const {
-  return media_type_;
-}
 
 // https://drafts.csswg.org/cssom/#compare-media-queries
 bool MediaQuery::operator==(const MediaQuery& other) const {
@@ -116,9 +99,8 @@ bool MediaQuery::operator==(const MediaQuery& other) const {
 
 // https://drafts.csswg.org/cssom/#serialize-a-list-of-media-queries
 String MediaQuery::CssText() const {
-  if (serialization_cache_.IsNull()) {
+  if (serialization_cache_.IsNull())
     const_cast<MediaQuery*>(this)->serialization_cache_ = Serialize();
-  }
 
   return serialization_cache_;
 }

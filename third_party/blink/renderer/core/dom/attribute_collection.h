@@ -30,11 +30,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_ATTRIBUTE_COLLECTION_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_ATTRIBUTE_COLLECTION_H_
 
@@ -60,9 +55,6 @@ class AttributeCollectionGeneric {
     CHECK_LT(index, size());
     return begin()[index];
   }
-
-  ValueType* data() { return attributes_.data(); }
-  const ValueType* data() const { return attributes_.data(); }
 
   iterator begin() const { return attributes_.data(); }
   iterator end() const { return begin() + size(); }
@@ -125,7 +117,7 @@ class AttributeCollectionGeneric {
                              WTF::AtomicStringTable::WeakResult hint) const;
 
  protected:
-  iterator FindWithPrefix(const StringView& name) const;
+  wtf_size_t FindWithPrefix(const StringView& name) const;
 
   ContainerMemberType attributes_;
 };
@@ -186,16 +178,18 @@ inline typename AttributeCollectionGeneric<Container,
                                            ContainerMemberType>::iterator
 AttributeCollectionGeneric<Container, ContainerMemberType>::Find(
     const AtomicString& name) const {
-  return FindHinted(name, WTF::AtomicStringTable::WeakResult(name.Impl()));
+  wtf_size_t index = FindIndex(name);
+  return index != kNotFound ? &at(index) : nullptr;
 }
 
 template <typename Container, typename ContainerMemberType>
-inline wtf_size_t
-AttributeCollectionGeneric<Container, ContainerMemberType>::FindIndexHinted(
+inline typename AttributeCollectionGeneric<Container,
+                                           ContainerMemberType>::iterator
+AttributeCollectionGeneric<Container, ContainerMemberType>::FindHinted(
     const StringView& name,
     WTF::AtomicStringTable::WeakResult hint) const {
-  iterator it = FindHinted(name, hint);
-  return it ? wtf_size_t(it - begin()) : kNotFound;
+  wtf_size_t index = FindIndexHinted(name, hint);
+  return index != kNotFound ? &at(index) : nullptr;
 }
 
 template <typename Container, typename ContainerMemberType>
@@ -219,9 +213,8 @@ AttributeCollectionGeneric<Container, ContainerMemberType>::FindIndex(
 }
 
 template <typename Container, typename ContainerMemberType>
-inline typename AttributeCollectionGeneric<Container,
-                                           ContainerMemberType>::iterator
-AttributeCollectionGeneric<Container, ContainerMemberType>::FindHinted(
+inline wtf_size_t
+AttributeCollectionGeneric<Container, ContainerMemberType>::FindIndexHinted(
     const StringView& name,
     WTF::AtomicStringTable::WeakResult hint) const {
   // A slow check is required if there are any attributes with prefixes
@@ -231,13 +224,13 @@ AttributeCollectionGeneric<Container, ContainerMemberType>::FindHinted(
   // Optimize for the case where the attribute exists and its name exactly
   // matches.
   iterator end = this->end();
-  for (iterator it = begin(); it != end; ++it) {
+  wtf_size_t index = 0;
+  for (iterator it = begin(); it != end; ++it, ++index) {
     // FIXME: Why check the prefix? Namespaces should be all that matter.
     // Most attributes (all of HTML and CSS) have no namespace.
     if (!it->GetName().HasPrefix()) {
-      if (hint == it->LocalName()) {
-        return it;
-      }
+      if (hint == it->LocalName())
+        return index;
     } else {
       has_attributes_with_prefixes = true;
     }
@@ -247,7 +240,7 @@ AttributeCollectionGeneric<Container, ContainerMemberType>::FindHinted(
   // sensitive therefore |name| must be used.
   if (has_attributes_with_prefixes)
     return FindWithPrefix(name);
-  return nullptr;
+  return kNotFound;
 }
 
 template <typename Container, typename ContainerMemberType>
@@ -264,14 +257,15 @@ AttributeCollectionGeneric<Container, ContainerMemberType>::Find(
 }
 
 template <typename Container, typename ContainerMemberType>
-typename AttributeCollectionGeneric<Container, ContainerMemberType>::iterator
+wtf_size_t
 AttributeCollectionGeneric<Container, ContainerMemberType>::FindWithPrefix(
     const StringView& name) const {
   // Check all attributes with prefixes. This is a case sensitive check.
   // Attributes with empty prefixes are expected to be handled outside this
   // function.
   iterator end = this->end();
-  for (iterator it = begin(); it != end; ++it) {
+  wtf_size_t index = 0;
+  for (iterator it = begin(); it != end; ++it, ++index) {
     if (!it->GetName().HasPrefix()) {
       // Skip attributes with no prefixes because they must be checked in
       // FindIndex(const AtomicString&).
@@ -280,12 +274,11 @@ AttributeCollectionGeneric<Container, ContainerMemberType>::FindWithPrefix(
       // FIXME: Would be faster to do this comparison without calling ToString,
       // which generates a temporary string by concatenation. But this branch is
       // only reached if the attribute name has a prefix, which is rare in HTML.
-      if (name == it->GetName().ToString()) {
-        return it;
-      }
+      if (name == it->GetName().ToString())
+        return index;
     }
   }
-  return nullptr;
+  return kNotFound;
 }
 
 }  // namespace blink

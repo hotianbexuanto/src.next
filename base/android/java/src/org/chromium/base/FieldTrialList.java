@@ -1,13 +1,16 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
-import org.jni_zero.JniType;
-import org.jni_zero.NativeMethods;
+import org.chromium.base.annotations.MainDex;
+import org.chromium.base.annotations.NativeMethods;
 
-/** Helper to get field trial information. */
+/**
+ * Helper to get field trial information.
+ */
+@MainDex
 public class FieldTrialList {
 
     private FieldTrialList() {}
@@ -58,19 +61,10 @@ public class FieldTrialList {
 
     @NativeMethods
     interface Natives {
-        @JniType("std::string")
-        String findFullName(@JniType("std::string") String trialName);
-
-        boolean trialExists(@JniType("std::string") String trialName);
-
-        @JniType("std::string")
-        String getVariationParameter(
-                @JniType("std::string") String trialName,
-                @JniType("std::string") String parameterKey);
-
+        String findFullName(String trialName);
+        boolean trialExists(String trialName);
+        String getVariationParameter(String trialName, String parameterKey);
         void logActiveTrials();
-
-        boolean createFieldTrial(
-                @JniType("std::string") String trialName, @JniType("std::string") String groupName);
+        boolean createFieldTrial(String trialName, String groupName);
     }
 }

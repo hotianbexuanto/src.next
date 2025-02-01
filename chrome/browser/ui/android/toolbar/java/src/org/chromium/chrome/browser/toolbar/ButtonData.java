@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,11 +11,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
-import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarButtonVariant;
-import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarFeatures;
-import org.chromium.chrome.browser.user_education.IphCommandBuilder;
-
-import java.util.Objects;
+import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarFeatures.AdaptiveToolbarButtonVariant;
+import org.chromium.chrome.browser.user_education.IPHCommandBuilder;
 
 /**
  * Data needed to show an optional toolbar button.
@@ -38,46 +35,52 @@ public interface ButtonData {
 
     /** A set of button properties which are not expected to change values often. */
     final class ButtonSpec {
-        public static final int INVALID_TOOLTIP_TEXT_ID = 0;
-        @NonNull private final Drawable mDrawable;
-        // TODO(crbug.com/40753109): make mOnClickListener @NonNull
-        @Nullable private final View.OnClickListener mOnClickListener;
-        @Nullable private final View.OnLongClickListener mOnLongClickListener;
-        private final String mContentDescription;
+        @NonNull
+        private final Drawable mDrawable;
+        // TODO(crbug.com/1185382): make mOnClickListener @NonNull
+        @Nullable
+        private final View.OnClickListener mOnClickListener;
+        @Nullable
+        private final View.OnLongClickListener mOnLongClickListener;
+        @StringRes
+        private final int mContentDescriptionResId;
         private final boolean mSupportsTinting;
-        @Nullable private final IphCommandBuilder mIphCommandBuilder;
-        @AdaptiveToolbarButtonVariant private final int mButtonVariant;
-        private final boolean mIsDynamicAction;
-        @StringRes private final int mActionChipLabelResId;
-        private final boolean mShowHoverHighlight;
-        @StringRes private final int mTooltipTextResId;
+        @Nullable
+        private final IPHCommandBuilder mIPHCommandBuilder;
+        @AdaptiveToolbarButtonVariant
+        private final int mButtonVariant;
 
-        public ButtonSpec(
-                @NonNull Drawable drawable,
-                @NonNull View.OnClickListener onClickListener,
-                @Nullable View.OnLongClickListener onLongClickListener,
-                String contentDescription,
-                boolean supportsTinting,
-                @Nullable IphCommandBuilder iphCommandBuilder,
-                @AdaptiveToolbarButtonVariant int buttonVariant,
-                int actionChipLabelResId,
-                int tooltipTextResId,
-                boolean showHoverHighlight) {
+        public ButtonSpec(@NonNull Drawable drawable, @NonNull View.OnClickListener onClickListener,
+                @Nullable View.OnLongClickListener onLongClickListener, int contentDescriptionResId,
+                boolean supportsTinting, @Nullable IPHCommandBuilder iphCommandBuilder,
+                @AdaptiveToolbarButtonVariant int buttonVariant) {
             mDrawable = drawable;
             mOnClickListener = onClickListener;
             mOnLongClickListener = onLongClickListener;
-            mContentDescription = contentDescription;
+            mContentDescriptionResId = contentDescriptionResId;
             mSupportsTinting = supportsTinting;
-            mIphCommandBuilder = iphCommandBuilder;
+            mIPHCommandBuilder = iphCommandBuilder;
             mButtonVariant = buttonVariant;
-            mIsDynamicAction = AdaptiveToolbarFeatures.isDynamicAction(mButtonVariant);
-            mActionChipLabelResId = actionChipLabelResId;
-            mTooltipTextResId = tooltipTextResId;
-            mShowHoverHighlight = showHoverHighlight;
+        }
+
+        public ButtonSpec(@NonNull Drawable drawable, @NonNull View.OnClickListener onClickListener,
+                int contentDescriptionResId, boolean supportsTinting,
+                @Nullable IPHCommandBuilder iphCommandBuilder,
+                @AdaptiveToolbarButtonVariant int buttonVariant) {
+            this(drawable, onClickListener, /*onLongClickListener=*/null, contentDescriptionResId,
+                    supportsTinting, iphCommandBuilder, buttonVariant);
+        }
+
+        public ButtonSpec(Drawable drawable, View.OnClickListener onClickListener,
+                int contentDescriptionResId, boolean supportsTinting,
+                IPHCommandBuilder iphCommandBuilder) {
+            this(drawable, onClickListener, contentDescriptionResId, supportsTinting,
+                    iphCommandBuilder, AdaptiveToolbarButtonVariant.UNKNOWN);
         }
 
         /** Returns the {@link Drawable} for the button icon. */
-        public @NonNull Drawable getDrawable() {
+        @NonNull
+        public Drawable getDrawable() {
             return mDrawable;
         }
 
@@ -93,14 +96,10 @@ public interface ButtonData {
             return mOnLongClickListener;
         }
 
-        /** Returns the string describing the button. */
-        public String getContentDescription() {
-            return mContentDescription;
-        }
-
-        /** Returns the resource ID of the string for the button's action chip label. */
-        public @StringRes int getActionChipLabelResId() {
-            return mActionChipLabelResId;
+        /** Returns the resource if of the string describing the button. */
+        @StringRes
+        public int getContentDescriptionResId() {
+            return mContentDescriptionResId;
         }
 
         /** Returns {@code true} if the button supports tinting. */
@@ -113,68 +112,15 @@ public interface ButtonData {
          * a minimum the feature name, content string, and accessibility text, but not the anchor
          * view.
          */
-        public @Nullable IphCommandBuilder getIphCommandBuilder() {
-            return mIphCommandBuilder;
+        @Nullable
+        public IPHCommandBuilder getIPHCommandBuilder() {
+            return mIPHCommandBuilder;
         }
 
         /** Returns the adaptive button variant used for recording metrics. */
-        public @AdaptiveToolbarButtonVariant int getButtonVariant() {
+        @AdaptiveToolbarButtonVariant
+        public int getButtonVariant() {
             return mButtonVariant;
-        }
-
-        /** Returns {@code true} if the button is a contextual page action. False otherwise. */
-        public boolean isDynamicAction() {
-            return mIsDynamicAction;
-        }
-
-        /**
-         * Get hover state tooltip text for optional toolbar buttons(e.g. share, voice search, new
-         * tab and profile).
-         */
-        public @StringRes int getHoverTooltipTextId() {
-            return mTooltipTextResId;
-        }
-
-        /**
-         * Show hover highlight for optional toolbar buttons(e.g. share, voice search, new tab and
-         * profile).
-         */
-        public boolean getShouldShowHoverHighlight() {
-            return mShowHoverHighlight;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (!(o instanceof ButtonSpec)) {
-                return false;
-            }
-            ButtonSpec that = (ButtonSpec) o;
-            return mSupportsTinting == that.mSupportsTinting
-                    && mButtonVariant == that.mButtonVariant
-                    && mIsDynamicAction == that.mIsDynamicAction
-                    && mActionChipLabelResId == that.mActionChipLabelResId
-                    && Objects.equals(mDrawable, that.mDrawable)
-                    && Objects.equals(mOnClickListener, that.mOnClickListener)
-                    && Objects.equals(mOnLongClickListener, that.mOnLongClickListener)
-                    && Objects.equals(mContentDescription, that.mContentDescription)
-                    && Objects.equals(mIphCommandBuilder, that.mIphCommandBuilder);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(
-                    mDrawable,
-                    mOnClickListener,
-                    mOnLongClickListener,
-                    mContentDescription,
-                    mSupportsTinting,
-                    mIphCommandBuilder,
-                    mButtonVariant,
-                    mIsDynamicAction,
-                    mActionChipLabelResId);
         }
     }
 }

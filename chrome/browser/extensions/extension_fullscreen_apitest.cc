@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,13 +22,13 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest,
       << message_;
 }
 
-#if BUILDFLAG(IS_MAC)
-// TODO(crbug.com/40415216): Fails on MAC.
+#if defined(OS_MAC)
+// Fails on MAC: http://crbug.com/480370
 #define MAYBE_ExtensionFullscreenAccessPass \
     DISABLED_ExtensionFullscreenAccessPass
 #else
 #define MAYBE_ExtensionFullscreenAccessPass ExtensionFullscreenAccessPass
-#endif  // BUILDFLAG(IS_MAC)
+#endif  // defined(OS_MAC)
 IN_PROC_BROWSER_TEST_F(ExtensionApiTest, MAYBE_ExtensionFullscreenAccessPass) {
   // Test that fullscreen can be accessed from an extension with permission.
   ASSERT_TRUE(RunExtensionTest("fullscreen/has_permission",
@@ -36,7 +36,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest, MAYBE_ExtensionFullscreenAccessPass) {
       << message_;
 }
 
-#if BUILDFLAG(IS_MAC)
+#if defined(OS_MAC)
 // Entering fullscreen is flaky on Mac: http://crbug.com/824517
 #define MAYBE_FocusWindowDoesNotExitFullscreen \
     DISABLED_FocusWindowDoesNotExitFullscreen
@@ -53,9 +53,15 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest,
   ASSERT_TRUE(browser()->window()->IsFullscreen());
 }
 
-// Fails flakily: crbug.com/335640705.
+#if defined(OS_MAC)
+// Fails flakily on Mac: http://crbug.com/308041
+#define MAYBE_UpdateWindowSizeExitsFullscreen \
+    DISABLED_UpdateWindowSizeExitsFullscreen
+#else
+#define MAYBE_UpdateWindowSizeExitsFullscreen UpdateWindowSizeExitsFullscreen
+#endif  // defined(OS_MAC)
 IN_PROC_BROWSER_TEST_F(ExtensionApiTest,
-                       DISABLED_UpdateWindowSizeExitsFullscreen) {
+                       MAYBE_UpdateWindowSizeExitsFullscreen) {
   browser()->exclusive_access_manager()->context()->EnterFullscreen(
       GURL(), EXCLUSIVE_ACCESS_BUBBLE_TYPE_BROWSER_FULLSCREEN_EXIT_INSTRUCTION,
       display::kInvalidDisplayId);
@@ -63,7 +69,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest,
   ASSERT_FALSE(browser()->window()->IsFullscreen());
 }
 
-#if BUILDFLAG(IS_MAC)
+#if defined(OS_MAC)
 // Fails on MAC: http://crbug.com/480370
 #define MAYBE_DisplayModeWindowIsInFullscreen \
   DISABLED_DisplayModeWindowIsInFullscreen

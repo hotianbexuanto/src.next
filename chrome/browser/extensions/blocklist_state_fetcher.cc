@@ -1,21 +1,20 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/blocklist_state_fetcher.h"
 
+#include "base/bind.h"
 #include "base/containers/contains.h"
-#include "base/functional/bind.h"
-#include "base/strings/escape.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/safe_browsing/safe_browsing_service.h"
 #include "chrome/common/safe_browsing/crx_info.pb.h"
 #include "components/safe_browsing/core/browser/db/v4_protocol_manager_util.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "content/public/browser/browser_thread.h"
+#include "net/base/escape.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
-#include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
@@ -25,11 +24,7 @@ using content::BrowserThread;
 
 namespace extensions {
 
-BlocklistStateFetcher::BlocklistStateFetcher() {
-  if (g_browser_process) {
-    url_loader_factory_ = g_browser_process->shared_url_loader_factory();
-  }
-}
+BlocklistStateFetcher::BlocklistStateFetcher() {}
 
 BlocklistStateFetcher::~BlocklistStateFetcher() {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -43,7 +38,7 @@ void BlocklistStateFetcher::Request(const std::string& id,
       SetSafeBrowsingConfig(
           g_browser_process->safe_browsing_service()->GetV4ProtocolConfig());
     } else {
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      base::ThreadTaskRunnerHandle::Get()->PostTask(
           FROM_HERE, base::BindOnce(std::move(callback), BLOCKLISTED_UNKNOWN));
       return;
     }
@@ -51,8 +46,17 @@ void BlocklistStateFetcher::Request(const std::string& id,
 
   bool request_already_sent = base::Contains(callbacks_, id);
   callbacks_.insert(std::make_pair(id, std::move(callback)));
-  if (request_already_sent) {
+  if (request_already_sent)
     return;
+
+  if (g_browser_process && g_browser_process->safe_browsing_service()) {
+    if (base::FeatureList::IsEnabled(
+            safe_browsing::kSafeBrowsingRemoveCookies)) {
+      url_loader_factory_ = g_browser_process->shared_url_loader_factory();
+    } else {
+      url_loader_factory_ =
+          g_browser_process->safe_browsing_service()->GetURLLoaderFactory();
+    }
   }
 
   SendRequest(id);
@@ -93,23 +97,18 @@ void BlocklistStateFetcher::SendRequest(const std::string& id) {
             "and your device from dangerous sites' in Chromium settings under "
             "Privacy. This feature is enabled by default."
           chrome_policy {
-            SafeBrowsingProtectionLevel {
-              policy_options {mode: MANDATORY}
-              SafeBrowsingProtectionLevel: 0
-            }
-          }
-          chrome_policy {
             SafeBrowsingEnabled {
               policy_options {mode: MANDATORY}
               SafeBrowsingEnabled: false
             }
           }
-          deprecated_policies: "SafeBrowsingEnabled"
         })");
   auto resource_request = std::make_unique<network::ResourceRequest>();
   resource_request->url = request_url;
   resource_request->method = "POST";
-  resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  if (base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingRemoveCookies)) {
+    resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  }
   std::unique_ptr<network::SimpleURLLoader> fetcher_ptr =
       network::SimpleURLLoader::Create(std::move(resource_request),
                                        traffic_annotation);
@@ -134,14 +133,12 @@ void BlocklistStateFetcher::OnURLLoaderComplete(
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   int response_code = 0;
-  if (url_loader->ResponseInfo() && url_loader->ResponseInfo()->headers) {
+  if (url_loader->ResponseInfo() && url_loader->ResponseInfo()->headers)
     response_code = url_loader->ResponseInfo()->headers->response_code();
-  }
 
   std::string response_body_str;
-  if (response_body.get()) {
+  if (response_body.get())
     response_body_str = std::move(*response_body.get());
-  }
 
   OnURLLoaderCompleteInternal(url_loader, response_body_str, response_code,
                               url_loader->NetError());
@@ -155,6 +152,7 @@ void BlocklistStateFetcher::OnURLLoaderCompleteInternal(
   auto it = requests_.find(url_loader);
   if (it == requests_.end()) {
     NOTREACHED();
+    return;
   }
 
   std::unique_ptr<network::SimpleURLLoader> loader =

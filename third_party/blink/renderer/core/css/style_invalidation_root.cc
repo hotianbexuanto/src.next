@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,12 +12,10 @@ namespace blink {
 Element* StyleInvalidationRoot::RootElement() const {
   Node* root_node = GetRootNode();
   DCHECK(root_node);
-  if (auto* shadow_root = DynamicTo<ShadowRoot>(root_node)) {
+  if (auto* shadow_root = DynamicTo<ShadowRoot>(root_node))
     return &shadow_root->host();
-  }
-  if (root_node->IsDocumentNode()) {
+  if (root_node->IsDocumentNode())
     return root_node->GetDocument().documentElement();
-  }
   return To<Element>(root_node);
 }
 
@@ -36,9 +34,8 @@ bool StyleInvalidationRoot::IsDirty(const Node& node) const {
 }
 
 void StyleInvalidationRoot::SubtreeModified(ContainerNode& parent) {
-  if (!GetRootNode() || GetRootNode()->isConnected()) {
+  if (!GetRootNode() || GetRootNode()->isConnected())
     return;
-  }
   for (Node* ancestor = &parent; ancestor;
        ancestor = ancestor->ParentOrShadowHostNode()) {
     DCHECK(ancestor->ChildNeedsStyleInvalidation());

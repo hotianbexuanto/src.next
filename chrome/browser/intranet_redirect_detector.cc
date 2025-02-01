@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,17 +8,18 @@
 
 #include <utility>
 
+#include "base/bind.h"
 #include "base/command_line.h"
 #include "base/feature_list.h"
-#include "base/functional/bind.h"
 #include "base/location.h"
-#include "base/not_fatal_until.h"
 #include "base/rand_util.h"
+#include "base/single_thread_task_runner.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/net/system_network_context_manager.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
 #include "components/omnibox/browser/intranet_redirector_state.h"
@@ -39,7 +40,7 @@
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/network_service.mojom.h"
 
-// TODO(crbug.com/40966307): Write test to verify we handle the policy toggling.
+// TODO(crbug.com/181671): Write test to verify we handle the policy toggling.
 IntranetRedirectDetector::IntranetRedirectDetector()
     : redirect_origin_(g_browser_process->local_state()->GetString(
           prefs::kLastKnownIntranetRedirectOrigin)) {
@@ -49,8 +50,9 @@ IntranetRedirectDetector::IntranetRedirectDetector()
   // Ideally, instead of this timer, we'd do something like "check if the
   // browser is starting up, and if so, come back later", but there is currently
   // no function to do this.
-  static constexpr base::TimeDelta kStartFetchDelay = base::Seconds(7);
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+  static constexpr base::TimeDelta kStartFetchDelay =
+      base::TimeDelta::FromSeconds(7);
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&IntranetRedirectDetector::FinishSleep,
                      weak_ptr_factory_.GetWeakPtr()),
@@ -95,8 +97,9 @@ void IntranetRedirectDetector::Restart() {
   // Since presumably many programs open connections after network changes,
   // delay this a little bit.
   in_sleep_ = true;
-  static constexpr base::TimeDelta kRestartDelay = base::Seconds(1);
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+  static constexpr base::TimeDelta kRestartDelay =
+      base::TimeDelta::FromSeconds(1);
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&IntranetRedirectDetector::FinishSleep,
                      weak_ptr_factory_.GetWeakPtr()),
@@ -183,7 +186,7 @@ void IntranetRedirectDetector::OnSimpleLoaderComplete(
     std::unique_ptr<std::string> response_body) {
   // Delete the loader on this function's exit.
   auto it = simple_loaders_.find(source);
-  CHECK(it != simple_loaders_.end(), base::NotFatalUntil::M130);
+  DCHECK(it != simple_loaders_.end());
   std::unique_ptr<network::SimpleURLLoader> simple_loader =
       std::move(it->second);
   simple_loaders_.erase(it);
@@ -192,7 +195,7 @@ void IntranetRedirectDetector::OnSimpleLoaderComplete(
   // origin to that; otherwise we set it to nothing.
   if (response_body) {
     DCHECK(source->GetFinalURL().is_valid());
-    GURL origin(source->GetFinalURL().DeprecatedGetOriginAsURL());
+    GURL origin(source->GetFinalURL().GetOrigin());
     if (resulting_origins_.empty()) {
       resulting_origins_.push_back(origin);
       return;
@@ -267,7 +270,7 @@ bool IntranetRedirectDetector::IsEnabledByPolicy() {
   // interception checks. Therefore, we enable the redirect detector iff allowed
   // by both policies.
 
-  // Check IntranetRedirectorBehavior pref.
+  // Check IntranetRedirectorBehavior pref and experiment.
   auto behavior =
       omnibox::GetInterceptionChecksBehavior(g_browser_process->local_state());
   if (behavior == omnibox::IntranetRedirectorBehavior::DISABLE_FEATURE ||

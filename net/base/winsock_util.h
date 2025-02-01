@@ -1,18 +1,20 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_WINSOCK_UTIL_H_
 #define NET_BASE_WINSOCK_UTIL_H_
 
-#include <winsock2.h>
-
 #include <stddef.h>
+#include <winsock2.h>
 
 namespace net {
 
 // Bluetooth address size. Windows Bluetooth is supported via winsock.
 static const size_t kBluetoothAddressSize = 6;
+
+// Assert that the (manual-reset) event object is not signaled.
+void AssertEventNotSignaled(WSAEVENT hEvent);
 
 // If the (manual-reset) event object is signaled, resets it and returns true.
 // Otherwise, does nothing and returns false.  Called after a Winsock function

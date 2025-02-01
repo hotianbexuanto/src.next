@@ -1,13 +1,14 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <utility>
 
 #include "base/base_switches.h"
+#include "base/bind.h"
 #include "base/command_line.h"
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
+#include "base/macros.h"
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -19,6 +20,8 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_widget_host_view.h"
@@ -48,8 +51,7 @@ void SimulateRendererCrash(Browser* browser) {
       content::RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
   browser->OpenURL(OpenURLParams(GURL(blink::kChromeUICrashURL), Referrer(),
                                  WindowOpenDisposition::CURRENT_TAB,
-                                 ui::PAGE_TRANSITION_TYPED, false),
-                   /*navigation_handle_callback=*/{});
+                                 ui::PAGE_TRANSITION_TYPED, false));
   crash_observer.Wait();
 }
 
@@ -59,9 +61,6 @@ class CacheMaxAgeHandler {
  public:
   explicit CacheMaxAgeHandler(const std::string& path)
       : path_(path), request_count_(0) { }
-
-  CacheMaxAgeHandler(const CacheMaxAgeHandler&) = delete;
-  CacheMaxAgeHandler& operator=(const CacheMaxAgeHandler&) = delete;
 
   std::unique_ptr<net::test_server::HttpResponse> HandleRequest(
       const net::test_server::HttpRequest& request) {
@@ -80,6 +79,8 @@ class CacheMaxAgeHandler {
  private:
   std::string path_;
   int request_count_;
+
+  DISALLOW_COPY_AND_ASSIGN(CacheMaxAgeHandler);
 };
 
 class CrashRecoveryBrowserTest : public InProcessBrowserTest {
@@ -101,7 +102,7 @@ IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, Reload) {
   // The title of the active tab should change each time this URL is loaded.
   GURL url(
       "data:text/html,<script>document.title=new Date().valueOf()</script>");
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  ui_test_utils::NavigateToURL(browser(), url);
 
   std::u16string title_before_crash;
   std::u16string title_after_crash;
@@ -114,18 +115,15 @@ IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, Reload) {
   ASSERT_TRUE(ui_test_utils::GetCurrentTabTitle(browser(),
                                                 &title_after_crash));
   EXPECT_NE(title_before_crash, title_after_crash);
-  ASSERT_TRUE(
-      GetActiveWebContents()->GetPrimaryMainFrame()->GetView()->IsShowing());
-  ASSERT_NE(base::Process::Priority::kBestEffort, GetActiveWebContents()
-                                                      ->GetPrimaryMainFrame()
-                                                      ->GetProcess()
-                                                      ->GetPriority());
+  ASSERT_TRUE(GetActiveWebContents()->GetMainFrame()->GetView()->IsShowing());
+  ASSERT_FALSE(GetActiveWebContents()
+                   ->GetMainFrame()
+                   ->GetProcess()
+                   ->IsProcessBackgrounded());
 }
 
 // Test that reload after a crash forces a cache revalidation.
-// TODO(crbug.com/323792317): Times out flakily.
-IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest,
-                       DISABLED_ReloadCacheRevalidate) {
+IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, ReloadCacheRevalidate) {
   const char kTestPath[] = "/test";
 
   // Use the test server so as not to bypass cache behavior. The title of the
@@ -134,8 +132,8 @@ IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest,
       base::BindRepeating(&CacheMaxAgeHandler::HandleRequest,
                           base::Owned(new CacheMaxAgeHandler(kTestPath))));
   ASSERT_TRUE(embedded_test_server()->Start());
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(
-      browser(), embedded_test_server()->GetURL(kTestPath)));
+  ui_test_utils::NavigateToURL(browser(),
+                               embedded_test_server()->GetURL(kTestPath));
 
   std::u16string title_before_crash;
   std::u16string title_after_crash;
@@ -154,19 +152,14 @@ IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest,
 // There was an earlier bug (1270510) in process-per-site in which the max page
 // ID of the RenderProcessHost was stale, so the NavigationEntry in the new tab
 // was not committed.  This prevents regression of that bug.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_LoadInNewTab DISABLED_LoadInNewTab
-#else
-#define MAYBE_LoadInNewTab LoadInNewTab
-#endif
-IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, MAYBE_LoadInNewTab) {
+IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, LoadInNewTab) {
   const base::FilePath::CharType kTitle2File[] =
       FILE_PATH_LITERAL("title2.html");
 
   GURL url(ui_test_utils::GetTestUrl(
       base::FilePath(base::FilePath::kCurrentDirectory),
       base::FilePath(kTitle2File)));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  ui_test_utils::NavigateToURL(browser(), url);
 
   std::u16string title_before_crash;
   std::u16string title_after_crash;
@@ -189,7 +182,7 @@ IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, MAYBE_LoadInNewTab) {
 // Regression test for http://crbug.com/348918
 IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, DoubleReloadWithError) {
   GURL url(content::GetWebUIURL("bogus"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  ui_test_utils::NavigateToURL(browser(), url);
   ASSERT_EQ(url, GetActiveWebContents()->GetVisibleURL());
 
   SimulateRendererCrash(browser());
@@ -211,7 +204,7 @@ IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, BeforeUnloadNotRun) {
     "<script>window.onbeforeunload=function(e){return 'foo'}</script>"
     "</body></html>";
   GURL url(std::string("data:text/html,") + kBeforeUnloadHTML);
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  ui_test_utils::NavigateToURL(browser(), url);
   SimulateRendererCrash(browser());
 }
 

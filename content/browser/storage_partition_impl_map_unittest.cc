@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,14 +9,14 @@
 
 #include "base/files/file_util.h"
 #include "base/run_loop.h"
-#include "base/test/gtest_util.h"
-#include "build/build_config.h"
+#include "base/test/scoped_feature_list.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/common/content_constants.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_browser_context.h"
 #include "content/public/test/test_utils.h"
-#include "storage/browser/database/database_tracker.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/features.h"
 
 namespace content {
 
@@ -25,13 +25,14 @@ TEST(StoragePartitionImplMapTest, GarbageCollect) {
   TestBrowserContext browser_context;
   StoragePartitionImplMap storage_partition_impl_map(&browser_context);
 
-  std::unordered_set<base::FilePath> active_paths;
+  std::unique_ptr<std::unordered_set<base::FilePath>> active_paths(
+      new std::unordered_set<base::FilePath>);
 
   base::FilePath active_path = browser_context.GetPath().Append(
       StoragePartitionImplMap::GetStoragePartitionPath(
           "active", std::string()));
   ASSERT_TRUE(base::CreateDirectory(active_path));
-  active_paths.insert(active_path);
+  active_paths->insert(active_path);
 
   base::FilePath inactive_path = browser_context.GetPath().Append(
       StoragePartitionImplMap::GetStoragePartitionPath(
@@ -48,17 +49,12 @@ TEST(StoragePartitionImplMapTest, GarbageCollect) {
   EXPECT_FALSE(base::PathExists(inactive_path));
 }
 
-// TODO(crbug/333756088): Enable for Android when WebSQL has been removed from
-// Android WebView.
-#if BUILDFLAG(IS_ANDROID)
-#define MAYBE_WebSQLCleanup DISABLED_WebSQLCleanup
-#else
-#define MAYBE_WebSQLCleanup WebSQLCleanup
-#endif
-TEST(StoragePartitionImplMapTest, MAYBE_WebSQLCleanup) {
+TEST(StoragePartitionImplMapTest, AppCacheCleanup) {
+  base::test::ScopedFeatureList f;
+  f.InitAndDisableFeature(blink::features::kAppCache);
   BrowserTaskEnvironment task_environment;
   TestBrowserContext browser_context;
-  base::FilePath websql_path;
+  base::FilePath appcache_path;
 
   const auto kOnDiskConfig = content::StoragePartitionConfig::Create(
       &browser_context, "foo", /*partition_name=*/"", /*in_memory=*/false);
@@ -70,31 +66,26 @@ TEST(StoragePartitionImplMapTest, MAYBE_WebSQLCleanup) {
     StoragePartitionImplMap map(&browser_context);
 
     auto* partition = map.Get(kOnDiskConfig, true);
-    websql_path = partition->GetPath().Append(storage::kDatabaseDirectoryName);
+    appcache_path = partition->GetPath().Append(kAppCacheDirname);
 
     task_environment.RunUntilIdle();
-
-    partition->OnBrowserContextWillBeDestroyed();
   }
 
-  // Create an WebSQL directory that would have existed.
-  EXPECT_FALSE(base::PathExists(websql_path));
-  EXPECT_TRUE(base::CreateDirectory(websql_path));
+  // Create an AppCache directory that would have existed.
+  EXPECT_FALSE(base::PathExists(appcache_path));
+  EXPECT_TRUE(base::CreateDirectory(appcache_path));
 
   {
     StoragePartitionImplMap map(&browser_context);
     auto* partition = map.Get(kOnDiskConfig, true);
 
-    ASSERT_EQ(websql_path,
-              partition->GetPath().Append(storage::kDatabaseDirectoryName));
+    ASSERT_EQ(appcache_path, partition->GetPath().Append(kAppCacheDirname));
 
     task_environment.RunUntilIdle();
 
-    // Verify that creating this partition deletes any WebSQL directory it may
+    // Verify that creating this partition deletes any AppCache directory it may
     // have had.
-    EXPECT_FALSE(base::PathExists(websql_path));
-
-    partition->OnBrowserContextWillBeDestroyed();
+    EXPECT_FALSE(base::PathExists(appcache_path));
   }
 }
 

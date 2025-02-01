@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,6 +26,14 @@ namespace extensions {
 
 namespace {
 
+// Whether this build supports the window.shape requirement.
+const bool kSupportsWindowShape =
+#if defined(USE_AURA)
+    true;
+#else
+    false;
+#endif
+
 // Returns true if a WebGL check might not fail immediately.
 bool MightSupportWebGL() {
   return content::GpuDataManager::GetInstance()->GpuAccessAllowed(nullptr);
@@ -39,33 +47,42 @@ const char kFeatureCSS3d[] = "css3d";
 
 class RequirementsCheckerTest : public ExtensionsTest {
  public:
-  RequirementsCheckerTest() = default;
-  ~RequirementsCheckerTest() override = default;
+  RequirementsCheckerTest() {
+    manifest_dict_ = std::make_unique<base::DictionaryValue>();
+  }
+
+  ~RequirementsCheckerTest() override {}
 
   void CreateExtension() {
-    manifest_dict_.Set("name", "dummy name");
-    manifest_dict_.Set("version", "1");
-    manifest_dict_.Set("manifest_version", 2);
+    manifest_dict_->SetString("name", "dummy name");
+    manifest_dict_->SetString("version", "1");
+    manifest_dict_->SetInteger("manifest_version", 2);
 
     std::string error;
     extension_ =
         Extension::Create(base::FilePath(), mojom::ManifestLocation::kUnpacked,
-                          manifest_dict_, Extension::NO_FLAGS, &error);
+                          *manifest_dict_, Extension::NO_FLAGS, &error);
     ASSERT_TRUE(extension_.get()) << error;
   }
 
  protected:
   void StartChecker() {
     checker_ = std::make_unique<RequirementsChecker>(extension_);
-    runner_.Run(checker_.get());
+    // TODO(michaelpg): This should normally not have to be async. Use Run()
+    // instead of RunUntilComplete() after crbug.com/708354 is addressed.
+    runner_.RunUntilComplete(checker_.get());
+  }
+
+  void RequireWindowShape() {
+    manifest_dict_->SetBoolean("requirements.window.shape", true);
   }
 
   void RequireFeature(const char feature[]) {
-    base::Value* features_list = manifest_dict_.Find(kFeaturesKey);
-    if (!features_list) {
-      features_list = manifest_dict_.Set(kFeaturesKey, base::Value::List());
-    }
-    features_list->GetList().Append(feature);
+    if (!manifest_dict_->HasKey(kFeaturesKey))
+      manifest_dict_->Set(kFeaturesKey, std::make_unique<base::ListValue>());
+    base::ListValue* features_list = nullptr;
+    ASSERT_TRUE(manifest_dict_->GetList(kFeaturesKey, &features_list));
+    features_list->AppendString(feature);
   }
 
   std::unique_ptr<RequirementsChecker> checker_;
@@ -73,7 +90,7 @@ class RequirementsCheckerTest : public ExtensionsTest {
 
  private:
   scoped_refptr<Extension> extension_;
-  base::Value::Dict manifest_dict_;
+  std::unique_ptr<base::DictionaryValue> manifest_dict_;
 };
 
 // Tests no requirements.
@@ -87,6 +104,9 @@ TEST_F(RequirementsCheckerTest, RequirementsEmpty) {
 
 // Tests fulfilled requirements.
 TEST_F(RequirementsCheckerTest, RequirementsSuccess) {
+  if (kSupportsWindowShape)
+    RequireWindowShape();
+
   RequireFeature(kFeatureCSS3d);
 
   CreateExtension();
@@ -99,6 +119,10 @@ TEST_F(RequirementsCheckerTest, RequirementsSuccess) {
 // Tests multiple requirements failing (on some builds).
 TEST_F(RequirementsCheckerTest, RequirementsFailMultiple) {
   size_t expected_errors = 0u;
+  if (!kSupportsWindowShape) {
+    RequireWindowShape();
+    expected_errors++;
+  }
   if (!MightSupportWebGL()) {
     RequireFeature(kFeatureWebGL);
     expected_errors++;
@@ -124,7 +148,7 @@ TEST_F(RequirementsCheckerTest, RequirementsFailWebGL) {
   // waiting for the GPU check to succeed: crbug.com/706204.
   if (runner_.errors().size()) {
     EXPECT_THAT(runner_.errors(), testing::UnorderedElementsAre(
-                                      PreloadCheck::Error::kWebglNotSupported));
+                                      PreloadCheck::WEBGL_NOT_SUPPORTED));
     EXPECT_FALSE(checker_->GetErrorMessage().empty());
   }
 }

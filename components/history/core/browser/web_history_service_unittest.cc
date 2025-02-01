@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,12 +6,13 @@
 
 #include <memory>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/location.h"
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "base/run_loop.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/single_thread_task_runner.h"
 #include "base/test/task_environment.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "base/values.h"
 #include "net/http/http_status_code.h"
 #include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
@@ -41,11 +42,7 @@ class TestingWebHistoryService : public WebHistoryService {
         expected_url_(GURL()),
         expected_audio_history_value_(false),
         current_expected_post_data_("") {}
-
-  TestingWebHistoryService(const TestingWebHistoryService&) = delete;
-  TestingWebHistoryService& operator=(const TestingWebHistoryService&) = delete;
-
-  ~TestingWebHistoryService() override = default;
+  ~TestingWebHistoryService() override {}
 
   WebHistoryService::Request* CreateRequest(
       const GURL& url,
@@ -55,7 +52,7 @@ class TestingWebHistoryService : public WebHistoryService {
 
   // This is sorta an override but override and static don't mix.
   // This function just calls WebHistoryService::ReadResponse.
-  static std::optional<base::Value::Dict> ReadResponse(Request* request);
+  static absl::optional<base::Value> ReadResponse(Request* request);
 
   const std::string& GetExpectedPostData(WebHistoryService::Request* request);
 
@@ -88,6 +85,8 @@ class TestingWebHistoryService : public WebHistoryService {
   bool expected_audio_history_value_;
   std::string current_expected_post_data_;
   std::map<Request*, std::string> expected_post_data_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestingWebHistoryService);
 };
 
 // A testing request class that allows expected values to be filled in.
@@ -120,10 +119,7 @@ class TestRequest : public WebHistoryService::Request {
                      ("}");
   }
 
-  TestRequest(const TestRequest&) = delete;
-  TestRequest& operator=(const TestRequest&) = delete;
-
-  ~TestRequest() override = default;
+  ~TestRequest() override {}
 
   // history::Request overrides
   bool IsPending() override { return is_pending_; }
@@ -140,7 +136,7 @@ class TestRequest : public WebHistoryService::Request {
 
   void Start() override {
     is_pending_ = true;
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+    base::ThreadTaskRunnerHandle::Get()->PostTask(
         FROM_HERE, base::BindOnce(&TestRequest::MimicReturnFromFetch,
                                   base::Unretained(this)));
   }
@@ -153,13 +149,15 @@ class TestRequest : public WebHistoryService::Request {
   }
 
  private:
-  raw_ptr<TestingWebHistoryService> web_history_service_;
+  TestingWebHistoryService* web_history_service_;
   GURL url_;
   WebHistoryService::CompletionCallback callback_;
   int response_code_;
   std::string response_body_;
   std::string post_data_;
   bool is_pending_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestRequest);
 };
 
 WebHistoryService::Request* TestingWebHistoryService::CreateRequest(
@@ -173,7 +171,7 @@ WebHistoryService::Request* TestingWebHistoryService::CreateRequest(
   return request;
 }
 
-std::optional<base::Value::Dict> TestingWebHistoryService::ReadResponse(
+absl::optional<base::Value> TestingWebHistoryService::ReadResponse(
     Request* request) {
   return WebHistoryService::ReadResponse(request);
 }
@@ -220,15 +218,12 @@ class WebHistoryServiceTest : public testing::Test {
                 &test_url_loader_factory_)),
         web_history_service_(test_shared_loader_factory_) {}
 
-  WebHistoryServiceTest(const WebHistoryServiceTest&) = delete;
-  WebHistoryServiceTest& operator=(const WebHistoryServiceTest&) = delete;
-
-  ~WebHistoryServiceTest() override = default;
+  ~WebHistoryServiceTest() override {}
 
   void TearDown() override {
     base::RunLoop run_loop;
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, run_loop.QuitClosure());
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                  run_loop.QuitClosure());
     run_loop.Run();
   }
 
@@ -241,6 +236,8 @@ class WebHistoryServiceTest : public testing::Test {
   network::TestURLLoaderFactory test_url_loader_factory_;
   scoped_refptr<network::SharedURLLoaderFactory> test_shared_loader_factory_;
   TestingWebHistoryService web_history_service_;
+
+  DISALLOW_COPY_AND_ASSIGN(WebHistoryServiceTest);
 };
 
 TEST_F(WebHistoryServiceTest, GetAudioHistoryEnabled) {
@@ -251,7 +248,7 @@ TEST_F(WebHistoryServiceTest, GetAudioHistoryEnabled) {
       base::BindOnce(&TestingWebHistoryService::GetAudioHistoryCallback,
                      base::Unretained(web_history_service())),
       PARTIAL_TRAFFIC_ANNOTATION_FOR_TESTS);
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&TestingWebHistoryService::EnsureNoPendingRequestsRemain,
                      base::Unretained(web_history_service())));
@@ -268,7 +265,7 @@ TEST_F(WebHistoryServiceTest, SetAudioHistoryEnabledTrue) {
       base::BindOnce(&TestingWebHistoryService::SetAudioHistoryCallback,
                      base::Unretained(web_history_service())),
       PARTIAL_TRAFFIC_ANNOTATION_FOR_TESTS);
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&TestingWebHistoryService::EnsureNoPendingRequestsRemain,
                      base::Unretained(web_history_service())));
@@ -285,7 +282,7 @@ TEST_F(WebHistoryServiceTest, SetAudioHistoryEnabledFalse) {
       base::BindOnce(&TestingWebHistoryService::SetAudioHistoryCallback,
                      base::Unretained(web_history_service())),
       PARTIAL_TRAFFIC_ANNOTATION_FOR_TESTS);
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&TestingWebHistoryService::EnsureNoPendingRequestsRemain,
                      base::Unretained(web_history_service())));
@@ -312,7 +309,7 @@ TEST_F(WebHistoryServiceTest, MultipleRequests) {
       PARTIAL_TRAFFIC_ANNOTATION_FOR_TESTS);
 
   // Check that both requests are no longer pending.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&TestingWebHistoryService::EnsureNoPendingRequestsRemain,
                      base::Unretained(web_history_service())));
@@ -327,14 +324,13 @@ TEST_F(WebHistoryServiceTest, VerifyReadResponse) {
                       "{\n"         /* response body */
                       "  \"history_recording_enabled\": true\n"
                       "}"));
+  absl::optional<base::Value> response_value;
   // ReadResponse deletes the request
-  auto response_value = TestingWebHistoryService::ReadResponse(request.get());
-  ASSERT_TRUE(response_value);
+  response_value = TestingWebHistoryService::ReadResponse(request.get());
   bool enabled_value = false;
-  if (std::optional<bool> enabled =
-          response_value->FindBool("history_recording_enabled")) {
+  if (absl::optional<bool> enabled =
+          response_value->FindBoolKey("history_recording_enabled"))
     enabled_value = *enabled;
-  }
   EXPECT_TRUE(enabled_value);
 
   // Test that properly formatted response with good response code returns false
@@ -344,14 +340,13 @@ TEST_F(WebHistoryServiceTest, VerifyReadResponse) {
       "{\n"
       "  \"history_recording_enabled\": false\n"
       "}"));
+  absl::optional<base::Value> response_value2;
   // ReadResponse deletes the request
-  auto response_value2 = TestingWebHistoryService::ReadResponse(request2.get());
-  ASSERT_TRUE(response_value2);
+  response_value2 = TestingWebHistoryService::ReadResponse(request2.get());
   enabled_value = true;
-  if (std::optional<bool> enabled =
-          response_value2->FindBool("history_recording_enabled")) {
+  if (absl::optional<bool> enabled =
+          response_value2->FindBoolKey("history_recording_enabled"))
     enabled_value = *enabled;
-  }
   EXPECT_FALSE(enabled_value);
 
   // Test that a bad response code returns false.
@@ -361,8 +356,9 @@ TEST_F(WebHistoryServiceTest, VerifyReadResponse) {
                       "{\n"
                       "  \"history_recording_enabled\": true\n"
                       "}"));
+  absl::optional<base::Value> response_value3;
   // ReadResponse deletes the request
-  auto response_value3 = TestingWebHistoryService::ReadResponse(request3.get());
+  response_value3 = TestingWebHistoryService::ReadResponse(request3.get());
   EXPECT_FALSE(response_value3);
 
   // Test that improperly formatted response returns false.
@@ -374,8 +370,9 @@ TEST_F(WebHistoryServiceTest, VerifyReadResponse) {
       "{\n"
       "  \"history_recording_enabled\": not true\n"
       "}"));
+  absl::optional<base::Value> response_value4;
   // ReadResponse deletes the request
-  auto response_value4 = TestingWebHistoryService::ReadResponse(request4.get());
+  response_value4 = TestingWebHistoryService::ReadResponse(request4.get());
   EXPECT_FALSE(response_value4);
 
   // Test that improperly formatted response returns false.
@@ -384,10 +381,10 @@ TEST_F(WebHistoryServiceTest, VerifyReadResponse) {
       "{\n"
       "  \"history_recording\": true\n"
       "}"));
+  absl::optional<base::Value> response_value5;
   // ReadResponse deletes the request
-  auto response_value5 = TestingWebHistoryService::ReadResponse(request5.get());
-  ASSERT_TRUE(response_value5);
-  EXPECT_FALSE(response_value5->FindBool("history_recording_enabled"));
+  response_value5 = TestingWebHistoryService::ReadResponse(request5.get());
+  EXPECT_FALSE(response_value5->FindBoolKey("history_recording_enabled"));
 }
 
 }  // namespace history

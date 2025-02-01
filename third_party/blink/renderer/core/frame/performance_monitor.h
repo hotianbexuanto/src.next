@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,13 +6,9 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_PERFORMANCE_MONITOR_H_
 
 #include "base/task/sequence_manager/task_time_observer.h"
-#include "base/time/time.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/document.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/heap/prefinalizer.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
@@ -44,8 +40,6 @@ class SourceLocation;
 class CORE_EXPORT PerformanceMonitor final
     : public GarbageCollected<PerformanceMonitor>,
       public base::sequence_manager::TaskTimeObserver {
-  USING_PRE_FINALIZER(PerformanceMonitor, Dispose);
-
  public:
   enum Violation : size_t {
     kLongTask = 0,
@@ -147,8 +141,6 @@ class CORE_EXPORT PerformanceMonitor final
       const HeapHashSet<Member<Frame>>& frame_contexts,
       Frame* observer_frame);
 
-  void Dispose();
-
   // This boolean is used to track whether there is any subscription to any
   // Violation other than longtasks.
   bool enabled_ = false;
@@ -158,7 +150,7 @@ class CORE_EXPORT PerformanceMonitor final
   unsigned user_callback_depth_ = 0;
   const void* user_callback_;
 
-  std::array<base::TimeDelta, kAfterLast> thresholds_;
+  base::TimeDelta thresholds_[kAfterLast];
 
   Member<LocalFrame> local_root_;
   Member<ExecutionContext> task_execution_context_;
@@ -169,9 +161,9 @@ class CORE_EXPORT PerformanceMonitor final
   using ClientThresholds = HeapHashMap<WeakMember<Client>, base::TimeDelta>;
   HeapHashMap<Violation,
               Member<ClientThresholds>,
-              IntWithZeroKeyHashTraits<size_t>>
+              typename DefaultHash<size_t>::Hash,
+              WTF::UnsignedWithZeroKeyHashTraits<size_t>>
       subscriptions_;
-  bool was_shutdown_ = false;
 };
 
 }  // namespace blink

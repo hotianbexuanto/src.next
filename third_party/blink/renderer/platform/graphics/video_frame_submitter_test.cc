@@ -1,20 +1,18 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/platform/graphics/video_frame_submitter.h"
 
 #include <memory>
-#include <tuple>
 #include <utility>
 
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
+#include "base/bind.h"
+#include "base/callback_helpers.h"
+#include "base/macros.h"
 #include "base/memory/ptr_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/read_only_shared_memory_region.h"
 #include "base/test/bind.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_tick_clock.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
@@ -23,17 +21,14 @@
 #include "cc/test/layer_test_common.h"
 #include "cc/trees/layer_tree_settings.h"
 #include "cc/trees/task_runner_provider.h"
-#include "components/viz/common/features.h"
 #include "components/viz/test/fake_external_begin_frame_source.h"
 #include "components/viz/test/test_context_provider.h"
-#include "gpu/ipc/client/client_shared_image_interface.h"
 #include "media/base/video_frame.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/viz/public/mojom/compositing/compositor_frame_sink.mojom-blink.h"
-#include "services/viz/public/mojom/compositing/layer_context.mojom-blink.h"
 #include "services/viz/public/mojom/hit_test/hit_test_region_list.mojom-blink.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -64,7 +59,6 @@ class MockVideoFrameProvider : public cc::VideoFrameProvider {
   MOCK_METHOD0(HasCurrentFrame, bool());
   MOCK_METHOD0(GetCurrentFrame, scoped_refptr<media::VideoFrame>());
   MOCK_METHOD0(PutCurrentFrame, void());
-  MOCK_METHOD0(OnContextLost, void());
 
   base::TimeDelta GetPreferredRenderInterval() override {
     return preferred_interval;
@@ -91,15 +85,13 @@ class VideoMockCompositorFrameSink
 
   MOCK_METHOD1(SetNeedsBeginFrame, void(bool));
   MOCK_METHOD0(SetWantsAnimateOnlyBeginFrames, void());
-  MOCK_METHOD0(SetWantsBeginFrameAcks, void());
-  MOCK_METHOD0(SetAutoNeedsBeginFrame, void());
 
   MOCK_METHOD2(DoSubmitCompositorFrame,
                void(const viz::LocalSurfaceId&, viz::CompositorFrame*));
   void SubmitCompositorFrame(
       const viz::LocalSurfaceId& id,
       viz::CompositorFrame frame,
-      std::optional<viz::HitTestRegionList> hit_test_region_list,
+      absl::optional<viz::HitTestRegionList> hit_test_region_list,
       uint64_t submit_time) override {
     last_submitted_compositor_frame_ = std::move(frame);
     DoSubmitCompositorFrame(id, &last_submitted_compositor_frame_);
@@ -107,7 +99,7 @@ class VideoMockCompositorFrameSink
   void SubmitCompositorFrameSync(
       const viz::LocalSurfaceId& id,
       viz::CompositorFrame frame,
-      std::optional<viz::HitTestRegionList> hit_test_region_list,
+      absl::optional<viz::HitTestRegionList> hit_test_region_list,
       uint64_t submit_time,
       const SubmitCompositorFrameSyncCallback callback) override {
     last_submitted_compositor_frame_ = std::move(frame);
@@ -117,13 +109,10 @@ class VideoMockCompositorFrameSink
   MOCK_METHOD1(DidNotProduceFrame, void(const viz::BeginFrameAck&));
   MOCK_METHOD2(DidAllocateSharedBitmap,
                void(base::ReadOnlySharedMemoryRegion region,
-                    const viz::SharedBitmapId& id));
-  MOCK_METHOD1(DidDeleteSharedBitmap, void(const viz::SharedBitmapId& id));
+                    const gpu::Mailbox& id));
+  MOCK_METHOD1(DidDeleteSharedBitmap, void(const gpu::Mailbox& id));
   MOCK_METHOD1(InitializeCompositorFrameSinkType,
                void(viz::mojom::CompositorFrameSinkType));
-  MOCK_METHOD1(BindLayerContext,
-               void(viz::mojom::blink::PendingLayerContextPtr));
-  MOCK_METHOD1(SetThreads, void(const WTF::Vector<viz::Thread>&));
 
  private:
   mojo::Receiver<viz::mojom::blink::CompositorFrameSink> receiver_{this};
@@ -136,11 +125,10 @@ class MockVideoFrameResourceProvider
  public:
   MockVideoFrameResourceProvider(
       viz::RasterContextProvider* context_provider,
-      viz::SharedBitmapReporter* shared_bitmap_reporter,
-      scoped_refptr<gpu::ClientSharedImageInterface> shared_image_interface)
+      viz::SharedBitmapReporter* shared_bitmap_reporter)
       : blink::VideoFrameResourceProvider(cc::LayerTreeSettings(), false) {
-    blink::VideoFrameResourceProvider::Initialize(
-        context_provider, shared_bitmap_reporter, shared_image_interface);
+    blink::VideoFrameResourceProvider::Initialize(context_provider,
+                                                  shared_bitmap_reporter);
   }
   MockVideoFrameResourceProvider(const MockVideoFrameResourceProvider&) =
       delete;
@@ -148,11 +136,8 @@ class MockVideoFrameResourceProvider
       const MockVideoFrameResourceProvider&) = delete;
   ~MockVideoFrameResourceProvider() override = default;
 
-  MOCK_METHOD3(Initialize,
-               void(viz::RasterContextProvider*,
-                    viz::SharedBitmapReporter*,
-                    scoped_refptr<gpu::ClientSharedImageInterface>
-                        shared_image_interface));
+  MOCK_METHOD2(Initialize,
+               void(viz::RasterContextProvider*, viz::SharedBitmapReporter*));
   MOCK_METHOD4(AppendQuads,
                void(viz::CompositorRenderPass*,
                     scoped_refptr<media::VideoFrame>,
@@ -166,49 +151,29 @@ class MockVideoFrameResourceProvider
                void(Vector<viz::ReturnedResource> transferable_resources));
   MOCK_METHOD0(ObtainContextProvider, void());
 };
-
-class MockSurfaceEmbedder : public mojom::blink::SurfaceEmbedder {
- public:
-  MOCK_METHOD1(SetLocalSurfaceId, void(const viz::LocalSurfaceId&));
-  MOCK_METHOD1(OnOpacityChanged, void(bool));
-  mojo::Receiver<mojom::blink::SurfaceEmbedder> receiver_{this};
-};
 }  // namespace
 
-// Supports testing features::OnBeginFrameAcks, which changes the expectations
-// of what IPCs are sent to the CompositorFrameSinkClient. When enabled
-// OnBeginFrame also handles ReturnResources as well as
-// DidReceiveCompositorFrameAck.
-class VideoFrameSubmitterTest : public testing::Test,
-                                public testing::WithParamInterface<bool> {
+class VideoFrameSubmitterTest : public testing::Test {
  public:
   VideoFrameSubmitterTest()
       : now_src_(new base::SimpleTestTickClock()),
         begin_frame_source_(new viz::FakeExternalBeginFrameSource(0.f, false)),
         video_frame_provider_(new StrictMock<MockVideoFrameProvider>()),
         context_provider_(viz::TestContextProvider::Create()) {
-    if (HasBeginFrameAcks()) {
-      scoped_feature_list_.InitAndEnableFeature(features::kOnBeginFrameAcks);
-    } else {
-      scoped_feature_list_.InitAndDisableFeature(features::kOnBeginFrameAcks);
-    }
-    context_provider_->BindToCurrentSequence();
+    context_provider_->BindToCurrentThread();
     MakeSubmitter();
     task_environment_.RunUntilIdle();
   }
-
-  bool HasBeginFrameAcks() const { return GetParam(); }
 
   void MakeSubmitter() { MakeSubmitter(base::DoNothing()); }
 
   void MakeSubmitter(
       cc::VideoPlaybackRoughnessReporter::ReportingCallback reporting_cb) {
     resource_provider_ = new StrictMock<MockVideoFrameResourceProvider>(
-        context_provider_.get(), nullptr, nullptr);
+        context_provider_.get(), nullptr);
     submitter_ = std::make_unique<VideoFrameSubmitter>(
         base::DoNothing(), reporting_cb,
-        base::WrapUnique<MockVideoFrameResourceProvider>(
-            resource_provider_.get()));
+        base::WrapUnique<MockVideoFrameResourceProvider>(resource_provider_));
 
     submitter_->Initialize(video_frame_provider_.get(), false);
     mojo::PendingRemote<viz::mojom::blink::CompositorFrameSink> submitter_sink;
@@ -218,17 +183,14 @@ class VideoFrameSubmitterTest : public testing::Test,
     // By setting the submission state before we set the sink, we can make
     // testing easier without having to worry about the first sent frame.
     submitter_->SetIsSurfaceVisible(true);
-    submitter_->remote_frame_sink_.Bind(std::move(submitter_sink));
-    submitter_->compositor_frame_sink_ = submitter_->remote_frame_sink_.get();
-    surface_embedder_ = std::make_unique<StrictMock<MockSurfaceEmbedder>>();
-    EXPECT_CALL(*surface_embedder_, SetLocalSurfaceId(_)).Times(AnyNumber());
-    EXPECT_CALL(*surface_embedder_, OnOpacityChanged(_)).Times(AnyNumber());
-    submitter_->surface_embedder_.Bind(
-        surface_embedder_->receiver_.BindNewPipeAndPassRemote());
+    submitter_->compositor_frame_sink_.Bind(std::move(submitter_sink));
+    mojo::Remote<mojom::blink::SurfaceEmbedder> embedder;
+    ignore_result(embedder.BindNewPipeAndPassReceiver());
+    submitter_->surface_embedder_ = std::move(embedder);
     auto surface_id = viz::SurfaceId(
         viz::FrameSinkId(1, 1),
-        viz::LocalSurfaceId(
-            11, base::UnguessableToken::CreateForTesting(0x111111, 0)));
+        viz::LocalSurfaceId(11,
+                            base::UnguessableToken::Deserialize(0x111111, 0)));
     submitter_->frame_sink_id_ = surface_id.frame_sink_id();
     submitter_->child_local_surface_id_allocator_.UpdateFromParent(
         surface_id.local_surface_id());
@@ -251,21 +213,11 @@ class VideoFrameSubmitterTest : public testing::Test,
 
   gfx::Size frame_size() const { return submitter_->frame_size_; }
 
-  // Replacement for RunUntilIdle().  Post a quit closure to the end of the main
-  // thread queue and wait for it.
-  void DrainMainThread() {
-    task_environment_.GetMainThreadTaskRunner()->PostTask(
-        FROM_HERE, task_environment_.QuitClosure());
-    task_environment_.RunUntilQuit();
-  }
-
   void OnReceivedContextProvider(
       bool use_gpu_compositing,
-      scoped_refptr<viz::RasterContextProvider> context_provider,
-      scoped_refptr<gpu::ClientSharedImageInterface> shared_image_interface) {
+      scoped_refptr<viz::RasterContextProvider> context_provider) {
     submitter_->OnReceivedContextProvider(use_gpu_compositing,
-                                          std::move(context_provider),
-                                          std::move(shared_image_interface));
+                                          std::move(context_provider));
   }
 
   void AckSubmittedFrame() {
@@ -274,31 +226,15 @@ class VideoFrameSubmitterTest : public testing::Test,
     submitter_->DidReceiveCompositorFrameAck(std::move(resources));
   }
 
-  void OnBeginFrame(
-      const viz::BeginFrameArgs& args,
-      const WTF::HashMap<uint32_t, viz::FrameTimingDetails>& timing_details,
-      bool frame_ack,
-      WTF::Vector<viz::ReturnedResource> resources) {
-    if (HasBeginFrameAcks() && frame_ack) {
-      EXPECT_CALL(*resource_provider_, ReceiveReturnsFromParent(_));
-    }
-    submitter_->OnBeginFrame(args, timing_details, frame_ack,
-                             std::move(resources));
-  }
-
  protected:
   base::test::TaskEnvironment task_environment_;
   std::unique_ptr<base::SimpleTestTickClock> now_src_;
   std::unique_ptr<viz::FakeExternalBeginFrameSource> begin_frame_source_;
   std::unique_ptr<StrictMock<VideoMockCompositorFrameSink>> sink_;
   std::unique_ptr<StrictMock<MockVideoFrameProvider>> video_frame_provider_;
-  std::unique_ptr<StrictMock<MockSurfaceEmbedder>> surface_embedder_;
+  StrictMock<MockVideoFrameResourceProvider>* resource_provider_;
   scoped_refptr<viz::TestContextProvider> context_provider_;
   std::unique_ptr<VideoFrameSubmitter> submitter_;
-  raw_ptr<StrictMock<MockVideoFrameResourceProvider>> resource_provider_;
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 enum class SubmissionType {
@@ -331,7 +267,7 @@ enum class SubmissionType {
     EXPECT_CALL(*resource_provider_, ReleaseFrameResources());      \
   } while (0)
 
-TEST_P(VideoFrameSubmitterTest, StatRenderingFlipsBits) {
+TEST_F(VideoFrameSubmitterTest, StatRenderingFlipsBits) {
   EXPECT_FALSE(IsRendering());
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
 
@@ -342,7 +278,7 @@ TEST_P(VideoFrameSubmitterTest, StatRenderingFlipsBits) {
   EXPECT_TRUE(IsRendering());
 }
 
-TEST_P(VideoFrameSubmitterTest, StopRenderingSkipsUpdateCurrentFrame) {
+TEST_F(VideoFrameSubmitterTest, StopRenderingSkipsUpdateCurrentFrame) {
   EXPECT_FALSE(IsRendering());
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
 
@@ -356,7 +292,7 @@ TEST_P(VideoFrameSubmitterTest, StopRenderingSkipsUpdateCurrentFrame) {
   EXPECT_SUBMISSION(SubmissionType::kBeginFrame);
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
   AckSubmittedFrame();
 
@@ -371,11 +307,11 @@ TEST_P(VideoFrameSubmitterTest, StopRenderingSkipsUpdateCurrentFrame) {
   EXPECT_CALL(*sink_, DidNotProduceFrame(_));
   args = begin_frame_source_->CreateBeginFrameArgs(BEGINFRAME_FROM_HERE,
                                                    now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, StopUsingProviderNullsProvider) {
+TEST_F(VideoFrameSubmitterTest, StopUsingProviderNullsProvider) {
   EXPECT_FALSE(IsRendering());
   EXPECT_EQ(video_frame_provider_.get(), GetProvider());
 
@@ -384,7 +320,7 @@ TEST_P(VideoFrameSubmitterTest, StopUsingProviderNullsProvider) {
   EXPECT_EQ(nullptr, GetProvider());
 }
 
-TEST_P(VideoFrameSubmitterTest,
+TEST_F(VideoFrameSubmitterTest,
        StopUsingProviderSubmitsFrameAndStopsRendering) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
   submitter_->StartRendering();
@@ -401,7 +337,7 @@ TEST_P(VideoFrameSubmitterTest,
   EXPECT_FALSE(IsRendering());
 }
 
-TEST_P(VideoFrameSubmitterTest, DidReceiveFrameStillSubmitsIfRendering) {
+TEST_F(VideoFrameSubmitterTest, DidReceiveFrameStillSubmitsIfRendering) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
 
   submitter_->StartRendering();
@@ -414,7 +350,7 @@ TEST_P(VideoFrameSubmitterTest, DidReceiveFrameStillSubmitsIfRendering) {
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, DidReceiveFrameSubmitsFrame) {
+TEST_F(VideoFrameSubmitterTest, DidReceiveFrameSubmitsFrame) {
   EXPECT_FALSE(IsRendering());
 
   EXPECT_SUBMISSION(SubmissionType::kManual);
@@ -422,7 +358,7 @@ TEST_P(VideoFrameSubmitterTest, DidReceiveFrameSubmitsFrame) {
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, ShouldSubmitPreventsSubmission) {
+TEST_F(VideoFrameSubmitterTest, ShouldSubmitPreventsSubmission) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(false));
   submitter_->SetIsSurfaceVisible(false);
   task_environment_.RunUntilIdle();
@@ -460,7 +396,7 @@ TEST_P(VideoFrameSubmitterTest, ShouldSubmitPreventsSubmission) {
 
 // Tests that when set to true SetForceSubmit forces frame submissions.
 // regardless of the internal submit state.
-TEST_P(VideoFrameSubmitterTest, SetForceSubmitForcesSubmission) {
+TEST_F(VideoFrameSubmitterTest, SetForceSubmitForcesSubmission) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(false));
   submitter_->SetIsSurfaceVisible(false);
   task_environment_.RunUntilIdle();
@@ -495,7 +431,7 @@ TEST_P(VideoFrameSubmitterTest, SetForceSubmitForcesSubmission) {
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, RotationInformationPassedToResourceProvider) {
+TEST_F(VideoFrameSubmitterTest, RotationInformationPassedToResourceProvider) {
   // Check to see if rotation is communicated pre-rendering.
   EXPECT_FALSE(IsRendering());
 
@@ -526,6 +462,7 @@ TEST_P(VideoFrameSubmitterTest, RotationInformationPassedToResourceProvider) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
   submitter_->StartRendering();
   task_environment_.RunUntilIdle();
+  AckSubmittedFrame();
 
   EXPECT_CALL(*video_frame_provider_, UpdateCurrentFrame(_, _))
       .WillOnce(Return(true));
@@ -545,7 +482,7 @@ TEST_P(VideoFrameSubmitterTest, RotationInformationPassedToResourceProvider) {
 
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
   AckSubmittedFrame();
 
@@ -570,11 +507,11 @@ TEST_P(VideoFrameSubmitterTest, RotationInformationPassedToResourceProvider) {
 
   args = begin_frame_source_->CreateBeginFrameArgs(BEGINFRAME_FROM_HERE,
                                                    now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, FrameTransformTakesPrecedent) {
+TEST_F(VideoFrameSubmitterTest, FrameTransformTakesPrecedent) {
   EXPECT_FALSE(IsRendering());
 
   submitter_->SetTransform(media::VideoRotation::VIDEO_ROTATION_90);
@@ -600,6 +537,7 @@ TEST_P(VideoFrameSubmitterTest, FrameTransformTakesPrecedent) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
   submitter_->StartRendering();
   task_environment_.RunUntilIdle();
+  AckSubmittedFrame();
 
   auto frame = media::VideoFrame::CreateFrame(
       media::PIXEL_FORMAT_YV12, gfx::Size(8, 8), gfx::Rect(gfx::Size(8, 8)),
@@ -620,12 +558,12 @@ TEST_P(VideoFrameSubmitterTest, FrameTransformTakesPrecedent) {
 
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
   AckSubmittedFrame();
 }
 
-TEST_P(VideoFrameSubmitterTest, OnBeginFrameSubmitsFrame) {
+TEST_F(VideoFrameSubmitterTest, OnBeginFrameSubmitsFrame) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
 
   submitter_->StartRendering();
@@ -634,32 +572,32 @@ TEST_P(VideoFrameSubmitterTest, OnBeginFrameSubmitsFrame) {
   EXPECT_SUBMISSION(SubmissionType::kBeginFrame);
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, MissedFrameArgDoesNotProduceFrame) {
+TEST_F(VideoFrameSubmitterTest, MissedFrameArgDoesNotProduceFrame) {
   EXPECT_CALL(*sink_, DidNotProduceFrame(_));
 
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
   args.type = viz::BeginFrameArgs::MISSED;
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, MissingProviderDoesNotProduceFrame) {
+TEST_F(VideoFrameSubmitterTest, MissingProviderDoesNotProduceFrame) {
   submitter_->StopUsingProvider();
 
   EXPECT_CALL(*sink_, DidNotProduceFrame(_));
 
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, NoUpdateOnFrameDoesNotProduceFrame) {
+TEST_F(VideoFrameSubmitterTest, NoUpdateOnFrameDoesNotProduceFrame) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
   submitter_->StartRendering();
 
@@ -669,11 +607,11 @@ TEST_P(VideoFrameSubmitterTest, NoUpdateOnFrameDoesNotProduceFrame) {
 
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, NotRenderingDoesNotProduceFrame) {
+TEST_F(VideoFrameSubmitterTest, NotRenderingDoesNotProduceFrame) {
   // We don't care if UpdateCurrentFrame is called or not; it doesn't matter
   // if we're not rendering.
   EXPECT_CALL(*video_frame_provider_, UpdateCurrentFrame(_, _))
@@ -682,18 +620,18 @@ TEST_P(VideoFrameSubmitterTest, NotRenderingDoesNotProduceFrame) {
 
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, ReturnsResourceOnCompositorAck) {
+TEST_F(VideoFrameSubmitterTest, ReturnsResourceOnCompositorAck) {
   AckSubmittedFrame();
   task_environment_.RunUntilIdle();
 }
 
 // Tests that after submitting a frame, no frame will be submitted until an ACK
 // was received. This is tested by simulating another BeginFrame message.
-TEST_P(VideoFrameSubmitterTest, WaitingForAckPreventsNewFrame) {
+TEST_F(VideoFrameSubmitterTest, WaitingForAckPreventsNewFrame) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
 
   submitter_->StartRendering();
@@ -702,7 +640,7 @@ TEST_P(VideoFrameSubmitterTest, WaitingForAckPreventsNewFrame) {
   EXPECT_SUBMISSION(SubmissionType::kBeginFrame);
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 
   // DidNotProduceFrame should be called because no frame will be submitted
@@ -717,12 +655,12 @@ TEST_P(VideoFrameSubmitterTest, WaitingForAckPreventsNewFrame) {
       std::make_unique<base::SimpleTestTickClock>();
   args = begin_frame_source_->CreateBeginFrameArgs(BEGINFRAME_FROM_HERE,
                                                    new_time.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 }
 
 // Similar to above but verifies the single-frame paint path.
-TEST_P(VideoFrameSubmitterTest, WaitingForAckPreventsSubmitSingleFrame) {
+TEST_F(VideoFrameSubmitterTest, WaitingForAckPreventsSubmitSingleFrame) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
 
   submitter_->StartRendering();
@@ -745,50 +683,48 @@ TEST_P(VideoFrameSubmitterTest, WaitingForAckPreventsSubmitSingleFrame) {
 
 // Test that after context is lost, the CompositorFrameSink is recreated but the
 // SurfaceEmbedder isn't.
-TEST_P(VideoFrameSubmitterTest, RecreateCompositorFrameSinkAfterContextLost) {
+TEST_F(VideoFrameSubmitterTest, RecreateCompositorFrameSinkAfterContextLost) {
   MockEmbeddedFrameSinkProvider mock_embedded_frame_sink_provider;
-  mojo::ReceiverSet<mojom::blink::EmbeddedFrameSinkProvider>
-      embedded_frame_sink_provider_receivers;
+  mojo::Receiver<mojom::blink::EmbeddedFrameSinkProvider>
+      embedded_frame_sink_provider_binding(&mock_embedded_frame_sink_provider);
   auto override =
       mock_embedded_frame_sink_provider.CreateScopedOverrideMojoInterface(
-          embedded_frame_sink_provider_receivers);
+          &embedded_frame_sink_provider_binding);
 
-  EXPECT_CALL(*resource_provider_, Initialize(_, _, _));
+  EXPECT_CALL(*resource_provider_, Initialize(_, _));
   EXPECT_CALL(mock_embedded_frame_sink_provider, ConnectToEmbedder(_, _))
       .Times(0);
   EXPECT_CALL(mock_embedded_frame_sink_provider, CreateCompositorFrameSink_(_))
       .Times(1);
-  EXPECT_CALL(*video_frame_provider_, OnContextLost()).Times(1);
   submitter_->OnContextLost();
-  OnReceivedContextProvider(true, context_provider_, nullptr);
+  OnReceivedContextProvider(true, context_provider_);
   task_environment_.RunUntilIdle();
 }
 
 // Test that after context is lost, the CompositorFrameSink is recreated but the
 // SurfaceEmbedder isn't even with software compositing.
-TEST_P(VideoFrameSubmitterTest,
+TEST_F(VideoFrameSubmitterTest,
        RecreateCompositorFrameSinkAfterContextLostSoftwareCompositing) {
   MockEmbeddedFrameSinkProvider mock_embedded_frame_sink_provider;
-  mojo::ReceiverSet<mojom::blink::EmbeddedFrameSinkProvider>
-      embedded_frame_sink_provider_receivers;
+  mojo::Receiver<mojom::blink::EmbeddedFrameSinkProvider>
+      embedded_frame_sink_provider_binding(&mock_embedded_frame_sink_provider);
   auto override =
       mock_embedded_frame_sink_provider.CreateScopedOverrideMojoInterface(
-          embedded_frame_sink_provider_receivers);
+          &embedded_frame_sink_provider_binding);
 
-  EXPECT_CALL(*resource_provider_, Initialize(_, _, _));
+  EXPECT_CALL(*resource_provider_, Initialize(_, _));
   EXPECT_CALL(mock_embedded_frame_sink_provider, ConnectToEmbedder(_, _))
       .Times(0);
   EXPECT_CALL(mock_embedded_frame_sink_provider, CreateCompositorFrameSink_(_))
       .Times(1);
-  EXPECT_CALL(*video_frame_provider_, OnContextLost()).Times(1);
   submitter_->OnContextLost();
-  OnReceivedContextProvider(false, nullptr, nullptr);
+  OnReceivedContextProvider(false, nullptr);
   task_environment_.RunUntilIdle();
 }
 
 // This test simulates a race condition in which the |video_frame_provider_| is
 // destroyed before OnReceivedContextProvider returns.
-TEST_P(VideoFrameSubmitterTest, StopUsingProviderDuringContextLost) {
+TEST_F(VideoFrameSubmitterTest, StopUsingProviderDuringContextLost) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
 
   submitter_->StartRendering();
@@ -810,7 +746,7 @@ TEST_P(VideoFrameSubmitterTest, StopUsingProviderDuringContextLost) {
 // Test the behaviour of the ChildLocalSurfaceIdAllocator instance. It checks
 // that the LocalSurfaceId is properly set at creation and updated when the
 // video frames change.
-TEST_P(VideoFrameSubmitterTest, FrameSizeChangeUpdatesLocalSurfaceId) {
+TEST_F(VideoFrameSubmitterTest, FrameSizeChangeUpdatesLocalSurfaceId) {
   {
     viz::LocalSurfaceId local_surface_id =
         child_local_surface_id_allocator().GetCurrentLocalSurfaceId();
@@ -865,7 +801,7 @@ TEST_P(VideoFrameSubmitterTest, FrameSizeChangeUpdatesLocalSurfaceId) {
   }
 }
 
-TEST_P(VideoFrameSubmitterTest, VideoRotationOutputRect) {
+TEST_F(VideoFrameSubmitterTest, VideoRotationOutputRect) {
   MakeSubmitter();
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
   submitter_->StartRendering();
@@ -896,7 +832,7 @@ TEST_P(VideoFrameSubmitterTest, VideoRotationOutputRect) {
 
     viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
         BEGINFRAME_FROM_HERE, now_src_.get());
-    OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+    submitter_->OnBeginFrame(args, {});
     task_environment_.RunUntilIdle();
 
     EXPECT_EQ(sink_->last_submitted_compositor_frame().size_in_pixels(),
@@ -926,7 +862,7 @@ TEST_P(VideoFrameSubmitterTest, VideoRotationOutputRect) {
 
     viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
         BEGINFRAME_FROM_HERE, now_src_.get());
-    OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+    submitter_->OnBeginFrame(args, {});
     task_environment_.RunUntilIdle();
 
     // 180 deg rotation has same size.
@@ -957,7 +893,7 @@ TEST_P(VideoFrameSubmitterTest, VideoRotationOutputRect) {
 
     viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
         BEGINFRAME_FROM_HERE, now_src_.get());
-    OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+    submitter_->OnBeginFrame(args, {});
     task_environment_.RunUntilIdle();
 
     EXPECT_EQ(sink_->last_submitted_compositor_frame().size_in_pixels(),
@@ -967,7 +903,7 @@ TEST_P(VideoFrameSubmitterTest, VideoRotationOutputRect) {
   }
 }
 
-TEST_P(VideoFrameSubmitterTest, PageVisibilityControlsSubmission) {
+TEST_F(VideoFrameSubmitterTest, PageVisibilityControlsSubmission) {
   // Hide the page and ensure no begin frames are issued.
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(false));
   submitter_->SetIsPageVisible(false);
@@ -993,8 +929,8 @@ TEST_P(VideoFrameSubmitterTest, PageVisibilityControlsSubmission) {
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, PreferredInterval) {
-  video_frame_provider_->preferred_interval = base::Seconds(1);
+TEST_F(VideoFrameSubmitterTest, PreferredInterval) {
+  video_frame_provider_->preferred_interval = base::TimeDelta::FromSeconds(1);
 
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
 
@@ -1004,25 +940,15 @@ TEST_P(VideoFrameSubmitterTest, PreferredInterval) {
   EXPECT_SUBMISSION(SubmissionType::kBeginFrame);
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 
   EXPECT_EQ(sink_->last_submitted_compositor_frame()
-                .metadata.begin_frame_ack.preferred_frame_interval,
+                .metadata.preferred_frame_interval,
             video_frame_provider_->preferred_interval);
-  const auto& frame_interval_inputs =
-      sink_->last_submitted_compositor_frame().metadata.frame_interval_inputs;
-  ASSERT_EQ(frame_interval_inputs.content_interval_info.size(), 1u);
-  EXPECT_EQ(frame_interval_inputs.content_interval_info[0].frame_interval,
-            video_frame_provider_->preferred_interval);
-  EXPECT_EQ(frame_interval_inputs.content_interval_info[0].type,
-            viz::ContentFrameIntervalType::kVideo);
-  EXPECT_EQ(frame_interval_inputs.content_interval_info[0].duplicate_count, 0u);
-  EXPECT_TRUE(frame_interval_inputs.has_only_content_frame_interval_updates);
-  EXPECT_EQ(args.frame_time, frame_interval_inputs.frame_time);
 }
 
-TEST_P(VideoFrameSubmitterTest, NoDuplicateFramesOnBeginFrame) {
+TEST_F(VideoFrameSubmitterTest, NoDuplicateFramesOnBeginFrame) {
   EXPECT_CALL(*sink_, SetNeedsBeginFrame(true));
   submitter_->StartRendering();
   task_environment_.RunUntilIdle();
@@ -1042,7 +968,7 @@ TEST_P(VideoFrameSubmitterTest, NoDuplicateFramesOnBeginFrame) {
   EXPECT_CALL(*resource_provider_, ReleaseFrameResources());
   viz::BeginFrameArgs args = begin_frame_source_->CreateBeginFrameArgs(
       BEGINFRAME_FROM_HERE, now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
   AckSubmittedFrame();
 
@@ -1054,11 +980,11 @@ TEST_P(VideoFrameSubmitterTest, NoDuplicateFramesOnBeginFrame) {
   EXPECT_CALL(*sink_, DidNotProduceFrame(_));
   args = begin_frame_source_->CreateBeginFrameArgs(BEGINFRAME_FROM_HERE,
                                                    now_src_.get());
-  OnBeginFrame(args, {}, false, WTF::Vector<viz::ReturnedResource>());
+  submitter_->OnBeginFrame(args, {});
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, NoDuplicateFramesDidReceiveFrame) {
+TEST_F(VideoFrameSubmitterTest, NoDuplicateFramesDidReceiveFrame) {
   auto vf = media::VideoFrame::CreateFrame(
       media::PIXEL_FORMAT_YV12, gfx::Size(8, 8), gfx::Rect(gfx::Size(8, 8)),
       gfx::Size(8, 8), base::TimeDelta());
@@ -1079,7 +1005,7 @@ TEST_P(VideoFrameSubmitterTest, NoDuplicateFramesDidReceiveFrame) {
   task_environment_.RunUntilIdle();
 }
 
-TEST_P(VideoFrameSubmitterTest, ZeroSizedFramesAreNotSubmitted) {
+TEST_F(VideoFrameSubmitterTest, ZeroSizedFramesAreNotSubmitted) {
   auto vf = media::VideoFrame::CreateEOSFrame();
   ASSERT_TRUE(vf->natural_size().IsEmpty());
 
@@ -1092,10 +1018,10 @@ TEST_P(VideoFrameSubmitterTest, ZeroSizedFramesAreNotSubmitted) {
 // Check that given enough frames with wallclock duration and enough
 // presentation feedback data, VideoFrameSubmitter will call the video roughness
 // reporting callback.
-TEST_P(VideoFrameSubmitterTest, ProcessTimingDetails) {
+TEST_F(VideoFrameSubmitterTest, ProcessTimingDetails) {
   int fps = 24;
   int reports = 0;
-  base::TimeDelta frame_duration = base::Seconds(1.0 / fps);
+  base::TimeDelta frame_duration = base::TimeDelta::FromSecondsD(1.0 / fps);
   int frames_to_run =
       fps * (cc::VideoPlaybackRoughnessReporter::kMinWindowsBeforeSubmit + 1);
   WTF::HashMap<uint32_t, viz::FrameTimingDetails> timing_details;
@@ -1142,65 +1068,12 @@ TEST_P(VideoFrameSubmitterTest, ProcessTimingDetails) {
 
     auto args = begin_frame_source_->CreateBeginFrameArgs(BEGINFRAME_FROM_HERE,
                                                           now_src_.get());
-    OnBeginFrame(args, timing_details, false,
-                 WTF::Vector<viz::ReturnedResource>());
+    submitter_->OnBeginFrame(args, timing_details);
     task_environment_.RunUntilIdle();
     AckSubmittedFrame();
   }
   submitter_->StopRendering();
   EXPECT_EQ(reports, 1);
 }
-
-TEST_P(VideoFrameSubmitterTest, OpaqueFramesNotifyEmbedder) {
-  // Verify that the submitter notifies the embedder about opacity changes in
-  // the video frames.
-
-  const gfx::Size size(8, 8);
-  EXPECT_CALL(*video_frame_provider_, PutCurrentFrame()).Times(AnyNumber());
-  EXPECT_CALL(*sink_, DoSubmitCompositorFrame(_, _)).Times(AnyNumber());
-  EXPECT_CALL(*resource_provider_, AppendQuads(_, _, _, _)).Times(AnyNumber());
-  EXPECT_CALL(*resource_provider_, PrepareSendToParent(_, _))
-      .Times(AnyNumber());
-  EXPECT_CALL(*resource_provider_, ReleaseFrameResources()).Times(AnyNumber());
-
-  // Send an opaque frame, and expect a callback immediately.
-  EXPECT_CALL(*video_frame_provider_, GetCurrentFrame())
-      .WillOnce(Return(media::VideoFrame::CreateBlackFrame(size)));
-  EXPECT_CALL(*surface_embedder_, OnOpacityChanged(true));
-  submitter_->DidReceiveFrame();
-  DrainMainThread();
-  AckSubmittedFrame();
-
-  // Send a second frame and expect no call since opacity didn't change.
-  EXPECT_CALL(*video_frame_provider_, GetCurrentFrame())
-      .WillOnce(Return(media::VideoFrame::CreateBlackFrame(size)));
-  EXPECT_CALL(*surface_embedder_, OnOpacityChanged(true)).Times(0);
-  submitter_->DidReceiveFrame();
-  DrainMainThread();
-  AckSubmittedFrame();
-
-  // Send a non-opaque frame and expect a call back.
-  EXPECT_CALL(*video_frame_provider_, GetCurrentFrame())
-      .WillOnce(Return(media::VideoFrame::CreateTransparentFrame(size)));
-  EXPECT_CALL(*surface_embedder_, OnOpacityChanged(false));
-  submitter_->DidReceiveFrame();
-  DrainMainThread();
-  AckSubmittedFrame();
-
-  // Send a second non-opaque frame and expect no call back.
-  EXPECT_CALL(*video_frame_provider_, GetCurrentFrame())
-      .WillOnce(Return(media::VideoFrame::CreateTransparentFrame(size)));
-  EXPECT_CALL(*surface_embedder_, OnOpacityChanged(false)).Times(0);
-  submitter_->DidReceiveFrame();
-  DrainMainThread();
-}
-
-INSTANTIATE_TEST_SUITE_P(,
-                         VideoFrameSubmitterTest,
-                         testing::Bool(),
-                         [](auto& info) {
-                           return info.param ? "BeginFrameAcks"
-                                             : "CompositorFrameAcks";
-                         });
 
 }  // namespace blink

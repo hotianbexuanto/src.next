@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,18 +7,14 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include "base/gtest_prod_util.h"
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
+#include "base/strings/string_piece_forward.h"
 #include "net/base/completion_once_callback.h"
 #include "net/base/net_export.h"
 #include "net/http/http_auth_handler.h"
 #include "net/http/http_auth_handler_factory.h"
-
-namespace url {
-class SchemeHostPort;
-}
 
 namespace net {
 
@@ -31,14 +27,12 @@ class NET_EXPORT_PRIVATE HttpAuthHandlerDigest : public HttpAuthHandler {
   class NET_EXPORT_PRIVATE NonceGenerator {
    public:
     NonceGenerator();
-
-    NonceGenerator(const NonceGenerator&) = delete;
-    NonceGenerator& operator=(const NonceGenerator&) = delete;
-
     virtual ~NonceGenerator();
 
     // Generates a client nonce.
     virtual std::string GenerateNonce() const = 0;
+   private:
+    DISALLOW_COPY_AND_ASSIGN(NonceGenerator);
   };
 
   // DynamicNonceGenerator does a random shuffle of 16
@@ -46,11 +40,10 @@ class NET_EXPORT_PRIVATE HttpAuthHandlerDigest : public HttpAuthHandler {
   class DynamicNonceGenerator : public NonceGenerator {
    public:
     DynamicNonceGenerator();
-
-    DynamicNonceGenerator(const DynamicNonceGenerator&) = delete;
-    DynamicNonceGenerator& operator=(const DynamicNonceGenerator&) = delete;
-
     std::string GenerateNonce() const override;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(DynamicNonceGenerator);
   };
 
   // FixedNonceGenerator always uses the same string specified at
@@ -59,13 +52,11 @@ class NET_EXPORT_PRIVATE HttpAuthHandlerDigest : public HttpAuthHandler {
    public:
     explicit FixedNonceGenerator(const std::string& nonce);
 
-    FixedNonceGenerator(const FixedNonceGenerator&) = delete;
-    FixedNonceGenerator& operator=(const FixedNonceGenerator&) = delete;
-
     std::string GenerateNonce() const override;
 
    private:
     const std::string nonce_;
+    DISALLOW_COPY_AND_ASSIGN(FixedNonceGenerator);
   };
 
   class NET_EXPORT_PRIVATE Factory : public HttpAuthHandlerFactory {
@@ -74,32 +65,28 @@ class NET_EXPORT_PRIVATE HttpAuthHandlerDigest : public HttpAuthHandler {
     ~Factory() override;
 
     // This factory owns the passed in |nonce_generator|.
-    void set_nonce_generator(
-        std::unique_ptr<const NonceGenerator> nonce_generator);
+    void set_nonce_generator(const NonceGenerator* nonce_generator);
 
-    int CreateAuthHandler(
-        HttpAuthChallengeTokenizer* challenge,
-        HttpAuth::Target target,
-        const SSLInfo& ssl_info,
-        const NetworkAnonymizationKey& network_anonymization_key,
-        const url::SchemeHostPort& scheme_host_port,
-        CreateReason reason,
-        int digest_nonce_count,
-        const NetLogWithSource& net_log,
-        HostResolver* host_resolver,
-        std::unique_ptr<HttpAuthHandler>* handler) override;
+    int CreateAuthHandler(HttpAuthChallengeTokenizer* challenge,
+                          HttpAuth::Target target,
+                          const SSLInfo& ssl_info,
+                          const NetworkIsolationKey& network_isolation_key,
+                          const GURL& origin,
+                          CreateReason reason,
+                          int digest_nonce_count,
+                          const NetLogWithSource& net_log,
+                          HostResolver* host_resolver,
+                          std::unique_ptr<HttpAuthHandler>* handler) override;
 
    private:
     std::unique_ptr<const NonceGenerator> nonce_generator_;
   };
 
-  ~HttpAuthHandlerDigest() override;
-
  private:
   // HttpAuthHandler
   bool Init(HttpAuthChallengeTokenizer* challenge,
             const SSLInfo& ssl_info,
-            const NetworkAnonymizationKey& network_anonymization_key) override;
+            const NetworkIsolationKey& network_isolation_key) override;
   int GenerateAuthTokenImpl(const AuthCredentials* credentials,
                             const HttpRequestInfo* request,
                             CompletionOnceCallback callback,
@@ -112,21 +99,17 @@ class NET_EXPORT_PRIVATE HttpAuthHandlerDigest : public HttpAuthHandler {
   FRIEND_TEST_ALL_PREFIXES(HttpNetworkTransactionTest, DigestPreAuthNonceCount);
 
   // Possible values for the "algorithm" property.
-  enum class Algorithm {
+  enum DigestAlgorithm {
     // No algorithm was specified. According to RFC 2617 this means
-    // we should default to MD5.
-    UNSPECIFIED,
+    // we should default to ALGORITHM_MD5.
+    ALGORITHM_UNSPECIFIED,
 
     // Hashes are run for every request.
-    MD5,
+    ALGORITHM_MD5,
 
     // Hash is run only once during the first WWW-Authenticate handshake.
     // (SESS means session).
-    MD5_SESS,
-
-    // SHA256 variants of the above.
-    SHA256,
-    SHA256_SESS,
+    ALGORITHM_MD5_SESS,
   };
 
   // Possible values for QualityOfProtection.
@@ -142,20 +125,21 @@ class NET_EXPORT_PRIVATE HttpAuthHandlerDigest : public HttpAuthHandler {
   // the handler. The lifetime of the |nonce_generator| must exceed that of this
   // handler.
   HttpAuthHandlerDigest(int nonce_count, const NonceGenerator* nonce_generator);
+  ~HttpAuthHandlerDigest() override;
 
   // Parse the challenge, saving the results into this instance.
   // Returns true on success.
   bool ParseChallenge(HttpAuthChallengeTokenizer* challenge);
 
   // Parse an individual property. Returns true on success.
-  bool ParseChallengeProperty(std::string_view name, std::string_view value);
+  bool ParseChallengeProperty(base::StringPiece name, base::StringPiece value);
 
   // Generates a random string, to be used for client-nonce.
   static std::string GenerateNonce();
 
   // Convert enum value back to string.
   static std::string QopToString(QualityOfProtection qop);
-  static std::string AlgorithmToString(Algorithm algorithm);
+  static std::string AlgorithmToString(DigestAlgorithm algorithm);
 
   // Extract the method and path of the request, as needed by
   // the 'A2' production. (path may be a hostname for proxy).
@@ -181,10 +165,9 @@ class NET_EXPORT_PRIVATE HttpAuthHandlerDigest : public HttpAuthHandler {
   std::string nonce_;
   std::string domain_;
   std::string opaque_;
-  bool stale_ = false;
-  Algorithm algorithm_ = Algorithm::UNSPECIFIED;
-  QualityOfProtection qop_ = QOP_UNSPECIFIED;
-  bool userhash_ = false;
+  bool stale_;
+  DigestAlgorithm algorithm_;
+  QualityOfProtection qop_;
 
   // The realm as initially encoded over-the-wire. This is used in the
   // challenge text, rather than |realm_| which has been converted to
@@ -192,9 +175,7 @@ class NET_EXPORT_PRIVATE HttpAuthHandlerDigest : public HttpAuthHandler {
   std::string original_realm_;
 
   int nonce_count_;
-  raw_ptr<const NonceGenerator> nonce_generator_;
-
-  class DigestContext;
+  const NonceGenerator* nonce_generator_;
 };
 
 }  // namespace net

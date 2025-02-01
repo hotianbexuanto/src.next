@@ -1,29 +1,22 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/public/mojom/frame/back_forward_cache_controller.mojom-blink.h"
-#include "third_party/blink/public/mojom/navigation/renderer_eviction_reason.mojom-blink.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 
 #include "base/run_loop.h"
-#include "base/test/scoped_feature_list.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/mojom/frame/back_forward_cache_controller.mojom-blink.h"
 #include "third_party/blink/public/platform/scheduler/test/renderer_scheduler_test_support.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
-#include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
-#include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/script/classic_script.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/core/testing/fake_local_frame_host.h"
-#include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
+#include "third_party/blink/renderer/platform/bindings/microtask.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
-#include "third_party/blink/renderer/platform/wtf/functional.h"
 
 namespace blink {
 
@@ -34,7 +27,7 @@ class TestLocalFrameBackForwardCacheClient
       blink::AssociatedInterfaceProvider* provider) {
     provider->OverrideBinderForTesting(
         mojom::blink::BackForwardCacheControllerHost::Name_,
-        WTF::BindRepeating(
+        base::BindRepeating(
             [](TestLocalFrameBackForwardCacheClient* parent,
                mojo::ScopedInterfaceEndpointHandle handle) {
               parent->receiver_.Bind(
@@ -48,14 +41,9 @@ class TestLocalFrameBackForwardCacheClient
 
   ~TestLocalFrameBackForwardCacheClient() override = default;
 
-  void EvictFromBackForwardCache(
-      mojom::blink::RendererEvictionReason,
-      mojom::blink::ScriptSourceLocationPtr) override {
+  void EvictFromBackForwardCache(mojom::RendererEvictionReason) override {
     quit_closure_.Run();
   }
-
-  void DidChangeBackForwardCacheDisablingFeatures(
-      Vector<mojom::blink::BlockingDetailsPtr> details) override {}
 
   void WaitUntilEvictedFromBackForwardCache() {
     base::RunLoop run_loop;
@@ -79,9 +67,6 @@ class LocalFrameBackForwardCacheTest : public testing::Test,
                                        private ScopedBackForwardCacheForTest {
  public:
   LocalFrameBackForwardCacheTest() : ScopedBackForwardCacheForTest(true) {}
-
- private:
-  test::TaskEnvironment task_environment_;
 };
 
 // Tests a frame in the back-forward cache (a.k.a. bfcache) is evicted on
@@ -89,9 +74,6 @@ class LocalFrameBackForwardCacheTest : public testing::Test,
 // frame state is immutable when the frame is in the bfcache.
 // (https://www.chromestatus.com/feature/5815270035685376).
 TEST_F(LocalFrameBackForwardCacheTest, EvictionOnV8ExecutionAtMicrotask) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      features::kBackForwardCacheDWCOnJavaScriptExecution);
   frame_test_helpers::TestWebFrameClient web_frame_client;
   TestLocalFrameBackForwardCacheClient frame_host(
       web_frame_client.GetRemoteNavigationAssociatedInterfaces());
@@ -117,12 +99,13 @@ TEST_F(LocalFrameBackForwardCacheTest, EvictionOnV8ExecutionAtMicrotask) {
   //   2) C++ closure
   // The case 1) should never happen when the frame is in bfcache. On the other
   // hand, the case 2) can happen. See https://crbug.com/994169
-  frame->DomWindow()->GetAgent()->event_loop()->EnqueueMicrotask(WTF::BindOnce(
+  Microtask::EnqueueMicrotask(base::BindOnce(
       [](LocalFrame* frame) {
-        ClassicScript::CreateUnspecifiedScript("console.log('hi');")
+        ClassicScript::CreateUnspecifiedScript(
+            ScriptSourceCode("console.log('hi');"))
             ->RunScript(frame->DomWindow());
       },
-      WrapWeakPersistent(frame)));
+      frame));
   frame_host.WaitUntilEvictedFromBackForwardCache();
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,13 +7,8 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "base/types/pass_key.h"
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_value.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
-
-namespace WTF {
-class String;
-}  // namespace WTF
 
 namespace blink {
 
@@ -28,7 +23,7 @@ class CORE_EXPORT CSSRevertValue : public CSSValue {
   explicit CSSRevertValue(base::PassKey<CSSValuePool>)
       : CSSValue(kRevertClass) {}
 
-  WTF::String CustomCSSText() const;
+  String CustomCSSText() const;
 
   bool Equals(const CSSRevertValue&) const { return true; }
 

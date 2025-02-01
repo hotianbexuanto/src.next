@@ -1,13 +1,12 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "services/metrics/public/cpp/delegating_ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/lazy_instance.h"
-#include "services/metrics/public/cpp/ukm_recorder_client_interface_registry.h"
 
 namespace ukm {
 
@@ -27,33 +26,15 @@ DelegatingUkmRecorder* DelegatingUkmRecorder::Get() {
 }
 
 void DelegatingUkmRecorder::AddDelegate(base::WeakPtr<UkmRecorder> delegate) {
-  bool multiple_delegates = false;
-  {
-    base::AutoLock auto_lock(lock_);
-    delegates_.insert(
-        {delegate.get(),
-         Delegate(base::SequencedTaskRunner::GetCurrentDefault(), delegate)});
-    multiple_delegates = delegates_.size() > 1;
-  }
-  // If multiple delegates are present, allow all clients to send an IPC to
-  // browser process for AddEntry. This is because delegates can have different
-  // parameters and be attached to different clients, and if an event being
-  // observed by any of the clients occurs, all the clients should be able to
-  // send UkmInterface::AddEntry IPC. Multiple Delegates should only be present
-  // in test environment.
-  if (multiple_delegates) {
-    metrics::UkmRecorderClientInterfaceRegistry::NotifyMultipleDelegates();
-  }
+  base::AutoLock auto_lock(lock_);
+  delegates_.insert(
+      {delegate.get(),
+       Delegate(base::SequencedTaskRunnerHandle::Get(), delegate)});
 }
 
 void DelegatingUkmRecorder::RemoveDelegate(UkmRecorder* delegate) {
   base::AutoLock auto_lock(lock_);
   delegates_.erase(delegate);
-}
-
-bool DelegatingUkmRecorder::HasMultipleDelegates() {
-  base::AutoLock lock(lock_);
-  return delegates_.size() > 1;
 }
 
 void DelegatingUkmRecorder::UpdateSourceURL(SourceId source_id,
@@ -108,16 +89,6 @@ void DelegatingUkmRecorder::AddEntry(mojom::UkmEntryPtr entry) {
     iterator.second.AddEntry(entry->Clone());
 }
 
-void DelegatingUkmRecorder::RecordWebDXFeatures(
-    SourceId source_id,
-    const std::set<int32_t>& features,
-    const size_t max_feature_value) {
-  base::AutoLock auto_lock(lock_);
-  for (auto& iterator : delegates_) {
-    iterator.second.RecordWebDXFeatures(source_id, features, max_feature_value);
-  }
-}
-
 void DelegatingUkmRecorder::MarkSourceForDeletion(ukm::SourceId source_id) {
   base::AutoLock auto_lock(lock_);
   for (auto& iterator : delegates_)
@@ -137,9 +108,7 @@ DelegatingUkmRecorder::Delegate::~Delegate() = default;
 void DelegatingUkmRecorder::Delegate::UpdateSourceURL(ukm::SourceId source_id,
                                                       const GURL& url) {
   if (task_runner_->RunsTasksInCurrentSequence()) {
-    if (ptr_) {
-      ptr_->UpdateSourceURL(source_id, url);
-    }
+    ptr_->UpdateSourceURL(source_id, url);
     return;
   }
   task_runner_->PostTask(
@@ -151,9 +120,7 @@ void DelegatingUkmRecorder::Delegate::UpdateAppURL(ukm::SourceId source_id,
                                                    const GURL& url,
                                                    const AppType app_type) {
   if (task_runner_->RunsTasksInCurrentSequence()) {
-    if (ptr_) {
-      ptr_->UpdateAppURL(source_id, url, app_type);
-    }
+    ptr_->UpdateAppURL(source_id, url, app_type);
     return;
   }
   task_runner_->PostTask(
@@ -165,9 +132,7 @@ void DelegatingUkmRecorder::Delegate::RecordNavigation(
     ukm::SourceId source_id,
     const UkmSource::NavigationData& navigation_data) {
   if (task_runner_->RunsTasksInCurrentSequence()) {
-    if (ptr_) {
-      ptr_->RecordNavigation(source_id, navigation_data);
-    }
+    ptr_->RecordNavigation(source_id, navigation_data);
     return;
   }
   task_runner_->PostTask(
@@ -177,36 +142,17 @@ void DelegatingUkmRecorder::Delegate::RecordNavigation(
 
 void DelegatingUkmRecorder::Delegate::AddEntry(mojom::UkmEntryPtr entry) {
   if (task_runner_->RunsTasksInCurrentSequence()) {
-    if (ptr_) {
-      ptr_->AddEntry(std::move(entry));
-    }
+    ptr_->AddEntry(std::move(entry));
     return;
   }
   task_runner_->PostTask(FROM_HERE, base::BindOnce(&UkmRecorder::AddEntry, ptr_,
                                                    std::move(entry)));
 }
 
-void DelegatingUkmRecorder::Delegate::RecordWebDXFeatures(
-    SourceId source_id,
-    const std::set<int32_t>& features,
-    const size_t max_feature_value) {
-  if (task_runner_->RunsTasksInCurrentSequence()) {
-    if (ptr_) {
-      ptr_->RecordWebDXFeatures(source_id, features, max_feature_value);
-    }
-    return;
-  }
-  task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&UkmRecorder::RecordWebDXFeatures, ptr_,
-                                source_id, features, max_feature_value));
-}
-
 void DelegatingUkmRecorder::Delegate::MarkSourceForDeletion(
     ukm::SourceId source_id) {
   if (task_runner_->RunsTasksInCurrentSequence()) {
-    if (ptr_) {
-      ptr_->MarkSourceForDeletion(source_id);
-    }
+    ptr_->MarkSourceForDeletion(source_id);
     return;
   }
   task_runner_->PostTask(

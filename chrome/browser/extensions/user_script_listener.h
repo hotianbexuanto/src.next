@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,17 +8,18 @@
 #include <list>
 #include <map>
 
+#include "base/compiler_specific.h"
 #include "base/containers/circular_deque.h"
+#include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_multi_source_observation.h"
-#include "base/scoped_observation.h"
-#include "chrome/browser/profiles/profile_manager_observer.h"
+#include "content/public/browser/notification_observer.h"
+#include "content/public/browser/notification_registrar.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_observer.h"
 
 class GURL;
 class URLPattern;
-class ProfileManager;
 
 namespace content {
 class BrowserContext;
@@ -35,14 +36,10 @@ class Extension;
 // script has not been loaded yet, then we delay the request.
 //
 // This class lives on the UI thread.
-class UserScriptListener : public ExtensionRegistryObserver,
-                           public ProfileManagerObserver {
+class UserScriptListener : public content::NotificationObserver,
+                           public ExtensionRegistryObserver {
  public:
   UserScriptListener();
-
-  UserScriptListener(const UserScriptListener&) = delete;
-  UserScriptListener& operator=(const UserScriptListener&) = delete;
-
   ~UserScriptListener() override;
 
   // Constructs a NavigationThrottle if the UserScriptListener needs to delay
@@ -53,10 +50,6 @@ class UserScriptListener : public ExtensionRegistryObserver,
   // Called when manifest scripts have finished loading for the given
   // BrowserContext.
   void OnScriptsLoaded(content::BrowserContext* context);
-
-  // Called when the owning BrowserClient is notified that we should begin
-  // releasing our resources.
-  void StartTearDown();
 
   void SetUserScriptsNotReadyForTesting(content::BrowserContext* context);
   void TriggerUserScriptsReadyForTesting(content::BrowserContext* context);
@@ -105,12 +98,13 @@ class UserScriptListener : public ExtensionRegistryObserver,
 
   // Helper to collect the extension's user script URL patterns in a list and
   // return it.
-  void CollectURLPatterns(content::BrowserContext* context,
-                          const Extension* extension,
+  void CollectURLPatterns(const Extension* extension,
                           URLPatterns* patterns);
 
-  // ProfileManagerObserver
-  void OnProfileAdded(Profile* profile) override;
+  // content::NotificationObserver
+  void Observe(int type,
+               const content::NotificationSource& source,
+               const content::NotificationDetails& details) override;
 
   // ExtensionRegistryObserver:
   void OnExtensionLoaded(content::BrowserContext* browser_context,
@@ -124,8 +118,9 @@ class UserScriptListener : public ExtensionRegistryObserver,
                                      extensions::ExtensionRegistryObserver>
       extension_registry_observations_{this};
 
-  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
-      profile_manager_observation_{this};
+  content::NotificationRegistrar registrar_;
+
+  DISALLOW_COPY_AND_ASSIGN(UserScriptListener);
 };
 
 }  // namespace extensions

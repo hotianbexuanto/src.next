@@ -31,23 +31,17 @@ class CSSCustomFontData final : public CustomFontData {
  public:
   enum FallbackVisibility { kInvisibleFallback, kVisibleFallback };
 
-  CSSCustomFontData(CSSFontFaceSource* source, FallbackVisibility visibility)
-      : font_face_source_(source), fallback_visibility_(visibility) {
-    if (source) {
-      is_loading_ = source->IsLoading();
-    }
+  static scoped_refptr<CSSCustomFontData> Create(
+      CSSFontFaceSource* source,
+      FallbackVisibility visibility) {
+    return base::AdoptRef(new CSSCustomFontData(source, visibility));
   }
+
   ~CSSCustomFontData() override = default;
 
-  void Trace(Visitor* visitor) const override {
-    visitor->Trace(font_face_source_);
-    CustomFontData::Trace(visitor);
-  }
-
   bool ShouldSkipDrawing() const override {
-    if (font_face_source_) {
+    if (font_face_source_)
       font_face_source_->PaintRequested();
-    }
     return fallback_visibility_ == kInvisibleFallback && is_loading_;
   }
 
@@ -60,15 +54,22 @@ class CSSCustomFontData final : public CustomFontData {
 
   bool IsLoading() const override { return is_loading_; }
   bool IsLoadingFallback() const override { return true; }
-
-  bool IsPendingDataUrl() const override {
-    return font_face_source_ && font_face_source_->IsPendingDataUrl();
-  }
+  void ClearFontFaceSource() override { font_face_source_ = nullptr; }
 
  private:
-  Member<CSSFontFaceSource> font_face_source_;
+  CSSCustomFontData(CSSFontFaceSource* source, FallbackVisibility visibility)
+      : font_face_source_(source),
+        fallback_visibility_(visibility),
+        is_loading_(false) {
+    if (source)
+      is_loading_ = source->IsLoading();
+  }
+
+  // TODO(Oilpan): consider moving (Custom)FontFace hierarchy to the heap,
+  // thereby making this reference a Member<>.
+  WeakPersistent<CSSFontFaceSource> font_face_source_;
   FallbackVisibility fallback_visibility_;
-  mutable bool is_loading_ = false;
+  mutable bool is_loading_;
 };
 
 }  // namespace blink

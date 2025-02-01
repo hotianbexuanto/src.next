@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,10 +7,12 @@
 
 #include <set>
 
-#include "base/functional/callback_forward.h"
+#include "base/callback_forward.h"
+#include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "extensions/common/extension_resource.h"
+#include "ui/base/layout.h"
 #include "ui/gfx/geometry/size.h"
 
 namespace content {
@@ -70,10 +72,6 @@ class ImageLoader : public KeyedService {
   static ImageLoader* Get(content::BrowserContext* context);
 
   ImageLoader();
-
-  ImageLoader(const ImageLoader&) = delete;
-  ImageLoader& operator=(const ImageLoader&) = delete;
-
   ~ImageLoader() override;
 
   // Specify image resource to load. If the loaded image is larger than
@@ -123,6 +121,8 @@ class ImageLoader : public KeyedService {
                                 const std::vector<LoadResult>& load_result);
 
   base::WeakPtrFactory<ImageLoader> weak_ptr_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(ImageLoader);
 };
 
 }  // namespace extensions

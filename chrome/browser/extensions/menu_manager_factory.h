@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,8 +7,8 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
-#include "chrome/browser/profiles/profile_keyed_service_factory.h"
+#include "base/memory/singleton.h"
+#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 
 namespace content {
 class BrowserContext;
@@ -17,7 +17,7 @@ class BrowserContext;
 namespace extensions {
 class MenuManager;
 
-class MenuManagerFactory : public ProfileKeyedServiceFactory {
+class MenuManagerFactory : public BrowserContextKeyedServiceFactory {
  public:
   static MenuManager* GetForBrowserContext(content::BrowserContext* context);
 
@@ -27,12 +27,14 @@ class MenuManagerFactory : public ProfileKeyedServiceFactory {
       content::BrowserContext* context);
 
  private:
-  friend base::NoDestructor<MenuManagerFactory>;
+  friend struct base::DefaultSingletonTraits<MenuManagerFactory>;
 
   MenuManagerFactory();
   ~MenuManagerFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
+      content::BrowserContext* context) const override;
+  content::BrowserContext* GetBrowserContextToUse(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;

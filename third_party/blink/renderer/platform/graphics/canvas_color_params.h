@@ -1,10 +1,11 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_CANVAS_COLOR_PARAMS_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_CANVAS_COLOR_PARAMS_H_
 
+#include "components/viz/common/resources/resource_format.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
@@ -16,27 +17,42 @@ namespace gfx {
 class ColorSpace;
 }
 
-namespace WTF {
-class String;
-}  // namespace WTF
-
 namespace blink {
 
-// Return the gfx::ColorSpace for the specified `predefined_color_space`.
-gfx::ColorSpace PLATFORM_EXPORT
-PredefinedColorSpaceToGfxColorSpace(PredefinedColorSpace color_space);
+class CanvasResourceParams;
+
+enum class CanvasColorSpace {
+  kSRGB,
+  kRec2020,
+  kP3,
+};
+
+enum class CanvasPixelFormat {
+  kUint8,
+  kF16,
+};
+
+constexpr const char* kSRGBCanvasColorSpaceName = "srgb";
+constexpr const char* kRec2020CanvasColorSpaceName = "rec2020";
+constexpr const char* kP3CanvasColorSpaceName = "display-p3";
+
+constexpr const char* kUint8CanvasPixelFormatName = "uint8";
+constexpr const char* kF16CanvasPixelFormatName = "float16";
+
+// Return the CanvasColorSpace for the specified |name|. On invalid inputs,
+// returns CanvasColorSpace::kSRGB.
+CanvasColorSpace PLATFORM_EXPORT
+CanvasColorSpaceFromName(const String& color_space_name);
+
+String PLATFORM_EXPORT CanvasColorSpaceToName(CanvasColorSpace color_space);
 
 // Return the SkColorSpace for the specified |color_space|.
 sk_sp<SkColorSpace> PLATFORM_EXPORT
-PredefinedColorSpaceToSkColorSpace(PredefinedColorSpace color_space);
+CanvasColorSpaceToSkColorSpace(CanvasColorSpace color_space);
 
-// Return the named PredefinedColorSpace that best matches |sk_color_space|.
-PredefinedColorSpace PLATFORM_EXPORT
-PredefinedColorSpaceFromSkColorSpace(const SkColorSpace* sk_color_space);
-
-// Return the SkColorType that best matches the specified CanvasPixelFormat.
-SkColorType PLATFORM_EXPORT
-CanvasPixelFormatToSkColorType(CanvasPixelFormat pixel_format);
+// Return the named CanvasColorSpace that best matches |sk_color_space|.
+CanvasColorSpace PLATFORM_EXPORT
+CanvasColorSpaceFromSkColorSpace(const SkColorSpace* sk_color_space);
 
 class PLATFORM_EXPORT CanvasColorParams {
   DISALLOW_NEW();
@@ -44,17 +60,19 @@ class PLATFORM_EXPORT CanvasColorParams {
  public:
   // The default constructor will create an output-blended 8-bit surface.
   CanvasColorParams();
-  CanvasColorParams(PredefinedColorSpace, CanvasPixelFormat, OpacityMode);
-  CanvasColorParams(PredefinedColorSpace, CanvasPixelFormat, bool has_alpha);
+  CanvasColorParams(CanvasColorSpace, CanvasPixelFormat, OpacityMode);
+  CanvasColorParams(const WTF::String& color_space,
+                    const WTF::String& pixel_format,
+                    bool has_alpha);
 
-  PredefinedColorSpace ColorSpace() const { return color_space_; }
+  CanvasColorSpace ColorSpace() const { return color_space_; }
   CanvasPixelFormat PixelFormat() const { return pixel_format_; }
   OpacityMode GetOpacityMode() const { return opacity_mode_; }
 
-  WTF::String GetColorSpaceAsString() const;
-  WTF::String GetPixelFormatAsString() const;
+  String GetColorSpaceAsString() const;
+  const char* GetPixelFormatAsString() const;
 
-  SkColorInfo GetSkColorInfo() const;
+  CanvasResourceParams GetAsResourceParams() const;
 
   // The pixel format to use for allocating SkSurfaces.
   SkColorType GetSkColorType() const;
@@ -66,7 +84,8 @@ class PLATFORM_EXPORT CanvasColorParams {
   uint8_t BytesPerPixel() const;
 
  private:
-  PredefinedColorSpace color_space_ = PredefinedColorSpace::kSRGB;
+
+  CanvasColorSpace color_space_ = CanvasColorSpace::kSRGB;
   CanvasPixelFormat pixel_format_ = CanvasPixelFormat::kUint8;
   OpacityMode opacity_mode_ = kNonOpaque;
 };

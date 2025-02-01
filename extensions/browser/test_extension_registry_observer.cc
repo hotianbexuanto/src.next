@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,16 +6,14 @@
 
 #include <memory>
 
+#include "base/macros.h"
 #include "base/run_loop.h"
-#include "extensions/common/extension_id.h"
 
 namespace extensions {
 
 class TestExtensionRegistryObserver::Waiter {
  public:
-  Waiter() = default;
-  Waiter(const Waiter&) = delete;
-  Waiter& operator=(const Waiter&) = delete;
+  Waiter() : observed_(false), extension_(nullptr) {}
 
   scoped_refptr<const Extension> Wait() {
     if (!observed_)
@@ -30,9 +28,11 @@ class TestExtensionRegistryObserver::Waiter {
   }
 
  private:
-  bool observed_ = false;
-  base::RunLoop run_loop_{base::RunLoop::Type::kNestableTasksAllowed};
+  bool observed_;
+  base::RunLoop run_loop_;
   scoped_refptr<const Extension> extension_;
+
+  DISALLOW_COPY_AND_ASSIGN(Waiter);
 };
 
 TestExtensionRegistryObserver::TestExtensionRegistryObserver(
@@ -42,7 +42,7 @@ TestExtensionRegistryObserver::TestExtensionRegistryObserver(
 
 TestExtensionRegistryObserver::TestExtensionRegistryObserver(
     ExtensionRegistry* registry,
-    const ExtensionId& extension_id)
+    const std::string& extension_id)
     : will_be_installed_waiter_(std::make_unique<Waiter>()),
       installed_waiter_(std::make_unique<Waiter>()),
       uninstalled_waiter_(std::make_unique<Waiter>()),

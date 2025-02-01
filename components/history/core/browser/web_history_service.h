@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,19 +9,18 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "base/functional/callback_forward.h"
-#include "base/memory/raw_ptr.h"
+#include "base/callback_forward.h"
+#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
-#include "base/types/optional_ref.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class Value;
@@ -85,8 +84,7 @@ class WebHistoryService : public KeyedService {
   // TODO(dubroy): Extract the dictionary Value into a structured results
   // object.
   using QueryWebHistoryCallback =
-      base::OnceCallback<void(Request*,
-                              base::optional_ref<const base::Value::Dict>)>;
+      base::OnceCallback<void(Request*, const base::Value*)>;
 
   using ExpireWebHistoryCallback = base::OnceCallback<void(bool success)>;
 
@@ -103,10 +101,6 @@ class WebHistoryService : public KeyedService {
   WebHistoryService(
       signin::IdentityManager* identity_manager,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory);
-
-  WebHistoryService(const WebHistoryService&) = delete;
-  WebHistoryService& operator=(const WebHistoryService&) = delete;
-
   ~WebHistoryService() override;
 
   void AddObserver(WebHistoryServiceObserver* observer);
@@ -178,10 +172,10 @@ class WebHistoryService : public KeyedService {
                                  const net::PartialNetworkTrafficAnnotationTag&
                                      partial_traffic_annotation);
 
-  // Extracts a JSON-encoded HTTP response into a base::Value::Dict.
+  // Extracts a JSON-encoded HTTP response into a dictionary Value.
   // If `request`'s HTTP response code indicates failure, or if the response
   // body is not JSON, nullopt is returned.
-  static std::optional<base::Value::Dict> ReadResponse(Request* request);
+  static absl::optional<base::Value> ReadResponse(Request* request);
 
   // Called by `request` when a web history query has completed. Unpacks the
   // response and calls `callback`, which is the original callback that was
@@ -228,7 +222,7 @@ class WebHistoryService : public KeyedService {
 
   // Stores pointer to IdentityManager instance. It must outlive the
   // WebHistoryService and can be null during tests.
-  raw_ptr<signin::IdentityManager> identity_manager_;
+  signin::IdentityManager* identity_manager_;
 
   // Request context getter to use.
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
@@ -259,6 +253,8 @@ class WebHistoryService : public KeyedService {
   base::ObserverList<WebHistoryServiceObserver, true>::Unchecked observer_list_;
 
   base::WeakPtrFactory<WebHistoryService> weak_ptr_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(WebHistoryService);
 };
 
 }  // namespace history

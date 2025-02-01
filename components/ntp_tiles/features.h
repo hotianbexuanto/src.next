@@ -1,11 +1,13 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef COMPONENTS_NTP_TILES_FEATURES_H_
 #define COMPONENTS_NTP_TILES_FEATURES_H_
 
-#include "base/feature_list.h"
+namespace base {
+struct Feature;
+}  // namespace base
 
 namespace ntp_tiles {
 
@@ -15,14 +17,14 @@ extern const char kPopularSitesFieldTrialName[];
 // This feature is enabled by default. Otherwise, users who need it would not
 // get the right configuration timely enough. The configuration affects only
 // Android or iOS users.
-BASE_DECLARE_FEATURE(kPopularSitesBakedInContentFeature);
+extern const base::Feature kPopularSitesBakedInContentFeature;
 
 // Feature to allow the new Google favicon server for fetching favicons for Most
 // Likely tiles on the New Tab Page.
-BASE_DECLARE_FEATURE(kNtpMostLikelyFaviconsFromServerFeature);
+extern const base::Feature kNtpMostLikelyFaviconsFromServerFeature;
 
 // If this feature is enabled, we enable popular sites in the suggestions UI.
-BASE_DECLARE_FEATURE(kUsePopularSitesSuggestions);
+extern const base::Feature kUsePopularSitesSuggestions;
 
 }  // namespace ntp_tiles
 

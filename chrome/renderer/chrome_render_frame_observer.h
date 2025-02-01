@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "build/build_config.h"
 #include "chrome/common/chrome_render_frame.mojom.h"
 #include "components/safe_browsing/buildflags.h"
@@ -17,8 +17,6 @@
 #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
 #include "services/service_manager/public/cpp/binder_registry.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
-
-class SkBitmap;
 
 namespace gfx {
 class Size;
@@ -30,7 +28,6 @@ class PageTextAgent;
 
 namespace safe_browsing {
 class PhishingClassifierDelegate;
-class PhishingImageEmbedderDelegate;
 }
 
 namespace translate {
@@ -48,11 +45,6 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
  public:
   ChromeRenderFrameObserver(content::RenderFrame* render_frame,
                             web_cache::WebCacheImpl* web_cache_impl);
-
-  ChromeRenderFrameObserver(const ChromeRenderFrameObserver&) = delete;
-  ChromeRenderFrameObserver& operator=(const ChromeRenderFrameObserver&) =
-      delete;
-
   ~ChromeRenderFrameObserver() override;
 
   service_manager::BinderRegistry* registry() { return &registry_; }
@@ -60,11 +52,10 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
     return &associated_interfaces_;
   }
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
   // This is called on the main thread for subresources or worker threads for
   // dedicated workers.
-  static std::string GetCCTClientHeader(
-      const blink::LocalFrameToken& frame_token);
+  static std::string GetCCTClientHeader(int render_frame_id);
 #endif
 
  private:
@@ -79,14 +70,13 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
       mojo::ScopedInterfaceEndpointHandle* handle) override;
   void ReadyToCommitNavigation(
       blink::WebDocumentLoader* document_loader) override;
-  void DidSetPageLifecycleState(bool restoring_from_bfcache) override;
   void DidFinishLoad() override;
   void DidCreateNewDocument() override;
   void DidCommitProvisionalLoad(ui::PageTransition transition) override;
   void DidClearWindowObject() override;
   void DidMeaningfulLayout(blink::WebMeaningfulLayout layout_type) override;
   void OnDestruct() override;
-  void WillDetach(blink::DetachReason detach_reason) override;
+  void DraggableRegionsChanged() override;
 
   // chrome::mojom::ChromeRenderFrame:
   void SetWindowFeatures(
@@ -96,24 +86,13 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
       int32_t thumbnail_min_area_pixels,
       const gfx::Size& thumbnail_max_size_pixels,
       chrome::mojom::ImageFormat image_format,
-      int32_t quality,
       RequestImageForContextNodeCallback callback) override;
-  void RequestBitmapForContextNode(
-      RequestBitmapForContextNodeCallback callback) override;
-  void RequestBitmapForContextNodeWithBoundsHint(
-      RequestBitmapForContextNodeWithBoundsHintCallback callback) override;
-  void RequestBoundsHintForAllImages(
-      RequestBoundsHintForAllImagesCallback callback) override;
-  void FindImageElements(blink::WebElement element,
-                         std::vector<blink::WebElement>& images);
   void RequestReloadImageForContextNode() override;
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
   void SetCCTClientHeader(const std::string& header) override;
 #endif
   void GetMediaFeedURL(GetMediaFeedURLCallback callback) override;
   void LoadBlockedPlugins(const std::string& identifier) override;
-  void SetSupportsDraggableRegions(bool supports_draggable_regions) override;
-  void SetShouldDeferMediaLoad(bool should_defer) override;
 
   // Initialize a |phishing_classifier_delegate_|.
   void SetClientSidePhishingDetection();
@@ -149,24 +128,17 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
   static bool NeedsEncodeImage(const std::string& image_extension,
                                chrome::mojom::ImageFormat image_format);
 
-  // Check if the image is an animated Webp image by looking for animation
-  // feature flag
-  static bool IsAnimatedWebp(const std::vector<uint8_t>& image_data);
-
   // Have the same lifetime as us.
-  raw_ptr<translate::TranslateAgent> translate_agent_;
-  raw_ptr<optimization_guide::PageTextAgent> page_text_agent_;
+  translate::TranslateAgent* translate_agent_;
+  optimization_guide::PageTextAgent* page_text_agent_;
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
-  raw_ptr<safe_browsing::PhishingClassifierDelegate> phishing_classifier_ =
-      nullptr;
-  raw_ptr<safe_browsing::PhishingImageEmbedderDelegate>
-      phishing_image_embedder_ = nullptr;
+  safe_browsing::PhishingClassifierDelegate* phishing_classifier_ = nullptr;
 #endif
 
   // Owned by ChromeContentRendererClient and outlive us.
-  raw_ptr<web_cache::WebCacheImpl> web_cache_impl_;
+  web_cache::WebCacheImpl* web_cache_impl_;
 
-#if !BUILDFLAG(IS_ANDROID)
+#if !defined(OS_ANDROID)
   // Save the JavaScript to preload if ExecuteWebUIJavaScript is invoked.
   std::vector<std::u16string> webui_javascript_;
 #endif
@@ -175,6 +147,8 @@ class ChromeRenderFrameObserver : public content::RenderFrameObserver,
 
   service_manager::BinderRegistry registry_;
   blink::AssociatedInterfaceRegistry associated_interfaces_;
+
+  DISALLOW_COPY_AND_ASSIGN(ChromeRenderFrameObserver);
 };
 
 #endif  // CHROME_RENDERER_CHROME_RENDER_FRAME_OBSERVER_H_

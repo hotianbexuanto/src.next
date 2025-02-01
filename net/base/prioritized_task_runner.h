@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright (c) 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,18 +6,16 @@
 #define NET_BASE_PRIORITIZED_TASK_RUNNER_H_
 
 #include <stdint.h>
-
 #include <utility>
 #include <vector>
 
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
+#include "base/bind.h"
+#include "base/callback.h"
 #include "base/location.h"
 #include "base/memory/ref_counted.h"
+#include "base/post_task_and_reply_with_result_internal.h"
 #include "base/synchronization/lock.h"
-#include "base/task/post_task_and_reply_with_result_internal.h"
-#include "base/task/task_traits.h"
-#include "base/thread_annotations.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "net/base/net_export.h"
 
 namespace base {
@@ -50,7 +48,7 @@ class NET_EXPORT_PRIVATE PrioritizedTaskRunner
     : public base::RefCountedThreadSafe<PrioritizedTaskRunner> {
  public:
   enum class ReplyRunnerType { kStandard, kPrioritized };
-  explicit PrioritizedTaskRunner(const base::TaskTraits& task_traits);
+  explicit PrioritizedTaskRunner(scoped_refptr<base::TaskRunner> task_runner);
   PrioritizedTaskRunner(const PrioritizedTaskRunner&) = delete;
   PrioritizedTaskRunner& operator=(const PrioritizedTaskRunner&) = delete;
 
@@ -64,8 +62,8 @@ class NET_EXPORT_PRIVATE PrioritizedTaskRunner
                         base::OnceClosure reply,
                         uint32_t priority);
 
-  // Similar to TaskRunner::PostTaskAndReplyWithResult, except that the task
-  // runs at |priority|. See PostTaskAndReply for a description of |priority|.
+  // Similar to base::PostTaskAndReplyWithResult, except that the task runs at
+  // |priority|. See PostTaskAndReply for a description of |priority|.
   template <typename TaskReturnType, typename ReplyArgType>
   void PostTaskAndReplyWithResult(const base::Location& from_here,
                                   base::OnceCallback<TaskReturnType()> task,
@@ -74,16 +72,14 @@ class NET_EXPORT_PRIVATE PrioritizedTaskRunner
     TaskReturnType* result = new TaskReturnType();
     return PostTaskAndReply(
         from_here,
-        base::BindOnce(&internal::ReturnAsParamAdapter<TaskReturnType>,
-                       std::move(task), result),
-        base::BindOnce(&internal::ReplyAdapter<TaskReturnType, ReplyArgType>,
-                       std::move(reply), base::Owned(result)),
+        BindOnce(&internal::ReturnAsParamAdapter<TaskReturnType>,
+                 std::move(task), result),
+        BindOnce(&internal::ReplyAdapter<TaskReturnType, ReplyArgType>,
+                 std::move(reply), base::Owned(result)),
         priority);
   }
 
-  void SetTaskRunnerForTesting(scoped_refptr<base::TaskRunner> task_runner) {
-    task_runner_for_testing_ = std::move(task_runner);
-  }
+  base::TaskRunner* task_runner() { return task_runner_.get(); }
 
  private:
   friend class base::RefCountedThreadSafe<PrioritizedTaskRunner>;
@@ -109,28 +105,12 @@ class NET_EXPORT_PRIVATE PrioritizedTaskRunner
     uint32_t task_count = 0;
   };
 
-  struct JobComparer;
-
-  // A heap of Jobs. Thread-safe.
-  class JobPriorityQueue {
-   public:
-    JobPriorityQueue();
-    ~JobPriorityQueue();
-
-    JobPriorityQueue(const JobPriorityQueue&) = delete;
-    JobPriorityQueue& operator=(const JobPriorityQueue&) = delete;
-
-    // Add a Job to the heap.
-    void Push(Job job);
-
-    // Return the current highest-priority job and remove it from the heap.
-    Job Pop();
-
-   private:
-    // This cannot be a std::priority_queue because there is no way to extract
-    // a move-only type from a std::priority_queue.
-    std::vector<Job> heap_ GUARDED_BY(lock_);
-    base::Lock lock_;
+  struct JobComparer {
+    bool operator()(const Job& left, const Job& right) {
+      if (left.priority == right.priority)
+        return left.task_count > right.task_count;
+      return left.priority > right.priority;
+    }
   };
 
   void RunTaskAndPostReply();
@@ -138,12 +118,16 @@ class NET_EXPORT_PRIVATE PrioritizedTaskRunner
 
   ~PrioritizedTaskRunner();
 
+  // TODO(jkarlin): Replace the heaps with std::priority_queue once it
+  // supports move-only types.
   // Accessed on both task_runner_ and the reply task runner.
-  JobPriorityQueue task_jobs_;
-  JobPriorityQueue reply_jobs_;
+  std::vector<Job> task_job_heap_;
+  base::Lock task_job_heap_lock_;
+  std::vector<Job> reply_job_heap_;
+  base::Lock reply_job_heap_lock_;
 
-  const base::TaskTraits task_traits_;
-  scoped_refptr<base::TaskRunner> task_runner_for_testing_;
+  // Accessed on the reply task runner.
+  scoped_refptr<base::TaskRunner> task_runner_;
 
   // Used to preserve order of jobs of equal priority. This can overflow and
   // cause periodic priority inversion. This should be infrequent enough to be

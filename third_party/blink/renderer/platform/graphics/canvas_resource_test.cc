@@ -1,11 +1,13 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 
 #include "base/run_loop.h"
+#include "components/viz/common/resources/release_callback.h"
 #include "components/viz/common/resources/transferable_resource.h"
+#include "components/viz/test/test_gpu_memory_buffer_manager.h"
 #include "gpu/GLES2/gl2extchromium.h"
 #include "gpu/command_buffer/common/gpu_memory_buffer_support.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -15,37 +17,27 @@
 #include "third_party/blink/renderer/platform/graphics/test/fake_gles2_interface.h"
 #include "third_party/blink/renderer/platform/graphics/test/fake_web_graphics_context_3d_provider.h"
 #include "third_party/blink/renderer/platform/graphics/test/gpu_memory_buffer_test_platform.h"
-#include "third_party/blink/renderer/platform/graphics/test/test_webgraphics_shared_image_interface_provider.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/skia/include/core/SkSurface.h"
 
 namespace blink {
 
 TEST(CanvasResourceTest, PrepareTransferableResource_SharedBitmap) {
-  test::TaskEnvironment task_environment;
-  std::unique_ptr<WebGraphicsSharedImageInterfaceProvider>
-      test_web_shared_image_interface_provider =
-          TestWebGraphicsSharedImageInterfaceProvider::Create();
-  auto shared_image_interface_provider =
-      test_web_shared_image_interface_provider->GetWeakPtr();
-
   scoped_refptr<CanvasResource> canvas_resource =
-      CanvasResourceSharedBitmap::Create(SkImageInfo::MakeN32Premul(10, 10),
-                                         /*CanvasResourceProvider=*/nullptr,
-                                         shared_image_interface_provider,
-                                         cc::PaintFlags::FilterQuality::kLow);
+      CanvasResourceSharedBitmap::Create(IntSize(10, 10),
+                                         CanvasResourceParams(),
+                                         nullptr,  // CanvasResourceProvider
+                                         kLow_SkFilterQuality);
   EXPECT_TRUE(!!canvas_resource);
   viz::TransferableResource resource;
-  CanvasResource::ReleaseCallback release_callback;
+  viz::ReleaseCallback release_callback;
   bool success = canvas_resource->PrepareTransferableResource(
-      &resource, &release_callback, /*needs_verified_synctoken=*/false);
+      &resource, &release_callback, kUnverifiedSyncToken);
 
   EXPECT_TRUE(success);
   EXPECT_TRUE(resource.is_software);
 
-  std::move(release_callback)
-      .Run(std::move(canvas_resource), gpu::SyncToken(), false);
+  std::move(release_callback).Run(gpu::SyncToken(), false);
 }
 
 }  // namespace blink

@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,9 @@
 
 #include <memory>
 
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/extensions/extension_prefs_unittest.h"
+#include "chrome/browser/web_applications/test/test_web_app_registry_controller.h"
+#include "chrome/browser/web_applications/web_app.h"
 #include "components/crx_file/id_util.h"
 #include "components/sync/model/string_ordinal.h"
 #include "extensions/common/constants.h"
@@ -158,19 +159,22 @@ class ChromeAppSortingInitialize : public PrefsPrepopulatedTestBase {
 
     // Setup the deprecated preferences.
     prefs()->UpdateExtensionPref(extension1()->id(),
-                                 kPrefAppLaunchIndexDeprecated, base::Value(0));
+                                 kPrefAppLaunchIndexDeprecated,
+                                 std::make_unique<base::Value>(0));
     prefs()->UpdateExtensionPref(extension1()->id(), kPrefPageIndexDeprecated,
-                                 base::Value(0));
+                                 std::make_unique<base::Value>(0));
 
     prefs()->UpdateExtensionPref(extension2()->id(),
-                                 kPrefAppLaunchIndexDeprecated, base::Value(1));
+                                 kPrefAppLaunchIndexDeprecated,
+                                 std::make_unique<base::Value>(1));
     prefs()->UpdateExtensionPref(extension2()->id(), kPrefPageIndexDeprecated,
-                                 base::Value(0));
+                                 std::make_unique<base::Value>(0));
 
     prefs()->UpdateExtensionPref(extension3()->id(),
-                                 kPrefAppLaunchIndexDeprecated, base::Value(0));
+                                 kPrefAppLaunchIndexDeprecated,
+                                 std::make_unique<base::Value>(0));
     prefs()->UpdateExtensionPref(extension3()->id(), kPrefPageIndexDeprecated,
-                                 base::Value(1));
+                                 std::make_unique<base::Value>(1));
 
     // We insert the ids in reverse order so that we have to deal with the
     // element on the 2nd page before the 1st page is seen.
@@ -213,18 +217,21 @@ class ChromeAppSortingInitializeWithNoApps : public PrefsPrepopulatedTestBase {
     // Make sure that the web store has valid ordinals.
     syncer::StringOrdinal initial_ordinal =
         syncer::StringOrdinal::CreateInitialOrdinal();
-    app_sorting()->SetPageOrdinal(kWebStoreAppId, initial_ordinal);
-    app_sorting()->SetAppLaunchOrdinal(kWebStoreAppId, initial_ordinal);
+    app_sorting()->SetPageOrdinal(extensions::kWebStoreAppId,
+                                  initial_ordinal);
+    app_sorting()->SetAppLaunchOrdinal(extensions::kWebStoreAppId,
+                                       initial_ordinal);
   }
   void Verify() override {
-    syncer::StringOrdinal page = app_sorting()->GetPageOrdinal(kWebStoreAppId);
+    syncer::StringOrdinal page =
+        app_sorting()->GetPageOrdinal(extensions::kWebStoreAppId);
     EXPECT_TRUE(page.IsValid());
 
     auto page_it = app_sorting()->ntp_ordinal_map_.find(page);
     EXPECT_TRUE(page_it != app_sorting()->ntp_ordinal_map_.end());
 
     syncer::StringOrdinal app_launch =
-        app_sorting()->GetPageOrdinal(kWebStoreAppId);
+        app_sorting()->GetPageOrdinal(extensions::kWebStoreAppId);
     EXPECT_TRUE(app_launch.IsValid());
 
     auto app_launch_it = page_it->second.find(app_launch);
@@ -252,9 +259,10 @@ class ChromeAppSortingMigrateAppIndexInvalid
 
     // Setup the deprecated preference.
     prefs()->UpdateExtensionPref(extension1()->id(),
-                                 kPrefAppLaunchIndexDeprecated, base::Value(0));
+                                 kPrefAppLaunchIndexDeprecated,
+                                 std::make_unique<base::Value>(0));
     prefs()->UpdateExtensionPref(extension1()->id(), kPrefPageIndexDeprecated,
-                                 base::Value(-1));
+                                 std::make_unique<base::Value>(-1));
   }
   void Verify() override {
     // Make sure that the invalid page_index wasn't converted over.
@@ -575,10 +583,11 @@ TEST_F(ChromeAppSortingPageOrdinalMapping,
 class ChromeAppSortingPreinstalledAppsBase : public PrefsPrepopulatedTestBase {
  public:
   ChromeAppSortingPreinstalledAppsBase() {
-    base::Value::Dict simple_dict;
-    simple_dict.Set(keys::kVersion, "1.0.0.0");
-    simple_dict.Set(keys::kName, "unused");
-    simple_dict.SetByDottedPath(keys::kLaunchLocalPath, "fake.html");
+    base::DictionaryValue simple_dict;
+    simple_dict.SetString(keys::kVersion, "1.0.0.0");
+    simple_dict.SetString(keys::kName, "unused");
+    simple_dict.SetString(keys::kApp, "true");
+    simple_dict.SetString(keys::kLaunchLocalPath, "fake.html");
 
     std::string error;
     app1_scoped_ = Extension::Create(prefs_.temp_dir().AppendASCII("app1_"),
@@ -604,8 +613,8 @@ class ChromeAppSortingPreinstalledAppsBase : public PrefsPrepopulatedTestBase {
 
  protected:
   // Weak references, for convenience.
-  raw_ptr<Extension, DanglingUntriaged> app1_;
-  raw_ptr<Extension, DanglingUntriaged> app2_;
+  Extension* app1_;
+  Extension* app2_;
 
  private:
   scoped_refptr<Extension> app1_scoped_;
@@ -743,10 +752,11 @@ class ChromeAppSortingDefaultOrdinalsBase : public ExtensionPrefsTest {
 
  protected:
   scoped_refptr<Extension> CreateApp(const std::string& name) {
-    base::Value::Dict simple_dict;
-    simple_dict.Set(keys::kVersion, "1.0.0.0");
-    simple_dict.Set(keys::kName, name);
-    simple_dict.SetByDottedPath(keys::kLaunchLocalPath, "fake.html");
+    base::DictionaryValue simple_dict;
+    simple_dict.SetString(keys::kVersion, "1.0.0.0");
+    simple_dict.SetString(keys::kName, name);
+    simple_dict.SetString(keys::kApp, "true");
+    simple_dict.SetString(keys::kLaunchLocalPath, "fake.html");
 
     std::string errors;
     scoped_refptr<Extension> app = Extension::Create(
@@ -929,5 +939,181 @@ class ChromeAppSortingSetExtensionVisible : public ExtensionPrefsTest {
 TEST_F(ChromeAppSortingSetExtensionVisible,
        ChromeAppSortingSetExtensionVisible) {
 }
+
+class ChromeAppSortingMigratedBookmarkApp : public ExtensionPrefsTest {
+ public:
+  ChromeAppSortingMigratedBookmarkApp() {}
+  ~ChromeAppSortingMigratedBookmarkApp() override {}
+
+  void Initialize() override {
+    base::DictionaryValue simple_dict;
+    std::string error;
+
+    simple_dict.SetString(manifest_keys::kVersion, "1.0.0.0");
+    simple_dict.SetInteger(manifest_keys::kManifestVersion, 2);
+
+    // Say that ext1_ is a from_bookmark app that has been migrated to webapp.
+    // It should not be added to page ordinal map, since bookmark apps migrated
+    // to webapps are no longer used, but are still present. The web app added
+    // below will be used instead.
+    simple_dict.SetString(manifest_keys::kName, "ext1_");
+    extension1_ = prefs_.AddExtensionWithManifestAndFlags(
+        simple_dict, ManifestLocation::kExternalPref, Extension::FROM_BOOKMARK);
+
+    simple_dict.SetString(manifest_keys::kName, "ext2_");
+    extension2_ = prefs_.AddExtensionWithManifestAndFlags(
+        simple_dict, ManifestLocation::kExternalPref, Extension::NO_FLAGS);
+
+    simple_dict.SetString(manifest_keys::kName, "ext3_");
+    extension3_ = prefs_.AddExtensionWithManifestAndFlags(
+        simple_dict, ManifestLocation::kExternalPref, Extension::NO_FLAGS);
+
+    repeated_ordinal_ = syncer::StringOrdinal::CreateInitialOrdinal();
+    second_ordinal_ = repeated_ordinal_.CreateAfter();
+    third_ordinal_ = second_ordinal_.CreateAfter();
+
+    // A preference determining the order of which the apps appear on the NTP.
+    const char kPrefAppLaunchOrdinal[] = "app_launcher_ordinal";
+    // A preference determining the page on which an app appears in the NTP.
+    const char kPrefPageOrdinal[] = "page_ordinal";
+
+    // Set the pref values for which ordinals the extensions should use. This
+    // intentionally does not use ChromeAppSorting::SetAppLaunchOrdinal and
+    // SetPageOrdinal since those also insert entries into ntp_ordinal_map_.
+
+    // Old ordinals still exist for the ext1_ bookmark app that was migrated to
+    // webapp. These would create a collision with ext2, but should be ignored.
+    prefs()->UpdateExtensionPref(
+        extension1_->id(), kPrefAppLaunchOrdinal,
+        std::make_unique<base::Value>(repeated_ordinal_.ToInternalValue()));
+    prefs()->UpdateExtensionPref(
+        extension1_->id(), kPrefPageOrdinal,
+        std::make_unique<base::Value>(repeated_ordinal_.ToInternalValue()));
+
+    prefs()->UpdateExtensionPref(
+        extension2_->id(), kPrefAppLaunchOrdinal,
+        std::make_unique<base::Value>(repeated_ordinal_.ToInternalValue()));
+    prefs()->UpdateExtensionPref(
+        extension2_->id(), kPrefPageOrdinal,
+        std::make_unique<base::Value>(repeated_ordinal_.ToInternalValue()));
+
+    prefs()->UpdateExtensionPref(
+        extension3_->id(), kPrefAppLaunchOrdinal,
+        std::make_unique<base::Value>(third_ordinal_.ToInternalValue()));
+    prefs()->UpdateExtensionPref(
+        extension3_->id(), kPrefPageOrdinal,
+        std::make_unique<base::Value>(third_ordinal_.ToInternalValue()));
+
+    // Double check that the prefs set above are read correctly by
+    // ChromeAppSorting.
+    EXPECT_TRUE(repeated_ordinal_.Equals(
+        app_sorting()->GetAppLaunchOrdinal(extension1_->id())));
+    EXPECT_TRUE(repeated_ordinal_.Equals(
+        app_sorting()->GetPageOrdinal(extension1_->id())));
+
+    EXPECT_TRUE(repeated_ordinal_.Equals(
+        app_sorting()->GetAppLaunchOrdinal(extension2_->id())));
+    EXPECT_TRUE(repeated_ordinal_.Equals(
+        app_sorting()->GetPageOrdinal(extension2_->id())));
+
+    EXPECT_TRUE(third_ordinal_.Equals(
+        app_sorting()->GetAppLaunchOrdinal(extension3_->id())));
+    EXPECT_TRUE(third_ordinal_.Equals(
+        app_sorting()->GetPageOrdinal(extension3_->id())));
+
+    // Recreate ExtensionPrefs, which recreates app_sorting, which should now
+    // find the above created extensions and insert them into ntp_ordinal_map_.
+    prefs_.RecreateExtensionPrefs();
+
+    // Only two items should be in ordinal map, since ext1_ was ignored.
+    EXPECT_EQ(2U, CountElementsInOrdinalMap());
+
+    // Webapps are added to ChromeAppSorting asynchronously sometime after it
+    // is created. Simulate that now.
+    test_registry_controller_ =
+        std::make_unique<web_app::TestWebAppRegistryController>();
+    test_registry_controller_->SetUp(prefs_.profile());
+    test_registry_controller_->Init();
+
+    auto web_app = std::make_unique<web_app::WebApp>(extension1_->id());
+    web_app->SetName("name1");
+    web_app->SetStartUrl(GURL("https://example.com/path"));
+    web_app->SetDisplayMode(web_app::DisplayMode::kStandalone);
+    web_app->SetUserDisplayMode(web_app::DisplayMode::kStandalone);
+    web_app->AddSource(web_app::Source::kSync);
+    web_app->SetUserLaunchOrdinal(second_ordinal_);
+    web_app->SetUserPageOrdinal(repeated_ordinal_);
+    test_registry_controller_->RegisterApp(std::move(web_app));
+
+    // Emulate app_sorting()->InitializePageOrdinalMapFromWebApps() without
+    // needing a WebAppProvider:
+    app_sorting()->SetWebAppRegistrarForTesting(
+        &test_registry_controller_->registrar());
+    app_sorting()->SetWebAppSyncBridgeForTesting(
+        &test_registry_controller_->sync_bridge());
+    app_sorting()->InitializePageOrdinalMap(
+        test_registry_controller_->registrar().GetAppIds());
+
+    // Now that the bookmark app that was migrated to a webapp was added, there
+    // should be three items in ordinal map.
+    EXPECT_EQ(3U, CountElementsInOrdinalMap());
+
+    // Now call FixNTPOrdinalCollisions and see what happens.
+    app_sorting()->FixNTPOrdinalCollisions();
+
+    // Verification is done here rather than in Verify() since
+    // ExtensionPrefsTest verifies twice, once after recreating the
+    // ExtensionPrefs, which won't include the web_app we registered here.
+
+    // The ordinals should be unchanged since old bookmark app ordinals were
+    // ignored, there were not actually any collisions.
+    EXPECT_EQ(3U, CountElementsInOrdinalMap());
+    EXPECT_TRUE(app_sorting()
+                    ->GetAppLaunchOrdinal(extension1_->id())
+                    .Equals(second_ordinal_));
+    EXPECT_TRUE(app_sorting()
+                    ->GetPageOrdinal(extension1_->id())
+                    .Equals(repeated_ordinal_));
+    EXPECT_TRUE(app_sorting()
+                    ->GetAppLaunchOrdinal(extension2_->id())
+                    .Equals(repeated_ordinal_));
+    EXPECT_TRUE(app_sorting()
+                    ->GetPageOrdinal(extension2_->id())
+                    .Equals(repeated_ordinal_));
+    EXPECT_TRUE(app_sorting()
+                    ->GetAppLaunchOrdinal(extension3_->id())
+                    .Equals(third_ordinal_));
+    EXPECT_TRUE(app_sorting()
+                    ->GetPageOrdinal(extension3_->id())
+                    .Equals(third_ordinal_));
+  }
+
+  void Verify() override {
+    // Verification is done at the end of Initialize(), see comment there for
+    // details.
+  }
+
+ private:
+  size_t CountElementsInOrdinalMap() {
+    size_t count = 0;
+    for (const auto& page : app_sorting()->ntp_ordinal_map_) {
+      count += page.second.size();
+    }
+    return count;
+  }
+
+  syncer::StringOrdinal repeated_ordinal_;
+  syncer::StringOrdinal second_ordinal_;
+  syncer::StringOrdinal third_ordinal_;
+
+  scoped_refptr<Extension> extension1_;
+  scoped_refptr<Extension> extension2_;
+  scoped_refptr<Extension> extension3_;
+
+  std::unique_ptr<web_app::TestWebAppRegistryController>
+      test_registry_controller_;
+};
+TEST_F(ChromeAppSortingMigratedBookmarkApp,
+       ChromeAppSortingMigratedBookmarkApp) {}
 
 }  // namespace extensions

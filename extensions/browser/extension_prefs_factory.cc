@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -33,12 +33,8 @@ ExtensionPrefsFactory* ExtensionPrefsFactory::GetInstance() {
 void ExtensionPrefsFactory::SetInstanceForTesting(
     content::BrowserContext* context,
     std::unique_ptr<ExtensionPrefs> prefs) {
-  SetTestingFactory(
-      context,
-      base::BindOnce([](std::unique_ptr<ExtensionPrefs> prefs,
-                        content::BrowserContext* context)
-                         -> std::unique_ptr<KeyedService> { return prefs; },
-                     std::move(prefs)));
+  Disassociate(context);
+  Associate(context, std::move(prefs));
 }
 
 ExtensionPrefsFactory::ExtensionPrefsFactory()
@@ -50,8 +46,7 @@ ExtensionPrefsFactory::ExtensionPrefsFactory()
 ExtensionPrefsFactory::~ExtensionPrefsFactory() {
 }
 
-std::unique_ptr<KeyedService>
-ExtensionPrefsFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ExtensionPrefsFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   ExtensionsBrowserClient* client = ExtensionsBrowserClient::Get();
   std::vector<EarlyExtensionPrefsObserver*> prefs_observers;
@@ -67,8 +62,7 @@ ExtensionPrefsFactory::BuildServiceInstanceForBrowserContext(
 
 content::BrowserContext* ExtensionPrefsFactory::GetBrowserContextToUse(
     content::BrowserContext* context) const {
-  return ExtensionsBrowserClient::Get()->GetContextRedirectedToOriginal(
-      context);
+  return ExtensionsBrowserClient::Get()->GetOriginalContext(context);
 }
 
 }  // namespace extensions

@@ -1,21 +1,17 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/icon_loader.h"
 
 #include <windows.h>
-
 #include <shellapi.h>
 
-#include "base/files/file.h"
+#include "base/bind.h"
+#include "base/callback.h"
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
 #include "base/strings/string_util.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/task/thread_pool.h"
-#include "base/threading/scoped_blocking_call.h"
 #include "base/threading/thread.h"
 #include "chrome/browser/win/icon_reader_service.h"
 #include "chrome/services/util_win/public/mojom/util_read_icon.mojom.h"
@@ -32,7 +28,6 @@ class IconLoaderHelper {
  public:
   static void ExecuteLoadIcon(
       base::FilePath filename,
-      base::File file,
       chrome::mojom::IconSize size,
       float scale,
       gfx::Image default_icon,
@@ -44,13 +39,11 @@ class IconLoaderHelper {
                    float scale,
                    gfx::Image default_icon);
 
-  IconLoaderHelper(const IconLoaderHelper&) = delete;
-  IconLoaderHelper& operator=(const IconLoaderHelper&) = delete;
-
  private:
-  void StartReadIconRequest(base::File file);
+  void StartReadIconRequest();
   void OnConnectionError();
-  void OnReadIconExecuted(const gfx::ImageSkia& icon);
+  void OnReadIconExecuted(const gfx::ImageSkia& icon,
+                          const std::u16string& group);
 
   using IconLoaderHelperCallback =
       base::OnceCallback<void(gfx::Image image,
@@ -69,11 +62,12 @@ class IconLoaderHelper {
   gfx::Image default_icon_;
 
   SEQUENCE_CHECKER(sequence_checker_);
+
+  DISALLOW_COPY_AND_ASSIGN(IconLoaderHelper);
 };
 
 void IconLoaderHelper::ExecuteLoadIcon(
     base::FilePath filename,
-    base::File file,
     chrome::mojom::IconSize size,
     float scale,
     gfx::Image default_icon,
@@ -96,7 +90,7 @@ void IconLoaderHelper::ExecuteLoadIcon(
       std::move(helper), std::move(icon_loaded_callback), target_task_runner);
 
   helper_raw->set_finally(std::move(finally_callback));
-  helper_raw->StartReadIconRequest(std::move(file));
+  helper_raw->StartReadIconRequest();
 }
 
 IconLoaderHelper::IconLoaderHelper(base::FilePath filename,
@@ -112,9 +106,9 @@ IconLoaderHelper::IconLoaderHelper(base::FilePath filename,
       &IconLoaderHelper::OnConnectionError, base::Unretained(this)));
 }
 
-void IconLoaderHelper::StartReadIconRequest(base::File file) {
+void IconLoaderHelper::StartReadIconRequest() {
   remote_read_icon_->ReadIcon(
-      std::move(file), size_, scale_,
+      filename_, size_, scale_,
       base::BindOnce(&IconLoaderHelper::OnReadIconExecuted,
                      base::Unretained(this)));
 }
@@ -127,10 +121,11 @@ void IconLoaderHelper::OnConnectionError() {
   std::move(finally_).Run(std::move(default_icon_), filename_.value());
 }
 
-void IconLoaderHelper::OnReadIconExecuted(const gfx::ImageSkia& icon) {
+void IconLoaderHelper::OnReadIconExecuted(const gfx::ImageSkia& icon,
+                                          const std::u16string& group) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  std::wstring icon_group = filename_.value();
+  std::wstring icon_group = base::AsWString(group);
   if (icon.isNull()) {
     std::move(finally_).Run(std::move(default_icon_), icon_group);
   } else {
@@ -158,12 +153,6 @@ gfx::Image GetIconForFileExtension(const std::wstring& group,
   }
 
   gfx::Image image;
-
-  // Not only is GetFileInfo a blocking call, it's also known to hang
-  // (crbug.com/1249943), add a ScopedBlockingCall to let the scheduler know
-  // when this hangs and to explicitly label this call in tracing.
-  base::ScopedBlockingCall blocking_call(FROM_HERE,
-                                         base::BlockingType::MAY_BLOCK);
 
   SHFILEINFO file_info = {0};
   if (SHGetFileInfo(group.c_str(), FILE_ATTRIBUTE_NORMAL, &file_info,
@@ -249,20 +238,11 @@ void IconLoader::ReadIconInSandbox() {
       NOTREACHED();
   }
 
-  base::File file;
-  file.Initialize(path, base::File::FLAG_READ |
-                            base::File::FLAG_WIN_SHARE_DELETE |
-                            base::File::FLAG_OPEN);
-  if (file.IsValid()) {
-    target_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&IconLoaderHelper::ExecuteLoadIcon, std::move(path),
-                       std::move(file), size, scale_, std::move(default_icon),
-                       target_task_runner_, std::move(callback_)));
-  } else {
-    target_task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback_), std::move(default_icon),
-                                  path.value()));
-  }
+  target_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&IconLoaderHelper::ExecuteLoadIcon, std::move(path), size,
+                     scale_, std::move(default_icon), target_task_runner_,
+                     std::move(callback_)));
+
   delete this;
 }

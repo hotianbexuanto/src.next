@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,7 +11,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "build/build_config.h"
-#include "content/browser/network/network_quality_observer_impl.h"
+#include "content/browser/net/network_quality_observer_impl.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
@@ -42,8 +42,8 @@ void VerifyRtt(base::TimeDelta expected_rtt, int32_t got_rtt_milliseconds) {
   EXPECT_EQ(0, got_rtt_milliseconds % 50)
       << " got_rtt_milliseconds=" << got_rtt_milliseconds;
 
-  if (expected_rtt > base::Milliseconds(3000))
-    expected_rtt = base::Milliseconds(3000);
+  if (expected_rtt > base::TimeDelta::FromMilliseconds(3000))
+    expected_rtt = base::TimeDelta::FromMilliseconds(3000);
 
   // The difference between the actual and the estimate value should be within
   // 10%. Add 50 (bucket size used in Blink) to account for the cases when the
@@ -145,19 +145,23 @@ class NetInfoBrowserTest : public content::ContentBrowserTest {
   }
 
   std::string RunScriptExtractString(const std::string& script) {
-    return EvalJs(shell(), script).ExtractString();
+    return EvalJs(shell(), script, content::EXECUTE_SCRIPT_USE_MANUAL_REPLY)
+        .ExtractString();
   }
 
   bool RunScriptExtractBool(const std::string& script) {
-    return EvalJs(shell(), script).ExtractBool();
+    return EvalJs(shell(), script, content::EXECUTE_SCRIPT_USE_MANUAL_REPLY)
+        .ExtractBool();
   }
 
   double RunScriptExtractDouble(const std::string& script) {
-    return EvalJs(shell(), script).ExtractDouble();
+    return EvalJs(shell(), script, content::EXECUTE_SCRIPT_USE_MANUAL_REPLY)
+        .ExtractDouble();
   }
 
   int RunScriptExtractInt(const std::string& script) {
-    return EvalJs(shell(), script).ExtractInt();
+    return EvalJs(shell(), script, content::EXECUTE_SCRIPT_USE_MANUAL_REPLY)
+        .ExtractInt();
   }
 
  private:
@@ -258,7 +262,7 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest,
   base::HistogramTester histogram_tester;
   NetworkQualityObserverImpl impl(GetNetworkQualityTracker());
 
-  base::TimeDelta http_rtt(base::Milliseconds(1000));
+  base::TimeDelta http_rtt(base::TimeDelta::FromMilliseconds(1000));
   int32_t downstream_throughput_kbps = 300;
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
       http_rtt, downstream_throughput_kbps);
@@ -296,7 +300,7 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest, NetworkQualityChangeNotified) {
   base::HistogramTester histogram_tester;
   NetworkQualityObserverImpl impl(GetNetworkQualityTracker());
 
-  base::TimeDelta http_rtt(base::Milliseconds(1000));
+  base::TimeDelta http_rtt(base::TimeDelta::FromMilliseconds(1000));
   int32_t downstream_throughput_kbps = 300;
 
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
@@ -315,7 +319,7 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest, NetworkQualityChangeNotified) {
                      RunScriptExtractDouble("getDownlink()") * 1000);
 
   // Verify that the network quality change is accessible via Javascript API.
-  http_rtt = base::Seconds(10);
+  http_rtt = base::TimeDelta::FromSeconds(10);
   downstream_throughput_kbps = 3000;
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
       http_rtt, downstream_throughput_kbps);
@@ -332,7 +336,7 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest, NetworkQualityChangeRounded) {
   NetworkQualityObserverImpl impl(GetNetworkQualityTracker());
 
   // Verify that the network quality is rounded properly.
-  base::TimeDelta http_rtt(base::Milliseconds(103));
+  base::TimeDelta http_rtt(base::TimeDelta::FromMilliseconds(103));
   int32_t downstream_throughput_kbps = 8303;
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
       http_rtt, downstream_throughput_kbps);
@@ -344,7 +348,7 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest, NetworkQualityChangeRounded) {
   VerifyDownlinkKbps(downstream_throughput_kbps,
                      RunScriptExtractDouble("getDownlink()") * 1000);
 
-  http_rtt = base::Milliseconds(1103);
+  http_rtt = base::TimeDelta::FromMilliseconds(1103);
   downstream_throughput_kbps = 1307;
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
       http_rtt, downstream_throughput_kbps);
@@ -353,7 +357,7 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest, NetworkQualityChangeRounded) {
   VerifyDownlinkKbps(downstream_throughput_kbps,
                      RunScriptExtractDouble("getDownlink()") * 1000);
 
-  http_rtt = base::Milliseconds(2112);
+  http_rtt = base::TimeDelta::FromMilliseconds(2112);
   downstream_throughput_kbps = 2112;
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
       http_rtt, downstream_throughput_kbps);
@@ -369,7 +373,7 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest, NetworkQualityChangeUpperLimit) {
   base::HistogramTester histogram_tester;
   NetworkQualityObserverImpl impl(GetNetworkQualityTracker());
 
-  base::TimeDelta http_rtt(base::Milliseconds(12003));
+  base::TimeDelta http_rtt(base::TimeDelta::FromMilliseconds(12003));
   int32_t downstream_throughput_kbps = 30300;
 
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
@@ -388,7 +392,7 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest, NetworkQualityRandomized) {
   base::HistogramTester histogram_tester;
   NetworkQualityObserverImpl impl(GetNetworkQualityTracker());
 
-  base::TimeDelta http_rtt(base::Milliseconds(2000));
+  base::TimeDelta http_rtt(base::TimeDelta::FromMilliseconds(2000));
   int32_t downstream_throughput_kbps = 3000;
 
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
@@ -448,7 +452,7 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest, NetworkQualityChangeNotNotified) {
   NetworkQualityObserverImpl impl(GetNetworkQualityTracker());
 
   // Verify that the network quality is rounded properly.
-  base::TimeDelta http_rtt(base::Milliseconds(1123));
+  base::TimeDelta http_rtt(base::TimeDelta::FromMilliseconds(1123));
   int32_t downstream_throughput_kbps = 1303;
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
       http_rtt, downstream_throughput_kbps);
@@ -462,22 +466,24 @@ IN_PROC_BROWSER_TEST_F(NetInfoBrowserTest, NetworkQualityChangeNotNotified) {
 
   // All the 3 metrics change by less than 10%. So, the observers are not
   // notified.
-  http_rtt = base::Milliseconds(1223);
+  http_rtt = base::TimeDelta::FromMilliseconds(1223);
   downstream_throughput_kbps = 1403;
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
       http_rtt, downstream_throughput_kbps);
   base::RunLoop().RunUntilIdle();
-  VerifyRtt(base::Milliseconds(1100), RunScriptExtractInt("getRtt()"));
+  VerifyRtt(base::TimeDelta::FromMilliseconds(1100),
+            RunScriptExtractInt("getRtt()"));
   VerifyDownlinkKbps(1300, RunScriptExtractDouble("getDownlink()") * 1000);
 
   // HTTP RTT has changed by more than 10% from the last notified value of
   // |network_quality_1|. The observers should be notified.
-  http_rtt = base::Milliseconds(2223);
+  http_rtt = base::TimeDelta::FromMilliseconds(2223);
   downstream_throughput_kbps = 1403;
   GetNetworkQualityTracker()->ReportRTTsAndThroughputForTesting(
       http_rtt, downstream_throughput_kbps);
   base::RunLoop().RunUntilIdle();
-  VerifyRtt(base::Milliseconds(2200), RunScriptExtractInt("getRtt()"));
+  VerifyRtt(base::TimeDelta::FromMilliseconds(2200),
+            RunScriptExtractInt("getRtt()"));
   VerifyDownlinkKbps(1400, RunScriptExtractDouble("getDownlink()") * 1000);
 }
 

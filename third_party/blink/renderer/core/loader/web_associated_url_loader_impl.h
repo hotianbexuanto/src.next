@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,7 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_WEB_ASSOCIATED_URL_LOADER_IMPL_H_
 
 #include "base/memory/scoped_refptr.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/single_thread_task_runner.h"
 #include "third_party/blink/public/web/web_associated_url_loader.h"
 #include "third_party/blink/public/web/web_associated_url_loader_options.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -57,7 +57,7 @@ class CORE_EXPORT WebAssociatedURLLoaderImpl final
   WebAssociatedURLLoaderClient* client_;
   WebAssociatedURLLoaderOptions options_;
 
-  // Converts ThreadableLoaderClient method calls into URLLoaderClient method
+  // Converts ThreadableLoaderClient method calls into WebURLLoaderClient method
   // calls.
   Persistent<ClientAdapter> client_adapter_;
   Persistent<ThreadableLoader> loader_;

@@ -28,11 +28,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "third_party/blink/renderer/core/dom/element_data.h"
 
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
@@ -46,8 +41,7 @@ struct SameSizeAsElementData final
     : public GarbageCollected<SameSizeAsElementData> {
   unsigned bitfield;
   Member<void*> willbe_member;
-  SpaceSplitString class_names_;
-  void* pointers[1];
+  void* pointers[2];
 };
 
 ASSERT_SIZE(ElementData, SameSizeAsElementData);
@@ -126,11 +120,9 @@ void ElementData::Trace(Visitor* visitor) const {
 
 void ElementData::TraceAfterDispatch(blink::Visitor* visitor) const {
   visitor->Trace(inline_style_);
-  visitor->Trace(class_names_);
 }
 
-ShareableElementData::ShareableElementData(
-    const Vector<Attribute, kAttributePrealloc>& attributes)
+ShareableElementData::ShareableElementData(const Vector<Attribute>& attributes)
     : ElementData(attributes.size()) {
   for (unsigned i = 0; i < bit_field_.get<ArraySize>(); ++i)
     new (&attribute_array_[i]) Attribute(attributes[i]);
@@ -154,7 +146,7 @@ ShareableElementData::ShareableElementData(const UniqueElementData& other)
 }
 
 ShareableElementData* ShareableElementData::CreateWithAttributes(
-    const Vector<Attribute, kAttributePrealloc>& attributes) {
+    const Vector<Attribute>& attributes) {
   return MakeGarbageCollected<ShareableElementData>(
       AdditionalBytesForShareableElementDataWithAttributeCount(
           attributes.size()),
@@ -179,7 +171,7 @@ UniqueElementData::UniqueElementData(const ShareableElementData& other)
   inline_style_ = other.inline_style_;
 
   unsigned length = other.Attributes().size();
-  attribute_vector_.reserve(length);
+  attribute_vector_.ReserveCapacity(length);
   for (unsigned i = 0; i < length; ++i)
     attribute_vector_.UncheckedAppend(other.attribute_array_[i]);
 }

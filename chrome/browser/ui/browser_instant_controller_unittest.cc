@@ -1,11 +1,6 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "chrome/browser/ui/browser_instant_controller.h"
 
@@ -13,19 +8,16 @@
 
 #include <vector>
 
+#include "base/cxx17_backports.h"
 #include "base/gtest_prod_util.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/raw_ref.h"
 #include "base/metrics/field_trial.h"
 #include "base/run_loop.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/search/instant_service.h"
 #include "chrome/browser/search/instant_unittest_base.h"
 #include "chrome/browser/search/search.h"
-#include "chrome/browser/signin/chrome_signin_client_factory.h"
-#include "chrome/browser/signin/chrome_signin_client_test_util.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/test/base/testing_profile.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/reload_type.h"
 #include "content/public/browser/render_frame_host.h"
@@ -41,14 +33,6 @@ namespace {
 class BrowserInstantControllerTest : public InstantUnitTestBase {
  protected:
   friend class FakeWebContentsObserver;
-
-  // BrowserWithTestWindowTest:
-  TestingProfile::TestingFactories GetTestingFactories() override {
-    return {TestingProfile::TestingFactory{
-        ChromeSigninClientFactory::GetInstance(),
-        base::BindRepeating(&BuildChromeSigninClientWithURLLoader,
-                            test_url_loader_factory())}};
-  }
 };
 
 struct TabReloadTestCase {
@@ -77,12 +61,12 @@ class FakeWebContentsObserver : public content::WebContentsObserver {
   void DidStartNavigation(content::NavigationHandle* navigation) override {
     if (navigation->GetReloadType() == content::ReloadType::NONE)
       return;
-    if (*url_ == navigation->GetURL())
+    if (url_ == navigation->GetURL())
       num_reloads_++;
     current_url_ = navigation->GetURL();
   }
 
-  const GURL& url() const { return *url_; }
+  const GURL& url() const { return url_; }
 
   const GURL& current_url() const { return contents_->GetURL(); }
 
@@ -99,15 +83,15 @@ class FakeWebContentsObserver : public content::WebContentsObserver {
   FRIEND_TEST_ALL_PREFIXES(BrowserInstantControllerTest, GoogleBaseURLUpdated);
 
  private:
-  raw_ptr<content::WebContents> contents_;
+  content::WebContents* contents_;
   content::DidStartNavigationObserver did_start_observer_;
-  const raw_ref<const GURL> url_;
+  const GURL& url_;
   GURL current_url_;
   int num_reloads_;
 };
 
 TEST_F(BrowserInstantControllerTest, DefaultSearchProviderChanged) {
-  size_t num_tests = std::size(kTabReloadTestCasesFinalProviderNotGoogle);
+  size_t num_tests = base::size(kTabReloadTestCasesFinalProviderNotGoogle);
   std::vector<std::unique_ptr<FakeWebContentsObserver>> observers;
   for (size_t i = 0; i < num_tests; ++i) {
     const TabReloadTestCase& test =
@@ -119,7 +103,7 @@ TEST_F(BrowserInstantControllerTest, DefaultSearchProviderChanged) {
     // Validate initial instant state.
     EXPECT_EQ(test.start_in_instant_process,
               instant_service_->IsInstantProcess(
-                  contents->GetPrimaryMainFrame()->GetProcess()->GetID()))
+                  contents->GetMainFrame()->GetProcess()->GetID()))
         << test.description;
 
     // Setup an observer to verify reload or absence thereof.

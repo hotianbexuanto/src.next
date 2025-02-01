@@ -1,12 +1,11 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/requirements_checker.h"
 
-#include <string>
-
-#include "base/functional/bind.h"
+#include "base/bind.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -24,13 +23,18 @@ RequirementsChecker::RequirementsChecker(
     scoped_refptr<const Extension> extension)
     : PreloadCheck(extension) {}
 
-RequirementsChecker::~RequirementsChecker() = default;
+RequirementsChecker::~RequirementsChecker() {}
 
 void RequirementsChecker::Start(ResultCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
   const RequirementsInfo& requirements =
       RequirementsInfo::GetRequirements(extension());
+
+#if !defined(USE_AURA)
+  if (requirements.window_shape)
+    errors_.insert(WINDOW_SHAPE_NOT_SUPPORTED);
+#endif
 
   callback_ = std::move(callback);
   if (requirements.webgl) {
@@ -41,31 +45,45 @@ void RequirementsChecker::Start(ResultCallback callback) {
                            weak_ptr_factory_.GetWeakPtr()));
     webgl_checker->CheckGpuFeatureAvailability();
   } else {
-    RunCallback();
+    PostRunCallback();
   }
 }
 
 std::u16string RequirementsChecker::GetErrorMessage() const {
-  if (errors_.empty()) {
-    return std::u16string();
+  // Join the error messages into one string.
+  std::vector<std::string> messages;
+  if (errors_.count(WEBGL_NOT_SUPPORTED)) {
+    messages.push_back(
+        l10n_util::GetStringUTF8(IDS_EXTENSION_WEBGL_NOT_SUPPORTED));
   }
+#if !defined(USE_AURA)
+  if (errors_.count(WINDOW_SHAPE_NOT_SUPPORTED)) {
+    messages.push_back(
+        l10n_util::GetStringUTF8(IDS_EXTENSION_WINDOW_SHAPE_NOT_SUPPORTED));
+  }
+#endif
 
-  CHECK_EQ(errors_.size(), 1u);
-  CHECK(errors_.contains(Error::kWebglNotSupported));
-  return l10n_util::GetStringUTF16(IDS_EXTENSION_WEBGL_NOT_SUPPORTED);
+  return base::UTF8ToUTF16(base::JoinString(messages, " "));
 }
 
 void RequirementsChecker::VerifyWebGLAvailability(bool available) {
-  if (!available) {
-    errors_.insert(Error::kWebglNotSupported);
-  }
+  if (!available)
+    errors_.insert(WEBGL_NOT_SUPPORTED);
+  PostRunCallback();
+}
 
-  RunCallback();
+void RequirementsChecker::PostRunCallback() {
+  // TODO(michaelpg): This always forces the callback to run asynchronously
+  // to maintain the assumption in
+  // ExtensionService::LoadExtensionsFromCommandLineFlag(). Remove these helper
+  // functions after crbug.com/708354 is addressed.
+  content::GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE, base::BindOnce(&RequirementsChecker::RunCallback,
+                                weak_ptr_factory_.GetWeakPtr()));
 }
 
 void RequirementsChecker::RunCallback() {
   DCHECK(callback_);
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   std::move(callback_).Run(errors_);
 }
 

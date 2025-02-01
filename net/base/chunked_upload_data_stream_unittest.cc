@@ -1,17 +1,13 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "net/base/chunked_upload_data_stream.h"
 
 #include <memory>
 #include <string>
 
+#include "base/cxx17_backports.h"
 #include "net/base/io_buffer.h"
 #include "net/base/net_errors.h"
 #include "net/base/test_completion_callback.h"
@@ -29,7 +25,7 @@ namespace net {
 namespace {
 
 constexpr char kTestData[] = "0123456789";
-constexpr size_t kTestDataSize = std::size(kTestData) - 1;
+constexpr size_t kTestDataSize = base::size(kTestData) - 1;
 constexpr size_t kTestBufferSize = 1 << 14;  // 16KB.
 
 }  // namespace
@@ -37,7 +33,7 @@ constexpr size_t kTestBufferSize = 1 << 14;  // 16KB.
 // Reads data once from the upload data stream, and returns the data as string.
 // Expects the read to succeed synchronously.
 std::string ReadSync(UploadDataStream* stream, int buffer_size) {
-  auto buf = base::MakeRefCounted<IOBufferWithSize>(buffer_size);
+  scoped_refptr<IOBuffer> buf = base::MakeRefCounted<IOBuffer>(buffer_size);
   int result = stream->Read(buf.get(),
                             buffer_size,
                             TestCompletionCallback().callback());
@@ -58,11 +54,11 @@ TEST(ChunkedUploadDataStreamTest, AppendOnce) {
   EXPECT_FALSE(stream.IsEOF());
 
   TestCompletionCallback callback;
-  auto buf = base::MakeRefCounted<IOBufferWithSize>(kTestBufferSize);
+  scoped_refptr<IOBuffer> buf = base::MakeRefCounted<IOBuffer>(kTestBufferSize);
   int result = stream.Read(buf.get(), kTestBufferSize, callback.callback());
   ASSERT_THAT(result, IsError(ERR_IO_PENDING));
 
-  stream.AppendData(base::byte_span_from_cstring(kTestData), true);
+  stream.AppendData(kTestData, kTestDataSize, true);
   int read = callback.WaitForResult();
   ASSERT_GE(read, 0);
   EXPECT_EQ(kTestData, std::string(buf->data(), read));
@@ -82,7 +78,7 @@ TEST(ChunkedUploadDataStreamTest, AppendOnceBeforeRead) {
   EXPECT_EQ(0u, stream.position());
   EXPECT_FALSE(stream.IsEOF());
 
-  stream.AppendData(base::byte_span_from_cstring(kTestData), true);
+  stream.AppendData(kTestData, kTestDataSize, true);
   EXPECT_EQ(0u, stream.size());  // Content-Length is 0 for chunked data.
   EXPECT_EQ(0u, stream.position());
   EXPECT_FALSE(stream.IsEOF());
@@ -97,7 +93,7 @@ TEST(ChunkedUploadDataStreamTest, AppendOnceBeforeRead) {
 TEST(ChunkedUploadDataStreamTest, AppendOnceBeforeInit) {
   ChunkedUploadDataStream stream(0);
 
-  stream.AppendData(base::byte_span_from_cstring(kTestData), true);
+  stream.AppendData(kTestData, kTestDataSize, true);
   ASSERT_THAT(
       stream.Init(TestCompletionCallback().callback(), NetLogWithSource()),
       IsOk());
@@ -125,7 +121,7 @@ TEST(ChunkedUploadDataStreamTest, MultipleAppends) {
   EXPECT_FALSE(stream.IsEOF());
 
   TestCompletionCallback callback;
-  auto buf = base::MakeRefCounted<IOBufferWithSize>(kTestBufferSize);
+  scoped_refptr<IOBuffer> buf = base::MakeRefCounted<IOBuffer>(kTestBufferSize);
   for (size_t i = 0; i < kTestDataSize; ++i) {
     EXPECT_EQ(0u, stream.size());  // Content-Length is 0 for chunked data.
     EXPECT_EQ(i, stream.position());
@@ -134,8 +130,7 @@ TEST(ChunkedUploadDataStreamTest, MultipleAppends) {
                                  kTestBufferSize,
                                  callback.callback());
     ASSERT_THAT(bytes_read, IsError(ERR_IO_PENDING));
-    stream.AppendData(base::byte_span_from_cstring(kTestData).subspan(i, 1u),
-                      i == kTestDataSize - 1);
+    stream.AppendData(&kTestData[i], 1, i == kTestDataSize - 1);
     ASSERT_EQ(1, callback.WaitForResult());
     EXPECT_EQ(kTestData[i], buf->data()[0]);
   }
@@ -156,12 +151,11 @@ TEST(ChunkedUploadDataStreamTest, MultipleAppendsBetweenReads) {
   EXPECT_EQ(0u, stream.position());
   EXPECT_FALSE(stream.IsEOF());
 
-  auto buf = base::MakeRefCounted<IOBufferWithSize>(kTestBufferSize);
+  scoped_refptr<IOBuffer> buf = base::MakeRefCounted<IOBuffer>(kTestBufferSize);
   for (size_t i = 0; i < kTestDataSize; ++i) {
     EXPECT_EQ(i, stream.position());
     ASSERT_FALSE(stream.IsEOF());
-    stream.AppendData(base::byte_span_from_cstring(kTestData).subspan(i, 1u),
-                      i == kTestDataSize - 1);
+    stream.AppendData(&kTestData[i], 1, i == kTestDataSize - 1);
     int bytes_read = stream.Read(buf.get(),
                                  kTestBufferSize,
                                  TestCompletionCallback().callback());
@@ -176,10 +170,9 @@ TEST(ChunkedUploadDataStreamTest, MultipleAppendsBetweenReads) {
 // Checks that multiple reads can be merged.
 TEST(ChunkedUploadDataStreamTest, MultipleAppendsBeforeInit) {
   ChunkedUploadDataStream stream(0);
-  stream.AppendData(base::byte_span_from_cstring(kTestData).first(1u), false);
-  stream.AppendData(base::byte_span_from_cstring(kTestData).subspan(1u, 1u),
-                    false);
-  stream.AppendData(base::byte_span_from_cstring(kTestData).subspan(2u), true);
+  stream.AppendData(kTestData, 1, false);
+  stream.AppendData(kTestData + 1, 1, false);
+  stream.AppendData(kTestData + 2, kTestDataSize - 2, true);
 
   ASSERT_THAT(
       stream.Init(TestCompletionCallback().callback(), NetLogWithSource()),
@@ -200,10 +193,10 @@ TEST(ChunkedUploadDataStreamTest, MultipleReads) {
   const size_t kReadSize = kTestDataSize + 3;
 
   ChunkedUploadDataStream stream(0);
-  stream.AppendData(base::byte_span_from_cstring(kTestData), false);
-  stream.AppendData(base::byte_span_from_cstring(kTestData), false);
-  stream.AppendData(base::byte_span_from_cstring(kTestData), false);
-  stream.AppendData(base::byte_span_from_cstring(kTestData), true);
+  stream.AppendData(kTestData, kTestDataSize, false);
+  stream.AppendData(kTestData, kTestDataSize, false);
+  stream.AppendData(kTestData, kTestDataSize, false);
+  stream.AppendData(kTestData, kTestDataSize, true);
 
   ASSERT_THAT(
       stream.Init(TestCompletionCallback().callback(), NetLogWithSource()),
@@ -246,11 +239,11 @@ TEST(ChunkedUploadDataStreamTest, EmptyUpload) {
   EXPECT_FALSE(stream.IsEOF());
 
   TestCompletionCallback callback;
-  auto buf = base::MakeRefCounted<IOBufferWithSize>(kTestBufferSize);
+  scoped_refptr<IOBuffer> buf = base::MakeRefCounted<IOBuffer>(kTestBufferSize);
   int result = stream.Read(buf.get(), kTestBufferSize, callback.callback());
   ASSERT_THAT(result, IsError(ERR_IO_PENDING));
 
-  stream.AppendData({}, true);
+  stream.AppendData(nullptr, 0, true);
   int read = callback.WaitForResult();
   EXPECT_EQ(0, read);
   EXPECT_EQ(0u, stream.position());
@@ -259,7 +252,7 @@ TEST(ChunkedUploadDataStreamTest, EmptyUpload) {
 
 TEST(ChunkedUploadDataStreamTest, EmptyUploadEndedBeforeInit) {
   ChunkedUploadDataStream stream(0);
-  stream.AppendData({}, true);
+  stream.AppendData(nullptr, 0, true);
 
   ASSERT_THAT(
       stream.Init(TestCompletionCallback().callback(), NetLogWithSource()),
@@ -277,8 +270,8 @@ TEST(ChunkedUploadDataStreamTest, EmptyUploadEndedBeforeInit) {
 
 TEST(ChunkedUploadDataStreamTest, RewindAfterComplete) {
   ChunkedUploadDataStream stream(0);
-  stream.AppendData(base::byte_span_from_cstring(kTestData).first(1u), false);
-  stream.AppendData(base::byte_span_from_cstring(kTestData).subspan(1u), true);
+  stream.AppendData(kTestData, 1, false);
+  stream.AppendData(kTestData + 1, kTestDataSize - 1, true);
 
   ASSERT_THAT(
       stream.Init(TestCompletionCallback().callback(), NetLogWithSource()),
@@ -320,7 +313,7 @@ TEST(ChunkedUploadDataStreamTest, RewindWhileReading) {
   EXPECT_FALSE(stream.IsEOF());
 
   TestCompletionCallback callback;
-  auto buf = base::MakeRefCounted<IOBufferWithSize>(kTestBufferSize);
+  scoped_refptr<IOBuffer> buf = base::MakeRefCounted<IOBuffer>(kTestBufferSize);
   int result = stream.Read(buf.get(), kTestBufferSize, callback.callback());
   ASSERT_THAT(result, IsError(ERR_IO_PENDING));
 
@@ -335,7 +328,7 @@ TEST(ChunkedUploadDataStreamTest, RewindWhileReading) {
   // Adding data now should not result in calling the original read callback,
   // since the stream was re-initialized for reuse, which cancels all pending
   // reads.
-  stream.AppendData(base::byte_span_from_cstring(kTestData), true);
+  stream.AppendData(kTestData, kTestDataSize, true);
   EXPECT_FALSE(callback.have_result());
 
   std::string data = ReadSync(&stream, kTestBufferSize);
@@ -347,20 +340,19 @@ TEST(ChunkedUploadDataStreamTest, RewindWhileReading) {
 
 // Check the behavior of ChunkedUploadDataStream::Writer.
 TEST(ChunkedUploadDataStreamTest, ChunkedUploadDataStreamWriter) {
-  auto stream = std::make_unique<ChunkedUploadDataStream>(0);
+  std::unique_ptr<ChunkedUploadDataStream> stream(
+      new ChunkedUploadDataStream(0));
   std::unique_ptr<ChunkedUploadDataStream::Writer> writer(
       stream->CreateWriter());
 
   // Write before Init.
-  ASSERT_TRUE(writer->AppendData(
-      base::byte_span_from_cstring(kTestData).first(1u), false));
+  ASSERT_TRUE(writer->AppendData(kTestData, 1, false));
   ASSERT_THAT(
       stream->Init(TestCompletionCallback().callback(), NetLogWithSource()),
       IsOk());
 
   // Write after Init.
-  ASSERT_TRUE(writer->AppendData(
-      base::byte_span_from_cstring(kTestData).subspan(1u), false));
+  ASSERT_TRUE(writer->AppendData(kTestData + 1, kTestDataSize - 1, false));
 
   TestCompletionCallback callback;
   std::string data = ReadSync(stream.get(), kTestBufferSize);
@@ -369,8 +361,7 @@ TEST(ChunkedUploadDataStreamTest, ChunkedUploadDataStreamWriter) {
   // Writing data should gracefully fail if the stream is deleted while still
   // appending data to it.
   stream.reset();
-  EXPECT_FALSE(
-      writer->AppendData(base::byte_span_from_cstring(kTestData), true));
+  EXPECT_FALSE(writer->AppendData(kTestData, kTestDataSize, true));
 }
 
 }  // namespace net

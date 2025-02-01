@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,7 +8,7 @@
 #include <memory>
 #include <set>
 
-#include "build/chromeos_buildflags.h"
+#include "base/macros.h"
 #include "components/download/content/public/all_download_item_notifier.h"
 #include "components/download/public/common/download_item.h"
 #include "content/public/browser/download_manager.h"
@@ -21,10 +21,6 @@ class DownloadStatusUpdater
     : public download::AllDownloadItemNotifier::Observer {
  public:
   DownloadStatusUpdater();
-
-  DownloadStatusUpdater(const DownloadStatusUpdater&) = delete;
-  DownloadStatusUpdater& operator=(const DownloadStatusUpdater&) = delete;
-
   ~DownloadStatusUpdater() override;
 
   // Fills in |*download_count| with the number of currently active downloads.
@@ -67,14 +63,7 @@ class DownloadStatusUpdater
   std::map<Profile*, std::unique_ptr<ScopedProfileKeepAlive>>
       profile_keep_alives_;
 
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  // Looks up the DownloadItem* for a given guid, or returns nullptr if none is
-  // found.
-  download::DownloadItem* GetDownloadItemFromGuid(const std::string& guid);
-
-  class Delegate;
-  std::unique_ptr<Delegate> delegate_;
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
+  DISALLOW_COPY_AND_ASSIGN(DownloadStatusUpdater);
 };
 
 #endif  // CHROME_BROWSER_DOWNLOAD_DOWNLOAD_STATUS_UPDATER_H_

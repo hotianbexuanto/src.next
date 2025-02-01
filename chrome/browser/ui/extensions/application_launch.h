@@ -1,14 +1,11 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_UI_EXTENSIONS_APPLICATION_LAUNCH_H_
 #define CHROME_BROWSER_UI_EXTENSIONS_APPLICATION_LAUNCH_H_
 
-#include "base/functional/callback.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/browser/apps/app_service/app_launch_params.h"
-#include "components/services/app_service/public/cpp/app_launch_util.h"
 #include "url/gurl.h"
 
 class Browser;
@@ -21,11 +18,11 @@ class FilePath;
 
 namespace content {
 class WebContents;
-}  // namespace content
+}
 
 namespace extensions {
 class Extension;
-}  // namespace extensions
+}
 
 enum class WindowOpenDisposition;
 
@@ -79,15 +76,7 @@ void LaunchAppWithCallback(
     const std::string& app_id,
     const base::CommandLine& command_line,
     const base::FilePath& current_directory,
-    base::OnceCallback<void(Browser* browser, apps::LaunchContainer container)>
-        callback);
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-// Shows the browser for |profile| if existent, otherwise attempts to open it.
-// Returns true if browser window already exists or if it was successfully
-// launched.
-bool ShowBrowserForProfile(Profile* profile,
-                           const apps::AppLaunchParams& params);
-#endif
+    base::OnceCallback<void(Browser* browser,
+                            apps::mojom::LaunchContainer container)> callback);
 
 #endif  // CHROME_BROWSER_UI_EXTENSIONS_APPLICATION_LAUNCH_H_

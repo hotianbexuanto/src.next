@@ -1,11 +1,10 @@
-// Copyright 2017 The Chromium Authors
+// Copyright (c) 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef CONTENT_BROWSER_ISOLATED_ORIGIN_UTIL_H_
 #define CONTENT_BROWSER_ISOLATED_ORIGIN_UTIL_H_
 
 #include <string>
-#include <string_view>
 
 #include "base/gtest_prod_util.h"
 #include "base/strings/string_util.h"
@@ -21,7 +20,7 @@ namespace content {
 // https://bar.com.
 class CONTENT_EXPORT IsolatedOriginPattern {
  public:
-  explicit IsolatedOriginPattern(std::string_view pattern);
+  explicit IsolatedOriginPattern(base::StringPiece pattern);
   explicit IsolatedOriginPattern(const url::Origin& origin);
   ~IsolatedOriginPattern();
 
@@ -53,7 +52,7 @@ class CONTENT_EXPORT IsolatedOriginPattern {
   bool isolate_all_subdomains() const { return isolate_all_subdomains_; }
 
   // Return the original pattern used to construct this instance.
-  const std::string_view pattern() const { return pattern_; }
+  const base::StringPiece pattern() const { return pattern_; }
 
   // Return if this origin is valid for isolation purposes.
   bool is_valid() const { return is_valid_; }
@@ -66,7 +65,7 @@ class CONTENT_EXPORT IsolatedOriginPattern {
   // Checks if |pattern| is a wildcard pattern, checks the scheme is one of
   // {http, https} and constructs a url::Origin() that can be retrieved if
   // parsing is successful. Returns true on successful parsing.
-  bool Parse(const std::string_view& pattern);
+  bool Parse(const base::StringPiece& pattern);
 
   std::string pattern_;
   url::Origin origin_;
@@ -102,19 +101,11 @@ class CONTENT_EXPORT IsolatedOriginUtil {
   // HTTP or HTTPS scheme, and origins that are not secure contexts.
   static bool IsValidOriginForOptInIsolation(const url::Origin& origin);
 
-  // Check if |origin| is a valid origin for opting out of origin isolation.
-  // Invalid origins for this purpose include opaque origins, and origins that
-  // don't have a HTTP or HTTPS scheme.
-  static bool IsValidOriginForOptOutIsolation(const url::Origin& origin);
-
  private:
   // Used to implement both IsValidIsolatedOrigin and
-  // IsValidOriginForOptInIsolation. The legacy isolated origin case performs
-  // some additional checks that don't apply to the opt-in case: it verifies the
-  // origin has a registry domain (for subdomain matching) and disallows
-  // trailing dots in the domain.
+  // IsValidOriginForOptInIsolation.
   static bool IsValidIsolatedOriginImpl(const url::Origin& origin,
-                                        bool is_legacy_isolated_origin_check);
+                                        bool check_has_registry_domain);
 };
 
 }  // namespace content

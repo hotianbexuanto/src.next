@@ -23,14 +23,14 @@
 [
     Exposed=Window
 ] interface NodeIterator {
-    [NodeWrapInOwnContext, SameObject] readonly attribute Node root;
-    [NodeWrapInOwnContext] readonly attribute Node referenceNode;
+    [SameObject] readonly attribute Node root;
+    readonly attribute Node referenceNode;
     readonly attribute boolean pointerBeforeReferenceNode;
     readonly attribute unsigned long whatToShow;
     readonly attribute NodeFilter? filter;
 
-    [NodeWrapInOwnContext, RaisesException] Node? nextNode();
-    [NodeWrapInOwnContext, RaisesException] Node? previousNode();
+    [RaisesException] Node? nextNode();
+    [RaisesException] Node? previousNode();
 
     [MeasureAs=NodeIteratorDetach] void detach();
 };

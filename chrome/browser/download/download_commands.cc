@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,11 +7,12 @@
 #include <stdint.h>
 
 #include "base/base64.h"
+#include "base/bind.h"
 #include "base/files/file_util.h"
-#include "base/functional/bind.h"
+#include "base/macros.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/task/sequenced_task_runner.h"
+#include "base/task/post_task.h"
 #include "base/task/thread_pool.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "build/build_config.h"
@@ -19,21 +20,23 @@
 #include "chrome/browser/download/download_crx_util.h"
 #include "chrome/browser/download/download_ui_model.h"
 #include "chrome/browser/image_decoder/image_decoder.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/common/url_constants.h"
 #include "components/google/core/common/google_util.h"
 #include "content/public/browser/browser_thread.h"
 #include "net/base/url_util.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
-    BUILDFLAG(IS_MAC)
+#if defined(OS_WIN) || defined(OS_LINUX) || defined(OS_CHROMEOS) || \
+    defined(OS_MAC)
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
 #endif
 
-#if BUILDFLAG(IS_WIN)
+#if defined(OS_WIN)
 #include "chrome/browser/download/download_target_determiner.h"
+#include "chrome/browser/ui/pdf/adobe_reader_info_win.h"
 #endif
 
 namespace {
@@ -44,11 +47,6 @@ const int64_t kMaxImageClipboardSize = 20 * 1024 * 1024;  // 20 MB
 
 class ImageClipboardCopyManager : public ImageDecoder::ImageRequest {
  public:
-  ImageClipboardCopyManager() = delete;
-  ImageClipboardCopyManager(const ImageClipboardCopyManager&) = delete;
-  ImageClipboardCopyManager& operator=(const ImageClipboardCopyManager&) =
-      delete;
-
   static void Start(const base::FilePath& file_path,
                     base::SequencedTaskRunner* task_runner) {
     new ImageClipboardCopyManager(file_path, task_runner);
@@ -71,8 +69,9 @@ class ImageClipboardCopyManager : public ImageDecoder::ImageRequest {
         FROM_HERE, base::BlockingType::WILL_BLOCK);
 
     // Re-check the filesize since the file may be modified after downloaded.
-    std::optional<int64_t> filesize = base::GetFileSize(file_path_);
-    if (!filesize.has_value() || filesize.value() > kMaxImageClipboardSize) {
+    int64_t filesize;
+    if (!GetFileSize(file_path_, &filesize) ||
+        filesize > kMaxImageClipboardSize) {
       OnFailedBeforeDecoding();
       return;
     }
@@ -86,7 +85,7 @@ class ImageClipboardCopyManager : public ImageDecoder::ImageRequest {
 
     // Note: An image over 128MB (uncompressed) may fail, due to the limitation
     // of IPC message size.
-    ImageDecoder::Start(this, std::move(data));
+    ImageDecoder::Start(this, data);
   }
 
   void OnImageDecoded(const SkBitmap& decoded_image) override {
@@ -116,6 +115,8 @@ class ImageClipboardCopyManager : public ImageDecoder::ImageRequest {
   }
 
   const base::FilePath file_path_;
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(ImageClipboardCopyManager);
 };
 
 }  // namespace
@@ -136,7 +137,7 @@ GURL DownloadCommands::GetLearnMoreURLForInterruptedDownload() const {
       learn_more_url, g_browser_process->GetApplicationLocale());
   return net::AppendQueryParameter(
       learn_more_url, "ctx",
-      base::NumberToString(model_->GetDownloadItem()->GetLastReason()));
+      base::NumberToString(model_->download()->GetLastReason()));
 }
 
 bool DownloadCommands::IsCommandEnabled(Command command) const {
@@ -164,8 +165,8 @@ void DownloadCommands::ExecuteCommand(Command command) {
   model_->ExecuteCommand(this, command);
 }
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
+#if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX) || \
+    defined(OS_CHROMEOS)
 
 Browser* DownloadCommands::GetBrowser() const {
   if (!model_)
@@ -185,11 +186,22 @@ bool DownloadCommands::IsDownloadPdf() const {
 }
 
 bool DownloadCommands::CanOpenPdfInSystemViewer() const {
+#if defined(OS_WIN)
+  bool is_adobe_pdf_reader_up_to_date = false;
+  if (IsDownloadPdf() && IsAdobeReaderDefaultPDFViewer()) {
+    is_adobe_pdf_reader_up_to_date =
+        DownloadTargetDeterminer::IsAdobeReaderUpToDate();
+  }
+  return IsDownloadPdf() &&
+         (IsAdobeReaderDefaultPDFViewer() ? is_adobe_pdf_reader_up_to_date
+                                          : true);
+#elif defined(OS_MAC) || defined(OS_LINUX) || defined(OS_CHROMEOS)
   return IsDownloadPdf();
+#endif
 }
 
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
-        // BUILDFLAG(IS_CHROMEOS)
+#endif  // defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX) ||
+        // defined(OS_CHROMEOS)
 
 void DownloadCommands::CopyFileAsImageToClipboard() {
   if (!model_)

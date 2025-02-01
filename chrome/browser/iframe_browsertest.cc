@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,7 +25,7 @@ class IFrameTest : public InProcessBrowserTest {
     GURL url = ui_test_utils::GetTestUrl(
         base::FilePath(), base::FilePath().AppendASCII(file));
 
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+    ui_test_utils::NavigateToURL(browser(), url);
     EXPECT_EQ(base::ASCIIToUTF16(page_title),
               browser()->tab_strip_model()->GetActiveWebContents()->GetTitle());
   }
@@ -42,37 +42,32 @@ IN_PROC_BROWSER_TEST_F(IFrameTest, InEmptyFrame) {
 // Test for https://crbug.com/621076. It ensures that file chooser triggered
 // by an iframe, which is destroyed before the chooser is closed, does not
 // result in a use-after-free condition.
-//
 // Note: This test is disabled temporarily to track down a memory leak reported
 // by the ASan bots. It will be enabled once the root cause is found.
-// TODO(crbug.com/40904458): Re-enable this test
-#if defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER)
-#define MAYBE_FileChooserInDestroyedSubframe \
-  DISABLED_FileChooserInDestroyedSubframe
-#else
-#define MAYBE_FileChooserInDestroyedSubframe FileChooserInDestroyedSubframe
-#endif
-IN_PROC_BROWSER_TEST_F(IFrameTest, MAYBE_FileChooserInDestroyedSubframe) {
+IN_PROC_BROWSER_TEST_F(IFrameTest, DISABLED_FileChooserInDestroyedSubframe) {
   content::WebContents* tab =
       browser()->tab_strip_model()->GetActiveWebContents();
   GURL file_input_url(embedded_test_server()->GetURL("/file_input.html"));
 
   // Navigate to a page, which contains an iframe, and navigate the iframe
   // to a document containing a file input field.
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(
-      browser(), embedded_test_server()->GetURL("/iframe.html")));
+  // Note: For the bug to occur, the parent and child frame need to be in
+  // the same site, otherwise they would each get a RenderWidgetHost and
+  // existing code will properly clear the internal state.
+  ui_test_utils::NavigateToURL(browser(),
+                               embedded_test_server()->GetURL("/iframe.html"));
   NavigateIframeToURL(tab, "test", file_input_url);
 
   // Invoke the file chooser and remove the iframe from the main document.
-  content::RenderFrameHost* frame = ChildFrameAt(tab->GetPrimaryMainFrame(), 0);
+  content::RenderFrameHost* frame = ChildFrameAt(tab->GetMainFrame(), 0);
   EXPECT_TRUE(frame);
-  EXPECT_EQ(frame->GetSiteInstance(),
-            tab->GetPrimaryMainFrame()->GetSiteInstance());
-  EXPECT_TRUE(ExecJs(frame, "document.getElementById('fileinput').click();"));
-  EXPECT_TRUE(ExecJs(tab->GetPrimaryMainFrame(),
-                     "document.body.removeChild("
-                     "document.querySelectorAll('iframe')[0])"));
-  ASSERT_EQ(nullptr, ChildFrameAt(tab->GetPrimaryMainFrame(), 0));
+  EXPECT_EQ(frame->GetSiteInstance(), tab->GetMainFrame()->GetSiteInstance());
+  EXPECT_TRUE(
+      ExecuteScript(frame, "document.getElementById('fileinput').click();"));
+  EXPECT_TRUE(ExecuteScript(tab->GetMainFrame(),
+                            "document.body.removeChild("
+                            "document.querySelectorAll('iframe')[0])"));
+  ASSERT_EQ(nullptr, ChildFrameAt(tab->GetMainFrame(), 0));
 
   // On ASan bots, this test should succeed without reporting use-after-free
   // condition.

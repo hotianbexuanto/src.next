@@ -1,36 +1,54 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
+import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Environment;
+import android.os.StatFs;
 import android.os.StrictMode;
+import android.util.Log;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
+import androidx.annotation.VisibleForTesting;
 
-import org.chromium.build.BuildConfig;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.MainDex;
+import org.chromium.base.annotations.NativeMethods;
+import org.chromium.base.metrics.RecordHistogram;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Exposes system related information about the current device. */
+/**
+ * Exposes system related information about the current device.
+ */
 @JNINamespace("base::android")
+@MainDex
 public class SysUtils {
     // A device reporting strictly more total memory in megabytes cannot be considered 'low-end'.
-    private static final int LOW_MEMORY_DEVICE_THRESHOLD_MB = 1024;
+    private static final int ANDROID_LOW_MEMORY_DEVICE_THRESHOLD_MB = 512;
+    private static final int ANDROID_O_LOW_MEMORY_DEVICE_THRESHOLD_MB = 1024;
+    private static final int BYTES_PER_GIGABYTE = 1024 * 1024 * 1024;
+
+    // A device reporting more disk capacity in gigabytes than this is considered high end.
+    private static final long HIGH_END_DEVICE_DISK_CAPACITY_GB = 24;
+
     private static final String TAG = "SysUtils";
 
     private static Boolean sLowEndDevice;
     private static Integer sAmountOfPhysicalMemoryKB;
 
-    private SysUtils() {}
+    private static Boolean sHighEndDiskDevice;
+
+    private SysUtils() { }
 
     /**
      * Return the amount of physical memory on this device in kilobytes.
@@ -53,29 +71,43 @@ public class SysUtils {
         Pattern pattern = Pattern.compile("^MemTotal:\\s+([0-9]+) kB$");
         // Synchronously reading files in /proc in the UI thread is safe.
         StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskReads();
-        try (FileReader fileReader = new FileReader("/proc/meminfo")) {
-            try (BufferedReader reader = new BufferedReader(fileReader)) {
-                for (; ; ) {
-                    String line = reader.readLine();
-                    if (line == null) {
-                        Log.w(TAG, "/proc/meminfo lacks a MemTotal entry?");
-                        break;
+        try {
+            FileReader fileReader = new FileReader("/proc/meminfo");
+            try {
+                BufferedReader reader = new BufferedReader(fileReader);
+                try {
+                    String line;
+                    for (;;) {
+                        line = reader.readLine();
+                        if (line == null) {
+                            Log.w(TAG, "/proc/meminfo lacks a MemTotal entry?");
+                            break;
+                        }
+                        Matcher m = pattern.matcher(line);
+                        if (!m.find()) continue;
+
+                        int totalMemoryKB = Integer.parseInt(m.group(1));
+                        // Sanity check.
+                        if (totalMemoryKB <= 1024) {
+                            Log.w(TAG, "Invalid /proc/meminfo total size in kB: " + m.group(1));
+                            break;
+                        }
+
+                        return totalMemoryKB;
                     }
-                    Matcher m = pattern.matcher(line);
-                    if (!m.find()) continue;
-                    int totalMemoryKB = Integer.parseInt(m.group(1));
-                    if (totalMemoryKB <= 1024) {
-                        Log.w(TAG, "Invalid /proc/meminfo total size in kB: " + m.group(1));
-                        break;
-                    }
-                    return totalMemoryKB;
+
+                } finally {
+                    reader.close();
                 }
+            } finally {
+                fileReader.close();
             }
         } catch (Exception e) {
             Log.w(TAG, "Cannot get total physical size from /proc/meminfo", e);
         } finally {
             StrictMode.setThreadPolicy(oldPolicy);
         }
+
         return 0;
     }
 
@@ -84,11 +116,10 @@ public class SysUtils {
      */
     @CalledByNative
     public static boolean isLowEndDevice() {
-        // Do not cache in tests since command-line flags can change.
-        if (sLowEndDevice == null || BuildConfig.IS_FOR_TEST) {
+        if (sLowEndDevice == null) {
             sLowEndDevice = detectLowEndDevice();
         }
-        return sLowEndDevice;
+        return sLowEndDevice.booleanValue();
     }
 
     /**
@@ -99,7 +130,7 @@ public class SysUtils {
         if (sAmountOfPhysicalMemoryKB == null) {
             sAmountOfPhysicalMemoryKB = detectAmountOfPhysicalMemoryKB();
         }
-        return sAmountOfPhysicalMemoryKB;
+        return sAmountOfPhysicalMemoryKB.intValue();
     }
 
     /**
@@ -108,26 +139,29 @@ public class SysUtils {
     @CalledByNative
     public static boolean isCurrentlyLowMemory() {
         ActivityManager am =
-                (ActivityManager)
-                        ContextUtils.getApplicationContext()
-                                .getSystemService(Context.ACTIVITY_SERVICE);
+                (ActivityManager) ContextUtils.getApplicationContext().getSystemService(
+                        Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
-        try {
-            am.getMemoryInfo(info);
-            return info.lowMemory;
-        } catch (Exception e) {
-            // Occurs on Redmi devices when called from isolated processes.
-            // https://crbug.com/1480655
-            // And on the devices in https://crbug.com/347207010
-            return false;
-        }
+        am.getMemoryInfo(info);
+        return info.lowMemory;
+    }
+
+    /**
+     * Resets the cached value, if any.
+     */
+    @VisibleForTesting
+    public static void resetForTesting() {
+        sLowEndDevice = null;
+        sAmountOfPhysicalMemoryKB = null;
     }
 
     public static boolean hasCamera(final Context context) {
         final PackageManager pm = context.getPackageManager();
-        return pm.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
+        return pm.hasSystemFeature(PackageManager.FEATURE_CAMERA)
+                || pm.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
     }
 
+    @TargetApi(Build.VERSION_CODES.KITKAT)
     private static boolean detectLowEndDevice() {
         assert CommandLine.isInitialized();
         if (CommandLine.getInstance().hasSwitch(BaseSwitches.ENABLE_LOW_END_DEVICE_MODE)) {
@@ -138,13 +172,26 @@ public class SysUtils {
         }
 
         // If this logic changes, update the comments above base::SysUtils::IsLowEndDevice.
-        int physicalMemoryKb = amountOfPhysicalMemoryKB();
-        boolean isLowEnd;
-        if (physicalMemoryKb <= 0) {
+        sAmountOfPhysicalMemoryKB = detectAmountOfPhysicalMemoryKB();
+        boolean isLowEnd = true;
+        if (sAmountOfPhysicalMemoryKB <= 0) {
             isLowEnd = false;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            isLowEnd = sAmountOfPhysicalMemoryKB / 1024 <= ANDROID_O_LOW_MEMORY_DEVICE_THRESHOLD_MB;
         } else {
-            isLowEnd = physicalMemoryKb / 1024 <= LOW_MEMORY_DEVICE_THRESHOLD_MB;
+            isLowEnd = sAmountOfPhysicalMemoryKB / 1024 <= ANDROID_LOW_MEMORY_DEVICE_THRESHOLD_MB;
         }
+
+        // For evaluation purposes check whether our computation agrees with Android API value.
+        Context appContext = ContextUtils.getApplicationContext();
+        boolean isLowRam = false;
+        if (appContext != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            isLowRam = ((ActivityManager) ContextUtils.getApplicationContext().getSystemService(
+                                Context.ACTIVITY_SERVICE))
+                               .isLowRamDevice();
+        }
+        RecordHistogram.recordBooleanHistogram(
+                "Android.SysUtilsLowEndMatches", isLowEnd == isLowRam);
 
         return isLowEnd;
     }
@@ -155,6 +202,41 @@ public class SysUtils {
      */
     public static void logPageFaultCountToTracing() {
         SysUtilsJni.get().logPageFaultCountToTracing();
+    }
+
+    /**
+     * @return Whether or not this device should be considered a high end device from a disk
+     *         capacity point of view.
+     */
+    public static boolean isHighEndDiskDevice() {
+        if (sHighEndDiskDevice == null) {
+            sHighEndDiskDevice = detectHighEndDiskDevice();
+        }
+        return sHighEndDiskDevice.booleanValue();
+    }
+
+    private static boolean detectHighEndDiskDevice() {
+        try (StrictModeContext ignored = StrictModeContext.allowDiskReads()) {
+            StatFs dataStats = new StatFs(Environment.getDataDirectory().getAbsolutePath());
+            long totalGBytes = dataStats.getTotalBytes() / BYTES_PER_GIGABYTE;
+            return totalGBytes >= HIGH_END_DEVICE_DISK_CAPACITY_GB;
+        } catch (IllegalArgumentException e) {
+            Log.v(TAG, "Cannot get disk data capacity", e);
+        }
+        return false;
+    }
+
+    @VisibleForTesting
+    public static void setAmountOfPhysicalMemoryKBForTesting(int physicalMemoryKB) {
+        sAmountOfPhysicalMemoryKB = physicalMemoryKB;
+    }
+
+    /**
+     * @return Whether this device is running Android Go. This is assumed when we're running Android
+     * O or later and we're on a low-end device.
+     */
+    public static boolean isAndroidGo() {
+        return isLowEndDevice() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
     }
 
     @NativeMethods

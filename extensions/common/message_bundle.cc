@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "base/containers/adapters.h"
 #include "base/containers/contains.h"
 #include "base/i18n/rtl.h"
 #include "base/lazy_instance.h"
@@ -59,9 +58,8 @@ static bool BadKeyMessage(const std::string& name, std::string* error) {
 MessageBundle* MessageBundle::Create(const CatalogVector& locale_catalogs,
                                      std::string* error) {
   std::unique_ptr<MessageBundle> message_bundle(new MessageBundle);
-  if (!message_bundle->Init(locale_catalogs, error)) {
-    return nullptr;
-  }
+  if (!message_bundle->Init(locale_catalogs, error))
+    return NULL;
 
   return message_bundle.release();
 }
@@ -70,26 +68,24 @@ bool MessageBundle::Init(const CatalogVector& locale_catalogs,
                          std::string* error) {
   dictionary_.clear();
 
-  for (const auto& catalog : base::Reversed(locale_catalogs)) {
-    for (auto message_it : catalog) {
-      std::string key(base::ToLowerASCII(message_it.first));
-      if (!IsValidName(message_it.first)) {
+  for (auto it = locale_catalogs.rbegin(); it != locale_catalogs.rend(); ++it) {
+    base::DictionaryValue* catalog = (*it).get();
+    for (base::DictionaryValue::Iterator message_it(*catalog);
+         !message_it.IsAtEnd(); message_it.Advance()) {
+      std::string key(base::ToLowerASCII(message_it.key()));
+      if (!IsValidName(message_it.key()))
         return BadKeyMessage(key, error);
-      }
       std::string value;
-      if (!GetMessageValue(message_it.first, message_it.second, &value,
-                           error)) {
+      if (!GetMessageValue(message_it.key(), message_it.value(), &value, error))
         return false;
-      }
       // Keys are not case-sensitive.
       dictionary_[key] = value;
     }
   }
 
   if (!AppendReservedMessagesForLocale(
-          extension_l10n_util::CurrentLocaleOrDefault(), error)) {
+      extension_l10n_util::CurrentLocaleOrDefault(), error))
     return false;
-  }
 
   return true;
 }
@@ -134,28 +130,24 @@ bool MessageBundle::GetMessageValue(const std::string& key,
                                     std::string* value,
                                     std::string* error) const {
   // Get the top level tree for given key (name part).
-  const base::Value::Dict* name_tree = name_value.GetIfDict();
-  if (!name_tree) {
+  const base::DictionaryValue* name_tree;
+  if (!name_value.GetAsDictionary(&name_tree)) {
     *error = base::StringPrintf("Not a valid tree for key %s.", key.c_str());
     return false;
   }
   // Extract message from it.
-  const std::string* str = name_tree->FindString(kMessageKey);
-  if (!str) {
+  if (!name_tree->GetString(kMessageKey, value)) {
     *error = base::StringPrintf(
         "There is no \"%s\" element for key %s.", kMessageKey, key.c_str());
     return false;
   }
-  *value = *str;
 
   SubstitutionMap placeholders;
-  if (!GetPlaceholders(*name_tree, key, &placeholders, error)) {
+  if (!GetPlaceholders(*name_tree, key, &placeholders, error))
     return false;
-  }
 
-  if (!ReplacePlaceholders(placeholders, value, error)) {
+  if (!ReplacePlaceholders(placeholders, value, error))
     return false;
-  }
 
   return true;
 }
@@ -163,41 +155,39 @@ bool MessageBundle::GetMessageValue(const std::string& key,
 MessageBundle::MessageBundle() {
 }
 
-bool MessageBundle::GetPlaceholders(const base::Value::Dict& name_tree,
+bool MessageBundle::GetPlaceholders(const base::DictionaryValue& name_tree,
                                     const std::string& name_key,
                                     SubstitutionMap* placeholders,
                                     std::string* error) const {
-  if (!name_tree.Find(kPlaceholdersKey)) {
+  if (!name_tree.HasKey(kPlaceholdersKey))
     return true;
-  }
 
-  const base::Value::Dict* placeholders_tree =
-      name_tree.FindDict(kPlaceholdersKey);
-  if (!placeholders_tree) {
+  const base::DictionaryValue* placeholders_tree;
+  if (!name_tree.GetDictionary(kPlaceholdersKey, &placeholders_tree)) {
     *error = base::StringPrintf("Not a valid \"%s\" element for key %s.",
                                 kPlaceholdersKey, name_key.c_str());
     return false;
   }
 
-  for (auto it : *placeholders_tree) {
-    const std::string& content_key(it.first);
-    if (!IsValidName(content_key)) {
+  for (base::DictionaryValue::Iterator it(*placeholders_tree); !it.IsAtEnd();
+       it.Advance()) {
+    const base::DictionaryValue* placeholder;
+    const std::string& content_key(it.key());
+    if (!IsValidName(content_key))
       return BadKeyMessage(content_key, error);
-    }
-    const base::Value::Dict* placeholder = it.second.GetIfDict();
-    if (!placeholder) {
+    if (!it.value().GetAsDictionary(&placeholder)) {
       *error = base::StringPrintf("Invalid placeholder %s for key %s",
                                   content_key.c_str(),
                                   name_key.c_str());
       return false;
     }
-    const std::string* content = placeholder->FindString(kContentKey);
-    if (!content) {
+    std::string content;
+    if (!placeholder->GetString(kContentKey, &content)) {
       *error = base::StringPrintf("Invalid \"%s\" element for key %s.",
                                   kContentKey, name_key.c_str());
       return false;
     }
-    (*placeholders)[base::ToLowerASCII(content_key)] = *content;
+    (*placeholders)[base::ToLowerASCII(content_key)] = content;
   }
 
   return true;
@@ -238,27 +228,23 @@ bool MessageBundle::ReplaceVariables(const SubstitutionMap& variables,
     var_begin_delimiter.size();
   while (true) {
     beg_index = message->find(var_begin_delimiter, beg_index);
-    if (beg_index == std::string::npos) {
+    if (beg_index == message->npos)
       return true;
-    }
 
     // Advance it immediately to the begining of possible variable name.
     beg_index += var_begin_delimiter_size;
-    if (beg_index >= message->size()) {
+    if (beg_index >= message->size())
       return true;
-    }
     std::string::size_type end_index =
         message->find(var_end_delimiter, beg_index);
-    if (end_index == std::string::npos) {
+    if (end_index == message->npos)
       return true;
-    }
 
     // Looking for 1 in substring of ...$1$....
     const std::string& var_name =
       message->substr(beg_index, end_index - beg_index);
-    if (!IsValidName(var_name)) {
+    if (!IsValidName(var_name))
       continue;
-    }
     auto it = variables.find(base::ToLowerASCII(var_name));
     if (it == variables.end()) {
       *error = base::StringPrintf("Variable %s%s%s used but not defined.",
@@ -282,16 +268,15 @@ bool MessageBundle::ReplaceVariables(const SubstitutionMap& variables,
 
 // static
 bool MessageBundle::IsValidName(const std::string& name) {
-  if (name.empty()) {
+  if (name.empty())
     return false;
-  }
 
-  for (const auto& c : name) {
+  std::string::const_iterator it = name.begin();
+  for (; it != name.end(); ++it) {
     // Allow only ascii 0-9, a-z, A-Z, and _ in the name.
-    if (!base::IsAsciiAlpha(c) && !base::IsAsciiDigit(c) && c != '_' &&
-        c != '@') {
+    if (!base::IsAsciiAlpha(*it) && !base::IsAsciiDigit(*it) && *it != '_' &&
+        *it != '@')
       return false;
-    }
   }
 
   return true;
@@ -312,6 +297,44 @@ std::string MessageBundle::GetL10nMessage(const std::string& name,
   }
 
   return std::string();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// Renderer helper functions.
+//
+///////////////////////////////////////////////////////////////////////////////
+
+// Unique class for Singleton.
+struct ExtensionToMessagesMap {
+  ExtensionToMessagesMap();
+  ~ExtensionToMessagesMap();
+
+  // Maps extension ID to message map.
+  ExtensionToL10nMessagesMap messages_map;
+};
+
+static base::LazyInstance<ExtensionToMessagesMap>::DestructorAtExit
+    g_extension_to_messages_map = LAZY_INSTANCE_INITIALIZER;
+
+ExtensionToMessagesMap::ExtensionToMessagesMap() {}
+
+ExtensionToMessagesMap::~ExtensionToMessagesMap() {}
+
+ExtensionToL10nMessagesMap* GetExtensionToL10nMessagesMap() {
+  return &g_extension_to_messages_map.Get().messages_map;
+}
+
+L10nMessagesMap* GetL10nMessagesMap(const std::string& extension_id) {
+  auto it = g_extension_to_messages_map.Get().messages_map.find(extension_id);
+  if (it != g_extension_to_messages_map.Get().messages_map.end())
+    return &(it->second);
+
+  return NULL;
+}
+
+void EraseL10nMessagesMap(const std::string& extension_id) {
+  g_extension_to_messages_map.Get().messages_map.erase(extension_id);
 }
 
 }  // namespace extensions

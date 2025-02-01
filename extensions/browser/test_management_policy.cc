@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -76,8 +76,11 @@ bool TestManagementPolicyProvider::MustRemainEnabled(
 
 bool TestManagementPolicyProvider::MustRemainDisabled(
     const Extension* extension,
-    disable_reason::DisableReason* reason) const {
+    disable_reason::DisableReason* reason,
+    std::u16string* error) const {
   if (must_remain_disabled_) {
+    if (error)
+      *error = error_message_;
     if (reason)
       *reason = disable_reason_;
   }

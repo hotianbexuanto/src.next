@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/strings/string_number_conversions.h"
 #include "extensions/common/constants.h"
@@ -23,11 +24,6 @@ namespace {
 class ExtensionBrowsertestUtilTest : public ShellApiTest {
  public:
   ExtensionBrowsertestUtilTest() = default;
-
-  ExtensionBrowsertestUtilTest(const ExtensionBrowsertestUtilTest&) = delete;
-  ExtensionBrowsertestUtilTest& operator=(const ExtensionBrowsertestUtilTest&) =
-      delete;
-
   ~ExtensionBrowsertestUtilTest() override = default;
 
   void SetUpOnMainThread() override {
@@ -47,6 +43,8 @@ class ExtensionBrowsertestUtilTest : public ShellApiTest {
 
  private:
   scoped_refptr<const Extension> extension_;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionBrowsertestUtilTest);
 };
 
 IN_PROC_BROWSER_TEST_F(ExtensionBrowsertestUtilTest,
@@ -54,47 +52,22 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowsertestUtilTest,
   EXPECT_EQ(extension()->id(),
             ExecuteScriptInBackgroundPage(
                 browser_context(), extension()->id(),
-                "chrome.test.sendScriptResult(chrome.runtime.id);"));
-
-  // Tests a successful test injection, including running nested tasks in the
-  // browser process (via an asynchronous extension API).
-  EXPECT_EQ("success",
-            ExecuteScriptInBackgroundPage(
-                browser_context(), extension()->id(),
-                R"(chrome.runtime.setUninstallURL('http://example.com',
-                                                  function() {
-                     chrome.test.sendScriptResult('success');
-                   });)"));
-
-  // Return a non-string argument.
-  EXPECT_EQ(3,
-            ExecuteScriptInBackgroundPage(browser_context(), extension()->id(),
-                                          "chrome.test.sendScriptResult(3);")
-                .GetInt());
-}
-
-IN_PROC_BROWSER_TEST_F(ExtensionBrowsertestUtilTest,
-                       ExecuteScriptInBackgroundPageDeprecated) {
-  EXPECT_EQ(extension()->id(),
-            ExecuteScriptInBackgroundPageDeprecated(
-                browser_context(), extension()->id(),
                 "window.domAutomationController.send(chrome.runtime.id);"));
 
-  // Tests a successful test injection, including running nested tasks in the
-  // browser process (via an asynchronous extension API).
+  // Check that executing a script doesn't block the browser process.
   EXPECT_EQ(std::string("/") + extensions::kGeneratedBackgroundPageFilename,
-            ExecuteScriptInBackgroundPageDeprecated(
+            ExecuteScriptInBackgroundPage(
                 browser_context(), extension()->id(),
-                R"(chrome.runtime.getBackgroundPage(function(result) {
-                     let url = new URL(result.location.href);
-                     window.domAutomationController.send(url.pathname);
-                   });)"));
+                "chrome.runtime.getBackgroundPage(function(result) {\n"
+                "  let url = new URL(result.location.href);\n"
+                "  window.domAutomationController.send(url.pathname);\n"
+                "});"));
 
   // An argument that isn't a string should cause a failure, not a hang.
-  EXPECT_NONFATAL_FAILURE(ExecuteScriptInBackgroundPageDeprecated(
-                              browser_context(), extension()->id(),
-                              "window.domAutomationController.send(3);"),
-                          "send(3)");
+  EXPECT_NONFATAL_FAILURE(
+      ExecuteScriptInBackgroundPage(browser_context(), extension()->id(),
+                                    "window.domAutomationController.send(3);"),
+      "send(3)");
 }
 
 IN_PROC_BROWSER_TEST_F(ExtensionBrowsertestUtilTest,
@@ -113,7 +86,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowsertestUtilTest,
   EXPECT_NONFATAL_FAILURE(
       EXPECT_FALSE(ExecuteScriptInBackgroundPageNoWait(
           browser_context(), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "")),
-      "No enabled extension with id: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+      "Extension aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa has no background page.");
 }
 
 }  // namespace

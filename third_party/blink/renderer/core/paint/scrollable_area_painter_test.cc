@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,10 +14,11 @@ using testing::ElementsAre;
 
 namespace blink {
 
-using ScrollableAreaPainterTest = PaintControllerPaintTestBase;
+using ScrollableAreaPainterTest = PaintControllerPaintTest;
 
-TEST_F(ScrollableAreaPainterTest, OverlayScrollbars) {
-  SetPreferCompositingToLCDText(true);
+INSTANTIATE_CAP_TEST_SUITE_P(ScrollableAreaPainterTest);
+
+TEST_P(ScrollableAreaPainterTest, OverlayScrollbars) {
   SetBodyInnerHTML(R"HTML(
     <div id="target" style="overflow: scroll; width: 50px; height: 50px">
       <div style="width: 200px; height: 200px"></div>
@@ -34,14 +35,13 @@ TEST_F(ScrollableAreaPainterTest, OverlayScrollbars) {
   ASSERT_TRUE(properties->VerticalScrollbarEffect());
 
   PaintChunk::Id horizontal_id(
-      target->GetScrollableArea()->HorizontalScrollbar()->Id(),
+      *target->GetScrollableArea()->HorizontalScrollbar(),
       DisplayItem::kScrollbarHorizontal);
   auto horizontal_state = target->FirstFragment().LocalBorderBoxProperties();
   horizontal_state.SetEffect(*properties->HorizontalScrollbarEffect());
 
-  PaintChunk::Id vertical_id(
-      target->GetScrollableArea()->VerticalScrollbar()->Id(),
-      DisplayItem::kScrollbarVertical);
+  PaintChunk::Id vertical_id(*target->GetScrollableArea()->VerticalScrollbar(),
+                             DisplayItem::kScrollbarVertical);
   auto vertical_state = target->FirstFragment().LocalBorderBoxProperties();
   vertical_state.SetEffect(*properties->VerticalScrollbarEffect());
 

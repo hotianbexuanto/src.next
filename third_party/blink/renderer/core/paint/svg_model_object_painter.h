@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,6 @@
 
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_model_object.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
-#include "ui/gfx/geometry/rect_conversions.h"
 
 namespace blink {
 
@@ -17,15 +16,12 @@ class SVGModelObjectPainter {
   STACK_ALLOCATED();
 
  public:
-  // See ObjectPainter::RecordHitTestData().
+  // Expands the bounds of the current paint chunk for hit test, and records
+  // special touch action if any. This should be called when painting the
+  // background even if there is no other painted content. SVG backgrounds are
+  // painted in the kForeground paint phase.
   static void RecordHitTestData(const LayoutObject& svg_object,
                                 const PaintInfo&);
-
-  // Records region capture bounds for the current paint chunk. This should
-  // be called when painting the background even if there is no other painted
-  // content.
-  static void RecordRegionCaptureData(const LayoutObject& svg_object,
-                                      const PaintInfo&);
 
   explicit SVGModelObjectPainter(
       const LayoutSVGModelObject& layout_svg_model_object)
@@ -56,7 +52,7 @@ class SVGDrawingRecorder : public DrawingRecorder {
             context,
             object,
             type,
-            gfx::ToEnclosingRect(object.VisualRectInLocalSVGCoordinates())) {
+            EnclosingIntRect(object.VisualRectInLocalSVGCoordinates())) {
     DCHECK(object.IsSVGChild());
     // We should not use this for SVG containers which paint effects only,
     // while VisualRectInLocalSVGCoordinates() contains visual rects from

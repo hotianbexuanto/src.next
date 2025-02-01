@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,7 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_profile_attributes_updater.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
 
 // static
 SigninProfileAttributesUpdater*
@@ -20,36 +21,27 @@ SigninProfileAttributesUpdaterFactory::GetForProfile(Profile* profile) {
 // static
 SigninProfileAttributesUpdaterFactory*
 SigninProfileAttributesUpdaterFactory::GetInstance() {
-  static base::NoDestructor<SigninProfileAttributesUpdaterFactory> instance;
-  return instance.get();
+  return base::Singleton<SigninProfileAttributesUpdaterFactory>::get();
 }
 
 SigninProfileAttributesUpdaterFactory::SigninProfileAttributesUpdaterFactory()
-    : ProfileKeyedServiceFactory(
+    : BrowserContextKeyedServiceFactory(
           "SigninProfileAttributesUpdater",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOriginalOnly)
-              // TODO(crbug.com/41488885): Check if this service is needed for
-              // Ash Internals.
-              .WithAshInternals(ProfileSelection::kOriginalOnly)
-              .Build()) {
+          BrowserContextDependencyManager::GetInstance()) {
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
 SigninProfileAttributesUpdaterFactory::
-    ~SigninProfileAttributesUpdaterFactory() = default;
+    ~SigninProfileAttributesUpdaterFactory() {}
 
-std::unique_ptr<KeyedService>
-SigninProfileAttributesUpdaterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SigninProfileAttributesUpdaterFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-
   // Some tests don't have a ProfileManager, disable this service.
-  if (!g_browser_process->profile_manager()) {
+  if (!g_browser_process->profile_manager())
     return nullptr;
-  }
 
-  return std::make_unique<SigninProfileAttributesUpdater>(
+  return new SigninProfileAttributesUpdater(
       IdentityManagerFactory::GetForProfile(profile),
       &g_browser_process->profile_manager()->GetProfileAttributesStorage(),
       profile->GetPath(), profile->GetPrefs());

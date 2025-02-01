@@ -1,27 +1,28 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_DOWNLOAD_ANDROID_DOWNLOAD_DIALOG_BRIDGE_H_
 #define CHROME_BROWSER_DOWNLOAD_ANDROID_DOWNLOAD_DIALOG_BRIDGE_H_
 
-#include <optional>
-
 #include "base/android/jni_android.h"
 #include "base/android/scoped_java_ref.h"
+#include "base/callback.h"
 #include "base/files/file_path.h"
-#include "base/functional/callback.h"
 #include "chrome/browser/download/download_dialog_types.h"
+#include "components/download/public/common/download_schedule.h"
 #include "net/base/network_change_notifier.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/native_widget_types.h"
-
-class Profile;
 
 // Contains all the user selection from download dialogs.
 struct DownloadDialogResult {
   DownloadDialogResult();
   DownloadDialogResult(const DownloadDialogResult&);
   ~DownloadDialogResult();
+
+  // Results from download later dialog.
+  absl::optional<download::DownloadSchedule> download_schedule;
 
   // Results from download location dialog.
   DownloadLocationDialogResult location_result =
@@ -36,6 +37,9 @@ class DownloadDialogBridge {
  public:
   using DialogCallback = base::OnceCallback<void(DownloadDialogResult)>;
 
+  static long GetDownloadLaterMinFileSize();
+  static bool ShouldShowDateTimePicker();
+
   DownloadDialogBridge();
   DownloadDialogBridge(const DownloadDialogBridge&) = delete;
   DownloadDialogBridge& operator=(const DownloadDialogBridge&) = delete;
@@ -49,12 +53,15 @@ class DownloadDialogBridge {
       net::NetworkChangeNotifier::ConnectionType connection_type,
       DownloadLocationDialogType dialog_type,
       const base::FilePath& suggested_path,
-      Profile* profile,
+      bool supports_later_dialog,
+      bool show_date_time_picker,
       DialogCallback dialog_callback);
 
   void OnComplete(JNIEnv* env,
                   const base::android::JavaParamRef<jobject>& obj,
-                  const base::android::JavaParamRef<jstring>& returned_path);
+                  const base::android::JavaParamRef<jstring>& returned_path,
+                  jboolean on_wifi,
+                  jlong start_time);
 
   void OnCanceled(JNIEnv* env, const base::android::JavaParamRef<jobject>& obj);
 

@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,7 +25,7 @@ TEST(CSSRevertValueTest, Equals) {
 }
 
 TEST(CSSRevertValueTest, NotEquals) {
-  EXPECT_NE(*CSSRevertValue::Create(), *CSSInitialValue::Create());
+  EXPECT_FALSE(*CSSRevertValue::Create() == *CSSInitialValue::Create());
 }
 
 }  // namespace blink

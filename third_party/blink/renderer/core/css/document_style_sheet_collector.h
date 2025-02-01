@@ -28,16 +28,14 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_DOCUMENT_STYLE_SHEET_COLLECTOR_H_
 
 #include "third_party/blink/renderer/core/css/active_style_sheets.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
-#include "third_party/blink/renderer/platform/heap/member.h"
-#include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
 namespace blink {
 
 class StyleSheet;
 class StyleSheetCollection;
-class RuleSetDiff;
 
 class DocumentStyleSheetCollector {
   // This class contains references to two on-heap collections, therefore
@@ -53,7 +51,6 @@ class DocumentStyleSheetCollector {
 
   void AppendActiveStyleSheet(const ActiveStyleSheet&);
   void AppendSheetForList(StyleSheet*);
-  void AppendRuleSetDiff(RuleSetDiff*);
 
  private:
   StyleSheetCollection* collection_;

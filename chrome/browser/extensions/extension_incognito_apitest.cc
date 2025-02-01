@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -46,7 +46,12 @@ IN_PROC_BROWSER_TEST_F(IncognitoApiTest, IncognitoNoScript) {
   WebContents* tab = otr_browser->tab_strip_model()->GetActiveWebContents();
 
   // Verify the script didn't run.
-  EXPECT_EQ(true, content::EvalJs(tab, "document.title == 'Unmodified'"));
+  bool result = false;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractBool(
+      tab,
+      "window.domAutomationController.send(document.title == 'Unmodified')",
+      &result));
+  EXPECT_TRUE(result);
 }
 
 IN_PROC_BROWSER_TEST_F(IncognitoApiTest, IncognitoYesScript) {
@@ -74,7 +79,12 @@ IN_PROC_BROWSER_TEST_F(IncognitoApiTest, IncognitoYesScript) {
   WebContents* tab = otr_browser->tab_strip_model()->GetActiveWebContents();
 
   // Verify the script ran.
-  EXPECT_EQ(true, content::EvalJs(tab, "document.title == 'modified'"));
+  bool result = false;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractBool(
+      tab,
+      "window.domAutomationController.send(document.title == 'modified')",
+      &result));
+  EXPECT_TRUE(result);
 }
 
 // Tests that an extension which is enabled for incognito mode doesn't
@@ -113,9 +123,8 @@ IN_PROC_BROWSER_TEST_F(IncognitoApiTest, IncognitoSplitMode) {
   catcher_incognito.RestrictToBrowserContext(
       browser()->profile()->GetPrimaryOTRProfile(/*create_if_needed=*/true));
 
-  ExtensionTestMessageListener listener("waiting", ReplyBehavior::kWillReply);
-  ExtensionTestMessageListener listener_incognito("waiting_incognito",
-                                                  ReplyBehavior::kWillReply);
+  ExtensionTestMessageListener listener("waiting", true);
+  ExtensionTestMessageListener listener_incognito("waiting_incognito", true);
 
   // Open incognito window and navigate to test page.
   OpenURLOffTheRecord(browser()->profile(), embedded_test_server()->GetURL(
@@ -139,8 +148,7 @@ IN_PROC_BROWSER_TEST_F(IncognitoApiTest, IncognitoSplitMode) {
 // events or callbacks.
 IN_PROC_BROWSER_TEST_F(IncognitoApiTest, IncognitoDisabled) {
   ResultCatcher catcher;
-  ExtensionTestMessageListener listener("createIncognitoTab",
-                                        ReplyBehavior::kWillReply);
+  ExtensionTestMessageListener listener("createIncognitoTab", true);
 
   // Open incognito window and navigate to test page.
   OpenURLOffTheRecord(browser()->profile(), embedded_test_server()->GetURL(

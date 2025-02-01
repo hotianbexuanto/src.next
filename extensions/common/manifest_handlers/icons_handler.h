@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,8 @@
 #include <string>
 
 #include "extensions/common/extension.h"
+#include "extensions/common/extension_icon_set.h"
 #include "extensions/common/extension_resource.h"
-#include "extensions/common/icons/extension_icon_set.h"
 #include "extensions/common/manifest_handler.h"
 
 class GURL;
@@ -24,12 +24,13 @@ struct IconsInfo : public Extension::ManifestData {
   static const ExtensionIconSet& GetIcons(const Extension* extension);
 
   // Get an extension icon as a resource or URL.
-  static ExtensionResource GetIconResource(const Extension* extension,
-                                           int size_in_px,
-                                           ExtensionIconSet::Match match_type);
+  static ExtensionResource GetIconResource(
+      const Extension* extension,
+      int size_in_px,
+      ExtensionIconSet::MatchType match_type);
   static GURL GetIconURL(const Extension* extension,
                          int size_in_px,
-                         ExtensionIconSet::Match match_type);
+                         ExtensionIconSet::MatchType match_type);
 };
 
 // Parses the "icons" manifest key.

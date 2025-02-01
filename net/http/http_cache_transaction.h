@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,10 +14,8 @@
 #include <memory>
 #include <string>
 
-#include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/raw_ptr_exclusion.h"
-#include "base/memory/scoped_refptr.h"
+#include "base/macros.h"
+#include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "net/base/completion_once_callback.h"
@@ -26,7 +24,6 @@
 #include "net/base/ip_endpoint.h"
 #include "net/base/load_states.h"
 #include "net/base/net_error_details.h"
-#include "net/base/net_errors.h"
 #include "net/base/request_priority.h"
 #include "net/http/http_cache.h"
 #include "net/http/http_request_headers.h"
@@ -69,20 +66,27 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   //    update existing cache entries, but will never create a new entry or
   //    respond using the entry read from the cache.
   enum Mode {
-    NONE = 0,
-    READ_META = 1 << 0,
-    READ_DATA = 1 << 1,
-    READ = READ_META | READ_DATA,
-    WRITE = 1 << 2,
-    READ_WRITE = READ | WRITE,
-    UPDATE = READ_META | WRITE,  // READ_WRITE & ~READ_DATA
+    NONE            = 0,
+    READ_META       = 1 << 0,
+    READ_DATA       = 1 << 1,
+    READ            = READ_META | READ_DATA,
+    WRITE           = 1 << 2,
+    READ_WRITE      = READ | WRITE,
+    UPDATE          = READ_META | WRITE,  // READ_WRITE & ~READ_DATA
   };
 
-  Transaction(RequestPriority priority, HttpCache* cache);
+  // This enum backs a histogram. Please keep enums.xml up to date with any
+  // changes, and new entries should be appended at the end. Never re-arrange /
+  // re-use values.
+  enum class NetworkIsolationKeyPresent {
+    kNotPresentCacheableRequest = 0,
+    kNotPresentNonCacheableRequest = 1,
+    kPresent = 2,
+    kMaxValue = kPresent,
+  };
 
-  Transaction(const Transaction&) = delete;
-  Transaction& operator=(const Transaction&) = delete;
-
+  Transaction(RequestPriority priority,
+              HttpCache* cache);
   ~Transaction() override;
 
   // Virtual so it can be extended for testing.
@@ -92,31 +96,26 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
 
   const std::string& key() const { return cache_key_; }
 
+  HttpCache::ActiveEntry* entry() { return entry_; }
+
   // Returns the LoadState of the writer transaction of a given ActiveEntry. In
   // other words, returns the LoadState of this transaction without asking the
   // http cache, because this transaction should be the one currently writing
   // to the cache entry.
   LoadState GetWriterLoadState() const;
 
+  const CompletionRepeatingCallback& io_callback() { return io_callback_; }
+
   void SetIOCallBackForTest(CompletionRepeatingCallback cb) {
     io_callback_ = cb;
-  }
-
-  // Returns the IO callback specific to HTTPCache callbacks. This is done
-  // indirectly so the callbacks can be replaced when testing.
-  // TODO(https://crbug.com/1454228/): Find a cleaner way to do this so the
-  // callback can be called directly.
-  const CompletionRepeatingCallback& cache_io_callback() {
-    return cache_io_callback_;
-  }
-  void SetCacheIOCallBackForTest(CompletionRepeatingCallback cb) {
-    cache_io_callback_ = cb;
   }
 
   const NetLogWithSource& net_log() const;
 
   // Bypasses the cache lock whenever there is lock contention.
-  void BypassLockForTest() { bypass_lock_for_test_ = true; }
+  void BypassLockForTest() {
+    bypass_lock_for_test_ = true;
+  }
 
   void BypassLockAfterHeadersForTest() {
     bypass_lock_after_headers_for_test_ = true;
@@ -144,7 +143,6 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   void StopCaching() override;
   int64_t GetTotalReceivedBytes() const override;
   int64_t GetTotalSentBytes() const override;
-  int64_t GetReceivedBodyBytes() const override;
   void DoneReading() override;
   const HttpResponseInfo* GetResponseInfo() const override;
   LoadState GetLoadState() const override;
@@ -162,14 +160,9 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   void SetResponseHeadersCallback(ResponseHeadersCallback callback) override;
   void SetEarlyResponseHeadersCallback(
       ResponseHeadersCallback callback) override;
-  void SetModifyRequestHeadersCallback(
-      base::RepeatingCallback<void(HttpRequestHeaders*)> callback) override;
-  void SetIsSharedDictionaryReadAllowedCallback(
-      base::RepeatingCallback<bool()> callback) override;
   int ResumeNetworkStart() override;
-  ConnectionAttempts GetConnectionAttempts() const override;
+  void GetConnectionAttempts(ConnectionAttempts* out) const override;
   void CloseConnectionOnDestruction() override;
-  bool IsMdlMatchForMetrics() const override;
 
   // Invoked when parallel validation cannot proceed due to response failure
   // and this transaction needs to be restarted.
@@ -178,6 +171,9 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // Invoked to remove the association between a transaction waiting to be
   // added to an entry and the entry.
   void ResetCachePendingState() { cache_pending_ = false; }
+
+  // Returns the estimate of dynamically allocated memory in bytes.
+  size_t EstimateMemoryUsage() const;
 
   RequestPriority priority() const { return priority_; }
   PartialData* partial() { return partial_.get(); }
@@ -191,32 +187,30 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // entry has finished writing.
   void WriteModeTransactionAboutToBecomeReader();
 
-  // Add time spent writing data in the disk cache. Used for histograms.
-  void AddDiskCacheWriteTime(base::TimeDelta elapsed);
+  // Invoked when HttpCache decides whether this transaction should join
+  // parallel writing or create a new writers object. This is then used
+  // for logging metrics. Can be called repeatedly, but doesn't change once the
+  // value has been set to something other than PARALLEL_WRITING_NONE.
+  void MaybeSetParallelWritingPatternForMetrics(ParallelWritingPattern pattern);
 
  private:
   static const size_t kNumValidationHeaders = 2;
   // Helper struct to pair a header name with its value, for
   // headers used to validate cache entries.
   struct ValidationHeaders {
-    ValidationHeaders() = default;
+    ValidationHeaders() : initialized(false) {}
 
     std::string values[kNumValidationHeaders];
     void Reset() {
       initialized = false;
-      for (auto& value : values) {
+      for (auto& value : values)
         value.clear();
-      }
     }
-    bool initialized = false;
+    bool initialized;
   };
 
   struct NetworkTransactionInfo {
     NetworkTransactionInfo();
-
-    NetworkTransactionInfo(const NetworkTransactionInfo&) = delete;
-    NetworkTransactionInfo& operator=(const NetworkTransactionInfo&) = delete;
-
     ~NetworkTransactionInfo();
 
     // Load timing information for the last network request, if any. Set in the
@@ -225,13 +219,10 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
     std::unique_ptr<LoadTimingInfo> old_network_trans_load_timing;
     int64_t total_received_bytes = 0;
     int64_t total_sent_bytes = 0;
-    int64_t received_body_bytes = 0;
     ConnectionAttempts old_connection_attempts;
     IPEndPoint old_remote_endpoint;
-    // For metrics. Can be removed when associated histograms are removed.
-    // Records whether any destroyed network transactions' ProxyInfo determined
-    // the request was to a Masked Domain List-covered domain.
-    bool previous_mdl_match_for_metrics = false;
+
+    DISALLOW_COPY_AND_ASSIGN(NetworkTransactionInfo);
   };
 
   enum State {
@@ -262,8 +253,6 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
     STATE_COMPLETE_PARTIAL_CACHE_VALIDATION,
     STATE_CACHE_UPDATE_STALE_WHILE_REVALIDATE_TIMEOUT,
     STATE_CACHE_UPDATE_STALE_WHILE_REVALIDATE_TIMEOUT_COMPLETE,
-    STATE_CONNECTED_CALLBACK,
-    STATE_CONNECTED_CALLBACK_COMPLETE,
     STATE_SETUP_ENTRY_FOR_READ,
     STATE_SEND_REQUEST,
     STATE_SEND_REQUEST_COMPLETE,
@@ -293,6 +282,18 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
     // by the network layer (skipping the cache entirely).
     STATE_NETWORK_READ,
     STATE_NETWORK_READ_COMPLETE,
+  };
+
+  // Used for categorizing validation triggers in histograms.
+  // NOTE: This enumeration is used in histograms, so please do not add entries
+  // in the middle.
+  enum ValidationCause {
+    VALIDATION_CAUSE_UNDEFINED,
+    VALIDATION_CAUSE_VARY_MISMATCH,
+    VALIDATION_CAUSE_VALIDATE_FLAG,
+    VALIDATION_CAUSE_STALE,
+    VALIDATION_CAUSE_ZERO_FRESHNESS,
+    VALIDATION_CAUSE_MAX
   };
 
   enum MemoryEntryDataHints {
@@ -330,8 +331,6 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   int DoCacheQueryDataComplete(int result);
   int DoCacheUpdateStaleWhileRevalidateTimeout();
   int DoCacheUpdateStaleWhileRevalidateTimeoutComplete(int result);
-  int DoConnectedCallback();
-  int DoConnectedCallbackComplete(int result);
   int DoSetupEntryForRead();
   int DoStartPartialCacheValidation();
   int DoCompletePartialCacheValidation(int result);
@@ -450,6 +449,15 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // Fixes the response headers to match expectations for a HEAD request.
   void FixHeadersForHead();
 
+  // Called to write data to the cache entry.  If the write fails, then the
+  // cache entry is destroyed.  Future calls to this function will just do
+  // nothing without side-effect.  Returns a network error code.
+  int WriteToEntry(int index,
+                   int offset,
+                   IOBuffer* data,
+                   int data_len,
+                   CompletionOnceCallback callback);
+
   // Called to write a response to the cache entry. |truncated| indicates if the
   // entry should be marked as incomplete.
   int WriteResponseInfoToEntry(const HttpResponseInfo& response,
@@ -475,16 +483,7 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // to/from the entry. If |entry_is_complete| is false the result may be either
   // a truncated or a doomed entry based on whether the stored response can be
   // resumed or not.
-  void DoneWithEntry(bool entry_is_complete);
-
-  // Dooms the given entry so that it will not be re-used for other requests,
-  // then calls `DoneWithEntry()`.
-  //
-  // This happens when network conditions have changed since the entry was
-  // cached, which results in deterministic failures when trying to use the
-  // cache entry. In order to let future requests succeed, the cache entry
-  // should be doomed.
-  void DoomInconsistentEntry();
+  void DoneWithEntry(bool did_finish);
 
   // Returns an error to signal the caller that the current read failed. The
   // current operation |result| is also logged. If |restart| is true, the
@@ -560,11 +559,6 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // continue its processing.
   void OnIOComplete(int result);
 
-  // Called to signal completion of an asynchronous HTTPCache operation. It
-  // uses a separate callback from OnIoComplete so that cache transaction
-  // operations and network IO can be run in parallel.
-  void OnCacheIOComplete(int result);
-
   // When in a DoLoop, use this to set the next state as it verifies that the
   // state isn't set twice.
   void TransitionToState(State state);
@@ -575,56 +569,27 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // Saves network transaction info using |transaction|.
   void SaveNetworkTransactionInfo(const HttpTransaction& transaction);
 
-  // Determines whether caching should be disabled for a response, given its
-  // headers. Updates the appropriate data structures.
-  bool UpdateAndReportCacheability(const HttpResponseHeaders& headers);
+  // Disables caching for large content when running on battery.
+  bool ShouldDisableCaching(const HttpResponseHeaders* headers) const;
 
-  // 304 revalidations of resources that set security headers and that get
-  // forwarded might need to set these headers again to avoid being blocked.
-  void UpdateSecurityHeadersBeforeForwarding();
-
-  enum class DiskCacheAccessType {
-    kRead,
-    kWrite,
-  };
-  void BeginDiskCacheAccessTimeCount();
-  void EndDiskCacheAccessTimeCount(DiskCacheAccessType type);
-
-  State next_state_{STATE_NONE};
-
-  // Set when a HTTPCache transaction is pending in parallel with other IO.
-  bool waiting_for_cache_io_ = false;
-
-  // If a pending async HTTPCache transaction takes longer than the parallel
-  // Network IO, this will store the result of the Network IO operation until
-  // the cache transaction completes (or times out).
-  std::optional<int> pending_io_result_ = std::nullopt;
-
-  // Used for tracing.
-  const uint64_t trace_id_;
+  State next_state_;
 
   // Initial request with which Start() was invoked.
-  raw_ptr<const HttpRequestInfo> initial_request_ = nullptr;
+  const HttpRequestInfo* initial_request_;
 
-  // `custom_request_` is assigned to `request_` after allocation. It must be
-  // declared before `request_` so that it will be destroyed afterwards to
-  // prevent that pointer from dangling.
-  std::unique_ptr<HttpRequestInfo> custom_request_;
-
-  raw_ptr<const HttpRequestInfo> request_ = nullptr;
+  const HttpRequestInfo* request_;
 
   std::string method_;
   RequestPriority priority_;
   NetLogWithSource net_log_;
+  std::unique_ptr<HttpRequestInfo> custom_request_;
   HttpRequestHeaders request_headers_copy_;
   // If extra_headers specified a "if-modified-since" or "if-none-match",
   // |external_validation_| contains the value of those headers.
   ValidationHeaders external_validation_;
   base::WeakPtr<HttpCache> cache_;
-  scoped_refptr<HttpCache::ActiveEntry> entry_;
-  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
-  // #addr-of
-  scoped_refptr<HttpCache::ActiveEntry> new_entry_;
+  HttpCache::ActiveEntry* entry_;
+  HttpCache::ActiveEntry* new_entry_;
   std::unique_ptr<HttpTransaction> network_trans_;
   CompletionOnceCallback callback_;  // Consumer's callback.
   HttpResponseInfo response_;
@@ -636,70 +601,59 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // and modifies the members for future transactions. Then,
   // WriteResponseInfoToEntry() writes |updated_prefetch_response_| to the cache
   // entry if it is populated, or |response_| otherwise. Finally,
-  // WriteResponseInfoToEntry() resets this to std::nullopt.
+  // WriteResponseInfoToEntry() resets this to absl::nullopt.
   std::unique_ptr<HttpResponseInfo> updated_prefetch_response_;
 
-  raw_ptr<const HttpResponseInfo, AcrossTasksDanglingUntriaged> new_response_ =
-      nullptr;
+  const HttpResponseInfo* new_response_;
   std::string cache_key_;
-  Mode mode_ = NONE;
-  bool reading_ = false;          // We are already reading. Never reverts to
-                                  // false once set.
-  bool invalid_range_ = false;    // We may bypass the cache for this request.
-  bool truncated_ = false;        // We don't have all the response data.
-  bool is_sparse_ = false;        // The data is stored in sparse byte ranges.
-  bool range_requested_ = false;  // The user requested a byte range.
-  bool handling_206_ = false;     // We must deal with this 206 response.
-  bool cache_pending_ = false;    // We are waiting for the HttpCache.
+  Mode mode_;
+  bool reading_;  // We are already reading. Never reverts to false once set.
+  bool invalid_range_;  // We may bypass the cache for this request.
+  bool truncated_;  // We don't have all the response data.
+  bool is_sparse_;  // The data is stored in sparse byte ranges.
+  bool range_requested_;  // The user requested a byte range.
+  bool handling_206_;  // We must deal with this 206 response.
+  bool cache_pending_;  // We are waiting for the HttpCache.
 
   // Headers have been received from the network and it's not a match with the
   // existing entry.
-  bool done_headers_create_new_entry_ = false;
+  bool done_headers_create_new_entry_;
 
-  bool vary_mismatch_ = false;  // The request doesn't match the stored vary
-                                // data.
-  bool couldnt_conditionalize_request_ = false;
-  bool bypass_lock_for_test_ = false;  // A test is exercising the cache lock.
-  bool bypass_lock_after_headers_for_test_ = false;  // A test is exercising the
-                                                     // cache lock.
-  bool fail_conditionalization_for_test_ =
-      false;  // Fail ConditionalizeRequest.
-
+  bool vary_mismatch_;  // The request doesn't match the stored vary data.
+  bool couldnt_conditionalize_request_;
+  bool bypass_lock_for_test_;  // A test is exercising the cache lock.
+  bool bypass_lock_after_headers_for_test_;  // A test is exercising the cache
+                                             // lock.
+  bool fail_conditionalization_for_test_;  // Fail ConditionalizeRequest.
   scoped_refptr<IOBuffer> read_buf_;
 
   // Length of the buffer passed in Read().
-  int read_buf_len_ = 0;
+  int read_buf_len_;
 
-  int io_buf_len_ = 0;
-  int read_offset_ = 0;
-  int effective_load_flags_ = 0;
+  int io_buf_len_;
+  int read_offset_;
+  int effective_load_flags_;
   std::unique_ptr<PartialData> partial_;  // We are dealing with range requests.
   CompletionRepeatingCallback io_callback_;
-  CompletionRepeatingCallback cache_io_callback_;  // cache-specific IO callback
-  base::RepeatingCallback<bool()> is_shared_dictionary_read_allowed_callback_;
 
   // Error code to be returned from a subsequent Read call if shared writing
   // failed in a separate transaction.
-  int shared_writing_error_ = OK;
+  int shared_writing_error_;
 
   // Members used to track data for histograms.
   // This cache_entry_status_ takes precedence over
   // response_.cache_entry_status. In fact, response_.cache_entry_status must be
   // kept in sync with cache_entry_status_ (via SetResponse and
   // UpdateCacheEntryStatus).
-  HttpResponseInfo::CacheEntryStatus cache_entry_status_ =
-      HttpResponseInfo::CacheEntryStatus::ENTRY_UNDEFINED;
+  HttpResponseInfo::CacheEntryStatus cache_entry_status_;
+  ValidationCause validation_cause_;
   base::TimeTicks entry_lock_waiting_since_;
   base::TimeTicks first_cache_access_since_;
   base::TimeTicks send_request_since_;
   base::TimeTicks read_headers_since_;
   base::Time open_entry_last_used_;
-  base::TimeTicks last_disk_cache_access_start_time_;
-  base::TimeDelta total_disk_cache_read_time_;
-  base::TimeDelta total_disk_cache_write_time_;
-  bool recorded_histograms_ = false;
-  bool has_opened_or_created_entry_ = false;
-  bool record_entry_open_or_creation_time_ = false;
+  bool recorded_histograms_;
+  ParallelWritingPattern parallel_writing_pattern_;
 
   NetworkTransactionInfo network_transaction_info_;
 
@@ -710,14 +664,14 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // TODO(shivanisha) Note that if this transaction dies mid-way and there are
   // other writer transactions, no transaction then accounts for those
   // statistics.
-  bool moved_network_transaction_to_writers_ = false;
+  bool moved_network_transaction_to_writers_;
 
   // The helper object to use to create WebSocketHandshakeStreamBase
   // objects. Only relevant when establishing a WebSocket connection.
   // This is passed to the underlying network transaction. It is stored here in
   // case the transaction does not exist yet.
-  raw_ptr<WebSocketHandshakeStreamBase::CreateHelper>
-      websocket_handshake_stream_base_create_helper_ = nullptr;
+  WebSocketHandshakeStreamBase::CreateHelper*
+      websocket_handshake_stream_base_create_helper_;
 
   BeforeNetworkStartCallback before_network_start_callback_;
   ConnectedCallback connected_callback_;
@@ -726,9 +680,11 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   ResponseHeadersCallback response_headers_callback_;
 
   // True if the Transaction is currently processing the DoLoop.
-  bool in_do_loop_ = false;
+  bool in_do_loop_;
 
   base::WeakPtrFactory<Transaction> weak_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(Transaction);
 };
 
 }  // namespace net

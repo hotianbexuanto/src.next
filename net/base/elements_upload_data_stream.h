@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,9 +11,8 @@
 #include <memory>
 #include <vector>
 
-#include "base/memory/scoped_refptr.h"
+#include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
-#include "net/base/net_errors.h"
 #include "net/base/net_export.h"
 #include "net/base/upload_data_stream.h"
 
@@ -36,10 +35,10 @@ class NET_EXPORT ElementsUploadDataStream : public UploadDataStream {
   ~ElementsUploadDataStream() override;
 
   // Creates an ElementsUploadDataStream with a single reader.  Returns a
-  // std::unique_ptr<UploadDataStream> for ease of use. The UploadDataStream
-  // will use an identifier value of 0, indicating an unspecified identifier.
+  // std::unique_ptr<UploadDataStream> for ease of use.
   static std::unique_ptr<UploadDataStream> CreateWithReader(
-      std::unique_ptr<UploadElementReader> reader);
+      std::unique_ptr<UploadElementReader> reader,
+      int64_t identifier);
 
  private:
   // UploadDataStream implementation.
@@ -78,10 +77,10 @@ class NET_EXPORT ElementsUploadDataStream : public UploadDataStream {
   // Index of the current upload element (i.e. the element currently being
   // read). The index is used as a cursor to iterate over elements in
   // |upload_data_|.
-  size_t element_index_ = 0;
+  size_t element_index_;
 
   // Set to actual error if read fails, otherwise set to net::OK.
-  int read_error_ = OK;
+  int read_error_;
 
   base::WeakPtrFactory<ElementsUploadDataStream> weak_ptr_factory_{this};
 };

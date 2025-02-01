@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright (c) 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,7 +29,6 @@
 
 #include <atomic>
 
-#include "base/numerics/wrapping_math.h"
 #include "build/build_config.h"
 
 namespace base {
@@ -67,15 +66,14 @@ inline Atomic32 NoBarrier_AtomicExchange(volatile Atomic32* ptr,
 
 inline Atomic32 NoBarrier_AtomicIncrement(volatile Atomic32* ptr,
                                           Atomic32 increment) {
-  return base::WrappingAdd(
-      ((AtomicLocation32)ptr)->fetch_add(increment, std::memory_order_relaxed),
-      increment);
+  return increment +
+         ((AtomicLocation32)ptr)
+             ->fetch_add(increment, std::memory_order_relaxed);
 }
 
 inline Atomic32 Barrier_AtomicIncrement(volatile Atomic32* ptr,
                                         Atomic32 increment) {
-  return base::WrappingAdd(((AtomicLocation32)ptr)->fetch_add(increment),
-                           increment);
+  return increment + ((AtomicLocation32)ptr)->fetch_add(increment);
 }
 
 inline Atomic32 Acquire_CompareAndSwap(volatile Atomic32* ptr,
@@ -118,8 +116,6 @@ inline Atomic32 Acquire_Load(volatile const Atomic32* ptr) {
 
 #if defined(ARCH_CPU_64_BITS)
 
-using AtomicU64 = std::make_unsigned_t<Atomic64>;
-
 typedef volatile std::atomic<Atomic64>* AtomicLocation64;
 static_assert(sizeof(*(AtomicLocation64) nullptr) == sizeof(Atomic64),
               "incompatible 64-bit atomic layout");
@@ -143,15 +139,14 @@ inline Atomic64 NoBarrier_AtomicExchange(volatile Atomic64* ptr,
 
 inline Atomic64 NoBarrier_AtomicIncrement(volatile Atomic64* ptr,
                                           Atomic64 increment) {
-  return base::WrappingAdd(
-      ((AtomicLocation64)ptr)->fetch_add(increment, std::memory_order_relaxed),
-      increment);
+  return increment +
+         ((AtomicLocation64)ptr)
+             ->fetch_add(increment, std::memory_order_relaxed);
 }
 
 inline Atomic64 Barrier_AtomicIncrement(volatile Atomic64* ptr,
                                         Atomic64 increment) {
-  return base::WrappingAdd(((AtomicLocation64)ptr)->fetch_add(increment),
-                           increment);
+  return increment + ((AtomicLocation64)ptr)->fetch_add(increment);
 }
 
 inline Atomic64 Acquire_CompareAndSwap(volatile Atomic64* ptr,
@@ -174,6 +169,10 @@ inline Atomic64 Release_CompareAndSwap(volatile Atomic64* ptr,
                                 std::memory_order_release,
                                 std::memory_order_relaxed);
   return old_value;
+}
+
+inline void NoBarrier_Store(volatile Atomic64* ptr, Atomic64 value) {
+  ((AtomicLocation64)ptr)->store(value, std::memory_order_relaxed);
 }
 
 inline void Release_Store(volatile Atomic64* ptr, Atomic64 value) {
