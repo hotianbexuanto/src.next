@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,32 +14,28 @@ TEST(UnguessableTokenAndroid, BasicCreateToken) {
   JNIEnv* env = AttachCurrentThread();
   uint64_t high = 0x1234567812345678;
   uint64_t low = 0x0583503029282304;
-  base::UnguessableToken token =
-      base::UnguessableToken::CreateForTesting(high, low);
+  base::UnguessableToken token = base::UnguessableToken::Deserialize(high, low);
   ScopedJavaLocalRef<jobject> jtoken =
       UnguessableTokenAndroid::Create(env, token);
-  std::optional<base::UnguessableToken> result =
+  base::UnguessableToken result =
       UnguessableTokenAndroid::FromJavaUnguessableToken(env, jtoken);
 
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(token, result.value());
+  EXPECT_EQ(token, result);
 }
 
 TEST(UnguessableTokenAndroid, ParcelAndUnparcel) {
   JNIEnv* env = AttachCurrentThread();
   uint64_t high = 0x1234567812345678;
   uint64_t low = 0x0583503029282304;
-  base::UnguessableToken token =
-      base::UnguessableToken::CreateForTesting(high, low);
+  base::UnguessableToken token = base::UnguessableToken::Deserialize(high, low);
   ScopedJavaLocalRef<jobject> jtoken =
       UnguessableTokenAndroid::Create(env, token);
   ScopedJavaLocalRef<jobject> jtoken_clone =
       UnguessableTokenAndroid::ParcelAndUnparcelForTesting(env, jtoken);
-  std::optional<base::UnguessableToken> token_clone =
+  base::UnguessableToken token_clone =
       UnguessableTokenAndroid::FromJavaUnguessableToken(env, jtoken_clone);
 
-  ASSERT_TRUE(token_clone.has_value());
-  EXPECT_EQ(token, token_clone.value());
+  EXPECT_EQ(token, token_clone);
 }
 
 }  // namespace android

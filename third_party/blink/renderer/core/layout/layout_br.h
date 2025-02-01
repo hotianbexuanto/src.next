@@ -27,11 +27,9 @@
 // support for CSS2 :before and :after pseudo elements.
 namespace blink {
 
-class HTMLBRElement;
-
 class LayoutBR : public LayoutText {
  public:
-  explicit LayoutBR(HTMLBRElement& node);
+  explicit LayoutBR(Node*);
   ~LayoutBR() override;
 
   const char* GetName() const override {
@@ -43,9 +41,34 @@ class LayoutBR : public LayoutText {
   // to return a rect that includes space to illustrate a newline.
   using LayoutText::LocalSelectionVisualRect;
 
-  bool IsBR() const final {
+  float Width(unsigned /* from */,
+              unsigned /* len */,
+              const Font&,
+              LayoutUnit /* xpos */,
+              TextDirection,
+              HashSet<const SimpleFontData*>* = nullptr /* fallbackFonts */,
+              FloatRect* /* glyphBounds */ = nullptr,
+              float /* expansion */ = false) const override {
     NOT_DESTROYED();
-    return true;
+    return 0;
+  }
+  float Width(unsigned /* from */,
+              unsigned /* len */,
+              LayoutUnit /* xpos */,
+              TextDirection,
+              bool = false /* firstLine */,
+              HashSet<const SimpleFontData*>* = nullptr /* fallbackFonts */,
+              FloatRect* /* glyphBounds */ = nullptr,
+              float /* expansion */ = false) const override {
+    NOT_DESTROYED();
+    return 0;
+  }
+
+  int LineHeight(bool first_line) const;
+
+  bool IsOfType(LayoutObjectType type) const override {
+    NOT_DESTROYED();
+    return type == kLayoutObjectBr || LayoutText::IsOfType(type);
   }
 
   int CaretMinOffset() const override;
@@ -54,10 +77,10 @@ class LayoutBR : public LayoutText {
   PositionWithAffinity PositionForPoint(const PhysicalOffset&) const final;
 
   Position PositionForCaretOffset(unsigned) const final;
-  std::optional<unsigned> CaretOffsetForPosition(const Position&) const final;
+  absl::optional<unsigned> CaretOffsetForPosition(const Position&) const final;
 
- private:
-  unsigned NonCollapsedCaretMaxOffset() const override;
+ protected:
+  void StyleDidChange(StyleDifference, const ComputedStyle* old_style) override;
 };
 
 template <>

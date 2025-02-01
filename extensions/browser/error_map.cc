@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "base/lazy_instance.h"
-#include "extensions/common/extension_id.h"
+#include "base/macros.h"
 
 namespace extensions {
 
@@ -27,14 +27,15 @@ int g_next_error_id = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorMap::Filter
-ErrorMap::Filter::Filter(const ExtensionId& restrict_to_extension_id,
+ErrorMap::Filter::Filter(const std::string& restrict_to_extension_id,
                          int restrict_to_type,
                          const std::set<int>& restrict_to_ids,
                          bool restrict_to_incognito)
     : restrict_to_extension_id(restrict_to_extension_id),
       restrict_to_type(restrict_to_type),
       restrict_to_ids(restrict_to_ids),
-      restrict_to_incognito(restrict_to_incognito) {}
+      restrict_to_incognito(restrict_to_incognito) {
+}
 
 ErrorMap::Filter::Filter(const Filter& other) = default;
 
@@ -42,27 +43,27 @@ ErrorMap::Filter::~Filter() {
 }
 
 ErrorMap::Filter ErrorMap::Filter::ErrorsForExtension(
-    const ExtensionId& extension_id) {
+    const std::string& extension_id) {
   return Filter(extension_id, -1, std::set<int>(), false);
 }
 
 ErrorMap::Filter ErrorMap::Filter::ErrorsForExtensionWithType(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     ExtensionError::Type type) {
-  return Filter(extension_id, static_cast<int>(type), std::set<int>(), false);
+  return Filter(extension_id, type, std::set<int>(), false);
 }
 
 ErrorMap::Filter ErrorMap::Filter::ErrorsForExtensionWithIds(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const std::set<int>& ids) {
   return Filter(extension_id, -1, ids, false);
 }
 
 ErrorMap::Filter ErrorMap::Filter::ErrorsForExtensionWithTypeAndIds(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     ExtensionError::Type type,
     const std::set<int>& ids) {
-  return Filter(extension_id, static_cast<int>(type), ids, false);
+  return Filter(extension_id, type, ids, false);
 }
 
 ErrorMap::Filter ErrorMap::Filter::IncognitoErrors() {
@@ -70,20 +71,15 @@ ErrorMap::Filter ErrorMap::Filter::IncognitoErrors() {
 }
 
 bool ErrorMap::Filter::Matches(const ExtensionError* error) const {
-  if (restrict_to_type != -1 &&
-      restrict_to_type != static_cast<int>(error->type())) {
+  if (restrict_to_type != -1 && restrict_to_type != error->type())
     return false;
-  }
-  if (restrict_to_incognito && !error->from_incognito()) {
+  if (restrict_to_incognito && !error->from_incognito())
     return false;
-  }
   if (!restrict_to_extension_id.empty() &&
-      error->extension_id() != restrict_to_extension_id) {
+      error->extension_id() != restrict_to_extension_id)
     return false;
-  }
-  if (!restrict_to_ids.empty() && restrict_to_ids.count(error->id()) == 0) {
+  if (!restrict_to_ids.empty() && restrict_to_ids.count(error->id()) == 0)
     return false;
-  }
   return true;
 }
 
@@ -92,10 +88,6 @@ bool ErrorMap::Filter::Matches(const ExtensionError* error) const {
 class ErrorMap::ExtensionEntry {
  public:
   ExtensionEntry();
-
-  ExtensionEntry(const ExtensionEntry&) = delete;
-  ExtensionEntry& operator=(const ExtensionEntry&) = delete;
-
   ~ExtensionEntry();
 
   // Delete any errors in the entry that match the given ids and type, if
@@ -115,6 +107,8 @@ class ErrorMap::ExtensionEntry {
   // owned by the Entry (in turn owned by the ErrorMap) and are deleted upon
   // destruction.
   ErrorList list_;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionEntry);
 };
 
 ErrorMap::ExtensionEntry::ExtensionEntry() {
@@ -158,13 +152,11 @@ const ExtensionError* ErrorMap::ExtensionEntry::AddError(
 
   // If there are too many errors for an extension already, limit ourselves to
   // the most recent ones.
-  if (list_.size() >= kMaxErrorsPerExtension) {
+  if (list_.size() >= kMaxErrorsPerExtension)
     list_.pop_front();
-  }
 
-  if (error->id() == 0) {
+  if (error->id() == 0)
     error->set_id(g_next_error_id++);
-  }
 
   list_.push_back(std::move(error));
   return list_.back().get();
@@ -172,14 +164,15 @@ const ExtensionError* ErrorMap::ExtensionEntry::AddError(
 
 ////////////////////////////////////////////////////////////////////////////////
 // ErrorMap
-ErrorMap::ErrorMap() = default;
+ErrorMap::ErrorMap() {
+}
 
 ErrorMap::~ErrorMap() {
   RemoveAllErrors();
 }
 
 const ErrorList& ErrorMap::GetErrorsForExtension(
-    const ExtensionId& extension_id) const {
+    const std::string& extension_id) const {
   auto iter = map_.find(extension_id);
   return iter != map_.end() ? *iter->second->list() : g_empty_error_list.Get();
 }
@@ -187,27 +180,24 @@ const ErrorList& ErrorMap::GetErrorsForExtension(
 const ExtensionError* ErrorMap::AddError(
     std::unique_ptr<ExtensionError> error) {
   std::unique_ptr<ExtensionEntry>& entry = map_[error->extension_id()];
-  if (!entry) {
+  if (!entry)
     entry = std::make_unique<ExtensionEntry>();
-  }
 
   return entry->AddError(std::move(error));
 }
 
 void ErrorMap::RemoveErrors(const Filter& filter,
-                            std::set<ExtensionId>* affected_ids) {
+                            std::set<std::string>* affected_ids) {
   if (!filter.restrict_to_extension_id.empty()) {
     auto iter = map_.find(filter.restrict_to_extension_id);
     if (iter != map_.end()) {
-      if (iter->second->DeleteErrors(filter) && affected_ids) {
+      if (iter->second->DeleteErrors(filter) && affected_ids)
         affected_ids->insert(filter.restrict_to_extension_id);
-      }
     }
   } else {
     for (auto& key_val : map_) {
-      if (key_val.second->DeleteErrors(filter) && affected_ids) {
+      if (key_val.second->DeleteErrors(filter) && affected_ids)
         affected_ids->insert(key_val.first);
-      }
     }
   }
 }

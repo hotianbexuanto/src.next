@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright (c) 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,7 +21,7 @@ TEST(ComponentExtensionUrlPattern, AllUrls) {
   // Component extensions do not have access to "chrome" scheme URLs through
   // the "<all_urls>" meta-pattern.
   auto all_urls = ExtensionBuilder("all urls")
-                      .AddHostPermission("<all_urls>")
+                      .AddPermission("<all_urls>")
                       .SetLocation(mojom::ManifestLocation::kComponent)
                       .Build();
   std::string error;
@@ -36,9 +36,9 @@ TEST(ComponentExtensionUrlPattern, AllUrls) {
 
 TEST(ComponentExtensionUrlPattern, ChromeVoxExtension) {
   // The ChromeVox extension has access to "chrome" scheme URLs through the
-  // "<all_urls>" meta-pattern because it's allowlisted.
+  // "<all_urls>" meta-pattern because it's whitelisted.
   auto all_urls = ExtensionBuilder("all urls")
-                      .AddHostPermission("<all_urls>")
+                      .AddPermission("<all_urls>")
                       .SetLocation(mojom::ManifestLocation::kComponent)
                       .SetID(extension_misc::kChromeVoxExtensionId)
                       .Build();
@@ -52,7 +52,7 @@ TEST(ComponentExtensionUrlPattern, ExplicitChromeUrl) {
   // Explicitly specifying a pattern that allows access to the chrome
   // scheme is OK.
   auto chrome_urls = ExtensionBuilder("chrome urls")
-                         .AddHostPermission(content::GetWebUIURLString("*/*"))
+                         .AddPermission(content::GetWebUIURLString("*/*"))
                          .SetLocation(mojom::ManifestLocation::kComponent)
                          .Build();
   std::string error;

@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,7 +9,6 @@
 #include "build/build_config.h"
 #include "content/public/common/content_paths.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/content_browser_test.h"
 #include "content/public/test/content_browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
@@ -24,7 +23,7 @@ namespace content {
 namespace {
 
 bool SupportsSharedWorker() {
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
   // SharedWorkers are not enabled on Android. https://crbug.com/154571
   return false;
 #else
@@ -84,7 +83,7 @@ class WorkerNetworkIsolationKeyBrowserTest : public ContentBrowserTest {
   }
 
   RenderFrameHost* CreateSubframe(const GURL& subframe_url) {
-    DCHECK_EQ(shell()->web_contents()->GetLastCommittedURL().path(),
+    DCHECK_EQ(shell()->web_contents()->GetURL().path(),
               "/workers/frame_factory.html");
 
     content::TestNavigationObserver navigation_observer(
@@ -93,13 +92,13 @@ class WorkerNetworkIsolationKeyBrowserTest : public ContentBrowserTest {
 
     std::string subframe_name = GetUniqueSubframeName();
     EvalJsResult result = EvalJs(
-        shell()->web_contents()->GetPrimaryMainFrame(),
+        shell()->web_contents()->GetMainFrame(),
         JsReplace("createFrame($1, $2)", subframe_url.spec(), subframe_name));
     DCHECK(result.error.empty());
     navigation_observer.Wait();
 
     RenderFrameHost* subframe_rfh = FrameMatchingPredicate(
-        shell()->web_contents()->GetPrimaryPage(),
+        shell()->web_contents(),
         base::BindRepeating(&FrameMatchesName, subframe_name));
     DCHECK(subframe_rfh);
 
@@ -228,19 +227,8 @@ INSTANTIATE_TEST_SUITE_P(
                        ::testing::Values(WorkerType::kServiceWorker,
                                          WorkerType::kSharedWorker)));
 
-class ServiceWorkerMainScriptRequestNetworkIsolationKeyBrowserTest
-    : public WorkerNetworkIsolationKeyBrowserTest {
- public:
-  ServiceWorkerMainScriptRequestNetworkIsolationKeyBrowserTest() {
-    // TODO(crbug.com/40053828): Tests under this class fail when
-    // kThirdPartyStoragePartitioning is enabled.
-    feature_list_.InitAndDisableFeature(
-        net::features::kThirdPartyStoragePartitioning);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
+using ServiceWorkerMainScriptRequestNetworkIsolationKeyBrowserTest =
+    WorkerNetworkIsolationKeyBrowserTest;
 
 // Test that network isolation key is filled in correctly for service worker's
 // main script request. The test navigates to "a.test" and creates an iframe
@@ -257,9 +245,6 @@ class ServiceWorkerMainScriptRequestNetworkIsolationKeyBrowserTest
 // Note that it's sufficient not to test the cache miss when subframe origins
 // are different as in that case the two script urls must be different and it
 // also won't trigger an update.
-//
-// TODO(crbug.com/40053828): Update test to not depend on
-// kThirdPartyStoragePartitioning being disabled.
 IN_PROC_BROWSER_TEST_F(
     ServiceWorkerMainScriptRequestNetworkIsolationKeyBrowserTest,
     ServiceWorkerMainScriptRequest) {
@@ -314,7 +299,7 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 using SharedWorkerMainScriptRequestNetworkIsolationKeyBrowserTest =
-    WorkerNetworkIsolationKeyBrowserTest;
+    ServiceWorkerMainScriptRequestNetworkIsolationKeyBrowserTest;
 
 // Test that network isolation key is filled in correctly for shared worker's
 // main script request. The test navigates to "a.test" and creates an iframe
@@ -322,8 +307,7 @@ using SharedWorkerMainScriptRequestNetworkIsolationKeyBrowserTest =
 // "b.test" and creates an iframe also having origin "c.test" that creates
 // |worker1| again.
 //
-// We expect the second creation request for |worker1| to not exist in the
-// cache since the workers should be partitioned by top-level site.
+// We expect the second creation request for |worker1| to exist in the cache.
 //
 // Note that it's sufficient not to test the cache miss when subframe origins
 // are different as in that case the two script urls must be different.
@@ -350,7 +334,7 @@ IN_PROC_BROWSER_TEST_F(
               if (num_completed == 1) {
                 EXPECT_FALSE(status.exists_in_cache);
               } else if (num_completed == 2) {
-                EXPECT_FALSE(status.exists_in_cache);
+                EXPECT_TRUE(status.exists_in_cache);
                 cache_status_waiter.Quit();
               } else {
                 NOTREACHED();

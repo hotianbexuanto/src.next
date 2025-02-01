@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,10 +10,9 @@ import android.os.Process;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-
 import org.chromium.base.JavaHandlerThread;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
 
 /** This is the process launcher thread. It is available before native library is loaded. */
 @JNINamespace("content::android")
@@ -23,7 +22,6 @@ public final class LauncherThread {
     private static final Handler sThreadHandler;
     // Can be overwritten in tests.
     private static Handler sHandler;
-
     static {
         sThread.maybeStart();
         sThreadHandler = new Handler(sThread.getLooper());

@@ -21,10 +21,8 @@
 #include "third_party/blink/renderer/core/dom/space_split_string.h"
 
 #include "third_party/blink/renderer/core/html/parser/html_parser_idioms.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string_hash.h"
-#include "third_party/blink/renderer/platform/wtf/text/character_visitor.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_hash.h"
 #include "third_party/blink/renderer/platform/wtf/thread_specific.h"
@@ -33,45 +31,41 @@ namespace blink {
 
 // https://dom.spec.whatwg.org/#concept-ordered-set-parser
 template <typename CharacterType>
-ALWAYS_INLINE void SpaceSplitString::Data::CreateVector(
+inline void SpaceSplitString::Data::CreateVector(
     const AtomicString& source,
-    base::span<const CharacterType> characters) {
-  DCHECK(vector_.empty());
+    const CharacterType* characters,
+    unsigned length) {
+  DCHECK_EQ(0u, vector_.size());
   HashSet<AtomicString> token_set;
-  size_t start = 0;
+  unsigned start = 0;
   while (true) {
-    while (start < characters.size() &&
-           IsHTMLSpace<CharacterType>(characters[start])) {
+    while (start < length && IsHTMLSpace<CharacterType>(characters[start]))
       ++start;
-    }
-    if (start >= characters.size()) {
+    if (start >= length)
       break;
-    }
-    size_t end = start + 1;
-    while (end < characters.size() &&
-           IsNotHTMLSpace<CharacterType>(characters[end])) {
+    unsigned end = start + 1;
+    while (end < length && IsNotHTMLSpace<CharacterType>(characters[end]))
       ++end;
-    }
 
-    if (start == 0 && end == characters.size()) {
+    if (start == 0 && end == length) {
       vector_.push_back(source);
       return;
     }
 
-    AtomicString token(characters.subspan(start, end - start));
+    AtomicString token(characters + start, end - start);
     // We skip adding |token| to |token_set| for the first token to reduce the
     // cost of HashSet<>::insert(), and adjust |token_set| when the second
     // unique token is found.
     if (vector_.size() == 0) {
-      vector_.push_back(std::move(token));
+      vector_.push_back(token);
     } else if (vector_.size() == 1) {
       if (vector_[0] != token) {
         token_set.insert(vector_[0]);
         token_set.insert(token);
-        vector_.push_back(std::move(token));
+        vector_.push_back(token);
       }
     } else if (token_set.insert(token).is_new_entry) {
-      vector_.push_back(std::move(token));
+      vector_.push_back(token);
     }
 
     start = end + 1;
@@ -79,8 +73,14 @@ ALWAYS_INLINE void SpaceSplitString::Data::CreateVector(
 }
 
 void SpaceSplitString::Data::CreateVector(const AtomicString& string) {
-  WTF::VisitCharacters(string,
-                       [&](auto chars) { CreateVector(string, chars); });
+  unsigned length = string.length();
+
+  if (string.Is8Bit()) {
+    CreateVector(string, string.Characters8(), length);
+    return;
+  }
+
+  CreateVector(string, string.Characters16(), length);
 }
 
 bool SpaceSplitString::Data::ContainsAll(Data& other) {
@@ -103,13 +103,13 @@ bool SpaceSplitString::Data::ContainsAll(Data& other) {
 }
 
 void SpaceSplitString::Data::Add(const AtomicString& string) {
-  DCHECK(!MightBeShared());
+  DCHECK(HasOneRef());
   DCHECK(!Contains(string));
   vector_.push_back(string);
 }
 
 void SpaceSplitString::Data::Remove(unsigned index) {
-  DCHECK(!MightBeShared());
+  DCHECK(HasOneRef());
   vector_.EraseAt(index);
 }
 
@@ -123,10 +123,9 @@ void SpaceSplitString::Add(const AtomicString& string) {
     data_ = Data::Create(string);
 }
 
-void SpaceSplitString::Remove(const AtomicString& string) {
-  if (!data_) {
-    return;
-  }
+bool SpaceSplitString::Remove(const AtomicString& string) {
+  if (!data_)
+    return false;
   unsigned i = 0;
   bool changed = false;
   while (i < data_->size()) {
@@ -139,6 +138,7 @@ void SpaceSplitString::Remove(const AtomicString& string) {
     }
     ++i;
   }
+  return changed;
 }
 
 void SpaceSplitString::Remove(wtf_size_t index) {
@@ -168,15 +168,8 @@ AtomicString SpaceSplitString::SerializeToString() const {
   return builder.ToAtomicString();
 }
 
-// static
 SpaceSplitString::DataMap& SpaceSplitString::SharedDataMap() {
-  DEFINE_THREAD_SAFE_STATIC_LOCAL(ThreadSpecific<Persistent<DataMap>>,
-                                  static_map_holder, {});
-  Persistent<DataMap>& map = *static_map_holder;
-  if (!map) [[unlikely]] {
-    map = MakeGarbageCollected<DataMap>();
-    LEAK_SANITIZER_IGNORE_OBJECT(&map);
-  }
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(ThreadSpecific<DataMap>, map, ());
   return *map;
 }
 
@@ -188,35 +181,35 @@ void SpaceSplitString::Set(const AtomicString& input_string) {
   data_ = Data::Create(input_string);
 }
 
-SpaceSplitString::Data* SpaceSplitString::Data::Create(
+SpaceSplitString::Data::~Data() {
+  if (!key_string_.IsNull())
+    SharedDataMap().erase(key_string_);
+}
+
+scoped_refptr<SpaceSplitString::Data> SpaceSplitString::Data::Create(
     const AtomicString& string) {
-  auto result = SharedDataMap().insert(string, nullptr);
-  SpaceSplitString::Data* data = result.stored_value->value;
-  if (result.is_new_entry) {
-    data = MakeGarbageCollected<SpaceSplitString::Data>(string);
-    result.stored_value->value = data;
+  Data*& data = SharedDataMap().insert(string, nullptr).stored_value->value;
+  if (!data) {
+    data = new Data(string);
+    return base::AdoptRef(data);
   }
   return data;
 }
 
-SpaceSplitString::Data* SpaceSplitString::Data::CreateUnique(
+scoped_refptr<SpaceSplitString::Data> SpaceSplitString::Data::CreateUnique(
     const Data& other) {
-  return MakeGarbageCollected<SpaceSplitString::Data>(other);
+  return base::AdoptRef(new SpaceSplitString::Data(other));
 }
 
-// This constructor always creates a "shared" (non-unique) Data object.
-SpaceSplitString::Data::Data(const AtomicString& string)
-    : might_be_shared_(true) {
+SpaceSplitString::Data::Data(const AtomicString& string) : key_string_(string) {
   DCHECK(!string.IsNull());
   CreateVector(string);
 }
 
-// This constructor always creates a non-"shared" (unique) Data object.
 SpaceSplitString::Data::Data(const SpaceSplitString::Data& other)
-    : might_be_shared_(false), vector_(other.vector_) {}
-
-std::ostream& operator<<(std::ostream& ostream, const SpaceSplitString& str) {
-  return ostream << str.SerializeToString();
+    : RefCounted<Data>(), vector_(other.vector_) {
+  // Note that we don't copy key_string_ to indicate to the destructor that
+  // there's nothing to be removed from the SharedDataMap().
 }
 
 }  // namespace blink

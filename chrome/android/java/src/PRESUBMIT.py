@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium Authors
+# Copyright (c) 2017 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -13,6 +13,8 @@ This presubmit checks for the following:
   - No new calls to AlertDialog.Builder. Callers should use ModalDialogView
     instead.
 """
+
+USE_PYTHON3 = True
 
 import re
 
@@ -29,11 +31,13 @@ NEW_ALERTDIALOG_BUILDER_RE = re.compile(
     r'\bnew\sAlertDialog\.Builder\b')
 
 SPLIT_COMPAT_UTILS_IMPL_NAME_RE = re.compile(
-    r'\bBundleUtils\.getIdentifierName\(\s*[^\s"]')
+    r'\bSplitCompatUtils\.getIdentifierName\(\s*[^\s"]')
 
 COMMENT_RE = re.compile(r'^\s*(//|/\*|\*)')
 
 BROWSER_ROOT = 'chrome/android/java/src/org/chromium/chrome/browser/'
+SIGNIN_UI_BROWSER_ROOT = 'chrome/browser/signin/ui/android'
+'/java/src/org/chromium/chrome/browser/signin/ui/'
 
 
 def CheckChangeOnUpload(input_api, output_api):
@@ -50,7 +54,7 @@ def _CommonChecks(input_api, output_api):
   result.extend(_CheckNotificationConstructors(input_api, output_api))
   result.extend(_CheckAlertDialogBuilder(input_api, output_api))
   result.extend(_CheckCompatibleAlertDialogBuilder(input_api, output_api))
-  result.extend(_CheckBundleUtilsIdentifierName(input_api, output_api))
+  result.extend(_CheckSplitCompatUtilsIdentifierName(input_api, output_api))
   # Add more checks here
   return result
 
@@ -80,25 +84,20 @@ def _CheckNotificationConstructors(input_api, output_api):
 def _CheckAlertDialogBuilder(input_api, output_api):
   # In general, preference and FRE related UIs are not relevant to VR mode.
   files_to_skip = (
-      BROWSER_ROOT + 'autofill/prefeditor/EditorDialog.java',
+      BROWSER_ROOT + 'autofill/AutofillPopupBridge.java',
       BROWSER_ROOT + 'browserservices/ClearDataDialogActivity.java',
       BROWSER_ROOT + 'browsing_data/ConfirmImportantSitesDialogFragment.java',
       BROWSER_ROOT + 'browsing_data/OtherFormsOfHistoryDialogFragment.java',
+      BROWSER_ROOT + 'datareduction/settings/DataReductionStatsPreference.java',
       BROWSER_ROOT + 'dom_distiller/DistilledPagePrefsView.java',
-      BROWSER_ROOT + 'dom_distiller/DomDistillerUiUtils.java',
       BROWSER_ROOT + 'download/OMADownloadHandler.java',
-      BROWSER_ROOT + 'init/LaunchFailedActivity.java',
       BROWSER_ROOT + 'password_manager/AccountChooserDialog.java',
       BROWSER_ROOT + 'password_manager/AutoSigninFirstRunDialog.java',
-      # TODO(crbug.com/40945893): Tentatively suppressed.
-      (BROWSER_ROOT +
-       'password_manager/settings/ExportErrorDialogFragment.java'),
-      (BROWSER_ROOT +
-       'password_manager/settings/ExportWarningDialogFragment.java'),
-      (BROWSER_ROOT +
-       'password_manager/settings/ProgressBarDialogFragment.java'),
-      # end of https://crbug.com/1505284
       BROWSER_ROOT + r'settings[\\\/].*',
+      SIGNIN_UI_BROWSER_ROOT + 'ConfirmManagedSyncDataDialog.java',
+      SIGNIN_UI_BROWSER_ROOT + 'ConfirmSyncDataStateMachineDelegate.java',
+      BROWSER_ROOT + 'signin/SyncConsentFragmentBase.java',
+      SIGNIN_UI_BROWSER_ROOT + 'SignOutDialogFragment.java',
       BROWSER_ROOT + 'site_settings/AddExceptionPreference.java',
       BROWSER_ROOT + 'site_settings/ChosenObjectSettings.java',
       BROWSER_ROOT + 'site_settings/ManageSpaceActivity.java',
@@ -152,6 +151,7 @@ def _CheckAlertDialogBuilder(input_api, output_api):
 
 def _CheckCompatibleAlertDialogBuilder(input_api, output_api):
   files_to_skip = (
+      BROWSER_ROOT + 'autofill/AutofillPopupBridge.java',
       BROWSER_ROOT + 'autofill/keyboard_accessory/'
                      'AutofillKeyboardAccessoryBridge.java',
       BROWSER_ROOT + 'dom_distiller/DistilledPagePrefsView.java',
@@ -182,10 +182,10 @@ def _CheckCompatibleAlertDialogBuilder(input_api, output_api):
                                NEW_COMPATIBLE_ALERTDIALOG_BUILDER_RE)
 
 
-def _CheckBundleUtilsIdentifierName(input_api, output_api):
+def _CheckSplitCompatUtilsIdentifierName(input_api, output_api):
   error_msg = '''
-  BundleUtils.getIdentifierName() not check failed:
-  BundleUtils.getIdentifierName() must be called with a String literal,
+  SplitCompatUtils.getIdentifierName() not check failed:
+  SplitCompatUtils.getIdentifierName() must be called with a String literal,
   otherwise R8 may not correctly obfuscate the class name passed in.
   '''
   return _CheckReIgnoreComment(input_api, output_api, error_msg, [],

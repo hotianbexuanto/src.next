@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,7 +17,6 @@ namespace blink {
 
 class NavigatorUABrandVersion;
 class ScriptState;
-class UADataValues;
 
 class NavigatorUAData : public ScriptWrappable, ExecutionContextClient {
   DEFINE_WRAPPERTYPEINFO();
@@ -30,22 +29,18 @@ class NavigatorUAData : public ScriptWrappable, ExecutionContextClient {
   explicit NavigatorUAData(ExecutionContext* context);
 
   void SetBrandVersionList(const UserAgentBrandList& brand_version_list);
-  void SetFullVersionList(const UserAgentBrandList& full_version_list);
   void SetMobile(bool mobile);
   void SetPlatform(const String& brand, const String& version);
   void SetArchitecture(const String& architecture);
   void SetModel(const String& model);
   void SetUAFullVersion(const String& uaFullVersion);
   void SetBitness(const String& bitness);
-  void SetWoW64(bool wow64);
-  void SetFormFactors(Vector<String> form_factors);
 
   // IDL implementation
   const HeapVector<Member<NavigatorUABrandVersion>>& brands() const;
   bool mobile() const;
   const String& platform() const;
-  ScriptPromise<UADataValues> getHighEntropyValues(ScriptState*,
-                                                   const Vector<String>&) const;
+  ScriptPromise getHighEntropyValues(ScriptState*, Vector<String>&) const;
   ScriptValue toJSON(ScriptState*) const;
 
   void Trace(Visitor* visitor) const final;
@@ -53,7 +48,6 @@ class NavigatorUAData : public ScriptWrappable, ExecutionContextClient {
  private:
   HeapVector<Member<NavigatorUABrandVersion>> brand_set_;
   HeapVector<Member<NavigatorUABrandVersion>> empty_brand_set_;
-  HeapVector<Member<NavigatorUABrandVersion>> full_version_list_;
   bool is_mobile_ = false;
   String platform_;
   String platform_version_;
@@ -61,11 +55,8 @@ class NavigatorUAData : public ScriptWrappable, ExecutionContextClient {
   String model_;
   String ua_full_version_;
   String bitness_;
-  bool is_wow64_ = false;
-  Vector<String> form_factors_;
 
   void AddBrandVersion(const String& brand, const String& version);
-  void AddBrandFullVersion(const String& brand, const String& version);
 };
 
 }  // namespace blink

@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,10 +14,15 @@ class StyleAutoColor : public StyleColor {
   DISALLOW_NEW();
 
  public:
-  explicit StyleAutoColor(StyleColor&& color) : StyleColor(color) {}
-
+  explicit StyleAutoColor(Color color) : StyleColor(color) {}
+  explicit StyleAutoColor(CSSValueID keyword) : StyleColor(keyword) {}
+  StyleAutoColor(Color color, CSSValueID keyword)
+      : StyleColor(color, keyword) {}
   static StyleAutoColor AutoColor() {
-    return StyleAutoColor(StyleColor(CSSValueID::kAuto));
+    return StyleAutoColor(CSSValueID::kAuto);
+  }
+  static StyleAutoColor CurrentColor() {
+    return StyleAutoColor(CSSValueID::kCurrentcolor);
   }
 
   bool IsAutoColor() const { return color_keyword_ == CSSValueID::kAuto; }
@@ -29,9 +34,8 @@ class StyleAutoColor : public StyleColor {
 };
 
 inline bool operator==(const StyleAutoColor& a, const StyleAutoColor& b) {
-  if (a.IsAutoColor() || b.IsAutoColor()) {
+  if (a.IsAutoColor() || b.IsAutoColor())
     return a.IsAutoColor() && b.IsAutoColor();
-  }
   return a.ToStyleColor() == b.ToStyleColor();
 }
 

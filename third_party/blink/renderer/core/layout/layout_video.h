@@ -26,7 +26,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_VIDEO_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_VIDEO_H_
 
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/layout/layout_media.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
@@ -34,15 +33,14 @@ namespace blink {
 
 class HTMLVideoElement;
 
-class CORE_EXPORT LayoutVideo final : public LayoutMedia {
+class LayoutVideo final : public LayoutMedia {
  public:
   explicit LayoutVideo(HTMLVideoElement*);
   ~LayoutVideo() override;
 
-  static PhysicalSize DefaultSize();
+  static LayoutSize DefaultSize();
 
-  PhysicalRect ReplacedContentRectFrom(
-      const PhysicalRect& base_content_rect) const final;
+  PhysicalRect ReplacedContentRect() const final;
 
   bool SupportsAcceleratedRendering() const;
 
@@ -60,27 +58,32 @@ class CORE_EXPORT LayoutVideo final : public LayoutMedia {
 
   OverflowClipAxes ComputeOverflowClipAxes() const final {
     NOT_DESTROYED();
-    return RespectsCSSOverflow() ? LayoutMedia::ComputeOverflowClipAxes()
-                                 : kOverflowClipBothAxis;
+    return kOverflowClipBothAxis;
   }
 
  private:
-  void UpdateAfterLayout() final;
-  void UpdateFromElement() final;
-  void InvalidateCompositing();
+  void UpdateFromElement() override;
 
-  PhysicalSize CalculateIntrinsicSize(float scale);
-  void UpdateIntrinsicSize();
+  LayoutSize CalculateIntrinsicSize(float scale);
+  void UpdateIntrinsicSize(bool is_in_layout);
 
   void ImageChanged(WrappedImagePtr, CanDeferInvalidation) override;
 
-  bool IsVideo() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectVideo || LayoutMedia::IsOfType(type);
   }
 
   void PaintReplaced(const PaintInfo&,
                      const PhysicalOffset& paint_offset) const override;
+
+  void UpdateLayout() override;
+
+  LayoutUnit ComputeReplacedLogicalWidth(
+      ShouldComputePreferred = kComputeActual) const override;
+  LayoutUnit ComputeReplacedLogicalHeight(
+      LayoutUnit estimated_used_width = LayoutUnit()) const override;
+  LayoutUnit MinimumReplacedHeight() const override;
 
   bool CanHaveAdditionalCompositingReasons() const override {
     NOT_DESTROYED();
@@ -88,7 +91,9 @@ class CORE_EXPORT LayoutVideo final : public LayoutMedia {
   }
   CompositingReasons AdditionalCompositingReasons() const override;
 
-  PhysicalSize cached_image_size_;
+  void UpdatePlayer(bool is_in_layout);
+
+  LayoutSize cached_image_size_;
 };
 
 template <>

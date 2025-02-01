@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,8 +16,6 @@
 #include "net/http/http_auth_challenge_tokenizer.h"
 #include "net/http/http_auth_preferences.h"
 #include "net/http/http_auth_scheme.h"
-#include "url/scheme_host_port.h"
-#include "url/url_constants.h"
 
 namespace net {
 
@@ -45,11 +43,11 @@ bool ParseRealm(const HttpAuthChallengeTokenizer& tokenizer,
   realm->clear();
   HttpUtil::NameValuePairsIterator parameters = tokenizer.param_pairs();
   while (parameters.GetNext()) {
-    if (!base::EqualsCaseInsensitiveASCII(parameters.name(), "realm")) {
+    if (!base::LowerCaseEqualsASCII(parameters.name_piece(), "realm"))
       continue;
-    }
 
-    if (!ConvertToUtf8AndNormalize(parameters.value(), kCharsetLatin1, realm)) {
+    if (!ConvertToUtf8AndNormalize(parameters.value_piece(), kCharsetLatin1,
+                                   realm)) {
       return false;
     }
   }
@@ -61,7 +59,7 @@ bool ParseRealm(const HttpAuthChallengeTokenizer& tokenizer,
 bool HttpAuthHandlerBasic::Init(
     HttpAuthChallengeTokenizer* challenge,
     const SSLInfo& ssl_info,
-    const NetworkAnonymizationKey& network_anonymization_key) {
+    const NetworkIsolationKey& network_isolation_key) {
   auth_scheme_ = HttpAuth::AUTH_SCHEME_BASIC;
   score_ = 1;
   properties_ = 0;
@@ -90,9 +88,10 @@ int HttpAuthHandlerBasic::GenerateAuthTokenImpl(
   // Firefox, Safari and Chromium all use UTF-8 encoding; IE uses iso-8859-1.
   // RFC7617 does not specify a default encoding, but UTF-8 is the only allowed
   // value for the optional charset parameter on the challenge.
-  std::string base64_username_password =
-      base::Base64Encode(base::UTF16ToUTF8(credentials->username()) + ":" +
-                         base::UTF16ToUTF8(credentials->password()));
+  std::string base64_username_password;
+  base::Base64Encode(base::UTF16ToUTF8(credentials->username()) + ":" +
+                         base::UTF16ToUTF8(credentials->password()),
+                     &base64_username_password);
   *auth_token = "Basic " + base64_username_password;
   return OK;
 }
@@ -117,8 +116,8 @@ int HttpAuthHandlerBasic::Factory::CreateAuthHandler(
     HttpAuthChallengeTokenizer* challenge,
     HttpAuth::Target target,
     const SSLInfo& ssl_info,
-    const NetworkAnonymizationKey& network_anonymization_key,
-    const url::SchemeHostPort& scheme_host_port,
+    const NetworkIsolationKey& network_isolation_key,
+    const GURL& origin,
     CreateReason reason,
     int digest_nonce_count,
     const NetLogWithSource& net_log,
@@ -126,18 +125,17 @@ int HttpAuthHandlerBasic::Factory::CreateAuthHandler(
     std::unique_ptr<HttpAuthHandler>* handler) {
   if (http_auth_preferences() &&
       !http_auth_preferences()->basic_over_http_enabled() &&
-      scheme_host_port.scheme() == url::kHttpScheme) {
+      origin.SchemeIs(url::kHttpScheme)) {
     return ERR_UNSUPPORTED_AUTH_SCHEME;
   }
   // TODO(cbentzel): Move towards model of parsing in the factory
   //                 method and only constructing when valid.
-  auto tmp_handler = std::make_unique<HttpAuthHandlerBasic>();
+  std::unique_ptr<HttpAuthHandler> tmp_handler(new HttpAuthHandlerBasic());
   if (!tmp_handler->InitFromChallenge(challenge, target, ssl_info,
-                                      network_anonymization_key,
-                                      scheme_host_port, net_log)) {
+                                      network_isolation_key, origin, net_log)) {
     return ERR_INVALID_RESPONSE;
   }
-  *handler = std::move(tmp_handler);
+  handler->swap(tmp_handler);
   return OK;
 }
 

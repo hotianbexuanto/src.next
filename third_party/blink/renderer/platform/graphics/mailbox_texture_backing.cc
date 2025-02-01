@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,6 @@
 #include "third_party/blink/renderer/platform/graphics/mailbox_ref.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
-#include "third_party/skia/include/core/SkImage.h"
-#include "third_party/skia/include/gpu/ganesh/GrDirectContext.h"
 
 namespace blink {
 
@@ -74,15 +72,12 @@ sk_sp<SkImage> MailboxTextureBacking::GetSkImageViaReadback() {
         static_cast<uint8_t*>(image_pixels->writable_data());
     gpu::raster::RasterInterface* ri =
         context_provider_wrapper_->ContextProvider()->RasterInterface();
-    if (!ri->ReadbackImagePixels(
-            mailbox_, sk_image_info_,
-            static_cast<GLuint>(sk_image_info_.minRowBytes()), 0, 0,
-            /*plane_index=*/0, writable_pixels)) {
-      return nullptr;
-    }
+    ri->ReadbackImagePixels(mailbox_, sk_image_info_,
+                            sk_image_info_.minRowBytes(), 0, 0,
+                            writable_pixels);
 
-    return SkImages::RasterFromData(sk_image_info_, std::move(image_pixels),
-                                    sk_image_info_.minRowBytes());
+    return SkImage::MakeRasterData(sk_image_info_, std::move(image_pixels),
+                                   sk_image_info_.minRowBytes());
   } else if (sk_image_) {
     return sk_image_->makeNonTextureImage();
   }
@@ -101,9 +96,9 @@ bool MailboxTextureBacking::readPixels(const SkImageInfo& dst_info,
 
     gpu::raster::RasterInterface* ri =
         context_provider_wrapper_->ContextProvider()->RasterInterface();
-    return ri->ReadbackImagePixels(mailbox_, dst_info,
-                                   static_cast<GLuint>(dst_info.minRowBytes()),
-                                   src_x, src_y, /*plane_index=*/0, dst_pixels);
+    ri->ReadbackImagePixels(mailbox_, dst_info, dst_info.minRowBytes(), src_x,
+                            src_y, dst_pixels);
+    return true;
   } else if (sk_image_) {
     return sk_image_->readPixels(dst_info, dst_pixels, dst_row_bytes, src_x,
                                  src_y);
@@ -113,15 +108,10 @@ bool MailboxTextureBacking::readPixels(const SkImageInfo& dst_info,
 
 void MailboxTextureBacking::FlushPendingSkiaOps() {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  if (!context_provider_wrapper_ || !sk_image_) {
+  if (!context_provider_wrapper_ || !sk_image_)
     return;
-  }
-  GrDirectContext* ctx =
-      context_provider_wrapper_->ContextProvider()->GetGrContext();
-  if (!ctx) {
-    return;
-  }
-  ctx->flushAndSubmit(sk_image_);
+  sk_image_->flushAndSubmit(
+      context_provider_wrapper_->ContextProvider()->GetGrContext());
 }
 
 }  // namespace blink

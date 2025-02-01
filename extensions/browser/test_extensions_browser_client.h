@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,16 +10,14 @@
 #include <utility>
 #include <vector>
 
+#include "base/callback.h"
 #include "base/compiler_specific.h"
-#include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/scoped_refptr.h"
+#include "base/memory/ref_counted.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "components/update_client/update_client.h"
 #include "extensions/browser/extensions_browser_client.h"
 #include "extensions/browser/updater/extension_cache.h"
-#include "extensions/common/extension_id.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
@@ -47,9 +45,6 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
   void set_extension_system_factory(ExtensionSystemProvider* factory) {
     extension_system_factory_ = factory;
   }
-  void set_pref_service(PrefService* pref_service) {
-    pref_service_ = pref_service;
-  }
   void set_extension_cache(std::unique_ptr<ExtensionCache> extension_cache) {
     extension_cache_ = std::move(extension_cache);
   }
@@ -73,7 +68,7 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
   bool IsShuttingDown() override;
   bool AreExtensionsDisabled(const base::CommandLine& command_line,
                              content::BrowserContext* context) override;
-  bool IsValidContext(void* context) override;
+  bool IsValidContext(content::BrowserContext* context) override;
   bool IsSameContext(content::BrowserContext* first,
                      content::BrowserContext* second) override;
   bool HasOffTheRecordContext(content::BrowserContext* context) override;
@@ -81,21 +76,13 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
       content::BrowserContext* context) override;
   content::BrowserContext* GetOriginalContext(
       content::BrowserContext* context) override;
-  content::BrowserContext* GetContextRedirectedToOriginal(
-      content::BrowserContext* context) override;
-  content::BrowserContext* GetContextOwnInstance(
-      content::BrowserContext* context) override;
-  content::BrowserContext* GetContextForOriginalOnly(
-      content::BrowserContext* context) override;
-  bool AreExtensionsDisabledForContext(
-      content::BrowserContext* context) override;
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   std::string GetUserIdHashFromContext(
       content::BrowserContext* context) override;
 #endif
   bool IsGuestSession(content::BrowserContext* context) const override;
   bool IsExtensionIncognitoEnabled(
-      const ExtensionId& extension_id,
+      const std::string& extension_id,
       content::BrowserContext* context) const override;
   bool CanExtensionCrossIncognito(
       const extensions::Extension* extension,
@@ -111,6 +98,7 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
       int resource_id,
       scoped_refptr<net::HttpResponseHeaders> headers,
       mojo::PendingRemote<network::mojom::URLLoaderClient> client) override;
+
   bool AllowCrossRendererResourceLoad(
       const network::ResourceRequest& request,
       network::mojom::RequestDestination destination,
@@ -119,19 +107,13 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
       bool is_incognito,
       const Extension* extension,
       const ExtensionSet& extensions,
-      const ProcessMap& process_map,
-      const GURL& upstream_url) override;
+      const ProcessMap& process_map) override;
   PrefService* GetPrefServiceForContext(
       content::BrowserContext* context) override;
   void GetEarlyExtensionPrefsObservers(
       content::BrowserContext* context,
       std::vector<EarlyExtensionPrefsObserver*>* observers) const override;
   ProcessManagerDelegate* GetProcessManagerDelegate() const override;
-  mojo::PendingRemote<network::mojom::URLLoaderFactory>
-  GetControlledFrameEmbedderURLLoader(
-      const url::Origin& app_origin,
-      content::FrameTreeNodeId frame_tree_node_id,
-      content::BrowserContext* browser_context) override;
   std::unique_ptr<ExtensionHostDelegate> CreateExtensionHostDelegate() override;
   bool DidVersionUpdate(content::BrowserContext* context) override;
   void PermitExternalProtocolHandler() override;
@@ -152,13 +134,11 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
   void BroadcastEventToRenderers(
       events::HistogramValue histogram_value,
       const std::string& event_name,
-      base::Value::List args,
+      std::unique_ptr<base::ListValue> args,
       bool dispatch_to_off_the_record_profiles) override;
   ExtensionCache* GetExtensionCache() override;
   bool IsBackgroundUpdateAllowed() override;
   bool IsMinBrowserVersionSupported(const std::string& min_version) override;
-  void CreateExtensionWebContentsObserver(
-      content::WebContents* web_contents) override;
   ExtensionWebContentsObserver* GetExtensionWebContentsObserver(
       content::WebContents* web_contents) override;
   KioskDelegate* GetKioskDelegate() override;
@@ -171,31 +151,19 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
     return extension_system_factory_;
   }
 
-  void set_pref_service_for_context(content::BrowserContext* context,
-                                    PrefService* pref_service) {
-    set_pref_service_for_context_[context] = pref_service;
-  }
-
  private:
   // Not owned.
-  raw_ptr<content::BrowserContext> main_context_ = nullptr;
+  content::BrowserContext* main_context_ = nullptr;
   // Not owned.
-  raw_ptr<content::BrowserContext> incognito_context_ = nullptr;
+  content::BrowserContext* incognito_context_ = nullptr;
   // Not owned.
-  raw_ptr<content::BrowserContext> lock_screen_context_ = nullptr;
+  content::BrowserContext* lock_screen_context_ = nullptr;
 
   // Not owned.
-  raw_ptr<ProcessManagerDelegate> process_manager_delegate_ = nullptr;
+  ProcessManagerDelegate* process_manager_delegate_ = nullptr;
 
   // Not owned.
-  raw_ptr<ExtensionSystemProvider> extension_system_factory_ = nullptr;
-
-  // Not owned.
-  raw_ptr<PrefService> pref_service_ = nullptr;
-
-  // Not owned.
-  std::map<content::BrowserContext*, raw_ptr<PrefService>>
-      set_pref_service_for_context_;
+  ExtensionSystemProvider* extension_system_factory_ = nullptr;
 
   std::unique_ptr<ExtensionCache> extension_cache_;
 

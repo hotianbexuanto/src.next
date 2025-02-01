@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,9 +8,8 @@
 #include <array>
 
 #include "base/base_export.h"
-#include "base/functional/callback.h"
+#include "base/callback.h"
 #include "base/location.h"
-#include "base/task/delay_policy.h"
 #include "base/time/time.h"
 
 namespace base {
@@ -20,28 +19,29 @@ enum class Nestable : uint8_t {
   kNestable,
 };
 
-// Copyable data part of PendingTask.
-struct BASE_EXPORT TaskMetadata {
-  TaskMetadata();
-  explicit TaskMetadata(const Location& posted_from,
-                        TimeTicks queue_time = TimeTicks(),
-                        TimeTicks delayed_run_time = TimeTicks(),
-                        TimeDelta leeway = TimeDelta(),
-                        subtle::DelayPolicy delay_policy =
-                            subtle::DelayPolicy::kFlexibleNoSooner);
-  TaskMetadata(TaskMetadata&& other);
-  TaskMetadata(const TaskMetadata& other);
-  ~TaskMetadata();
+// Contains data about a pending task. Stored in TaskQueue and DelayedTaskQueue
+// for use by classes that queue and execute tasks.
+struct BASE_EXPORT PendingTask {
+  PendingTask();
+  PendingTask(const Location& posted_from, OnceClosure task);
+  PendingTask(const Location& posted_from,
+              OnceClosure task,
+              TimeTicks queue_time,
+              TimeTicks delayed_run_time);
+  PendingTask(PendingTask&& other);
+  ~PendingTask();
 
-  TaskMetadata& operator=(TaskMetadata&& other);
-  TaskMetadata& operator=(const TaskMetadata& other);
+  PendingTask& operator=(PendingTask&& other);
+
+  // Used to support sorting.
+  bool operator<(const PendingTask& other) const;
 
   // Returns the time at which this task should run. This is |delayed_run_time|
   // for a delayed task, |queue_time| otherwise.
   base::TimeTicks GetDesiredExecutionTime() const;
 
-  TimeTicks earliest_delayed_run_time() const;
-  TimeTicks latest_delayed_run_time() const;
+  // The task to run.
+  OnceClosure task;
 
   // The site this PendingTask was posted from.
   Location posted_from;
@@ -56,13 +56,6 @@ struct BASE_EXPORT TaskMetadata {
 
   // The time when the task should be run. This is null for an immediate task.
   base::TimeTicks delayed_run_time;
-
-  // |leeway| and |delay_policy| determine the preferred time range for running
-  // the delayed task. A larger leeway provides more freedom to run the task at
-  // an optimal time for power consumption. These fields are ignored for an
-  // immediate (non-delayed) task.
-  TimeDelta leeway;
-  subtle::DelayPolicy delay_policy = subtle::DelayPolicy::kFlexibleNoSooner;
 
   // Chain of symbols of the parent tasks which led to this one being posted.
   static constexpr size_t kTaskBacktraceLength = 4;
@@ -82,27 +75,6 @@ struct BASE_EXPORT TaskMetadata {
   int sequence_num = 0;
 
   bool task_backtrace_overflow = false;
-};
-
-// Contains data about a pending task. Stored in TaskQueue and DelayedTaskQueue
-// for use by classes that queue and execute tasks.
-struct BASE_EXPORT PendingTask : public TaskMetadata {
-  PendingTask();
-  PendingTask(const Location& posted_from,
-              OnceClosure task,
-              TimeTicks queue_time = TimeTicks(),
-              TimeTicks delayed_run_time = TimeTicks(),
-              TimeDelta leeway = TimeDelta(),
-              subtle::DelayPolicy delay_policy =
-                  subtle::DelayPolicy::kFlexibleNoSooner);
-  PendingTask(const TaskMetadata& metadata, OnceClosure task);
-  PendingTask(PendingTask&& other);
-  ~PendingTask();
-
-  PendingTask& operator=(PendingTask&& other);
-
-  // The task to run.
-  OnceClosure task;
 };
 
 }  // namespace base

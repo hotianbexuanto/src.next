@@ -23,11 +23,10 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_QUOTE_H_
 
 #include "third_party/blink/renderer/core/layout/layout_inline.h"
-#include "third_party/blink/renderer/platform/text/quotes_data.h"
+#include "third_party/blink/renderer/core/style/quotes_data.h"
 
 namespace blink {
 
-class StyleContainmentScope;
 class LayoutTextFragment;
 class PseudoElement;
 
@@ -36,47 +35,14 @@ class PseudoElement;
 // http://www.w3.org/TR/CSS2/generate.html#quotes-insert
 //
 // This object is generated thus always anonymous.
+//
+// For performance reasons, LayoutQuotes form a doubly-linked list. See |m_next|
+// and |m_previous| below.
 class LayoutQuote final : public LayoutInline {
  public:
-  LayoutQuote(LayoutObject& owner, const QuoteType);
+  LayoutQuote(PseudoElement&, const QuoteType);
   ~LayoutQuote() override;
-  void Trace(Visitor*) const override;
-
-  // Will return nullptr, if this doesn't originate from a pseudo element, but
-  // rather an @page margin box.
-  PseudoElement* GetOwningPseudo() const {
-    NOT_DESTROYED();
-    return owning_pseudo_.Get();
-  }
-  bool IsInScope() const {
-    NOT_DESTROYED();
-    return !!scope_;
-  }
-  StyleContainmentScope* GetScope() const {
-    NOT_DESTROYED();
-    return scope_.Get();
-  }
-  void SetScope(StyleContainmentScope* scope) {
-    NOT_DESTROYED();
-    scope_ = scope;
-  }
-
-  int GetDepth() const {
-    NOT_DESTROYED();
-    return depth_;
-  }
-  int GetNextDepth() const {
-    NOT_DESTROYED();
-    return type_ == QuoteType::kOpen || type_ == QuoteType::kNoOpen
-               ? depth_ + 1
-               : std::max(0, depth_ - 1);
-  }
-  void SetDepth(int depth) {
-    NOT_DESTROYED();
-    depth_ = depth;
-  }
-
-  void UpdateText();
+  void AttachQuote();
 
   const char* GetName() const override {
     NOT_DESTROYED();
@@ -84,16 +50,24 @@ class LayoutQuote final : public LayoutInline {
   }
 
  private:
+  void DetachQuote();
+
   void WillBeDestroyed() override;
-  bool IsQuote() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectQuote || LayoutInline::IsOfType(type);
   }
   void StyleDidChange(StyleDifference, const ComputedStyle*) override;
   void WillBeRemovedFromTree() override;
 
   String ComputeText() const;
-  scoped_refptr<const QuotesData> GetQuotesData() const;
+  void UpdateText();
+  const QuotesData* GetQuotesData() const;
+  void UpdateDepth();
+  bool IsAttached() {
+    NOT_DESTROYED();
+    return attached_;
+  }
 
   LayoutTextFragment* FindFragmentChild() const;
 
@@ -108,13 +82,23 @@ class LayoutQuote final : public LayoutInline {
   // property that is used to define quote character pairs).
   int depth_;
 
+  // The next and previous LayoutQuote in layout tree order.
+  // LayoutQuotes are linked together by this doubly-linked list.
+  // Those are used to compute |m_depth| in an efficient manner.
+  LayoutQuote* next_;
+  LayoutQuote* previous_;
+
   // The pseudo-element that owns us.
   //
   // Lifetime is the same as LayoutObject::m_node, so this is safe.
-  Member<PseudoElement> owning_pseudo_;
+  UntracedMember<PseudoElement> owning_pseudo_;
 
-  // The contain style scope this quote belongs to.
-  Member<StyleContainmentScope> scope_;
+  // This tracks whether this LayoutQuote was inserted into the layout tree
+  // and its position in the linked list is correct (m_next and m_previous).
+  // It's used for both performance (avoid unneeded tree walks to find the
+  // previous and next quotes) and conformance (|m_depth| relies on an
+  // up-to-date linked list positions).
+  bool attached_;
 
   // Cached text for this quote.
   String text_;

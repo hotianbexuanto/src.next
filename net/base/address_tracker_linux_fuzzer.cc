@@ -1,17 +1,15 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <stddef.h>
 #include <stdint.h>
 
-#include "base/functional/callback_helpers.h"
+#include "base/callback_helpers.h"
 #include "net/base/address_tracker_linux.h"
 
-using net::internal::AddressTrackerLinux;
-
-namespace net::test {
-
+namespace net {
+namespace internal {
 class AddressTrackerLinuxTest {
  public:
   static void TestHandleMessage(const char* buffer, size_t length) {
@@ -33,4 +31,5 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   return 0;
 }
 
-}  // namespace net::test
+}  // namespace internal
+}  // namespace net

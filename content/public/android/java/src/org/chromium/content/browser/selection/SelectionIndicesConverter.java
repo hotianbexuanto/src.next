@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -55,9 +55,8 @@ public class SelectionIndicesConverter {
             // We need to compare the overlapping part to make sure that we can update it.
             int l = Math.max(mLastStartOffset, startOffset);
             int r = Math.min(lastEndOffset, endOffset);
-            update =
-                    mLastSelectionText.regionMatches(
-                            l - mLastStartOffset, selectionText, l - startOffset, r - l);
+            update = mLastSelectionText.regionMatches(
+                    l - mLastStartOffset, selectionText, l - startOffset, r - l);
         }
 
         // Handle adjacent cases.
@@ -102,7 +101,7 @@ public class SelectionIndicesConverter {
             // two words, but we want the result be 1, so taking one step back here.
             if (!breakIterator.isBoundary(start)
                     && !isWhitespace(
-                            breakIterator.preceding(start), breakIterator.following(start))) {
+                               breakIterator.preceding(start), breakIterator.following(start))) {
                 // We counted a partial word. Remove it.
                 wordIndices[0]--;
             }
@@ -110,11 +109,11 @@ public class SelectionIndicesConverter {
 
         if (end <= initialStartOffset) {
             wordIndices[1] =
-                    -countWordsForward(/* start= */ end, initialStartOffset, breakIterator);
+                    -countWordsForward(/* start = */ end, initialStartOffset, breakIterator);
         } else {
             // end > initialStartOffset
             wordIndices[1] =
-                    countWordsBackward(/* start= */ end, initialStartOffset, breakIterator);
+                    countWordsBackward(/* start = */ end, initialStartOffset, breakIterator);
         }
 
         return true;
@@ -208,18 +207,16 @@ public class SelectionIndicesConverter {
 
         // Extends left if necessary.
         if (startOffset < mGlobalStartOffset) {
-            updateGlobalSelection(
-                    selectionText.substring(0, mGlobalStartOffset - startOffset)
+            updateGlobalSelection(selectionText.substring(0, mGlobalStartOffset - startOffset)
                             + mGlobalSelectionText,
                     startOffset);
         }
 
         // Extends right if necessary.
         if (endOffset > globalEndOffset) {
-            updateGlobalSelection(
-                    mGlobalSelectionText
+            updateGlobalSelection(mGlobalSelectionText
                             + selectionText.substring(
-                                    globalEndOffset - startOffset, selectionText.length()),
+                                      globalEndOffset - startOffset, selectionText.length()),
                     mGlobalStartOffset);
         }
     }

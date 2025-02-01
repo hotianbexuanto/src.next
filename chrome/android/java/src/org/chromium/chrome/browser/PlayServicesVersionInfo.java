@@ -1,19 +1,23 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser;
 
+import android.content.Context;
+import android.content.pm.PackageManager;
+
 import com.google.android.gms.common.GoogleApiAvailability;
 
-import org.jni_zero.CalledByNative;
-
-import org.chromium.base.PackageUtils;
+import org.chromium.base.ContextUtils;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.components.externalauth.ExternalAuthUtils;
 
 import java.util.Locale;
 
-/** A utility class for querying information about Play Services Version. */
+/**
+ * A utility class for querying information about Play Services Version.
+ */
 public class PlayServicesVersionInfo {
     /**
      * Returns info about the Google Play services setup for Chrome and the device.
@@ -23,36 +27,38 @@ public class PlayServicesVersionInfo {
      */
     @CalledByNative
     public static String getGmsInfo() {
+        Context context = ContextUtils.getApplicationContext();
+
         final long sdkVersion = GoogleApiAvailability.GOOGLE_PLAY_SERVICES_VERSION_CODE;
-        final long installedGmsVersion = getApkVersionNumber();
+        final long installedGmsVersion = getApkVersionNumber(context);
 
         final String accessType;
-        if (ExternalAuthUtils.getInstance().canUseFirstPartyGooglePlayServices()) {
+        ExternalAuthUtils externalAuthUtils = ExternalAuthUtils.getInstance();
+        if (externalAuthUtils.canUseFirstPartyGooglePlayServices()) {
             accessType = "1p";
-        } else if (ExternalAuthUtils.getInstance().canUseGooglePlayServices()) {
+        } else if (externalAuthUtils.canUseGooglePlayServices()) {
             accessType = "3p";
         } else {
             accessType = "none";
         }
 
-        return String.format(
-                Locale.US,
-                "SDK=%s; Installed=%s; Access=%s",
-                sdkVersion,
-                installedGmsVersion,
-                accessType);
+        return String.format(Locale.US, "SDK=%s; Installed=%s; Access=%s", sdkVersion,
+                installedGmsVersion, accessType);
     }
 
     /**
-     * @return The version code for the Google Play Services installed on the device or -1 if the
-     *     package is not found.
+     *
+     * @param context A Context with which to retrieve the PackageManager.
+     * @return The version code for the Google Play Services installed on the device or 0 if the
+     *         package is not found.
      */
-    public static int getApkVersionNumber() {
-        int ret =
-                PackageUtils.getPackageVersion(GoogleApiAvailability.GOOGLE_PLAY_SERVICES_PACKAGE);
-        if (ret < 0) {
-            ret = 0;
+    public static int getApkVersionNumber(Context context) {
+        try {
+            return context.getPackageManager()
+                    .getPackageInfo(GoogleApiAvailability.GOOGLE_PLAY_SERVICES_PACKAGE, 0)
+                    .versionCode;
+        } catch (PackageManager.NameNotFoundException e) {
+            return 0;
         }
-        return ret;
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -9,15 +9,15 @@
 
 #include <set>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/auto_reset.h"
-#include "base/values.h"
+#include "base/strings/string_piece.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/mojom/manifest.mojom-shared.h"
 
 namespace base {
+class DictionaryValue;
 class FilePath;
 }
 
@@ -62,24 +62,24 @@ void SetPreferredLocale(const std::string& locale);
 
 // Returns default locale in form "en-US" or "sr" or empty string if
 // "default_locale" section was not defined in the manifest.json file.
-std::string GetDefaultLocaleFromManifest(const base::Value::Dict& manifest,
+std::string GetDefaultLocaleFromManifest(const base::DictionaryValue& manifest,
                                          std::string* error);
 
 // Returns true iff the extension was localized, and the current locale
 // doesn't match the locale written into info.extension_manifest.
-bool ShouldRelocalizeManifest(const base::Value::Dict& manifest);
+bool ShouldRelocalizeManifest(const base::DictionaryValue* manifest);
 
 // Localize extension name, description, browser_action and other fields
 // in the manifest.
 bool LocalizeManifest(const extensions::MessageBundle& messages,
-                      base::Value::Dict* manifest,
+                      base::DictionaryValue* manifest,
                       std::string* error);
 
 // Load message catalogs, localize manifest and attach message bundle to the
 // extension. |gzip_permission| will be passed to LoadMessageCatalogs
 // (see below for details).
 bool LocalizeExtension(const base::FilePath& extension_path,
-                       base::Value::Dict* manifest,
+                       base::DictionaryValue* manifest,
                        GzippedMessagesPermission gzip_permission,
                        std::string* error);
 
@@ -110,7 +110,7 @@ void GetAllFallbackLocales(const std::string& default_locale,
 // Fill |valid_locales| with all valid locales under |locale_path|.
 // |valid_locales| is the intersection of the set of locales supported by
 // Chrome and the set of locales specified by |locale_path|.
-// Returns true if valid_locales contains at least one locale, false otherwise.
+// Returns true if vaild_locales contains at least one locale, false otherwise.
 // |error| contains an error message when a locale is corrupt or missing.
 bool GetValidLocales(const base::FilePath& locale_path,
                      std::set<std::string>* valid_locales,
@@ -132,7 +132,7 @@ extensions::MessageBundle* LoadMessageCatalogs(
 // Loads message catalogs for all locales to check for validity. Used for
 // validating unpacked extensions.
 bool ValidateExtensionLocales(const base::FilePath& extension_path,
-                              const base::Value::Dict& manifest,
+                              const base::DictionaryValue* manifest,
                               std::string* error);
 
 // Returns true if directory has "." in the name (for .svn) or if it doesn't
@@ -153,17 +153,17 @@ class ScopedLocaleForTest {
   ScopedLocaleForTest();
 
   // Sets temporary locale for the current scope.
-  explicit ScopedLocaleForTest(std::string_view locale);
+  explicit ScopedLocaleForTest(base::StringPiece locale);
 
   // Sets process and preferred locales for the current scope.
-  ScopedLocaleForTest(std::string_view process_locale,
-                      std::string_view preferred_locale);
+  ScopedLocaleForTest(base::StringPiece process_locale,
+                      base::StringPiece preferred_locale);
 
   ~ScopedLocaleForTest();
 
  private:
-  std::string_view process_locale_;    // The process locale at ctor time.
-  std::string_view preferred_locale_;  // The preferred locale at ctor time.
+  base::StringPiece process_locale_;    // The process locale at ctor time.
+  base::StringPiece preferred_locale_;  // The preferred locale at ctor time.
 };
 
 // Returns a locale like "en-CA".

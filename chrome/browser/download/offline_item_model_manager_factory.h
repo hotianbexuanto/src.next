@@ -1,17 +1,18 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_DOWNLOAD_OFFLINE_ITEM_MODEL_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_DOWNLOAD_OFFLINE_ITEM_MODEL_MANAGER_FACTORY_H_
 
-#include "chrome/browser/profiles/profile_keyed_service_factory.h"
+#include "base/macros.h"
+#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 
 class OfflineItemModelManager;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -21,7 +22,8 @@ class BrowserContext;
 // This class is the main access point for an OfflineItemModelManager.  It is
 // responsible for building the OfflineItemModelManager and associating it with
 // a particular content::BrowserContext.
-class OfflineItemModelManagerFactory : public ProfileKeyedServiceFactory {
+class OfflineItemModelManagerFactory
+    : public BrowserContextKeyedServiceFactory {
  public:
   // Returns a singleton instance of an OfflineItemModelManagerFactory.
   static OfflineItemModelManagerFactory* GetInstance();
@@ -31,20 +33,19 @@ class OfflineItemModelManagerFactory : public ProfileKeyedServiceFactory {
   static OfflineItemModelManager* GetForBrowserContext(
       content::BrowserContext* context);
 
-  OfflineItemModelManagerFactory(const OfflineItemModelManagerFactory&) =
-      delete;
-  OfflineItemModelManagerFactory& operator=(
-      const OfflineItemModelManagerFactory&) = delete;
-
  private:
-  friend base::NoDestructor<OfflineItemModelManagerFactory>;
+  friend struct base::DefaultSingletonTraits<OfflineItemModelManagerFactory>;
 
   OfflineItemModelManagerFactory();
   ~OfflineItemModelManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
+  content::BrowserContext* GetBrowserContextToUse(
+      content::BrowserContext* context) const override;
+
+  DISALLOW_COPY_AND_ASSIGN(OfflineItemModelManagerFactory);
 };
 
 #endif  // CHROME_BROWSER_DOWNLOAD_OFFLINE_ITEM_MODEL_MANAGER_FACTORY_H_

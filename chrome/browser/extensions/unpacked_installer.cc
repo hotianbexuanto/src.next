@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,10 +7,9 @@
 #include <string>
 #include <utility>
 
+#include "base/bind.h"
+#include "base/callback.h"
 #include "base/files/file_util.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/path_service.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -18,34 +17,28 @@
 #include "chrome/browser/extensions/extension_management.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/load_error_reporter.h"
-#include "chrome/browser/extensions/permissions/permissions_updater.h"
+#include "chrome/browser/extensions/permissions_updater.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/crx_file/id_util.h"
 #include "components/sync/model/string_ordinal.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
-#include "extensions/browser/api/declarative_net_request/install_index_helper.h"
+#include "extensions/browser/api/declarative_net_request/index_helper.h"
 #include "extensions/browser/extension_file_task_runner.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_registry.h"
-#include "extensions/browser/extension_util.h"
 #include "extensions/browser/install_flag.h"
-#include "extensions/browser/install_prefs_helper.h"
 #include "extensions/browser/path_util.h"
 #include "extensions/browser/policy_check.h"
 #include "extensions/browser/preload_check_group.h"
 #include "extensions/browser/requirements_checker.h"
-#include "extensions/browser/ruleset_parse_result.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_features.h"
 #include "extensions/common/extension_l10n_util.h"
-#include "extensions/common/features/feature_developer_mode_only.h"
 #include "extensions/common/file_util.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_constants.h"
 #include "extensions/common/manifest_handlers/shared_module_info.h"
-#include "extensions/common/mojom/manifest.mojom-shared.h"
 #include "extensions/common/permissions/permissions_data.h"
 
 using content::BrowserThread;
@@ -88,7 +81,7 @@ scoped_refptr<UnpackedInstaller> UnpackedInstaller::Create(
 }
 
 UnpackedInstaller::UnpackedInstaller(ExtensionService* extension_service)
-    : service_weak_(extension_service->AsExtensionServiceWeakPtr()),
+    : service_weak_(extension_service->AsWeakPtr()),
       profile_(extension_service->profile()),
       require_modern_manifest_version_(true),
       be_noisy_on_failure_(true) {
@@ -115,7 +108,7 @@ bool UnpackedInstaller::LoadFromCommandLine(const base::FilePath& path_in,
     return false;
   // Load extensions from the command line synchronously to avoid a race
   // between extension loading and loading an URL from the command line.
-  base::ScopedAllowBlocking allow_blocking;
+  base::ThreadRestrictions::ScopedAllowIO allow_io;
 
   extension_path_ =
       base::MakeAbsoluteFilePath(path_util::ResolveHomeDirectory(path_in));
@@ -162,7 +155,7 @@ void UnpackedInstaller::StartInstallChecks() {
   if (!service)
     return;
 
-  // TODO(crbug.com/40388034): Enable these checks all the time.  The reason
+  // TODO(crbug.com/421128): Enable these checks all the time.  The reason
   // they are disabled for extensions loaded from the command-line is that
   // installing unpacked extensions is asynchronous, but there can be
   // dependencies between the extensions loaded by the command line.
@@ -171,7 +164,7 @@ void UnpackedInstaller::StartInstallChecks() {
     if (service->browser_terminating())
       return;
 
-    // TODO(crbug.com/40387578): Move this code to a utility class to avoid
+    // TODO(crbug.com/420147): Move this code to a utility class to avoid
     // duplication of SharedModuleService::CheckImports code.
     if (SharedModuleInfo::ImportsModules(extension())) {
       const std::vector<SharedModuleInfo::ImportInfo>& imports =
@@ -221,7 +214,7 @@ void UnpackedInstaller::OnInstallChecksComplete(
   }
 
   std::u16string error_message;
-  if (errors.count(PreloadCheck::Error::kDisallowedByPolicy))
+  if (errors.count(PreloadCheck::DISALLOWED_BY_POLICY))
     error_message = policy_check_->GetErrorMessage();
   else
     error_message = requirements_check_->GetErrorMessage();
@@ -247,12 +240,6 @@ int UnpackedInstaller::GetFlags() {
   if (require_modern_manifest_version_)
     result |= Extension::REQUIRE_MODERN_MANIFEST_VERSION;
 
-  if (base::FeatureList::IsEnabled(
-          extensions_features::
-              kAllowWithholdingExtensionPermissionsOnInstall)) {
-    result |= Extension::WITHHOLD_PERMISSIONS;
-  }
-
   return result;
 }
 
@@ -277,23 +264,28 @@ bool UnpackedInstaller::LoadExtension(mojom::ManifestLocation location,
 
   return extension() &&
          extension_l10n_util::ValidateExtensionLocales(
-             extension_path_, *extension()->manifest()->value(), error) &&
+             extension_path_, extension()->manifest()->value(), error) &&
          IndexAndPersistRulesIfNeeded(error);
 }
 
 bool UnpackedInstaller::IndexAndPersistRulesIfNeeded(std::string* error) {
   DCHECK(extension());
 
-  base::expected<base::Value::Dict, std::string> index_result =
-      declarative_net_request::InstallIndexHelper::
-          IndexAndPersistRulesOnInstall(*extension_);
-
-  if (!index_result.has_value()) {
-    *error = std::move(index_result.error());
+  // TODO(crbug.com/761107): IndexStaticRulesetsUnsafe will read and parse JSON
+  // synchronously. Change this so that we don't need to parse JSON in the
+  // browser process.
+  declarative_net_request::IndexHelper::Result result =
+      declarative_net_request::IndexHelper::IndexStaticRulesetsUnsafe(
+          *extension());
+  if (result.error) {
+    *error = std::move(*result.error);
     return false;
   }
 
-  ruleset_install_prefs_ = std::move(index_result.value());
+  ruleset_install_prefs_ = std::move(result.ruleset_install_prefs);
+  if (!result.warnings.empty())
+    extension_->AddInstallWarnings(std::move(result.warnings));
+
   return true;
 }
 
@@ -379,7 +371,7 @@ void UnpackedInstaller::InstallExtension() {
     prefs->SetIsIncognitoEnabled(extension()->id(), *allow_incognito_access_);
   }
   if (install_param_.has_value()) {
-    SetInstallParam(prefs, extension()->id(), *install_param_);
+    prefs->SetInstallParam(extension()->id(), *install_param_);
   }
 
   PermissionsUpdater perms_updater(service_weak_->profile());
@@ -388,44 +380,10 @@ void UnpackedInstaller::InstallExtension() {
 
   service_weak_->OnExtensionInstalled(extension(), syncer::StringOrdinal(),
                                       kInstallFlagInstallImmediately,
-                                      std::move(ruleset_install_prefs_));
-
-  // Record metrics here since the registry would contain the extension by now.
-  RecordCommandLineDeveloperModeMetrics();
+                                      ruleset_install_prefs_);
 
   if (!callback_.is_null())
     std::move(callback_).Run(extension(), extension_path_, std::string());
-}
-
-void UnpackedInstaller::RecordCommandLineDeveloperModeMetrics() {
-  if (!extension()->is_extension() ||
-      extension()->location() != mojom::ManifestLocation::kCommandLine) {
-    return;
-  }
-
-  bool dev_mode_enabled =
-      GetCurrentDeveloperMode(util::GetBrowserContextId(profile_));
-
-  ExtensionRegistry* extension_registry = ExtensionRegistry::Get(profile_);
-  if (extension_registry->enabled_extensions().Contains(extension()->id())) {
-    if (dev_mode_enabled) {
-      base::UmaHistogramCounts100(
-          "Extensions.CommandLineWithDeveloperModeOn.Enabled", 1);
-    } else {
-      base::UmaHistogramCounts100(
-          "Extensions.CommandLineWithDeveloperModeOff.Enabled", 1);
-    }
-  }
-
-  if (extension_registry->disabled_extensions().Contains(extension()->id())) {
-    if (dev_mode_enabled) {
-      base::UmaHistogramCounts100(
-          "Extensions.CommandLineWithDeveloperModeOn.Disabled", 1);
-    } else {
-      base::UmaHistogramCounts100(
-          "Extensions.CommandLineWithDeveloperModeOff.Disabled", 1);
-    }
-  }
 }
 
 }  // namespace extensions

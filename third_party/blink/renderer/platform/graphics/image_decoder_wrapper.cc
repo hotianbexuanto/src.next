@@ -1,10 +1,9 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/platform/graphics/image_decoder_wrapper.h"
 
-#include "base/system/sys_info.h"
 #include "base/trace_event/trace_event.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/platform/graphics/image_decoding_store.h"
@@ -12,12 +11,6 @@
 
 namespace blink {
 namespace {
-
-ImageDecoder::AlphaOption PixmapAlphaOption(const SkPixmap& pixmap) {
-  return pixmap.alphaType() == kUnpremul_SkAlphaType
-             ? ImageDecoder::kAlphaNotPremultiplied
-             : ImageDecoder::kAlphaPremultiplied;
-}
 
 bool CompatibleInfo(const SkImageInfo& src, const SkImageInfo& dst) {
   if (src == dst)
@@ -43,7 +36,10 @@ class ExternalMemoryAllocator final : public SkBitmap::Allocator {
   USING_FAST_MALLOC(ExternalMemoryAllocator);
 
  public:
-  explicit ExternalMemoryAllocator(const SkPixmap& pixmap) : pixmap_(pixmap) {}
+  ExternalMemoryAllocator(const SkImageInfo& info,
+                          void* pixels,
+                          size_t row_bytes)
+      : info_(info), pixels_(pixels), row_bytes_(row_bytes) {}
   ExternalMemoryAllocator(const ExternalMemoryAllocator&) = delete;
   ExternalMemoryAllocator& operator=(const ExternalMemoryAllocator&) = delete;
 
@@ -52,16 +48,16 @@ class ExternalMemoryAllocator final : public SkBitmap::Allocator {
     if (kUnknown_SkColorType == info.colorType())
       return false;
 
-    if (!CompatibleInfo(pixmap_.info(), info) ||
-        pixmap_.rowBytes() != dst->rowBytes()) {
+    if (!CompatibleInfo(info_, info) || row_bytes_ != dst->rowBytes())
       return false;
-    }
 
-    return dst->installPixels(pixmap_);
+    return dst->installPixels(info, pixels_, row_bytes_);
   }
 
  private:
-  SkPixmap pixmap_;
+  SkImageInfo info_;
+  void* pixels_;
+  size_t row_bytes_;
 };
 
 }  // namespace
@@ -69,40 +65,33 @@ class ExternalMemoryAllocator final : public SkBitmap::Allocator {
 ImageDecoderWrapper::ImageDecoderWrapper(
     ImageFrameGenerator* generator,
     SegmentReader* data,
-    const SkPixmap& pixmap,
+    const SkISize& scaled_size,
+    ImageDecoder::AlphaOption alpha_option,
     ColorBehavior decoder_color_behavior,
-    cc::AuxImage aux_image,
-    wtf_size_t index,
+    ImageDecoder::HighBitDepthDecodingOption decoding_option,
+    size_t index,
+    const SkImageInfo& info,
+    void* pixels,
+    size_t row_bytes,
     bool all_data_received,
     cc::PaintImage::GeneratorClientId client_id)
     : generator_(generator),
       data_(data),
-      pixmap_(pixmap),
+      scaled_size_(scaled_size),
+      alpha_option_(alpha_option),
       decoder_color_behavior_(decoder_color_behavior),
-      aux_image_(aux_image),
+      decoding_option_(decoding_option),
       frame_index_(index),
+      info_(info),
+      pixels_(pixels),
+      row_bytes_(row_bytes),
       all_data_received_(all_data_received),
       client_id_(client_id) {}
 
 ImageDecoderWrapper::~ImageDecoderWrapper() = default;
 
-namespace {
-
-bool IsLowEndDeviceOrPartialLowEndModeEnabled() {
-#if BUILDFLAG(IS_ANDROID)
-  // Since ImageFrameGeneratorTest depends on Platform::Current(), use
-  // Platform::Current()->IsLowEndDevice() here.
-  return Platform::Current()->IsLowEndDevice() ||
-         base::SysInfo::IsLowEndDeviceOrPartialLowEndModeEnabled();
-#else
-  return Platform::Current()->IsLowEndDevice();
-#endif
-}
-
-}  // namespace
-
 bool ImageDecoderWrapper::Decode(ImageDecoderFactory* factory,
-                                 wtf_size_t* frame_count,
+                                 size_t* frame_count,
                                  bool* has_alpha) {
   DCHECK(frame_count);
   DCHECK(has_alpha);
@@ -111,8 +100,7 @@ bool ImageDecoderWrapper::Decode(ImageDecoderFactory* factory,
   std::unique_ptr<ImageDecoder> new_decoder;
 
   const bool resume_decoding = ImageDecodingStore::Instance().LockDecoder(
-      generator_, pixmap_.dimensions(), PixmapAlphaOption(pixmap_), client_id_,
-      &decoder);
+      generator_, scaled_size_, alpha_option_, client_id_, &decoder);
   DCHECK(!resume_decoding || decoder);
 
   if (resume_decoding) {
@@ -134,7 +122,7 @@ bool ImageDecoderWrapper::Decode(ImageDecoderFactory* factory,
   const bool decode_to_external_memory =
       ShouldDecodeToExternalMemory(*frame_count, resume_decoding);
 
-  ExternalMemoryAllocator external_memory_allocator(pixmap_);
+  ExternalMemoryAllocator external_memory_allocator(info_, pixels_, row_bytes_);
   if (decode_to_external_memory)
     decoder->SetMemoryAllocator(&external_memory_allocator);
   ImageFrame* frame = nullptr;
@@ -167,17 +155,17 @@ bool ImageDecoderWrapper::Decode(ImageDecoderFactory* factory,
   }
 
   SkBitmap scaled_size_bitmap = frame->Bitmap();
-  DCHECK_EQ(scaled_size_bitmap.width(), pixmap_.width());
-  DCHECK_EQ(scaled_size_bitmap.height(), pixmap_.height());
+  DCHECK_EQ(scaled_size_bitmap.width(), scaled_size_.width());
+  DCHECK_EQ(scaled_size_bitmap.height(), scaled_size_.height());
 
   // If we decoded into external memory, the bitmap should be backed by the
   // pixels passed to the allocator.
   DCHECK(!decode_to_external_memory ||
-         scaled_size_bitmap.getPixels() == pixmap_.addr());
+         scaled_size_bitmap.getPixels() == pixels_);
 
   *has_alpha = !scaled_size_bitmap.isOpaque();
   if (!decode_to_external_memory)
-    scaled_size_bitmap.readPixels(pixmap_);
+    scaled_size_bitmap.readPixels(info_, pixels_, row_bytes_, 0, 0);
 
   // Free as much memory as possible.  For single-frame images, we can
   // just delete the decoder entirely if they use the external allocator.
@@ -213,7 +201,7 @@ bool ImageDecoderWrapper::Decode(ImageDecoderFactory* factory,
 }
 
 bool ImageDecoderWrapper::ShouldDecodeToExternalMemory(
-    wtf_size_t frame_count,
+    size_t frame_count,
     bool resume_decoding) const {
   // Some multi-frame images need their decode cached in the decoder to allow
   // future frames to reference previous frames.
@@ -228,7 +216,7 @@ bool ImageDecoderWrapper::ShouldDecodeToExternalMemory(
   // On low-end devices, always use the external allocator, to avoid storing
   // duplicate copies of the data for partial decodes in the ImageDecoder's
   // cache.
-  if (IsLowEndDeviceOrPartialLowEndModeEnabled()) {
+  if (Platform::Current()->IsLowEndDevice()) {
     DCHECK(!resume_decoding);
     return true;
   }
@@ -273,7 +261,7 @@ bool ImageDecoderWrapper::ShouldRemoveDecoder(
 void ImageDecoderWrapper::PurgeAllFramesIfNecessary(
     ImageDecoder* decoder,
     bool frame_was_completely_decoded,
-    wtf_size_t frame_count) const {
+    size_t frame_count) const {
   // We only purge all frames when we have decoded the last frame for a
   // multi-frame image. This is because once the last frame is decoded, the
   // animation will loop back to the first frame which does not need the last
@@ -288,7 +276,7 @@ void ImageDecoderWrapper::PurgeAllFramesIfNecessary(
   if (!frame_was_completely_decoded)
     return;
 
-  const wtf_size_t last_frame_index = frame_count - 1;
+  const size_t last_frame_index = frame_count - 1;
   if (frame_index_ == last_frame_index)
     decoder->ClearCacheExceptFrame(kNotFound);
 }
@@ -302,17 +290,10 @@ std::unique_ptr<ImageDecoder> ImageDecoderWrapper::CreateDecoderWithData(
     return decoder;
   }
 
-  const ImageDecoder::HighBitDepthDecodingOption
-      high_bit_depth_decoding_option =
-          pixmap_.colorType() == kRGBA_F16_SkColorType
-              ? ImageDecoder::kHighBitDepthToHalfFloat
-              : ImageDecoder::kDefaultBitDepth;
-
   // The newly created decoder just grabbed the data.  No need to reset it.
-  return ImageDecoder::Create(
-      data_, all_data_received_, PixmapAlphaOption(pixmap_),
-      high_bit_depth_decoding_option, decoder_color_behavior_, aux_image_,
-      Platform::GetMaxDecodedImageBytes(), pixmap_.dimensions());
+  return ImageDecoder::Create(data_, all_data_received_, alpha_option_,
+                              decoding_option_, decoder_color_behavior_,
+                              scaled_size_);
 }
 
 }  // namespace blink

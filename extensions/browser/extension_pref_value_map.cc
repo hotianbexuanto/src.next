@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,12 +7,11 @@
 #include <utility>
 
 #include "base/memory/ptr_util.h"
-#include "base/observer_list.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "components/prefs/pref_value_map.h"
-#include "extensions/common/api/types.h"
-#include "extensions/common/extension_id.h"
+
+using extensions::ExtensionPrefsScope;
 
 struct ExtensionPrefValueMap::ExtensionEntry {
   // Installation time of the extension.
@@ -51,23 +50,24 @@ void ExtensionPrefValueMap::Shutdown() {
 
 void ExtensionPrefValueMap::SetExtensionPref(const std::string& ext_id,
                                              const std::string& key,
-                                             ChromeSettingScope scope,
+                                             ExtensionPrefsScope scope,
                                              base::Value value) {
   PrefValueMap* prefs = GetExtensionPrefValueMap(ext_id, scope);
   if (prefs->SetValue(key, std::move(value)))
     NotifyPrefValueChanged(key);
 }
 
-void ExtensionPrefValueMap::RemoveExtensionPref(const std::string& ext_id,
-                                                const std::string& key,
-                                                ChromeSettingScope scope) {
+void ExtensionPrefValueMap::RemoveExtensionPref(
+    const std::string& ext_id,
+    const std::string& key,
+    ExtensionPrefsScope scope) {
   PrefValueMap* prefs = GetExtensionPrefValueMap(ext_id, scope);
   if (prefs->RemoveValue(key))
     NotifyPrefValueChanged(key);
 }
 
 bool ExtensionPrefValueMap::CanExtensionControlPref(
-    const extensions::ExtensionId& extension_id,
+    const std::string& extension_id,
     const std::string& pref_key,
     bool incognito) const {
   auto ext = entries_.find(extension_id);
@@ -76,12 +76,13 @@ bool ExtensionPrefValueMap::CanExtensionControlPref(
                  << " is not registered but accesses pref " << pref_key
                  << " (incognito: " << incognito << ")."
                  << " http://crbug.com/454513";
+    return false;
   }
 
   if (incognito && !ext->second->incognito_enabled)
     return false;
 
-  auto winner = GetEffectivePrefValueController(pref_key, incognito, nullptr);
+  auto winner = GetEffectivePrefValueController(pref_key, incognito, NULL);
   if (winner == entries_.end())
     return true;
 
@@ -105,10 +106,10 @@ void ExtensionPrefValueMap::ClearAllIncognitoSessionOnlyPreferences() {
 }
 
 bool ExtensionPrefValueMap::DoesExtensionControlPref(
-    const extensions::ExtensionId& extension_id,
+    const std::string& extension_id,
     const std::string& pref_key,
     bool* from_incognito) const {
-  bool incognito = (from_incognito != nullptr);
+  bool incognito = (from_incognito != NULL);
   auto winner =
       GetEffectivePrefValueController(pref_key, incognito, from_incognito);
   if (winner == entries_.end())
@@ -120,14 +121,15 @@ void ExtensionPrefValueMap::RegisterExtension(const std::string& ext_id,
                                               const base::Time& install_time,
                                               bool is_enabled,
                                               bool is_incognito_enabled) {
-  auto& entry = entries_[ext_id];
-  if (!entry) {
-    entry = std::make_unique<ExtensionEntry>();
-    entry->install_time = install_time;
+  if (entries_.find(ext_id) == entries_.end()) {
+    entries_[ext_id] = base::WrapUnique(new ExtensionEntry);
+
+    // Only update the install time if the extension is newly installed.
+    entries_[ext_id]->install_time = install_time;
   }
 
-  entry->enabled = is_enabled;
-  entry->incognito_enabled = is_incognito_enabled;
+  entries_[ext_id]->enabled = is_enabled;
+  entries_[ext_id]->incognito_enabled = is_incognito_enabled;
 }
 
 void ExtensionPrefValueMap::UnregisterExtension(const std::string& ext_id) {
@@ -175,42 +177,40 @@ void ExtensionPrefValueMap::SetExtensionIncognitoState(
 
 PrefValueMap* ExtensionPrefValueMap::GetExtensionPrefValueMap(
     const std::string& ext_id,
-    ChromeSettingScope scope) {
+    ExtensionPrefsScope scope) {
   ExtensionEntryMap::const_iterator i = entries_.find(ext_id);
   CHECK(i != entries_.end());
   switch (scope) {
-    case ChromeSettingScope::kRegular:
-      return &i->second->regular_profile_preferences;
-    case ChromeSettingScope::kRegularOnly:
-      return &i->second->regular_only_profile_preferences;
-    case ChromeSettingScope::kIncognitoPersistent:
-      return &i->second->incognito_profile_preferences_persistent;
-    case ChromeSettingScope::kIncognitoSessionOnly:
-      return &i->second->incognito_profile_preferences_session_only;
-    case ChromeSettingScope::kNone:
-      break;
+    case extensions::kExtensionPrefsScopeRegular:
+      return &(i->second->regular_profile_preferences);
+    case extensions::kExtensionPrefsScopeRegularOnly:
+      return &(i->second->regular_only_profile_preferences);
+    case extensions::kExtensionPrefsScopeIncognitoPersistent:
+      return &(i->second->incognito_profile_preferences_persistent);
+    case extensions::kExtensionPrefsScopeIncognitoSessionOnly:
+      return &(i->second->incognito_profile_preferences_session_only);
   }
   NOTREACHED();
+  return NULL;
 }
 
 const PrefValueMap* ExtensionPrefValueMap::GetExtensionPrefValueMap(
     const std::string& ext_id,
-    ChromeSettingScope scope) const {
+    ExtensionPrefsScope scope) const {
   auto i = entries_.find(ext_id);
   CHECK(i != entries_.end());
   switch (scope) {
-    case ChromeSettingScope::kRegular:
-      return &i->second->regular_profile_preferences;
-    case ChromeSettingScope::kRegularOnly:
-      return &i->second->regular_only_profile_preferences;
-    case ChromeSettingScope::kIncognitoPersistent:
-      return &i->second->incognito_profile_preferences_persistent;
-    case ChromeSettingScope::kIncognitoSessionOnly:
-      return &i->second->incognito_profile_preferences_session_only;
-    case ChromeSettingScope::kNone:
-      break;
+    case extensions::kExtensionPrefsScopeRegular:
+      return &(i->second->regular_profile_preferences);
+    case extensions::kExtensionPrefsScopeRegularOnly:
+      return &(i->second->regular_only_profile_preferences);
+    case extensions::kExtensionPrefsScopeIncognitoPersistent:
+      return &(i->second->incognito_profile_preferences_persistent);
+    case extensions::kExtensionPrefsScopeIncognitoSessionOnly:
+      return &(i->second->incognito_profile_preferences_session_only);
   }
   NOTREACHED();
+  return NULL;
 }
 
 void ExtensionPrefValueMap::GetExtensionControlledKeys(
@@ -244,39 +244,40 @@ const base::Value* ExtensionPrefValueMap::GetEffectivePrefValue(
     bool* from_incognito) const {
   auto winner = GetEffectivePrefValueController(key, incognito, from_incognito);
   if (winner == entries_.end())
-    return nullptr;
+    return NULL;
 
-  const base::Value* value = nullptr;
+  const base::Value* value = NULL;
   const std::string& ext_id = winner->first;
 
   // First search for incognito session only preferences.
   if (incognito) {
     DCHECK(winner->second->incognito_enabled);
     const PrefValueMap* prefs = GetExtensionPrefValueMap(
-        ext_id, ChromeSettingScope::kIncognitoSessionOnly);
+        ext_id, extensions::kExtensionPrefsScopeIncognitoSessionOnly);
     prefs->GetValue(key, &value);
     if (value)
       return value;
 
     // If no incognito session only preference exists, fall back to persistent
     // incognito preference.
-    prefs = GetExtensionPrefValueMap(ext_id,
-                                     ChromeSettingScope::kIncognitoPersistent);
+    prefs = GetExtensionPrefValueMap(
+        ext_id,
+        extensions::kExtensionPrefsScopeIncognitoPersistent);
     prefs->GetValue(key, &value);
     if (value)
       return value;
   } else {
     // Regular-only preference.
-    const PrefValueMap* prefs =
-        GetExtensionPrefValueMap(ext_id, ChromeSettingScope::kRegularOnly);
+    const PrefValueMap* prefs = GetExtensionPrefValueMap(
+        ext_id, extensions::kExtensionPrefsScopeRegularOnly);
     prefs->GetValue(key, &value);
     if (value)
       return value;
   }
 
   // Regular preference.
-  const PrefValueMap* prefs =
-      GetExtensionPrefValueMap(ext_id, ChromeSettingScope::kRegular);
+  const PrefValueMap* prefs = GetExtensionPrefValueMap(
+      ext_id, extensions::kExtensionPrefsScopeRegular);
   prefs->GetValue(key, &value);
   return value;
 }
@@ -302,9 +303,9 @@ ExtensionPrefValueMap::GetEffectivePrefValueController(
     if (incognito && !incognito_enabled)
       continue;
 
-    const base::Value* value = nullptr;
-    const PrefValueMap* prefs =
-        GetExtensionPrefValueMap(ext_id, ChromeSettingScope::kRegular);
+    const base::Value* value = NULL;
+    const PrefValueMap* prefs = GetExtensionPrefValueMap(
+        ext_id, extensions::kExtensionPrefsScopeRegular);
     if (prefs->GetValue(key, &value)) {
       winner = i;
       winners_install_time = install_time;
@@ -313,8 +314,8 @@ ExtensionPrefValueMap::GetEffectivePrefValueController(
     }
 
     if (!incognito) {
-      prefs =
-          GetExtensionPrefValueMap(ext_id, ChromeSettingScope::kRegularOnly);
+      const PrefValueMap* prefs = GetExtensionPrefValueMap(
+          ext_id, extensions::kExtensionPrefsScopeRegularOnly);
       if (prefs->GetValue(key, &value)) {
         winner = i;
         winners_install_time = install_time;
@@ -325,8 +326,8 @@ ExtensionPrefValueMap::GetEffectivePrefValueController(
       continue;
     }
 
-    prefs = GetExtensionPrefValueMap(ext_id,
-                                     ChromeSettingScope::kIncognitoPersistent);
+    prefs = GetExtensionPrefValueMap(
+        ext_id, extensions::kExtensionPrefsScopeIncognitoPersistent);
     if (prefs->GetValue(key, &value)) {
       winner = i;
       winners_install_time = install_time;
@@ -334,8 +335,8 @@ ExtensionPrefValueMap::GetEffectivePrefValueController(
         *from_incognito = true;
     }
 
-    prefs = GetExtensionPrefValueMap(ext_id,
-                                     ChromeSettingScope::kIncognitoSessionOnly);
+    prefs = GetExtensionPrefValueMap(
+        ext_id, extensions::kExtensionPrefsScopeIncognitoSessionOnly);
     if (prefs->GetValue(key, &value)) {
       winner = i;
       winners_install_time = install_time;
@@ -368,7 +369,7 @@ void ExtensionPrefValueMap::RemoveObserver(
 
 std::string ExtensionPrefValueMap::GetExtensionControllingPref(
     const std::string& pref_key) const {
-  auto winner = GetEffectivePrefValueController(pref_key, false, nullptr);
+  auto winner = GetEffectivePrefValueController(pref_key, false, NULL);
   if (winner == entries_.end())
     return std::string();
   return winner->first;

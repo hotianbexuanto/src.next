@@ -1,4 +1,4 @@
-# Copyright 2013 The Chromium Authors
+# Copyright (c) 2013 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Top-level presubmit script for Blink.
@@ -7,19 +7,19 @@ See https://dev.chromium.org/developers/how-tos/depottools/presubmit-scripts
 for more details about the presubmit API built into gcl.
 """
 
-import importlib
+import imp
 import inspect
 import os
 import re
 
+USE_PYTHON3 = True
+
 try:
     # pylint: disable=C0103
-    module_name = 'audit_non_blink_usage'
-    module_path = os.path.join(
-        os.path.dirname(inspect.stack()[0][1]),
-        'tools/blinkpy/presubmit/audit_non_blink_usage.py')
-    audit_non_blink_usage = importlib.machinery.SourceFileLoader(
-        module_name, module_path).load_module()
+    audit_non_blink_usage = imp.load_source(
+        'audit_non_blink_usage',
+        os.path.join(os.path.dirname(inspect.stack()[0][1]),
+                     'tools/blinkpy/presubmit/audit_non_blink_usage.py'))
 except IOError:
     # One of the presubmit upload tests tries to exec this script, which
     # doesn't interact so well with the import hack... just ignore the
@@ -41,13 +41,10 @@ def _CheckForWrongMojomIncludes(input_api, output_api):
         return input_api.FilterSourceFile(
             path,
             files_to_skip=[
-                r'.*_test.*\.(cc|h)$',
-                r'.*_unittest.*\.(cc|h)$',
+                r'.*_test\.(cc|h)$',
                 r'third_party[\\/]blink[\\/]common[\\/]',
                 r'third_party[\\/]blink[\\/]public[\\/]common[\\/]',
                 r'third_party[\\/]blink[\\/]renderer[\\/]platform[\\/]loader[\\/]fetch[\\/]url_loader[\\/]',
-                r'third_party[\\/]blink[\\/]renderer[\\/]core[\\/]frame[\\/]web_view_impl.*\.(cc|h)$',
-                r'third_party[\\/]blink[\\/]renderer[\\/]core[\\/]frame[\\/]web.*frame.*\.(cc|h)$',
             ])
 
     pattern = input_api.re.compile(r'#include\s+[<"](.+)\.mojom(.*)\.h[>"]')
@@ -59,7 +56,7 @@ def _CheckForWrongMojomIncludes(input_api, output_api):
     # public C++ API. Adding to these allowed interfaces should meet the
     # following conditions:
     # - Its pros/cons is discussed and have consensus on
-    #   platform-architecture-dev@ or
+    #   platform-architecture-dev@ and/or
     # - It uses POD types that will not import STL (or base string) types into
     #   blink (such as no strings or vectors).
     #
@@ -74,23 +71,15 @@ def _CheckForWrongMojomIncludes(input_api, output_api):
         'services/network/public/mojom/url_loader',
         'services/network/public/mojom/url_loader_factory',
         'services/network/public/mojom/url_response_head',
-        'third_party/blink/public/mojom/blob/blob',
         'third_party/blink/public/mojom/blob/serialized_blob',
-        'third_party/blink/public/mojom/browser_interface_broker',
         'third_party/blink/public/mojom/fetch/fetch_api_request',
-        'third_party/blink/public/mojom/loader/code_cache',
-        'third_party/blink/public/mojom/loader/fetch_later',
-        'third_party/blink/public/mojom/loader/local_resource_loader_config',
         'third_party/blink/public/mojom/loader/resource_load_info',
         'third_party/blink/public/mojom/loader/resource_load_info_notifier',
-        'third_party/blink/public/mojom/loader/transferrable_url_loader',
-        'third_party/blink/public/mojom/navigation/renderer_content_settings',
-        'third_party/blink/public/mojom/page/prerender_page_param',
-        'third_party/blink/public/mojom/partitioned_popins/partitioned_popin_params',
         'third_party/blink/public/mojom/worker/subresource_loader_updater',
-        'third_party/blink/public/mojom/worker/worklet_global_scope_creation_params',
+        'third_party/blink/public/mojom/loader/transferrable_url_loader',
+        'third_party/blink/public/mojom/loader/code_cache',
         'media/mojo/mojom/interface_factory', 'media/mojo/mojom/audio_decoder',
-        'media/mojo/mojom/audio_encoder', 'media/mojo/mojom/video_decoder',
+        'media/mojo/mojom/video_decoder',
         'media/mojo/mojom/media_metrics_provider')
 
     for f in input_api.AffectedFiles(file_filter=source_file_filter):
@@ -140,37 +129,34 @@ def _CommonChecks(input_api, output_api):
             input_api,
             output_api,
             excluded_paths=_EXCLUDED_PATHS,
-            owners_check=False,
             maxlen=800,
-            license_header=license_header,
-            global_checks=False))
+            license_header=license_header))
     results.extend(_CheckForWrongMojomIncludes(input_api, output_api))
     return results
 
 
-def FilterPaths(input_api):
+def _FilterPaths(input_api):
     """Returns input files with certain paths removed."""
     files = []
     for f in input_api.AffectedFiles():
-        file_path = f.AbsoluteLocalPath()
-        # Filter out changes in web_tests/ so they are not linted. Some files
-        # are intentionally malformed for testing. Also, external WPTs may have
-        # non-Chromium authors.
-        if 'web_tests' + input_api.os_path.sep in file_path:
+        file_path = f.LocalPath()
+        # Filter out changes in web_tests/.
+        if ('web_tests' + input_api.os_path.sep in file_path
+                and 'TestExpectations' not in file_path):
             continue
-        if input_api.os_path.sep + 'PRESUBMIT' in file_path:
+        if '/PRESUBMIT' in file_path:
             continue
         # Skip files that were generated by bison.
         if re.search(
-                'third_party.blink.renderer.'
-                'core.xml.xpath_grammar_generated\.(cc|h)$', file_path):
+                'third_party/blink/renderer/' +
+                'core/xml/xpath_grammar_generated\.(cc|h)$', file_path):
             continue
-        files.append(file_path)
+        files.append(input_api.os_path.join('..', '..', file_path))
     return files
 
 
 def _CheckStyle(input_api, output_api):
-    files = FilterPaths(input_api)
+    files = _FilterPaths(input_api)
     # Do not call check_blink_style.py with empty affected file list if all
     # input_api.AffectedFiles got filtered.
     if not files:
@@ -179,56 +165,23 @@ def _CheckStyle(input_api, output_api):
     style_checker_path = input_api.os_path.join(input_api.PresubmitLocalPath(),
                                                 'tools',
                                                 'check_blink_style.py')
-    # When running git cl presubmit --all this presubmit may be asked to check
-    # ~260 files, leading to a command line that is about 17,000 characters.
-    # This goes past the Windows 8191 character cmd.exe limit and causes cryptic
-    # failures. To avoid these we break the command up into smaller pieces.
-    # Depending on how long the command is on Windows the error may be:
-    #     The command line is too long.
-    # Or it may be:
-    #     OSError: Execution failed with error: [WinError 206] The filename or
-    #     extension is too long.
-    # The latter error comes from CreateProcess hitting its 32768 character
-    # limit.
-    files_per_command = 40 if input_api.is_windows else 1000
+    args = [input_api.python_executable, style_checker_path, '--diff-files']
+    args += files
+
     results = []
-    for i in range(0, len(files), files_per_command):
-        args = [
-            input_api.python3_executable, style_checker_path, '--diff-files'
-        ]
-        args += files[i:i + files_per_command]
-
-        try:
-            child = input_api.subprocess.Popen(
-                args, stderr=input_api.subprocess.PIPE)
-            _, stderrdata = child.communicate()
-            if child.returncode != 0:
-                results.append(
-                    output_api.PresubmitError('check_blink_style.py failed',
-                                              [stderrdata.decode('utf-8')]))
-        except Exception as e:
+    try:
+        child = input_api.subprocess.Popen(args,
+                                           stderr=input_api.subprocess.PIPE)
+        _, stderrdata = child.communicate()
+        if child.returncode != 0:
             results.append(
-                output_api.PresubmitNotifyResult(
-                    'Could not run check_blink_style.py', [str(e)]))
+                output_api.PresubmitError('check_blink_style.py failed',
+                                          [stderrdata]))
+    except Exception as e:
+        results.append(
+            output_api.PresubmitNotifyResult(
+                'Could not run check_blink_style.py', [str(e)]))
 
-    # By default, the pylint canned check lints all Python files together to
-    # check for potential problems between dependencies. This is slow to run
-    # across all of Blink (>2 min), so only lint affected files.
-    affected_python_files = [
-        input_api.os_path.relpath(file_path, input_api.PresubmitLocalPath())
-        for file_path in files if input_api.fnmatch.fnmatch(file_path, '*.py')
-    ]
-    if affected_python_files:
-        pylintrc = input_api.os_path.join('tools', 'blinkpy', 'pylintrc')
-        results.extend(
-            input_api.RunTests(
-                input_api.canned_checks.GetPylint(
-                    input_api,
-                    output_api,
-                    files_to_check=[
-                        re.escape(path) for path in affected_python_files
-                    ],
-                    pylintrc=pylintrc)))
     return results
 
 
@@ -290,4 +243,12 @@ def CheckChangeOnUpload(input_api, output_api):
 def CheckChangeOnCommit(input_api, output_api):
     results = []
     results.extend(_CommonChecks(input_api, output_api))
+    results.extend(
+        input_api.canned_checks.CheckTreeIsOpen(
+            input_api,
+            output_api,
+            json_url='http://chromium-status.appspot.com/current?format=json'))
+    results.extend(
+        input_api.canned_checks.CheckChangeHasDescription(
+            input_api, output_api))
     return results

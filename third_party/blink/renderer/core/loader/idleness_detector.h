@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,9 +7,8 @@
 
 #include "base/task/sequence_manager/task_time_observer.h"
 #include "base/time/default_tick_clock.h"
-#include "base/time/time.h"
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/timer.h"
 
 namespace blink {
@@ -35,7 +34,6 @@ class CORE_EXPORT IdlenessDetector
   void Shutdown();
   void WillCommitLoad();
   void DomContentLoadedEventFired();
-  void DidDropNavigation();
   // TODO(lpy) Don't need to pass in fetcher once the command line of disabling
   // PlzNavigate is removed.
   void OnWillSendRequest(ResourceFetcher*);
@@ -43,6 +41,7 @@ class CORE_EXPORT IdlenessDetector
 
   base::TimeTicks GetNetworkAlmostIdleTime();
   base::TimeTicks GetNetworkIdleTime();
+  bool NetworkIsAlmostIdle();
 
   void Trace(Visitor*) const;
 
@@ -52,8 +51,9 @@ class CORE_EXPORT IdlenessDetector
   // The page is quiet if there are no more than 2 active network requests for
   // this duration of time.
   static constexpr base::TimeDelta kNetworkQuietWindow =
-      base::Milliseconds(500);
-  static constexpr base::TimeDelta kNetworkQuietWatchdog = base::Seconds(2);
+      base::TimeDelta::FromMilliseconds(500);
+  static constexpr base::TimeDelta kNetworkQuietWatchdog =
+      base::TimeDelta::FromSeconds(2);
   static constexpr int kNetworkQuietMaximumConnections = 2;
 
   // TaskTimeObserver implementation.
@@ -61,11 +61,7 @@ class CORE_EXPORT IdlenessDetector
   void DidProcessTask(base::TimeTicks start_time,
                       base::TimeTicks end_time) override;
 
-  void Start();
   void Stop();
-  bool HasCompleted() const {
-    return !in_network_0_quiet_period_ && !in_network_2_quiet_period_;
-  }
 
   // This method and the associated timer appear to have no effect, but they
   // have the side effect of triggering a task, which will send WillProcessTask

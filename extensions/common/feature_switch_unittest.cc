@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,10 +25,10 @@ class FeatureSwitchTest : public testing::Test {
   FeatureSwitch feature_;
 };
 
-using FeatureSwitchDisabledTest =
-    FeatureSwitchTest<FeatureSwitch::DEFAULT_DISABLED>;
-using FeatureSwitchEnabledTest =
-    FeatureSwitchTest<FeatureSwitch::DEFAULT_ENABLED>;
+typedef FeatureSwitchTest<FeatureSwitch::DEFAULT_DISABLED>
+    FeatureSwitchDisabledTest;
+typedef FeatureSwitchTest<FeatureSwitch::DEFAULT_ENABLED>
+    FeatureSwitchEnabledTest;
 
 }  // namespace
 

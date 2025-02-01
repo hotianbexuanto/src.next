@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,18 +6,18 @@
 #define CHROME_BROWSER_EXTENSIONS_INSTALL_TRACKER_H_
 
 #include <map>
-#include <optional>
 
+#include "base/macros.h"
 #include "base/observer_list.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/extensions/active_install_data.h"
-#include "chrome/browser/extensions/crx_installer.h"
 #include "chrome/browser/extensions/install_observer.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/prefs/pref_change_registrar.h"
+#include "content/public/browser/notification_observer.h"
+#include "content/public/browser/notification_registrar.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_observer.h"
-#include "extensions/common/extension_id.h"
 
 namespace content {
 class BrowserContext;
@@ -27,14 +27,12 @@ namespace extensions {
 
 class ExtensionPrefs;
 
-class InstallTracker : public KeyedService, public ExtensionRegistryObserver {
+class InstallTracker : public KeyedService,
+                       public content::NotificationObserver,
+                       public ExtensionRegistryObserver {
  public:
   InstallTracker(content::BrowserContext* browser_context,
                  extensions::ExtensionPrefs* prefs);
-
-  InstallTracker(const InstallTracker&) = delete;
-  InstallTracker& operator=(const InstallTracker&) = delete;
-
   ~InstallTracker() override;
 
   static InstallTracker* Get(content::BrowserContext* context);
@@ -63,11 +61,8 @@ class InstallTracker : public KeyedService, public ExtensionRegistryObserver {
   void OnBeginExtensionDownload(const std::string& extension_id);
   void OnDownloadProgress(const std::string& extension_id,
                           int percent_downloaded);
-  void OnBeginCrxInstall(const CrxInstaller& installer,
-                         const std::string& extension_id);
-  void OnFinishCrxInstall(const CrxInstaller& installer,
-                          const std::string& extension_id,
-                          bool success);
+  void OnBeginCrxInstall(const std::string& extension_id);
+  void OnFinishCrxInstall(const std::string& extension_id, bool success);
   void OnInstallFailure(const std::string& extension_id);
 
   // NOTE(limasdf): For extension [un]load and [un]installed, use
@@ -76,12 +71,13 @@ class InstallTracker : public KeyedService, public ExtensionRegistryObserver {
   // Overriddes for KeyedService.
   void Shutdown() override;
 
-  // Called directly by AppSorting logic when apps are re-ordered on the new tab
-  // page.
-  void OnAppsReordered(const std::optional<ExtensionId>& extension_id);
-
  private:
-  void OnExtensionPrefChanged();
+  void OnAppsReordered();
+
+  // content::NotificationObserver implementation.
+  void Observe(int type,
+               const content::NotificationSource& source,
+               const content::NotificationDetails& details) override;
 
   // ExtensionRegistryObserver implementation.
   void OnExtensionInstalled(content::BrowserContext* browser_context,
@@ -92,14 +88,13 @@ class InstallTracker : public KeyedService, public ExtensionRegistryObserver {
   typedef std::map<std::string, ActiveInstallData> ActiveInstallsMap;
   ActiveInstallsMap active_installs_;
 
-  // Safe: |this| belongs to |browser_context_| via KeyedService, and this
-  // pointer is nulled in Shutdown().
-  raw_ptr<content::BrowserContext> browser_context_;
-
   base::ObserverList<InstallObserver>::Unchecked observers_;
-  std::unique_ptr<PrefChangeRegistrar> pref_change_registrar_;
+  content::NotificationRegistrar registrar_;
+  PrefChangeRegistrar pref_change_registrar_;
   base::ScopedObservation<ExtensionRegistry, ExtensionRegistryObserver>
       extension_registry_observation_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(InstallTracker);
 };
 
 }  // namespace extensions

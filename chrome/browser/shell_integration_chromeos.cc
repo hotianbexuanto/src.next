@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,11 +10,15 @@ bool SetAsDefaultBrowser() {
   return false;
 }
 
-bool SetAsDefaultClientForScheme(const std::string& scheme) {
+bool SetAsDefaultProtocolClient(const std::string& protocol) {
   return false;
 }
 
-std::u16string GetApplicationNameForScheme(const GURL& url) {
+DefaultWebClientSetPermission GetDefaultWebClientSetPermission() {
+  return SET_DEFAULT_NOT_ALLOWED;
+}
+
+std::u16string GetApplicationNameForProtocol(const GURL& url) {
   return std::u16string();
 }
 
@@ -30,17 +34,8 @@ bool IsFirefoxDefaultBrowser() {
   return false;
 }
 
-DefaultWebClientState IsDefaultClientForScheme(const std::string& scheme) {
+DefaultWebClientState IsDefaultProtocolClient(const std::string& protocol) {
   return UNKNOWN_DEFAULT;
 }
-
-namespace internal {
-
-DefaultWebClientSetPermission GetPlatformSpecificDefaultWebClientSetPermission(
-    WebClientSetMethod method) {
-  return SET_DEFAULT_NOT_ALLOWED;
-}
-
-}  // namespace internal
 
 }  // namespace shell_integration

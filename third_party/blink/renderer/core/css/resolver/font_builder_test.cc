@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,20 +7,18 @@
 #include <memory>
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/core/css/css_font_selector.h"
-#include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
 class FontBuilderTest {
  public:
   FontBuilderTest()
-      : dummy_(std::make_unique<DummyPageHolder>(gfx::Size(800, 600))) {
+      : dummy_(std::make_unique<DummyPageHolder>(IntSize(800, 600))) {
     GetSettings().SetDefaultFontSize(16.0f);
   }
 
@@ -28,7 +26,6 @@ class FontBuilderTest {
   Settings& GetSettings() { return *GetDocument().GetSettings(); }
 
  private:
-  test::TaskEnvironment task_environment_;
   std::unique_ptr<DummyPageHolder> dummy_;
 };
 
@@ -48,16 +45,14 @@ class FontBuilderAdditiveTest : public FontBuilderTest,
                                 public testing::TestWithParam<FunctionPair> {};
 
 TEST_F(FontBuilderInitTest, InitialFontSizeNotScaled) {
-  const ComputedStyle& parent_style =
-      GetDocument().GetStyleResolver().InitialStyle();
-  ComputedStyleBuilder style_builder =
-      GetDocument().GetStyleResolver().CreateComputedStyleBuilder();
+  scoped_refptr<ComputedStyle> initial =
+      GetDocument().GetStyleResolver().CreateComputedStyle();
 
-  FontBuilder font_builder(&GetDocument());
-  font_builder.SetSize(FontBuilder::InitialSize());
-  font_builder.CreateFont(style_builder, &parent_style);
+  FontBuilder builder(&GetDocument());
+  builder.SetInitial(1.0f);  // FIXME: Remove unused param.
+  builder.CreateFont(*initial, initial.get());
 
-  EXPECT_EQ(16.0f, style_builder.GetFontDescription().ComputedSize());
+  EXPECT_EQ(16.0f, initial->GetFontDescription().ComputedSize());
 }
 
 TEST_F(FontBuilderInitTest, NotDirty) {
@@ -74,20 +69,18 @@ TEST_P(FontBuilderAdditiveTest, OnlySetValueIsModified) {
   FontDescription parent_description;
   funcs.set_base_value(parent_description);
 
-  ComputedStyleBuilder builder =
-      GetDocument().GetStyleResolver().CreateComputedStyleBuilder();
-  builder.SetFontDescription(parent_description);
-  const ComputedStyle* parent_style = builder.TakeStyle();
+  scoped_refptr<ComputedStyle> parent_style =
+      GetDocument().GetStyleResolver().CreateComputedStyle();
+  parent_style->SetFontDescription(parent_description);
 
-  builder =
-      GetDocument().GetStyleResolver().CreateComputedStyleBuilderInheritingFrom(
-          *parent_style);
+  scoped_refptr<ComputedStyle> style =
+      GetDocument().GetStyleResolver().CreateComputedStyle();
+  style->InheritFrom(*parent_style);
 
   FontBuilder font_builder(&GetDocument());
   funcs.set_value(font_builder);
-  font_builder.CreateFont(builder, parent_style);
+  font_builder.CreateFont(*style, parent_style.get());
 
-  const ComputedStyle* style = builder.TakeStyle();
   FontDescription output_description = style->GetFontDescription();
 
   // FontBuilder should have overwritten our base value set in the parent,
@@ -107,14 +100,14 @@ static void FontWeightBase(FontDescription& d) {
   d.SetWeight(FontSelectionValue(900));
 }
 static void FontWeightValue(FontBuilder& b) {
-  b.SetWeight(kNormalWeightValue);
+  b.SetWeight(NormalWeightValue());
 }
 
 static void FontStretchBase(FontDescription& d) {
-  d.SetStretch(kUltraExpandedWidthValue);
+  d.SetStretch(UltraExpandedWidthValue());
 }
 static void FontStretchValue(FontBuilder& b) {
-  b.SetStretch(kExtraCondensedWidthValue);
+  b.SetStretch(ExtraCondensedWidthValue());
 }
 
 static void FontFamilyBase(FontDescription& d) {
@@ -133,10 +126,10 @@ static void FontFeatureSettingsValue(FontBuilder& b) {
 }
 
 static void FontStyleBase(FontDescription& d) {
-  d.SetStyle(kItalicSlopeValue);
+  d.SetStyle(ItalicSlopeValue());
 }
 static void FontStyleValue(FontBuilder& b) {
-  b.SetStyle(kNormalSlopeValue);
+  b.SetStyle(NormalSlopeValue());
 }
 
 static void FontVariantCapsBase(FontDescription& d) {
@@ -162,27 +155,6 @@ static void FontVariantNumericValue(FontBuilder& b) {
   FontVariantNumeric variant_numeric;
   variant_numeric.SetNumericFraction(FontVariantNumeric::kStackedFractions);
   b.SetVariantNumeric(variant_numeric);
-}
-
-static void FontSynthesisWeightBase(FontDescription& d) {
-  d.SetFontSynthesisWeight(FontDescription::kAutoFontSynthesisWeight);
-}
-static void FontSynthesisWeightValue(FontBuilder& b) {
-  b.SetFontSynthesisWeight(FontDescription::kNoneFontSynthesisWeight);
-}
-
-static void FontSynthesisStyleBase(FontDescription& d) {
-  d.SetFontSynthesisStyle(FontDescription::kAutoFontSynthesisStyle);
-}
-static void FontSynthesisStyleValue(FontBuilder& b) {
-  b.SetFontSynthesisStyle(FontDescription::kNoneFontSynthesisStyle);
-}
-
-static void FontSynthesisSmallCapsBase(FontDescription& d) {
-  d.SetFontSynthesisSmallCaps(FontDescription::kAutoFontSynthesisSmallCaps);
-}
-static void FontSynthesisSmallCapsValue(FontBuilder& b) {
-  b.SetFontSynthesisSmallCaps(FontDescription::kNoneFontSynthesisSmallCaps);
 }
 
 static void FontTextRenderingBase(FontDescription& d) {
@@ -224,10 +196,10 @@ static void FontSizeValue(FontBuilder& b) {
 }
 
 static void FontScriptBase(FontDescription& d) {
-  d.SetLocale(LayoutLocale::Get(AtomicString("no")));
+  d.SetLocale(LayoutLocale::Get("no"));
 }
 static void FontScriptValue(FontBuilder& b) {
-  b.SetLocale(LayoutLocale::Get(AtomicString("se")));
+  b.SetLocale(LayoutLocale::Get("se"));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -242,9 +214,6 @@ INSTANTIATE_TEST_SUITE_P(
         FunctionPair(FontVariantCapsBase, FontVariantCapsValue),
         FunctionPair(FontVariantLigaturesBase, FontVariantLigaturesValue),
         FunctionPair(FontVariantNumericBase, FontVariantNumericValue),
-        FunctionPair(FontSynthesisWeightBase, FontSynthesisWeightValue),
-        FunctionPair(FontSynthesisStyleBase, FontSynthesisStyleValue),
-        FunctionPair(FontSynthesisSmallCapsBase, FontSynthesisSmallCapsValue),
         FunctionPair(FontTextRenderingBase, FontTextRenderingValue),
         FunctionPair(FontKerningBase, FontKerningValue),
         FunctionPair(FontFontSmoothingBase, FontFontSmoothingValue),

@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,8 @@
 
 #include "base/run_loop.h"
 #include "base/test/bind.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
@@ -73,17 +73,17 @@ class RemoveLocalAccountTest : public MixinBasedInProcessBrowserTest {
     MixinBasedInProcessBrowserTest::SetUpOnMainThread();
     fake_gaia_.Initialize();
 
-    FakeGaia::Configuration params;
+    FakeGaia::MergeSessionParams params;
     params.signed_out_gaia_ids.push_back(kTestGaiaId);
-    fake_gaia_.UpdateConfiguration(params);
+    fake_gaia_.UpdateMergeSessionParams(params);
 
     embedded_test_server_.StartAcceptingConnections();
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-    // `ChromeSigninClient` uses `ash::DelayNetworkCall()` which requires
+    // ChromeSigninClient uses chromeos::DelayNetworkCall() which requires
     // simulating being online.
     network_portal_detector_.SimulateDefaultNetworkState(
-        ash::NetworkPortalDetectorMixin::NetworkStatus::kOnline);
+        ash::NetworkPortalDetector::CAPTIVE_PORTAL_STATUS_ONLINE);
 #endif
   }
 
@@ -103,24 +103,25 @@ IN_PROC_BROWSER_TEST_F(RemoveLocalAccountTest, ShouldNotifyObservers) {
   signin::SetFreshnessOfAccountsInGaiaCookie(identity_manager(),
                                              /*accounts_are_fresh=*/false);
 
-  ASSERT_FALSE(identity_manager()->GetAccountsInCookieJar().AreAccountsFresh());
+  ASSERT_FALSE(identity_manager()->GetAccountsInCookieJar().accounts_are_fresh);
   const signin::AccountsInCookieJarInfo
       cookie_jar_info_in_initial_notification =
           WaitUntilAccountsInCookieUpdated();
-  ASSERT_TRUE(cookie_jar_info_in_initial_notification.AreAccountsFresh());
-  ASSERT_THAT(cookie_jar_info_in_initial_notification.GetSignedOutAccounts(),
+  ASSERT_TRUE(cookie_jar_info_in_initial_notification.accounts_are_fresh);
+  ASSERT_THAT(cookie_jar_info_in_initial_notification.signed_out_accounts,
               Contains(ListedAccountMatchesGaiaId(kTestGaiaId)));
 
   const signin::AccountsInCookieJarInfo initial_cookie_jar_info =
       identity_manager()->GetAccountsInCookieJar();
-  ASSERT_TRUE(initial_cookie_jar_info.AreAccountsFresh());
-  ASSERT_THAT(initial_cookie_jar_info.GetSignedOutAccounts(),
+  ASSERT_TRUE(initial_cookie_jar_info.accounts_are_fresh);
+  ASSERT_THAT(initial_cookie_jar_info.signed_out_accounts,
               Contains(ListedAccountMatchesGaiaId(kTestGaiaId)));
 
   // Open a FakeGaia page that issues the desired HTTP response header with
   // Google-Accounts-RemoveLocalAccount.
+  base::HistogramTester histogram_tester;
   chrome::AddTabAt(browser(),
-                   fake_gaia_.GetFakeRemoveLocalAccountURL(kTestGaiaId),
+                   fake_gaia_.GetDummyRemoveLocalAccountURL(kTestGaiaId),
                    /*index=*/0,
                    /*foreground=*/true);
 
@@ -129,15 +130,18 @@ IN_PROC_BROWSER_TEST_F(RemoveLocalAccountTest, ShouldNotifyObservers) {
       cookie_jar_info_in_updated_notification =
           WaitUntilAccountsInCookieUpdated();
 
-  EXPECT_TRUE(cookie_jar_info_in_updated_notification.AreAccountsFresh());
-  EXPECT_THAT(cookie_jar_info_in_updated_notification.GetSignedOutAccounts(),
+  EXPECT_TRUE(cookie_jar_info_in_updated_notification.accounts_are_fresh);
+  EXPECT_THAT(cookie_jar_info_in_updated_notification.signed_out_accounts,
               Not(Contains(ListedAccountMatchesGaiaId(kTestGaiaId))));
 
   const signin::AccountsInCookieJarInfo updated_cookie_jar_info =
       identity_manager()->GetAccountsInCookieJar();
-  EXPECT_TRUE(updated_cookie_jar_info.AreAccountsFresh());
-  EXPECT_THAT(updated_cookie_jar_info.GetSignedOutAccounts(),
+  EXPECT_TRUE(updated_cookie_jar_info.accounts_are_fresh);
+  EXPECT_THAT(updated_cookie_jar_info.signed_out_accounts,
               Not(Contains(ListedAccountMatchesGaiaId(kTestGaiaId))));
+
+  histogram_tester.ExpectUniqueSample("Signin.RemoveLocalAccountOutcome",
+                                      0 /* kSuccess*/, 1);
 }
 
 }  // namespace

@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,25 +10,15 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /** A means of tracking which mechanism is being used to focus the omnibox. */
-@IntDef({
-    OmniboxFocusReason.OMNIBOX_TAP,
-    OmniboxFocusReason.OMNIBOX_LONG_PRESS,
-    OmniboxFocusReason.FAKE_BOX_TAP,
-    OmniboxFocusReason.FAKE_BOX_LONG_PRESS,
-    OmniboxFocusReason.ACCELERATOR_TAP,
-    OmniboxFocusReason.TAB_SWITCHER_OMNIBOX_TAP,
-    OmniboxFocusReason.TASKS_SURFACE_FAKE_BOX_TAP,
-    OmniboxFocusReason.TASKS_SURFACE_FAKE_BOX_LONG_PRESS,
-    OmniboxFocusReason.DEFAULT_WITH_HARDWARE_KEYBOARD,
-    OmniboxFocusReason.SEARCH_QUERY,
-    OmniboxFocusReason.LAUNCH_NEW_INCOGNITO_TAB,
-    OmniboxFocusReason.MENU_OR_KEYBOARD_ACTION,
-    OmniboxFocusReason.UNFOCUS,
-    OmniboxFocusReason.QUERY_TILES_NTP_TAP,
-    OmniboxFocusReason.FOLD_TRANSITION_RESTORATION,
-    OmniboxFocusReason.DRAG_DROP_TO_OMNIBOX,
-    OmniboxFocusReason.TAP_AFTER_FOCUS_FROM_KEYBOARD
-})
+@IntDef({OmniboxFocusReason.OMNIBOX_TAP, OmniboxFocusReason.OMNIBOX_LONG_PRESS,
+        OmniboxFocusReason.FAKE_BOX_TAP, OmniboxFocusReason.FAKE_BOX_LONG_PRESS,
+        OmniboxFocusReason.ACCELERATOR_TAP, OmniboxFocusReason.TAB_SWITCHER_OMNIBOX_TAP,
+        OmniboxFocusReason.TASKS_SURFACE_FAKE_BOX_TAP,
+        OmniboxFocusReason.TASKS_SURFACE_FAKE_BOX_LONG_PRESS,
+        OmniboxFocusReason.DEFAULT_WITH_HARDWARE_KEYBOARD, OmniboxFocusReason.SEARCH_QUERY,
+        OmniboxFocusReason.LAUNCH_NEW_INCOGNITO_TAB, OmniboxFocusReason.MENU_OR_KEYBOARD_ACTION,
+        OmniboxFocusReason.UNFOCUS, OmniboxFocusReason.QUERY_TILES_NTP_TAP,
+        OmniboxFocusReason.FOCUS_ON_NEW_TAB})
 @Retention(RetentionPolicy.SOURCE)
 public @interface OmniboxFocusReason {
     int OMNIBOX_TAP = 0;
@@ -46,9 +36,6 @@ public @interface OmniboxFocusReason {
     int MENU_OR_KEYBOARD_ACTION = 11;
     int UNFOCUS = 12;
     int QUERY_TILES_NTP_TAP = 13;
-    int FOLD_TRANSITION_RESTORATION = 14;
-    int DRAG_DROP_TO_OMNIBOX = 15;
-    // Emitted on tap after focus from #8.
-    int TAP_AFTER_FOCUS_FROM_KEYBOARD = 16;
-    int NUM_ENTRIES = 17;
+    int FOCUS_ON_NEW_TAB = 14;
+    int NUM_ENTRIES = 15;
 }

@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,41 +7,33 @@
 
 #include <stddef.h>
 
+#include <list>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
+#include "base/callback.h"
 #include "base/callback_list.h"
-#include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
+#include "base/compiler_specific.h"
+#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/process/process.h"
-#include "base/task/sequenced_task_runner_helpers.h"
+#include "base/sequenced_task_runner_helpers.h"
 #include "base/timer/elapsed_timer.h"
-#include "base/types/pass_key.h"
 #include "content/public/browser/browser_thread.h"
 #include "extensions/browser/extension_function_histogram_value.h"
 #include "extensions/browser/quota_service.h"
-#include "extensions/browser/service_worker/service_worker_keepalive.h"
-#include "extensions/browser/service_worker/worker_id.h"
 #include "extensions/common/constants.h"
-#include "extensions/common/context_data.h"
-#include "extensions/common/error_utils.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/features/feature.h"
-#include "extensions/common/mojom/context_type.mojom.h"
-#include "extensions/common/mojom/extra_response_data.mojom.h"
-#include "extensions/common/mojom/frame.mojom.h"
-#include "extensions/common/stack_frame.h"
-#include "third_party/blink/public/mojom/devtools/console_message.mojom-forward.h"
-#include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-forward.h"
+#include "ipc/ipc_message.h"
+#include "third_party/blink/public/mojom/devtools/console_message.mojom.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_database.mojom-forward.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_object.mojom-forward.h"
 
 namespace base {
+class ListValue;
 class Value;
 }
 
@@ -102,9 +94,6 @@ class ExtensionFunctionDispatcher;
 
 // Abstract base class for extension functions the ExtensionFunctionDispatcher
 // knows how to dispatch to.
-// NOTE: If you see a crash in an ExtensionFunction implementation and want to
-// know which extension triggered the crash, look for crash keys
-// extension-function-caller-1, 2, and 3.
 class ExtensionFunction : public base::RefCountedThreadSafe<
                               ExtensionFunction,
                               content::BrowserThread::DeleteOnUIThread> {
@@ -118,16 +107,12 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
     BAD_MESSAGE
   };
 
-  using ResponseCallback = base::OnceCallback<void(
-      ResponseType type,
-      base::Value::List results,
-      const std::string& error,
-      extensions::mojom::ExtraResponseDataPtr response_data)>;
+  // TODO(crbug.com/1196205): Convert the type of |results| to a base::Value.
+  using ResponseCallback = base::OnceCallback<void(ResponseType type,
+                                                   const base::Value& results,
+                                                   const std::string& error)>;
 
   ExtensionFunction();
-
-  ExtensionFunction(const ExtensionFunction&) = delete;
-  ExtensionFunction& operator=(const ExtensionFunction&) = delete;
 
   static void EnsureShutdownNotifierFactoryBuilt();
 
@@ -141,66 +126,34 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   // Sends |error| as an error response.
   void RespondWithError(std::string error);
 
-  using PassKey = base::PassKey<ExtensionFunction>;
-
   // The result of a function call.
   //
-  // Use NoArguments(), WithArguments(), ArgumentList(), or Error()
+  // Use NoArguments(), OneArgument(), ArgumentList(), or Error()
   // rather than this class directly.
-  class ResponseValue {
+  class ResponseValueObject {
    public:
-    ResponseValue(bool success, PassKey);
-    ResponseValue(ResponseValue&& other);
-    ResponseValue& operator=(ResponseValue&& other) = delete;
-    ResponseValue(const ResponseValue&) = delete;
-    ResponseValue& operator=(const ResponseValue&) = delete;
-    ~ResponseValue();
+    virtual ~ResponseValueObject() {}
 
     // Returns true for success, false for failure.
-    bool success() const { return success_; }
+    virtual bool Apply() = 0;
 
-   private:
-    const bool success_;
+   protected:
+    void SetFunctionResults(ExtensionFunction* function, base::Value results);
+    void SetFunctionError(ExtensionFunction* function, std::string error);
   };
-
-  // The action type used to hold a callback to be used by ResponseAction, when
-  // returning from RunAsync.
-  class RespondNowAction {
-   public:
-    using SendResponseCallback = base::OnceCallback<void(bool)>;
-    RespondNowAction(ResponseValue result, SendResponseCallback send_response);
-    RespondNowAction(RespondNowAction&& other);
-    RespondNowAction& operator=(RespondNowAction&& other) = delete;
-    ~RespondNowAction();
-
-    // Executes the send response callback.
-    void Execute();
-
-   private:
-    ResponseValue result_;
-    SendResponseCallback send_response_;
-  };
+  typedef std::unique_ptr<ResponseValueObject> ResponseValue;
 
   // The action to use when returning from RunAsync.
   //
   // Use RespondNow() or RespondLater() or AlreadyResponded() rather than this
   // class directly.
-
-  class ResponseAction {
+  class ResponseActionObject {
    public:
-    explicit ResponseAction(PassKey);
-    ResponseAction(RespondNowAction action, PassKey);
-    ResponseAction(ResponseAction&& other);
-    ResponseAction& operator=(ResponseAction&& other) = delete;
-    ~ResponseAction();
+    virtual ~ResponseActionObject() {}
 
-    // Executes whatever respond action it may be holding.
-    void Execute();
-
-   private:
-    // An action object responsible for handling the sending of the response.
-    std::optional<RespondNowAction> action_;
+    virtual void Execute() = 0;
   };
+  typedef std::unique_ptr<ResponseActionObject> ResponseAction;
 
   // Helper class for tests to force all ExtensionFunction::user_gesture()
   // calls to return true as long as at least one instance of this class
@@ -235,9 +188,8 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   //
   // Typical return values might be:
   //   * RespondNow(NoArguments())
+  //   * RespondNow(OneArgument(42))
   //   * RespondNow(ArgumentList(my_result.ToValue()))
-  //   * RespondNow(WithArguments(42))
-  //   * RespondNow(WithArguments(42, "value", false))
   //   * RespondNow(Error("Warp core breach"))
   //   * RespondNow(Error("Warp core breach on *", GetURL()))
   //   * RespondLater(), then later,
@@ -249,7 +201,7 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   // exactly once.
   //
   // ExtensionFunction implementations are encouraged to just implement Run.
-  [[nodiscard]] virtual ResponseAction Run() = 0;
+  virtual ResponseAction Run() WARN_UNUSED_RESULT = 0;
 
   // Gets whether quota should be applied to this individual function
   // invocation. This is different to GetQuotaLimitHeuristics which is only
@@ -271,33 +223,32 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   // returns an error.
   virtual void OnQuotaExceeded(std::string violation_error);
 
-  // Specifies the raw arguments to the function, as a JSON value.
-  void SetArgs(base::Value::List args);
+  // Specifies the raw arguments to the function, as a JSON value. Expects a
+  // base::Value of type LIST.
+  void SetArgs(base::Value args);
 
-  // Retrieves the results of the function as a base::Value::List for testing
-  // purposes.
-  const base::Value::List* GetResultListForTest() const;
-
-  std::unique_ptr<extensions::ContextData> GetContextData() const;
+  // Retrieves the results of the function as a ListValue.
+  const base::ListValue* GetResultList() const;
 
   // Retrieves any error string from the function.
   virtual const std::string& GetError() const;
 
-  void SetBadMessage();
+  virtual void SetBadMessage();
 
   // Specifies the name of the function. A long-lived string (such as a string
   // literal) must be provided.
-  void SetName(const char* name);
+  virtual void SetName(const char* name);
   const char* name() const { return name_; }
 
-  int context_id() const { return context_id_; }
+  void set_profile_id(void* profile_id) { profile_id_ = profile_id; }
+  void* profile_id() const { return profile_id_; }
 
   void set_extension(
       const scoped_refptr<const extensions::Extension>& extension) {
     extension_ = extension;
   }
   const extensions::Extension* extension() const { return extension_.get(); }
-  const extensions::ExtensionId& extension_id() const {
+  const std::string& extension_id() const {
     DCHECK(extension())
         << "extension_id() called without an Extension. If " << name()
         << " is allowed to be called without any Extension then you should "
@@ -306,8 +257,8 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
     return extension_->id();
   }
 
-  void set_request_uuid(base::Uuid uuid) { request_uuid_ = std::move(uuid); }
-  const base::Uuid& request_uuid() const { return request_uuid_; }
+  void set_request_id(int request_id) { request_id_ = request_id; }
+  int request_id() { return request_id_; }
 
   void set_source_url(const GURL& source_url) { source_url_ = source_url; }
   const GURL& source_url() const { return source_url_; }
@@ -337,10 +288,10 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
     response_callback_ = std::move(callback);
   }
 
-  void set_source_context_type(extensions::mojom::ContextType type) {
+  void set_source_context_type(extensions::Feature::Context type) {
     source_context_type_ = type;
   }
-  extensions::mojom::ContextType source_context_type() const {
+  extensions::Feature::Context source_context_type() const {
     return source_context_type_;
   }
 
@@ -351,31 +302,25 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
     return source_process_id_;
   }
 
-  void set_worker_id(extensions::WorkerId worker_id) {
-    worker_id_ = std::move(worker_id);
+  void set_service_worker_version_id(int64_t service_worker_version_id) {
+    service_worker_version_id_ = service_worker_version_id;
   }
-  const std::optional<extensions::WorkerId>& worker_id() const {
-    return worker_id_;
-  }
-
   int64_t service_worker_version_id() const {
-    return worker_id_ ? worker_id_->version_id
-                      : blink::mojom::kInvalidServiceWorkerVersionId;
+    return service_worker_version_id_;
   }
 
-  void set_service_worker_keepalive(
-      std::unique_ptr<extensions::ServiceWorkerKeepalive> keepalive) {
-    service_worker_keepalive_ = std::move(keepalive);
+  bool is_from_service_worker() const {
+    return service_worker_version_id_ !=
+           blink::mojom::kInvalidServiceWorkerVersionId;
   }
-  // Out-of-line because the release of the keepalive can invoke significant
-  // work.
-  void ResetServiceWorkerKeepalive();
-
-  bool is_from_service_worker() const { return worker_id_.has_value(); }
 
   ResponseType* response_type() const { return response_type_.get(); }
 
   bool did_respond() const { return did_respond_; }
+
+  // Called when a message was received.
+  // Should return true if it processed the message.
+  virtual bool OnMessageReceived(const IPC::Message& message);
 
   // Set the browser context which contains the extension that has originated
   // this function call. Only meant for testing; if unset, uses the
@@ -394,83 +339,70 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
     return dispatcher_.get();
   }
 
-  int worker_thread_id() const {
-    return worker_id_ ? worker_id_->thread_id : extensions::kMainThreadId;
+  void set_worker_thread_id(int worker_thread_id) {
+    worker_thread_id_ = worker_thread_id;
   }
+  int worker_thread_id() const { return worker_thread_id_; }
 
   // Returns the web contents associated with the sending |render_frame_host_|.
   // This can be null.
   content::WebContents* GetSenderWebContents();
-
-  // Returns whether this API call should allow the extension service worker (if
-  // any) to stay alive beyond the typical 5 minute-per-task limit (i.e.,
-  // indicates this API is expected to potentially take longer than 5 minutes
-  // to execute).
-  // The default implementation returns false. In general, this should only
-  // return true for APIs that trigger some sort of user prompt. If you are
-  // unsure, please consult the extensions team.
-  virtual bool ShouldKeepWorkerAliveIndefinitely();
-
-  // Notifies the function that the renderer received the reply from the
-  // browser. The function will only receive this notification if it registers
-  // via `AddResponseTarget()`.
-  virtual void OnResponseAck();
 
   // Sets did_respond_ to true so that the function won't DCHECK if it never
   // sends a response. Typically, this shouldn't be used, even in testing. It's
   // only for when you want to test functionality that doesn't exercise the
   // Run() aspect of an extension function.
   void ignore_did_respond_for_testing() { did_respond_ = true; }
-
-  void preserve_results_for_testing() { preserve_results_for_testing_ = true; }
-
   // Same as above, but global. Yuck. Do not add any more uses of this.
   static bool ignore_all_did_respond_for_testing_do_not_use;
 
-  void set_js_callstack(extensions::StackTrace js_callstack) {
-    js_callstack_ = std::move(js_callstack);
-  }
-
-  const std::optional<extensions::StackTrace>& js_callstack() const {
-    return js_callstack_;
-  }
+  // Called when the service worker in the renderer ACKS the function's
+  // response.
+  virtual void OnServiceWorkerAck();
 
  protected:
   // ResponseValues.
   //
   // Success, no arguments to pass to caller.
   ResponseValue NoArguments();
+  // Success, a single argument |arg| to pass to caller.
+  ResponseValue OneArgument(base::Value arg);
+  // Success, two arguments |arg1| and |arg2| to pass to caller.
+  // Note that use of this function may imply you
+  // should be using the generated Result struct and ArgumentList.
+  ResponseValue TwoArguments(base::Value arg1, base::Value arg2);
   // Success, a list of arguments |results| to pass to caller.
-  ResponseValue ArgumentList(base::Value::List results);
-
-  // Success, a variadic list of arguments to pass to the caller.
-  template <typename... Args>
-  ResponseValue WithArguments(Args&&... args) {
-    static_assert(sizeof...(Args) > 0,
-                  "Use NoArguments(), as there are no arguments in this call.");
-
-    base::Value::List params;
-    params.reserve(sizeof...(Args));
-    (params.Append(std::forward<Args&&>(args)), ...);
-    return ArgumentList(std::move(params));
-  }
-
+  ResponseValue ArgumentList(std::vector<base::Value> results);
+  // TODO(crbug.com/1139221): Deprecate this when Create() returns a base::Value
+  // instead of a std::unique_ptr<>.
+  //
+  // Success, a list of arguments |results| to pass to caller.
+  // - a std::unique_ptr<> for convenience, since callers usually get this from
+  //   the result of a Create(...) call on the generated Results struct. For
+  //   example, alarms::Get::Results::Create(alarm).
+  ResponseValue ArgumentList(std::unique_ptr<base::ListValue> results);
   // Error. chrome.runtime.lastError.message will be set to |error|.
   ResponseValue Error(std::string error);
   // Error with formatting. Args are processed using
   // ErrorUtils::FormatErrorMessage, that is, each occurrence of * is replaced
   // by the corresponding |s*|:
   // Error("Error in *: *", "foo", "bar") <--> Error("Error in foo: bar").
-  template <typename... Args>
-  ResponseValue Error(const std::string& format, const Args&... args) {
-    return CreateErrorResponseValue(
-        extensions::ErrorUtils::FormatErrorMessage(format, args...));
-  }
+  ResponseValue Error(const std::string& format, const std::string& s1);
+  ResponseValue Error(const std::string& format,
+                      const std::string& s1,
+                      const std::string& s2);
+  ResponseValue Error(const std::string& format,
+                      const std::string& s1,
+                      const std::string& s2,
+                      const std::string& s3);
   // Error with a list of arguments |args| to pass to caller.
   // Using this ResponseValue indicates something is wrong with the API.
   // It shouldn't be possible to have both an error *and* some arguments.
   // Some legacy APIs do rely on it though, like webstorePrivate.
-  ResponseValue ErrorWithArguments(base::Value::List args,
+  ResponseValue ErrorWithArguments(std::vector<base::Value> args,
+                                   const std::string& error);
+  // TODO(crbug.com/1139221): Deprecate this in favor of the variant above.
+  ResponseValue ErrorWithArguments(std::unique_ptr<base::ListValue> args,
                                    const std::string& error);
   // Bad message. A ResponseValue equivalent to EXTENSION_FUNCTION_VALIDATE(),
   // so this will actually kill the renderer and not respond at all.
@@ -483,9 +415,9 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   // has already executed, and only if it returned RespondLater().
   //
   // Respond to the extension immediately with |result|.
-  [[nodiscard]] ResponseAction RespondNow(ResponseValue result);
+  ResponseAction RespondNow(ResponseValue result) WARN_UNUSED_RESULT;
   // Don't respond now, but promise to call Respond(...) later.
-  [[nodiscard]] ResponseAction RespondLater();
+  ResponseAction RespondLater() WARN_UNUSED_RESULT;
   // Respond() was already called before Run() finished executing.
   //
   // Assume Run() uses some helper system that accepts callback that Respond()s.
@@ -507,13 +439,13 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   //   else
   //     // Asynchronously call |callback|.
   // }
-  [[nodiscard]] ResponseAction AlreadyResponded();
+  ResponseAction AlreadyResponded() WARN_UNUSED_RESULT;
 
   // This is the return value of the EXTENSION_FUNCTION_VALIDATE macro, which
   // needs to work from Run(), RunAsync(), and RunSync(). The former of those
   // has a different return type (ResponseAction) than the latter two (bool).
-  [[nodiscard]] static ResponseAction ValidationFailure(
-      ExtensionFunction* function);
+  static ResponseAction ValidationFailure(ExtensionFunction* function)
+      WARN_UNUSED_RESULT;
 
   // If RespondLater() was returned from Run(), functions must at some point
   // call Respond() with |result| as their result.
@@ -524,20 +456,13 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
 
   // Adds this instance to the set of targets waiting for an ACK from the
   // renderer.
-  void AddResponseTarget();
+  void AddWorkerResponseTarget();
 
   virtual ~ExtensionFunction();
 
   // Called after the response is sent, allowing the function to perform any
   // additional work or cleanup.
   virtual void OnResponded();
-
-  // Called when the `browser_context_` associated with this ExtensionFunction
-  // is shutting down. Immediately after this call, `browser_context_` will be
-  // set to null. Subclasses should override this method to perform any cleanup
-  // that needs to happen before the context shuts down, such as removing
-  // observers of KeyedServices.
-  virtual void OnBrowserContextShutdown() {}
 
   // Return true if the argument to this function at |index| was provided and
   // is non-null.
@@ -547,37 +472,16 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   void WriteToConsole(blink::mojom::ConsoleMessageLevel level,
                       const std::string& message);
 
-  // Reports an inspector issue to the issues tab in Chrome DevTools
-  void ReportInspectorIssue(blink::mojom::InspectorIssueInfoPtr info);
-
-  // Sets the Blobs whose ownership is being transferred to the renderer.
-  void SetTransferredBlobs(std::vector<blink::mojom::SerializedBlobPtr> blobs);
-
-  bool has_args() const { return args_.has_value(); }
-
-  const base::Value::List& args() const {
-    DCHECK(args_);
-    return *args_;
-  }
-
-  base::Value::List& mutable_args() {
-    DCHECK(args_);
-    return *args_;
-  }
+  // Sets the Blob UUIDs whose ownership is being transferred to the renderer.
+  void SetTransferredBlobUUIDs(const std::vector<std::string>& blob_uuids);
 
   // The extension that called this function.
   scoped_refptr<const extensions::Extension> extension_;
 
+  // The arguments to the API. Only non-null if argument were specified.
+  std::unique_ptr<base::ListValue> args_;
+
  private:
-  ResponseValue CreateArgumentListResponse(base::Value::List result);
-  ResponseValue CreateErrorWithArgumentsResponse(base::Value::List result,
-                                                 const std::string& error);
-  ResponseValue CreateErrorResponseValue(std::string error);
-  ResponseValue CreateBadMessageResponse();
-
-  void SetFunctionResults(base::Value::List results);
-  void SetFunctionError(std::string error);
-
   friend struct content::BrowserThread::DeleteOnThread<
       content::BrowserThread::UI>;
   friend class base::DeleteHelper<ExtensionFunction>;
@@ -591,15 +495,16 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   // failed, |error_| should be set.
   void SendResponseImpl(bool success);
 
-  // The arguments to the API. Only non-null if arguments were specified.
-  std::optional<base::Value::List> args_;
+  // The callback for mojom::Renderer::TransferBlobs().
+  void OnTransferBlobsAck(int process_id,
+                          const std::vector<std::string>& blob_uuids);
 
   base::ElapsedTimer timer_;
 
   // The results of the API. This should be populated through the Respond()/
   // RespondNow() methods. In legacy implementations, this is set directly, and
   // should be set before calling SendResponse().
-  std::optional<base::Value::List> results_;
+  std::unique_ptr<base::ListValue> results_;
 
   // Any detailed error from the API. This should be populated by the derived
   // class before Run() returns.
@@ -608,8 +513,11 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   // The callback to run once the function has done execution.
   ResponseCallback response_callback_;
 
-  // UUID for this request.
-  base::Uuid request_uuid_;
+  // Id of this request, used to map the response back to the caller.
+  int request_id_ = -1;
+
+  // The id of the profile of this function's extension.
+  void* profile_id_ = nullptr;
 
   // The name of this function.
   const char* name_ = nullptr;
@@ -634,11 +542,11 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   // returning.  Usually we want to kill the message sending process.
   bool bad_message_ = false;
 
+#if DCHECK_IS_ON()
   // Set to true when RunWithValidation() is called, to look for callers using
-  // the method more than once on a single ExtensionFunction. Note that some
-  // ExtensionFunction objects may be created but not run, for example due to
-  // quota limits.
+  // the method more than once on a single ExtensionFunction.
   bool did_run_ = false;
+#endif
 
   // The sample value to record with the histogram API when the function
   // is invoked.
@@ -646,25 +554,17 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
       extensions::functions::UNKNOWN;
 
   // The type of the JavaScript context where this call originated.
-  extensions::mojom::ContextType source_context_type_ =
-      extensions::mojom::ContextType::kUnspecified;
-
-  // The context ID of the browser context where this call originated.
-  int context_id_ = extensions::kUnspecifiedContextId;
+  extensions::Feature::Context source_context_type_ =
+      extensions::Feature::UNSPECIFIED_CONTEXT;
 
   // The process ID of the page that triggered this function call, or -1
   // if unknown.
   int source_process_id_ = -1;
 
-  // Set to the ID of the calling worker if this function was invoked by an
-  // extension service worker context.
-  std::optional<extensions::WorkerId> worker_id_;
-
-  // A keepalive for the associated service worker. Only populated if this was
-  // triggered by an extension service worker. In a unique_ptr instead of an
-  // optional because it's unclear if the pre-allocated memory overhead is
-  // worthwhile (given the number of calls from e.g. webui).
-  std::unique_ptr<extensions::ServiceWorkerKeepalive> service_worker_keepalive_;
+  // If this ExtensionFunction was called by an extension Service Worker, then
+  // this contains the worker's version id.
+  int64_t service_worker_version_id_ =
+      blink::mojom::kInvalidServiceWorkerVersionId;
 
   // The response type of the function, if the response has been sent.
   std::unique_ptr<ResponseType> response_type_;
@@ -673,40 +573,29 @@ class ExtensionFunction : public base::RefCountedThreadSafe<
   // TODO(devlin): Replace this with response_type_ != null.
   bool did_respond_ = false;
 
-  // If set to true, preserves |results_|, even after SendResponseImpl() was
-  // called.
-  //
-  // SendResponseImpl() moves the results out of |this| through
-  // ResponseCallback, and calling this method avoids that. This is nececessary
-  // for tests that use test_utils::RunFunction*(), as those tests typically
-  // retrieve the result afterwards through GetResultListForTest().
-  // TODO(crbug.com/40803310): Remove this once GetResultListForTest() is
-  // removed after ensuring consumers only use RunFunctionAndReturnResult() to
-  // retrieve the results.
-  bool preserve_results_for_testing_ = false;
-
   // The dispatcher that will service this extension function call.
   base::WeakPtr<extensions::ExtensionFunctionDispatcher> dispatcher_;
 
   // Obtained via |dispatcher_| when it is set. It automatically resets to
   // nullptr when the BrowserContext is shutdown (much like a WeakPtr).
-  raw_ptr<content::BrowserContext> browser_context_ = nullptr;
-  raw_ptr<content::BrowserContext> browser_context_for_testing_ = nullptr;
+  content::BrowserContext* browser_context_ = nullptr;
+  content::BrowserContext* browser_context_for_testing_ = nullptr;
 
   // Subscription for a callback that runs when the BrowserContext* is
   // destroyed.
   base::CallbackListSubscription shutdown_subscription_;
 
   // The RenderFrameHost we will send responses to.
-  raw_ptr<content::RenderFrameHost> render_frame_host_ = nullptr;
+  content::RenderFrameHost* render_frame_host_ = nullptr;
 
   std::unique_ptr<RenderFrameHostTracker> tracker_;
 
   // The blobs transferred to the renderer process.
-  std::vector<blink::mojom::SerializedBlobPtr> transferred_blobs_;
+  std::vector<std::string> transferred_blob_uuids_;
 
-  // The JS call stack snapshot captured at function invocation time.
-  std::optional<extensions::StackTrace> js_callstack_;
+  int worker_thread_id_ = -1;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionFunction);
 };
 
 #endif  // EXTENSIONS_BROWSER_EXTENSION_FUNCTION_H_

@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/memory/ref_counted_memory.h"
 #include "chrome/browser/search/instant_service.h"
 #include "chrome/browser/search/instant_service_factory.h"
@@ -14,7 +14,6 @@
 #include "chrome/test/base/testing_profile.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/test/browser_task_environment.h"
-#include "content/public/test/mock_render_process_host.h"
 #include "ipc/ipc_message.h"
 #include "net/base/request_priority.h"
 #include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
@@ -22,10 +21,14 @@
 #include "net/url_request/url_request_context.h"
 #include "net/url_request/url_request_test_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/loader/previews_state.h"
 #include "url/gurl.h"
 
+const int kNonInstantRendererPID = 0;
 const char kNonInstantOrigin[] = "http://evil";
+const int kInstantRendererPID = 1;
 const char kInstantOrigin[] = "chrome-search://instant";
+const int kInvalidRendererPID = 42;
 
 class TestMostVisitedIframeSource : public MostVisitedIframeSource {
  public:
@@ -69,15 +72,11 @@ class MostVisitedIframeSourceTest : public testing::Test {
       : task_environment_(content::BrowserTaskEnvironment::IO_MAINLOOP),
         response_(nullptr) {}
 
-  int GetInstantRendererPID() const { return mock_host_.GetID(); }
-  int GetNonInstantRendererPID() const { return mock_host_.GetID() + 1; }
-  int GetInvalidRendererPID() const { return mock_host_.GetID() + 2; }
-
   TestMostVisitedIframeSource* source() { return source_.get(); }
 
   std::string response_string() {
     if (response_.get()) {
-      return std::string(base::as_string_view(*response_));
+      return std::string(response_->front_as<char>(), response_->size());
     }
     return "";
   }
@@ -104,7 +103,7 @@ class MostVisitedIframeSourceTest : public testing::Test {
     source_ = std::make_unique<TestMostVisitedIframeSource>();
     source_->set_origin(kInstantOrigin);
     auto* instant_service = InstantServiceFactory::GetForProfile(&profile_);
-    instant_service->AddInstantProcess(&mock_host_);
+    instant_service->AddInstantProcess(kInstantRendererPID);
     response_ = nullptr;
   }
 
@@ -116,42 +115,38 @@ class MostVisitedIframeSourceTest : public testing::Test {
 
   content::BrowserTaskEnvironment task_environment_;
 
+  net::TestURLRequestContext test_url_request_context_;
   TestingProfile profile_;
-  content::MockRenderProcessHost mock_host_{&profile_};
   std::unique_ptr<TestMostVisitedIframeSource> source_;
   scoped_refptr<base::RefCountedMemory> response_;
 };
 
 TEST_F(MostVisitedIframeSourceTest, ShouldServiceRequest) {
   source()->set_origin(kNonInstantOrigin);
-  EXPECT_FALSE(
-      ShouldService("http://test/loader.js", GetNonInstantRendererPID()));
+  EXPECT_FALSE(ShouldService("http://test/loader.js", kNonInstantRendererPID));
   source()->set_origin(kInstantOrigin);
   EXPECT_FALSE(
-      ShouldService("chrome-search://bogus/valid.js", GetInstantRendererPID()));
+      ShouldService("chrome-search://bogus/valid.js", kInstantRendererPID));
   source()->set_origin(kInstantOrigin);
   EXPECT_FALSE(
-      ShouldService("chrome-search://test/bogus.js", GetInstantRendererPID()));
+      ShouldService("chrome-search://test/bogus.js", kInstantRendererPID));
   source()->set_origin(kInstantOrigin);
   EXPECT_TRUE(
-      ShouldService("chrome-search://test/valid.js", GetInstantRendererPID()));
+      ShouldService("chrome-search://test/valid.js", kInstantRendererPID));
   source()->set_origin(kNonInstantOrigin);
-  EXPECT_FALSE(ShouldService("chrome-search://test/valid.js",
-                             GetNonInstantRendererPID()));
+  EXPECT_FALSE(
+      ShouldService("chrome-search://test/valid.js", kNonInstantRendererPID));
   source()->set_origin(std::string());
   EXPECT_FALSE(
-      ShouldService("chrome-search://test/valid.js", GetInvalidRendererPID()));
+      ShouldService("chrome-search://test/valid.js", kInvalidRendererPID));
 }
 
 TEST_F(MostVisitedIframeSourceTest, GetMimeType) {
   // URLDataManagerBackend does not include / in path_and_query.
-  EXPECT_EQ("text/html",
-            source()->GetMimeType(GURL("chrome-search://test/foo.html")));
-  EXPECT_EQ("application/javascript",
-            source()->GetMimeType(GURL("chrome-search://test/foo.js")));
-  EXPECT_EQ("text/css",
-            source()->GetMimeType(GURL("chrome-search://test/foo.css")));
-  EXPECT_EQ("", source()->GetMimeType(GURL("chrome-search://test/bogus")));
+  EXPECT_EQ("text/html", source()->GetMimeType("foo.html"));
+  EXPECT_EQ("application/javascript", source()->GetMimeType("foo.js"));
+  EXPECT_EQ("text/css", source()->GetMimeType("foo.css"));
+  EXPECT_EQ("", source()->GetMimeType("bogus"));
 }
 
 TEST_F(MostVisitedIframeSourceTest, SendResource) {

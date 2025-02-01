@@ -1,12 +1,9 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/http/http_log_util.h"
 
-#include <string_view>
-
-#include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "net/http/http_auth_challenge_tokenizer.h"
@@ -25,7 +22,7 @@ bool ShouldRedactChallenge(HttpAuthChallengeTokenizer* challenge) {
   if (challenge->challenge_text().find(',') != std::string::npos)
     return false;
 
-  const std::string& scheme = challenge->auth_scheme();
+  std::string scheme = challenge->auth_scheme();
   // Invalid input.
   if (scheme.empty())
     return false;
@@ -41,44 +38,39 @@ bool ShouldRedactChallenge(HttpAuthChallengeTokenizer* challenge) {
 }  // namespace
 
 std::string ElideHeaderValueForNetLog(NetLogCaptureMode capture_mode,
-                                      std::string_view header,
-                                      std::string_view value) {
-  std::string_view redact;
+                                      const std::string& header,
+                                      const std::string& value) {
+  std::string::const_iterator redact_begin = value.begin();
+  std::string::const_iterator redact_end = value.begin();
 
-  if (!NetLogCaptureIncludesSensitive(capture_mode)) {
+  if (redact_begin == redact_end &&
+      !NetLogCaptureIncludesSensitive(capture_mode)) {
     if (base::EqualsCaseInsensitiveASCII(header, "set-cookie") ||
         base::EqualsCaseInsensitiveASCII(header, "set-cookie2") ||
         base::EqualsCaseInsensitiveASCII(header, "cookie") ||
         base::EqualsCaseInsensitiveASCII(header, "authorization") ||
         base::EqualsCaseInsensitiveASCII(header, "proxy-authorization")) {
-      redact = value;
+      redact_begin = value.begin();
+      redact_end = value.end();
     } else if (base::EqualsCaseInsensitiveASCII(header, "www-authenticate") ||
                base::EqualsCaseInsensitiveASCII(header, "proxy-authenticate")) {
       // Look for authentication information from data received from the server
       // in multi-round Negotiate authentication.
-      HttpAuthChallengeTokenizer challenge(value);
+      HttpAuthChallengeTokenizer challenge(value.begin(), value.end());
       if (ShouldRedactChallenge(&challenge)) {
-        redact = challenge.params();
+        redact_begin = challenge.params_begin();
+        redact_end = challenge.params_end();
       }
     }
   }
 
-  if (redact.empty()) {
-    return std::string(value);
-  }
+  if (redact_begin == redact_end)
+    return value;
 
-  // Create string_views that contain the part of `value` before the `redact`
-  // substring, and the value after it. Need to use the data() field of the two
-  // string_views to figure out where `redact` appears within `value`.
-  size_t redact_offset = redact.data() - value.data();
-  std::string_view value_before_redact = value.substr(0, redact_offset);
-  std::string_view value_after_redact =
-      value.substr(redact_offset + redact.length());
-
-  return base::StrCat({value_before_redact,
-                       base::StringPrintf("[%ld bytes were stripped]",
-                                          static_cast<long>(redact.length())),
-                       value_after_redact});
+  return std::string(value.begin(), redact_begin) +
+      base::StringPrintf("[%ld bytes were stripped]",
+                         static_cast<long>(redact_end - redact_begin)) +
+      std::string(redact_end, value.end());
 }
 
 NET_EXPORT void NetLogResponseHeaders(const NetLogWithSource& net_log,

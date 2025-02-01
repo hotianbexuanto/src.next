@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,7 +9,7 @@
 #include <memory>
 
 #include "base/base_export.h"
-#include "base/memory/scoped_refptr.h"
+#include "base/memory/ref_counted.h"
 #include "base/sequence_checker.h"
 
 namespace base {
@@ -40,7 +40,6 @@ class BASE_EXPORT SupportsUserData {
   // NOTE: SetUserData() with an empty unique_ptr behaves the same as
   // RemoveUserData().
   Data* GetUserData(const void* key) const;
-  [[nodiscard]] std::unique_ptr<Data> TakeUserData(const void* key);
   void SetUserData(const void* key, std::unique_ptr<Data> data);
   void RemoveUserData(const void* key);
 
@@ -63,11 +62,12 @@ class BASE_EXPORT SupportsUserData {
   void ClearAllUserData();
 
  private:
-  struct Impl;
-  std::unique_ptr<Impl> impl_;
-  bool in_clear_ = false;
-  // Guards usage of |impl_|
-  SEQUENCE_CHECKER(sequence_checker_);
+  using DataMap = std::map<const void*, std::unique_ptr<Data>>;
+
+  // Externally-defined data accessible by key.
+  DataMap user_data_;
+  // Guards usage of |user_data_|
+  SequenceChecker sequence_checker_;
 };
 
 // Adapter class that releases a refcounted object when the

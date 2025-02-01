@@ -1,16 +1,16 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_EXTENSIONS_EXTENSION_SYNC_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_EXTENSIONS_EXTENSION_SYNC_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
-#include "chrome/browser/profiles/profile_keyed_service_factory.h"
+#include "base/memory/singleton.h"
+#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 
 class ExtensionSyncService;
 
-class ExtensionSyncServiceFactory : public ProfileKeyedServiceFactory {
+class ExtensionSyncServiceFactory : public BrowserContextKeyedServiceFactory {
  public:
   static ExtensionSyncService* GetForBrowserContext(
       content::BrowserContext* context);
@@ -18,15 +18,15 @@ class ExtensionSyncServiceFactory : public ProfileKeyedServiceFactory {
   static ExtensionSyncServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<ExtensionSyncServiceFactory>;
+  friend struct base::DefaultSingletonTraits<ExtensionSyncServiceFactory>;
 
   ExtensionSyncServiceFactory();
   ~ExtensionSyncServiceFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
-
-  bool ServiceIsCreatedWithBrowserContext() const override;
+  content::BrowserContext* GetBrowserContextToUse(
+      content::BrowserContext* context) const override;
 };
 
 #endif  // CHROME_BROWSER_EXTENSIONS_EXTENSION_SYNC_SERVICE_FACTORY_H_

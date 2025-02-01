@@ -1,11 +1,8 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
+#include "components/search_engines/template_url_fetcher.h"
 
 #include <stddef.h>
 
@@ -13,16 +10,16 @@
 #include <string>
 #include <utility>
 
+#include "base/bind.h"
+#include "base/callback_helpers.h"
+#include "base/cxx17_backports.h"
 #include "base/files/file_util.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
 #include "base/path_service.h"
 #include "base/run_loop.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/search_engines/template_url_service_test_util.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/search_engines/template_url.h"
-#include "components/search_engines/template_url_fetcher.h"
 #include "components/search_engines/template_url_service.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/storage_partition.h"
@@ -37,9 +34,8 @@ namespace {
 constexpr int32_t kRequestID = 10;
 
 bool GetTestFilePath(const std::string& file_name, base::FilePath* path) {
-  if (!base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, path)) {
+  if (!base::PathService::Get(base::DIR_SOURCE_ROOT, path))
     return false;
-  }
   *path = path->AppendASCII("components")
               .AppendASCII("test")
               .AppendASCII("data")
@@ -55,10 +51,6 @@ class TestTemplateUrlFetcher : public TemplateURLFetcher {
       const base::RepeatingClosure& request_completed_callback)
       : TemplateURLFetcher(template_url_service),
         callback_(request_completed_callback) {}
-
-  TestTemplateUrlFetcher(const TestTemplateUrlFetcher&) = delete;
-  TestTemplateUrlFetcher& operator=(const TestTemplateUrlFetcher&) = delete;
-
   ~TestTemplateUrlFetcher() override {}
 
  protected:
@@ -70,15 +62,14 @@ class TestTemplateUrlFetcher : public TemplateURLFetcher {
  private:
   // Callback to be run when a request completes.
   base::RepeatingClosure callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestTemplateUrlFetcher);
 };
 
 // Basic set-up for TemplateURLFetcher tests.
 class TemplateURLFetcherTest : public testing::Test {
  public:
   TemplateURLFetcherTest();
-
-  TemplateURLFetcherTest(const TemplateURLFetcherTest&) = delete;
-  TemplateURLFetcherTest& operator=(const TemplateURLFetcherTest&) = delete;
 
   void SetUp() override {
     template_url_fetcher_ = std::make_unique<TestTemplateUrlFetcher>(
@@ -126,7 +117,9 @@ class TemplateURLFetcherTest : public testing::Test {
   // Is the code in WaitForDownloadToFinish in a message loop waiting for a
   // callback to finish?
   bool waiting_for_download_;
-  base::RunLoop loop_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(TemplateURLFetcherTest);
 };
 
 TemplateURLFetcherTest::TemplateURLFetcherTest()
@@ -140,7 +133,7 @@ TemplateURLFetcherTest::TemplateURLFetcherTest()
 void TemplateURLFetcherTest::RequestCompletedCallback() {
   requests_completed_++;
   if (waiting_for_download_)
-    loop_.QuitWhenIdle();
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
 }
 
 void TemplateURLFetcherTest::StartDownload(const std::u16string& keyword,
@@ -169,7 +162,7 @@ void TemplateURLFetcherTest::StartDownload(const std::u16string& keyword,
 void TemplateURLFetcherTest::WaitForDownloadToFinish() {
   ASSERT_FALSE(waiting_for_download_);
   waiting_for_download_ = true;
-  loop_.Run();
+  base::RunLoop().Run();
   waiting_for_download_ = false;
 }
 
@@ -236,7 +229,7 @@ TEST_F(TemplateURLFetcherTest, DuplicatesThrownAway) {
        keyword},
   };
 
-  for (size_t i = 0; i < std::size(test_cases); ++i) {
+  for (size_t i = 0; i < base::size(test_cases); ++i) {
     StartDownload(test_cases[i].keyword, test_cases[i].osdd_file_name, false);
     EXPECT_EQ(1, template_url_fetcher()->requests_count())
         << test_cases[i].description;

@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "base/macros.h"
 #include "base/metrics/field_trial.h"
 #include "components/variations/variations_ids_provider.h"
 
@@ -38,16 +39,13 @@ class FieldTrialSynchronizer
   // finalized.
   static void CreateInstance();
 
-  FieldTrialSynchronizer(const FieldTrialSynchronizer&) = delete;
-  FieldTrialSynchronizer& operator=(const FieldTrialSynchronizer&) = delete;
-
   // FieldTrialList::Observer methods:
 
   // This method is called by the FieldTrialList singleton when a trial's group
   // is finalized. This method contacts all renderers (by calling
   // NotifyAllRenderers) to create a FieldTrial that carries the randomly
   // selected state from the browser process into all the renderer processes.
-  void OnFieldTrialGroupFinalized(const base::FieldTrial& trial,
+  void OnFieldTrialGroupFinalized(const std::string& name,
                                   const std::string& group_name) override;
 
   // VariationsIdsProvider::Observer methods:
@@ -61,6 +59,8 @@ class FieldTrialSynchronizer
   ~FieldTrialSynchronizer() override;
 
   static void NotifyAllRenderersOfVariationsHeader();
+
+  DISALLOW_COPY_AND_ASSIGN(FieldTrialSynchronizer);
 };
 
 }  // namespace content

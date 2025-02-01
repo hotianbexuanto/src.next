@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,34 +12,37 @@
 #include <utility>
 #include <vector>
 
+#include "base/bind.h"
 #include "base/command_line.h"
-#include "base/feature_list.h"
 #include "base/files/file_util.h"
-#include "base/functional/bind.h"
 #include "base/location.h"
+#include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram.h"
 #include "base/metrics/statistics_recorder.h"
 #include "base/no_destructor.h"
 #include "base/path_service.h"
+#include "base/single_thread_task_runner.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/task/sequenced_task_runner.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/task/post_task.h"
 #include "base/threading/platform_thread.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+#include "chrome/common/cache_stats_recorder.mojom.h"
+#include "chrome/common/child_process_logging.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/media/media_resource_provider.h"
 #include "chrome/common/net/net_resource_provider.h"
-#include "chrome/common/privacy_budget/privacy_budget_settings_provider.h"
-#include "chrome/common/renderer_configuration.mojom.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/renderer/process_state.h"
 #include "components/visitedlink/renderer/visitedlink_reader.h"
+#include "components/web_cache/public/features.h"
 #include "content/public/child/child_thread.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/resource_usage_reporter_type_converters.h"
 #include "content/public/renderer/render_thread.h"
+#include "content/public/renderer/render_view.h"
+#include "content/public/renderer/render_view_visitor.h"
 #include "extensions/buildflags/buildflags.h"
 #include "ipc/ipc_sync_channel.h"
 #include "media/base/localized_strings.h"
@@ -47,8 +50,8 @@
 #include "net/base/net_errors.h"
 #include "net/base/net_module.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
-#include "third_party/blink/public/common/features.h"
-#include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
+#include "third_party/blink/public/platform/web_request_peer.h"
+#include "third_party/blink/public/platform/web_resource_request_sender_delegate.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/public/web/web_document.h"
@@ -56,13 +59,12 @@
 #include "third_party/blink/public/web/web_security_policy.h"
 #include "third_party/blink/public/web/web_view.h"
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/renderer/ash_merge_session_loader_throttle.h"
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+#include "chrome/renderer/extensions/extension_localization_peer.h"
 #endif
 
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-#include "chrome/renderer/bound_session_credentials/bound_session_request_throttled_handler_renderer_impl.h"
-#include "chrome/renderer/bound_session_credentials/bound_session_request_throttled_in_renderer_manager.h"
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chrome/renderer/chromeos_merge_session_loader_throttle.h"
 #endif
 
 using blink::WebCache;
@@ -71,6 +73,65 @@ using content::RenderThread;
 
 namespace {
 
+const int kCacheStatsDelayMS = 2000;
+
+class RendererResourceDelegate
+    : public blink::WebResourceRequestSenderDelegate {
+ public:
+  RendererResourceDelegate() = default;
+
+  void OnRequestComplete() override {
+    // Update the browser about our cache.
+
+    // No need to update the browser if the WebCache manager doesn't need this
+    // information.
+    if (base::FeatureList::IsEnabled(
+            web_cache::kTrimWebCacheOnMemoryPressureOnly)) {
+      return;
+    }
+    // Rate limit informing the host of our cache stats.
+    if (!weak_factory_.HasWeakPtrs()) {
+      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&RendererResourceDelegate::InformHostOfCacheStats,
+                         weak_factory_.GetWeakPtr()),
+          base::TimeDelta::FromMilliseconds(kCacheStatsDelayMS));
+    }
+  }
+
+  scoped_refptr<blink::WebRequestPeer> OnReceivedResponse(
+      scoped_refptr<blink::WebRequestPeer> current_peer,
+      const blink::WebString& mime_type,
+      const blink::WebURL& url) override {
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+    return ExtensionLocalizationPeer::CreateExtensionLocalizationPeer(
+        std::move(current_peer), RenderThread::Get(), mime_type.Utf8(), url);
+#else
+    return current_peer;
+#endif
+  }
+
+ private:
+  void InformHostOfCacheStats() {
+    DCHECK(!base::FeatureList::IsEnabled(
+        web_cache::kTrimWebCacheOnMemoryPressureOnly));
+    WebCache::UsageStats stats;
+    WebCache::GetUsageStats(&stats);
+    if (!cache_stats_recorder_) {
+      RenderThread::Get()->GetChannel()->GetRemoteAssociatedInterface(
+          &cache_stats_recorder_);
+    }
+    cache_stats_recorder_->RecordCacheStats(stats.capacity, stats.size);
+  }
+
+  mojo::AssociatedRemote<chrome::mojom::CacheStatsRecorder>
+      cache_stats_recorder_;
+
+  base::WeakPtrFactory<RendererResourceDelegate> weak_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(RendererResourceDelegate);
+};
+
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 scoped_refptr<base::SequencedTaskRunner> GetCallbackGroupTaskRunner() {
   content::ChildThread* child_thread = content::ChildThread::Get();
@@ -78,11 +139,13 @@ scoped_refptr<base::SequencedTaskRunner> GetCallbackGroupTaskRunner() {
     return child_thread->GetIOTaskRunner();
 
   // This will happen when running via tests.
-  return base::SequencedTaskRunner::GetCurrentDefault();
+  return base::SequencedTaskRunnerHandle::Get();
 }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 }  // namespace
+
+bool ChromeRenderThreadObserver::is_incognito_process_ = false;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 // static
@@ -120,7 +183,7 @@ void ChromeRenderThreadObserver::ChromeOSListener::MergeSessionComplete() {
 
 ChromeRenderThreadObserver::ChromeOSListener::ChromeOSListener()
     : session_merged_callbacks_(base::MakeRefCounted<DelayedCallbackGroup>(
-          AshMergeSessionLoaderThrottle::GetMergeSessionTimeout(),
+          MergeSessionLoaderThrottle::GetMergeSessionTimeout(),
           GetCallbackGroupTaskRunner())),
       merge_session_running_(true) {}
 
@@ -133,8 +196,19 @@ void ChromeRenderThreadObserver::ChromeOSListener::BindOnIOThread(
 }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
+chrome::mojom::DynamicParams* GetDynamicConfigParams() {
+  static base::NoDestructor<chrome::mojom::DynamicParams> dynamic_params;
+  return dynamic_params.get();
+}
+
 ChromeRenderThreadObserver::ChromeRenderThreadObserver()
-    : visited_link_reader_(new visitedlink::VisitedLinkReader) {
+    : resource_request_sender_delegate_(
+          std::make_unique<RendererResourceDelegate>()),
+      visited_link_reader_(new visitedlink::VisitedLinkReader) {
+  RenderThread* thread = RenderThread::Get();
+  thread->SetResourceRequestSenderDelegate(
+      resource_request_sender_delegate_.get());
+
   // Configure modules that need access to resources.
   net::NetModule::SetResourceProvider(ChromeNetResourceProvider);
   media::SetLocalizedStringProvider(ChromeMediaLocalizedStringProvider);
@@ -142,97 +216,46 @@ ChromeRenderThreadObserver::ChromeRenderThreadObserver()
 
 ChromeRenderThreadObserver::~ChromeRenderThreadObserver() {}
 
-chrome::mojom::DynamicParamsPtr ChromeRenderThreadObserver::GetDynamicParams()
-    const {
-  {
-    base::AutoLock lock(dynamic_params_lock_);
-    if (dynamic_params_) {
-      return dynamic_params_.Clone();
-    }
-  }
-  return chrome::mojom::DynamicParams::New();
+// static
+const chrome::mojom::DynamicParams&
+ChromeRenderThreadObserver::GetDynamicParams() {
+  return *GetDynamicConfigParams();
 }
-
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-// Returns null if `bound_session_request_throttled_in_renderer_manager_` is
-// null. This can happen on profiles where `RendererUpdater` and
-// `BoundSessionCookieRefreshService` keyed services are not created.
-std::unique_ptr<BoundSessionRequestThrottledHandler>
-ChromeRenderThreadObserver::CreateBoundSessionRequestThrottledHandler() const {
-  if (!bound_session_request_throttled_in_renderer_manager_) {
-    return nullptr;
-  }
-
-  return std::make_unique<BoundSessionRequestThrottledHandlerRendererImpl>(
-      bound_session_request_throttled_in_renderer_manager_, io_task_runner_);
-}
-#endif
 
 void ChromeRenderThreadObserver::RegisterMojoInterfaces(
     blink::AssociatedInterfaceRegistry* associated_interfaces) {
-  associated_interfaces->AddInterface<chrome::mojom::RendererConfiguration>(
-      base::BindRepeating(
-          &ChromeRenderThreadObserver::OnRendererConfigurationAssociatedRequest,
-          base::Unretained(this)));
-  associated_interfaces
-      ->AddInterface<chrome::mojom::IdentifiabilityStudyConfigurator>(
-          base::BindRepeating(
-              &ChromeRenderThreadObserver::
-                  OnIdentifiabilityStudyConfiguratorAssociatedRequest,
-              base::Unretained(this)));
+  associated_interfaces->AddInterface(base::BindRepeating(
+      &ChromeRenderThreadObserver::OnRendererConfigurationAssociatedRequest,
+      base::Unretained(this)));
 }
 
 void ChromeRenderThreadObserver::UnregisterMojoInterfaces(
     blink::AssociatedInterfaceRegistry* associated_interfaces) {
   associated_interfaces->RemoveInterface(
       chrome::mojom::RendererConfiguration::Name_);
-  associated_interfaces->RemoveInterface(
-      chrome::mojom::IdentifiabilityStudyConfigurator::Name_);
 }
 
 void ChromeRenderThreadObserver::SetInitialConfiguration(
     bool is_incognito_process,
     mojo::PendingReceiver<chrome::mojom::ChromeOSListener>
-        chromeos_listener_receiver,
-    mojo::PendingRemote<content_settings::mojom::ContentSettingsManager>
-        content_settings_manager,
-    mojo::PendingRemote<chrome::mojom::BoundSessionRequestThrottledHandler>
-        bound_session_request_throttled_handler) {
-  if (content_settings_manager)
-    content_settings_manager_.Bind(std::move(content_settings_manager));
-  SetIsIncognitoProcess(is_incognito_process);
+        chromeos_listener_receiver) {
+  is_incognito_process_ = is_incognito_process;
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   if (chromeos_listener_receiver) {
     chromeos_listener_ =
         ChromeOSListener::Create(std::move(chromeos_listener_receiver));
   }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-  if (bound_session_request_throttled_handler) {
-    bound_session_request_throttled_in_renderer_manager_ =
-        BoundSessionRequestThrottledInRendererManager::Create(
-            std::move(bound_session_request_throttled_handler));
-    io_task_runner_ = content::ChildThread::Get()->GetIOTaskRunner();
-  }
-#endif
 }
 
 void ChromeRenderThreadObserver::SetConfiguration(
     chrome::mojom::DynamicParamsPtr params) {
-  base::AutoLock lock(dynamic_params_lock_);
-  dynamic_params_ = std::move(params);
+  *GetDynamicConfigParams() = std::move(*params);
 }
 
-void ChromeRenderThreadObserver::ConfigureIdentifiabilityStudy(
-    bool meta_experiment_active) {
-  // This is superfluous in single-process mode and triggers a DCHECK
-  if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kSingleProcess)) {
-    blink::IdentifiabilityStudySettings::SetGlobalProvider(
-        std::make_unique<PrivacyBudgetSettingsProvider>(
-            meta_experiment_active));
-  }
+void ChromeRenderThreadObserver::SetContentSettingRules(
+    const RendererContentSettingRules& rules) {
+  content_setting_rules_ = rules;
 }
 
 void ChromeRenderThreadObserver::OnRendererConfigurationAssociatedRequest(
@@ -241,9 +264,7 @@ void ChromeRenderThreadObserver::OnRendererConfigurationAssociatedRequest(
   renderer_configuration_receivers_.Add(this, std::move(receiver));
 }
 
-void ChromeRenderThreadObserver::
-    OnIdentifiabilityStudyConfiguratorAssociatedRequest(
-        mojo::PendingAssociatedReceiver<
-            chrome::mojom::IdentifiabilityStudyConfigurator> receiver) {
-  identifiability_study_configurator_receivers_.Add(this, std::move(receiver));
+const RendererContentSettingRules*
+ChromeRenderThreadObserver::content_setting_rules() const {
+  return &content_setting_rules_;
 }

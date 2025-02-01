@@ -1,17 +1,15 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/command_line.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "build/build_config.h"
-#include "components/viz/common/gpu/raster_context_provider.h"
-#include "components/viz/test/gpu_host_impl_test_api.h"
+#include "components/viz/common/gpu/context_provider.h"
 #include "content/browser/browser_main_loop.h"
 #include "content/browser/compositor/image_transport_factory.h"
 #include "content/browser/gpu/gpu_process_host.h"
-#include "content/public/browser/browser_thread.h"
+#include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/gpu_data_manager.h"
 #include "content/public/browser/gpu_utils.h"
 #include "content/public/common/content_switches.h"
@@ -23,6 +21,10 @@
 #include "gpu/ipc/client/gpu_channel_host.h"
 #include "services/viz/privileged/mojom/gl/gpu_service.mojom.h"
 #include "services/viz/public/cpp/gpu/context_provider_command_buffer.h"
+#include "third_party/skia/include/core/SkCanvas.h"
+#include "third_party/skia/include/core/SkPaint.h"
+#include "third_party/skia/include/core/SkSurface.h"
+#include "third_party/skia/include/gpu/GrDirectContext.h"
 #include "ui/gl/gl_switches.h"
 
 namespace {
@@ -30,14 +32,10 @@ namespace {
 // RunLoop implementation that runs until it observes OnContextLost().
 class ContextLostRunLoop : public viz::ContextLostObserver {
  public:
-  explicit ContextLostRunLoop(viz::RasterContextProvider* context_provider)
+  ContextLostRunLoop(viz::ContextProvider* context_provider)
       : context_provider_(context_provider) {
     context_provider_->AddObserver(this);
   }
-
-  ContextLostRunLoop(const ContextLostRunLoop&) = delete;
-  ContextLostRunLoop& operator=(const ContextLostRunLoop&) = delete;
-
   ~ContextLostRunLoop() override { context_provider_->RemoveObserver(this); }
 
   void RunUntilContextLost() { run_loop_.Run(); }
@@ -46,8 +44,10 @@ class ContextLostRunLoop : public viz::ContextLostObserver {
   // viz::LostContextProvider:
   void OnContextLost() override { run_loop_.Quit(); }
 
-  const raw_ptr<viz::RasterContextProvider> context_provider_;
+  viz::ContextProvider* const context_provider_;
   base::RunLoop run_loop_;
+
+  DISALLOW_COPY_AND_ASSIGN(ContextLostRunLoop);
 };
 
 class ContextTestBase : public content::ContentBrowserTest {
@@ -62,9 +62,9 @@ class ContextTestBase : public content::ContentBrowserTest {
         content::GpuBrowsertestEstablishGpuChannelSyncRunLoop();
     CHECK(gpu_channel_host);
 
-    provider_ = content::GpuBrowsertestCreateContext(
-        std::move(gpu_channel_host), /*wants_raster_interface=*/false);
-    auto result = provider_->BindToCurrentSequence();
+    provider_ =
+        content::GpuBrowsertestCreateContext(std::move(gpu_channel_host));
+    auto result = provider_->BindToCurrentThread();
     CHECK_EQ(result, gpu::ContextResult::kSuccess);
     gl_ = provider_->ContextGL();
     context_support_ = provider_->ContextSupport();
@@ -74,37 +74,23 @@ class ContextTestBase : public content::ContentBrowserTest {
 
   void TearDownOnMainThread() override {
     // Must delete the context first.
-    gl_ = nullptr;
-    context_support_ = nullptr;
     provider_ = nullptr;
     ContentBrowserTest::TearDownOnMainThread();
   }
 
  protected:
+  gpu::gles2::GLES2Interface* gl_ = nullptr;
+  gpu::ContextSupport* context_support_ = nullptr;
+
+ private:
   scoped_refptr<viz::ContextProviderCommandBuffer> provider_;
-  raw_ptr<gpu::ContextSupport> context_support_ = nullptr;
-  raw_ptr<gpu::gles2::GLES2Interface> gl_ = nullptr;
-};
-
-class TestGpuHostImplDelegate
-    : public viz::GpuHostImplTestApi::HookDelegateBase {
- public:
-  TestGpuHostImplDelegate() = default;
-  ~TestGpuHostImplDelegate() override = default;
-
-  TestGpuHostImplDelegate(const TestGpuHostImplDelegate&) = delete;
-  TestGpuHostImplDelegate& operator=(const TestGpuHostImplDelegate&) = delete;
-
-  // viz::GpuHostImpl::Delegate
-  bool GpuAccessAllowed() const override { return false; }
 };
 
 }  // namespace
 
 // Include the shared tests.
 #define CONTEXT_TEST_F IN_PROC_BROWSER_TEST_F
-#include "base/functional/bind.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/bind.h"
 #include "build/chromeos_buildflags.h"
 #include "content/public/browser/browser_thread.h"
 #include "gpu/ipc/client/gpu_context_tests.h"
@@ -160,9 +146,9 @@ class BrowserGpuChannelHostFactoryTest : public ContentBrowserTest {
 
 // Test fails on Chromeos + Mac, flaky on Windows because UI Compositor
 // establishes a GPU channel.
-// TODO(crbug.com/40118868): Revisit the macro expression once build flag switch
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+#if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
 #define MAYBE_Basic Basic
 #else
 #define MAYBE_Basic DISABLED_Basic
@@ -173,12 +159,12 @@ IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest, MAYBE_Basic) {
   EXPECT_TRUE(GetGpuChannel() != nullptr);
 }
 
-#if !BUILDFLAG(IS_ANDROID)
+#if !defined(OS_ANDROID)
 // Test fails on Chromeos + Mac, flaky on Windows because UI Compositor
 // establishes a GPU channel.
-// TODO(crbug.com/40118868): Revisit the macro expression once build flag switch
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+#if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
 #define MAYBE_AlreadyEstablished AlreadyEstablished
 #else
 #define MAYBE_AlreadyEstablished DISABLED_AlreadyEstablished
@@ -199,11 +185,66 @@ IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
 }
 #endif
 
+// Test fails on Windows because GPU Channel set-up fails.
+#if !defined(OS_WIN)
+#define MAYBE_GrContextKeepsGpuChannelAlive GrContextKeepsGpuChannelAlive
+#else
+#define MAYBE_GrContextKeepsGpuChannelAlive \
+    DISABLED_GrContextKeepsGpuChannelAlive
+#endif
+IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
+                       MAYBE_GrContextKeepsGpuChannelAlive) {
+  // Test for crbug.com/551143
+  // This test verifies that holding a reference to the GrContext created by
+  // a viz::ContextProviderCommandBuffer will keep the gpu channel alive after
+  // the
+  // provider has been destroyed. Without this behavior, user code would have
+  // to be careful to destroy objects in the right order to avoid using freed
+  // memory as a function pointer in the GrContext's GrGLInterface instance.
+  DCHECK(!IsChannelEstablished());
+  EstablishAndWait();
+
+  // Step 2: verify that holding onto the provider's GrContext will
+  // retain the host after provider is destroyed.
+  scoped_refptr<viz::ContextProviderCommandBuffer> provider =
+      content::GpuBrowsertestCreateContext(GetGpuChannel());
+  ASSERT_EQ(provider->BindToCurrentThread(), gpu::ContextResult::kSuccess);
+
+  sk_sp<GrDirectContext> gr_context = sk_ref_sp(provider->GrContext());
+
+  SkImageInfo info = SkImageInfo::MakeN32Premul(100, 100);
+  sk_sp<SkSurface> surface = SkSurface::MakeRenderTarget(
+      gr_context.get(), SkBudgeted::kNo, info);
+  EXPECT_TRUE(surface);
+
+  // Destroy the GL context after we made a surface.
+  provider = nullptr;
+
+  // New surfaces will fail to create now.
+  sk_sp<SkSurface> surface2 =
+      SkSurface::MakeRenderTarget(gr_context.get(), SkBudgeted::kNo, info);
+  EXPECT_FALSE(surface2);
+
+  // Drop our reference to the gr_context also.
+  gr_context = nullptr;
+
+  // After the context provider is destroyed, the surface no longer has access
+  // to the GrContext, even though it's alive. Use the canvas after the provider
+  // and GrContext have been locally unref'ed. This should work fine as the
+  // GrContext has been abandoned when the GL context provider was destroyed
+  // above.
+  SkPaint greenFillPaint;
+  greenFillPaint.setColor(SK_ColorGREEN);
+  greenFillPaint.setStyle(SkPaint::kFill_Style);
+  // Passes by not crashing
+  surface->getCanvas()->drawRect(SkRect::MakeWH(100, 100), greenFillPaint);
+}
+
 // Test fails on Chromeos + Mac, flaky on Windows because UI Compositor
 // establishes a GPU channel.
-// TODO(crbug.com/40118868): Revisit the macro expression once build flag switch
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+#if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
 #define MAYBE_CrashAndRecover CrashAndRecover
 #else
 #define MAYBE_CrashAndRecover DISABLED_CrashAndRecover
@@ -217,9 +258,8 @@ IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
   scoped_refptr<viz::ContextProviderCommandBuffer> provider =
       content::GpuBrowsertestCreateContext(GetGpuChannel());
   ContextLostRunLoop run_loop(provider.get());
-  ASSERT_EQ(provider->BindToCurrentSequence(), gpu::ContextResult::kSuccess);
-  GpuProcessHost::CallOnUI(FROM_HERE, GPU_PROCESS_KIND_SANDBOXED,
-                           false /* force_create */,
+  ASSERT_EQ(provider->BindToCurrentThread(), gpu::ContextResult::kSuccess);
+  GpuProcessHost::CallOnIO(GPU_PROCESS_KIND_SANDBOXED, false /* force_create */,
                            base::BindOnce([](GpuProcessHost* host) {
                              if (host)
                                host->gpu_service()->Crash();
@@ -233,20 +273,27 @@ IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
 
 // Disabled outside linux like other tests here sadface.
 // crbug.com/1224892: the test if flaky on linux and lacros.
-// TODO(crbug.com/40118868): Revisit the macro expression once build flag switch
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+#if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
 IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
                        DISABLED_CreateTransferBuffer) {
   DCHECK(!IsChannelEstablished());
   EstablishAndWait();
 
+  // This is for an offscreen context, so the default framebuffer doesn't need
+  // any alpha, depth, stencil, antialiasing.
   gpu::ContextCreationAttribs attributes;
+  attributes.alpha_size = -1;
+  attributes.depth_size = 0;
+  attributes.stencil_size = 0;
+  attributes.samples = 0;
+  attributes.sample_buffers = 0;
   attributes.bind_generates_resource = false;
 
   auto impl = std::make_unique<gpu::CommandBufferProxyImpl>(
-      GetGpuChannel(), content::kGpuStreamIdDefault,
-      base::SingleThreadTaskRunner::GetCurrentDefault());
+      GetGpuChannel(), GetFactory()->GetGpuMemoryBufferManager(),
+      content::kGpuStreamIdDefault, base::ThreadTaskRunnerHandle::Get());
   ASSERT_EQ(
       impl->Initialize(gpu::kNullSurfaceHandle, nullptr,
                        content::kGpuStreamPriorityDefault, attributes, GURL()),
@@ -289,25 +336,5 @@ IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
   EXPECT_GE(id, 0);
 }
 #endif
-
-IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
-                       CallbackOnSynchronousFailure) {
-  // Ensure that there is no pending establish request.
-  EstablishAndWait();
-
-  viz::GpuHostImplTestApi test_api(GpuProcessHost::Get()->gpu_host());
-
-  // This delegate disallows GPU access, which will cause EstablishGpuChannel()
-  // to fail synchronously.
-  test_api.HookDelegate(std::make_unique<TestGpuHostImplDelegate>());
-
-  bool event = false;
-  GetFactory()->EstablishGpuChannel(
-      base::BindOnce(&BrowserGpuChannelHostFactoryTest::Signal,
-                     base::Unretained(this), &event));
-
-  // Expect that the callback has been called.
-  EXPECT_TRUE(event);
-}
 
 }  // namespace content

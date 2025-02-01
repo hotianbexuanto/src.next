@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,15 +10,9 @@
 #include "base/files/file.h"
 #include "base/logging.h"
 #include "base/notreached.h"
-#include "net/third_party/quiche/src/quiche/quic/core/quic_error_codes.h"
+#include "net/third_party/quiche/src/quic/core/quic_error_codes.h"
 
 namespace net {
-
-// Validate all error values in net_error_list.h are negative.
-#define NET_ERROR(label, value) \
-  static_assert(value < 0, "ERR_" #label " should be negative");
-#include "net/base/net_error_list.h"
-#undef NET_ERROR
 
 std::string ErrorToString(int error) {
   return "net::" + ErrorToShortString(error);
@@ -46,9 +40,7 @@ std::string ErrorToShortString(int error) {
 #include "net/base/net_error_list.h"
 #undef NET_ERROR
   default:
-    // TODO(crbug.com/40909121): Figure out why this is firing, fix and upgrade
-    // this to be fatal.
-    DUMP_WILL_BE_NOTREACHED() << error;
+    NOTREACHED();
     error_string = "<unknown>";
   }
   return std::string("ERR_") + error_string;
@@ -118,6 +110,7 @@ Error FileErrorToNetError(base::File::Error file_error) {
       return ERR_ACCESS_DENIED;
     case base::File::FILE_ERROR_MAX:
       NOTREACHED();
+      FALLTHROUGH;
     case base::File::FILE_ERROR_NOT_A_DIRECTORY:
     case base::File::FILE_ERROR_NOT_A_FILE:
     case base::File::FILE_ERROR_NOT_EMPTY:
@@ -128,6 +121,7 @@ Error FileErrorToNetError(base::File::Error file_error) {
       return ERR_FAILED;
   }
   NOTREACHED();
+  return ERR_FAILED;
 }
 
 }  // namespace net

@@ -1,10 +1,10 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "net/base/winsock_init.h"
-
 #include <winsock2.h>
+
+#include "net/base/winsock_init.h"
 
 #include "base/check.h"
 #include "base/lazy_instance.h"

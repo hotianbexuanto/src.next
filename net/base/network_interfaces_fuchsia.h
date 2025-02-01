@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,25 +6,24 @@
 #define NET_BASE_NETWORK_INTERFACES_FUCHSIA_H_
 
 #include <fuchsia/net/interfaces/cpp/fidl.h>
-#include <stdint.h>
 
-#include <optional>
+#include <vector>
 
 #include "net/base/network_change_notifier.h"
 #include "net/base/network_interfaces.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
-namespace net::internal {
+namespace net {
+namespace internal {
 
 // Move-only wrapper for fuchsia::net::interface::Properties that guarantees
 // that its inner |properties_| are valid and complete properties as reported by
 // |VerifyCompleteInterfaceProperties|.
 class InterfaceProperties final {
  public:
-  using InterfaceId = uint64_t;
-
   // Creates an |InterfaceProperties| if |properties| are valid complete
   // properties as reported by |VerifyCompleteInterfaceProperties|.
-  static std::optional<InterfaceProperties> VerifyAndCreate(
+  static absl::optional<InterfaceProperties> VerifyAndCreate(
       fuchsia::net::interfaces::Properties properties);
   InterfaceProperties(InterfaceProperties&& interface);
   InterfaceProperties& operator=(InterfaceProperties&& interface);
@@ -46,10 +45,10 @@ class InterfaceProperties final {
   bool IsPubliclyRoutable() const;
 
   bool HasAddresses() const { return !properties_.addresses().empty(); }
-  InterfaceId id() const { return properties_.id(); }
+  uint64_t id() const { return properties_.id(); }
   bool online() const { return properties_.online(); }
-  const fuchsia::net::interfaces::PortClass& device_class() const {
-    return properties_.port_class();
+  const fuchsia::net::interfaces::DeviceClass& device_class() const {
+    return properties_.device_class();
   }
 
  private:
@@ -58,16 +57,32 @@ class InterfaceProperties final {
   fuchsia::net::interfaces::Properties properties_;
 };
 
+using ExistingInterfaceProperties =
+    std::vector<std::pair<uint64_t, InterfaceProperties>>;
+
 // Returns the //net ConnectionType for the supplied netstack interface
 // description. Returns CONNECTION_NONE for loopback interfaces.
 NetworkChangeNotifier::ConnectionType ConvertConnectionType(
-    const fuchsia::net::interfaces::PortClass& device_class);
+    const fuchsia::net::interfaces::DeviceClass& device_class);
+
+// Connects to the service via the process' ComponentContext, and connects the
+// Watcher to the service.
+fuchsia::net::interfaces::WatcherHandle ConnectInterfacesWatcher();
 
 // Validates that |properties| contains all the required fields, returning
 // |true| if so.
 bool VerifyCompleteInterfaceProperties(
     const fuchsia::net::interfaces::Properties& properties);
 
-}  // namespace net::internal
+// Consumes events describing existing interfaces from |watcher| and
+// returns a vector of interface Id & properties pairs.  |watcher| must
+// be a newly-connected Watcher channel.
+// Returns absl::nullopt if any protocol error is encountered, e.g.
+// |watcher| supplies an invalid event, or disconnects.
+absl::optional<internal::ExistingInterfaceProperties> GetExistingInterfaces(
+    const fuchsia::net::interfaces::WatcherSyncPtr& watcher);
+
+}  // namespace internal
+}  // namespace net
 
 #endif  // NET_BASE_NETWORK_INTERFACES_FUCHSIA_H_

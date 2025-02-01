@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,7 +10,8 @@
 #include <set>
 #include <string>
 
-#include "base/functional/callback.h"
+#include "base/callback.h"
+#include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "components/safe_browsing/core/browser/db/util.h"
 #include "extensions/browser/blocklist_state.h"
@@ -25,12 +26,9 @@ class TestBlocklistStateFetcher;
 
 class BlocklistStateFetcher {
  public:
-  using RequestCallback = base::OnceCallback<void(BlocklistState)>;
+  typedef base::OnceCallback<void(BlocklistState)> RequestCallback;
 
   BlocklistStateFetcher();
-
-  BlocklistStateFetcher(const BlocklistStateFetcher&) = delete;
-  BlocklistStateFetcher& operator=(const BlocklistStateFetcher&) = delete;
 
   virtual ~BlocklistStateFetcher();
 
@@ -50,7 +48,7 @@ class BlocklistStateFetcher {
 
  private:
   friend class TestBlocklistStateFetcher;
-  using CallbackMultiMap = std::multimap<std::string, RequestCallback>;
+  typedef std::multimap<std::string, RequestCallback> CallbackMultiMap;
 
   GURL RequestUrl() const;
 
@@ -68,6 +66,8 @@ class BlocklistStateFetcher {
   CallbackMultiMap callbacks_;
 
   base::WeakPtrFactory<BlocklistStateFetcher> weak_ptr_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(BlocklistStateFetcher);
 };
 
 }  // namespace extensions

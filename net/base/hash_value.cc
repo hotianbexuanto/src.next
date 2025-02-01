@@ -1,11 +1,6 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "net/base/hash_value.h"
 
@@ -16,7 +11,6 @@
 
 #include "base/base64.h"
 #include "base/check_op.h"
-#include "base/containers/span.h"
 #include "base/notreached.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -25,8 +19,6 @@
 namespace net {
 
 namespace {
-
-constexpr std::string_view kSha256Slash = "sha256/";
 
 // LessThan comparator for use with std::binary_search() in determining
 // whether a SHA-256 HashValue appears within a sorted array of
@@ -51,30 +43,34 @@ HashValue::HashValue(const SHA256HashValue& hash)
   fingerprint.sha256 = hash;
 }
 
-bool HashValue::FromString(std::string_view value) {
-  if (!value.starts_with(kSha256Slash)) {
+bool HashValue::FromString(const base::StringPiece value) {
+  base::StringPiece base64_str;
+  if (base::StartsWith(value, "sha256/")) {
+    tag_ = HASH_VALUE_SHA256;
+    base64_str = value.substr(7);
+  } else {
     return false;
   }
 
-  std::string_view base64_str = value.substr(kSha256Slash.size());
-
-  auto decoded = base::Base64Decode(base64_str);
-  if (!decoded || decoded->size() != size()) {
+  std::string decoded;
+  if (!base::Base64Decode(base64_str, &decoded) || decoded.size() != size())
     return false;
-  }
-  tag_ = HASH_VALUE_SHA256;
-  memcpy(data(), decoded->data(), size());
+
+  memcpy(data(), decoded.data(), size());
   return true;
 }
 
 std::string HashValue::ToString() const {
-  std::string base64_str = base::Base64Encode(base::make_span(data(), size()));
+  std::string base64_str;
+  base::Base64Encode(base::StringPiece(reinterpret_cast<const char*>(data()),
+                                       size()), &base64_str);
   switch (tag_) {
     case HASH_VALUE_SHA256:
-      return std::string(kSha256Slash) + base64_str;
+      return std::string("sha256/") + base64_str;
   }
 
-  NOTREACHED();
+  NOTREACHED() << "Unknown HashValueTag " << tag_;
+  return std::string("unknown/" + base64_str);
 }
 
 size_t HashValue::size() const {
@@ -83,7 +79,11 @@ size_t HashValue::size() const {
       return sizeof(fingerprint.sha256.data);
   }
 
-  NOTREACHED();
+  NOTREACHED() << "Unknown HashValueTag " << tag_;
+  // While an invalid tag should not happen, return a non-zero length
+  // to avoid compiler warnings when the result of size() is
+  // used with functions like memset.
+  return sizeof(fingerprint.sha256.data);
 }
 
 unsigned char* HashValue::data() {
@@ -96,7 +96,8 @@ const unsigned char* HashValue::data() const {
       return fingerprint.sha256.data;
   }
 
-  NOTREACHED();
+  NOTREACHED() << "Unknown HashValueTag " << tag_;
+  return nullptr;
 }
 
 bool operator==(const HashValue& lhs, const HashValue& rhs) {
@@ -109,6 +110,7 @@ bool operator==(const HashValue& lhs, const HashValue& rhs) {
   }
 
   NOTREACHED();
+  return false;
 }
 
 bool operator!=(const HashValue& lhs, const HashValue& rhs) {
@@ -125,6 +127,7 @@ bool operator<(const HashValue& lhs, const HashValue& rhs) {
   }
 
   NOTREACHED();
+  return false;
 }
 
 bool operator>(const HashValue& lhs, const HashValue& rhs) {

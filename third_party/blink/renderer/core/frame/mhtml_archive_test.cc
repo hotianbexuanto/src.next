@@ -31,7 +31,6 @@
 #include "third_party/blink/renderer/platform/mhtml/mhtml_archive.h"
 
 #include "base/test/metrics/histogram_tester.h"
-#include "base/time/time.h"
 #include "build/build_config.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -64,7 +63,8 @@ class MHTMLArchiveTest : public testing::Test {
  public:
   MHTMLArchiveTest() {
     file_path_ = test::CoreTestDataPath("frameserializer/css/");
-    mhtml_date_ = base::Time::FromMillisecondsSinceUnixEpoch(1520551829000);
+    mhtml_date_ = base::Time::FromJsTime(1520551829000);
+    mhtml_date_header_ = String::FromUTF8("Thu, 8 Mar 2018 23:30:29 -0000");
   }
 
  protected:
@@ -79,11 +79,6 @@ class MHTMLArchiveTest : public testing::Test {
     AddResource(url, mime, ReadFile(file_name));
   }
 
-  // Adds a resource as an empty file.
-  void AddResource(const char* url, const char* mime) {
-    AddResource(url, mime, SharedBuffer::Create());
-  }
-
   void AddTestMainResource() {
     AddResource("http://www.test.com", "text/html", "css_test_page.html");
   }
@@ -96,14 +91,20 @@ class MHTMLArchiveTest : public testing::Test {
                 "import_style_from_link.css");
     AddResource("http://www.test.com/import_styles.css", "text/css",
                 "import_styles.css");
-    AddResource("http://www.test.com/red_background.png", "image/png");
-    AddResource("http://www.test.com/orange_background.png", "image/png");
-    AddResource("http://www.test.com/yellow_background.png", "image/png");
-    AddResource("http://www.test.com/green_background.png", "image/png");
-    AddResource("http://www.test.com/blue_background.png", "image/png");
-    AddResource("http://www.test.com/purple_background.png", "image/png");
-    AddResource("http://www.test.com/ul-dot.png", "image/png");
-    AddResource("http://www.test.com/ol-dot.png", "image/png");
+    AddResource("http://www.test.com/red_background.png", "image/png",
+                "red_background.png");
+    AddResource("http://www.test.com/orange_background.png", "image/png",
+                "orange_background.png");
+    AddResource("http://www.test.com/yellow_background.png", "image/png",
+                "yellow_background.png");
+    AddResource("http://www.test.com/green_background.png", "image/png",
+                "green_background.png");
+    AddResource("http://www.test.com/blue_background.png", "image/png",
+                "blue_background.png");
+    AddResource("http://www.test.com/purple_background.png", "image/png",
+                "purple_background.png");
+    AddResource("http://www.test.com/ul-dot.png", "image/png", "ul-dot.png");
+    AddResource("http://www.test.com/ol-dot.png", "image/png", "ol-dot.png");
   }
 
   HashMap<String, String> ExtractHeaders(LineReader& line_reader) {
@@ -142,7 +143,7 @@ class MHTMLArchiveTest : public testing::Test {
   }
 
   HashMap<String, String> ExtractMHTMLHeaders() {
-    LineReader line_reader{String(mhtml_data_)};
+    LineReader line_reader(String(mhtml_data_.data(), mhtml_data_.size()));
     return ExtractHeaders(line_reader);
   }
 
@@ -166,8 +167,9 @@ class MHTMLArchiveTest : public testing::Test {
 
     if (validate) {
       // Validate the generated MHTML.
-      MHTMLParser parser(SharedBuffer::Create(mhtml_data_));
-      EXPECT_FALSE(parser.ParseArchive().empty())
+      MHTMLParser parser(
+          SharedBuffer::Create(mhtml_data_.data(), mhtml_data_.size()));
+      EXPECT_FALSE(parser.ParseArchive().IsEmpty())
           << "Generated MHTML is malformed";
     }
   }
@@ -183,6 +185,7 @@ class MHTMLArchiveTest : public testing::Test {
   Vector<char>& mhtml_data() { return mhtml_data_; }
 
   base::Time mhtml_date() const { return mhtml_date_; }
+  const String& mhtml_date_header() const { return mhtml_date_header_; }
 
   void CheckLoadResult(const KURL url,
                        scoped_refptr<const SharedBuffer> data,
@@ -204,15 +207,14 @@ class MHTMLArchiveTest : public testing::Test {
  private:
   scoped_refptr<SharedBuffer> ReadFile(const char* file_name) {
     String file_path = file_path_ + file_name;
-    std::optional<Vector<char>> data = test::ReadFromFile(file_path);
-    CHECK(data);
-    return SharedBuffer::Create(std::move(*data));
+    return test::ReadFromFile(file_path);
   }
 
   String file_path_;
   Vector<SerializedResource> resources_;
   Vector<char> mhtml_data_;
   base::Time mhtml_date_;
+  String mhtml_date_header_;
 };
 
 TEST_F(MHTMLArchiveTest,
@@ -226,7 +228,7 @@ TEST_F(MHTMLArchiveTest,
   HashMap<String, String> mhtml_headers = ExtractMHTMLHeaders();
 
   EXPECT_EQ("<Saved by Blink>", mhtml_headers.find("From")->value);
-  EXPECT_FALSE(mhtml_headers.find("Date")->value.empty());
+  EXPECT_FALSE(mhtml_headers.find("Date")->value.IsEmpty());
   EXPECT_EQ(
       "multipart/related;type=\"text/html\";boundary=\"boundary-example\"",
       mhtml_headers.find("Content-Type")->value);
@@ -245,7 +247,7 @@ TEST_F(MHTMLArchiveTest,
   HashMap<String, String> mhtml_headers = ExtractMHTMLHeaders();
 
   EXPECT_EQ("<Saved by Blink>", mhtml_headers.find("From")->value);
-  EXPECT_FALSE(mhtml_headers.find("Date")->value.empty());
+  EXPECT_FALSE(mhtml_headers.find("Date")->value.IsEmpty());
   EXPECT_EQ(
       "multipart/related;type=\"text/html\";boundary=\"boundary-example\"",
       mhtml_headers.find("Content-Type")->value);
@@ -268,7 +270,7 @@ TEST_F(MHTMLArchiveTest,
   HashMap<String, String> mhtml_headers = ExtractMHTMLHeaders();
 
   EXPECT_EQ("<Saved by Blink>", mhtml_headers.find("From")->value);
-  EXPECT_FALSE(mhtml_headers.find("Date")->value.empty());
+  EXPECT_FALSE(mhtml_headers.find("Date")->value.IsEmpty());
   EXPECT_EQ(
       "multipart/related;type=\"text/html\";boundary=\"boundary-example\"",
       mhtml_headers.find("Content-Type")->value);
@@ -290,7 +292,7 @@ TEST_F(MHTMLArchiveTest, TestMHTMLPartsWithBinaryEncoding) {
 
   // Read the MHTML data line per line and do some pseudo-parsing to make sure
   // the right encoding is used for the different sections.
-  LineReader line_reader{String(mhtml_data())};
+  LineReader line_reader(String(mhtml_data().data(), mhtml_data().size()));
   int part_count = 0;
   String line, last_line;
   while (line_reader.GetNextLine(&line)) {
@@ -300,9 +302,9 @@ TEST_F(MHTMLArchiveTest, TestMHTMLPartsWithBinaryEncoding) {
     part_count++;
 
     HashMap<String, String> part_headers = ExtractHeaders(line_reader);
-    EXPECT_FALSE(part_headers.find("Content-Type")->value.empty());
+    EXPECT_FALSE(part_headers.find("Content-Type")->value.IsEmpty());
     EXPECT_EQ("binary", part_headers.find("Content-Transfer-Encoding")->value);
-    EXPECT_FALSE(part_headers.find("Content-Location")->value.empty());
+    EXPECT_FALSE(part_headers.find("Content-Location")->value.IsEmpty());
   }
   EXPECT_EQ(12, part_count);
 
@@ -318,7 +320,7 @@ TEST_F(MHTMLArchiveTest, TestMHTMLPartsWithDefaultEncoding) {
 
   // Read the MHTML data line per line and do some pseudo-parsing to make sure
   // the right encoding is used for the different sections.
-  LineReader line_reader{String(mhtml_data())};
+  LineReader line_reader(String(mhtml_data().data(), mhtml_data().size()));
   int part_count = 0;
   String line, last_line;
   while (line_reader.GetNextLine(&line)) {
@@ -330,10 +332,10 @@ TEST_F(MHTMLArchiveTest, TestMHTMLPartsWithDefaultEncoding) {
     HashMap<String, String> part_headers = ExtractHeaders(line_reader);
 
     String content_type = part_headers.find("Content-Type")->value;
-    EXPECT_FALSE(content_type.empty());
+    EXPECT_FALSE(content_type.IsEmpty());
 
     String encoding = part_headers.find("Content-Transfer-Encoding")->value;
-    EXPECT_FALSE(encoding.empty());
+    EXPECT_FALSE(encoding.IsEmpty());
 
     if (content_type.StartsWith("text/"))
       EXPECT_EQ("quoted-printable", encoding);
@@ -354,14 +356,15 @@ TEST_F(MHTMLArchiveTest, MHTMLFromScheme) {
   Serialize(ToKURL(kURL), "Test Serialization", "text/html",
             MHTMLArchive::kUseDefaultEncoding);
 
-  scoped_refptr<SharedBuffer> data = SharedBuffer::Create(mhtml_data());
+  scoped_refptr<SharedBuffer> data =
+      SharedBuffer::Create(mhtml_data().data(), mhtml_data().size());
 
   // MHTMLArchives can only be initialized from local schemes, http/https
   // schemes, and content scheme(Android specific).
   CheckLoadResult(ToKURL("http://www.example.com"), data.get(),
                   MHTMLLoadResult::kSuccess);
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
   CheckLoadResult(ToKURL("content://foo"), data.get(),
                   MHTMLLoadResult::kSuccess);
 #else
@@ -386,12 +389,10 @@ TEST_F(MHTMLArchiveTest, MHTMLDate) {
   // The serialization process should have added a date header corresponding to
   // mhtml_date().
   HashMap<String, String> mhtml_headers = ExtractMHTMLHeaders();
-  base::Time header_date;
-  EXPECT_TRUE(base::Time::FromString(
-      mhtml_headers.find("Date")->value.Utf8().c_str(), &header_date));
-  EXPECT_EQ(mhtml_date(), header_date);
+  ASSERT_EQ(mhtml_date_header(), mhtml_headers.find("Date")->value);
 
-  scoped_refptr<SharedBuffer> data = SharedBuffer::Create(mhtml_data());
+  scoped_refptr<SharedBuffer> data =
+      SharedBuffer::Create(mhtml_data().data(), mhtml_data().size());
   KURL http_url = ToKURL("http://www.example.com");
   MHTMLArchive* archive = MHTMLArchive::Create(http_url, data.get());
   ASSERT_NE(nullptr, archive);
@@ -406,8 +407,9 @@ TEST_F(MHTMLArchiveTest, EmptyArchive) {
   CheckLoadResult(http_url, nullptr, MHTMLLoadResult::kEmptyFile);
 
   // Test failure to load when |data| is non-null but empty.
+  const char* buf = "";
   scoped_refptr<SharedBuffer> data =
-      SharedBuffer::Create(base::span_from_cstring(""));
+      SharedBuffer::Create(buf, static_cast<size_t>(0u));
   CheckLoadResult(http_url, data.get(), MHTMLLoadResult::kEmptyFile);
 }
 
@@ -420,7 +422,8 @@ TEST_F(MHTMLArchiveTest, NoMainResource) {
   Serialize(ToKURL(kURL), "Test Serialization", "text/html",
             MHTMLArchive::kUseDefaultEncoding);
 
-  scoped_refptr<SharedBuffer> data = SharedBuffer::Create(mhtml_data());
+  scoped_refptr<SharedBuffer> data =
+      SharedBuffer::Create(mhtml_data().data(), mhtml_data().size());
   KURL http_url = ToKURL("http://www.example.com");
 
   CheckLoadResult(http_url, data.get(), MHTMLLoadResult::kMissingMainResource);
@@ -433,7 +436,8 @@ TEST_F(MHTMLArchiveTest, InvalidMHTML) {
   GenerateMHTMLData(resources, MHTMLArchive::kUseDefaultEncoding, ToKURL(kURL),
                     "Test invalid mhtml", "text/html", false);
 
-  scoped_refptr<SharedBuffer> data = SharedBuffer::Create(mhtml_data());
+  scoped_refptr<SharedBuffer> data =
+      SharedBuffer::Create(mhtml_data().data(), mhtml_data().size());
 
   CheckLoadResult(ToKURL(kURL), data.get(), MHTMLLoadResult::kInvalidArchive);
 }

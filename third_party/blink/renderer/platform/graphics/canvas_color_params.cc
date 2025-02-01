@@ -1,10 +1,12 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/platform/graphics/canvas_color_params.h"
 
 #include "cc/paint/skia_paint_canvas.h"
+#include "components/viz/common/resources/resource_format_utils.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_resource_params.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/khronos/GLES2/gl2.h"
 #include "third_party/khronos/GLES2/gl2ext.h"
@@ -14,100 +16,125 @@
 
 namespace blink {
 
-// The PredefinedColorSpace value definitions are specified in the CSS Color
-// Level 4 specification.
-gfx::ColorSpace PredefinedColorSpaceToGfxColorSpace(
-    PredefinedColorSpace color_space) {
+namespace {
+
+// The CanvasColorSpace value definitions are specified in the CSS Color Level 4
+// specification.
+gfx::ColorSpace CanvasColorSpaceToGfxColorSpace(CanvasColorSpace color_space) {
   switch (color_space) {
-    case PredefinedColorSpace::kSRGB:
+    case CanvasColorSpace::kSRGB:
       return gfx::ColorSpace::CreateSRGB();
-    case PredefinedColorSpace::kRec2020:
+    case CanvasColorSpace::kRec2020:
       return gfx::ColorSpace(gfx::ColorSpace::PrimaryID::BT2020,
                              gfx::ColorSpace::TransferID::GAMMA24);
-    case PredefinedColorSpace::kP3:
+    case CanvasColorSpace::kP3:
       return gfx::ColorSpace::CreateDisplayP3D65();
-    case PredefinedColorSpace::kRec2100HLG:
-      return gfx::ColorSpace(gfx::ColorSpace::PrimaryID::BT2020,
-                             gfx::ColorSpace::TransferID::HLG);
-    case PredefinedColorSpace::kRec2100PQ:
-      return gfx::ColorSpace(gfx::ColorSpace::PrimaryID::BT2020,
-                             gfx::ColorSpace::TransferID::PQ);
-    case PredefinedColorSpace::kSRGBLinear:
-      return gfx::ColorSpace::CreateSRGBLinear();
   }
   NOTREACHED();
 }
 
-sk_sp<SkColorSpace> PredefinedColorSpaceToSkColorSpace(
-    PredefinedColorSpace color_space) {
-  return PredefinedColorSpaceToGfxColorSpace(color_space).ToSkColorSpace();
+}  // namespace
+
+sk_sp<SkColorSpace> CanvasColorSpaceToSkColorSpace(
+    CanvasColorSpace color_space) {
+  return CanvasColorSpaceToGfxColorSpace(color_space).ToSkColorSpace();
 }
 
-PredefinedColorSpace PredefinedColorSpaceFromSkColorSpace(
+CanvasColorSpace CanvasColorSpaceFromSkColorSpace(
     const SkColorSpace* sk_color_space) {
   // TODO(https://crbug.com/1121448): This function returns sRGB if
   // |sk_color_space| does not exactly match one of the named color spaces. It
   // should find the best named match.
-  PredefinedColorSpace color_spaces[] = {
-      PredefinedColorSpace::kSRGB,      PredefinedColorSpace::kRec2020,
-      PredefinedColorSpace::kP3,        PredefinedColorSpace::kRec2100HLG,
-      PredefinedColorSpace::kRec2100PQ, PredefinedColorSpace::kSRGBLinear,
+  CanvasColorSpace color_spaces[] = {
+      CanvasColorSpace::kSRGB,
+      CanvasColorSpace::kRec2020,
+      CanvasColorSpace::kP3,
   };
   for (const auto& color_space : color_spaces) {
     if (SkColorSpace::Equals(sk_color_space,
-                             PredefinedColorSpaceToGfxColorSpace(color_space)
+                             CanvasColorSpaceToGfxColorSpace(color_space)
                                  .ToSkColorSpace()
                                  .get())) {
       return color_space;
     }
   }
-  return PredefinedColorSpace::kSRGB;
+  return CanvasColorSpace::kSRGB;
 }
 
-SkColorType CanvasPixelFormatToSkColorType(CanvasPixelFormat pixel_format) {
-  switch (pixel_format) {
-    case CanvasPixelFormat::kF16:
-      return kRGBA_F16_SkColorType;
-    case CanvasPixelFormat::kUint8:
-      return kN32_SkColorType;
-  }
+CanvasColorSpace CanvasColorSpaceFromName(const String& color_space_name) {
+  if (color_space_name == kRec2020CanvasColorSpaceName)
+    return CanvasColorSpace::kRec2020;
+  if (color_space_name == kP3CanvasColorSpaceName)
+    return CanvasColorSpace::kP3;
+  return CanvasColorSpace::kSRGB;
+}
+
+String CanvasColorSpaceToName(CanvasColorSpace color_space) {
+  switch (color_space) {
+    case CanvasColorSpace::kSRGB:
+      return kSRGBCanvasColorSpaceName;
+    case CanvasColorSpace::kRec2020:
+      return kRec2020CanvasColorSpaceName;
+    case CanvasColorSpace::kP3:
+      return kP3CanvasColorSpaceName;
+  };
   NOTREACHED();
 }
 
 CanvasColorParams::CanvasColorParams() = default;
 
-CanvasColorParams::CanvasColorParams(PredefinedColorSpace color_space,
+CanvasColorParams::CanvasColorParams(CanvasColorSpace color_space,
                                      CanvasPixelFormat pixel_format,
                                      OpacityMode opacity_mode)
     : color_space_(color_space),
       pixel_format_(pixel_format),
       opacity_mode_(opacity_mode) {}
 
-CanvasColorParams::CanvasColorParams(PredefinedColorSpace color_space,
-                                     CanvasPixelFormat pixel_format,
-                                     bool has_alpha)
-    : color_space_(color_space),
-      pixel_format_(pixel_format),
-      opacity_mode_(has_alpha ? OpacityMode::kNonOpaque
-                              : OpacityMode::kOpaque) {}
+CanvasColorParams::CanvasColorParams(const WTF::String& color_space,
+                                     const WTF::String& pixel_format,
+                                     bool has_alpha) {
+  if (color_space == kRec2020CanvasColorSpaceName)
+    color_space_ = CanvasColorSpace::kRec2020;
+  else if (color_space == kP3CanvasColorSpaceName)
+    color_space_ = CanvasColorSpace::kP3;
 
-SkColorInfo CanvasColorParams::GetSkColorInfo() const {
-  return SkColorInfo(
-      GetSkColorType(),
-      opacity_mode_ == kOpaque ? kOpaque_SkAlphaType : kPremul_SkAlphaType,
-      GetSkColorSpace());
+  if (pixel_format == kF16CanvasPixelFormatName)
+    pixel_format_ = CanvasPixelFormat::kF16;
+
+  if (!has_alpha)
+    opacity_mode_ = kOpaque;
+}
+
+CanvasResourceParams CanvasColorParams::GetAsResourceParams() const {
+  SkAlphaType alpha_type =
+      opacity_mode_ == kOpaque ? kOpaque_SkAlphaType : kPremul_SkAlphaType;
+  return CanvasResourceParams(color_space_, GetSkColorType(), alpha_type);
 }
 
 String CanvasColorParams::GetColorSpaceAsString() const {
-  return PredefinedColorSpaceName(color_space_);
+  return CanvasColorSpaceToName(color_space_);
 }
 
-String CanvasColorParams::GetPixelFormatAsString() const {
-  return CanvasPixelFormatName(pixel_format_);
+const char* CanvasColorParams::GetPixelFormatAsString() const {
+  switch (pixel_format_) {
+    case CanvasPixelFormat::kF16:
+      return kF16CanvasPixelFormatName;
+    case CanvasPixelFormat::kUint8:
+      return kUint8CanvasPixelFormatName;
+  };
+  CHECK(false);
+  return "";
 }
 
 SkColorType CanvasColorParams::GetSkColorType() const {
-  return CanvasPixelFormatToSkColorType(pixel_format_);
+  switch (pixel_format_) {
+    case CanvasPixelFormat::kF16:
+      return kRGBA_F16_SkColorType;
+    case CanvasPixelFormat::kUint8:
+      return kN32_SkColorType;
+  }
+  NOTREACHED();
+  return kN32_SkColorType;
 }
 
 
@@ -116,14 +143,14 @@ uint8_t CanvasColorParams::BytesPerPixel() const {
 }
 
 gfx::ColorSpace CanvasColorParams::GetStorageGfxColorSpace() const {
-  return PredefinedColorSpaceToGfxColorSpace(color_space_);
+  return CanvasColorSpaceToGfxColorSpace(color_space_);
 }
 
 sk_sp<SkColorSpace> CanvasColorParams::GetSkColorSpace() const {
   static_assert(kN32_SkColorType == kRGBA_8888_SkColorType ||
                     kN32_SkColorType == kBGRA_8888_SkColorType,
                 "Unexpected kN32_SkColorType value.");
-  return PredefinedColorSpaceToSkColorSpace(color_space_);
+  return CanvasColorSpaceToSkColorSpace(color_space_);
 }
 
 }  // namespace blink

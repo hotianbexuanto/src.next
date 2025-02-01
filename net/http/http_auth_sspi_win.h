@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,13 +8,10 @@
 #ifndef NET_HTTP_HTTP_AUTH_SSPI_WIN_H_
 #define NET_HTTP_HTTP_AUTH_SSPI_WIN_H_
 
-#include <windows.h>
-
-#include "base/memory/raw_ptr.h"
-
 // security.h needs to be included for CredHandle. Unfortunately CredHandle
 // is a typedef and can't be forward declared.
 #define SECURITY_WIN32 1
+#include <windows.h>
 #include <security.h>
 
 #include <string>
@@ -177,7 +174,7 @@ class NET_EXPORT_PRIVATE HttpAuthSSPI : public HttpAuthMechanism {
 
   void ResetSecurityContext();
 
-  raw_ptr<SSPILibrary> library_;
+  SSPILibrary* library_;
   HttpAuth::Scheme scheme_;
   std::string decoded_server_auth_token_;
   CredHandle cred_;

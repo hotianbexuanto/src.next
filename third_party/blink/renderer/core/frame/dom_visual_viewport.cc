@@ -27,18 +27,14 @@
 
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
-#include "third_party/blink/renderer/core/event_target_names.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
-#include "third_party/blink/renderer/core/geometry/dom_rect.h"
 #include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
 #include "third_party/blink/renderer/core/page/page.h"
-#include "third_party/blink/renderer/core/page/scrolling/sync_scroll_attempt_heuristic.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
-#include "third_party/blink/renderer/platform/widget/frame_widget.h"
 
 namespace blink {
 
@@ -49,7 +45,7 @@ DOMVisualViewport::~DOMVisualViewport() = default;
 
 void DOMVisualViewport::Trace(Visitor* visitor) const {
   visitor->Trace(window_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
 }
 
 const AtomicString& DOMVisualViewport::InterfaceName() const {
@@ -62,7 +58,7 @@ ExecutionContext* DOMVisualViewport::GetExecutionContext() const {
 
 float DOMVisualViewport::offsetLeft() const {
   LocalFrame* frame = window_->GetFrame();
-  if (!frame || !frame->IsOutermostMainFrame())
+  if (!frame || !frame->IsMainFrame())
     return 0;
 
   if (Page* page = frame->GetPage())
@@ -73,7 +69,7 @@ float DOMVisualViewport::offsetLeft() const {
 
 float DOMVisualViewport::offsetTop() const {
   LocalFrame* frame = window_->GetFrame();
-  if (!frame || !frame->IsOutermostMainFrame())
+  if (!frame || !frame->IsMainFrame())
     return 0;
 
   if (Page* page = frame->GetPage())
@@ -95,18 +91,11 @@ float DOMVisualViewport::pageLeft() const {
   if (!view || !view->LayoutViewport())
     return 0;
 
-  // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
-  // impact is understood.
-  SyncScrollAttemptHeuristic::DidAccessScrollOffset();
-
   frame->GetDocument()->UpdateStyleAndLayout(DocumentUpdateReason::kJavaScript);
-  float viewport_x = view->LayoutViewport()->GetWebExposedScrollOffset().x();
-
-  if (frame->IsMainFrame() && page->GetVisualViewport().IsActiveViewport())
-    viewport_x += page->GetVisualViewport().GetWebExposedScrollOffset().x();
-
+  float viewport_x = page->GetVisualViewport().GetScrollOffset().Width() +
+                     view->LayoutViewport()->GetScrollOffset().Width();
   return AdjustForAbsoluteZoom::AdjustScroll(viewport_x,
-                                             frame->LayoutZoomFactor());
+                                             frame->PageZoomFactor());
 }
 
 float DOMVisualViewport::pageTop() const {
@@ -122,18 +111,11 @@ float DOMVisualViewport::pageTop() const {
   if (!view || !view->LayoutViewport())
     return 0;
 
-  // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
-  // impact is understood.
-  SyncScrollAttemptHeuristic::DidAccessScrollOffset();
-
   frame->GetDocument()->UpdateStyleAndLayout(DocumentUpdateReason::kJavaScript);
-  float viewport_y = view->LayoutViewport()->GetWebExposedScrollOffset().y();
-
-  if (frame->IsMainFrame() && page->GetVisualViewport().IsActiveViewport())
-    viewport_y += page->GetVisualViewport().GetWebExposedScrollOffset().y();
-
+  float viewport_y = page->GetVisualViewport().GetScrollOffset().Height() +
+                     view->LayoutViewport()->GetScrollOffset().Height();
   return AdjustForAbsoluteZoom::AdjustScroll(viewport_y,
-                                             frame->LayoutZoomFactor());
+                                             frame->PageZoomFactor());
 }
 
 double DOMVisualViewport::width() const {
@@ -141,15 +123,15 @@ double DOMVisualViewport::width() const {
   if (!frame)
     return 0;
 
-  if (!frame->IsOutermostMainFrame()) {
+  if (!frame->IsMainFrame()) {
     // Update layout to ensure scrollbars are up-to-date.
     frame->GetDocument()->UpdateStyleAndLayout(
         DocumentUpdateReason::kJavaScript);
     auto* scrollable_area = frame->View()->LayoutViewport();
     float width =
-        scrollable_area->VisibleContentRect(kExcludeScrollbars).width();
-    return AdjustForAbsoluteZoom::AdjustInt(ClampTo<int>(ceilf(width)),
-                                            frame->LayoutZoomFactor());
+        scrollable_area->VisibleContentRect(kExcludeScrollbars).Width();
+    return AdjustForAbsoluteZoom::AdjustInt(clampTo<int>(ceilf(width)),
+                                            frame->PageZoomFactor());
   }
 
   if (Page* page = frame->GetPage())
@@ -163,15 +145,15 @@ double DOMVisualViewport::height() const {
   if (!frame)
     return 0;
 
-  if (!frame->IsOutermostMainFrame()) {
+  if (!frame->IsMainFrame()) {
     // Update layout to ensure scrollbars are up-to-date.
     frame->GetDocument()->UpdateStyleAndLayout(
         DocumentUpdateReason::kJavaScript);
     auto* scrollable_area = frame->View()->LayoutViewport();
     float height =
-        scrollable_area->VisibleContentRect(kExcludeScrollbars).height();
-    return AdjustForAbsoluteZoom::AdjustInt(ClampTo<int>(ceilf(height)),
-                                            frame->LayoutZoomFactor());
+        scrollable_area->VisibleContentRect(kExcludeScrollbars).Height();
+    return AdjustForAbsoluteZoom::AdjustInt(clampTo<int>(ceilf(height)),
+                                            frame->PageZoomFactor());
   }
 
   if (Page* page = frame->GetPage())
@@ -185,7 +167,7 @@ double DOMVisualViewport::scale() const {
   if (!frame)
     return 0;
 
-  if (!frame->IsOutermostMainFrame())
+  if (!frame->IsMainFrame())
     return 1;
 
   if (Page* page = window_->GetFrame()->GetPage())

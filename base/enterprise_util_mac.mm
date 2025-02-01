@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,11 +7,10 @@
 #import <OpenDirectory/OpenDirectory.h>
 
 #include <string>
-#include <string_view>
 #include <vector>
 
-#include "base/apple/foundation_util.h"
 #include "base/logging.h"
+#include "base/mac/foundation_util.h"
 #include "base/process/launch.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -19,93 +18,148 @@
 
 namespace base {
 
-bool IsManagedDevice() {
-  // MDM enrollment indicates the device is actively being managed. Simply being
-  // joined to a domain, however, does not.
-  base::MacDeviceManagementState mdm_state =
-      base::IsDeviceRegisteredWithManagement();
-  return mdm_state == base::MacDeviceManagementState::kLimitedMDMEnrollment ||
-         mdm_state == base::MacDeviceManagementState::kFullMDMEnrollment ||
-         mdm_state == base::MacDeviceManagementState::kDEPMDMEnrollment;
-}
-
-bool IsEnterpriseDevice() {
-  // Domain join is a basic indicator of being an enterprise device.
+bool IsMachineExternallyManaged() {
   DeviceUserDomainJoinState join_state = AreDeviceAndUserJoinedToDomain();
   return join_state.device_joined || join_state.user_joined;
 }
 
-MacDeviceManagementState IsDeviceRegisteredWithManagement() {
-  static MacDeviceManagementState state = [] {
-    std::vector<std::string> profiles_argv{"/usr/bin/profiles", "status",
-                                           "-type", "enrollment"};
+MacDeviceManagementStateOld IsDeviceRegisteredWithManagementOld() {
+  static MacDeviceManagementStateOld state = [] {
+    @autoreleasepool {
+      std::vector<std::string> profiler_argv{"/usr/sbin/system_profiler",
+                                             "SPConfigurationProfileDataType",
+                                             "-detailLevel",
+                                             "mini",
+                                             "-timeout",
+                                             "15",
+                                             "-xml"};
 
-    std::string profiles_stdout;
-    if (!GetAppOutput(profiles_argv, &profiles_stdout)) {
-      LOG(WARNING) << "Could not get profiles output.";
-      return MacDeviceManagementState::kFailureAPIUnavailable;
-    }
+      std::string profiler_stdout;
+      if (!GetAppOutput(profiler_argv, &profiler_stdout)) {
+        LOG(WARNING) << "Could not get system_profiler output.";
+        return MacDeviceManagementStateOld::kFailureAPIUnavailable;
+      };
 
-    // Sample output of `profiles` with full MDM enrollment:
-    // Enrolled via DEP: Yes
-    // MDM enrollment: Yes (User Approved)
-    // MDM server: https://applemdm.example.com/some/path?foo=bar
-    StringPairs property_states;
-    if (!SplitStringIntoKeyValuePairs(profiles_stdout, ':', '\n',
-                                      &property_states)) {
-      return MacDeviceManagementState::kFailureUnableToParseResult;
-    }
+      NSArray* root = base::mac::ObjCCast<NSArray>([NSPropertyListSerialization
+          propertyListWithData:[SysUTF8ToNSString(profiler_stdout)
+                                   dataUsingEncoding:NSUTF8StringEncoding]
+                       options:NSPropertyListImmutable
+                        format:nil
+                         error:nil]);
+      if (!root) {
+        LOG(WARNING) << "Could not parse system_profiler output.";
+        return MacDeviceManagementStateOld::kFailureUnableToParseResult;
+      };
 
-    bool enrolled_via_dep = false;
-    bool mdm_enrollment_not_approved = false;
-    bool mdm_enrollment_user_approved = false;
+      for (NSDictionary* results in root) {
+        for (NSDictionary* dict in results[@"_items"]) {
+          for (NSDictionary* device_config_profiles in dict[@"_items"]) {
+            for (NSDictionary* profile_item in
+                     device_config_profiles[@"_items"]) {
+              if (![profile_item[@"_name"] isEqual:@"com.apple.mdm"])
+                continue;
 
-    for (const auto& property_state : property_states) {
-      std::string_view property =
-          TrimString(property_state.first, kWhitespaceASCII, TRIM_ALL);
-      std::string_view state =
-          TrimString(property_state.second, kWhitespaceASCII, TRIM_ALL);
+              NSString* payload_data =
+                  profile_item[@"spconfigprofile_payload_data"];
+              NSDictionary* payload_data_dict =
+                  base::mac::ObjCCast<NSDictionary>([NSPropertyListSerialization
+                      propertyListWithData:
+                          [payload_data dataUsingEncoding:NSUTF8StringEncoding]
+                                   options:NSPropertyListImmutable
+                                    format:nil
+                                     error:nil]);
 
-      if (property == "Enrolled via DEP") {
-        if (state == "Yes") {
-          enrolled_via_dep = true;
-        } else if (state != "No") {
-          return MacDeviceManagementState::kFailureUnableToParseResult;
+              if (!payload_data_dict)
+                continue;
+
+              // Verify that the URL validates.
+              if ([NSURL URLWithString:payload_data_dict[@"CheckInURL"]])
+                return MacDeviceManagementStateOld::kMDMEnrollment;
+            }
+          }
         }
-      } else if (property == "MDM enrollment") {
-        if (state == "Yes") {
-          mdm_enrollment_not_approved = true;
-        } else if (state == "Yes (User Approved)") {
-          mdm_enrollment_user_approved = true;
-        } else if (state != "No") {
-          return MacDeviceManagementState::kFailureUnableToParseResult;
-        }
-      } else {
-        // Ignore any other output lines, for future extensibility.
       }
-    }
 
-    if (!enrolled_via_dep && !mdm_enrollment_not_approved &&
-        !mdm_enrollment_user_approved) {
-      return MacDeviceManagementState::kNoEnrollment;
+      return MacDeviceManagementStateOld::kNoEnrollment;
     }
+  }();
 
-    if (!enrolled_via_dep && mdm_enrollment_not_approved &&
-        !mdm_enrollment_user_approved) {
-      return MacDeviceManagementState::kLimitedMDMEnrollment;
+  return state;
+}
+
+MacDeviceManagementStateNew IsDeviceRegisteredWithManagementNew() {
+  static MacDeviceManagementStateNew state = [] {
+    if (@available(macOS 10.13.4, *)) {
+      std::vector<std::string> profiles_argv{"/usr/bin/profiles", "status",
+                                             "-type", "enrollment"};
+
+      std::string profiles_stdout;
+      if (!GetAppOutput(profiles_argv, &profiles_stdout)) {
+        LOG(WARNING) << "Could not get profiles output.";
+        return MacDeviceManagementStateNew::kFailureAPIUnavailable;
+      }
+
+      // Sample output of `profiles` with full MDM enrollment:
+      // Enrolled via DEP: Yes
+      // MDM enrollment: Yes (User Approved)
+      // MDM server: https://applemdm.example.com/some/path?foo=bar
+      StringPairs property_states;
+      if (!SplitStringIntoKeyValuePairs(profiles_stdout, ':', '\n',
+                                        &property_states)) {
+        return MacDeviceManagementStateNew::kFailureUnableToParseResult;
+      }
+
+      bool enrolled_via_dep = false;
+      bool mdm_enrollment_not_approved = false;
+      bool mdm_enrollment_user_approved = false;
+
+      for (const auto& property_state : property_states) {
+        StringPiece property =
+            TrimString(property_state.first, kWhitespaceASCII, TRIM_ALL);
+        StringPiece state =
+            TrimString(property_state.second, kWhitespaceASCII, TRIM_ALL);
+
+        if (property == "Enrolled via DEP") {
+          if (state == "Yes")
+            enrolled_via_dep = true;
+          else if (state != "No")
+            return MacDeviceManagementStateNew::kFailureUnableToParseResult;
+        } else if (property == "MDM enrollment") {
+          if (state == "Yes")
+            mdm_enrollment_not_approved = true;
+          else if (state == "Yes (User Approved)")
+            mdm_enrollment_user_approved = true;
+          else if (state != "No")
+            return MacDeviceManagementStateNew::kFailureUnableToParseResult;
+        } else {
+          // Ignore any other output lines, for future extensibility.
+        }
+      }
+
+      if (!enrolled_via_dep && !mdm_enrollment_not_approved &&
+          !mdm_enrollment_user_approved) {
+        return MacDeviceManagementStateNew::kNoEnrollment;
+      }
+
+      if (!enrolled_via_dep && mdm_enrollment_not_approved &&
+          !mdm_enrollment_user_approved) {
+        return MacDeviceManagementStateNew::kLimitedMDMEnrollment;
+      }
+
+      if (!enrolled_via_dep && !mdm_enrollment_not_approved &&
+          mdm_enrollment_user_approved) {
+        return MacDeviceManagementStateNew::kFullMDMEnrollment;
+      }
+
+      if (enrolled_via_dep && !mdm_enrollment_not_approved &&
+          mdm_enrollment_user_approved) {
+        return MacDeviceManagementStateNew::kDEPMDMEnrollment;
+      }
+
+      return MacDeviceManagementStateNew::kFailureUnableToParseResult;
+    } else {
+      return MacDeviceManagementStateNew::kFailureAPIUnavailable;
     }
-
-    if (!enrolled_via_dep && !mdm_enrollment_not_approved &&
-        mdm_enrollment_user_approved) {
-      return MacDeviceManagementState::kFullMDMEnrollment;
-    }
-
-    if (enrolled_via_dep && !mdm_enrollment_not_approved &&
-        mdm_enrollment_user_approved) {
-      return MacDeviceManagementState::kDEPMDMEnrollment;
-    }
-
-    return MacDeviceManagementState::kFailureUnableToParseResult;
   }();
 
   return state;
@@ -113,8 +167,7 @@ MacDeviceManagementState IsDeviceRegisteredWithManagement() {
 
 DeviceUserDomainJoinState AreDeviceAndUserJoinedToDomain() {
   static DeviceUserDomainJoinState state = [] {
-    DeviceUserDomainJoinState state{.device_joined = false,
-                                    .user_joined = false};
+    DeviceUserDomainJoinState state{false, false};
 
     @autoreleasepool {
       ODSession* session = [ODSession defaultSession];
@@ -123,23 +176,27 @@ DeviceUserDomainJoinState AreDeviceAndUserJoinedToDomain() {
         return state;
       }
 
-      // Machines that are domain-joined have nodes under "/LDAPv3" or "/Active
-      // Directory". See https://stackoverflow.com/questions/32470557/ and
-      // https://stackoverflow.com/questions/69093499/, respectively, for
-      // examples.
       NSError* error = nil;
-      NSArray<NSString*>* node_names = [session nodeNamesAndReturnError:&error];
-      if (!node_names) {
+
+      NSArray<NSString*>* all_node_names =
+          [session nodeNamesAndReturnError:&error];
+      if (!all_node_names) {
         DLOG(WARNING) << "ODSession failed to give node names: "
                       << error.localizedDescription.UTF8String;
         return state;
       }
 
-      for (NSString* node_name in node_names) {
-        if ([node_name hasPrefix:@"/LDAPv3"] ||
-            [node_name hasPrefix:@"/Active Directory"]) {
-          state.device_joined = true;
-        }
+      NSUInteger num_nodes = all_node_names.count;
+      if (num_nodes < 3) {
+        DLOG(WARNING) << "ODSession returned too few node names: "
+                      << all_node_names.description.UTF8String;
+        return state;
+      }
+
+      if (num_nodes > 3) {
+        // Non-enterprise machines have:"/Search", "/Search/Contacts",
+        // "/Local/Default". Everything else would be enterprise management.
+        state.device_joined = true;
       }
 
       ODNode* node = [ODNode nodeWithSession:session
@@ -162,7 +219,7 @@ DeviceUserDomainJoinState AreDeviceAndUserJoinedToDomain() {
                                         error:&error];
       if (query == nil) {
         DLOG(WARNING) << "ODSession cannot create user query: "
-                      << error.localizedDescription.UTF8String;
+                      << mac::NSToCFCast(error);
         return state;
       }
 
@@ -179,13 +236,12 @@ DeviceUserDomainJoinState AreDeviceAndUserJoinedToDomain() {
       }
 
       for (id element in results) {
-        ODRecord* record = base::apple::ObjCCastStrict<ODRecord>(element);
+        ODRecord* record = mac::ObjCCastStrict<ODRecord>(element);
         NSArray* attributes =
             [record valuesForAttribute:kODAttributeTypeMetaRecordName
                                  error:nil];
         for (id attribute in attributes) {
-          NSString* attribute_value =
-              base::apple::ObjCCastStrict<NSString>(attribute);
+          NSString* attribute_value = mac::ObjCCastStrict<NSString>(attribute);
           // Example: "uid=johnsmith,ou=People,dc=chromium,dc=org
           NSRange domain_controller =
               [attribute_value rangeOfString:@"(^|,)\\s*dc="
@@ -200,8 +256,7 @@ DeviceUserDomainJoinState AreDeviceAndUserJoinedToDomain() {
             [record valuesForAttribute:kODAttributeTypeAltSecurityIdentities
                                  error:nil];
         for (id attribute in attributes) {
-          NSString* attribute_value =
-              base::apple::ObjCCastStrict<NSString>(attribute);
+          NSString* attribute_value = mac::ObjCCastStrict<NSString>(attribute);
           NSRange icloud =
               [attribute_value rangeOfString:@"CN=com.apple.idms.appleid.prd"
                                      options:NSCaseInsensitiveSearch];

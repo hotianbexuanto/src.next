@@ -1,12 +1,11 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <string>
 #include <vector>
 
-#include "base/command_line.h"
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/run_loop.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -20,41 +19,38 @@
 #include "content/public/test/content_browser_test.h"
 #include "content/public/test/test_service.mojom.h"
 #include "content/test/sandbox_status.test-mojom.h"
-#include "media/gpu/buildflags.h"
 #include "mojo/public/cpp/bindings/remote.h"
-#include "ppapi/buildflags/buildflags.h"
 #include "printing/buildflags/buildflags.h"
 #include "sandbox/policy/linux/sandbox_linux.h"
-#include "sandbox/policy/mojom/sandbox.mojom.h"
-#include "sandbox/policy/sandbox_type.h"
 #include "sandbox/policy/switches.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chromeos/ash/components/assistant/buildflags.h"
+#include "chromeos/assistant/buildflags.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
-using sandbox::mojom::Sandbox;
 using sandbox::policy::SandboxLinux;
+using sandbox::policy::SandboxType;
 
 namespace {
 
-std::vector<Sandbox> GetSandboxTypesToTest() {
-  std::vector<Sandbox> types;
+std::vector<SandboxType> GetSandboxTypesToTest() {
+  std::vector<SandboxType> types;
   // We need the standard sandbox config to run this test.
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           sandbox::policy::switches::kNoSandbox)) {
     return types;
   }
 
-  for (Sandbox t = Sandbox::kNoSandbox; t <= Sandbox::kMaxValue;
-       t = static_cast<Sandbox>(static_cast<int>(t) + 1)) {
+  for (SandboxType t = SandboxType::kNoSandbox; t <= SandboxType::kMaxValue;
+       t = static_cast<SandboxType>(static_cast<int>(t) + 1)) {
     // These sandbox types can't be spawned in a utility process.
-    if (t == Sandbox::kRenderer || t == Sandbox::kGpu)
+    if (t == SandboxType::kRenderer || t == SandboxType::kGpu)
       continue;
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-    if (t == Sandbox::kZygoteIntermediateSandbox)
+#if defined(OS_LINUX) || defined(OS_CHROMEOS)
+    if (t == SandboxType::kZygoteIntermediateSandbox)
       continue;
 #endif
+
     types.push_back(t);
   }
   return types;
@@ -68,7 +64,7 @@ constexpr char kTestProcessName[] = "sandbox_test_process";
 
 class UtilityProcessSandboxBrowserTest
     : public ContentBrowserTest,
-      public ::testing::WithParamInterface<Sandbox> {
+      public ::testing::WithParamInterface<SandboxType> {
  public:
   UtilityProcessSandboxBrowserTest() = default;
   ~UtilityProcessSandboxBrowserTest() override = default;
@@ -80,6 +76,22 @@ class UtilityProcessSandboxBrowserTest
     done_closure_ =
         base::BindOnce(&UtilityProcessSandboxBrowserTest::DoneRunning,
                        base::Unretained(this), run_loop.QuitClosure());
+    if (base::FeatureList::IsEnabled(features::kProcessHostOnUI)) {
+      RunUtilityProcessOnProcessThread();
+    } else {
+      GetIOThreadTaskRunner({})->PostTask(
+          FROM_HERE, base::BindOnce(&UtilityProcessSandboxBrowserTest::
+                                        RunUtilityProcessOnProcessThread,
+                                    base::Unretained(this)));
+      run_loop.Run();
+    }
+  }
+
+ private:
+  void RunUtilityProcessOnProcessThread() {
+    DCHECK_CURRENTLY_ON(base::FeatureList::IsEnabled(features::kProcessHostOnUI)
+                            ? content::BrowserThread::UI
+                            : content::BrowserThread::IO);
     UtilityProcessHost* host = new UtilityProcessHost();
     host->SetSandboxType(GetParam());
     host->SetName(u"SandboxTestProcess");
@@ -88,33 +100,31 @@ class UtilityProcessSandboxBrowserTest
 
     host->GetChildProcess()->BindReceiver(
         service_.BindNewPipeAndPassReceiver());
-    service_->GetSandboxStatus(
-        base::BindOnce(&UtilityProcessSandboxBrowserTest::OnGotSandboxStatus,
-                       base::Unretained(this)));
-
-    run_loop.Run();
+    service_->GetSandboxStatus(base::BindOnce(
+        &UtilityProcessSandboxBrowserTest::OnGotSandboxStatusOnProcessThread,
+        base::Unretained(this)));
   }
 
- private:
-  void OnGotSandboxStatus(int32_t sandbox_status) {
-    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  void OnGotSandboxStatusOnProcessThread(int32_t sandbox_status) {
+    DCHECK_CURRENTLY_ON(base::FeatureList::IsEnabled(features::kProcessHostOnUI)
+                            ? content::BrowserThread::UI
+                            : content::BrowserThread::IO);
 
     // Aside from kNoSandbox, every utility process launched explicitly with a
     // sandbox type should always end up with a sandbox.
+    // kVideoCapture is equivalent to kNoSandbox on all platforms except
+    // Fuchsia.
     switch (GetParam()) {
-      case Sandbox::kNoSandbox:
+      case SandboxType::kNoSandbox:
+      case SandboxType::kVideoCapture:
         EXPECT_EQ(sandbox_status, 0);
         break;
 
-      case Sandbox::kCdm:
-#if BUILDFLAG(ENABLE_PPAPI)
-      case Sandbox::kPpapi:
-#endif
-      case Sandbox::kOnDeviceModelExecution:
-      case Sandbox::kPrintCompositor:
-      case Sandbox::kService:
-      case Sandbox::kServiceWithJit:
-      case Sandbox::kUtility: {
+      case SandboxType::kCdm:
+      case SandboxType::kPpapi:
+      case SandboxType::kPrintCompositor:
+      case SandboxType::kService:
+      case SandboxType::kUtility: {
         constexpr int kExpectedFullSandboxFlags =
             SandboxLinux::kPIDNS | SandboxLinux::kNetNS |
             SandboxLinux::kSeccompBPF | SandboxLinux::kYama |
@@ -123,33 +133,19 @@ class UtilityProcessSandboxBrowserTest
         break;
       }
 
-      case Sandbox::kAudio:
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_ASH)
-      case Sandbox::kHardwareVideoDecoding:
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_ASH)
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-      case Sandbox::kHardwareVideoEncoding:
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+      case SandboxType::kAudio:
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-      case Sandbox::kIme:
-      case Sandbox::kTts:
-      case Sandbox::kNearby:
+      case SandboxType::kIme:
+      case SandboxType::kTts:
 #if BUILDFLAG(ENABLE_CROS_LIBASSISTANT)
-      case Sandbox::kLibassistant:
+      case SandboxType::kLibassistant:
 #endif  // BUILDFLAG(ENABLE_CROS_LIBASSISTANT)
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-      case Sandbox::kNetwork:
+      case SandboxType::kNetwork:
 #if BUILDFLAG(ENABLE_PRINTING)
-      case Sandbox::kPrintBackend:
+      case SandboxType::kPrintBackend:
 #endif
-#if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
-      case Sandbox::kScreenAI:
-#endif
-#if BUILDFLAG(IS_LINUX)
-      case Sandbox::kVideoEffects:
-      case Sandbox::kOnDeviceTranslation:
-#endif
-      case Sandbox::kSpeechRecognition: {
+      case SandboxType::kSpeechRecognition: {
         constexpr int kExpectedPartialSandboxFlags =
             SandboxLinux::kSeccompBPF | SandboxLinux::kYama |
             SandboxLinux::kSeccompTSYNC;
@@ -157,10 +153,11 @@ class UtilityProcessSandboxBrowserTest
         break;
       }
 
-      case Sandbox::kGpu:
-      case Sandbox::kRenderer:
-      case Sandbox::kZygoteIntermediateSandbox:
+      case SandboxType::kGpu:
+      case SandboxType::kRenderer:
+      case SandboxType::kZygoteIntermediateSandbox:
         NOTREACHED();
+        break;
     }
 
     service_.reset();
@@ -177,34 +174,6 @@ class UtilityProcessSandboxBrowserTest
 };
 
 IN_PROC_BROWSER_TEST_P(UtilityProcessSandboxBrowserTest, VerifySandboxType) {
-#if BUILDFLAG(IS_LINUX) ||                                  \
-    (BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(USE_VAAPI) && \
-     !BUILDFLAG(USE_V4L2_CODEC))
-  if (GetParam() == Sandbox::kHardwareVideoDecoding) {
-    // TODO(b/195769334): On Linux, this test fails with
-    // Sandbox::kHardwareVideoDecoding because the pre-sandbox hook needs Ozone
-    // which is not available in the utility process that this test starts. We
-    // need to remove the Ozone dependency and re-enable this test.
-    //
-    // TODO(b/195769334): this test fails on linux-chromeos-rel because neither
-    // USE_VAAPI nor USE_V4L2_CODEC are set and the sandbox policy doesn't like
-    // that. In ChromeOS builds for real devices, one of the two flags is set,
-    // so this is not a big problem. However, we should consider making
-    // kHardwareVideoDecoding exist only when either USE_VAAPI or USE_V4L2_CODEC
-    // are set.
-    GTEST_SKIP();
-  }
-#endif
-
-#if BUILDFLAG(IS_LINUX)
-  if (GetParam() == Sandbox::kHardwareVideoEncoding) {
-    // TODO(b/248540499): On Linux, this test fails with
-    // Sandbox::kHardwareVideoEncoding because the pre-sandbox hook needs Ozone
-    // which is not available in the utility process that this test starts. We
-    // need to remove the Ozone dependency and re-enable this test.
-    GTEST_SKIP();
-  }
-#endif
   RunUtilityProcess();
 }
 

@@ -1,16 +1,6 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "extensions/browser/extension_pref_value_map.h"
 
@@ -18,11 +8,11 @@
 
 #include <memory>
 
+#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "components/prefs/pref_store_observer_mock.h"
-#include "extensions/common/api/types.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -48,13 +38,23 @@ static base::Time CreateTime(int64_t t) {
 template <typename BASECLASS>
 class ExtensionPrefValueMapTestBase : public BASECLASS {
  public:
-  using ChromeSettingScope = extensions::api::types::ChromeSettingScope;
+  static const extensions::ExtensionPrefsScope kRegular =
+      extensions::kExtensionPrefsScopeRegular;
+  static const extensions::ExtensionPrefsScope kRegularOnly =
+      extensions::kExtensionPrefsScopeRegularOnly;
+  static const extensions::ExtensionPrefsScope kIncognitoPersistent =
+      extensions::kExtensionPrefsScopeIncognitoPersistent;
+  static const extensions::ExtensionPrefsScope kIncognitoSessionOnly =
+      extensions::kExtensionPrefsScopeIncognitoSessionOnly;
 
   // Returns an empty string if the key is not set.
   std::string GetValue(const char * key, bool incognito) const {
-    const base::Value* value =
-        epvm_.GetEffectivePrefValue(key, incognito, nullptr);
-    return value && value->is_string() ? value->GetString() : std::string();
+    const base::Value *value =
+        epvm_.GetEffectivePrefValue(key, incognito, NULL);
+    std::string string_value;
+    if (value)
+      value->GetAsString(&string_value);
+    return string_value;
   }
 
   // Registers the extension as enabled but without incognito permission.
@@ -77,23 +77,19 @@ class ExtensionPrefValueMapObserverMock
     : public ExtensionPrefValueMap::Observer {
  public:
   ExtensionPrefValueMapObserverMock() {}
-
-  ExtensionPrefValueMapObserverMock(const ExtensionPrefValueMapObserverMock&) =
-      delete;
-  ExtensionPrefValueMapObserverMock& operator=(
-      const ExtensionPrefValueMapObserverMock&) = delete;
-
   ~ExtensionPrefValueMapObserverMock() override {}
 
   MOCK_METHOD1(OnPrefValueChanged, void(const std::string&));
   MOCK_METHOD0(OnInitializationCompleted, void());
   MOCK_METHOD0(OnExtensionPrefValueMapDestruction, void());
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ExtensionPrefValueMapObserverMock);
 };
 
 TEST_F(ExtensionPrefValueMapTest, SetAndGetPrefValue) {
   RegisterExtension(kExt1, CreateTime(10));
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
   EXPECT_EQ("val1", GetValue(kPref1, false));
 }
 
@@ -108,24 +104,16 @@ TEST_F(ExtensionPrefValueMapTest, Override) {
   RegisterExtension(kExt2, CreateTime(20));
   RegisterExtension(kExt3, CreateTime(30));
 
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
-  epvm_.SetExtensionPref(kExt2, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val2"));
-  epvm_.SetExtensionPref(kExt3, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val3"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt2, kPref1, kRegular, CreateVal("val2"));
+  epvm_.SetExtensionPref(kExt3, kPref1, kRegular, CreateVal("val3"));
 
-  epvm_.SetExtensionPref(kExt1, kPref2, ChromeSettingScope::kRegular,
-                         CreateVal("val4"));
-  epvm_.SetExtensionPref(kExt2, kPref2, ChromeSettingScope::kRegular,
-                         CreateVal("val5"));
+  epvm_.SetExtensionPref(kExt1, kPref2, kRegular, CreateVal("val4"));
+  epvm_.SetExtensionPref(kExt2, kPref2, kRegular, CreateVal("val5"));
 
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val6"));
-  epvm_.SetExtensionPref(kExt1, kPref2, ChromeSettingScope::kRegular,
-                         CreateVal("val7"));
-  epvm_.SetExtensionPref(kExt1, kPref3, ChromeSettingScope::kRegular,
-                         CreateVal("val8"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val6"));
+  epvm_.SetExtensionPref(kExt1, kPref2, kRegular, CreateVal("val7"));
+  epvm_.SetExtensionPref(kExt1, kPref3, kRegular, CreateVal("val8"));
 
   EXPECT_EQ("val3", GetValue(kPref1, false));
   EXPECT_EQ("val5", GetValue(kPref2, false));
@@ -137,19 +125,18 @@ TEST_F(ExtensionPrefValueMapTest, OverrideChecks) {
   RegisterExtension(kExt2, CreateTime(20));
   RegisterExtension(kExt3, CreateTime(30));
 
-  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt1, kPref1, nullptr));
-  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt2, kPref1, nullptr));
-  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt3, kPref1, nullptr));
+  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt1, kPref1, NULL));
+  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt2, kPref1, NULL));
+  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt3, kPref1, NULL));
   EXPECT_TRUE(epvm_.CanExtensionControlPref(kExt1, kPref1, false));
   EXPECT_TRUE(epvm_.CanExtensionControlPref(kExt2, kPref1, false));
   EXPECT_TRUE(epvm_.CanExtensionControlPref(kExt3, kPref1, false));
 
-  epvm_.SetExtensionPref(kExt2, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt2, kPref1, kRegular, CreateVal("val1"));
 
-  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt1, kPref1, nullptr));
-  EXPECT_TRUE(epvm_.DoesExtensionControlPref(kExt2, kPref1, nullptr));
-  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt3, kPref1, nullptr));
+  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt1, kPref1, NULL));
+  EXPECT_TRUE(epvm_.DoesExtensionControlPref(kExt2, kPref1, NULL));
+  EXPECT_FALSE(epvm_.DoesExtensionControlPref(kExt3, kPref1, NULL));
   EXPECT_FALSE(epvm_.CanExtensionControlPref(kExt1, kPref1, false));
   EXPECT_TRUE(epvm_.CanExtensionControlPref(kExt2, kPref1, false));
   EXPECT_TRUE(epvm_.CanExtensionControlPref(kExt3, kPref1, false));
@@ -157,8 +144,7 @@ TEST_F(ExtensionPrefValueMapTest, OverrideChecks) {
 
 TEST_F(ExtensionPrefValueMapTest, SetAndGetPrefValueIncognito) {
   RegisterExtension(kExt1, CreateTime(10));
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
   // Check that the value is not propagated until the extension gets incognito
   // permission.
   EXPECT_EQ(std::string(), GetValue(kPref1, true));
@@ -170,8 +156,7 @@ TEST_F(ExtensionPrefValueMapTest, SetAndGetPrefValueIncognito) {
 
 TEST_F(ExtensionPrefValueMapTest, UninstallOnlyExtension) {
   RegisterExtension(kExt1, CreateTime(10));
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
   epvm_.UnregisterExtension(kExt1);
 
   EXPECT_EQ(std::string(), GetValue(kPref1, false));
@@ -182,15 +167,11 @@ TEST_F(ExtensionPrefValueMapTest, UninstallIrrelevantExtension) {
   RegisterExtension(kExt1, CreateTime(10));
   RegisterExtension(kExt2, CreateTime(10));
 
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
-  epvm_.SetExtensionPref(kExt2, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val2"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt2, kPref1, kRegular, CreateVal("val2"));
 
-  epvm_.SetExtensionPref(kExt1, kPref2, ChromeSettingScope::kRegular,
-                         CreateVal("val3"));
-  epvm_.SetExtensionPref(kExt2, kPref2, ChromeSettingScope::kRegular,
-                         CreateVal("val4"));
+  epvm_.SetExtensionPref(kExt1, kPref2, kRegular, CreateVal("val3"));
+  epvm_.SetExtensionPref(kExt2, kPref2, kRegular, CreateVal("val4"));
 
   epvm_.UnregisterExtension(kExt1);
 
@@ -204,17 +185,12 @@ TEST_F(ExtensionPrefValueMapTest, UninstallExtensionFromTop) {
   RegisterExtension(kExt2, CreateTime(20));
   RegisterExtension(kExt3, CreateTime(30));
 
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
-  epvm_.SetExtensionPref(kExt2, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val2"));
-  epvm_.SetExtensionPref(kExt3, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val3"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt2, kPref1, kRegular, CreateVal("val2"));
+  epvm_.SetExtensionPref(kExt3, kPref1, kRegular, CreateVal("val3"));
 
-  epvm_.SetExtensionPref(kExt1, kPref2, ChromeSettingScope::kRegular,
-                         CreateVal("val4"));
-  epvm_.SetExtensionPref(kExt3, kPref2, ChromeSettingScope::kRegular,
-                         CreateVal("val5"));
+  epvm_.SetExtensionPref(kExt1, kPref2, kRegular, CreateVal("val4"));
+  epvm_.SetExtensionPref(kExt3, kPref2, kRegular, CreateVal("val5"));
 
   epvm_.UnregisterExtension(kExt3);
 
@@ -228,23 +204,16 @@ TEST_F(ExtensionPrefValueMapTest, UninstallExtensionFromMiddle) {
   RegisterExtension(kExt2, CreateTime(20));
   RegisterExtension(kExt3, CreateTime(30));
 
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
-  epvm_.SetExtensionPref(kExt2, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val2"));
-  epvm_.SetExtensionPref(kExt3, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val3"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt2, kPref1, kRegular, CreateVal("val2"));
+  epvm_.SetExtensionPref(kExt3, kPref1, kRegular, CreateVal("val3"));
 
-  epvm_.SetExtensionPref(kExt1, kPref2, ChromeSettingScope::kRegular,
-                         CreateVal("val4"));
-  epvm_.SetExtensionPref(kExt2, kPref2, ChromeSettingScope::kRegular,
-                         CreateVal("val5"));
+  epvm_.SetExtensionPref(kExt1, kPref2, kRegular, CreateVal("val4"));
+  epvm_.SetExtensionPref(kExt2, kPref2, kRegular, CreateVal("val5"));
 
-  epvm_.SetExtensionPref(kExt1, kPref3, ChromeSettingScope::kRegular,
-                         CreateVal("val6"));
+  epvm_.SetExtensionPref(kExt1, kPref3, kRegular, CreateVal("val6"));
 
-  epvm_.SetExtensionPref(kExt2, kPref4, ChromeSettingScope::kRegular,
-                         CreateVal("val7"));
+  epvm_.SetExtensionPref(kExt2, kPref4, kRegular, CreateVal("val7"));
 
   epvm_.UnregisterExtension(kExt2);
 
@@ -265,26 +234,22 @@ TEST_F(ExtensionPrefValueMapTest, NotifyWhenNeeded) {
   epvm_.AddObserver(&observer);
 
   EXPECT_CALL(observer, OnPrefValueChanged(std::string(kPref1)));
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
   Mock::VerifyAndClearExpectations(&observer);
 
   // Write the same value again.
   EXPECT_CALL(observer, OnPrefValueChanged(std::string(kPref1))).Times(0);
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
   Mock::VerifyAndClearExpectations(&observer);
 
   // Override incognito value.
   EXPECT_CALL(observer, OnPrefValueChanged(std::string(kPref1)));
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val2"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val2"));
   Mock::VerifyAndClearExpectations(&observer);
 
   // Override non-incognito value.
   EXPECT_CALL(observer, OnPrefValueChanged(std::string(kPref1)));
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val3"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val3"));
   Mock::VerifyAndClearExpectations(&observer);
 
   // Disable.
@@ -307,8 +272,7 @@ TEST_F(ExtensionPrefValueMapTest, NotifyWhenNeeded) {
   // Write new value --> no notification after removing observer.
   EXPECT_CALL(observer, OnPrefValueChanged(std::string(kPref1))).Times(0);
   RegisterExtension(kExt1, CreateTime(10));
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val4"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val4"));
   Mock::VerifyAndClearExpectations(&observer);
 }
 
@@ -316,8 +280,7 @@ TEST_F(ExtensionPrefValueMapTest, NotifyWhenNeeded) {
 TEST_F(ExtensionPrefValueMapTest, DisableExt) {
   RegisterExtension(kExt1, CreateTime(10));
 
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
   epvm_.SetExtensionState(kExt1, false);
   EXPECT_EQ(std::string(), GetValue(kPref1, false));
 }
@@ -326,8 +289,7 @@ TEST_F(ExtensionPrefValueMapTest, DisableExt) {
 TEST_F(ExtensionPrefValueMapTest, ReenableExt) {
   RegisterExtension(kExt1, CreateTime(10));
 
-  epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
-                         CreateVal("val1"));
+  epvm_.SetExtensionPref(kExt1, kPref1, kRegular, CreateVal("val1"));
   epvm_.SetExtensionState(kExt1, false);
   epvm_.SetExtensionState(kExt1, true);
   EXPECT_EQ("val1", GetValue(kPref1, false));
@@ -401,39 +363,35 @@ TEST_P(ExtensionPrefValueMapTestIncognitoTests, OverrideIncognito) {
   epvm_.RegisterExtension(
       kExt2, CreateTime(20), kEnabled, test.enable_ext2_in_incognito_);
   if (test.val_ext1_regular_) {
-    epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegular,
+    epvm_.SetExtensionPref(kExt1, kPref1, kRegular,
                            CreateVal(strings[test.val_ext1_regular_]));
   }
   if (test.val_ext1_regular_only_) {
-    epvm_.SetExtensionPref(kExt1, kPref1, ChromeSettingScope::kRegularOnly,
+    epvm_.SetExtensionPref(kExt1, kPref1, kRegularOnly,
                            CreateVal(strings[test.val_ext1_regular_only_]));
   }
   if (test.val_ext1_incognito_pers_) {
-    epvm_.SetExtensionPref(kExt1, kPref1,
-                           ChromeSettingScope::kIncognitoPersistent,
+    epvm_.SetExtensionPref(kExt1, kPref1, kIncognitoPersistent,
                            CreateVal(strings[test.val_ext1_incognito_pers_]));
   }
   if (test.val_ext1_incognito_sess_) {
-    epvm_.SetExtensionPref(kExt1, kPref1,
-                           ChromeSettingScope::kIncognitoSessionOnly,
+    epvm_.SetExtensionPref(kExt1, kPref1, kIncognitoSessionOnly,
                            CreateVal(strings[test.val_ext1_incognito_sess_]));
   }
   if (test.val_ext2_regular_) {
-    epvm_.SetExtensionPref(kExt2, kPref1, ChromeSettingScope::kRegular,
+    epvm_.SetExtensionPref(kExt2, kPref1, kRegular,
                            CreateVal(strings[test.val_ext2_regular_]));
   }
   if (test.val_ext2_regular_only_) {
-    epvm_.SetExtensionPref(kExt2, kPref1, ChromeSettingScope::kRegularOnly,
+    epvm_.SetExtensionPref(kExt2, kPref1, kRegularOnly,
                            CreateVal(strings[test.val_ext2_regular_only_]));
   }
   if (test.val_ext2_incognito_pers_) {
-    epvm_.SetExtensionPref(kExt2, kPref1,
-                           ChromeSettingScope::kIncognitoPersistent,
+    epvm_.SetExtensionPref(kExt2, kPref1, kIncognitoPersistent,
                            CreateVal(strings[test.val_ext2_incognito_pers_]));
   }
   if (test.val_ext2_incognito_sess_) {
-    epvm_.SetExtensionPref(kExt2, kPref1,
-                           ChromeSettingScope::kIncognitoSessionOnly,
+    epvm_.SetExtensionPref(kExt2, kPref1, kIncognitoSessionOnly,
                            CreateVal(strings[test.val_ext2_incognito_sess_]));
   }
   std::string actual;

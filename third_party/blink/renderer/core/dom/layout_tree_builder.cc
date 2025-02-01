@@ -39,7 +39,6 @@
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_text.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
-#include "third_party/blink/renderer/core/layout/layout_view_transition_root.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
 #include "third_party/blink/renderer/core/svg_names.h"
 
@@ -48,51 +47,24 @@ namespace blink {
 LayoutTreeBuilderForElement::LayoutTreeBuilderForElement(
     Element& element,
     Node::AttachContext& context,
-    const ComputedStyle* style)
-    : LayoutTreeBuilder(element, context, style) {
+    const ComputedStyle* style,
+    LegacyLayout legacy)
+    : LayoutTreeBuilder(element, context, style), legacy_(legacy) {
   DCHECK(style_);
   DCHECK(!style_->IsEnsuredInDisplayNone());
 }
 
 LayoutObject* LayoutTreeBuilderForElement::NextLayoutObject() const {
-  if (node_->IsFirstLetterPseudoElement()) {
+  if (node_->IsFirstLetterPseudoElement())
     return context_.next_sibling;
-  }
-  // ::scroll-marker pseudo elements are always attached one after another.
-  if (node_->IsScrollMarkerPseudoElement()) {
-    return nullptr;
-  }
-  if (style_->IsRenderedInTopLayer(*node_)) {
-    if (LayoutObject* next_in_top_layer =
-            LayoutTreeBuilderTraversal::NextInTopLayer(*node_)) {
-      return next_in_top_layer;
-    }
-
-    // We are at the end of the top layer elements. If we're in a transition,
-    // the ::view-transition is rendered on top of the top layer elements and
-    // its "snapshot containing block" is appended as the last child of the
-    // LayoutView. Otherwise, this returns nullptr and we're at the end.
-    return node_->GetDocument().GetLayoutView()->GetViewTransitionRoot();
-  }
+  if (node_->IsInTopLayer())
+    return LayoutTreeBuilderTraversal::NextInTopLayer(*node_);
   return LayoutTreeBuilder::NextLayoutObject();
 }
 
 LayoutObject* LayoutTreeBuilderForElement::ParentLayoutObject() const {
-  if (style_->IsRenderedInTopLayer(*node_)) {
+  if (node_->IsInTopLayer())
     return node_->GetDocument().GetLayoutView();
-  }
-#if DCHECK_IS_ON()
-  // Box of ::scroll-marker-group is previous/next sibling of
-  // its originating element, so the parent should be originating element's
-  // parent.
-  if (node_->IsScrollMarkerGroupPseudoElement()) {
-    Element* originating_element =
-        To<PseudoElement>(node_)->UltimateOriginatingElement();
-    ContainerNode* parent_element =
-        LayoutTreeBuilderTraversal::LayoutParent(*originating_element);
-    DCHECK_EQ(parent_element->GetLayoutObject(), context_.parent);
-  }
-#endif  // DCHECK_IS_ON()
   return context_.parent;
 }
 
@@ -103,23 +75,13 @@ void LayoutTreeBuilderForElement::CreateLayoutObject() {
     return;
   if (!parent_layout_object->CanHaveChildren())
     return;
-
-  // If we are in the top layer and the parent layout object without top layer
-  // adjustment can't have children, then don't render.
-  // https://github.com/w3c/csswg-drafts/issues/6939#issuecomment-1016671534
-  if (style_->IsRenderedInTopLayer(*node_) && context_.parent &&
-      !context_.parent->CanHaveChildren() &&
-      node_->GetPseudoId() != kPseudoIdBackdrop) {
-    return;
-  }
-
   if (node_->IsPseudoElement() &&
       !CanHaveGeneratedChildren(*parent_layout_object))
     return;
   if (!node_->LayoutObjectIsNeeded(*style_))
     return;
 
-  LayoutObject* new_layout_object = node_->CreateLayoutObject(*style_);
+  LayoutObject* new_layout_object = node_->CreateLayoutObject(*style_, legacy_);
   if (!new_layout_object)
     return;
 
@@ -136,31 +98,29 @@ void LayoutTreeBuilderForElement::CreateLayoutObject() {
       parent_layout_object->IsInsideFlowThread());
 
   LayoutObject* next_layout_object = NextLayoutObject();
+  // SetStyle() can depend on LayoutObject() already being set.
   node_->SetLayoutObject(new_layout_object);
 
   DCHECK(!new_layout_object->Style());
   new_layout_object->SetStyle(style_);
 
+  // Note: Adding new_layout_object instead of LayoutObject(). LayoutObject()
+  // may be a child of new_layout_object.
   parent_layout_object->AddChild(new_layout_object, next_layout_object);
 }
 
-const ComputedStyle*
-LayoutTreeBuilderForText::CreateInlineWrapperStyleForDisplayContentsIfNeeded()
-    const {
+LayoutObject*
+LayoutTreeBuilderForText::CreateInlineWrapperForDisplayContentsIfNeeded() {
   // If the parent element is not a display:contents element, the style and the
   // parent style will be the same ComputedStyle object. Early out here.
   if (style_ == context_.parent->Style())
     return nullptr;
 
-  return node_->GetDocument()
-      .GetStyleResolver()
-      .CreateInheritedDisplayContentsStyleIfNeeded(*style_,
-                                                   context_.parent->StyleRef());
-}
-
-LayoutObject*
-LayoutTreeBuilderForText::CreateInlineWrapperForDisplayContentsIfNeeded(
-    const ComputedStyle* wrapper_style) const {
+  scoped_refptr<ComputedStyle> wrapper_style =
+      node_->GetDocument()
+          .GetStyleResolver()
+          .CreateInheritedDisplayContentsStyleIfNeeded(
+              *style_, context_.parent->StyleRef());
   if (!wrapper_style)
     return nullptr;
 
@@ -180,23 +140,20 @@ LayoutTreeBuilderForText::CreateInlineWrapperForDisplayContentsIfNeeded(
 }
 
 void LayoutTreeBuilderForText::CreateLayoutObject() {
-  const ComputedStyle* style = style_;
+  const ComputedStyle& style = *style_;
   LayoutObject* layout_object_parent = context_.parent;
   LayoutObject* next_layout_object = NextLayoutObject();
-  const ComputedStyle* nullable_wrapper_style =
-      CreateInlineWrapperStyleForDisplayContentsIfNeeded();
-  if (LayoutObject* wrapper = CreateInlineWrapperForDisplayContentsIfNeeded(
-          nullable_wrapper_style)) {
+  if (LayoutObject* wrapper = CreateInlineWrapperForDisplayContentsIfNeeded()) {
     layout_object_parent = wrapper;
     next_layout_object = nullptr;
   }
-  // SVG <text> doesn't accept anonymous LayoutInlines. But the Text should have
-  // the adjusted ComputedStyle.
-  if (nullable_wrapper_style)
-    style = nullable_wrapper_style;
 
-  LayoutText* new_layout_object = node_->CreateTextLayoutObject();
-  if (!layout_object_parent->IsChildAllowed(new_layout_object, *style)) {
+  LegacyLayout legacy_layout = layout_object_parent->ForceLegacyLayout()
+                                   ? LegacyLayout::kForce
+                                   : LegacyLayout::kAuto;
+  LayoutText* new_layout_object =
+      node_->CreateTextLayoutObject(style, legacy_layout);
+  if (!layout_object_parent->IsChildAllowed(new_layout_object, style)) {
     new_layout_object->Destroy();
     return;
   }
@@ -210,7 +167,7 @@ void LayoutTreeBuilderForText::CreateLayoutObject() {
 
   node_->SetLayoutObject(new_layout_object);
   DCHECK(!new_layout_object->Style());
-  new_layout_object->SetStyle(style);
+  new_layout_object->SetStyle(&style);
 
   layout_object_parent->AddChild(new_layout_object, next_layout_object);
 }

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,6 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_variable_data.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
@@ -17,8 +16,7 @@ namespace blink {
 
 class FeatureContext;
 
-// UADefinedVariable contains all user agent defined environment variables with
-// a single dimension.
+// UADefinedVariable contains all the user agent defined environment variables.
 // When adding a new variable the string equivalent needs to be added to
 // |GetVariableName|.
 enum class UADefinedVariable {
@@ -43,6 +41,17 @@ enum class UADefinedVariable {
   kKeyboardInsetWidth,
   kKeyboardInsetHeight,
 
+  // The fold environment variables define a rectangle that is splitting the
+  // layout viewport.
+  // Explainers:
+  // https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/master/Foldables/explainer.md
+  kFoldTop,
+  kFoldRight,
+  kFoldBottom,
+  kFoldLeft,
+  kFoldWidth,
+  kFoldHeight,
+
   // The title bar area variables are four environment variables that define a
   // rectangle by its x and y position as well as its width and height. They are
   // intended for desktop PWAs that use the window controls overlay.
@@ -54,25 +63,11 @@ enum class UADefinedVariable {
   kTitlebarAreaHeight
 };
 
-enum class UADefinedTwoDimensionalVariable {
-  // The viewport segment variables describe logically distinct regions of the
-  // viewport, and are indexed in two dimensions (x and y).
-  kViewportSegmentTop,
-  kViewportSegmentRight,
-  kViewportSegmentBottom,
-  kViewportSegmentLeft,
-  kViewportSegmentWidth,
-  kViewportSegmentHeight,
-};
-
 // StyleEnvironmentVariables stores user agent and user defined CSS environment
 // variables. It has a static root instance that stores global values and
 // each document has a child that stores document level values.
-// Setting and removing values can only be done for the set of variables in
-// UADefinedVariable. Note that UADefinedVariables are not always set/defined,
-// as they depend on the environment.
 class CORE_EXPORT StyleEnvironmentVariables
-    : public GarbageCollected<StyleEnvironmentVariables> {
+    : public RefCounted<StyleEnvironmentVariables> {
  public:
   static StyleEnvironmentVariables& GetRootInstance();
 
@@ -82,49 +77,27 @@ class CORE_EXPORT StyleEnvironmentVariables
   static const AtomicString GetVariableName(
       UADefinedVariable variable,
       const FeatureContext* feature_context);
-  static const AtomicString GetVariableName(
-      UADefinedTwoDimensionalVariable variable,
-      const FeatureContext* feature_context);
-
-  // Create a new root instance.
-  StyleEnvironmentVariables();
 
   // Create a new instance bound to |parent|.
-  StyleEnvironmentVariables(StyleEnvironmentVariables& parent)
-      : parent_(parent) {
-    parent.children_.push_back(this);
-  }
+  static scoped_refptr<StyleEnvironmentVariables> Create(
+      StyleEnvironmentVariables& parent);
 
-  virtual ~StyleEnvironmentVariables() = default;
+  virtual ~StyleEnvironmentVariables();
 
-  virtual void Trace(Visitor* visitor) const {
-    visitor->Trace(children_);
-    visitor->Trace(data_);
-    visitor->Trace(two_dimension_data_);
-    visitor->Trace(parent_);
-  }
+  // Set the value of the variable |name| and invalidate any dependents.
+  void SetVariable(const AtomicString& name,
+                   scoped_refptr<CSSVariableData> value);
 
-  // Tokenize |value| and set it. This will invalidate any dependents.
-  void SetVariable(UADefinedVariable variable, const String& value);
-
-  // Tokenize |value| and set it. This will invalidate any dependents.
-  void SetVariable(UADefinedTwoDimensionalVariable variable,
-                   unsigned first_dimension,
-                   unsigned second_dimenison,
-                   const String& value,
-                   const FeatureContext* feature_context);
+  // Tokenize |value| and set it.
+  void SetVariable(const AtomicString& name, const String& value);
+  void SetVariable(const UADefinedVariable name, const String& value);
 
   // Remove the variable |name| and invalidate any dependents.
-  void RemoveVariable(UADefinedVariable variable);
-  // Remove all the indexed variables referenced by the enum, and invalidate any
-  // dependents.
-  void RemoveVariable(UADefinedTwoDimensionalVariable variable,
-                      const FeatureContext* feature_context);
+  void RemoveVariable(const AtomicString& name);
 
   // Resolve the variable |name| by traversing the tree of
   // |StyleEnvironmentVariables|.
-  virtual CSSVariableData* ResolveVariable(const AtomicString& name,
-                                           WTF::Vector<unsigned> indices);
+  virtual CSSVariableData* ResolveVariable(const AtomicString& name);
 
   // Detach |this| from |parent|.
   void DetachFromParent();
@@ -137,34 +110,27 @@ class CORE_EXPORT StyleEnvironmentVariables
 
  protected:
   friend class StyleEnvironmentVariablesTest;
-  friend class StyleCascadeTest;
-
-  // Tokenize |value| and set it, invalidating dependents along the way.
-  void SetVariable(const AtomicString& name, const String& value);
-  void SetVariable(const AtomicString& name,
-                   unsigned first_dimension,
-                   unsigned second_dimension,
-                   const String& value);
-
-  void RemoveVariable(const AtomicString& name);
 
   void ClearForTesting();
 
+  // Bind this instance to a |parent|. This should only be called once.
+  void BindToParent(StyleEnvironmentVariables& parent);
+
   // Called by the parent to tell the child that variable |name| has changed.
   void ParentInvalidatedVariable(const AtomicString& name);
+
+  StyleEnvironmentVariables() : parent_(nullptr) {}
 
   // Called when variable |name| is changed. This will notify any children that
   // this variable has changed.
   virtual void InvalidateVariable(const AtomicString& name);
 
  private:
-  typedef HeapVector<HeapVector<Member<CSSVariableData>>>
-      TwoDimensionVariableValues;
+  class RootOwner;
 
-  HeapVector<Member<StyleEnvironmentVariables>> children_;
-  HeapHashMap<AtomicString, Member<CSSVariableData>> data_;
-  HeapHashMap<AtomicString, TwoDimensionVariableValues> two_dimension_data_;
-  Member<StyleEnvironmentVariables> parent_;
+  Vector<scoped_refptr<StyleEnvironmentVariables>> children_;
+  HashMap<AtomicString, scoped_refptr<CSSVariableData>> data_;
+  scoped_refptr<StyleEnvironmentVariables> parent_;
 };
 
 }  // namespace blink

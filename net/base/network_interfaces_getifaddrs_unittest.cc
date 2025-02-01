@@ -1,11 +1,6 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "net/base/network_interfaces_getifaddrs.h"
 
@@ -24,7 +19,7 @@ namespace {
 
 class IPAttributesGetterTest : public internal::IPAttributesGetter {
  public:
-  IPAttributesGetterTest() = default;
+  IPAttributesGetterTest() {}
 
   // internal::IPAttributesGetter interface.
   bool IsInitialized() const override { return true; }
@@ -103,7 +98,7 @@ TEST(NetworkInterfacesTest, IfaddrsToNetworkInterfaceList) {
   sockaddr_storage addresses[2];
   ifaddrs interface;
 
-  // Address of offline (not running) links should be ignored.
+  // Address of offline links should be ignored.
   ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_UP, ipv6_address,
                           ipv6_netmask, addresses));
   EXPECT_TRUE(internal::IfaddrsToNetworkInterfaceList(
@@ -111,16 +106,8 @@ TEST(NetworkInterfacesTest, IfaddrsToNetworkInterfaceList) {
       &results));
   EXPECT_EQ(results.size(), 0ul);
 
-  // Address of offline (not up) links should be ignored.
-  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_RUNNING, ipv6_address,
-                          ipv6_netmask, addresses));
-  EXPECT_TRUE(internal::IfaddrsToNetworkInterfaceList(
-      INCLUDE_HOST_SCOPE_VIRTUAL_INTERFACES, &interface, &ip_attributes_getter,
-      &results));
-  EXPECT_EQ(results.size(), 0ul);
-
   // Local address should be trimmed out.
-  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_UP | IFF_RUNNING,
+  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_RUNNING,
                           ipv6_local_address, ipv6_netmask, addresses));
   EXPECT_TRUE(internal::IfaddrsToNetworkInterfaceList(
       INCLUDE_HOST_SCOPE_VIRTUAL_INTERFACES, &interface, &ip_attributes_getter,
@@ -128,8 +115,8 @@ TEST(NetworkInterfacesTest, IfaddrsToNetworkInterfaceList) {
   EXPECT_EQ(results.size(), 0ul);
 
   // vmware address should return by default.
-  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameVmnet, IFF_UP | IFF_RUNNING,
-                          ipv6_address, ipv6_netmask, addresses));
+  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameVmnet, IFF_RUNNING, ipv6_address,
+                          ipv6_netmask, addresses));
   EXPECT_TRUE(internal::IfaddrsToNetworkInterfaceList(
       INCLUDE_HOST_SCOPE_VIRTUAL_INTERFACES, &interface, &ip_attributes_getter,
       &results));
@@ -140,8 +127,8 @@ TEST(NetworkInterfacesTest, IfaddrsToNetworkInterfaceList) {
   results.clear();
 
   // vmware address should be trimmed out if policy specified so.
-  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameVmnet, IFF_UP | IFF_RUNNING,
-                          ipv6_address, ipv6_netmask, addresses));
+  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameVmnet, IFF_RUNNING, ipv6_address,
+                          ipv6_netmask, addresses));
   EXPECT_TRUE(internal::IfaddrsToNetworkInterfaceList(
       EXCLUDE_HOST_SCOPE_VIRTUAL_INTERFACES, &interface, &ip_attributes_getter,
       &results));
@@ -150,8 +137,8 @@ TEST(NetworkInterfacesTest, IfaddrsToNetworkInterfaceList) {
 
   // Addresses with banned attributes should be ignored.
   ip_attributes_getter.set_attributes(IP_ADDRESS_ATTRIBUTE_ANYCAST);
-  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_UP | IFF_RUNNING,
-                          ipv6_address, ipv6_netmask, addresses));
+  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_RUNNING, ipv6_address,
+                          ipv6_netmask, addresses));
   EXPECT_TRUE(internal::IfaddrsToNetworkInterfaceList(
       INCLUDE_HOST_SCOPE_VIRTUAL_INTERFACES, &interface, &ip_attributes_getter,
       &results));
@@ -161,8 +148,8 @@ TEST(NetworkInterfacesTest, IfaddrsToNetworkInterfaceList) {
   // Addresses with allowed attribute IFA_F_TEMPORARY should be returned and
   // attributes should be translated correctly.
   ip_attributes_getter.set_attributes(IP_ADDRESS_ATTRIBUTE_TEMPORARY);
-  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_UP | IFF_RUNNING,
-                          ipv6_address, ipv6_netmask, addresses));
+  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_RUNNING, ipv6_address,
+                          ipv6_netmask, addresses));
   EXPECT_TRUE(internal::IfaddrsToNetworkInterfaceList(
       INCLUDE_HOST_SCOPE_VIRTUAL_INTERFACES, &interface, &ip_attributes_getter,
       &results));
@@ -176,8 +163,8 @@ TEST(NetworkInterfacesTest, IfaddrsToNetworkInterfaceList) {
   // Addresses with allowed attribute IFA_F_DEPRECATED should be returned and
   // attributes should be translated correctly.
   ip_attributes_getter.set_attributes(IP_ADDRESS_ATTRIBUTE_DEPRECATED);
-  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_UP | IFF_RUNNING,
-                          ipv6_address, ipv6_netmask, addresses));
+  ASSERT_TRUE(FillIfaddrs(&interface, kIfnameEm1, IFF_RUNNING, ipv6_address,
+                          ipv6_netmask, addresses));
   EXPECT_TRUE(internal::IfaddrsToNetworkInterfaceList(
       INCLUDE_HOST_SCOPE_VIRTUAL_INTERFACES, &interface, &ip_attributes_getter,
       &results));

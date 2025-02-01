@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 
 #include "base/dcheck_is_on.h"
 #include "third_party/blink/renderer/core/dom/node.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 
 namespace blink {
 
@@ -47,12 +47,12 @@ class FlatTreeNodeData final : public GarbageCollected<FlatTreeNodeData> {
     manually_assigned_slot_ = slot;
   }
 
-  HTMLSlotElement* AssignedSlot() { return assigned_slot_.Get(); }
-  Node* PreviousInAssignedNodes() { return previous_in_assigned_nodes_.Get(); }
-  Node* NextInAssignedNodes() { return next_in_assigned_nodes_.Get(); }
+  HTMLSlotElement* AssignedSlot() { return assigned_slot_; }
+  Node* PreviousInAssignedNodes() { return previous_in_assigned_nodes_; }
+  Node* NextInAssignedNodes() { return next_in_assigned_nodes_; }
 
   HTMLSlotElement* ManuallyAssignedSlot() const {
-    return manually_assigned_slot_.Get();
+    return manually_assigned_slot_;
   }
 
   friend class FlatTreeTraversal;

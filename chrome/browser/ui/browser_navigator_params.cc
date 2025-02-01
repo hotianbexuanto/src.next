@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,7 +13,7 @@
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 
-#if !BUILDFLAG(IS_ANDROID)
+#if !defined(OS_ANDROID)
 #include "chrome/browser/ui/browser.h"
 #endif
 
@@ -21,7 +21,7 @@ using content::GlobalRequestID;
 using content::NavigationController;
 using content::WebContents;
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
 NavigateParams::NavigateParams(std::unique_ptr<WebContents> contents_to_insert)
     : contents_to_insert(std::move(contents_to_insert)) {}
 #else
@@ -33,7 +33,7 @@ NavigateParams::NavigateParams(Browser* a_browser,
 NavigateParams::NavigateParams(Browser* a_browser,
                                std::unique_ptr<WebContents> contents_to_insert)
     : contents_to_insert(std::move(contents_to_insert)), browser(a_browser) {}
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // !defined(OS_ANDROID)
 
 NavigateParams::NavigateParams(Profile* a_profile,
                                const GURL& a_url,
@@ -86,7 +86,7 @@ void NavigateParams::FillNavigateParamsFromOpenURLParams(
   //   The following NavigateParams don't have an equivalent in OpenURLParams:
   //     browser
   //     contents_to_insert
-  //     opened_by_another_window
+  //     created_with_opener
   //     extension_app_id
   //     frame_name
   //     group

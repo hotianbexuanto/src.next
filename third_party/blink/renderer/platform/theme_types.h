@@ -28,39 +28,35 @@
 
 namespace blink {
 
+// Must follow css_value_keywords.json5 order
 // kAutoPart is never returned by ComputedStyle::EffectiveAppearance()
-// ComputedStyle::EffectiveAppearance() returns the effective appearance
-// to render the element by matching the element's computed style to a
-// ControlPart.
-// CSS appearance values do not match 1-to-1 with ControlPart.
 enum ControlPart {
   kNoControlPart,
   kAutoPart,
   kCheckboxPart,
   kRadioPart,
+  kPushButtonPart,
+  kSquareButtonPart,
   kButtonPart,
+  kInnerSpinButtonPart,
   kListboxPart,
+  kMediaSliderPart,
+  kMediaSliderThumbPart,
+  kMediaVolumeSliderPart,
+  kMediaVolumeSliderThumbPart,
   kMediaControlPart,
   kMenulistPart,
   kMenulistButtonPart,
   kMeterPart,
   kProgressBarPart,
-  kSearchFieldPart,
-  kTextFieldPart,
-  kTextAreaPart,
-  kInnerSpinButtonPart,
-  kMediaSliderPart,
-  kMediaSliderThumbPart,
-  kMediaVolumeSliderPart,
-  kMediaVolumeSliderThumbPart,
-  kPushButtonPart,
-  kSquareButtonPart,
   kSliderHorizontalPart,
+  kSliderVerticalPart,
   kSliderThumbHorizontalPart,
   kSliderThumbVerticalPart,
+  kSearchFieldPart,
   kSearchFieldCancelButtonPart,
-  kSliderVerticalPart,
-  kBaseSelectPart,
+  kTextFieldPart,
+  kTextAreaPart,
 };
 
 }  // namespace blink

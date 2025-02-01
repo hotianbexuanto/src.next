@@ -1,11 +1,11 @@
-// Copyright 2012 The Chromium Authors
+// Copyright 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 
 // The only purpose of this class is to allow sending CPU properties
 // from the browser process to sandboxed renderer processes. This is
@@ -22,7 +22,9 @@ import org.jni_zero.NativeMethods;
 //
 @JNINamespace("base::android")
 public abstract class CpuFeatures {
-    /** Return the number of CPU Cores on the device. */
+    /**
+     * Return the number of CPU Cores on the device.
+     */
     public static int getCount() {
         return CpuFeaturesJni.get().getCoreCount();
     }
@@ -39,7 +41,6 @@ public abstract class CpuFeatures {
     @NativeMethods
     interface Natives {
         int getCoreCount();
-
         long getCpuFeatures();
     }
 }

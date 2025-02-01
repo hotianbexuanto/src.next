@@ -1,57 +1,48 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.m.js';
+import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.m.js';
+import 'chrome://resources/cr_elements/shared_style_css.m.js';
+import 'chrome://resources/polymer/v3_0/paper-spinner/paper-spinner-lite.js';
 import './code_section.js';
-import '/strings.m.js';
+import './strings.m.js';
 
-import type {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
-import {assert} from 'chrome://resources/js/assert.js';
-import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
-import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.m.js';
+import {assert} from 'chrome://resources/js/assert.m.js';
+import {html, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {ExtensionsCodeSectionElement} from './code_section.js';
-import {getCss} from './load_error.css.js';
-import {getHtml} from './load_error.html.js';
+import {ExtensionsCodeSectionElement} from './code_section.js';
 
 export interface LoadErrorDelegate {
   /**
    * Attempts to load the previously-attempted unpacked extension.
    */
-  retryLoadUnpacked(retryGuid?: string): Promise<boolean>;
+  retryLoadUnpacked(retryGuid: string): Promise<boolean>;
 }
 
-export interface LoadErrorElement {
+interface ExtensionsLoadErrorElement {
   $: {
     code: ExtensionsCodeSectionElement,
     dialog: CrDialogElement,
   };
 }
 
-export class LoadErrorElement extends CrLitElement {
+class ExtensionsLoadErrorElement extends PolymerElement {
   static get is() {
     return 'extensions-load-error';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return html`{__html_template__}`;
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      delegate: {type: Object},
-      loadError: {type: Object},
-      file_: {type: String},
-      error_: {type: String},
-      retrying_: {type: Boolean},
-      isCodeSectionActive_: {type: Boolean},
-      codeSectionProperties_: {type: Object},
+      delegate: Object,
+      loadError: Object,
+      retrying_: Boolean,
     };
   }
 
@@ -61,46 +52,9 @@ export class LoadErrorElement extends CrLitElement {
     ];
   }
 
-  delegate?: LoadErrorDelegate;
-  loadError?: Error|chrome.developerPrivate.LoadError;
-
-  protected codeSectionProperties_:
-      chrome.developerPrivate.RequestFileSourceResponse|null = null;
-  protected file_?: string;
-  protected error_: string|null = null;
-  protected isCodeSectionActive_?: boolean;
-  protected retrying_: boolean = false;
-
-  override willUpdate(changedProperties: PropertyValues<this>) {
-    super.willUpdate(changedProperties);
-
-    if (changedProperties.has('loadError')) {
-      assert(this.loadError);
-
-      if (this.loadError instanceof Error) {
-        this.file_ = undefined;
-        this.error_ = this.loadError.message;
-        this.isCodeSectionActive_ = false;
-        return;
-      }
-
-      this.file_ = this.loadError.path;
-      this.error_ = this.loadError.error;
-
-      const source = this.loadError.source;
-      // CodeSection expects a RequestFileSourceResponse, rather than an
-      // ErrorFileSource. Massage into place.
-      // TODO(devlin): Make RequestFileSourceResponse use ErrorFileSource.
-      this.codeSectionProperties_ = {
-        beforeHighlight: source ? source.beforeHighlight : '',
-        highlight: source ? source.highlight : '',
-        afterHighlight: source ? source.afterHighlight : '',
-        title: '',
-        message: this.loadError.error,
-      };
-      this.isCodeSectionActive_ = true;
-    }
-  }
+  delegate: LoadErrorDelegate;
+  loadError: chrome.developerPrivate.LoadError;
+  private retrying_: boolean;
 
   show() {
     this.$.dialog.showModal();
@@ -110,14 +64,9 @@ export class LoadErrorElement extends CrLitElement {
     this.$.dialog.close();
   }
 
-  protected onRetryClick_() {
+  private onRetryTap_() {
     this.retrying_ = true;
-    assert(this.delegate);
-    assert(this.loadError);
-    this.delegate
-        .retryLoadUnpacked(
-            this.loadError instanceof Error ? undefined :
-                                              this.loadError.retryGuid)
+    this.delegate.retryLoadUnpacked(this.loadError.retryGuid)
         .then(
             () => {
               this.close();
@@ -127,12 +76,30 @@ export class LoadErrorElement extends CrLitElement {
               this.retrying_ = false;
             });
   }
+
+  private observeLoadErrorChanges_() {
+    assert(this.loadError);
+    const source = this.loadError.source;
+    // CodeSection expects a RequestFileSourceResponse, rather than an
+    // ErrorFileSource. Massage into place.
+    // TODO(devlin): Make RequestFileSourceResponse use ErrorFileSource.
+    const codeSectionProperties = {
+      beforeHighlight: source ? source.beforeHighlight : '',
+      highlight: source ? source.highlight : '',
+      afterHighlight: source ? source.afterHighlight : '',
+      title: '',
+      message: this.loadError.error,
+    };
+
+    this.$.code.code = codeSectionProperties;
+  }
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'extensions-load-error': LoadErrorElement;
+    'extensions-load-error': ExtensionsLoadErrorElement;
   }
 }
 
-customElements.define(LoadErrorElement.is, LoadErrorElement);
+customElements.define(
+    ExtensionsLoadErrorElement.is, ExtensionsLoadErrorElement);

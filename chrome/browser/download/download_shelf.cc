@@ -1,19 +1,19 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/download/download_shelf.h"
 
-#include <optional>
 #include <utility>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/location.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "base/time/time.h"
 #include "chrome/browser/download/download_core_service.h"
 #include "chrome/browser/download/download_core_service_factory.h"
 #include "chrome/browser/download/download_item_model.h"
+#include "chrome/browser/download/download_started_animation.h"
 #include "chrome/browser/download/offline_item_model.h"
 #include "chrome/browser/download/offline_item_model_manager.h"
 #include "chrome/browser/download/offline_item_model_manager_factory.h"
@@ -23,7 +23,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/download/download_started_animation.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/download/public/common/download_item.h"
 #include "components/offline_items_collection/core/offline_content_aggregator.h"
@@ -31,6 +30,7 @@
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/animation/animation.h"
 
 DownloadShelf::DownloadShelf(Browser* browser, Profile* profile)
@@ -44,7 +44,7 @@ void DownloadShelf::AddDownload(DownloadUIModel::DownloadUIModelPtr model) {
     // If we are going to remove the download from the shelf upon completion,
     // wait a few seconds to see if it completes quickly. If it's a small
     // download, then the user won't have time to interact with it.
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&DownloadShelf::ShowDownloadById,
                        weak_ptr_factory_.GetWeakPtr(), model->GetContentId()),
@@ -89,7 +89,7 @@ void DownloadShelf::Unhide() {
 }
 
 base::TimeDelta DownloadShelf::GetTransientDownloadShowDelay() const {
-  return base::Seconds(2);
+  return base::TimeDelta::FromSeconds(2);
 }
 
 void DownloadShelf::ShowDownload(DownloadUIModel::DownloadUIModelPtr download) {
@@ -98,7 +98,7 @@ void DownloadShelf::ShowDownload(DownloadUIModel::DownloadUIModelPtr download) {
     return;
 
   if (!DownloadCoreServiceFactory::GetForBrowserContext(download->profile())
-           ->IsDownloadUiEnabled())
+           ->IsShelfEnabled())
     return;
 
   Unhide();
@@ -144,7 +144,7 @@ void DownloadShelf::ShowDownloadById(
 }
 
 void DownloadShelf::OnGetDownloadDoneForOfflineItem(
-    const std::optional<offline_items_collection::OfflineItem>& item) {
+    const absl::optional<offline_items_collection::OfflineItem>& item) {
   if (item.has_value()) {
     auto* const manager =
         OfflineItemModelManagerFactory::GetForBrowserContext(profile());

@@ -1,15 +1,13 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/css_computed_style_declaration.h"
 
-#include "third_party/blink/renderer/core/dom/dom_token_list.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
-#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 
 namespace blink {
 
@@ -17,9 +15,7 @@ class CSSComputedStyleDeclarationTest : public PageTestBase {};
 
 TEST_F(CSSComputedStyleDeclarationTest, CleanAncestorsNoRecalc) {
   GetDocument().body()->setInnerHTML(R"HTML(
-    <div>
-      <div id=dirty></div>
-    </div>
+    <div id=dirty></div>
     <div>
       <div id=target style='color:green'></div>
     </div>
@@ -27,11 +23,10 @@ TEST_F(CSSComputedStyleDeclarationTest, CleanAncestorsNoRecalc) {
   UpdateAllLifecyclePhasesForTest();
   EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdate());
 
-  GetElementById("dirty")->setAttribute(html_names::kStyleAttr,
-                                        AtomicString("color:pink"));
+  GetDocument().getElementById("dirty")->setAttribute("style", "color:pink");
   EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdate());
 
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   auto* computed = MakeGarbageCollected<CSSComputedStyleDeclaration>(target);
 
   EXPECT_EQ("rgb(0, 128, 0)",
@@ -41,16 +36,14 @@ TEST_F(CSSComputedStyleDeclarationTest, CleanAncestorsNoRecalc) {
 
 TEST_F(CSSComputedStyleDeclarationTest, CleanShadowAncestorsNoRecalc) {
   GetDocument().body()->setInnerHTML(R"HTML(
-    <div>
-      <div id=dirty></div>
-    </div>
+    <div id=dirty></div>
     <div id=host></div>
   )HTML");
 
-  Element* host = GetDocument().getElementById(AtomicString("host"));
+  Element* host = GetDocument().getElementById("host");
 
   ShadowRoot& shadow_root =
-      host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      host->AttachShadowRootInternal(ShadowRootType::kOpen);
   shadow_root.setInnerHTML(R"HTML(
     <div id=target style='color:green'></div>
   )HTML");
@@ -58,11 +51,10 @@ TEST_F(CSSComputedStyleDeclarationTest, CleanShadowAncestorsNoRecalc) {
   UpdateAllLifecyclePhasesForTest();
   EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdate());
 
-  GetElementById("dirty")->setAttribute(html_names::kStyleAttr,
-                                        AtomicString("color:pink"));
+  GetDocument().getElementById("dirty")->setAttribute("style", "color:pink");
   EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdate());
 
-  Element* target = shadow_root.getElementById(AtomicString("target"));
+  Element* target = shadow_root.getElementById("target");
   auto* computed = MakeGarbageCollected<CSSComputedStyleDeclaration>(target);
 
   EXPECT_EQ("rgb(0, 128, 0)",
@@ -70,46 +62,48 @@ TEST_F(CSSComputedStyleDeclarationTest, CleanShadowAncestorsNoRecalc) {
   EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdate());
 }
 
-TEST_F(CSSComputedStyleDeclarationTest, AdjacentInvalidation) {
+TEST_F(CSSComputedStyleDeclarationTest, NeedsAdjacentStyleRecalc) {
   GetDocument().body()->setInnerHTML(R"HTML(
     <style>
-      #b { color: red; }
-      .test + #b { color: green; }
+      #a + #b { color: green }
     </style>
-    <div>
+    <div id="container" style="display:none">
       <span id="a"></span>
-      <span id="b"></span>
+      <span id="b">
+        <span id="c"></span>
+        <span id="d"></span>
+      </span>
     </div>
-    <div id="c"></div>
   )HTML");
 
   UpdateAllLifecyclePhasesForTest();
 
   EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdate());
 
-  Element* a = GetDocument().getElementById(AtomicString("a"));
-  Element* b = GetDocument().getElementById(AtomicString("b"));
-  Element* c = GetDocument().getElementById(AtomicString("c"));
+  Element* container = GetDocument().getElementById("container");
+  Element* c_span = GetDocument().getElementById("c");
+  Element* d_span = GetDocument().getElementById("d");
+
+  d_span->setAttribute("style", "color:pink");
 
   EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdate());
-  EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdateForNode(*a));
-  EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdateForNode(*b));
-  EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdateForNode(*c));
+  EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdateForNode(*d_span));
+  EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdateForNode(*c_span));
+  EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdateForNode(*c_span, true));
+  EXPECT_FALSE(container->NeedsAdjacentStyleRecalc());
 
-  auto* computed = MakeGarbageCollected<CSSComputedStyleDeclaration>(b);
-
-  EXPECT_EQ("rgb(255, 0, 0)",
-            computed->GetPropertyValue(CSSPropertyID::kColor));
-
-  a->classList().Add(AtomicString("test"));
-
-  EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdate());
-  EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdateForNode(*a));
-  EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdateForNode(*b));
-  EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdateForNode(*c));
+  auto* computed = MakeGarbageCollected<CSSComputedStyleDeclaration>(c_span);
 
   EXPECT_EQ("rgb(0, 128, 0)",
             computed->GetPropertyValue(CSSPropertyID::kColor));
+
+  d_span->setAttribute("style", "color:green");
+
+  EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdate());
+  EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdateForNode(*d_span));
+  EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdateForNode(*c_span));
+  EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdateForNode(*c_span, true));
+  EXPECT_TRUE(container->NeedsAdjacentStyleRecalc());
 }
 
 TEST_F(CSSComputedStyleDeclarationTest,
@@ -132,7 +126,7 @@ TEST_F(CSSComputedStyleDeclarationTest, SVGBlockSizeLayoutDependent) {
     </svg>
   )HTML");
 
-  Element* rect = GetDocument().QuerySelector(AtomicString("rect"));
+  Element* rect = GetDocument().QuerySelector("rect");
   auto* computed = MakeGarbageCollected<CSSComputedStyleDeclaration>(rect);
 
   EXPECT_EQ("400px", computed->GetPropertyValue(CSSPropertyID::kBlockSize));
@@ -151,7 +145,7 @@ TEST_F(CSSComputedStyleDeclarationTest, SVGInlineSizeLayoutDependent) {
     </svg>
   )HTML");
 
-  Element* rect = GetDocument().QuerySelector(AtomicString("rect"));
+  Element* rect = GetDocument().QuerySelector("rect");
   auto* computed = MakeGarbageCollected<CSSComputedStyleDeclaration>(rect);
 
   EXPECT_EQ("400px", computed->GetPropertyValue(CSSPropertyID::kInlineSize));
@@ -160,52 +154,6 @@ TEST_F(CSSComputedStyleDeclarationTest, SVGInlineSizeLayoutDependent) {
   EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdateForNode(*rect));
   EXPECT_FALSE(rect->NeedsStyleRecalc());
   EXPECT_FALSE(rect->GetLayoutObject()->NeedsLayout());
-}
-
-TEST_F(CSSComputedStyleDeclarationTest, UseCountDurationZero) {
-  ScopedScrollTimelineForTest scroll_timeline_feature(false);
-  GetDocument().body()->setInnerHTML(R"HTML(
-    <style>
-      div {
-        color: green;
-        /* No animation here. */
-      }
-    </style>
-    <div id=div></div>
-  )HTML");
-  UpdateAllLifecyclePhasesForTest();
-
-  Element* div = GetDocument().getElementById(AtomicString("div"));
-  ASSERT_TRUE(div);
-  auto* style = MakeGarbageCollected<CSSComputedStyleDeclaration>(div);
-
-  // There is no animation property specified at all, so getting the computed
-  // value should not trigger the counter.
-  EXPECT_TRUE(style->GetPropertyCSSValue(CSSPropertyID::kAnimationDuration));
-  EXPECT_FALSE(GetDocument().IsUseCounted(
-      WebFeature::kCSSGetComputedAnimationDurationZero));
-  EXPECT_TRUE(style->GetPropertyCSSValue(CSSPropertyID::kWebkitFontSmoothing));
-  EXPECT_FALSE(GetDocument().IsUseCounted(
-      WebFeature::kCSSGetComputedWebkitFontSmoothingAnimationDurationZero));
-
-  // Set some animation with zero duration.
-  div->SetInlineStyleProperty(CSSPropertyID::kAnimation, "anim 0s linear");
-  UpdateAllLifecyclePhasesForTest();
-
-  // Duration should remain uncounted until we retrieve the computed value.
-  EXPECT_FALSE(GetDocument().IsUseCounted(
-      WebFeature::kCSSGetComputedAnimationDurationZero));
-  EXPECT_TRUE(style->GetPropertyCSSValue(CSSPropertyID::kAnimationDuration));
-  EXPECT_TRUE(GetDocument().IsUseCounted(
-      WebFeature::kCSSGetComputedAnimationDurationZero));
-
-  // Font smoothing count should remain uncounted until we retrieve the computed
-  // value.
-  EXPECT_FALSE(GetDocument().IsUseCounted(
-      WebFeature::kCSSGetComputedWebkitFontSmoothingAnimationDurationZero));
-  EXPECT_TRUE(style->GetPropertyCSSValue(CSSPropertyID::kWebkitFontSmoothing));
-  EXPECT_TRUE(GetDocument().IsUseCounted(
-      WebFeature::kCSSGetComputedWebkitFontSmoothingAnimationDurationZero));
 }
 
 }  // namespace blink

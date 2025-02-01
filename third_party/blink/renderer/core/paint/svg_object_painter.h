@@ -1,13 +1,12 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_SVG_OBJECT_PAINTER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_SVG_OBJECT_PAINTER_H_
 
-#include "cc/paint/paint_flags.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
-#include "third_party/blink/renderer/core/paint/paint_info.h"
+#include "third_party/blink/renderer/platform/graphics/paint/paint_flags.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
 namespace blink {
@@ -15,7 +14,6 @@ namespace blink {
 class AffineTransform;
 class ComputedStyle;
 class GraphicsContext;
-struct SvgContextPaints;
 
 enum LayoutSVGResourceMode {
   kApplyToFillMode,
@@ -26,12 +24,8 @@ class SVGObjectPainter {
   STACK_ALLOCATED();
 
  public:
-  static bool HasVisibleStroke(const ComputedStyle&, const SvgContextPaints*);
-  static bool HasFill(const ComputedStyle&, const SvgContextPaints*);
-
-  SVGObjectPainter(const LayoutObject& layout_object,
-                   const SvgContextPaints* context_paints)
-      : layout_object_(layout_object), context_paints_(context_paints) {
+  SVGObjectPainter(const LayoutObject& layout_object)
+      : layout_object_(layout_object) {
     DCHECK(layout_object.IsSVG());
   }
 
@@ -39,24 +33,22 @@ class SVGObjectPainter {
   // object. Returns true if successful, and the caller can continue to paint
   // using |paint_flags|.
   bool PreparePaint(
-      PaintFlags,
+      const GraphicsContext& context,
+      bool is_rendering_clip_path_as_mask_image,
       const ComputedStyle&,
       LayoutSVGResourceMode,
-      cc::PaintFlags& paint_flags,
+      PaintFlags& paint_flags,
       const AffineTransform* additional_paint_server_transform = nullptr);
 
-  void PaintResourceSubtree(GraphicsContext&,
-                            PaintFlags additional_flags = PaintFlag::kNoFlag);
-
-  SvgContextPaints::ContextPaint ResolveContextPaint(
-      const SVGPaint& initial_paint);
-  std::optional<AffineTransform> ResolveContextTransform(
-      const SVGPaint& initial_paint,
-      const AffineTransform* additional_paint_server_transform);
+  void PaintResourceSubtree(GraphicsContext&);
 
  private:
+  bool ApplyPaintResource(
+      const SVGPaint& paint,
+      const AffineTransform* additional_paint_server_transform,
+      PaintFlags& flags);
+
   const LayoutObject& layout_object_;
-  const SvgContextPaints* context_paints_;
 };
 
 }  // namespace blink

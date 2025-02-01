@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,12 +7,8 @@
 #include <limits.h>
 #include <stddef.h>
 
-#include <utility>
-
-#include "base/check.h"
-#include "base/containers/span.h"
+#include "base/cxx17_backports.h"
 #include "base/logging.h"
-#include "base/notimplemented.h"
 #include "base/rand_util.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "base/win/scoped_handle.h"
@@ -26,7 +22,7 @@ namespace {
 // in sandboxed scenarios as we might have by-name policies that allow pipe
 // creation. Also keep the secure random number generation.
 const wchar_t kPipeNameFormat[] = L"\\\\.\\pipe\\chrome.sync.%u.%u.%lu";
-const size_t kPipePathMax = std::size(kPipeNameFormat) + (3 * 10) + 1;
+const size_t kPipePathMax = base::size(kPipeNameFormat) + (3 * 10) + 1;
 
 // To avoid users sending negative message lengths to Send/Receive
 // we clamp message lengths, which are size_t, to no more than INT_MAX.
@@ -40,8 +36,8 @@ bool CreatePairImpl(ScopedHandle* socket_a,
                     ScopedHandle* socket_b,
                     bool overlapped) {
   DCHECK_NE(socket_a, socket_b);
-  DCHECK(!socket_a->is_valid());
-  DCHECK(!socket_b->is_valid());
+  DCHECK(!socket_a->IsValid());
+  DCHECK(!socket_b->IsValid());
 
   wchar_t name[kPipePathMax];
   ScopedHandle handle_a;
@@ -51,7 +47,7 @@ bool CreatePairImpl(ScopedHandle* socket_a,
 
   do {
     unsigned long rnd_name;
-    RandBytes(byte_span_from_ref(rnd_name));
+    RandBytes(&rnd_name, sizeof(rnd_name));
 
     swprintf(name, kPipePathMax,
              kPipeNameFormat,
@@ -68,9 +64,13 @@ bool CreatePairImpl(ScopedHandle* socket_a,
         kInBufferSize,
         kDefaultTimeoutMilliSeconds,
         NULL));
-  } while (!handle_a.is_valid() && (GetLastError() == ERROR_PIPE_BUSY));
+  } while (!handle_a.IsValid() &&
+           (GetLastError() == ERROR_PIPE_BUSY));
 
-  CHECK(handle_a.is_valid());
+  if (!handle_a.IsValid()) {
+    NOTREACHED();
+    return false;
+  }
 
   // The SECURITY_ANONYMOUS flag means that the server side (handle_a) cannot
   // impersonate the client (handle_b). This allows us not to care which side
@@ -86,12 +86,12 @@ bool CreatePairImpl(ScopedHandle* socket_a,
                                     OPEN_EXISTING,  // opens existing pipe.
                                     flags,
                                     NULL));     // no template file.
-  if (!handle_b.is_valid()) {
+  if (!handle_b.IsValid()) {
     DPLOG(ERROR) << "CreateFileW failed";
     return false;
   }
 
-  if (!ConnectNamedPipe(handle_a.get(), NULL)) {
+  if (!ConnectNamedPipe(handle_a.Get(), NULL)) {
     DWORD error = GetLastError();
     if (error != ERROR_PIPE_CONNECTED) {
       DPLOG(ERROR) << "ConnectNamedPipe failed";
@@ -116,26 +116,28 @@ DWORD GetNextChunkSize(size_t current_pos, size_t max_size) {
 // overlapped fashion and waits for IO completion.  The function also waits
 // on an event that can be used to cancel the operation.  If the operation
 // is cancelled, the function returns and closes the relevant socket object.
-template <typename DataType, typename Function>
+template <typename BufferType, typename Function>
 size_t CancelableFileOperation(Function operation,
                                HANDLE file,
-                               span<DataType> buffer,
+                               BufferType* buffer,
+                               size_t length,
                                WaitableEvent* io_event,
                                WaitableEvent* cancel_event,
                                CancelableSyncSocket* socket,
                                DWORD timeout_in_ms) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
   // The buffer must be byte size or the length check won't make much sense.
-  static_assert(sizeof(DataType) == 1u, "incorrect buffer type");
-  CHECK(!buffer.empty());
-  CHECK_LE(buffer.size(), kMaxMessageLength);
-  CHECK_NE(file, SyncSocket::kInvalidHandle);
+  static_assert(sizeof(buffer[0]) == sizeof(char), "incorrect buffer type");
+  DCHECK_GT(length, 0u);
+  DCHECK_LE(length, kMaxMessageLength);
+  DCHECK_NE(file, SyncSocket::kInvalidHandle);
 
   // Track the finish time so we can calculate the timeout as data is read.
   TimeTicks current_time, finish_time;
   if (timeout_in_ms != INFINITE) {
     current_time = TimeTicks::Now();
-    finish_time = current_time + base::Milliseconds(timeout_in_ms);
+    finish_time =
+        current_time + base::TimeDelta::FromMilliseconds(timeout_in_ms);
   }
 
   size_t count = 0;
@@ -144,22 +146,17 @@ size_t CancelableFileOperation(Function operation,
     OVERLAPPED ol = { 0 };
     ol.hEvent = io_event->handle();
 
-    const DWORD chunk_size = GetNextChunkSize(count, buffer.size());
+    const DWORD chunk = GetNextChunkSize(count, length);
     // This is either the ReadFile or WriteFile call depending on whether
     // we're receiving or sending data.
     DWORD len = 0;
-    auto operation_buffer = buffer.subspan(count, chunk_size);
-    // SAFETY: The below static_cast is in range for DWORD because
-    // `operation_buffer` is constructed with a DWORD length above from
-    // `chunk_size`.
-    const BOOL operation_ok =
-        operation(file, operation_buffer.data(),
-                  static_cast<DWORD>(operation_buffer.size()), &len, &ol);
+    const BOOL operation_ok = operation(
+        file, static_cast<BufferType*>(buffer) + count, chunk, &len, &ol);
     if (!operation_ok) {
       if (::GetLastError() == ERROR_IO_PENDING) {
         HANDLE events[] = { io_event->handle(), cancel_event->handle() };
-        const DWORD wait_result = WaitForMultipleObjects(
-            std::size(events), events, FALSE,
+        const int wait_result = WaitForMultipleObjects(
+            base::size(events), events, FALSE,
             timeout_in_ms == INFINITE
                 ? timeout_in_ms
                 : static_cast<DWORD>(
@@ -193,16 +190,14 @@ size_t CancelableFileOperation(Function operation,
     count += len;
 
     // Quit the operation if we can't write/read anymore.
-    if (len != chunk_size) {
+    if (len != chunk)
       break;
-    }
 
     // Since TimeTicks::Now() is expensive, only bother updating the time if we
     // have more work to do.
-    if (timeout_in_ms != INFINITE && count < buffer.size()) {
+    if (timeout_in_ms != INFINITE && count < length)
       current_time = base::TimeTicks::Now();
-    }
-  } while (count < buffer.size() &&
+  } while (count < length &&
            (timeout_in_ms == INFINITE || current_time < finish_time));
 
   return count;
@@ -219,20 +214,17 @@ void SyncSocket::Close() {
   handle_.Close();
 }
 
-size_t SyncSocket::Send(span<const uint8_t> data) {
+size_t SyncSocket::Send(const void* buffer, size_t length) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
-  CHECK_LE(data.size(), kMaxMessageLength);
+  DCHECK_GT(length, 0u);
+  DCHECK_LE(length, kMaxMessageLength);
   DCHECK(IsValid());
   size_t count = 0;
-  while (count < data.size()) {
+  while (count < length) {
     DWORD len;
-    const DWORD chunk_size = GetNextChunkSize(count, data.size());
-    auto data_chunk = data.subspan(count, chunk_size);
-    // SAFETY: The below static_cast is in range for DWORD because `data_chunk`
-    // is constructed with a DWORD length above from `chunk_size`.
-    if (::WriteFile(handle(), data_chunk.data(),
-                    static_cast<DWORD>(data_chunk.size()), &len,
-                    NULL) == FALSE) {
+    DWORD chunk = GetNextChunkSize(count, length);
+    if (::WriteFile(handle(), static_cast<const char*>(buffer) + count, chunk,
+                    &len, NULL) == FALSE) {
       return count;
     }
     count += len;
@@ -240,24 +232,23 @@ size_t SyncSocket::Send(span<const uint8_t> data) {
   return count;
 }
 
-size_t SyncSocket::ReceiveWithTimeout(span<uint8_t> buffer, TimeDelta timeout) {
+size_t SyncSocket::ReceiveWithTimeout(void* buffer,
+                                      size_t length,
+                                      TimeDelta timeout) {
   NOTIMPLEMENTED();
   return 0;
 }
 
-size_t SyncSocket::Receive(span<uint8_t> buffer) {
+size_t SyncSocket::Receive(void* buffer, size_t length) {
   ScopedBlockingCall scoped_blocking_call(FROM_HERE, BlockingType::MAY_BLOCK);
-  CHECK_LE(buffer.size(), kMaxMessageLength);
+  DCHECK_GT(length, 0u);
+  DCHECK_LE(length, kMaxMessageLength);
   DCHECK(IsValid());
   size_t count = 0;
-  while (count < buffer.size()) {
+  while (count < length) {
     DWORD len;
-    const DWORD chunk_size = GetNextChunkSize(count, buffer.size());
-    auto data_chunk = buffer.subspan(count, chunk_size);
-    // SAFETY: The below static_cast is in range for DWORD because `data_chunk`
-    // is constructed with a DWORD length above from `chunk_size`.
-    if (::ReadFile(handle(), data_chunk.data(),
-                   static_cast<DWORD>(data_chunk.size()), &len,
+    DWORD chunk = GetNextChunkSize(count, length);
+    if (::ReadFile(handle(), static_cast<char*>(buffer) + count, chunk, &len,
                    NULL) == FALSE) {
       return count;
     }
@@ -273,15 +264,15 @@ size_t SyncSocket::Peek() {
 }
 
 bool SyncSocket::IsValid() const {
-  return handle_.is_valid();
+  return handle_.IsValid();
 }
 
 SyncSocket::Handle SyncSocket::handle() const {
-  return handle_.get();
+  return handle_.Get();
 }
 
 SyncSocket::Handle SyncSocket::Release() {
-  return handle_.release();
+  return handle_.Take();
 }
 
 bool CancelableSyncSocket::Shutdown() {
@@ -296,21 +287,24 @@ void CancelableSyncSocket::Close() {
   shutdown_event_.Reset();
 }
 
-size_t CancelableSyncSocket::Send(span<const uint8_t> data) {
+size_t CancelableSyncSocket::Send(const void* buffer, size_t length) {
   static const DWORD kWaitTimeOutInMs = 500;
-  return CancelableFileOperation(&::WriteFile, handle(), data, &file_operation_,
-                                 &shutdown_event_, this, kWaitTimeOutInMs);
+  return CancelableFileOperation(
+      &::WriteFile, handle(), reinterpret_cast<const char*>(buffer), length,
+      &file_operation_, &shutdown_event_, this, kWaitTimeOutInMs);
 }
 
-size_t CancelableSyncSocket::Receive(span<uint8_t> buffer) {
-  return CancelableFileOperation(&::ReadFile, handle(), buffer,
-                                 &file_operation_, &shutdown_event_, this,
-                                 INFINITE);
+size_t CancelableSyncSocket::Receive(void* buffer, size_t length) {
+  return CancelableFileOperation(
+      &::ReadFile, handle(), reinterpret_cast<char*>(buffer), length,
+      &file_operation_, &shutdown_event_, this, INFINITE);
 }
 
-size_t CancelableSyncSocket::ReceiveWithTimeout(span<uint8_t> buffer,
+size_t CancelableSyncSocket::ReceiveWithTimeout(void* buffer,
+                                                size_t length,
                                                 TimeDelta timeout) {
-  return CancelableFileOperation(&::ReadFile, handle(), buffer,
+  return CancelableFileOperation(&::ReadFile, handle(),
+                                 reinterpret_cast<char*>(buffer), length,
                                  &file_operation_, &shutdown_event_, this,
                                  static_cast<DWORD>(timeout.InMilliseconds()));
 }

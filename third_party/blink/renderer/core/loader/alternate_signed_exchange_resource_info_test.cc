@@ -1,18 +1,21 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/loader/alternate_signed_exchange_resource_info.h"
 
-#include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
+#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 
 namespace blink {
 
-class AlternateSignedExchangeResourceInfoTest : public testing::Test {
+class AlternateSignedExchangeResourceInfoTest
+    : public testing::Test,
+      private ScopedSignedExchangeSubresourcePrefetchForTest {
  public:
-  AlternateSignedExchangeResourceInfoTest() = default;
+  AlternateSignedExchangeResourceInfoTest()
+      : ScopedSignedExchangeSubresourcePrefetchForTest(true) {}
   AlternateSignedExchangeResourceInfoTest(
       const AlternateSignedExchangeResourceInfoTest&) = delete;
   AlternateSignedExchangeResourceInfoTest& operator=(
@@ -58,15 +61,15 @@ TEST_F(AlternateSignedExchangeResourceInfoTest, Simple) {
             resource->alternative_url());
   EXPECT_EQ("sha256-7KheEN4nyNxE3c4yQZdgCBJthJ2UwgpLSBeSUpII+jg=",
             resource->header_integrity());
-  EXPECT_TRUE(resource->variants().empty());
-  EXPECT_TRUE(resource->variant_key().empty());
+  EXPECT_TRUE(resource->variants().IsEmpty());
+  EXPECT_TRUE(resource->variant_key().IsEmpty());
 
   EXPECT_EQ(resource.get(),
             info->FindMatchingEntry(KURL("https://publisher.example/script.js"),
-                                    std::nullopt, {"en"}));
+                                    absl::nullopt, {"en"}));
   EXPECT_EQ(nullptr,
             info->FindMatchingEntry(KURL("https://publisher.example/image"),
-                                    std::nullopt, {"en"}));
+                                    absl::nullopt, {"en"}));
 }
 
 TEST_F(AlternateSignedExchangeResourceInfoTest, MultipleResources) {
@@ -107,11 +110,11 @@ TEST_F(AlternateSignedExchangeResourceInfoTest, MultipleResources) {
         resource->alternative_url());
     EXPECT_EQ("sha256-7KheEN4nyNxE3c4yQZdgCBJthJ2UwgpLSBeSUpII+jg=",
               resource->header_integrity());
-    EXPECT_TRUE(resource->variants().empty());
-    EXPECT_TRUE(resource->variant_key().empty());
+    EXPECT_TRUE(resource->variants().IsEmpty());
+    EXPECT_TRUE(resource->variant_key().IsEmpty());
     EXPECT_EQ(resource.get(), info->FindMatchingEntry(
                                   KURL("https://publisher.example/script.js"),
-                                  std::nullopt, {"en"}));
+                                  absl::nullopt, {"en"}));
   }
   {
     const auto& it = entries.find(KURL("https://publisher.example/image"));
@@ -123,11 +126,11 @@ TEST_F(AlternateSignedExchangeResourceInfoTest, MultipleResources) {
               resource->alternative_url());
     EXPECT_EQ("sha256-q1phjFcR+umcl0zBaEz6E5AGVlnc9yF0zOjDYi5c6aM=",
               resource->header_integrity());
-    EXPECT_TRUE(resource->variants().empty());
-    EXPECT_TRUE(resource->variant_key().empty());
+    EXPECT_TRUE(resource->variants().IsEmpty());
+    EXPECT_TRUE(resource->variant_key().IsEmpty());
     EXPECT_EQ(resource.get(),
               info->FindMatchingEntry(KURL("https://publisher.example/image"),
-                                      std::nullopt, {"en"}));
+                                      absl::nullopt, {"en"}));
   }
 }
 
@@ -154,12 +157,12 @@ TEST_F(AlternateSignedExchangeResourceInfoTest,
   EXPECT_FALSE(resource->alternative_url().IsValid());
   EXPECT_EQ("sha256-7KheEN4nyNxE3c4yQZdgCBJthJ2UwgpLSBeSUpII+jg=",
             resource->header_integrity());
-  EXPECT_TRUE(resource->variants().empty());
-  EXPECT_TRUE(resource->variant_key().empty());
+  EXPECT_TRUE(resource->variants().IsEmpty());
+  EXPECT_TRUE(resource->variant_key().IsEmpty());
 
   EXPECT_EQ(resource.get(),
             info->FindMatchingEntry(KURL("https://publisher.example/script.js"),
-                                    std::nullopt, {"en"}));
+                                    absl::nullopt, {"en"}));
 }
 
 TEST_F(AlternateSignedExchangeResourceInfoTest, NoType) {
@@ -188,15 +191,15 @@ TEST_F(AlternateSignedExchangeResourceInfoTest, NoType) {
   EXPECT_FALSE(resource->alternative_url().IsValid());
   EXPECT_EQ("sha256-7KheEN4nyNxE3c4yQZdgCBJthJ2UwgpLSBeSUpII+jg=",
             resource->header_integrity());
-  EXPECT_TRUE(resource->variants().empty());
-  EXPECT_TRUE(resource->variant_key().empty());
+  EXPECT_TRUE(resource->variants().IsEmpty());
+  EXPECT_TRUE(resource->variant_key().IsEmpty());
 
   EXPECT_EQ(resource.get(),
             info->FindMatchingEntry(KURL("https://publisher.example/script.js"),
-                                    std::nullopt, {"en"}));
+                                    absl::nullopt, {"en"}));
   EXPECT_EQ(nullptr,
             info->FindMatchingEntry(KURL("https://publisher.example/image"),
-                                    std::nullopt, {"en"}));
+                                    absl::nullopt, {"en"}));
 }
 
 TEST_F(AlternateSignedExchangeResourceInfoTest, InvalidOuterURL) {
@@ -224,12 +227,12 @@ TEST_F(AlternateSignedExchangeResourceInfoTest, InvalidOuterURL) {
   EXPECT_FALSE(resource->alternative_url().IsValid());
   EXPECT_EQ("sha256-7KheEN4nyNxE3c4yQZdgCBJthJ2UwgpLSBeSUpII+jg=",
             resource->header_integrity());
-  EXPECT_TRUE(resource->variants().empty());
-  EXPECT_TRUE(resource->variant_key().empty());
+  EXPECT_TRUE(resource->variants().IsEmpty());
+  EXPECT_TRUE(resource->variant_key().IsEmpty());
 
   EXPECT_EQ(resource.get(),
             info->FindMatchingEntry(KURL("https://publisher.example/script.js"),
-                                    std::nullopt, {"en"}));
+                                    absl::nullopt, {"en"}));
 }
 
 TEST_F(AlternateSignedExchangeResourceInfoTest, InvalidInnerURL) {
@@ -308,9 +311,9 @@ TEST_F(AlternateSignedExchangeResourceInfoTest, Variants) {
     EXPECT_EQ("image/webp", resource->variant_key());
 
     EXPECT_EQ(resource.get(),
-              info->FindMatchingEntry(
-                  KURL("https://publisher.example/image"),
-                  network::mojom::RequestDestination::kImage, {"en"}));
+              info->FindMatchingEntry(KURL("https://publisher.example/image"),
+                                      mojom::blink::RequestContextType::IMAGE,
+                                      {"en"}));
   }
 }
 

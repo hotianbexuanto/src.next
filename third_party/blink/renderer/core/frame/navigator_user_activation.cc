@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -27,7 +27,7 @@ UserActivation* NavigatorUserActivation::userActivation(Navigator& navigator) {
 }
 
 UserActivation* NavigatorUserActivation::userActivation() {
-  return user_activation_.Get();
+  return user_activation_;
 }
 
 void NavigatorUserActivation::Trace(Visitor* visitor) const {

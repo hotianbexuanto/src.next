@@ -1,14 +1,11 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/base/schemeful_site.h"
 
-#include <string_view>
-
 #include "base/check.h"
 #include "base/metrics/histogram_macros.h"
-#include "base/trace_event/memory_usage_estimator.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "net/base/url_util.h"
 #include "url/gurl.h"
@@ -16,12 +13,6 @@
 #include "url/url_constants.h"
 
 namespace net {
-
-struct SchemefulSite::ObtainASiteResult {
-  // This is only set if the supplied origin differs from calculated one.
-  std::optional<url::Origin> origin;
-  bool used_registerable_domain;
-};
 
 // Return a tuple containing:
 // * a new origin using the registerable domain of `origin` if possible and
@@ -34,18 +25,10 @@ struct SchemefulSite::ObtainASiteResult {
 SchemefulSite::ObtainASiteResult SchemefulSite::ObtainASite(
     const url::Origin& origin) {
   // 1. If origin is an opaque origin, then return origin.
-  if (origin.opaque()) {
-    return {std::nullopt, false /* used_registerable_domain */};
-  }
+  if (origin.opaque())
+    return {origin, false /* used_registerable_domain */};
 
-  int port = url::DefaultPortForScheme(origin.scheme());
-
-  // Provide a default port of 0 for non-standard schemes.
-  if (port == url::PORT_UNSPECIFIED) {
-    port = 0;
-  }
-
-  std::string_view registerable_domain;
+  std::string registerable_domain;
 
   // Non-normative step.
   // We only lookup the registerable domain for schemes with network hosts, this
@@ -53,13 +36,25 @@ SchemefulSite::ObtainASiteResult SchemefulSite::ObtainASite(
   // meaningfully have a registerable domain for their host, so they are
   // skipped.
   if (IsStandardSchemeWithNetworkHost(origin.scheme())) {
-    registerable_domain = GetDomainAndRegistryAsStringPiece(
+    registerable_domain = GetDomainAndRegistry(
         origin, net::registry_controlled_domains::INCLUDE_PRIVATE_REGISTRIES);
-    if (!registerable_domain.empty() &&
-        registerable_domain.size() == origin.host().size() &&
-        origin.port() == port) {
-      return {std::nullopt, /* used_registerable_domain */ true};
-    }
+
+    // For domains in which the eTLD+1 is not canonical, do not use the eTLD+1.
+    // This is for domains like foo.127.1, which has an eTLD+1 of 127.1, but
+    // https://127.1/ == https://127.0.0.1. This is intended as a temporary
+    // hack not to DCHECK for such origins, until the URL spec is updated to
+    // make such domains invalid in URLs.
+    // TODO(https://crbug.com/1157010): Remove once the fetch spec is updated,
+    // and GURL rejects such domains names.
+    url::CanonHostInfo host_info;
+    bool site_domain_is_safe =
+        registerable_domain.empty() || registerable_domain == origin.host() ||
+        registerable_domain ==
+            CanonicalizeHost(registerable_domain, &host_info);
+    if (!site_domain_is_safe)
+      registerable_domain.clear();
+
+    UMA_HISTOGRAM_BOOLEAN("Net.SiteDomainIsSafe", site_domain_is_safe);
   }
 
   // If origin's host's registrable domain is null, then return (origin's
@@ -74,32 +69,32 @@ SchemefulSite::ObtainASiteResult SchemefulSite::ObtainASite(
   if (!used_registerable_domain)
     registerable_domain = origin.host();
 
-  return {url::Origin::CreateFromNormalizedTuple(
-              origin.scheme(), std::string(registerable_domain), port),
+  int port = url::DefaultPortForScheme(origin.scheme().c_str(),
+                                       origin.scheme().length());
+
+  // Provide a default port of 0 for non-standard schemes.
+  if (port == url::PORT_UNSPECIFIED)
+    port = 0;
+
+  return {url::Origin::CreateFromNormalizedTuple(origin.scheme(),
+                                                 registerable_domain, port),
           used_registerable_domain};
 }
 
-SchemefulSite::SchemefulSite(ObtainASiteResult result,
-                             const url::Origin& origin) {
-  if (result.origin) {
-    site_as_origin_ = std::move(*(result.origin));
-  } else {
-    site_as_origin_ = origin;
-  }
-}
+SchemefulSite::SchemefulSite(ObtainASiteResult result)
+    : site_as_origin_(std::move(result.origin)) {}
 
 SchemefulSite::SchemefulSite(const url::Origin& origin)
-    : SchemefulSite(ObtainASite(origin), origin) {}
+    : SchemefulSite(ObtainASite(origin)) {}
 
 SchemefulSite::SchemefulSite(const GURL& url)
     : SchemefulSite(url::Origin::Create(url)) {}
 
 SchemefulSite::SchemefulSite(const SchemefulSite& other) = default;
-SchemefulSite::SchemefulSite(SchemefulSite&& other) noexcept = default;
+SchemefulSite::SchemefulSite(SchemefulSite&& other) = default;
 
 SchemefulSite& SchemefulSite::operator=(const SchemefulSite& other) = default;
-SchemefulSite& SchemefulSite::operator=(SchemefulSite&& other) noexcept =
-    default;
+SchemefulSite& SchemefulSite::operator=(SchemefulSite&& other) = default;
 
 // static
 bool SchemefulSite::FromWire(const url::Origin& site_as_origin,
@@ -117,13 +112,12 @@ bool SchemefulSite::FromWire(const url::Origin& site_as_origin,
   return true;
 }
 
-std::optional<SchemefulSite> SchemefulSite::CreateIfHasRegisterableDomain(
+absl::optional<SchemefulSite> SchemefulSite::CreateIfHasRegisterableDomain(
     const url::Origin& origin) {
   ObtainASiteResult result = ObtainASite(origin);
-  if (!result.used_registerable_domain) {
-    return std::nullopt;
-  }
-  return SchemefulSite(std::move(result), origin);
+  if (!result.used_registerable_domain)
+    return absl::nullopt;
+  return SchemefulSite(std::move(result));
 }
 
 void SchemefulSite::ConvertWebSocketToHttp() {
@@ -135,17 +129,12 @@ void SchemefulSite::ConvertWebSocketToHttp() {
 }
 
 // static
-SchemefulSite SchemefulSite::Deserialize(std::string_view value) {
+SchemefulSite SchemefulSite::Deserialize(const std::string& value) {
   return SchemefulSite(GURL(value));
 }
 
 std::string SchemefulSite::Serialize() const {
   return site_as_origin_.Serialize();
-}
-
-std::string SchemefulSite::SerializeFileSiteWithHost() const {
-  DCHECK_EQ(url::kFileScheme, site_as_origin_.scheme());
-  return site_as_origin_.GetTupleOrPrecursorTupleIfOpaque().Serialize();
 }
 
 std::string SchemefulSite::GetDebugString() const {
@@ -158,10 +147,6 @@ GURL SchemefulSite::GetURL() const {
 
 const url::Origin& SchemefulSite::GetInternalOriginForTesting() const {
   return site_as_origin_;
-}
-
-size_t SchemefulSite::EstimateMemoryUsage() const {
-  return base::trace_event::EstimateMemoryUsage(site_as_origin_);
 }
 
 bool SchemefulSite::operator==(const SchemefulSite& other) const {
@@ -179,37 +164,20 @@ bool SchemefulSite::operator<(const SchemefulSite& other) const {
 }
 
 // static
-std::optional<SchemefulSite> SchemefulSite::DeserializeWithNonce(
-    base::PassKey<NetworkAnonymizationKey>,
-    std::string_view value) {
-  return DeserializeWithNonce(value);
-}
-
-// static
-std::optional<SchemefulSite> SchemefulSite::DeserializeWithNonce(
-    std::string_view value) {
-  std::optional<url::Origin> result = url::Origin::Deserialize(value);
+absl::optional<SchemefulSite> SchemefulSite::DeserializeWithNonce(
+    const std::string& value) {
+  absl::optional<url::Origin> result = url::Origin::Deserialize(value);
   if (!result)
-    return std::nullopt;
+    return absl::nullopt;
   return SchemefulSite(result.value());
 }
 
-std::optional<std::string> SchemefulSite::SerializeWithNonce(
-    base::PassKey<NetworkAnonymizationKey>) {
-  return SerializeWithNonce();
-}
-
-std::optional<std::string> SchemefulSite::SerializeWithNonce() {
+absl::optional<std::string> SchemefulSite::SerializeWithNonce() {
   return site_as_origin_.SerializeWithNonceAndInitIfNeeded();
 }
 
 bool SchemefulSite::SchemelesslyEqual(const SchemefulSite& other) const {
   return site_as_origin_.host() == other.site_as_origin_.host();
-}
-
-std::ostream& operator<<(std::ostream& os, const SchemefulSite& ss) {
-  os << ss.Serialize();
-  return os;
 }
 
 }  // namespace net

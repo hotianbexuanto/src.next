@@ -1,13 +1,13 @@
-// Copyright 2017 The Chromium Authors
+// Copyright (c) 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 #include "content/browser/isolated_origin_util.h"
 
-#include <string>
-#include <string_view>
-
 #include "base/logging.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
@@ -17,7 +17,7 @@ const char* kAllSubdomainsWildcard = "[*.]";
 
 namespace content {
 
-IsolatedOriginPattern::IsolatedOriginPattern(std::string_view pattern)
+IsolatedOriginPattern::IsolatedOriginPattern(base::StringPiece pattern)
     : isolate_all_subdomains_(false), is_valid_(false) {
   Parse(pattern);
 }
@@ -35,24 +35,23 @@ IsolatedOriginPattern::IsolatedOriginPattern(IsolatedOriginPattern&& other) =
 IsolatedOriginPattern& IsolatedOriginPattern::operator=(
     IsolatedOriginPattern&& other) = default;
 
-bool IsolatedOriginPattern::Parse(const std::string_view& unparsed_pattern) {
+bool IsolatedOriginPattern::Parse(const base::StringPiece& unparsed_pattern) {
   pattern_ = std::string(unparsed_pattern);
   origin_ = url::Origin();
   isolate_all_subdomains_ = false;
   is_valid_ = false;
 
   size_t host_begin = unparsed_pattern.find(url::kStandardSchemeSeparator);
-  if (host_begin == std::string_view::npos || host_begin == 0) {
+  if (host_begin == base::StringPiece::npos || host_begin == 0)
     return false;
-  }
 
   // Skip over the scheme separator.
   host_begin += strlen(url::kStandardSchemeSeparator);
   if (host_begin >= unparsed_pattern.size())
     return false;
 
-  std::string_view scheme_part = unparsed_pattern.substr(0, host_begin);
-  std::string_view host_part = unparsed_pattern.substr(host_begin);
+  base::StringPiece scheme_part = unparsed_pattern.substr(0, host_begin);
+  base::StringPiece host_part = unparsed_pattern.substr(host_begin);
 
   // Empty schemes or hosts are invalid for isolation purposes.
   if (host_part.size() == 0)
@@ -69,7 +68,7 @@ bool IsolatedOriginPattern::Parse(const std::string_view& unparsed_pattern) {
   // Ports are ignored when matching isolated origins (see also
   // https://crbug.com/914511).
   const std::string& scheme = origin_.scheme();
-  int default_port = url::DefaultPortForScheme(scheme);
+  int default_port = url::DefaultPortForScheme(scheme.data(), scheme.length());
   if (origin_.port() != default_port) {
     LOG(ERROR) << "Ignoring port number in isolated origin: " << origin_;
     origin_ = url::Origin::Create(GURL(
@@ -110,8 +109,7 @@ bool IsolatedOriginUtil::DoesOriginMatchIsolatedOrigin(
 
 // static
 bool IsolatedOriginUtil::IsValidIsolatedOrigin(const url::Origin& origin) {
-  return IsValidIsolatedOriginImpl(origin,
-                                   /* is_legacy_isolated_origin_check=*/true);
+  return IsValidIsolatedOriginImpl(origin, true);
 }
 
 // static
@@ -119,25 +117,14 @@ bool IsolatedOriginUtil::IsValidOriginForOptInIsolation(
     const url::Origin& origin) {
   // Per https://html.spec.whatwg.org/C/#initialise-the-document-object,
   // non-secure contexts cannot be isolated via opt-in origin isolation.
-  return IsValidIsolatedOriginImpl(
-             origin, /* is_legacy_isolated_origin_check=*/false) &&
+  return IsValidIsolatedOriginImpl(origin, false) &&
          network::IsOriginPotentiallyTrustworthy(origin);
-}
-
-// static
-bool IsolatedOriginUtil::IsValidOriginForOptOutIsolation(
-    const url::Origin& origin) {
-  // Per https://html.spec.whatwg.org/C/#initialise-the-document-object,
-  // non-secure contexts cannot be isolated via opt-in origin isolation,
-  // but we allow non-secure contexts to opt-out for legacy sites.
-  return IsValidIsolatedOriginImpl(origin,
-                                   /* is_legacy_isolated_origin_check=*/false);
 }
 
 // static
 bool IsolatedOriginUtil::IsValidIsolatedOriginImpl(
     const url::Origin& origin,
-    bool is_legacy_isolated_origin_check) {
+    bool check_has_registry_domain) {
   if (origin.opaque())
     return false;
 
@@ -158,7 +145,7 @@ bool IsolatedOriginUtil::IsValidIsolatedOriginImpl(
   // This is not relevant for opt-in origin isolation, which doesn't need to
   // match subdomains. (And it'd be bad to check this in that case, as it
   // prohibits http://localhost/; see https://crbug.com/1142894.)
-  if (is_legacy_isolated_origin_check) {
+  if (check_has_registry_domain) {
     const bool has_registry_domain =
         net::registry_controlled_domains::HostHasRegistryControlledDomain(
             origin.host(),
@@ -168,15 +155,11 @@ bool IsolatedOriginUtil::IsValidIsolatedOriginImpl(
       return false;
   }
 
-  // Disallow hosts with a trailing dot for legacy isolated origins, but allow
-  // them for opt-in origin isolation since the spec says that they represent
-  // a distinct origin: https://url.spec.whatwg.org/#concept-domain.
-  // TODO(alexmos): Legacy isolated origins should probably support trailing
-  // dots as well, but enabling this would require carefully thinking about
+  // For now, disallow hosts with a trailing dot.
+  // TODO(alexmos): Enabling this would require carefully thinking about
   // whether hosts without a trailing dot should match it.
-  if (is_legacy_isolated_origin_check && origin.host().back() == '.') {
+  if (origin.host().back() == '.')
     return false;
-  }
 
   return true;
 }

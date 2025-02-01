@@ -1,34 +1,33 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/extensions/extension_installed_bubble_model.h"
 
 #include "base/strings/utf_string_conversions.h"
-#include "chrome/browser/extensions/commands/command_service.h"
-#include "chrome/browser/extensions/extension_sync_util.h"
+#include "chrome/browser/extensions/api/commands/command_service.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/signin/signin_promo_util.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/sync/sync_promo_ui.h"
 #include "chrome/common/extensions/api/omnibox/omnibox_handler.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/common/extensions/command.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "extensions/common/api/extension_action/action_info.h"
-#include "extensions/common/command.h"
 #include "extensions/common/extension.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/gfx/image/image_skia_operations.h"
 
 namespace {
 
-std::optional<extensions::Command> CommandForExtensionAction(
+absl::optional<extensions::Command> CommandForExtensionAction(
     const extensions::Extension* extension,
     Profile* profile) {
   const auto* info = extensions::ActionInfo::GetExtensionActionInfo(extension);
 
   if (!info)
-    return std::nullopt;
+    return absl::nullopt;
 
   auto* service = extensions::CommandService::Get(profile);
   extensions::Command command;
@@ -39,23 +38,23 @@ std::optional<extensions::Command> CommandForExtensionAction(
     return command;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::u16string MakeHowToUseText(const extensions::ActionInfo* action,
-                                std::optional<extensions::Command> command,
+                                absl::optional<extensions::Command> command,
                                 const std::string& keyword) {
   std::u16string extra;
   if (command.has_value())
     extra = command->accelerator().GetShortcutText();
 
   int message_id = 0;
-  if (action && action->type == extensions::ActionInfo::Type::kBrowser) {
+  if (action && action->type == extensions::ActionInfo::TYPE_BROWSER) {
     message_id =
         extra.empty()
             ? IDS_EXTENSION_INSTALLED_BROWSER_ACTION_INFO
             : IDS_EXTENSION_INSTALLED_BROWSER_ACTION_INFO_WITH_SHORTCUT;
-  } else if (action && action->type == extensions::ActionInfo::Type::kPage) {
+  } else if (action && action->type == extensions::ActionInfo::TYPE_PAGE) {
     message_id = extra.empty()
                      ? IDS_EXTENSION_INSTALLED_PAGE_ACTION_INFO
                      : IDS_EXTENSION_INSTALLED_PAGE_ACTION_INFO_WITH_SHORTCUT;
@@ -81,12 +80,15 @@ ExtensionInstalledBubbleModel::ExtensionInstalledBubbleModel(
       extension_id_(extension->id()),
       extension_name_(extension->name()) {
   const std::string& keyword = extensions::OmniboxInfo::GetKeyword(extension);
-  std::optional<extensions::Command> command =
+  absl::optional<extensions::Command> command =
       CommandForExtensionAction(extension, profile);
   const auto* action_info =
       extensions::ActionInfo::GetExtensionActionInfo(extension);
 
-  const bool toolbar_action = !!action_info;
+  // TODO(ellyjones): There is no logical reason why TYPE_ACTION should be
+  // different here, but the existing bubble behaves this way.
+  const bool toolbar_action =
+      action_info && action_info->type != extensions::ActionInfo::TYPE_ACTION;
 
   anchor_to_action_ = toolbar_action;
   anchor_to_omnibox_ = !toolbar_action && !keyword.empty();
@@ -98,13 +100,8 @@ ExtensionInstalledBubbleModel::ExtensionInstalledBubbleModel(
   show_how_to_manage_ = !command.has_value() || anchor_to_omnibox_;
   show_key_binding_ = command.has_value();
 
-  // Note: `ShouldShowSyncPromo` does not check if extensions are syncing in
-  // transport mode. That's why `IsSyncingEnabled` is added so the sign in promo
-  // is not shown in that case.
-  show_sign_in_promo_ =
-      extensions::sync_util::ShouldSync(profile, extension) &&
-      !extensions::sync_util::IsSyncingExtensionsEnabled(profile) &&
-      signin::ShouldShowSyncPromo(*profile);
+  show_sign_in_promo_ = extensions::util::ShouldSync(extension, profile) &&
+                        SyncPromoUI::ShouldShowSyncPromo(profile);
 
   if (show_how_to_use_)
     how_to_use_text_ = MakeHowToUseText(action_info, command, keyword);

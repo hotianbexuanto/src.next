@@ -28,10 +28,9 @@
 
 #include <cstddef>
 
-#include "base/check_op.h"
 #include "base/dcheck_is_on.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/wtf/hash_map.h"
 
 #if DCHECK_IS_ON()
 #include "third_party/blink/renderer/platform/wtf/threading.h"
@@ -129,7 +128,7 @@ class Supplement : public GarbageCollectedMixin {
   // Supplements are constructed lazily on first access and are destroyed with
   // their Supplementable, so GetSupplementable() should never return null (if
   // the default constructor is completely removed).
-  T* GetSupplementable() const { return supplementable_.Get(); }
+  T* GetSupplementable() const { return supplementable_; }
 
   template <typename SupplementType>
   static void ProvideTo(Supplementable<T>& supplementable,
@@ -196,10 +195,8 @@ class Supplementable : public GarbageCollectedMixin {
         std::is_array<decltype(SupplementType::kSupplementName)>::value,
         "Declare a const char array kSupplementName. See Supplementable.h for "
         "details.");
-    const auto it = this->supplements_.find(SupplementType::kSupplementName);
-    if (it == this->supplements_.end())
-      return nullptr;
-    return static_cast<SupplementType*>(it->value.Get());
+    return static_cast<SupplementType*>(
+        this->supplements_.at(SupplementType::kSupplementName));
   }
 
   void ReattachThread() {
@@ -211,7 +208,8 @@ class Supplementable : public GarbageCollectedMixin {
   void Trace(Visitor* visitor) const override { visitor->Trace(supplements_); }
 
  protected:
-  using SupplementMap = HeapHashMap<const char*, Member<Supplement<T>>>;
+  using SupplementMap =
+      HeapHashMap<const char*, Member<Supplement<T>>, PtrHash<const char>>;
   SupplementMap supplements_;
 
   Supplementable()

@@ -1,17 +1,15 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/resources_integrity.h"
 
-#include <algorithm>
-
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/path_service.h"
-#include "base/task/sequenced_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
+#include "base/threading/sequenced_task_runner_handle.h"
 #include "build/build_config.h"
 #include "chrome/app/packed_resources_integrity.h"
 #include "chrome/browser/buildflags.h"
@@ -34,7 +32,7 @@ TEST_F(CheckResourceIntegrityTest, Match) {
 
   base::RunLoop loop;
   CheckResourceIntegrity(test_data_path.AppendASCII("circle.svg"), expected,
-                         base::SequencedTaskRunner::GetCurrentDefault(),
+                         base::SequencedTaskRunnerHandle::Get(),
                          base::BindLambdaForTesting([&](bool matches) {
                            EXPECT_TRUE(matches);
                            loop.Quit();
@@ -46,11 +44,11 @@ TEST_F(CheckResourceIntegrityTest, Mismatch) {
   base::FilePath test_data_path;
   ASSERT_TRUE(base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_path));
 
-  uint8_t unexpected[crypto::kSHA256Length];
-  std::ranges::fill(unexpected, 'a');
+  std::vector<uint8_t> unexpected(crypto::kSHA256Length, 'a');
   base::RunLoop loop;
-  CheckResourceIntegrity(test_data_path.AppendASCII("circle.svg"), unexpected,
-                         base::SequencedTaskRunner::GetCurrentDefault(),
+  CheckResourceIntegrity(test_data_path.AppendASCII("circle.svg"),
+                         base::make_span<32>(unexpected),
+                         base::SequencedTaskRunnerHandle::Get(),
                          base::BindLambdaForTesting([&](bool matches) {
                            EXPECT_FALSE(matches);
                            loop.Quit();
@@ -59,12 +57,12 @@ TEST_F(CheckResourceIntegrityTest, Mismatch) {
 }
 
 TEST_F(CheckResourceIntegrityTest, NonExistentFile) {
-  uint8_t unexpected[crypto::kSHA256Length];
-  std::ranges::fill(unexpected, 'a');
+  std::vector<uint8_t> unexpected(crypto::kSHA256Length, 'a');
   base::RunLoop loop;
   CheckResourceIntegrity(
       base::FilePath(FILE_PATH_LITERAL("this file does not exist.moo")),
-      unexpected, base::SequencedTaskRunner::GetCurrentDefault(),
+      base::make_span<crypto::kSHA256Length>(unexpected),
+      base::SequencedTaskRunnerHandle::Get(),
       base::BindLambdaForTesting([&](bool matches) {
         EXPECT_FALSE(matches);
         loop.Quit();
@@ -72,7 +70,7 @@ TEST_F(CheckResourceIntegrityTest, NonExistentFile) {
   loop.Quit();
 }
 
-#if BUILDFLAG(IS_WIN)
+#if defined(OS_WIN)
 // On Windows, CheckPakFileIntegrity() dynamically finds this symbol from its
 // main exe module (normally chrome.exe). In unit_tests.exe, provide the same
 // export.
@@ -84,7 +82,7 @@ extern "C" __declspec(dllexport) __cdecl void GetPakFileHashes(
   *chrome_100_pak = kSha256_chrome_100_percent_pak.data();
   *chrome_200_pak = kSha256_chrome_200_percent_pak.data();
 }
-#endif  // BUILDFLAG(IS_WIN)
+#endif  // defined(OS_WIN)
 
 TEST_F(CheckResourceIntegrityTest, ChromePaks) {
   base::HistogramTester tester;

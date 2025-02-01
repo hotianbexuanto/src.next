@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,7 +13,7 @@
 // (high). High priority is used for all accelerators assigned to extensions,
 // which are extensions of the user agent and should (by default) supersede the
 // browser shortcuts.
-inline constexpr ui::AcceleratorManager::HandlerPriority
+constexpr ui::AcceleratorManager::HandlerPriority
     kExtensionAcceleratorPriority = ui::AcceleratorManager::kHighPriority;
 
 #endif  // CHROME_BROWSER_UI_EXTENSIONS_ACCELERATOR_PRIORITY_H_

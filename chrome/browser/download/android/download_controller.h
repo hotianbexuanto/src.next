@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,20 +25,13 @@
 
 #include "base/android/scoped_java_ref.h"
 #include "base/memory/singleton.h"
-#include "chrome/browser/download/android/dangerous_download_dialog_bridge.h"
-#include "chrome/browser/download/android/download_callback_validator.h"
 #include "chrome/browser/download/android/download_controller_base.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
-#include "components/safe_browsing/android/safe_browsing_api_handler_bridge.h"
-#include "components/safe_browsing/android/safe_browsing_api_handler_util.h"
 
 class DownloadController : public DownloadControllerBase {
  public:
   static DownloadController* GetInstance();
-
-  DownloadController(const DownloadController&) = delete;
-  DownloadController& operator=(const DownloadController&) = delete;
 
   // DownloadControllerBase implementation.
   void AcquireFileAccessPermission(
@@ -46,6 +39,7 @@ class DownloadController : public DownloadControllerBase {
       AcquireFileAccessPermissionCallback callback) override;
   void CreateAndroidDownload(const content::WebContents::Getter& wc_getter,
                              const DownloadInfo& info) override;
+  void AboutToResumeDownload(download::DownloadItem* download_item) override;
 
   // UMA histogram enum for download storage permission requests. Keep this
   // in sync with MobileDownloadStoragePermission in histograms.xml. This should
@@ -70,11 +64,8 @@ class DownloadController : public DownloadControllerBase {
   using AcquirePermissionCallback =
       base::OnceCallback<void(bool, const std::string&)>;
 
-  DownloadCallbackValidator* validator() { return &validator_; }
-
  private:
   friend struct base::DefaultSingletonTraits<DownloadController>;
-  friend class DownloadControllerTest;
   DownloadController();
   ~DownloadController() override;
 
@@ -86,7 +77,6 @@ class DownloadController : public DownloadControllerBase {
 
   // DownloadItem::Observer interface.
   void OnDownloadUpdated(download::DownloadItem* item) override;
-  void OnDownloadDestroyed(download::DownloadItem* item) override;
 
   // The download item contains dangerous file types.
   void OnDangerousDownload(download::DownloadItem* item);
@@ -99,29 +89,23 @@ class DownloadController : public DownloadControllerBase {
       const DownloadInfo& info,
       bool allowed);
 
+  // Check if an interrupted download item can be auto resumed.
+  bool IsInterruptedDownloadAutoResumable(
+      download::DownloadItem* download_item);
+
   // Get profile key from download item.
   ProfileKey* GetProfileKey(download::DownloadItem* download_item);
 
-  // Callback after we prompt the user to enable app verification.
-  void EnableVerifyAppsDone(download::DownloadItem* item,
-                            safe_browsing::VerifyAppsEnabledResult result);
-
-  // Notify Java that download is complete, so the user can be informed.
-  void OnDownloadComplete(download::DownloadItem* item);
-
-  // Whether or not we should show an app verification prompt for `item`
-  bool ShouldShowAppVerificationPrompt(download::DownloadItem* item);
-
   std::string default_file_name_;
 
-  DownloadCallbackValidator validator_;
+  using StrongValidatorsMap =
+      std::map<std::string, std::pair<std::string, std::string>>;
+  // Stores the previous strong validators before a download is resumed. If the
+  // strong validators change after resumption starts, the download will restart
+  // from the beginning and all downloaded data will be lost.
+  StrongValidatorsMap strong_validators_map_;
 
-  std::unique_ptr<DangerousDownloadDialogBridge> dangerous_download_bridge_;
-
-  // The item currently or previously doing an app verification
-  // prompt. Because we show at most one at a time, this does not need
-  // to be a set.
-  raw_ptr<download::DownloadItem> app_verification_prompt_download_ = nullptr;
+  DISALLOW_COPY_AND_ASSIGN(DownloadController);
 };
 
 #endif  // CHROME_BROWSER_DOWNLOAD_ANDROID_DOWNLOAD_CONTROLLER_H_

@@ -1,11 +1,11 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/platform/graphics/video_frame_resource_provider.h"
 
 #include <memory>
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/trace_event/trace_event.h"
 #include "components/viz/client/client_resource_provider.h"
@@ -13,8 +13,7 @@
 #include "components/viz/common/quads/compositor_render_pass.h"
 #include "components/viz/common/quads/solid_color_draw_quad.h"
 #include "components/viz/common/quads/texture_draw_quad.h"
-#include "gpu/ipc/client/client_shared_image_interface.h"
-#include "media/base/limits.h"
+#include "components/viz/common/quads/yuv_video_draw_quad.h"
 #include "media/base/video_frame.h"
 #include "media/renderers/video_resource_updater.h"
 #include "third_party/blink/public/platform/web_vector.h"
@@ -35,8 +34,7 @@ VideoFrameResourceProvider::~VideoFrameResourceProvider() {
 
 void VideoFrameResourceProvider::Initialize(
     viz::RasterContextProvider* media_context_provider,
-    viz::SharedBitmapReporter* shared_bitmap_reporter,
-    scoped_refptr<gpu::ClientSharedImageInterface> shared_image_interface) {
+    viz::SharedBitmapReporter* shared_bitmap_reporter) {
   context_provider_ = media_context_provider;
   resource_provider_ = std::make_unique<viz::ClientResourceProvider>();
 
@@ -45,13 +43,15 @@ void VideoFrameResourceProvider::Initialize(
     max_texture_size =
         context_provider_->ContextCapabilities().max_texture_size;
   } else {
-    max_texture_size = media::limits::kMaxDimension;
+    // Pick an arbitrary limit here similar to what hardware might.
+    max_texture_size = 16 * 1024;
   }
 
   resource_updater_ = std::make_unique<media::VideoResourceUpdater>(
-      media_context_provider, shared_bitmap_reporter, resource_provider_.get(),
-      std::move(shared_image_interface), settings_.use_stream_video_draw_quad,
-      settings_.use_gpu_memory_buffer_resources, max_texture_size);
+      nullptr, media_context_provider, shared_bitmap_reporter,
+      resource_provider_.get(), settings_.use_stream_video_draw_quad,
+      settings_.resource_settings.use_gpu_memory_buffer_resources,
+      settings_.resource_settings.use_r16_texture, max_texture_size);
 }
 
 void VideoFrameResourceProvider::OnContextLost() {
@@ -81,9 +81,9 @@ void VideoFrameResourceProvider::AppendQuads(
   // are.  So, we use ScopedAllow only if we're told that we should do so.
   if (use_sync_primitives_) {
     base::ScopedAllowBaseSyncPrimitives allow_base_sync_primitives;
-    resource_updater_->ObtainFrameResource(frame);
+    resource_updater_->ObtainFrameResources(frame);
   } else {
-    resource_updater_->ObtainFrameResource(frame);
+    resource_updater_->ObtainFrameResources(frame);
   }
 
   auto transform = gfx::Transform();
@@ -119,14 +119,14 @@ void VideoFrameResourceProvider::AppendQuads(
   float draw_opacity = 1.0f;
   int sorting_context_id = 0;
 
-  resource_updater_->AppendQuad(render_pass, std::move(frame), transform,
-                                quad_rect, visible_quad_rect, mask_filter_info,
-                                /*clip_rect=*/std::nullopt, is_opaque,
-                                draw_opacity, sorting_context_id);
+  resource_updater_->AppendQuads(render_pass, std::move(frame), transform,
+                                 quad_rect, visible_quad_rect, mask_filter_info,
+                                 /*clip_rect=*/absl::nullopt, is_opaque,
+                                 draw_opacity, sorting_context_id);
 }
 
 void VideoFrameResourceProvider::ReleaseFrameResources() {
-  resource_updater_->ReleaseFrameResource();
+  resource_updater_->ReleaseFrameResources();
 }
 
 void VideoFrameResourceProvider::PrepareSendToParent(

@@ -1,26 +1,23 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/base/network_change_notifier_fuchsia.h"
 
 #include <fuchsia/net/interfaces/cpp/fidl_test_base.h>
-#include <lib/fidl/cpp/binding.h>
-
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "base/auto_reset.h"
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/logging.h"
 #include "base/run_loop.h"
 #include "base/test/task_environment.h"
 #include "base/threading/sequence_bound.h"
 #include "base/threading/thread.h"
 #include "net/base/ip_address.h"
-#include "net/base/network_change_notifier.h"
 #include "net/dns/dns_config_service.h"
 #include "net/dns/system_dns_config_change_notifier.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -43,9 +40,6 @@ constexpr IPv6Octets kDefaultIPv6Address = {0x20, 0x01, 0x01};
 constexpr uint8_t kDefaultIPv6Prefix = 16;
 constexpr IPv6Octets kSecondaryIPv6Address = {0x20, 0x01, 0x02};
 constexpr uint8_t kSecondaryIPv6Prefix = 16;
-
-constexpr const char kDefaultInterfaceName[] = "net1";
-constexpr const char kSecondaryInterfaceName[] = "net2";
 
 fuchsia::net::IpAddress IpAddressFrom(IPv4Octets octets) {
   fuchsia::net::IpAddress output;
@@ -83,17 +77,16 @@ std::vector<T> MakeSingleItemVec(T item) {
 }
 
 fuchsia::net::interfaces::Properties DefaultInterfaceProperties(
-    fuchsia::hardware::network::PortClass device_class =
-        fuchsia::hardware::network::PortClass::ETHERNET) {
-  // For most tests a live interface with an IPv4 address and ethernet class is
-  // sufficient.
+    fuchsia::hardware::network::DeviceClass device_class =
+        fuchsia::hardware::network::DeviceClass::UNKNOWN) {
+  // For most tests a live interface with an IPv4 address and an unknown class
+  // is sufficient.
   fuchsia::net::interfaces::Properties interface;
   interface.set_id(kDefaultInterfaceId);
-  interface.set_name(kDefaultInterfaceName);
   interface.set_online(true);
   interface.set_has_default_ipv4_route(true);
   interface.set_has_default_ipv6_route(true);
-  interface.set_port_class(fuchsia::net::interfaces::PortClass::WithDevice(
+  interface.set_device_class(fuchsia::net::interfaces::DeviceClass::WithDevice(
       std::move(device_class)));
   interface.set_addresses(MakeSingleItemVec(
       InterfaceAddressFrom(kDefaultIPv4Address, kDefaultIPv4Prefix)));
@@ -101,16 +94,15 @@ fuchsia::net::interfaces::Properties DefaultInterfaceProperties(
 }
 
 fuchsia::net::interfaces::Properties SecondaryInterfaceProperties() {
-  // For most tests a live interface with an IPv4 address and ethernet class is
-  // sufficient.
+  // For most tests a live interface with an IPv4 address and an unknown class
+  // is sufficient.
   fuchsia::net::interfaces::Properties interface;
   interface.set_id(kSecondaryInterfaceId);
-  interface.set_name(kSecondaryInterfaceName);
   interface.set_online(true);
   interface.set_has_default_ipv4_route(false);
   interface.set_has_default_ipv6_route(false);
-  interface.set_port_class(fuchsia::net::interfaces::PortClass::WithDevice(
-      []() { return fuchsia::hardware::network::PortClass::ETHERNET; } ()));
+  interface.set_device_class(fuchsia::net::interfaces::DeviceClass::WithDevice(
+      fuchsia::hardware::network::DeviceClass::UNKNOWN));
   interface.set_addresses(MakeSingleItemVec(
       InterfaceAddressFrom(kSecondaryIPv4Address, kSecondaryIPv4Prefix)));
   return interface;
@@ -127,7 +119,7 @@ fuchsia::net::interfaces::Event MakeChangeEvent(uint64_t interface_id, F fn) {
 // Partial fake implementation of a fuchsia.net.interfaces/Watcher.
 class FakeWatcher : public fuchsia::net::interfaces::testing::Watcher_TestBase {
  public:
-  FakeWatcher() : binding_(this) {
+  explicit FakeWatcher() : binding_(this) {
     // Always create the watcher with an empty set of interfaces.
     // Callers can override the initial set of events with SetInitial.
     pending_.push(fuchsia::net::interfaces::Event::WithIdle(
@@ -140,8 +132,6 @@ class FakeWatcher : public fuchsia::net::interfaces::testing::Watcher_TestBase {
   void Bind(fidl::InterfaceRequest<fuchsia::net::interfaces::Watcher> request) {
     CHECK_EQ(ZX_OK, binding_.Bind(std::move(request)));
   }
-
-  void Unbind() { binding_.Unbind(); }
 
   void PushEvent(fuchsia::net::interfaces::Event event) {
     if (pending_callback_) {
@@ -187,7 +177,7 @@ class FakeWatcher : public fuchsia::net::interfaces::testing::Watcher_TestBase {
 
 class FakeWatcherAsync {
  public:
-  FakeWatcherAsync() {
+  explicit FakeWatcherAsync() {
     base::Thread::Options options(base::MessagePumpType::IO, 0);
     CHECK(thread_.StartWithOptions(std::move(options)));
     watcher_ = base::SequenceBound<FakeWatcher>(thread_.task_runner());
@@ -199,8 +189,6 @@ class FakeWatcherAsync {
   void Bind(fidl::InterfaceRequest<fuchsia::net::interfaces::Watcher> request) {
     watcher_.AsyncCall(&FakeWatcher::Bind).WithArgs(std::move(request));
   }
-
-  void Unbind() { watcher_.AsyncCall(&FakeWatcher::Unbind); }
 
   // Asynchronously push an event to the watcher.
   void PushEvent(fuchsia::net::interfaces::Event event) {
@@ -252,13 +240,13 @@ class ResultReceiver {
 };
 
 // Accumulates the list of ConnectionTypes notified via OnConnectionTypeChanged.
-class FakeConnectionTypeObserver final
+class FakeConnectionTypeObserver
     : public NetworkChangeNotifier::ConnectionTypeObserver {
  public:
   FakeConnectionTypeObserver() {
     NetworkChangeNotifier::AddConnectionTypeObserver(this);
   }
-  ~FakeConnectionTypeObserver() override {
+  ~FakeConnectionTypeObserver() final {
     NetworkChangeNotifier::RemoveConnectionTypeObserver(this);
   }
 
@@ -269,7 +257,7 @@ class FakeConnectionTypeObserver final
 
   // ConnectionTypeObserver implementation.
   void OnConnectionTypeChanged(
-      NetworkChangeNotifier::ConnectionType type) override {
+      NetworkChangeNotifier::ConnectionType type) final {
     receiver_.AddEntry(type);
   }
 
@@ -278,13 +266,13 @@ class FakeConnectionTypeObserver final
 };
 
 // Accumulates the list of ConnectionTypes notified via OnConnectionTypeChanged.
-class FakeNetworkChangeObserver final
+class FakeNetworkChangeObserver
     : public NetworkChangeNotifier::NetworkChangeObserver {
  public:
   FakeNetworkChangeObserver() {
     NetworkChangeNotifier::AddNetworkChangeObserver(this);
   }
-  ~FakeNetworkChangeObserver() override {
+  ~FakeNetworkChangeObserver() final {
     NetworkChangeNotifier::RemoveNetworkChangeObserver(this);
   }
 
@@ -294,7 +282,7 @@ class FakeNetworkChangeObserver final
   }
 
   // NetworkChangeObserver implementation.
-  void OnNetworkChanged(NetworkChangeNotifier::ConnectionType type) override {
+  void OnNetworkChanged(NetworkChangeNotifier::ConnectionType type) final {
     receiver_.AddEntry(type);
   }
 
@@ -303,11 +291,10 @@ class FakeNetworkChangeObserver final
 };
 
 // Accumulates the list of ConnectionTypes notified via OnConnectionTypeChanged.
-class FakeIPAddressObserver final
-    : public NetworkChangeNotifier::IPAddressObserver {
+class FakeIPAddressObserver : public NetworkChangeNotifier::IPAddressObserver {
  public:
   FakeIPAddressObserver() { NetworkChangeNotifier::AddIPAddressObserver(this); }
-  ~FakeIPAddressObserver() override {
+  ~FakeIPAddressObserver() final {
     NetworkChangeNotifier::RemoveIPAddressObserver(this);
     EXPECT_EQ(ip_change_count_, 0u);
   }
@@ -325,7 +312,7 @@ class FakeIPAddressObserver final
   }
 
   // IPAddressObserver implementation.
-  void OnIPAddressChanged() override {
+  void OnIPAddressChanged() final {
     ip_change_count_++;
     if (quit_loop_ && ip_change_count_ >= expected_count_)
       std::move(quit_loop_).Run();
@@ -351,27 +338,19 @@ class NetworkChangeNotifierFuchsiaTest : public testing::Test {
   // Creates a NetworkChangeNotifier that binds to |watcher_|.
   // |observer_| is registered last, so that tests need only express
   // expectations on changes they make themselves.
-  void CreateNotifier(bool require_wlan = false,
-                      bool disconnect_watcher = false) {
+  void CreateNotifier(bool requires_wlan = false) {
     // Ensure that internal state is up-to-date before the
     // notifier queries it.
     watcher_.FlushThread();
 
-    fidl::InterfaceHandle<fuchsia::net::interfaces::Watcher> watcher;
-    fidl::InterfaceRequest<fuchsia::net::interfaces::Watcher> watcher_request =
-        watcher.NewRequest();
-    if (disconnect_watcher) {
-      // Reset the InterfaceRequest to close the `watcher` channel.
-      watcher_request = {};
-    } else {
-      watcher_.Bind(std::move(watcher_request));
-    }
+    CHECK(!watcher_handle_);
+    watcher_.Bind(watcher_handle_.NewRequest());
 
     // Use a noop DNS notifier.
     dns_config_notifier_ = std::make_unique<SystemDnsConfigChangeNotifier>(
         nullptr /* task_runner */, nullptr /* dns_config_service */);
-    notifier_ = base::WrapUnique(new NetworkChangeNotifierFuchsia(
-        std::move(watcher), require_wlan, dns_config_notifier_.get()));
+    notifier_.reset(new NetworkChangeNotifierFuchsia(
+        std::move(watcher_handle_), requires_wlan, dns_config_notifier_.get()));
 
     type_observer_ = std::make_unique<FakeConnectionTypeObserver>();
     ip_observer_ = std::make_unique<FakeIPAddressObserver>();
@@ -387,6 +366,7 @@ class NetworkChangeNotifierFuchsiaTest : public testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::SingleThreadTaskEnvironment::MainThreadType::IO};
 
+  fidl::InterfaceHandle<fuchsia::net::interfaces::Watcher> watcher_handle_;
   FakeWatcherAsync watcher_;
 
   // Allows us to allocate our own NetworkChangeNotifier for unit testing.
@@ -398,33 +378,6 @@ class NetworkChangeNotifierFuchsiaTest : public testing::Test {
   std::unique_ptr<FakeIPAddressObserver> ip_observer_;
 };
 
-TEST_F(NetworkChangeNotifierFuchsiaTest, ConnectFail_BeforeGetWatcher) {
-  // CreateNotifier will pass an already-disconnected Watcher handle to the
-  // new NetworkChangeNotifier, which will cause the process to exit during
-  // construction.
-  EXPECT_EXIT(
-      CreateNotifier(/*require_wlan=*/false, /*disconnect_watcher=*/true),
-      testing::ExitedWithCode(1), "");
-}
-
-TEST_F(NetworkChangeNotifierFuchsiaTest, ConnectFail_AfterGetWatcher) {
-  CreateNotifier();
-
-  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_NONE,
-            notifier_->GetCurrentConnectionType());
-
-  // Disconnect the Watcher protocol in-use by the NetworkChangeNotifier.
-  watcher_.Unbind();
-  watcher_.FlushThread();
-
-  // Spin the loop to process the disconnection, which should terminate the
-  // test process.
-  EXPECT_EXIT(base::RunLoop().RunUntilIdle(), testing::ExitedWithCode(1), "");
-
-  // Teardown the notifier here to ensure it doesn't observe further events.
-  notifier_ = nullptr;
-}
-
 TEST_F(NetworkChangeNotifierFuchsiaTest, InitialState) {
   CreateNotifier();
   EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_NONE,
@@ -434,7 +387,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, InitialState) {
 TEST_F(NetworkChangeNotifierFuchsiaTest, InterfacesChangeDuringConstruction) {
   // Set a live interface with an IP address.
   watcher_.SetInitial(DefaultInterfaceProperties(
-      fuchsia::hardware::network::PortClass::WLAN_CLIENT));
+      fuchsia::hardware::network::DeviceClass::WLAN));
 
   // Inject an interfaces change event so that the notifier will receive it
   // immediately after the initial state.
@@ -457,7 +410,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, InterfacesChangeDuringConstruction) {
 TEST_F(NetworkChangeNotifierFuchsiaTest, NotifyNetworkChangeOnInitialIPChange) {
   // Set a live interface with an IP address and create the notifier.
   watcher_.SetInitial(DefaultInterfaceProperties(
-      fuchsia::hardware::network::PortClass::WLAN_CLIENT));
+      fuchsia::hardware::network::DeviceClass::WLAN));
   CreateNotifier();
 
   // Add the NetworkChangeNotifier, and change the IP address. This should
@@ -480,7 +433,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, NoChange) {
   // Set a live interface with an IP address and create the notifier.
   watcher_.SetInitial(DefaultInterfaceProperties());
   CreateNotifier();
-  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_ETHERNET,
+  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_UNKNOWN,
             notifier_->GetCurrentConnectionType());
   // Push an event with no side-effects.
   watcher_.PushEvent(MakeChangeEvent(kDefaultInterfaceId, [](auto*) {}));
@@ -523,7 +476,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, MultiV6IPNoChange) {
 TEST_F(NetworkChangeNotifierFuchsiaTest, IpChange) {
   watcher_.SetInitial(DefaultInterfaceProperties());
   CreateNotifier();
-  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_ETHERNET,
+  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_UNKNOWN,
             notifier_->GetCurrentConnectionType());
 
   watcher_.PushEvent(MakeChangeEvent(
@@ -542,7 +495,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, IpChangeV6) {
       InterfaceAddressFrom(kDefaultIPv6Address, kDefaultIPv6Prefix)));
   watcher_.SetInitial(std::move(props));
   CreateNotifier();
-  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_ETHERNET,
+  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_UNKNOWN,
             notifier_->GetCurrentConnectionType());
 
   watcher_.PushEvent(MakeChangeEvent(
@@ -562,7 +515,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, MultiV6IPChanged) {
 
   watcher_.SetInitial(std::move(props));
   CreateNotifier();
-  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_ETHERNET,
+  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_UNKNOWN,
             notifier_->GetCurrentConnectionType());
 
   watcher_.PushEvent(MakeChangeEvent(
@@ -582,7 +535,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, MultiV6IPChanged) {
 TEST_F(NetworkChangeNotifierFuchsiaTest, Ipv6AdditionalIpChange) {
   watcher_.SetInitial(DefaultInterfaceProperties());
   CreateNotifier();
-  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_ETHERNET,
+  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_UNKNOWN,
             notifier_->GetCurrentConnectionType());
 
   watcher_.PushEvent(MakeChangeEvent(
@@ -602,7 +555,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, Ipv6AdditionalIpChange) {
 TEST_F(NetworkChangeNotifierFuchsiaTest, InterfaceDown) {
   watcher_.SetInitial(DefaultInterfaceProperties());
   CreateNotifier();
-  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_ETHERNET,
+  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_UNKNOWN,
             notifier_->GetCurrentConnectionType());
 
   watcher_.PushEvent(MakeChangeEvent(
@@ -629,14 +582,14 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, InterfaceUp) {
       }));
 
   EXPECT_TRUE(type_observer_->RunAndExpectConnectionTypes(
-      {NetworkChangeNotifier::ConnectionType::CONNECTION_ETHERNET}));
+      {NetworkChangeNotifier::ConnectionType::CONNECTION_UNKNOWN}));
   EXPECT_TRUE(ip_observer_->RunAndExpectCallCount(1));
 }
 
 TEST_F(NetworkChangeNotifierFuchsiaTest, InterfaceDeleted) {
   watcher_.SetInitial(DefaultInterfaceProperties());
   CreateNotifier();
-  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_ETHERNET,
+  EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_UNKNOWN,
             notifier_->GetCurrentConnectionType());
 
   watcher_.PushEvent(
@@ -655,7 +608,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, InterfaceAdded) {
 
   watcher_.PushEvent(
       fuchsia::net::interfaces::Event::WithAdded(DefaultInterfaceProperties(
-          fuchsia::hardware::network::PortClass::WLAN_CLIENT)));
+          fuchsia::hardware::network::DeviceClass::WLAN)));
 
   EXPECT_TRUE(type_observer_->RunAndExpectConnectionTypes(
       {NetworkChangeNotifier::ConnectionType::CONNECTION_WIFI}));
@@ -684,7 +637,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, SecondaryInterfaceDeletedNoop) {
 
 TEST_F(NetworkChangeNotifierFuchsiaTest, FoundWiFi) {
   watcher_.SetInitial(DefaultInterfaceProperties(
-      fuchsia::hardware::network::PortClass::WLAN_CLIENT));
+      fuchsia::hardware::network::DeviceClass::WLAN));
   CreateNotifier();
   EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_WIFI,
             notifier_->GetCurrentConnectionType());
@@ -692,7 +645,7 @@ TEST_F(NetworkChangeNotifierFuchsiaTest, FoundWiFi) {
 
 TEST_F(NetworkChangeNotifierFuchsiaTest, FindsInterfaceWithRequiredWlan) {
   watcher_.SetInitial(DefaultInterfaceProperties(
-      fuchsia::hardware::network::PortClass::WLAN_CLIENT));
+      fuchsia::hardware::network::DeviceClass::WLAN));
   CreateNotifier(/*require_wlan=*/true);
   EXPECT_EQ(NetworkChangeNotifier::ConnectionType::CONNECTION_WIFI,
             notifier_->GetCurrentConnectionType());

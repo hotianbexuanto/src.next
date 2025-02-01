@@ -1,12 +1,12 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/media_values.h"
 
-#include "third_party/blink/public/common/css/scripting.h"
+#include "third_party/blink/public/platform/platform.h"
+#include "third_party/blink/public/platform/web_theme_engine.h"
 #include "third_party/blink/renderer/core/css/css_resolution_units.h"
-#include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
 #include "third_party/blink/renderer/core/css/media_feature_overrides.h"
 #include "third_party/blink/renderer/core/css/media_values.h"
 #include "third_party/blink/renderer/core/css/media_values_cached.h"
@@ -15,26 +15,22 @@
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
-#include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
-#include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
+#include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
-#include "third_party/blink/renderer/core/media_type_names.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
-#include "third_party/blink/renderer/core/preferences/preference_overrides.h"
 #include "third_party/blink/renderer/platform/graphics/color_space_gamut.h"
 #include "third_party/blink/renderer/platform/network/network_state_notifier.h"
 #include "third_party/blink/renderer/platform/widget/frame_widget.h"
-#include "ui/base/mojom/window_show_state.mojom-blink.h"
 #include "ui/display/screen_info.h"
 
 namespace blink {
 
-ForcedColors CSSValueIDToForcedColors(CSSValueID id) {
+namespace {
+static ForcedColors CSSValueIDToForcedColors(CSSValueID id) {
   switch (id) {
     case CSSValueID::kActive:
       return ForcedColors::kActive;
@@ -42,8 +38,10 @@ ForcedColors CSSValueIDToForcedColors(CSSValueID id) {
       return ForcedColors::kNone;
     default:
       NOTREACHED();
+      return ForcedColors::kNone;
   }
 }
+}  // namespace
 
 mojom::blink::PreferredColorScheme CSSValueIDToPreferredColorScheme(
     CSSValueID id) {
@@ -54,56 +52,13 @@ mojom::blink::PreferredColorScheme CSSValueIDToPreferredColorScheme(
       return mojom::blink::PreferredColorScheme::kDark;
     default:
       NOTREACHED();
+      return mojom::blink::PreferredColorScheme::kLight;
   }
-}
-
-mojom::blink::PreferredContrast CSSValueIDToPreferredContrast(CSSValueID id) {
-  switch (id) {
-    case CSSValueID::kMore:
-      return mojom::blink::PreferredContrast::kMore;
-    case CSSValueID::kLess:
-      return mojom::blink::PreferredContrast::kLess;
-    case CSSValueID::kNoPreference:
-      return mojom::blink::PreferredContrast::kNoPreference;
-    case CSSValueID::kCustom:
-      return mojom::blink::PreferredContrast::kCustom;
-    default:
-      NOTREACHED();
-  }
-}
-
-std::optional<double> MediaValues::InlineSize() const {
-  if (blink::IsHorizontalWritingMode(GetWritingMode())) {
-    return Width();
-  }
-  return Height();
-}
-
-std::optional<double> MediaValues::BlockSize() const {
-  if (blink::IsHorizontalWritingMode(GetWritingMode())) {
-    return Height();
-  }
-  return Width();
-}
-
-bool MediaValues::SnappedBlock() const {
-  if (blink::IsHorizontalWritingMode(GetWritingMode())) {
-    return SnappedY();
-  }
-  return SnappedX();
-}
-
-bool MediaValues::SnappedInline() const {
-  if (blink::IsHorizontalWritingMode(GetWritingMode())) {
-    return SnappedX();
-  }
-  return SnappedY();
 }
 
 MediaValues* MediaValues::CreateDynamicIfFrameExists(LocalFrame* frame) {
-  if (frame) {
+  if (frame)
     return MediaValuesDynamic::Create(frame);
-  }
   return MakeGarbageCollected<MediaValuesCached>();
 }
 
@@ -111,56 +66,14 @@ double MediaValues::CalculateViewportWidth(LocalFrame* frame) {
   DCHECK(frame);
   DCHECK(frame->View());
   DCHECK(frame->GetDocument());
-  return frame->View()->ViewportSizeForMediaQueries().width();
+  return frame->View()->ViewportSizeForMediaQueries().Width();
 }
 
 double MediaValues::CalculateViewportHeight(LocalFrame* frame) {
   DCHECK(frame);
   DCHECK(frame->View());
   DCHECK(frame->GetDocument());
-  return frame->View()->ViewportSizeForMediaQueries().height();
-}
-
-double MediaValues::CalculateSmallViewportWidth(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->View());
-  DCHECK(frame->GetDocument());
-  return frame->View()->SmallViewportSizeForViewportUnits().width();
-}
-
-double MediaValues::CalculateSmallViewportHeight(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->View());
-  DCHECK(frame->GetDocument());
-  return frame->View()->SmallViewportSizeForViewportUnits().height();
-}
-
-double MediaValues::CalculateLargeViewportWidth(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->View());
-  DCHECK(frame->GetDocument());
-  return frame->View()->LargeViewportSizeForViewportUnits().width();
-}
-
-double MediaValues::CalculateLargeViewportHeight(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->View());
-  DCHECK(frame->GetDocument());
-  return frame->View()->LargeViewportSizeForViewportUnits().height();
-}
-
-double MediaValues::CalculateDynamicViewportWidth(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->View());
-  DCHECK(frame->GetDocument());
-  return frame->View()->DynamicViewportSizeForViewportUnits().width();
-}
-
-double MediaValues::CalculateDynamicViewportHeight(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->View());
-  DCHECK(frame->GetDocument());
-  return frame->View()->DynamicViewportSizeForViewportUnits().height();
+  return frame->View()->ViewportSizeForMediaQueries().Height();
 }
 
 int MediaValues::CalculateDeviceWidth(LocalFrame* frame) {
@@ -197,23 +110,13 @@ float MediaValues::CalculateDevicePixelRatio(LocalFrame* frame) {
   return frame->DevicePixelRatio();
 }
 
-bool MediaValues::CalculateDeviceSupportsHDR(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->GetPage());
-  return frame->GetPage()
-      ->GetChromeClient()
-      .GetScreenInfo(*frame)
-      .display_color_spaces.SupportsHDR();
-}
-
 int MediaValues::CalculateColorBitsPerComponent(LocalFrame* frame) {
   DCHECK(frame);
   DCHECK(frame->GetPage());
   const display::ScreenInfo& screen_info =
       frame->GetPage()->GetChromeClient().GetScreenInfo(*frame);
-  if (screen_info.is_monochrome) {
+  if (screen_info.is_monochrome)
     return 0;
-  }
   return screen_info.depth_per_component;
 }
 
@@ -222,70 +125,19 @@ int MediaValues::CalculateMonochromeBitsPerComponent(LocalFrame* frame) {
   DCHECK(frame->GetPage());
   const display::ScreenInfo& screen_info =
       frame->GetPage()->GetChromeClient().GetScreenInfo(*frame);
-  if (!screen_info.is_monochrome) {
+  if (!screen_info.is_monochrome)
     return 0;
-  }
   return screen_info.depth_per_component;
 }
 
-bool MediaValues::CalculateInvertedColors(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->GetSettings());
-  return frame->GetSettings()->GetInvertedColors();
-}
-
-float MediaValues::CalculateEmSize(LocalFrame* frame) {
-  CHECK(frame);
-  CHECK(frame->ContentLayoutObject());
-  const ComputedStyle& style = frame->ContentLayoutObject()->StyleRef();
-  return CSSToLengthConversionData::FontSizes(style.GetFontSizeStyle(), &style)
-      .Em(/* zoom */ 1.0f);
-}
-
-float MediaValues::CalculateExSize(LocalFrame* frame) {
-  CHECK(frame);
-  CHECK(frame->ContentLayoutObject());
-  const ComputedStyle& style = frame->ContentLayoutObject()->StyleRef();
-  return CSSToLengthConversionData::FontSizes(style.GetFontSizeStyle(), &style)
-      .Ex(/* zoom */ 1.0f);
-}
-
-float MediaValues::CalculateChSize(LocalFrame* frame) {
-  CHECK(frame);
-  CHECK(frame->ContentLayoutObject());
-  const ComputedStyle& style = frame->ContentLayoutObject()->StyleRef();
-  return CSSToLengthConversionData::FontSizes(style.GetFontSizeStyle(), &style)
-      .Ch(/* zoom */ 1.0f);
-}
-
-float MediaValues::CalculateIcSize(LocalFrame* frame) {
-  CHECK(frame);
-  CHECK(frame->ContentLayoutObject());
-  const ComputedStyle& style = frame->ContentLayoutObject()->StyleRef();
-  return CSSToLengthConversionData::FontSizes(style.GetFontSizeStyle(), &style)
-      .Ic(/* zoom */ 1.0f);
-}
-
-float MediaValues::CalculateCapSize(LocalFrame* frame) {
-  CHECK(frame);
-  CHECK(frame->ContentLayoutObject());
-  const ComputedStyle& style = frame->ContentLayoutObject()->StyleRef();
-  return CSSToLengthConversionData::FontSizes(style.GetFontSizeStyle(), &style)
-      .Cap(/* zoom */ 1.0f);
-}
-
-float MediaValues::CalculateLineHeight(LocalFrame* frame) {
-  CHECK(frame);
-  CHECK(frame->ContentLayoutObject());
-  const ComputedStyle& style = frame->ContentLayoutObject()->StyleRef();
-  return AdjustForAbsoluteZoom::AdjustFloat(style.ComputedLineHeight(), style);
+int MediaValues::CalculateDefaultFontSize(LocalFrame* frame) {
+  return frame->GetPage()->GetSettings().GetDefaultFontSize();
 }
 
 const String MediaValues::CalculateMediaType(LocalFrame* frame) {
   DCHECK(frame);
-  if (!frame->View()) {
+  if (!frame->View())
     return g_empty_atom;
-  }
   return frame->View()->MediaType();
 }
 
@@ -294,60 +146,24 @@ mojom::blink::DisplayMode MediaValues::CalculateDisplayMode(LocalFrame* frame) {
 
   blink::mojom::DisplayMode mode =
       frame->GetPage()->GetSettings().GetDisplayModeOverride();
-  if (mode != mojom::blink::DisplayMode::kUndefined) {
+  if (mode != mojom::blink::DisplayMode::kUndefined)
     return mode;
-  }
 
   FrameWidget* widget = frame->GetWidgetForLocalRoot();
-  if (!widget) {  // Is null in non-ordinary Pages.
+  if (!widget)  // Is null in non-ordinary Pages.
     return mojom::blink::DisplayMode::kBrowser;
-  }
 
   return widget->DisplayMode();
 }
 
-ui::mojom::blink::WindowShowState MediaValues::CalculateWindowShowState(
-    LocalFrame* frame) {
-  DCHECK(frame);
-
-  ui::mojom::blink::WindowShowState show_state =
-      frame->GetPage()->GetSettings().GetWindowShowState();
-  // Initial state set in /third_party/blink/renderer/core/frame/settings.json5
-  // should match with this.
-  if (show_state != ui::mojom::blink::WindowShowState::kDefault) {
-    return show_state;
-  }
-
-  FrameWidget* widget = frame->GetWidgetForLocalRoot();
-  if (!widget) {  // Is null in non-ordinary Pages.
-    return ui::mojom::blink::WindowShowState::kDefault;
-  }
-
-  return widget->WindowShowState();
-}
-
-bool MediaValues::CalculateResizable(LocalFrame* frame) {
-  DCHECK(frame);
-
-  bool resizable = frame->GetPage()->GetSettings().GetResizable();
-  // Initial state set in /third_party/blink/renderer/core/frame/settings.json5
-  // should match with this.
-  if (!resizable) {
-    // Only non-default value should be returned "early" from the settings
-    // without checking from widget. Settings are only used for testing.
-    return resizable;
-  }
-
-  FrameWidget* widget = frame->GetWidgetForLocalRoot();
-  if (!widget) {
-    return true;
-  }
-
-  return widget->Resizable();
-}
-
 bool MediaValues::CalculateThreeDEnabled(LocalFrame* frame) {
   return frame->GetPage()->GetSettings().GetAcceleratedCompositingEnabled();
+}
+
+bool MediaValues::CalculateInImmersiveMode(LocalFrame* frame) {
+  DCHECK(frame);
+  DCHECK(frame->GetSettings());
+  return frame->GetSettings()->GetImmersiveModeEnabled();
 }
 
 mojom::blink::PointerType MediaValues::CalculatePrimaryPointerType(
@@ -370,13 +186,6 @@ mojom::blink::HoverType MediaValues::CalculatePrimaryHoverType(
   return frame->GetSettings()->GetPrimaryHoverType();
 }
 
-mojom::blink::OutputDeviceUpdateAbilityType
-MediaValues::CalculateOutputDeviceUpdateAbilityType(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->GetSettings());
-  return frame->GetSettings()->GetOutputDeviceUpdateAbilityType();
-}
-
 int MediaValues::CalculateAvailableHoverTypes(LocalFrame* frame) {
   DCHECK(frame);
   DCHECK(frame->GetSettings());
@@ -386,12 +195,21 @@ int MediaValues::CalculateAvailableHoverTypes(LocalFrame* frame) {
 ColorSpaceGamut MediaValues::CalculateColorGamut(LocalFrame* frame) {
   DCHECK(frame);
   DCHECK(frame->GetPage());
-  const MediaFeatureOverrides* overrides =
-      frame->GetPage()->GetMediaFeatureOverrides();
-  std::optional<ColorSpaceGamut> override_value =
-      overrides ? overrides->GetColorGamut() : std::nullopt;
-  return override_value.value_or(color_space_utilities::GetColorSpaceGamut(
-      frame->GetPage()->GetChromeClient().GetScreenInfo(*frame)));
+  if (const auto* overrides = frame->GetPage()->GetMediaFeatureOverrides()) {
+    MediaQueryExpValue value = overrides->GetOverride("color-gamut");
+    if (value.IsValid()) {
+      if (value.id == CSSValueID::kSRGB)
+        return ColorSpaceGamut::SRGB;
+      if (value.id == CSSValueID::kP3)
+        return ColorSpaceGamut::P3;
+      // Rec. 2020 is also known as ITU-R-Empfehlung BT.2020.
+      if (value.id == CSSValueID::kRec2020)
+        return ColorSpaceGamut::BT2020;
+      NOTREACHED();
+    }
+  }
+  return color_space_utilities::GetColorSpaceGamut(
+      frame->GetPage()->GetChromeClient().GetScreenInfo(*frame));
 }
 
 mojom::blink::PreferredColorScheme MediaValues::CalculatePreferredColorScheme(
@@ -400,115 +218,56 @@ mojom::blink::PreferredColorScheme MediaValues::CalculatePreferredColorScheme(
   DCHECK(frame->GetSettings());
   DCHECK(frame->GetDocument());
   DCHECK(frame->GetPage());
-  const MediaFeatureOverrides* overrides =
-      frame->GetPage()->GetMediaFeatureOverrides();
-  std::optional<mojom::blink::PreferredColorScheme> override_value =
-      overrides ? overrides->GetPreferredColorScheme() : std::nullopt;
-  if (override_value.has_value()) {
-    return override_value.value();
+  if (const auto* overrides = frame->GetPage()->GetMediaFeatureOverrides()) {
+    MediaQueryExpValue value = overrides->GetOverride("prefers-color-scheme");
+    if (value.IsValid())
+      return CSSValueIDToPreferredColorScheme(value.id);
   }
-
-  const PreferenceOverrides* preference_overrides =
-      frame->GetPage()->GetPreferenceOverrides();
-  std::optional<mojom::blink::PreferredColorScheme> preference_override_value =
-      preference_overrides ? preference_overrides->GetPreferredColorScheme()
-                           : std::nullopt;
-  return preference_override_value.value_or(
-      frame->GetDocument()->GetStyleEngine().GetPreferredColorScheme());
+  return frame->GetDocument()->GetStyleEngine().GetPreferredColorScheme();
 }
 
 mojom::blink::PreferredContrast MediaValues::CalculatePreferredContrast(
     LocalFrame* frame) {
   DCHECK(frame);
   DCHECK(frame->GetSettings());
-  DCHECK(frame->GetPage());
-  const MediaFeatureOverrides* overrides =
-      frame->GetPage()->GetMediaFeatureOverrides();
-  std::optional<mojom::blink::PreferredContrast> override_value =
-      overrides ? overrides->GetPreferredContrast() : std::nullopt;
-  if (override_value.has_value()) {
-    return override_value.value();
-  }
-
-  const PreferenceOverrides* preference_overrides =
-      frame->GetPage()->GetPreferenceOverrides();
-  std::optional<mojom::blink::PreferredContrast> preference_override_value =
-      preference_overrides ? preference_overrides->GetPreferredContrast()
-                           : std::nullopt;
-  return preference_override_value.value_or(
-      frame->GetSettings()->GetPreferredContrast());
+  return frame->GetSettings()->GetPreferredContrast();
 }
 
 bool MediaValues::CalculatePrefersReducedMotion(LocalFrame* frame) {
   DCHECK(frame);
   DCHECK(frame->GetSettings());
-  const MediaFeatureOverrides* overrides =
-      frame->GetPage()->GetMediaFeatureOverrides();
-  std::optional<bool> override_value =
-      overrides ? overrides->GetPrefersReducedMotion() : std::nullopt;
-  if (override_value.has_value()) {
-    return override_value.value();
+  if (const auto* overrides = frame->GetPage()->GetMediaFeatureOverrides()) {
+    MediaQueryExpValue value = overrides->GetOverride("prefers-reduced-motion");
+    if (value.IsValid())
+      return value.id == CSSValueID::kReduce;
   }
-
-  const PreferenceOverrides* preference_overrides =
-      frame->GetPage()->GetPreferenceOverrides();
-  std::optional<bool> preference_override_value =
-      preference_overrides ? preference_overrides->GetPrefersReducedMotion()
-                           : std::nullopt;
-  return preference_override_value.value_or(
-      frame->GetSettings()->GetPrefersReducedMotion());
+  return frame->GetSettings()->GetPrefersReducedMotion();
 }
 
 bool MediaValues::CalculatePrefersReducedData(LocalFrame* frame) {
   DCHECK(frame);
   DCHECK(frame->GetSettings());
-  const MediaFeatureOverrides* overrides =
-      frame->GetPage()->GetMediaFeatureOverrides();
-  std::optional<bool> override_value =
-      overrides ? overrides->GetPrefersReducedData() : std::nullopt;
-  if (override_value.has_value()) {
-    return override_value.value();
+  if (const auto* overrides = frame->GetPage()->GetMediaFeatureOverrides()) {
+    MediaQueryExpValue value = overrides->GetOverride("prefers-reduced-data");
+    if (value.IsValid())
+      return value.id == CSSValueID::kReduce;
   }
-
-  const PreferenceOverrides* preference_overrides =
-      frame->GetPage()->GetPreferenceOverrides();
-  std::optional<bool> preference_override_value =
-      preference_overrides ? preference_overrides->GetPrefersReducedData()
-                           : std::nullopt;
-  return preference_override_value.value_or(
-      GetNetworkStateNotifier().SaveDataEnabled());
-}
-
-bool MediaValues::CalculatePrefersReducedTransparency(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->GetSettings());
-  const MediaFeatureOverrides* overrides =
-      frame->GetPage()->GetMediaFeatureOverrides();
-  std::optional<bool> override_value =
-      overrides ? overrides->GetPrefersReducedTransparency() : std::nullopt;
-  if (override_value.has_value()) {
-    return override_value.value();
-  }
-
-  const PreferenceOverrides* preference_overrides =
-      frame->GetPage()->GetPreferenceOverrides();
-  std::optional<bool> preference_override_value =
-      preference_overrides
-          ? preference_overrides->GetPrefersReducedTransparency()
-          : std::nullopt;
-  return preference_override_value.value_or(
-      frame->GetSettings()->GetPrefersReducedTransparency());
+  return (GetNetworkStateNotifier().SaveDataEnabled() &&
+          !frame->GetSettings()->GetDataSaverHoldbackWebApi());
 }
 
 ForcedColors MediaValues::CalculateForcedColors(LocalFrame* frame) {
   DCHECK(frame);
   DCHECK(frame->GetSettings());
-  const MediaFeatureOverrides* overrides =
-      frame->GetPage()->GetMediaFeatureOverrides();
-  std::optional<ForcedColors> override_value =
-      overrides ? overrides->GetForcedColors() : std::nullopt;
-  return override_value.value_or(
-      frame->GetDocument()->GetStyleEngine().GetForcedColors());
+  if (const auto* overrides = frame->GetPage()->GetMediaFeatureOverrides()) {
+    MediaQueryExpValue value = overrides->GetOverride("forced-colors");
+    if (value.IsValid())
+      return CSSValueIDToForcedColors(value.id);
+  }
+  if (Platform::Current() && Platform::Current()->ThemeEngine())
+    return Platform::Current()->ThemeEngine()->GetForcedColors();
+  else
+    return ForcedColors::kNone;
 }
 
 NavigationControls MediaValues::CalculateNavigationControls(LocalFrame* frame) {
@@ -517,62 +276,98 @@ NavigationControls MediaValues::CalculateNavigationControls(LocalFrame* frame) {
   return frame->GetSettings()->GetNavigationControls();
 }
 
-int MediaValues::CalculateHorizontalViewportSegments(LocalFrame* frame) {
-  if (!frame->GetWidgetForLocalRoot()) {
-    return 1;
+ScreenSpanning MediaValues::CalculateScreenSpanning(LocalFrame* frame) {
+  if (!frame->GetWidgetForLocalRoot())
+    return ScreenSpanning::kNone;
+
+  WebVector<gfx::Rect> window_segments =
+      frame->GetWidgetForLocalRoot()->WindowSegments();
+
+  if (window_segments.size() == 2) {
+    // If there are two segments and the y value of the segments is the same,
+    // we have side-by-side segments which are represented as a single vertical
+    // fold.
+    if (window_segments[0].y() == window_segments[1].y())
+      return ScreenSpanning::kSingleFoldVertical;
+
+    // If the x value of the segments is the same, we have stacked segments
+    // which are represented as a single horizontal fold.
+    if (window_segments[0].x() == window_segments[1].x())
+      return ScreenSpanning::kSingleFoldHorizontal;
   }
 
-  WebVector<gfx::Rect> viewport_segments =
-      frame->GetWidgetForLocalRoot()->ViewportSegments();
-  WTF::HashSet<int> unique_x;
-  for (const auto& segment : viewport_segments) {
-    // HashSet can't have 0 as a key, so add 1 to all the values we see.
-    unique_x.insert(segment.x() + 1);
-  }
-
-  return static_cast<int>(unique_x.size());
+  return ScreenSpanning::kNone;
 }
 
-int MediaValues::CalculateVerticalViewportSegments(LocalFrame* frame) {
-  if (!frame->GetWidgetForLocalRoot()) {
-    return 1;
-  }
-
-  WebVector<gfx::Rect> viewport_segments =
-      frame->GetWidgetForLocalRoot()->ViewportSegments();
-  WTF::HashSet<int> unique_y;
-  for (const auto& segment : viewport_segments) {
-    // HashSet can't have 0 as a key, so add 1 to all the values we see.
-    unique_y.insert(segment.y() + 1);
-  }
-
-  return static_cast<int>(unique_y.size());
-}
-
-mojom::blink::DevicePostureType MediaValues::CalculateDevicePosture(
-    LocalFrame* frame) {
-  return frame->GetDevicePosture();
-}
-
-Scripting MediaValues::CalculateScripting(LocalFrame* frame) {
-  DCHECK(frame);
-  DCHECK(frame->GetDocument());
-  if (!frame->GetDocument()->GetExecutionContext()->CanExecuteScripts(
-          kNotAboutToExecuteScript)) {
-    return Scripting::kNone;
-  }
-
-  return Scripting::kEnabled;
+DevicePosture MediaValues::CalculateDevicePosture(LocalFrame* frame) {
+  // TODO(darktears): Retrieve information from the host.
+  return DevicePosture::kNoFold;
 }
 
 bool MediaValues::ComputeLengthImpl(double value,
                                     CSSPrimitiveValue::UnitType type,
-                                    double& result) const {
-  if (!CSSPrimitiveValue::IsLength(type)) {
-    return false;
+                                    unsigned default_font_size,
+                                    double viewport_width,
+                                    double viewport_height,
+                                    double& result) {
+  // The logic in this function is duplicated from
+  // CSSToLengthConversionData::ZoomedComputedPixels() because
+  // MediaValues::ComputeLength() needs nearly identical logic, but we haven't
+  // found a way to make CSSToLengthConversionData::ZoomedComputedPixels() more
+  // generic (to solve both cases) without hurting performance.
+  // FIXME - Unite the logic here with CSSToLengthConversionData in a performant
+  // way.
+  switch (type) {
+    case CSSPrimitiveValue::UnitType::kEms:
+    case CSSPrimitiveValue::UnitType::kRems:
+      result = value * default_font_size;
+      return true;
+    case CSSPrimitiveValue::UnitType::kPixels:
+    case CSSPrimitiveValue::UnitType::kUserUnits:
+      result = value;
+      return true;
+    case CSSPrimitiveValue::UnitType::kExs:
+    // FIXME: We have a bug right now where the zoom will be applied twice to EX
+    // units.
+    case CSSPrimitiveValue::UnitType::kChs:
+      // FIXME: We don't seem to be able to cache fontMetrics related values.
+      // Trying to access them is triggering some sort of microtask. Serving the
+      // spec's default instead.
+      result = (value * default_font_size) / 2.0;
+      return true;
+    case CSSPrimitiveValue::UnitType::kViewportWidth:
+      result = (value * viewport_width) / 100.0;
+      return true;
+    case CSSPrimitiveValue::UnitType::kViewportHeight:
+      result = (value * viewport_height) / 100.0;
+      return true;
+    case CSSPrimitiveValue::UnitType::kViewportMin:
+      result = (value * std::min(viewport_width, viewport_height)) / 100.0;
+      return true;
+    case CSSPrimitiveValue::UnitType::kViewportMax:
+      result = (value * std::max(viewport_width, viewport_height)) / 100.0;
+      return true;
+    case CSSPrimitiveValue::UnitType::kCentimeters:
+      result = value * kCssPixelsPerCentimeter;
+      return true;
+    case CSSPrimitiveValue::UnitType::kMillimeters:
+      result = value * kCssPixelsPerMillimeter;
+      return true;
+    case CSSPrimitiveValue::UnitType::kQuarterMillimeters:
+      result = value * kCssPixelsPerQuarterMillimeter;
+      return true;
+    case CSSPrimitiveValue::UnitType::kInches:
+      result = value * kCssPixelsPerInch;
+      return true;
+    case CSSPrimitiveValue::UnitType::kPoints:
+      result = value * kCssPixelsPerPoint;
+      return true;
+    case CSSPrimitiveValue::UnitType::kPicas:
+      result = value * kCssPixelsPerPica;
+      return true;
+    default:
+      return false;
   }
-  result = ZoomedComputedPixels(value, type);
-  return true;
 }
 
 }  // namespace blink

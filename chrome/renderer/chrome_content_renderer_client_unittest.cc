@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,6 +17,7 @@
 #include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/common/privacy_budget/scoped_privacy_budget_config.h"
+#include "components/data_reduction_proxy/core/common/data_reduction_proxy_headers.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/webplugininfo.h"
 #include "extensions/buildflags/buildflags.h"
@@ -26,14 +27,13 @@
 #include "url/gurl.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-#include "chrome/common/extensions/extension_test_util.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
-#include "extensions/common/extensions_client.h"
 #include "extensions/common/manifest_constants.h"
 #endif
 
 #if BUILDFLAG(ENABLE_NACL)
+#include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_vector.h"
 #include "third_party/blink/public/web/web_plugin_params.h"
 #endif
@@ -102,16 +102,15 @@ scoped_refptr<const extensions::Extension> CreateTestExtension(
       extensions::Extension::FROM_WEBSTORE:
       extensions::Extension::NO_FLAGS;
 
-  base::Value::Dict manifest;
-  manifest.Set("name", "NaCl Extension");
-  manifest.Set("version", "1");
-  manifest.Set("manifest_version", 2);
+  base::DictionaryValue manifest;
+  manifest.SetString("name", "NaCl Extension");
+  manifest.SetString("version", "1");
+  manifest.SetInteger("manifest_version", 2);
   if (is_hosted_app) {
-    base::Value::List url_list;
-    url_list.Append(app_url);
-    manifest.SetByDottedPath(extensions::manifest_keys::kWebURLs,
-                             std::move(url_list));
-    manifest.SetByDottedPath(extensions::manifest_keys::kLaunchWebURL, app_url);
+    base::ListValue url_list;
+    url_list.AppendString(app_url);
+    manifest.SetPath(extensions::manifest_keys::kWebURLs, std::move(url_list));
+    manifest.SetString(extensions::manifest_keys::kLaunchWebURL, app_url);
   }
   std::string error;
   return extensions::Extension::Create(base::FilePath(), location, manifest,
@@ -135,20 +134,6 @@ scoped_refptr<const extensions::Extension> CreateHostedApp(
     bool is_from_webstore, const std::string& app_url) {
   return CreateTestExtension(ManifestLocation::kInternal, is_from_webstore,
                              kHostedApp, app_url);
-}
-
-TEST_F(ChromeContentRendererClientTest, ExtensionsClientInitialized) {
-  auto* extensions_client = extensions::ExtensionsClient::Get();
-  ASSERT_TRUE(extensions_client);
-
-  // Ensure that the availability map is initialized correctly.
-  const auto& map =
-      extensions_client->GetFeatureDelegatedAvailabilityCheckMap();
-  EXPECT_EQ(7u, map.size());
-  for (const auto* feature :
-       extension_test_util::GetExpectedDelegatedFeaturesForTest()) {
-    EXPECT_EQ(1u, map.count(feature));
-  }
 }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 

@@ -30,13 +30,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_PAINT_LAYER_RESOURCE_INFO_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_PAINT_LAYER_RESOURCE_INFO_H_
 
-#include <optional>
-
 #include "third_party/blink/renderer/core/svg/svg_resource_client.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/heap/member.h"
-#include "third_party/blink/renderer/platform/heap/visitor.h"
-#include "ui/gfx/geometry/rect_f.h"
+#include "third_party/blink/renderer/platform/geometry/float_rect.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 
 namespace blink {
 
@@ -60,28 +56,19 @@ class PaintLayerResourceInfo final
   PaintLayerResourceInfo& operator=(const PaintLayerResourceInfo&) = delete;
   ~PaintLayerResourceInfo() override;
 
-  gfx::RectF FilterReferenceBox() const { return filter_reference_box_; }
-  void SetFilterReferenceBox(const gfx::RectF& rect) {
+  FloatRect FilterReferenceBox() const { return filter_reference_box_; }
+  void SetFilterReferenceBox(const FloatRect& rect) {
     filter_reference_box_ = rect;
-  }
-  const std::optional<gfx::SizeF>& FilterViewport() const {
-    return filter_viewport_;
-  }
-  void SetFilterViewport(std::optional<gfx::SizeF> viewport) {
-    filter_viewport_ = viewport;
   }
 
   void ClearLayer() { layer_ = nullptr; }
 
   void ResourceContentChanged(SVGResource*) override;
 
-  void Trace(Visitor* visitor) const override { visitor->Trace(layer_); }
-
  private:
   // |ClearLayer| must be called before *layer_ becomes invalid.
-  Member<PaintLayer> layer_;
-  gfx::RectF filter_reference_box_;
-  std::optional<gfx::SizeF> filter_viewport_;
+  PaintLayer* layer_;
+  FloatRect filter_reference_box_;
 };
 
 }  // namespace blink

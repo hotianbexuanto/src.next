@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,9 +16,8 @@ BeforeUnloadEventListener::BeforeUnloadEventListener(Document* document)
 void BeforeUnloadEventListener::Invoke(ExecutionContext* execution_context,
                                        Event* event) {
   DCHECK_EQ(event->type(), event_type_names::kBeforeunload);
-  if (show_dialog_) {
-    To<BeforeUnloadEvent>(event)->preventDefault();
-  }
+  if (show_dialog_)
+    To<BeforeUnloadEvent>(event)->setReturnValue(g_empty_string);
 }
 
 void BeforeUnloadEventListener::Trace(Visitor* visitor) const {

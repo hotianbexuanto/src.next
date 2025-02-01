@@ -1,15 +1,14 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/json_file_sanitizer.h"
 
 #include <memory>
-#include <optional>
 
+#include "base/bind.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/functional/bind.h"
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "content/public/test/browser_task_environment.h"
@@ -26,9 +25,6 @@ class JsonFileSanitizerTest : public testing::Test {
  public:
   JsonFileSanitizerTest() {}
 
-  JsonFileSanitizerTest(const JsonFileSanitizerTest&) = delete;
-  JsonFileSanitizerTest& operator=(const JsonFileSanitizerTest&) = delete;
-
  protected:
   base::FilePath CreateFilePath(const base::FilePath::StringType& file_name) {
     return temp_dir_.GetPath().Append(file_name);
@@ -36,12 +32,14 @@ class JsonFileSanitizerTest : public testing::Test {
 
   void CreateValidJsonFile(const base::FilePath& path) {
     std::string kJson = "{\"hello\":\"bonjour\"}";
-    ASSERT_TRUE(base::WriteFile(path, kJson));
+    ASSERT_EQ(static_cast<int>(kJson.size()),
+              base::WriteFile(path, kJson.data(), kJson.size()));
   }
 
   void CreateInvalidJsonFile(const base::FilePath& path) {
     std::string kJson = "sjkdsk;'<?js";
-    ASSERT_TRUE(base::WriteFile(path, kJson));
+    ASSERT_EQ(static_cast<int>(kJson.size()),
+              base::WriteFile(path, kJson.data(), kJson.size()));
   }
 
   const base::FilePath& GetJsonFilePath() const { return temp_dir_.GetPath(); }
@@ -74,9 +72,8 @@ class JsonFileSanitizerTest : public testing::Test {
                         const std::string& error_msg) {
     last_status_ = status;
     last_error_ = error_msg;
-    if (done_callback_) {
+    if (done_callback_)
       std::move(done_callback_).Run();
-    }
   }
 
   content::BrowserTaskEnvironment task_environment_;
@@ -87,6 +84,8 @@ class JsonFileSanitizerTest : public testing::Test {
   base::OnceClosure done_callback_;
   std::unique_ptr<JsonFileSanitizer> sanitizer_;
   base::ScopedTempDir temp_dir_;
+
+  DISALLOW_COPY_AND_ASSIGN(JsonFileSanitizerTest);
 };
 
 }  // namespace
@@ -117,9 +116,9 @@ TEST_F(JsonFileSanitizerTest, ValidCase) {
   EXPECT_TRUE(last_reported_error().empty());
   // Make sure the JSON files are there and non empty.
   for (const auto& path : paths) {
-    std::optional<int64_t> file_size = base::GetFileSize(path);
-    ASSERT_TRUE(file_size.has_value());
-    EXPECT_GT(file_size.value(), 0);
+    int64_t file_size = 0;
+    EXPECT_TRUE(base::GetFileSize(path, &file_size));
+    EXPECT_GT(file_size, 0);
   }
 }
 

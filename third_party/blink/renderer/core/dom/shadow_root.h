@@ -27,14 +27,11 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_SHADOW_ROOT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_SHADOW_ROOT_H_
 
-#include "base/check_op.h"
-#include "base/notreached.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/style_sheet_list.h"
 #include "third_party/blink/renderer/core/dom/container_node.h"
 #include "third_party/blink/renderer/core/dom/document_fragment.h"
 #include "third_party/blink/renderer/core/dom/element.h"
-#include "third_party/blink/renderer/core/dom/element_rare_data_field.h"
 #include "third_party/blink/renderer/core/dom/tree_scope.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
@@ -43,21 +40,17 @@ namespace blink {
 
 class Document;
 class ExceptionState;
+class GetInnerHTMLOptions;
 class SlotAssignment;
-class ReferenceTargetIdObserver;
-class V8ShadowRootMode;
-class V8SlotAssignmentMode;
 class WhitespaceAttacher;
 
-enum class ShadowRootMode { kOpen, kClosed, kUserAgent };
+enum class ShadowRootType { kOpen, kClosed, kUserAgent };
 
-class CORE_EXPORT ShadowRoot final : public DocumentFragment,
-                                     public TreeScope,
-                                     public ElementRareDataField {
+class CORE_EXPORT ShadowRoot final : public DocumentFragment, public TreeScope {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  ShadowRoot(Document&, ShadowRootMode, SlotAssignmentMode);
+  ShadowRoot(Document&, ShadowRootType);
   ~ShadowRoot() override;
   ShadowRoot(const ShadowRoot&) = delete;
   ShadowRoot& operator=(const ShadowRoot&) = delete;
@@ -71,23 +64,34 @@ class CORE_EXPORT ShadowRoot final : public DocumentFragment,
   using TreeScope::SetDocument;
   using TreeScope::SetParentTreeScope;
 
-  DEFINE_ATTRIBUTE_EVENT_LISTENER(slotchange, kSlotchange)
-
   Element& host() const {
     DCHECK(ParentOrShadowHostNode());
     return *To<Element>(ParentOrShadowHostNode());
   }
-  ShadowRootMode GetMode() const { return static_cast<ShadowRootMode>(mode_); }
-  V8ShadowRootMode mode() const;
+  ShadowRootType GetType() const { return static_cast<ShadowRootType>(type_); }
+  String mode() const {
+    switch (GetType()) {
+      case ShadowRootType::kUserAgent:
+        // UA ShadowRoot should not be exposed to the Web.
+        NOTREACHED();
+        return "";
+      case ShadowRootType::kOpen:
+        return "open";
+      case ShadowRootType::kClosed:
+        return "closed";
+      default:
+        NOTREACHED();
+        return "";
+    }
+  }
 
-  bool IsOpen() const { return GetMode() == ShadowRootMode::kOpen; }
-  bool IsUserAgent() const { return GetMode() == ShadowRootMode::kUserAgent; }
+  bool IsOpen() const { return GetType() == ShadowRootType::kOpen; }
+  bool IsUserAgent() const { return GetType() == ShadowRootType::kUserAgent; }
 
-  bool serializable() const { return serializable_; }
-  void setSerializable(bool serializable) { serializable_ = serializable; }
-
-  bool clonable() const { return clonable_; }
-  void setClonable(bool clonable) { clonable_ = clonable; }
+  // TODO(crbug.com/1179356) This tracks adding name based slot assignment
+  // support for user-agent Shadow DOM.
+  void EnableNameBasedSlotAssignment();
+  bool SupportsNameBasedSlotAssignment() const;
 
   InsertionNotificationRequest InsertedInto(ContainerNode&) override;
   void RemovedFrom(ContainerNode&) override;
@@ -109,7 +113,7 @@ class CORE_EXPORT ShadowRoot final : public DocumentFragment,
     return *slot_assignment_;
   }
 
-  bool HasSlotAssignment() { return slot_assignment_ != nullptr; }
+  bool HasSlotAssignment() { return slot_assignment_; }
 
   HTMLSlotElement* AssignedSlotFor(const Node&);
   void DidAddSlot(HTMLSlotElement&);
@@ -118,70 +122,62 @@ class CORE_EXPORT ShadowRoot final : public DocumentFragment,
 
   void DistributeIfNeeded();
 
-  String innerHTML() const;
-  void setInnerHTML(const String&, ExceptionState& = ASSERT_NO_EXCEPTION);
-  void setHTMLUnsafe(const String& html, ExceptionState&);
-  void setHTMLUnsafe(const String& html, SetHTMLOptions*, ExceptionState&);
-  void setHTML(const String& html, SetHTMLOptions*, ExceptionState&);
+  Element* ActiveElement() const;
 
-  Node* Clone(Document& factory,
-              NodeCloningData& data,
-              ContainerNode* append_to,
-              ExceptionState& append_exception_state) const override;
+  String innerHTML() const;
+  String getInnerHTML(const GetInnerHTMLOptions* options) const;
+  void setInnerHTML(const String&, ExceptionState& = ASSERT_NO_EXCEPTION);
+
+  Node* Clone(Document&, CloneChildrenFlag) const override;
 
   void SetDelegatesFocus(bool flag) { delegates_focus_ = flag; }
   bool delegatesFocus() const { return delegates_focus_; }
 
-  void setReferenceTarget(const AtomicString& reference_target);
-  const AtomicString& referenceTarget() const;
-  Element* referenceTargetElement() const;
-
+  void SetSlotAssignmentMode(SlotAssignmentMode assignment);
   bool IsManualSlotting() const {
     return slot_assignment_mode_ ==
            static_cast<unsigned>(SlotAssignmentMode::kManual);
   }
-  bool IsNamedSlotting() const {
-    return slot_assignment_mode_ ==
-           static_cast<unsigned>(SlotAssignmentMode::kNamed);
-  }
   SlotAssignmentMode GetSlotAssignmentMode() const {
     return static_cast<SlotAssignmentMode>(slot_assignment_mode_);
   }
-  V8SlotAssignmentMode slotAssignment() const;
+  String slotAssignment() const {
+    return IsManualSlotting() ? "manual" : "auto";
+  }
 
   void SetIsDeclarativeShadowRoot(bool flag) {
-    DCHECK(!flag || GetMode() == ShadowRootMode::kOpen ||
-           GetMode() == ShadowRootMode::kClosed);
+    DCHECK(!flag || GetType() == ShadowRootType::kOpen ||
+           GetType() == ShadowRootType::kClosed);
     is_declarative_shadow_root_ = flag;
   }
   bool IsDeclarativeShadowRoot() const { return is_declarative_shadow_root_; }
 
   void SetAvailableToElementInternals(bool flag) {
-    DCHECK(!flag || GetMode() == ShadowRootMode::kOpen ||
-           GetMode() == ShadowRootMode::kClosed);
+    DCHECK(!flag || GetType() == ShadowRootType::kOpen ||
+           GetType() == ShadowRootType::kClosed);
     available_to_element_internals_ = flag;
   }
   bool IsAvailableToElementInternals() const {
     return available_to_element_internals_;
   }
 
-  void SetHasFocusgroupAttributeOnDescendant(bool flag) {
-    has_focusgroup_attribute_on_descendant_ = flag;
+  void SetNeedsDirAutoAttributeUpdate(bool flag) {
+    needs_dir_auto_attribute_update_ = flag;
   }
-  bool HasFocusgroupAttributeOnDescendant() const {
-    return has_focusgroup_attribute_on_descendant_;
+  bool NeedsDirAutoAttributeUpdate() const {
+    return needs_dir_auto_attribute_update_;
   }
-
-  void SetRegistry(CustomElementRegistry*);
-  CustomElementRegistry* registry() const { return registry_.Get(); }
 
   bool ContainsShadowRoots() const { return child_shadow_root_count_; }
+
+  StyleSheetList& StyleSheets();
+  void SetStyleSheets(StyleSheetList* style_sheet_list) {
+    style_sheet_list_ = style_sheet_list;
+  }
 
   void Trace(Visitor*) const override;
 
  private:
-  friend class ReferenceTargetIdObserver;
-
   void ChildrenChanged(const ChildrenChange&) override;
 
   SlotAssignment& EnsureSlotAssignment();
@@ -192,22 +188,23 @@ class CORE_EXPORT ShadowRoot final : public DocumentFragment,
     --child_shadow_root_count_;
   }
 
-  void ReferenceTargetChanged();
-
+  Member<StyleSheetList> style_sheet_list_;
   Member<SlotAssignment> slot_assignment_;
-  Member<CustomElementRegistry> registry_;
-  Member<ReferenceTargetIdObserver> reference_target_id_observer_;
   unsigned child_shadow_root_count_ : 16;
-  unsigned mode_ : 2;
+  unsigned type_ : 2;
   unsigned registered_with_parent_shadow_root_ : 1;
   unsigned delegates_focus_ : 1;
   unsigned slot_assignment_mode_ : 1;
   unsigned is_declarative_shadow_root_ : 1;
   unsigned available_to_element_internals_ : 1;
-  unsigned has_focusgroup_attribute_on_descendant_ : 1;
-  unsigned serializable_ : 1;
-  unsigned clonable_ : 1;
+  unsigned needs_dir_auto_attribute_update_ : 1;
+  unsigned supports_name_based_slot_assignment_ : 1;
+  unsigned unused_ : 7;
 };
+
+inline Element* ShadowRoot::ActiveElement() const {
+  return AdjustedFocusedElement();
+}
 
 inline bool Node::IsInUserAgentShadowRoot() const {
   return ContainingShadowRoot() && ContainingShadowRoot()->IsUserAgent();
@@ -229,7 +226,7 @@ struct DowncastTraits<ShadowRoot> {
   }
 };
 
-CORE_EXPORT std::ostream& operator<<(std::ostream&, const ShadowRootMode&);
+CORE_EXPORT std::ostream& operator<<(std::ostream&, const ShadowRootType&);
 
 }  // namespace blink
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,13 @@
 #include <string>
 #include <vector>
 
+#include "base/macros.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest_handler.h"
+
+namespace base {
+class DictionaryValue;
+}
 
 namespace extensions {
 
@@ -26,7 +31,7 @@ struct ManifestURL : public Extension::ManifestData {
   // this returns the Google Gallery URL. For third-party extensions,
   // this returns a blank GURL.
   // See also: GetManifestHomePageURL(), SpecifiedHomepageURL()
-  static GURL GetHomepageURL(const Extension* extension);
+  static const GURL GetHomepageURL(const Extension* extension);
 
   // Returns true if the extension specified a valid home page url in the
   // manifest.
@@ -35,56 +40,53 @@ struct ManifestURL : public Extension::ManifestData {
   // Returns the homepage specified by the extension in its manifest, if it
   // specifies a homepage. Otherwise, returns an empty url.
   // See also: GetHomepageURL()
-  static const GURL& GetManifestHomePageURL(const Extension* extension);
+  static const GURL GetManifestHomePageURL(const Extension* extension);
 
   // Returns the Chrome Web Store URL for this extension if it is hosted in the
   // webstore; otherwise returns an empty url.
   // See also: GetHomepageURL()
-  static GURL GetWebStoreURL(const Extension* extension);
+  static const GURL GetWebStoreURL(const Extension* extension);
 
   // Returns the Update URL for this extension.
   static const GURL& GetUpdateURL(const Extension* extension);
 
   // Returns true if this extension's update URL is the extension gallery.
   static bool UpdatesFromGallery(const Extension* extension);
+  static bool UpdatesFromGallery(const base::DictionaryValue* manifest);
 
   // Returns the About Page for this extension.
   static const GURL& GetAboutPage(const Extension* extension);
 
   // Returns the webstore page URL for this extension.
-  static GURL GetDetailsURL(const Extension* extension);
+  static const GURL GetDetailsURL(const Extension* extension);
 };
 
 // Parses the "homepage_url" manifest key.
 class HomepageURLHandler : public ManifestHandler {
  public:
   HomepageURLHandler();
-
-  HomepageURLHandler(const HomepageURLHandler&) = delete;
-  HomepageURLHandler& operator=(const HomepageURLHandler&) = delete;
-
   ~HomepageURLHandler() override;
 
   bool Parse(Extension* extension, std::u16string* error) override;
 
  private:
   base::span<const char* const> Keys() const override;
+
+  DISALLOW_COPY_AND_ASSIGN(HomepageURLHandler);
 };
 
 // Parses the "update_url" manifest key.
 class UpdateURLHandler : public ManifestHandler {
  public:
   UpdateURLHandler();
-
-  UpdateURLHandler(const UpdateURLHandler&) = delete;
-  UpdateURLHandler& operator=(const UpdateURLHandler&) = delete;
-
   ~UpdateURLHandler() override;
 
   bool Parse(Extension* extension, std::u16string* error) override;
 
  private:
   base::span<const char* const> Keys() const override;
+
+  DISALLOW_COPY_AND_ASSIGN(UpdateURLHandler);
 };
 
 // Parses the "about_page" manifest key.
@@ -95,10 +97,6 @@ class UpdateURLHandler : public ManifestHandler {
 class AboutPageHandler : public ManifestHandler {
  public:
   AboutPageHandler();
-
-  AboutPageHandler(const AboutPageHandler&) = delete;
-  AboutPageHandler& operator=(const AboutPageHandler&) = delete;
-
   ~AboutPageHandler() override;
 
   bool Parse(Extension* extension, std::u16string* error) override;
@@ -108,6 +106,8 @@ class AboutPageHandler : public ManifestHandler {
 
  private:
   base::span<const char* const> Keys() const override;
+
+  DISALLOW_COPY_AND_ASSIGN(AboutPageHandler);
 };
 
 }  // namespace extensions

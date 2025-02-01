@@ -1,7 +1,5 @@
-monorail: {
-  component: "Internals>Core"
+monorail {
+  component: "Content>Core"
 }
+
 os: ANDROID
-buganizer_public: {
-  component_id: 1456128
-}

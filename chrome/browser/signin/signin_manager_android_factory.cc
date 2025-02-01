@@ -1,33 +1,29 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/signin/signin_manager_android_factory.h"
 
-#include "base/no_destructor.h"
+#include "chrome/browser/android/signin/signin_manager_android.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/signin/android/signin_manager_android.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
 
 SigninManagerAndroidFactory::SigninManagerAndroidFactory()
-    : ProfileKeyedServiceFactory(
+    : BrowserContextKeyedServiceFactory(
           "SigninManagerAndroid",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOriginalOnly)
-              // TODO(crbug.com/40257657): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOriginalOnly)
-              .Build()) {
+          BrowserContextDependencyManager::GetInstance()) {
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
 SigninManagerAndroidFactory::~SigninManagerAndroidFactory() {}
 
 // static
-SigninManagerAndroid* SigninManagerAndroidFactory::GetForProfile(
-    Profile* profile) {
+base::android::ScopedJavaLocalRef<jobject>
+SigninManagerAndroidFactory::GetJavaObjectForProfile(Profile* profile) {
   return static_cast<SigninManagerAndroid*>(
-      GetInstance()->GetServiceForBrowserContext(profile, true));
+             GetInstance()->GetServiceForBrowserContext(profile, true))
+      ->GetJavaObject();
 }
 
 // static
@@ -36,11 +32,10 @@ SigninManagerAndroidFactory* SigninManagerAndroidFactory::GetInstance() {
   return instance.get();
 }
 
-std::unique_ptr<KeyedService>
-SigninManagerAndroidFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SigninManagerAndroidFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
 
-  return std::make_unique<SigninManagerAndroid>(profile, identity_manager);
+  return new SigninManagerAndroid(profile, identity_manager);
 }

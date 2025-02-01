@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,7 +8,6 @@
 #include <string>
 
 #include "content/public/browser/media_stream_request.h"
-#include "extensions/common/extension_id.h"
 #include "third_party/blink/public/common/mediastream/media_stream_request.h"
 #include "ui/base/window_open_disposition.h"
 
@@ -19,8 +18,13 @@ class RenderFrameHost;
 class WebContents;
 }
 
-namespace blink::mojom {
-class WindowFeatures;
+namespace gfx {
+class Rect;
+class Size;
+}  // namespace gfx
+
+namespace viz {
+class SurfaceId;
 }
 
 namespace extensions {
@@ -48,9 +52,9 @@ class ExtensionHostDelegate {
   // Creates a new tab or popup window with |web_contents|. The embedder may
   // choose to do nothing if tabs and popups are not supported.
   virtual void CreateTab(std::unique_ptr<content::WebContents> web_contents,
-                         const ExtensionId& extension_id,
+                         const std::string& extension_id,
                          WindowOpenDisposition disposition,
-                         const blink::mojom::WindowFeatures& window_features,
+                         const gfx::Rect& initial_rect,
                          bool user_gesture) = 0;
 
   // Requests access to an audio or video media stream. Invokes |callback|
@@ -66,7 +70,7 @@ class ExtensionHostDelegate {
   // or MEDIA_DEVICE_VIDEO_CAPTURE.
   virtual bool CheckMediaAccessPermission(
       content::RenderFrameHost* render_frame_host,
-      const url::Origin& security_origin,
+      const GURL& security_origin,
       blink::mojom::MediaStreamType type,
       const Extension* extension) = 0;
 
@@ -74,7 +78,9 @@ class ExtensionHostDelegate {
   // entering Picture-in-Picture.
   // Returns the result of the enter request.
   virtual content::PictureInPictureResult EnterPictureInPicture(
-      content::WebContents* web_contents) = 0;
+      content::WebContents* web_contents,
+      const viz::SurfaceId& surface_id,
+      const gfx::Size& natural_size) = 0;
 
   // Updates the Picture-in-Picture controller with a signal that
   // Picture-in-Picture mode has ended.

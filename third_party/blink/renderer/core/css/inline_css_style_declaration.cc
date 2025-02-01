@@ -26,7 +26,6 @@
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 
 namespace blink {
 
@@ -35,22 +34,15 @@ MutableCSSPropertyValueSet& InlineCSSStyleDeclaration::PropertySet() const {
 }
 
 void InlineCSSStyleDeclaration::DidMutate(MutationType type) {
-  if (type == kNoChanges) {
+  if (type == kNoChanges)
     return;
-  }
 
-  if (!parent_element_) {
+  if (!parent_element_)
     return;
-  }
 
   parent_element_->NotifyInlineStyleMutation();
   parent_element_->ClearMutableInlineStyleIfEmpty();
-
-  const bool only_changed_independent_properties =
-      (type == kIndependentPropertyChanged);
-  parent_element_->InvalidateStyleAttribute(
-      only_changed_independent_properties);
-
+  parent_element_->InvalidateStyleAttribute();
   StyleAttributeMutationScope(this).DidInvalidateStyleAttr();
 }
 
@@ -62,7 +54,6 @@ CSSStyleSheet* InlineCSSStyleDeclaration::ParentStyleSheet() const {
 void InlineCSSStyleDeclaration::Trace(Visitor* visitor) const {
   visitor->Trace(parent_element_);
   AbstractPropertySetCSSStyleDeclaration::Trace(visitor);
-  ElementRareDataField::Trace(visitor);
 }
 
 }  // namespace blink

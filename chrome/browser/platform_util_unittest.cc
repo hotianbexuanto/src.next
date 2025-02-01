@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,11 +6,11 @@
 
 #include <memory>
 
+#include "base/bind.h"
+#include "base/callback.h"
+#include "base/cxx17_backports.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -20,17 +20,12 @@
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "base/json/json_string_value_serializer.h"
 #include "base/values.h"
-#include "chrome/browser/apps/app_service/app_service_proxy.h"
-#include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
-#include "chrome/browser/apps/app_service/app_service_test.h"
-#include "chrome/browser/apps/app_service/intent_util.h"
-#include "chrome/browser/ash/fileapi/file_system_backend.h"
-#include "chrome/browser/ash/fileapi/file_system_backend_delegate.h"
+#include "chrome/browser/ash/file_manager/app_id.h"
 #include "chrome/browser/chrome_content_browser_client.h"
+#include "chrome/browser/chromeos/fileapi/file_system_backend.h"
+#include "chrome/browser/chromeos/fileapi/file_system_backend_delegate.h"
 #include "chrome/browser/extensions/extension_special_storage_policy.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
-#include "components/services/app_service/public/cpp/app_types.h"
-#include "components/services/app_service/public/cpp/intent_filter.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/common/content_client.h"
 #include "extensions/browser/extension_registry.h"
@@ -62,16 +57,17 @@ class PlatformUtilTestContentBrowserClient : public ChromeContentBrowserClient {
         browser_context->GetMountPoints();
 
     // New FileSystemBackend that uses our MockSpecialStoragePolicy.
-    additional_backends->push_back(std::make_unique<ash::FileSystemBackend>(
-        nullptr,  // profile
-        nullptr,  // file_system_provider_delegate
-        nullptr,  // mtp_delegate
-        nullptr,  // arc_content_delegate
-        nullptr,  // arc_documents_provider_delegate
-        nullptr,  // drivefs_delegate
-        nullptr,  // smbfs_delegate
-        external_mount_points,
-        storage::ExternalMountPoints::GetSystemInstance()));
+    additional_backends->push_back(
+        std::make_unique<chromeos::FileSystemBackend>(
+            nullptr,  // profile
+            nullptr,  // file_system_provider_delegate
+            nullptr,  // mtp_delegate
+            nullptr,  // arc_content_delegate
+            nullptr,  // arc_documents_provider_delegate
+            nullptr,  // drivefs_delegate
+            nullptr,  // smbfs_delegate
+            external_mount_points,
+            storage::ExternalMountPoints::GetSystemInstance()));
   }
 };
 
@@ -83,11 +79,6 @@ class PlatformUtilTestBase : public BrowserWithTestWindowTest {
         std::make_unique<PlatformUtilTestContentBrowserClient>();
     old_content_browser_client_ =
         content::SetBrowserClientForTesting(content_browser_client_.get());
-
-    app_service_test_.SetUp(GetProfile());
-    app_service_proxy_ =
-        apps::AppServiceProxyFactory::GetForProfile(GetProfile());
-    ASSERT_TRUE(app_service_proxy_);
 
     // The test_directory needs to be mounted for it to be accessible.
     GetProfile()->GetMountPoints()->RegisterFileSystem(
@@ -117,7 +108,9 @@ class PlatformUtilTestBase : public BrowserWithTestWindowTest {
     JSONStringValueDeserializer json_string_deserializer(json_manifest);
     std::unique_ptr<base::Value> manifest =
         json_string_deserializer.Deserialize(&error_code, &error);
-    base::Value::Dict* manifest_dictionary = manifest->GetIfDict();
+    base::DictionaryValue* manifest_dictionary;
+
+    manifest->GetAsDictionary(&manifest_dictionary);
     ASSERT_TRUE(manifest_dictionary);
 
     scoped_refptr<extensions::Extension> extension =
@@ -126,17 +119,7 @@ class PlatformUtilTestBase : public BrowserWithTestWindowTest {
             extensions::mojom::ManifestLocation::kInvalidLocation,
             *manifest_dictionary, extensions::Extension::NO_FLAGS, &error);
     ASSERT_TRUE(error.empty()) << error;
-
-    std::vector<apps::AppPtr> apps;
-    auto app = std::make_unique<apps::App>(apps::AppType::kChromeApp,
-                                           "invalid-chrome-app");
-    app->handles_intents = true;
-    app->readiness = apps::Readiness::kReady;
-    app->intent_filters =
-        apps_util::CreateIntentFiltersForChromeApp(extension.get());
-    apps.push_back(std::move(app));
-    app_service_proxy_->OnApps(std::move(apps), apps::AppType::kChromeApp,
-                               /*should_notify_initialized=*/false);
+    extensions::ExtensionRegistry::Get(GetProfile())->AddEnabled(extension);
   }
 
   void SetUp() override {
@@ -157,10 +140,7 @@ class PlatformUtilTestBase : public BrowserWithTestWindowTest {
 
  private:
   std::unique_ptr<content::ContentBrowserClient> content_browser_client_;
-  raw_ptr<content::ContentBrowserClient> old_content_browser_client_ = nullptr;
-  apps::AppServiceTest app_service_test_;
-  raw_ptr<apps::AppServiceProxy, DanglingUntriaged> app_service_proxy_ =
-      nullptr;
+  content::ContentBrowserClient* old_content_browser_client_ = nullptr;
 };
 
 #else
@@ -183,6 +163,7 @@ class PlatformUtilTest : public PlatformUtilTestBase {
     ASSERT_NO_FATAL_FAILURE(PlatformUtilTestBase::SetUp());
 
     static const char kTestFileData[] = "Cow says moo!";
+    const int kTestFileDataLength = base::size(kTestFileData) - 1;
 
     // This prevents platform_util from invoking any shell or external APIs
     // during tests. Doing so may result in external applications being launched
@@ -193,7 +174,9 @@ class PlatformUtilTest : public PlatformUtilTestBase {
 
     // A valid file.
     existing_file_ = directory_.GetPath().AppendASCII("test_file.txt");
-    ASSERT_TRUE(base::WriteFile(existing_file_, kTestFileData));
+    ASSERT_EQ(
+        kTestFileDataLength,
+        base::WriteFile(existing_file_, kTestFileData, kTestFileDataLength));
 
     // A valid folder.
     existing_folder_ = directory_.GetPath().AppendASCII("test_folder");
@@ -250,7 +233,7 @@ TEST_F(PlatformUtilTest, OpenFolder) {
   EXPECT_EQ(OPEN_FAILED_PATH_NOT_FOUND, CallOpenItem(nowhere_, OPEN_FOLDER));
 }
 
-#if BUILDFLAG(IS_POSIX)
+#if defined(OS_POSIX)
 // Symbolic links are currently only supported on Posix. Windows technically
 // supports it as well, but not on Windows XP.
 class PlatformUtilPosixTest : public PlatformUtilTest {
@@ -271,7 +254,7 @@ class PlatformUtilPosixTest : public PlatformUtilTest {
   base::FilePath symlink_to_folder_;
   base::FilePath symlink_to_nowhere_;
 };
-#endif  // BUILDFLAG(IS_POSIX)
+#endif  // OS_POSIX
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 // ChromeOS doesn't follow symbolic links in sandboxed filesystems. So all the
@@ -298,13 +281,13 @@ TEST_F(PlatformUtilPosixTest, OpenFolderWithPosixSymlinksChromeOS) {
 TEST_F(PlatformUtilTest, OpenFileWithUnhandledFileType) {
   base::FilePath unhandled_file =
       directory_.GetPath().AppendASCII("myfile.filetype");
-  ASSERT_TRUE(base::WriteFile(unhandled_file, "cat"));
+  ASSERT_EQ(3, base::WriteFile(unhandled_file, "cat", 3));
   EXPECT_EQ(OPEN_FAILED_NO_HANLDER_FOR_FILE_TYPE,
             CallOpenItem(unhandled_file, OPEN_FILE));
 }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
-#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_CHROMEOS_ASH)
+#if defined(OS_POSIX) && !BUILDFLAG(IS_CHROMEOS_ASH)
 // On all other Posix platforms, the symbolic link tests should work as
 // expected.
 
@@ -323,6 +306,6 @@ TEST_F(PlatformUtilPosixTest, OpenFolderWithPosixSymlinks) {
   EXPECT_EQ(OPEN_FAILED_PATH_NOT_FOUND,
             CallOpenItem(symlink_to_nowhere_, OPEN_FOLDER));
 }
-#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // OS_POSIX && !OS_CHROMEOS
 
 }  // namespace platform_util

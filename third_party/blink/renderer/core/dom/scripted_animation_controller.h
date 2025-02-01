@@ -26,15 +26,11 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_SCRIPTED_ANIMATION_CONTROLLER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_SCRIPTED_ANIMATION_CONTROLLER_H_
 
-#include "base/functional/callback.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/frame_request_callback_collection.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_state_observer.h"
 #include "third_party/blink/renderer/platform/bindings/name_client.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
@@ -90,31 +86,32 @@ class CORE_EXPORT ScriptedAnimationController
   void EnqueueMediaQueryChangeListeners(
       HeapVector<Member<MediaQueryListListener>>&);
 
+  // Invokes callbacks, dispatches events, etc. The order is defined by HTML:
+  // https://html.spec.whatwg.org/C/#event-loop-processing-model
+  void ServiceScriptedAnimations(base::TimeTicks monotonic_time_now);
+
   void ContextLifecycleStateChanged(mojom::FrameLifecycleState) final;
   void ContextDestroyed() final {}
 
   void DispatchEventsAndCallbacksForPrinting();
 
-  LocalDOMWindow* GetWindow() const;
+ private:
   void ScheduleAnimationIfNeeded();
 
   void RunTasks();
-  using DispatchFilter = base::RepeatingCallback<bool(Event*)>;
-  bool DispatchEvents(DispatchFilter filter = DispatchFilter{});
+  void DispatchEvents(
+      const AtomicString& event_interface_filter = AtomicString());
   void ExecuteFrameCallbacks();
   void ExecuteVideoFrameCallbacks();
   void CallMediaQueryListListeners();
-  void SetCurrentFrameTimeMs(double time_ms) {
-    current_frame_time_ms_ = time_ms;
-  }
-  void SetCurrentFrameLegacyTimeMs(double time_ms) {
-    current_frame_legacy_time_ms_ = time_ms;
-  }
-  // A helper function that is called by more than one callsite.
-  PageAnimator* GetPageAnimator();
+
   bool HasScheduledFrameTasks() const;
 
- private:
+  LocalDOMWindow* GetWindow() const;
+
+  // A helper function that is called by more than one callsite.
+  PageAnimator* GetPageAnimator();
+
   ALWAYS_INLINE bool InsertToPerFrameEventsMap(const Event* event);
   ALWAYS_INLINE void EraseFromPerFrameEventsMap(const Event* event);
 

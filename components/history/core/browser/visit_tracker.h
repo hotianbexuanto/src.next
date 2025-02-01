@@ -1,4 +1,4 @@
-// Copyright 2010 The Chromium Authors
+// Copyright (c) 2010 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,10 +6,10 @@
 #define COMPONENTS_HISTORY_CORE_BROWSER_VISIT_TRACKER_H__
 
 #include <map>
-#include <optional>
 #include <vector>
 
 #include "components/history/core/browser/history_types.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace history {
 
@@ -96,7 +96,7 @@ class VisitTracker {
   // This is not recalculated during removal as it would be expensive and is
   // generally unnecessary (because AddVisit() is typically called with
   // increasing visit-ids).
-  std::optional<VisitIdRange> visit_id_range_if_sorted_;
+  absl::optional<VisitIdRange> visit_id_range_if_sorted_;
 };
 
 }  // namespace history

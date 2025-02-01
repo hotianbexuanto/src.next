@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,8 @@
 #include <memory>
 #include <string>
 
-#include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
+#include "base/callback.h"
+#include "base/macros.h"
 #include "build/chromeos_buildflags.h"
 #include "extensions/browser/extension_icon_image.h"
 #include "ui/gfx/image/image_skia.h"
@@ -47,7 +47,7 @@ class ChromeAppIcon : public IconImage::Observer {
   static void ApplyEffects(int resource_size_in_dip,
                            const ResizeFunction& resize_function,
                            bool app_launchable,
-                           bool rounded_corners,
+                           bool from_bookmark,
                            Badge badge_type,
                            gfx::ImageSkia* image_skia);
 
@@ -60,10 +60,6 @@ class ChromeAppIcon : public IconImage::Observer {
                 const std::string& app_id,
                 int resource_size_in_dip,
                 const ResizeFunction& resize_function);
-
-  ChromeAppIcon(const ChromeAppIcon&) = delete;
-  ChromeAppIcon& operator=(const ChromeAppIcon&) = delete;
-
   ~ChromeAppIcon() override;
 
   // Reloads icon.
@@ -79,7 +75,7 @@ class ChromeAppIcon : public IconImage::Observer {
 
   const gfx::ImageSkia& image_skia() const { return image_skia_; }
   const std::string& app_id() const { return app_id_; }
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   // Returns whether the icon is badged because it's an extension app that has
   // its Android analog installed.
   bool has_chrome_badge() const { return has_chrome_badge_; }
@@ -92,9 +88,8 @@ class ChromeAppIcon : public IconImage::Observer {
   void OnExtensionIconImageChanged(IconImage* image) override;
 
   // Unowned pointers.
-  const raw_ptr<ChromeAppIconDelegate> delegate_;
-  const raw_ptr<content::BrowserContext, AcrossTasksDanglingUntriaged>
-      browser_context_;
+  ChromeAppIconDelegate* const delegate_;
+  content::BrowserContext* const browser_context_;
 
   // Called when this instance of ChromeAppIcon is destroyed.
   DestroyedCallback destroyed_callback_;
@@ -105,7 +100,7 @@ class ChromeAppIcon : public IconImage::Observer {
   // it is updated each time when |icon_| is updated.
   gfx::ImageSkia image_skia_;
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   // Whether the icon got badged because it's an extension app that has its
   // Android analog installed.
   bool has_chrome_badge_ = false;
@@ -118,6 +113,8 @@ class ChromeAppIcon : public IconImage::Observer {
   const ResizeFunction resize_function_;
 
   std::unique_ptr<IconImage> icon_;
+
+  DISALLOW_COPY_AND_ASSIGN(ChromeAppIcon);
 };
 
 }  // namespace extensions

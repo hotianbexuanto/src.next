@@ -40,18 +40,12 @@ namespace blink {
 
 class Document;
 
-class CORE_EXPORT VisitedLinkState final
-    : public GarbageCollected<VisitedLinkState> {
+class VisitedLinkState final : public GarbageCollected<VisitedLinkState> {
  public:
   explicit VisitedLinkState(const Document&);
 
   void InvalidateStyleForAllLinks(bool invalidate_visited_link_hashes);
   void InvalidateStyleForLink(LinkHash);
-
-  // Allows Documents to set or update the per-origin salt associated with their
-  // VisitedLinkState. This function informs the VisitedLinkReader in the
-  // corresponding process of the new salt value.
-  void UpdateSalt(uint64_t visited_link_salt);
 
   EInsideLink DetermineLinkState(const Element& element) {
     if (element.IsLink())
@@ -67,7 +61,7 @@ class CORE_EXPORT VisitedLinkState final
   EInsideLink DetermineLinkStateSlowCase(const Element&);
 
   Member<const Document> document_;
-  HashSet<LinkHash, LinkHashHashTraits> links_checked_for_visited_state_;
+  HashSet<LinkHash, LinkHashHash> links_checked_for_visited_state_;
 };
 
 }  // namespace blink

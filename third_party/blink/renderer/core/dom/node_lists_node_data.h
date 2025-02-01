@@ -22,15 +22,13 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_NODE_LISTS_NODE_DATA_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_NODE_LISTS_NODE_DATA_H_
 
-#include "base/check_op.h"
 #include "third_party/blink/renderer/core/dom/child_node_list.h"
 #include "third_party/blink/renderer/core/dom/empty_node_list.h"
 #include "third_party/blink/renderer/core/dom/qualified_name.h"
 #include "third_party/blink/renderer/core/dom/tag_collection.h"
 #include "third_party/blink/renderer/core/html/collection_type.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/wtf/hash_traits.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/heap/heap.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_hash.h"
 
@@ -60,21 +58,25 @@ class NodeListsNodeData final : public GarbageCollected<NodeListsNodeData> {
   }
 
   using NamedNodeListKey = std::pair<CollectionType, AtomicString>;
-  struct NodeListAtomicCacheMapEntryHashTraits
-      : HashTraits<std::pair<CollectionType, AtomicString>> {
+  struct NodeListAtomicCacheMapEntryHash {
+    STATIC_ONLY(NodeListAtomicCacheMapEntryHash);
     static unsigned GetHash(const NamedNodeListKey& entry) {
-      return WTF::GetHash(entry.second == CSSSelector::UniversalSelectorAtom()
-                              ? g_star_atom
-                              : entry.second) +
+      return DefaultHash<AtomicString>::Hash::GetHash(
+                 entry.second == CSSSelector::UniversalSelectorAtom()
+                     ? g_star_atom
+                     : entry.second) +
              entry.first;
     }
-    static constexpr bool kSafeToCompareToEmptyOrDeleted =
-        HashTraits<AtomicString>::kSafeToCompareToEmptyOrDeleted;
+    static bool Equal(const NamedNodeListKey& a, const NamedNodeListKey& b) {
+      return a == b;
+    }
+    static const bool safe_to_compare_to_empty_or_deleted =
+        DefaultHash<AtomicString>::Hash::safe_to_compare_to_empty_or_deleted;
   };
 
   typedef HeapHashMap<NamedNodeListKey,
                       Member<LiveNodeListBase>,
-                      NodeListAtomicCacheMapEntryHashTraits>
+                      NodeListAtomicCacheMapEntryHash>
       NodeListAtomicNameCacheMap;
   typedef HeapHashMap<QualifiedName, Member<TagCollectionNS>>
       TagCollectionNSCache;
@@ -110,10 +112,8 @@ class NodeListsNodeData final : public GarbageCollected<NodeListsNodeData> {
 
   template <typename T>
   T* Cached(CollectionType collection_type) {
-    auto it = atomic_name_caches_.find(NamedNodeListKey(
-        collection_type, CSSSelector::UniversalSelectorAtom()));
-    return static_cast<T*>(it != atomic_name_caches_.end() ? &*it->value
-                                                           : nullptr);
+    return static_cast<T*>(atomic_name_caches_.at(NamedNodeListKey(
+        collection_type, CSSSelector::UniversalSelectorAtom())));
   }
 
   TagCollectionNS* AddCache(ContainerNode& node,
@@ -123,7 +123,7 @@ class NodeListsNodeData final : public GarbageCollected<NodeListsNodeData> {
     TagCollectionNSCache::AddResult result =
         tag_collection_ns_caches_.insert(name, nullptr);
     if (!result.is_new_entry)
-      return result.stored_value->value.Get();
+      return result.stored_value->value;
 
     auto* list = MakeGarbageCollected<TagCollectionNS>(
         node, kTagCollectionNSType, namespace_uri, local_name);
@@ -138,8 +138,8 @@ class NodeListsNodeData final : public GarbageCollected<NodeListsNodeData> {
   void InvalidateCaches(const QualifiedName* attr_name = nullptr);
 
   bool IsEmpty() const {
-    return !child_node_list_ && atomic_name_caches_.empty() &&
-           tag_collection_ns_caches_.empty();
+    return !child_node_list_ && atomic_name_caches_.IsEmpty() &&
+           tag_collection_ns_caches_.IsEmpty();
   }
 
   void AdoptTreeScope() { InvalidateCaches(); }
@@ -152,7 +152,7 @@ class NodeListsNodeData final : public GarbageCollected<NodeListsNodeData> {
     for (NodeListAtomicNameCacheMap::const_iterator it =
              atomic_name_caches_.begin();
          it != atomic_name_cache_end; ++it) {
-      LiveNodeListBase* list = it->value.Get();
+      LiveNodeListBase* list = it->value;
       list->DidMoveToDocument(old_document, new_document);
     }
 
@@ -161,7 +161,7 @@ class NodeListsNodeData final : public GarbageCollected<NodeListsNodeData> {
     for (TagCollectionNSCache::const_iterator it =
              tag_collection_ns_caches_.begin();
          it != tag_end; ++it) {
-      LiveNodeListBase* list = it->value.Get();
+      LiveNodeListBase* list = it->value;
       DCHECK(!list->IsRootedAtTreeScope());
       list->DidMoveToDocument(old_document, new_document);
     }

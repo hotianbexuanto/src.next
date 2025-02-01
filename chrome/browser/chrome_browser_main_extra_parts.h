@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,8 +16,6 @@
 // ChromeBrowserMainExtraParts are used to do further initialization for various
 // Chrome toolkits (e.g., GTK, VIEWS, ASH, AURA, etc.; see
 // ChromeContentBrowserClient::CreateBrowserMainParts()).
-
-class Profile;
 
 class ChromeBrowserMainExtraParts {
  public:
@@ -38,12 +36,11 @@ class ChromeBrowserMainExtraParts {
   virtual void PreCreateThreads() {}
   virtual void PostCreateThreads() {}
   virtual void PreProfileInit() {}
-  virtual void PostProfileInit(Profile* profile, bool is_initial_profile) {}
+  virtual void PostProfileInit() {}
   virtual void PreBrowserStart() {}
   virtual void PostBrowserStart() {}
   virtual void PreMainMessageLoopRun() {}
   virtual void PostMainMessageLoopRun() {}
-  virtual void PostDestroyThreads() {}
 };
 
 #endif  // CHROME_BROWSER_CHROME_BROWSER_MAIN_EXTRA_PARTS_H_

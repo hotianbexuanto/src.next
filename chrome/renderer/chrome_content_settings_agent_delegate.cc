@@ -1,36 +1,21 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/renderer/chrome_content_settings_agent_delegate.h"
 
-#include "build/chromeos_buildflags.h"
-#include "pdf/buildflags.h"
-
-// TODO(b/197163596): Remove File Manager constants
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "ash/webui/file_manager/url_constants.h"
-#endif
 #include "base/containers/contains.h"
-#include "content/public/common/url_constants.h"
+#include "chrome/common/ssl_insecure_content.h"
 #include "content/public/renderer/render_frame.h"
-#include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/public/web/web_local_frame.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/mojom/context_type.mojom.h"
 #include "extensions/common/permissions/api_permission.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "extensions/renderer/dispatcher.h"
 #include "extensions/renderer/renderer_extension_registry.h"
-#endif
-
-#if BUILDFLAG(ENABLE_PDF)
-#include "components/pdf/common/pdf_util.h"
-#include "third_party/blink/public/web/web_frame.h"
-#include "url/origin.h"
 #endif
 
 ChromeContentSettingsAgentDelegate::ChromeContentSettingsAgentDelegate(
@@ -74,24 +59,6 @@ void ChromeContentSettingsAgentDelegate::AllowPluginTemporarily(
   temporarily_allowed_plugins_.insert(identifier);
 }
 
-bool ChromeContentSettingsAgentDelegate::IsFrameAllowlistedForStorageAccess(
-    blink::WebFrame* frame) const {
-#if BUILDFLAG(ENABLE_PDF)
-  // Allow the Chrome PDF Viewer's extension frame to access storage. This is
-  // needed when a data: URL navigates to or embeds a PDF. Normally, data: URLs
-  // are opaque and shouldn't be able to access storage. However, the Chrome PDF
-  // viewer is an internal use case and does not need to adhere to the web spec.
-
-  // The origin should match the PDF extension's origin. A PDF extension frame
-  // should always have a parent (the PDF embedder frame).
-  if (IsPdfExtensionOrigin(url::Origin(frame->GetSecurityOrigin())) &&
-      frame->Parent()) {
-    return true;
-  }
-#endif
-  return false;
-}
-
 bool ChromeContentSettingsAgentDelegate::IsSchemeAllowlisted(
     const std::string& scheme) {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -101,7 +68,8 @@ bool ChromeContentSettingsAgentDelegate::IsSchemeAllowlisted(
 #endif
 }
 
-bool ChromeContentSettingsAgentDelegate::AllowReadFromClipboard() {
+absl::optional<bool>
+ChromeContentSettingsAgentDelegate::AllowReadFromClipboard() {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   extensions::ScriptContext* current_context =
       extension_dispatcher_->script_context_set().GetCurrent();
@@ -110,15 +78,12 @@ bool ChromeContentSettingsAgentDelegate::AllowReadFromClipboard() {
           extensions::mojom::APIPermissionID::kClipboardRead)) {
     return true;
   }
-
-  if (IsAllowListedSystemWebApp()) {
-    return true;
-  }
 #endif
-  return false;
+  return absl::nullopt;
 }
 
-bool ChromeContentSettingsAgentDelegate::AllowWriteToClipboard() {
+absl::optional<bool>
+ChromeContentSettingsAgentDelegate::AllowWriteToClipboard() {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   // All blessed extension pages could historically write to the clipboard, so
   // preserve that for compatibility.
@@ -126,7 +91,7 @@ bool ChromeContentSettingsAgentDelegate::AllowWriteToClipboard() {
       extension_dispatcher_->script_context_set().GetCurrent();
   if (current_context) {
     if (current_context->effective_context_type() ==
-            extensions::mojom::ContextType::kPrivilegedExtension &&
+            extensions::Feature::BLESSED_EXTENSION_CONTEXT &&
         !current_context->IsForServiceWorker()) {
       return true;
     }
@@ -136,13 +101,21 @@ bool ChromeContentSettingsAgentDelegate::AllowWriteToClipboard() {
     }
   }
 #endif
-  return false;
+  return absl::nullopt;
 }
 
-std::optional<bool> ChromeContentSettingsAgentDelegate::AllowMutationEvents() {
+absl::optional<bool> ChromeContentSettingsAgentDelegate::AllowMutationEvents() {
   if (IsPlatformApp())
     return false;
-  return std::nullopt;
+  return absl::nullopt;
+}
+
+void ChromeContentSettingsAgentDelegate::PassiveInsecureContentFound(
+    const blink::WebURL& resource_url) {
+  // Note: this implementation is a mirror of
+  // Browser::PassiveInsecureContentFound.
+  ReportInsecureContent(SslInsecureContentType::DISPLAY);
+  FilteredReportInsecureContentDisplayed(GURL(resource_url));
 }
 
 void ChromeContentSettingsAgentDelegate::DidCommitProvisionalLoad(
@@ -164,20 +137,6 @@ bool ChromeContentSettingsAgentDelegate::IsPlatformApp() {
 #else
   return false;
 #endif
-}
-
-bool ChromeContentSettingsAgentDelegate::IsAllowListedSystemWebApp() {
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  blink::WebLocalFrame* frame = render_frame_->GetWebFrame();
-  blink::WebSecurityOrigin origin = frame->GetDocument().GetSecurityOrigin();
-  // TODO(crbug.com/1233395): Migrate Files SWA to Clipboard API and remove this
-  // allow-list.
-  if (origin.Protocol().Ascii() == ::content::kChromeUIScheme &&
-      origin.Host().Utf8() == ::ash::file_manager::kChromeUIFileManagerHost) {
-    return true;
-  }
-#endif
-  return false;
 }
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)

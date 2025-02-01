@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,10 +9,8 @@
 
 namespace external_intents {
 
-BASE_DECLARE_FEATURE(kExternalNavigationDebugLogs);
-BASE_DECLARE_FEATURE(kBlockFrameRenavigations);
-BASE_DECLARE_FEATURE(kBlockIntentsToSelf);
-BASE_DECLARE_FEATURE(kTrustedClientGestureBypass);
+// Alphabetical:
+extern const base::Feature kIntentBlockExternalFormRedirectsNoGesture;
 
 }  // namespace external_intents
 

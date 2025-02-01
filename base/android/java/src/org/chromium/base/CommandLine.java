@@ -1,16 +1,17 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.JniType;
-import org.jni_zero.NativeMethods;
+import org.chromium.base.annotations.MainDex;
+import org.chromium.base.annotations.NativeMethods;
 
 import java.io.File;
 import java.io.FileReader;
@@ -22,10 +23,12 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Java mirror of base/command_line.h. Android applications don't have command line arguments.
- * Instead, they're "simulated" by reading a file at a specific location early during startup.
- * Applications each define their own files, e.g., ContentShellApplication.COMMAND_LINE_FILE.
- */
+ * Java mirror of base/command_line.h.
+ * Android applications don't have command line arguments. Instead, they're "simulated" by reading a
+ * file at a specific location early during startup. Applications each define their own files, e.g.,
+ * ContentShellApplication.COMMAND_LINE_FILE.
+**/
+@MainDex
 public abstract class CommandLine {
     // Public abstract interface, implemented in derived classes.
     // All these methods reflect their native-side counterparts.
@@ -37,16 +40,14 @@ public abstract class CommandLine {
 
     /**
      * Return the value associated with the given switch, or null.
-     *
      * @param switchString The switch key to lookup. It should NOT start with '--' !
      * @return switch value, or null if the switch is not set or set to empty.
      */
-    public abstract @Nullable String getSwitchValue(String switchString);
+    public abstract String getSwitchValue(String switchString);
 
     /**
-     * Return the value associated with the given switch, or {@code defaultValue} if the switch was
-     * not specified.
-     *
+     * Return the value associated with the given switch, or {@code defaultValue} if the switch
+     * was not specified.
      * @param switchString The switch key to lookup. It should NOT start with '--' !
      * @param defaultValue The default value to return if the switch isn't set.
      * @return Switch value, or {@code defaultValue} if the switch is not set or set to empty.
@@ -56,14 +57,15 @@ public abstract class CommandLine {
         return TextUtils.isEmpty(value) ? defaultValue : value;
     }
 
-    /** Return a copy of all switches, along with their values. */
-    public abstract Map<String, String> getSwitches();
+    /**
+     * Return a copy of all switches, along with their values.
+     */
+    public abstract Map getSwitches();
 
     /**
-     * Append a switch to the command line. There is no guarantee this action happens before the
-     * switch is needed.
-     *
-     * @param switchString the switch to add. It should NOT start with '--' !
+     * Append a switch to the command line.  There is no guarantee
+     * this action happens before the switch is needed.
+     * @param switchString the switch to add.  It should NOT start with '--' !
      */
     public abstract void appendSwitch(String switchString);
 
@@ -93,14 +95,26 @@ public abstract class CommandLine {
 
     /**
      * Determine if the command line is bound to the native (JNI) implementation.
-     *
      * @return true if the underlying implementation is delegating to the native command line.
      */
-    public static boolean isNativeImplementationForTesting() {
-        return sCommandLine.get() instanceof NativeCommandLine;
+    public boolean isNativeImplementation() {
+        return false;
     }
 
-    private static final AtomicReference<CommandLine> sCommandLine = new AtomicReference<>();
+    /**
+     * Returns the switches and arguments passed into the program, with switches and their
+     * values coming before all of the arguments.
+     */
+    protected abstract String[] getCommandLineArguments();
+
+    /**
+     * Destroy the command line. Called when a different instance is set.
+     * @see #setInstance
+     */
+    protected void destroy() {}
+
+    private static final AtomicReference<CommandLine> sCommandLine =
+            new AtomicReference<CommandLine>();
 
     /**
      * @return true if the command line has already been initialized.
@@ -117,14 +131,12 @@ public abstract class CommandLine {
     }
 
     /**
-     * Initialize the singleton instance, must be called exactly once (either directly or via one of
-     * the convenience wrappers below) before using the static singleton instance.
-     *
+     * Initialize the singleton instance, must be called exactly once (either directly or
+     * via one of the convenience wrappers below) before using the static singleton instance.
      * @param args command line flags in 'argv' format: args[0] is the program name.
      */
     public static void init(@Nullable String[] args) {
-        assert !(sCommandLine.get() instanceof NativeCommandLine);
-        sCommandLine.set(new JavaCommandLine(args));
+        setInstance(new JavaCommandLine(args));
     }
 
     /**
@@ -134,35 +146,30 @@ public abstract class CommandLine {
      */
     public static void initFromFile(String file) {
         char[] buffer = readFileAsUtf8(file);
-        String[] tokenized = buffer == null ? null : tokenizeQuotedArguments(buffer);
-        init(tokenized);
-        // The file existed, which should never be the case under normal operation.
-        // Use a log message to help with debugging if it's the flags that are causing issues.
-        if (tokenized != null) {
-            Log.i(TAG, "COMMAND-LINE FLAGS: %s (from %s)", Arrays.toString(tokenized), file);
-        }
+        init(buffer == null ? null : tokenizeQuotedArguments(buffer));
     }
 
-    /** For use by tests that test command-line functionality. */
-    public static void resetForTesting(boolean initialize) {
-        CommandLine origCommandLine =
-                sCommandLine.getAndSet(initialize ? new JavaCommandLine(null) : null);
-        ResettersForTesting.register(() -> sCommandLine.set(origCommandLine));
+    /**
+     * Resets both the java proxy and the native command lines. This allows the entire
+     * command line initialization to be re-run including the call to onJniLoaded.
+     */
+    @VisibleForTesting
+    public static void reset() {
+        setInstance(null);
     }
 
     /**
      * Parse command line flags from a flat buffer, supporting double-quote enclosed strings
-     * containing whitespace. argv elements are derived by splitting the buffer on whitepace; double
-     * quote characters may enclose tokens containing whitespace; a double-quote literal may be
-     * escaped with back-slash. (Otherwise backslash is taken as a literal).
-     *
+     * containing whitespace. argv elements are derived by splitting the buffer on whitepace;
+     * double quote characters may enclose tokens containing whitespace; a double-quote literal
+     * may be escaped with back-slash. (Otherwise backslash is taken as a literal).
      * @param buffer A command line in command line file format as described above.
      * @return the tokenized arguments, suitable for passing to init().
      */
     @VisibleForTesting
     static String[] tokenizeQuotedArguments(char[] buffer) {
-        // Just field trials can take over 60K of command line.
-        if (buffer.length > 96 * 1024) {
+        // Just field trials can take up to 10K of command line.
+        if (buffer.length > 64 * 1024) {
             // Check that our test runners are setting a reasonable number of flags.
             throw new RuntimeException("Flags file too big: " + buffer.length);
         }
@@ -195,7 +202,7 @@ public abstract class CommandLine {
         }
         if (arg != null) {
             if (currentQuote != noQuote) {
-                Log.w(TAG, "Unterminated quoted string: %s", arg);
+                Log.w(TAG, "Unterminated quoted string: " + arg);
             }
             args.add(arg.toString());
         }
@@ -207,25 +214,36 @@ public abstract class CommandLine {
     private static final String SWITCH_TERMINATOR = SWITCH_PREFIX;
     private static final String SWITCH_VALUE_SEPARATOR = "=";
 
-    /**
-     * Switch from Java->Native CommandLine implementation. If another thread is modifying the
-     * command line when this happens, all bets are off (as per the native CommandLine).
-     */
     public static void enableNativeProxy() {
-        JavaCommandLine prev = (JavaCommandLine) sCommandLine.get();
-        String[] args = prev == null ? new String[0] : prev.getCommandLineArguments();
-        CommandLineJni.get().init(args);
-        sCommandLine.set(new NativeCommandLine());
-        Log.v(TAG, "Switched to native command-line");
+        // Make a best-effort to ensure we make a clean (atomic) switch over from the old to
+        // the new command line implementation. If another thread is modifying the command line
+        // when this happens, all bets are off. (As per the native CommandLine).
+        sCommandLine.set(new NativeCommandLine(getJavaSwitchesOrNull()));
     }
 
-    /** Returns the list of current switches. Cannot be called after enableNativeProxy(). */
-    public static String[] getJavaSwitchesForTesting() {
+    @Nullable
+    public static String[] getJavaSwitchesOrNull() {
         CommandLine commandLine = sCommandLine.get();
         if (commandLine != null) {
-            return ((JavaCommandLine) commandLine).getCommandLineArguments();
+            return commandLine.getCommandLineArguments();
         }
-        return new String[0];
+        return null;
+    }
+
+    private static void setInstance(CommandLine commandLine) {
+        CommandLine oldCommandLine = sCommandLine.getAndSet(commandLine);
+        if (oldCommandLine != null) {
+            oldCommandLine.destroy();
+        }
+    }
+
+    /**
+     * Set {@link CommandLine} for testing.
+     * @param commandLine The {@link CommandLine} to use.
+     */
+    @VisibleForTesting
+    public static void setInstanceForTesting(CommandLine commandLine) {
+        setInstance(commandLine);
     }
 
     /**
@@ -246,8 +264,7 @@ public abstract class CommandLine {
 
     private CommandLine() {}
 
-    @VisibleForTesting
-    static class JavaCommandLine extends CommandLine {
+    private static class JavaCommandLine extends CommandLine {
         private HashMap<String, String> mSwitches = new HashMap<String, String>();
         private ArrayList<String> mArgs = new ArrayList<String>();
 
@@ -265,7 +282,8 @@ public abstract class CommandLine {
             assert mArgs.size() > 0;
         }
 
-        String[] getCommandLineArguments() {
+        @Override
+        protected String[] getCommandLineArguments() {
             return mArgs.toArray(new String[mArgs.size()]);
         }
 
@@ -275,11 +293,11 @@ public abstract class CommandLine {
         }
 
         @Override
-        public @Nullable String getSwitchValue(String switchString) {
+        public String getSwitchValue(String switchString) {
             // This is slightly round about, but needed for consistency with the NativeCommandLine
             // version which does not distinguish empty values from key not present.
             String value = mSwitches.get(switchString);
-            return TextUtils.isEmpty(value) ? null : value;
+            return value == null || value.isEmpty() ? null : value;
         }
 
         @Override
@@ -294,12 +312,11 @@ public abstract class CommandLine {
 
         /**
          * Appends a switch to the current list.
-         *
-         * @param switchString the switch to add. It should NOT start with '--' !
+         * @param switchString the switch to add.  It should NOT start with '--' !
          * @param value the value for this switch.
          */
         @Override
-        public void appendSwitchWithValue(String switchString, @Nullable String value) {
+        public void appendSwitchWithValue(String switchString, String value) {
             mSwitches.put(switchString, value == null ? "" : value);
 
             // Append the switch and update the switches/arguments divider mArgsBegin.
@@ -357,15 +374,18 @@ public abstract class CommandLine {
     }
 
     private static class NativeCommandLine extends CommandLine {
+        public NativeCommandLine(@Nullable String[] args) {
+            CommandLineJni.get().init(args);
+        }
+
         @Override
         public boolean hasSwitch(String switchString) {
             return CommandLineJni.get().hasSwitch(switchString);
         }
 
         @Override
-        public @Nullable String getSwitchValue(String switchString) {
-            String ret = CommandLineJni.get().getSwitchValue(switchString);
-            return ret.isEmpty() ? null : ret;
+        public String getSwitchValue(String switchString) {
+            return CommandLineJni.get().getSwitchValue(switchString);
         }
 
         @Override
@@ -404,27 +424,35 @@ public abstract class CommandLine {
         public void removeSwitch(String switchString) {
             CommandLineJni.get().removeSwitch(switchString);
         }
+
+        @Override
+        public boolean isNativeImplementation() {
+            return true;
+        }
+
+        @Override
+        protected String[] getCommandLineArguments() {
+            assert false;
+            return null;
+        }
+
+        @Override
+        protected void destroy() {
+            // TODO(https://crbug.com/771205): Downgrade this to an assert once we have eliminated
+            // tests that do this.
+            throw new IllegalStateException("Can't destroy native command line after startup");
+        }
     }
 
     @NativeMethods
     interface Natives {
-        void init(@JniType("std::vector<std::string>") String[] args);
-
-        boolean hasSwitch(@JniType("std::string") String switchString);
-
-        @JniType("std::string")
-        String getSwitchValue(@JniType("std::string") String switchString);
-
-        @JniType("std::vector<std::string>")
+        void init(String[] args);
+        boolean hasSwitch(String switchString);
+        String getSwitchValue(String switchString);
         String[] getSwitchesFlattened();
-
-        void appendSwitch(@JniType("std::string") String switchString);
-
-        void appendSwitchWithValue(
-                @JniType("std::string") String switchString, @JniType("std::string") String value);
-
-        void appendSwitchesAndArguments(@JniType("std::vector<std::string>") String[] array);
-
-        void removeSwitch(@JniType("std::string") String switchString);
+        void appendSwitch(String switchString);
+        void appendSwitchWithValue(String switchString, String value);
+        void appendSwitchesAndArguments(String[] array);
+        void removeSwitch(String switchString);
     }
 }

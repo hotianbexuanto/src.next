@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,15 +29,14 @@ ExtensionPrefValueMapFactory* ExtensionPrefValueMapFactory::GetInstance() {
   return base::Singleton<ExtensionPrefValueMapFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-ExtensionPrefValueMapFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ExtensionPrefValueMapFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<ExtensionPrefValueMap>();
+  return new ExtensionPrefValueMap();
 }
 
 content::BrowserContext* ExtensionPrefValueMapFactory::GetBrowserContextToUse(
     content::BrowserContext* context) const {
   // Redirected in incognito.
-  return extensions::ExtensionsBrowserClient::Get()
-      ->GetContextRedirectedToOriginal(context);
+  return extensions::ExtensionsBrowserClient::Get()->GetOriginalContext(
+      context);
 }

@@ -1,23 +1,20 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/sync_socket.h"
 
-#include "base/containers/span.h"
-#include "base/memory/raw_ptr.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/simple_thread.h"
 #include "base/time/time.h"
-#include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
 
 namespace {
 
-constexpr TimeDelta kReceiveTimeout = base::Milliseconds(750);
+constexpr TimeDelta kReceiveTimeout = base::TimeDelta::FromMilliseconds(750);
 
 class HangingReceiveThread : public DelegateSimpleThread::Delegate {
  public:
@@ -43,10 +40,10 @@ class HangingReceiveThread : public DelegateSimpleThread::Delegate {
     started_event_.Signal();
 
     if (with_timeout_) {
-      ASSERT_EQ(0u, socket_->ReceiveWithTimeout(byte_span_from_ref(data),
+      ASSERT_EQ(0u, socket_->ReceiveWithTimeout(&data, sizeof(data),
                                                 kReceiveTimeout));
     } else {
-      ASSERT_EQ(0u, socket_->Receive(byte_span_from_ref(data)));
+      ASSERT_EQ(0u, socket_->Receive(&data, sizeof(data)));
     }
 
     done_event_.Signal();
@@ -60,7 +57,7 @@ class HangingReceiveThread : public DelegateSimpleThread::Delegate {
   WaitableEvent* done_event() { return &done_event_; }
 
  private:
-  raw_ptr<SyncSocket> socket_;
+  SyncSocket* socket_;
   DelegateSimpleThread thread_;
   bool with_timeout_;
   WaitableEvent started_event_;
@@ -80,9 +77,9 @@ void SendReceivePeek(SyncSocket* socket_a, SyncSocket* socket_b) {
 
   // Verify |socket_a| can send to |socket_a| and |socket_a| can Receive from
   // |socket_a|.
-  ASSERT_EQ(sizeof(kSending), socket_a->Send(byte_span_from_ref(kSending)));
+  ASSERT_EQ(sizeof(kSending), socket_a->Send(&kSending, sizeof(kSending)));
   ASSERT_EQ(sizeof(kSending), socket_b->Peek());
-  ASSERT_EQ(sizeof(kSending), socket_b->Receive(byte_span_from_ref(received)));
+  ASSERT_EQ(sizeof(kSending), socket_b->Receive(&received, sizeof(kSending)));
   ASSERT_EQ(kSending, received);
 
   ASSERT_EQ(0u, socket_a->Peek());
@@ -90,9 +87,9 @@ void SendReceivePeek(SyncSocket* socket_a, SyncSocket* socket_b) {
 
   // Now verify the reverse.
   received = 0;
-  ASSERT_EQ(sizeof(kSending), socket_b->Send(byte_span_from_ref(kSending)));
+  ASSERT_EQ(sizeof(kSending), socket_b->Send(&kSending, sizeof(kSending)));
   ASSERT_EQ(sizeof(kSending), socket_a->Peek());
-  ASSERT_EQ(sizeof(kSending), socket_a->Receive(byte_span_from_ref(received)));
+  ASSERT_EQ(sizeof(kSending), socket_a->Receive(&received, sizeof(kSending)));
   ASSERT_EQ(kSending, received);
 
   ASSERT_EQ(0u, socket_a->Peek());
@@ -146,13 +143,7 @@ TEST_F(CancelableSyncSocketTest, ClonedSendReceivePeek) {
   SendReceivePeek(&socket_c, &socket_d);
 }
 
-// TODO(https://crbug.com/361250560): Flaky on mac.
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_ShutdownCancelsReceive DISABLED_ShutdownCancelsReceive
-#else
-#define MAYBE_ShutdownCancelsReceive ShutdownCancelsReceive
-#endif
-TEST_F(CancelableSyncSocketTest, MAYBE_ShutdownCancelsReceive) {
+TEST_F(CancelableSyncSocketTest, ShutdownCancelsReceive) {
   HangingReceiveThread thread(&socket_b_, /* with_timeout = */ false);
 
   // Wait for the thread to be started. Note that this doesn't guarantee that
@@ -181,15 +172,15 @@ TEST_F(CancelableSyncSocketTest, ShutdownCancelsReceiveWithTimeout) {
 TEST_F(CancelableSyncSocketTest, ReceiveAfterShutdown) {
   socket_a_.Shutdown();
   int data = 0;
-  EXPECT_EQ(0u, socket_a_.Receive(byte_span_from_ref(data)));
+  EXPECT_EQ(0u, socket_a_.Receive(&data, sizeof(data)));
 }
 
 TEST_F(CancelableSyncSocketTest, ReceiveWithTimeoutAfterShutdown) {
   socket_a_.Shutdown();
   TimeTicks start = TimeTicks::Now();
   int data = 0;
-  EXPECT_EQ(0u, socket_a_.ReceiveWithTimeout(byte_span_from_ref(data),
-                                             kReceiveTimeout));
+  EXPECT_EQ(0u,
+            socket_a_.ReceiveWithTimeout(&data, sizeof(data), kReceiveTimeout));
 
   // Ensure the receive didn't just timeout.
   EXPECT_LT(TimeTicks::Now() - start, kReceiveTimeout);

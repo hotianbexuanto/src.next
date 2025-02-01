@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,10 +7,9 @@
 
 #include <memory>
 
-#include "base/task/single_thread_task_runner.h"
+#include "base/macros.h"
 #include "base/threading/thread_checker.h"
 #include "components/safe_browsing/content/common/safe_browsing.mojom.h"
-#include "extensions/buildflags/buildflags.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
@@ -23,17 +22,13 @@ class WebSocketHandshakeThrottleProviderImpl final
  public:
   explicit WebSocketHandshakeThrottleProviderImpl(
       blink::ThreadSafeBrowserInterfaceBrokerProxy* broker);
-
-  WebSocketHandshakeThrottleProviderImpl& operator=(
-      const WebSocketHandshakeThrottleProviderImpl&) = delete;
-
   ~WebSocketHandshakeThrottleProviderImpl() override;
 
   // Implements blink::WebSocketHandshakeThrottleProvider.
   std::unique_ptr<blink::WebSocketHandshakeThrottleProvider> Clone(
       scoped_refptr<base::SingleThreadTaskRunner> task_runner) override;
   std::unique_ptr<blink::WebSocketHandshakeThrottle> CreateThrottle(
-      base::optional_ref<const blink::LocalFrameToken> local_frame_token,
+      int render_frame_id,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner) override;
 
  private:
@@ -42,14 +37,12 @@ class WebSocketHandshakeThrottleProviderImpl final
   WebSocketHandshakeThrottleProviderImpl(
       const WebSocketHandshakeThrottleProviderImpl& other);
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-  mojo::PendingRemote<safe_browsing::mojom::ExtensionWebRequestReporter>
-      pending_extension_web_request_reporter_;
-  mojo::Remote<safe_browsing::mojom::ExtensionWebRequestReporter>
-      extension_web_request_reporter_;
-#endif
+  mojo::PendingRemote<safe_browsing::mojom::SafeBrowsing> safe_browsing_remote_;
+  mojo::Remote<safe_browsing::mojom::SafeBrowsing> safe_browsing_;
 
   THREAD_CHECKER(thread_checker_);
+
+  DISALLOW_ASSIGN(WebSocketHandshakeThrottleProviderImpl);
 };
 
 #endif  // CHROME_RENDERER_WEBSOCKET_HANDSHAKE_THROTTLE_PROVIDER_IMPL_H_

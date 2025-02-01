@@ -24,20 +24,15 @@
 #include "third_party/blink/renderer/core/css/media_query_list_listener.h"
 #include "third_party/blink/renderer/core/css/media_query_matcher.h"
 #include "third_party/blink/renderer/core/dom/document.h"
-#include "third_party/blink/renderer/core/event_target_names.h"
-#include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
-#include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_object.h"
-#include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 
 namespace blink {
 
 MediaQueryList::MediaQueryList(ExecutionContext* context,
                                MediaQueryMatcher* matcher,
-                               MediaQuerySet* media)
-    : ActiveScriptWrappable<MediaQueryList>({}),
-      ExecutionContextLifecycleObserver(context),
+                               scoped_refptr<MediaQuerySet> media)
+    : ExecutionContextLifecycleObserver(context),
       matcher_(matcher),
       media_(media),
       matches_dirty_(true),
@@ -61,17 +56,15 @@ void MediaQueryList::removeDeprecatedListener(V8EventListener* listener) {
 }
 
 void MediaQueryList::AddListener(MediaQueryListListener* listener) {
-  if (!listener) {
+  if (!listener)
     return;
-  }
 
   listeners_.insert(listener);
 }
 
 void MediaQueryList::RemoveListener(MediaQueryListListener* listener) {
-  if (!listener) {
+  if (!listener)
     return;
-  }
 
   listeners_.erase(listener);
 }
@@ -89,9 +82,8 @@ void MediaQueryList::ContextDestroyed() {
 bool MediaQueryList::MediaFeaturesChanged(
     HeapVector<Member<MediaQueryListListener>>* listeners_to_notify) {
   matches_dirty_ = true;
-  if (!UpdateMatches()) {
+  if (!UpdateMatches())
     return false;
-  }
   for (const auto& listener : listeners_) {
     listeners_to_notify->push_back(listener);
   }
@@ -100,7 +92,7 @@ bool MediaQueryList::MediaFeaturesChanged(
 
 bool MediaQueryList::UpdateMatches() {
   matches_dirty_ = false;
-  if (matches_ != matcher_->Evaluate(media_.Get())) {
+  if (matches_ != matcher_->Evaluate(media_.get())) {
     matches_ = !matches_;
     return true;
   }
@@ -123,9 +115,8 @@ bool MediaQueryList::matches() {
 
 void MediaQueryList::Trace(Visitor* visitor) const {
   visitor->Trace(matcher_);
-  visitor->Trace(media_);
   visitor->Trace(listeners_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }
 

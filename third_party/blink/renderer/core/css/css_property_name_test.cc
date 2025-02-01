@@ -1,10 +1,9 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/css_property_name.h"
 #include "third_party/blink/renderer/core/css/properties/css_property.h"
-#include "third_party/blink/renderer/core/css/properties/longhands.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
@@ -54,12 +53,10 @@ TEST_F(CSSPropertyNameTest, GetNameCustomProperty) {
 }
 
 TEST_F(CSSPropertyNameTest, OperatorEquals) {
-  EXPECT_EQ(CSSPropertyName(AtomicString("--x")),
-            CSSPropertyName(AtomicString("--x")));
+  EXPECT_EQ(CSSPropertyName("--x"), CSSPropertyName("--x"));
   EXPECT_EQ(CSSPropertyName(CSSPropertyID::kColor),
             CSSPropertyName(CSSPropertyID::kColor));
-  EXPECT_NE(CSSPropertyName(AtomicString("--x")),
-            CSSPropertyName(AtomicString("--y")));
+  EXPECT_NE(CSSPropertyName("--x"), CSSPropertyName("--y"));
   EXPECT_NE(CSSPropertyName(CSSPropertyID::kColor),
             CSSPropertyName(CSSPropertyID::kBackgroundColor));
 }
@@ -78,7 +75,7 @@ TEST_F(CSSPropertyNameTest, From) {
       *CSSPropertyName::From(GetDocument().GetExecutionContext(), "color"),
       CSSPropertyName(CSSPropertyID::kColor));
   EXPECT_EQ(*CSSPropertyName::From(GetDocument().GetExecutionContext(), "--x"),
-            CSSPropertyName(AtomicString("--x")));
+            CSSPropertyName("--x"));
 }
 
 TEST_F(CSSPropertyNameTest, FromNativeCSSProperty) {
@@ -90,7 +87,7 @@ TEST_F(CSSPropertyNameTest, IsEmptyValue) {
   CSSPropertyName empty = Empty();
   CSSPropertyName deleted = Deleted();
   CSSPropertyName normal = GetCSSPropertyFontSize().GetCSSPropertyName();
-  CSSPropertyName custom(AtomicString("--x"));
+  CSSPropertyName custom("--x");
 
   EXPECT_TRUE(IsEmpty(empty));
   EXPECT_FALSE(IsEmpty(deleted));
@@ -102,7 +99,7 @@ TEST_F(CSSPropertyNameTest, IsDeletedValue) {
   CSSPropertyName empty = Empty();
   CSSPropertyName deleted = Deleted();
   CSSPropertyName normal = GetCSSPropertyFontSize().GetCSSPropertyName();
-  CSSPropertyName custom(AtomicString("--x"));
+  CSSPropertyName custom("--x");
 
   EXPECT_FALSE(IsDeleted(empty));
   EXPECT_TRUE(IsDeleted(deleted));
@@ -112,7 +109,7 @@ TEST_F(CSSPropertyNameTest, IsDeletedValue) {
 
 TEST_F(CSSPropertyNameTest, GetHash) {
   CSSPropertyName normal = GetCSSPropertyFontSize().GetCSSPropertyName();
-  CSSPropertyName custom(AtomicString("--x"));
+  CSSPropertyName custom("--x");
 
   // Don't crash.
   GetHash(normal);
@@ -121,7 +118,7 @@ TEST_F(CSSPropertyNameTest, GetHash) {
 
 TEST_F(CSSPropertyNameTest, CompareEmptyDeleted) {
   CSSPropertyName normal = GetCSSPropertyFontSize().GetCSSPropertyName();
-  CSSPropertyName custom(AtomicString("--x"));
+  CSSPropertyName custom("--x");
 
   EXPECT_EQ(Empty(), Empty());
   EXPECT_EQ(Deleted(), Deleted());
@@ -143,19 +140,19 @@ TEST_F(CSSPropertyNameTest, CompareEmptyDeleted) {
 TEST_F(CSSPropertyNameTest, HashMapBasic) {
   HashMap<CSSPropertyName, AtomicString> map;
 
-  map.Set(CSSPropertyName(AtomicString("--x")), AtomicString("foo"));
-  map.Set(CSSPropertyName(AtomicString("--y")), AtomicString("foo"));
-  map.Set(CSSPropertyName(AtomicString("--z")), AtomicString("foo"));
+  map.Set(CSSPropertyName("--x"), "foo");
+  map.Set(CSSPropertyName("--y"), "foo");
+  map.Set(CSSPropertyName("--z"), "foo");
 
-  map.Set(CSSPropertyName(AtomicString("--x")), AtomicString("bar"));
-  map.erase(CSSPropertyName(AtomicString("--z")));
+  map.Set(CSSPropertyName("--x"), "bar");
+  map.erase(CSSPropertyName("--z"));
 
-  EXPECT_EQ("bar", map.Take(CSSPropertyName(AtomicString("--x"))));
-  EXPECT_EQ("foo", map.Take(CSSPropertyName(AtomicString("--y"))));
-  EXPECT_EQ(map.end(), map.find(CSSPropertyName(AtomicString("--z"))));
+  EXPECT_EQ("bar", map.Take(CSSPropertyName("--x")));
+  EXPECT_EQ("foo", map.Take(CSSPropertyName("--y")));
+  EXPECT_EQ(map.end(), map.find(CSSPropertyName("--z")));
 
-  map.Set(GetCSSPropertyFontSize().GetCSSPropertyName(), AtomicString("foo"));
-  map.Set(GetCSSPropertyFontSize().GetCSSPropertyName(), AtomicString("bar"));
+  map.Set(GetCSSPropertyFontSize().GetCSSPropertyName(), "foo");
+  map.Set(GetCSSPropertyFontSize().GetCSSPropertyName(), "bar");
   EXPECT_EQ("bar", map.Take(GetCSSPropertyFontSize().GetCSSPropertyName()));
 }
 
