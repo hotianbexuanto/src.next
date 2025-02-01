@@ -1,71 +1,24 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 package org.chromium.chrome.browser.tab;
 
-import static org.chromium.components.content_settings.PrefNames.DESKTOP_SITE_WINDOW_SETTING_ENABLED;
-
-import android.app.Activity;
-import android.content.Context;
-import android.content.res.Resources;
-import android.os.Build;
-import android.util.DisplayMetrics;
-import android.view.Display;
-
 import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.BuildInfo;
-import org.chromium.base.ContextUtils;
-import org.chromium.base.SysUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
-import org.chromium.build.BuildConfig;
-import org.chromium.chrome.R;
-import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
-import org.chromium.chrome.browser.page_info.SiteSettingsHelper;
-import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
-import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.components.browser_ui.site_settings.SingleCategorySettingsConstants;
-import org.chromium.components.browser_ui.site_settings.SiteSettingsCategory;
-import org.chromium.components.browser_ui.site_settings.WebsitePreferenceBridge;
-import org.chromium.components.browser_ui.util.ConversionUtils;
-import org.chromium.components.content_settings.ContentSettingValues;
-import org.chromium.components.content_settings.ContentSettingsType;
-import org.chromium.components.feature_engagement.EventConstants;
-import org.chromium.components.feature_engagement.FeatureConstants;
-import org.chromium.components.feature_engagement.Tracker;
-import org.chromium.components.messages.DismissReason;
-import org.chromium.components.messages.MessageBannerProperties;
-import org.chromium.components.messages.MessageDispatcher;
-import org.chromium.components.messages.MessageIdentifier;
-import org.chromium.components.messages.PrimaryActionClickBehavior;
-import org.chromium.components.prefs.PrefService;
+import org.chromium.chrome.browser.flags.CachedFeatureFlags;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.components.ukm.UkmRecorder;
-import org.chromium.components.user_prefs.UserPrefs;
-import org.chromium.ui.base.DeviceFormFactor;
-import org.chromium.ui.display.DisplayAndroidManager;
-import org.chromium.ui.display.DisplayUtil;
-import org.chromium.ui.modelutil.PropertyModel;
-import org.chromium.url.GURL;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.Locale;
 
-/** Utilities for requesting desktop sites support. */
+/**
+ * Utilities for requesting desktop sites support.
+ */
 public class RequestDesktopUtils {
-    private static final String SITE_WILDCARD = "*";
-    // Global defaults experiment constants.
-    private static DisplayMetrics sDisplayMetrics;
-
-    static final double DEFAULT_GLOBAL_SETTING_DEFAULT_ON_DISPLAY_SIZE_THRESHOLD_INCHES = 10.0;
-    static final int DEFAULT_GLOBAL_SETTING_DEFAULT_ON_SMALLEST_SCREEN_WIDTH_THRESHOLD_DP = 600;
-    static final int DEFAULT_GLOBAL_SETTING_DEFAULT_ON_MEMORY_LIMIT_THRESHOLD_MB = 6500;
-
     // Note: these values must match the UserAgentRequestType enum in enums.xml.
     @IntDef({UserAgentRequestType.REQUEST_DESKTOP, UserAgentRequestType.REQUEST_MOBILE})
     @Retention(RetentionPolicy.SOURCE)
@@ -83,43 +36,42 @@ public class RequestDesktopUtils {
     }
 
     /**
-     * Records the metrics associated with changing the user agent by user.
-     *
+     * Records the metrics associated with changing the user agent by user agent.
      * @param isDesktop True if the user agent is the desktop.
      * @param tab The current activity {@link Tab}.
      */
     public static void recordUserChangeUserAgent(boolean isDesktop, @Nullable Tab tab) {
-        RecordUserAction.record("MobileMenuRequestDesktopSite");
+        if (CachedFeatureFlags.isEnabled(ChromeFeatureList.APP_MENU_MOBILE_SITE_OPTION)
+                && !isDesktop) {
+            RecordUserAction.record("MobileMenuRequestMobileSite");
+        } else {
+            RecordUserAction.record("MobileMenuRequestDesktopSite");
+        }
 
         RecordHistogram.recordBooleanHistogram(
                 "Android.RequestDesktopSite.UserSwitchToDesktop", isDesktop);
 
-        if (tab == null || tab.isOffTheRecord() || tab.getWebContents() == null) return;
+        if (tab == null || tab.isIncognito() || tab.getWebContents() == null) return;
 
-        new UkmRecorder(tab.getWebContents(), "Android.UserRequestedUserAgentChange")
-                .addMetric(
-                        "UserAgentType",
-                        isDesktop
-                                ? UserAgentRequestType.REQUEST_DESKTOP
-                                : UserAgentRequestType.REQUEST_MOBILE)
-                .record();
+        new UkmRecorder.Bridge().recordEventWithIntegerMetric(tab.getWebContents(),
+                "Android.UserRequestedUserAgentChange", "UserAgentType",
+                isDesktop ? UserAgentRequestType.REQUEST_DESKTOP
+                          : UserAgentRequestType.REQUEST_MOBILE);
     }
 
     /**
      * Records the ukms associated with changing screen orientation.
-     *
      * @param isLandscape True if the orientation is landscape.
      * @param tab The current activity {@link Tab}.
      */
     public static void recordScreenOrientationChangedUkm(boolean isLandscape, @Nullable Tab tab) {
-        if (tab == null || tab.isOffTheRecord() || tab.getWebContents() == null) return;
+        if (tab == null || tab.isIncognito() || tab.getWebContents() == null) return;
 
-        new UkmRecorder(tab.getWebContents(), "Android.ScreenRotation")
-                .addMetric(
-                        "TargetDeviceOrientation",
-                        isLandscape ? DeviceOrientation2.LANDSCAPE : DeviceOrientation2.PORTRAIT)
-                .record();
+        new UkmRecorder.Bridge().recordEventWithIntegerMetric(tab.getWebContents(),
+                "Android.ScreenRotation", "TargetDeviceOrientation",
+                isLandscape ? DeviceOrientation2.LANDSCAPE : DeviceOrientation2.PORTRAIT);
     }
+<<<<<<< HEAD
 
     /**
      * Set or remove a domain level exception with URL for {@link
@@ -448,3 +400,6 @@ public class RequestDesktopUtils {
         return display.getDisplayId() != Display.DEFAULT_DISPLAY;
     }
 }
+=======
+}
+>>>>>>> chromium

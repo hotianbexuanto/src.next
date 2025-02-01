@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,21 +11,20 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 
-import androidx.annotation.VisibleForTesting;
-
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.UserData;
+<<<<<<< HEAD
 import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
+=======
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
+>>>>>>> chromium
 import org.chromium.content.browser.input.ImeAdapterImpl;
 import org.chromium.content.browser.webcontents.WebContentsImpl;
 import org.chromium.content.browser.webcontents.WebContentsImpl.UserDataFactory;
 import org.chromium.content_public.browser.ViewEventSink.InternalAccessDelegate;
 import org.chromium.content_public.browser.WebContents;
-import org.chromium.ui.MotionEventUtils;
 import org.chromium.ui.base.EventForwarder;
 
 /**
@@ -59,6 +58,7 @@ public class ContentUiEventHandler implements UserData {
                 ContentUiEventHandlerJni.get().init(ContentUiEventHandler.this, webContents);
     }
 
+<<<<<<< HEAD
     static ContentUiEventHandler createForTesting(
             WebContents webContents, long nativeContentUiEventHandler) {
         ContentUiEventHandler contentUiEventHandler = new ContentUiEventHandler(webContents);
@@ -67,13 +67,24 @@ public class ContentUiEventHandler implements UserData {
     }
 
     @Initializer
+=======
+>>>>>>> chromium
     public void setEventDelegate(InternalAccessDelegate delegate) {
         mEventDelegate = delegate;
     }
 
-    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    private EventForwarder getEventForwarder() {
+        return mWebContents.getEventForwarder();
+    }
+
+    // Returns the scaling being applied to the event's source. Typically only used for VR when
+    // drawing Android UI to a texture.
+    private float getEventSourceScaling() {
+        return mWebContents.getTopLevelNativeWindow().getDisplay().getAndroidUIScaling();
+    }
+
     @CalledByNative
-    protected boolean onGenericMotionEvent(MotionEvent event) {
+    private boolean onGenericMotionEvent(MotionEvent event) {
         if (Gamepad.from(mWebContents).onGenericMotionEvent(event)) return true;
         if (JoystickHandler.fromWebContents(mWebContents).onGenericMotionEvent(event)) return true;
         if ((event.getSource() & InputDevice.SOURCE_CLASS_POINTER) != 0) {
@@ -86,37 +97,23 @@ public class ContentUiEventHandler implements UserData {
                     // TODO(mustaq): Should we include MotionEvent.TOOL_TYPE_STYLUS here?
                     // https://crbug.com/592082
                     if (event.getToolType(0) == MotionEvent.TOOL_TYPE_MOUSE) {
-                        return onMouseEvent(event, false);
+                        return onMouseEvent(event);
                     }
             }
-        }
-        if (isTrackpadEventThatNeedsConversion(event)) {
-            return onMouseEvent(event, true);
         }
         return mEventDelegate.super_onGenericMotionEvent(event);
     }
 
-    private boolean isTrackpadEventThatNeedsConversion(MotionEvent event) {
-        return mWebContents.getEventForwarder().isTrackpadToMouseEventConversionEnabled()
-                && EventForwarder.isTrackpadToMouseConversionEvent(event);
-    }
-
     private void onMouseWheelEvent(MotionEvent event) {
         assert mNativeContentUiEventHandler != 0;
-        ContentUiEventHandlerJni.get()
-                .sendMouseWheelEvent(
-                        mNativeContentUiEventHandler,
-                        ContentUiEventHandler.this,
-                        MotionEventUtils.getEventTimeNanos(event),
-                        event.getX(),
-                        event.getY(),
-                        event.getAxisValue(MotionEvent.AXIS_HSCROLL),
-                        event.getAxisValue(MotionEvent.AXIS_VSCROLL),
-                        event.getMetaState(),
-                        event.getSource());
+        float scale = getEventSourceScaling();
+        ContentUiEventHandlerJni.get().sendMouseWheelEvent(mNativeContentUiEventHandler,
+                ContentUiEventHandler.this, event.getEventTime(), event.getX() / scale,
+                event.getY() / scale, event.getAxisValue(MotionEvent.AXIS_HSCROLL),
+                event.getAxisValue(MotionEvent.AXIS_VSCROLL));
     }
 
-    private boolean onMouseEvent(MotionEvent event, boolean shouldConvertToMouseEvent) {
+    private boolean onMouseEvent(MotionEvent event) {
         assert mNativeContentUiEventHandler != 0;
         EventForwarder eventForwarder = mWebContents.getEventForwarder();
         boolean didOffsetEvent = false;
@@ -125,24 +122,14 @@ public class ContentUiEventHandler implements UserData {
             didOffsetEvent = true;
             event = newEvent;
         }
-        ContentUiEventHandlerJni.get()
-                .sendMouseEvent(
-                        mNativeContentUiEventHandler,
-                        ContentUiEventHandler.this,
-                        MotionEventUtils.getEventTimeNanos(event),
-                        event.getActionMasked(),
-                        event.getX(),
-                        event.getY(),
-                        event.getPointerId(0),
-                        event.getPressure(0),
-                        event.getOrientation(0),
-                        event.getAxisValue(MotionEvent.AXIS_TILT, 0),
-                        EventForwarder.getMouseEventActionButton(event),
-                        event.getButtonState(),
-                        event.getMetaState(),
-                        shouldConvertToMouseEvent
-                                ? MotionEvent.TOOL_TYPE_MOUSE
-                                : event.getToolType(0));
+        float scale = getEventSourceScaling();
+        ContentUiEventHandlerJni.get().sendMouseEvent(mNativeContentUiEventHandler,
+                ContentUiEventHandler.this, event.getEventTime(), event.getActionMasked(),
+                event.getX() / scale, event.getY() / scale, event.getPointerId(0),
+                event.getPressure(0), event.getOrientation(0),
+                event.getAxisValue(MotionEvent.AXIS_TILT, 0),
+                EventForwarder.getMouseEventActionButton(event), event.getButtonState(),
+                event.getMetaState(), event.getToolType(0));
         if (didOffsetEvent) event.recycle();
         return true;
     }
@@ -173,25 +160,16 @@ public class ContentUiEventHandler implements UserData {
      * (see app/keyboard_codes_win.h)
      * Note that these are not the same set as KeyEvent.isSystemKey:
      * for instance, AKEYCODE_MEDIA_* will be dispatched to webkit*.
-     * 3. KEYCODE_SYSRQ is the keycode received when Print screen is pressed
-     * on a hardware keyboard. Do not propagate this to allow Android Platform
-     * to take a screenshot.
      */
     private static boolean shouldPropagateKeyEvent(KeyEvent event) {
         int keyCode = event.getKeyCode();
-        if (keyCode == KeyEvent.KEYCODE_MENU
-                || keyCode == KeyEvent.KEYCODE_HOME
-                || keyCode == KeyEvent.KEYCODE_BACK
-                || keyCode == KeyEvent.KEYCODE_CALL
-                || keyCode == KeyEvent.KEYCODE_ENDCALL
-                || keyCode == KeyEvent.KEYCODE_POWER
-                || keyCode == KeyEvent.KEYCODE_HEADSETHOOK
-                || keyCode == KeyEvent.KEYCODE_CAMERA
-                || keyCode == KeyEvent.KEYCODE_FOCUS
-                || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+        if (keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_HOME
+                || keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_CALL
+                || keyCode == KeyEvent.KEYCODE_ENDCALL || keyCode == KeyEvent.KEYCODE_POWER
+                || keyCode == KeyEvent.KEYCODE_HEADSETHOOK || keyCode == KeyEvent.KEYCODE_CAMERA
+                || keyCode == KeyEvent.KEYCODE_FOCUS || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
                 || keyCode == KeyEvent.KEYCODE_VOLUME_MUTE
-                || keyCode == KeyEvent.KEYCODE_VOLUME_UP
-                || keyCode == KeyEvent.KEYCODE_SYSRQ) {
+                || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
             return false;
         }
         return true;
@@ -211,20 +189,21 @@ public class ContentUiEventHandler implements UserData {
         // It's a very real (and valid) possibility that a fling may still
         // be active when programatically scrolling. Cancelling the fling in
         // such cases ensures a consistent gesture event stream.
+<<<<<<< HEAD
         GestureListenerManagerImpl gestureManager =
                 GestureListenerManagerImpl.fromWebContents(mWebContents);
         assumeNonNull(gestureManager);
         if (gestureManager.hasActiveFlingScroll()) {
             ContentUiEventHandlerJni.get()
                     .cancelFling(mNativeContentUiEventHandler, ContentUiEventHandler.this, time);
+=======
+        if (GestureListenerManagerImpl.fromWebContents(mWebContents).hasActiveFlingScroll()) {
+            ContentUiEventHandlerJni.get().cancelFling(
+                    mNativeContentUiEventHandler, ContentUiEventHandler.this, time);
+>>>>>>> chromium
         }
-        ContentUiEventHandlerJni.get()
-                .sendScrollEvent(
-                        mNativeContentUiEventHandler,
-                        ContentUiEventHandler.this,
-                        time,
-                        dxPix,
-                        dyPix);
+        ContentUiEventHandlerJni.get().sendScrollEvent(
+                mNativeContentUiEventHandler, ContentUiEventHandler.this, time, dxPix, dyPix);
     }
 
     @CalledByNative
@@ -239,41 +218,14 @@ public class ContentUiEventHandler implements UserData {
     @NativeMethods
     interface Natives {
         long init(ContentUiEventHandler caller, WebContents webContents);
-
-        void sendMouseWheelEvent(
-                long nativeContentUiEventHandler,
-                ContentUiEventHandler caller,
-                long timeNs,
-                float x,
-                float y,
-                float ticksX,
-                float ticksY,
-                int metaState,
-                int source);
-
-        void sendMouseEvent(
-                long nativeContentUiEventHandler,
-                ContentUiEventHandler caller,
-                long timeNs,
-                int action,
-                float x,
-                float y,
-                int pointerId,
-                float pressure,
-                float orientation,
-                float tilt,
-                int changedButton,
-                int buttonState,
-                int metaState,
+        void sendMouseWheelEvent(long nativeContentUiEventHandler, ContentUiEventHandler caller,
+                long timeMs, float x, float y, float ticksX, float ticksY);
+        void sendMouseEvent(long nativeContentUiEventHandler, ContentUiEventHandler caller,
+                long timeMs, int action, float x, float y, int pointerId, float pressure,
+                float orientation, float tilt, int changedButton, int buttonState, int metaState,
                 int toolType);
-
-        void sendScrollEvent(
-                long nativeContentUiEventHandler,
-                ContentUiEventHandler caller,
-                long timeMs,
-                float deltaX,
-                float deltaY);
-
+        void sendScrollEvent(long nativeContentUiEventHandler, ContentUiEventHandler caller,
+                long timeMs, float deltaX, float deltaY);
         void cancelFling(
                 long nativeContentUiEventHandler, ContentUiEventHandler caller, long timeMs);
     }

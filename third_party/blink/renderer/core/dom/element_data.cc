@@ -28,11 +28,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "third_party/blink/renderer/core/dom/element_data.h"
 
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
@@ -45,10 +40,15 @@ namespace blink {
 struct SameSizeAsElementData final
     : public GarbageCollected<SameSizeAsElementData> {
   unsigned bitfield;
+<<<<<<< HEAD
   Member<void*> inline_style_;
   Member<void*> presentation_attribute_style_;
   SpaceSplitString class_names_;
   void* pointers[1];
+=======
+  Member<void*> willbe_member;
+  void* pointers[2];
+>>>>>>> chromium
 };
 
 ASSERT_SIZE(ElementData, SameSizeAsElementData);
@@ -127,12 +127,14 @@ void ElementData::Trace(Visitor* visitor) const {
 
 void ElementData::TraceAfterDispatch(blink::Visitor* visitor) const {
   visitor->Trace(inline_style_);
+<<<<<<< HEAD
   visitor->Trace(presentation_attribute_style_);
   visitor->Trace(class_names_);
+=======
+>>>>>>> chromium
 }
 
-ShareableElementData::ShareableElementData(
-    const Vector<Attribute, kAttributePrealloc>& attributes)
+ShareableElementData::ShareableElementData(const Vector<Attribute>& attributes)
     : ElementData(attributes.size()) {
   for (unsigned i = 0; i < bit_field_.get<ArraySize>(); ++i)
     new (&attribute_array_[i]) Attribute(attributes[i]);
@@ -158,7 +160,7 @@ ShareableElementData::ShareableElementData(const UniqueElementData& other)
 }
 
 ShareableElementData* ShareableElementData::CreateWithAttributes(
-    const Vector<Attribute, kAttributePrealloc>& attributes) {
+    const Vector<Attribute>& attributes) {
   return MakeGarbageCollected<ShareableElementData>(
       AdditionalBytesForShareableElementDataWithAttributeCount(
           attributes.size()),
@@ -188,7 +190,7 @@ UniqueElementData::UniqueElementData(const ShareableElementData& other)
   presentation_attribute_style_ = other.presentation_attribute_style_;
 
   unsigned length = other.Attributes().size();
-  attribute_vector_.reserve(length);
+  attribute_vector_.ReserveCapacity(length);
   for (unsigned i = 0; i < length; ++i)
     attribute_vector_.UncheckedAppend(other.attribute_array_[i]);
 }

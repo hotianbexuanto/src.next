@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 #include "base/path_service.h"
 #include "build/build_config.h"
 #include "cc/test/pixel_comparator.h"
+#include "content/browser/form_controls_browsertest_mac.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/common/content_paths.h"
 #include "content/public/common/content_switches.h"
@@ -15,15 +16,18 @@
 #include "content/public/test/content_browser_test_utils.h"
 #include "content/public/test/test_utils.h"
 #include "content/shell/browser/shell.h"
-#include "gpu/config/gpu_finch_features.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
 #include "base/android/build_info.h"
 #endif
 
-// TODO(crbug.com/40625383): Move the baselines to skia gold for easier
+#if defined(OS_WIN)
+#include "base/win/windows_version.h"
+#endif
+
+// TODO(crbug.com/958242): Move the baselines to skia gold for easier
 //   rebaselining when all platforms are supported.
 
 // To rebaseline this test on all platforms:
@@ -44,6 +48,8 @@ class FormControlsBrowserTest : public ContentBrowserTest {
   }
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
+    ContentBrowserTest::SetUpCommandLine(command_line);
+
     // The --disable-lcd-text flag helps text render more similarly on
     // different bots and platform.
     command_line->AppendSwitch(switches::kDisableLCDText);
@@ -59,25 +65,19 @@ class FormControlsBrowserTest : public ContentBrowserTest {
     base::ScopedAllowBlockingForTesting allow_blocking;
 
     std::string platform_suffix;
-#if BUILDFLAG(IS_MAC)
+#if defined(OS_MAC)
     platform_suffix = "_mac";
-#elif BUILDFLAG(IS_WIN)
+#elif defined(OS_WIN)
     platform_suffix = "_win";
-#elif BUILDFLAG(IS_LINUX)
-    platform_suffix = "_linux";
-#elif BUILDFLAG(IS_CHROMEOS)
+#elif BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
     platform_suffix = "_chromeos";
-#elif BUILDFLAG(IS_ANDROID)
+#elif defined(OS_ANDROID)
     int sdk_int = base::android::BuildInfo::GetInstance()->sdk_int();
-    if (sdk_int >= base::android::SDK_VERSION_T) {
-      platform_suffix = "_android_T";
+    if (sdk_int == base::android::SDK_VERSION_KITKAT) {
+      platform_suffix = "_android_kitkat";
     } else {
       platform_suffix = "_android";
     }
-#elif BUILDFLAG(IS_FUCHSIA)
-    platform_suffix = "_fuchsia";
-#elif BUILDFLAG(IS_IOS)
-    platform_suffix = "_ios";
 #endif
 
     base::FilePath dir_test_data;
@@ -96,30 +96,33 @@ class FormControlsBrowserTest : public ContentBrowserTest {
         NavigateToURL(shell()->web_contents(),
                       GURL("data:text/html,<!DOCTYPE html>" + body_html)));
 
-#if BUILDFLAG(IS_APPLE)
+#if defined(OS_MAC)
     // This fuzzy pixel comparator handles several mac behaviors:
     // - Different font rendering after 10.14
+    // - 10.12 subpixel rendering differences: crbug.com/1037971
     // - Slight differences in radio and checkbox rendering in 10.15
-    // TODO(wangxianzhu): Tighten these parameters.
-    auto comparator = cc::FuzzyPixelComparator()
-                          .DiscardAlpha()
-                          .SetErrorPixelsPercentageLimit(26.f)
-                          .SetAvgAbsErrorLimit(20.f)
-                          .SetAbsErrorLimit(120);
-#elif BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_WIN) || (OS_LINUX) || \
-    BUILDFLAG(IS_FUCHSIA)
+    cc::FuzzyPixelComparator comparator(
+        /* discard_alpha */ true,
+        /* error_pixels_percentage_limit */ 18.f,
+        /* small_error_pixels_percentage_limit */ 0.f,
+        /* avg_abs_error_limit */ 20.f,
+        /* max_abs_error_limit */ 120.f,
+        /* small_error_threshold */ 0);
+#elif defined(OS_ANDROID) || defined(OS_WIN)
     // Different versions of android may have slight differences in rendering.
     // Some versions have more significant differences than others, which are
     // tracked separately in separate baseline image files. The less significant
     // differences are accommodated for with this fuzzy pixel comparator.
-    // This also applies to different versions of other OSes.
-    auto comparator = cc::FuzzyPixelComparator()
-                          .DiscardAlpha()
-                          .SetErrorPixelsPercentageLimit(11.f)
-                          .SetAvgAbsErrorLimit(5.f)
-                          .SetAbsErrorLimit(140);
+    // This also applies to different versions of windows.
+    cc::FuzzyPixelComparator comparator(
+        /* discard_alpha */ true,
+        /* error_pixels_percentage_limit */ 11.f,
+        /* small_error_pixels_percentage_limit */ 0.f,
+        /* avg_abs_error_limit */ 5.f,
+        /* max_abs_error_limit */ 140.f,
+        /* small_error_threshold */ 0);
 #else
-    cc::AlphaDiscardingExactPixelComparator comparator;
+    cc::ExactPixelComparator comparator(/* disard_alpha */ true);
 #endif
     EXPECT_TRUE(CompareWebContentsOutputToReference(
         shell()->web_contents(), golden_filepath,
@@ -128,7 +131,7 @@ class FormControlsBrowserTest : public ContentBrowserTest {
 
   // Check if the test can run on the current system.
   bool SkipTestForOldAndroidVersions() const {
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
     // Lower versions of android running on older devices, ex Nexus 5, render
     // form controls with a too large of a difference -- >20% error -- to
     // pixel compare.
@@ -136,11 +139,22 @@ class FormControlsBrowserTest : public ContentBrowserTest {
         base::android::SDK_VERSION_OREO) {
       return true;
     }
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // defined(OS_ANDROID)
+    return false;
+  }
+
+  bool SkipTestForOldWinVersion() const {
+#if defined(OS_WIN)
+    // Win7 font rendering causes too large of rendering diff for pixel
+    // comparison.
+    if (base::win::GetVersion() <= base::win::Version::WIN7)
+      return true;
+#endif  // defined(OS_WIN)
     return false;
   }
 };
 
+<<<<<<< HEAD
 // Checkbox renders differently on Android x86. crbug.com/1238283
 // Checkbox renders differently on Windows. See: crbug.com/377986468
 #if BUILDFLAG(IS_ANDROID) && defined(ARCH_CPU_X86)
@@ -152,6 +166,9 @@ class FormControlsBrowserTest : public ContentBrowserTest {
 #endif
 
 IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MAYBE_Checkbox) {
+=======
+IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Checkbox) {
+>>>>>>> chromium
   if (SkipTestForOldAndroidVersions())
     return;
 
@@ -185,12 +202,12 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Radio) {
           /* screenshot_height */ 40);
 }
 
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_DarkModeTextSelection DISABLED_DarkModeTextSelection
-#else
-#define MAYBE_DarkModeTextSelection DarkModeTextSelection
+IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, DarkModeTextSelection) {
+#if defined(OS_MAC)
+  if (!MacOSVersionSupportsDarkMode())
+    return;
 #endif
-IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MAYBE_DarkModeTextSelection) {
+
   if (SkipTestForOldAndroidVersions())
     return;
 
@@ -232,6 +249,7 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Input) {
           /* screenshot_height */ 330);
 }
 
+<<<<<<< HEAD
 // Renders differently on Windows. See: crbug.com/377986468
 #if (BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS))
 #define MAYBE_Textarea DISABLED_Textarea
@@ -241,6 +259,9 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Input) {
 #define MAYBE_Textarea Textarea
 #endif
 IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MAYBE_Textarea) {
+=======
+IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Textarea) {
+>>>>>>> chromium
   if (SkipTestForOldAndroidVersions())
     return;
 
@@ -262,6 +283,9 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MAYBE_Textarea) {
 
 IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Button) {
   if (SkipTestForOldAndroidVersions())
+    return;
+
+  if (SkipTestForOldWinVersion())
     return;
 
   RunTest("form_controls_browsertest_button",
@@ -287,8 +311,12 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Button) {
 // TODO(crbug.com/1160104/#25) This test creates large average_error_rate on
 // Android FYI SkiaRenderer Vulkan. Disable it until a resolution for is
 // found.
+<<<<<<< HEAD
 // Also renders differently on Windows. See: crbug.com/377986468
 #if BUILDFLAG(IS_ANDROID)
+=======
+#if defined(OS_ANDROID)
+>>>>>>> chromium
 #define MAYBE_ColorInput DISABLED_ColorInput
 #elif BUILDFLAG(IS_WIN)
 #define MAYBE_ColorInput DISABLED_ColorInput
@@ -372,15 +400,6 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MAYBE_MultiSelect) {
 IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Progress) {
   if (SkipTestForOldAndroidVersions())
     return;
-
-#if BUILDFLAG(IS_MAC) && !defined(ARCH_CPU_ARM64)
-  // The pixel comparison fails on Mac Intel GPUs with Graphite due to MSAA
-  // issues.
-  // TODO(crbug.com/40940637): Re-enable test if possible.
-  if (features::IsSkiaGraphiteEnabled(base::CommandLine::ForCurrentProcess())) {
-    return;
-  }
-#endif
 
   RunTest("form_controls_browsertest_progress",
           R"HTML(

@@ -29,36 +29,32 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_MEDIA_QUERY_EXP_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_MEDIA_QUERY_EXP_H_
 
-#include <optional>
-
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/css/css_length_resolver.h"
-#include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
-#include "third_party/blink/renderer/core/css/css_ratio_value.h"
 #include "third_party/blink/renderer/core/css/css_value.h"
 #include "third_party/blink/renderer/core/css/media_feature_names.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
-#include "third_party/blink/renderer/core/layout/geometry/axis.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
-#include "third_party/blink/renderer/platform/wtf/casting.h"
-
-namespace WTF {
-class StringBuilder;
-}  // namespace WTF
 
 namespace blink {
 
 class CSSParserContext;
-class CSSParserTokenStream;
+class CSSParserTokenRange;
+class ExecutionContext;
 
-class CORE_EXPORT MediaQueryExpValue {
+struct MediaQueryExpValue {
   DISALLOW_NEW();
+  CSSValueID id;
+  double value;
+  CSSPrimitiveValue::UnitType unit;
+  unsigned numerator;
+  unsigned denominator;
 
- public:
-  // Type::kInvalid
-  MediaQueryExpValue() = default;
+  bool is_id;
+  bool is_value;
+  bool is_ratio;
 
+<<<<<<< HEAD
   explicit MediaQueryExpValue(CSSValueID id) : type_(Type::kId), id_(id) {}
   explicit MediaQueryExpValue(const CSSValue& value)
       : type_(Type::kValue), value_(value) {}
@@ -153,129 +149,30 @@ class CORE_EXPORT MediaQueryExpValue {
   static const int kUnitFlagsBits = 5;
 
   unsigned GetUnitFlags() const;
+=======
+  MediaQueryExpValue()
+      : id(CSSValueID::kInvalid),
+        value(0),
+        unit(CSSPrimitiveValue::UnitType::kUnknown),
+        numerator(0),
+        denominator(1),
+        is_id(false),
+        is_value(false),
+        is_ratio(false) {}
+>>>>>>> chromium
 
+  bool IsValid() const { return (is_id || is_value || is_ratio); }
   String CssText() const;
-  bool operator==(const MediaQueryExpValue& other) const {
-    if (type_ != other.type_) {
-      return false;
-    }
-    switch (type_) {
-      case Type::kInvalid:
-        return true;
-      case Type::kId:
-        return id_ == other.id_;
-      case Type::kValue:
-        return base::ValuesEquivalent(value_, other.value_);
-      case Type::kRatio:
-        return base::ValuesEquivalent(ratio_, other.ratio_);
-    }
+  bool Equals(const MediaQueryExpValue& exp_value) const {
+    if (is_id)
+      return (id == exp_value.id);
+    if (is_value)
+      return (value == exp_value.value);
+    if (is_ratio)
+      return (numerator == exp_value.numerator &&
+              denominator == exp_value.denominator);
+    return !exp_value.IsValid();
   }
-  bool operator!=(const MediaQueryExpValue& other) const {
-    return !(*this == other);
-  }
-
-  // Consume a MediaQueryExpValue for the provided feature, which must already
-  // be lower-cased.
-  //
-  // std::nullopt is returned on errors.
-  static std::optional<MediaQueryExpValue> Consume(
-      const String& lower_media_feature,
-      CSSParserTokenStream&,
-      const CSSParserContext&);
-
- private:
-  enum class Type { kInvalid, kId, kValue, kRatio };
-
-  Type type_ = Type::kInvalid;
-
-  CSSValueID id_;
-  Member<const CSSValue> value_;
-  Member<const cssvalue::CSSRatioValue> ratio_;
-};
-
-// https://drafts.csswg.org/mediaqueries-4/#mq-syntax
-enum class MediaQueryOperator {
-  // Used for <mf-plain>, <mf-boolean>
-  kNone,
-
-  // Used for <mf-range>
-  kEq,
-  kLt,
-  kLe,
-  kGt,
-  kGe,
-};
-
-// This represents the following part of a <media-feature> (example):
-//
-//  (width >= 10px)
-//         ^^^^^^^
-//
-struct CORE_EXPORT MediaQueryExpComparison {
-  DISALLOW_NEW();
-  MediaQueryExpComparison() = default;
-  explicit MediaQueryExpComparison(const MediaQueryExpValue& value)
-      : value(value) {}
-  MediaQueryExpComparison(const MediaQueryExpValue& value,
-                          MediaQueryOperator op)
-      : value(value), op(op) {}
-  void Trace(Visitor* visitor) const { visitor->Trace(value); }
-
-  bool operator==(const MediaQueryExpComparison& o) const {
-    return value == o.value && op == o.op;
-  }
-  bool operator!=(const MediaQueryExpComparison& o) const {
-    return !(*this == o);
-  }
-
-  bool IsValid() const { return value.IsValid(); }
-
-  MediaQueryExpValue value;
-  MediaQueryOperator op = MediaQueryOperator::kNone;
-};
-
-// There exists three types of <media-feature>s.
-//
-//  1) Boolean features, which is just the feature name, e.g. (color)
-//  2) Plain features, which can appear in two different forms:
-//       - Feature with specific value, e.g. (width: 100px)
-//       - Feature with min/max prefix, e.g. (min-width: 100px)
-//  3) Range features, which can appear in three different forms:
-//       - Feature compared with value, e.g. (width >= 100px)
-//       - Feature compared with value (reversed), e.g. (100px <= width)
-//       - Feature within a certain range, e.g. (100px < width < 200px)
-//
-// In the first case, both |left| and |right| values are not set.
-// In the second case, only |right| is set.
-// In the third case, either |left| is set, |right| is set, or both, depending
-// on the form.
-//
-// https://drafts.csswg.org/mediaqueries-4/#typedef-media-feature
-struct CORE_EXPORT MediaQueryExpBounds {
-  DISALLOW_NEW();
-  MediaQueryExpBounds() = default;
-  explicit MediaQueryExpBounds(const MediaQueryExpComparison& right)
-      : right(right) {}
-  MediaQueryExpBounds(const MediaQueryExpComparison& left,
-                      const MediaQueryExpComparison& right)
-      : left(left), right(right) {}
-  void Trace(Visitor* visitor) const {
-    visitor->Trace(left);
-    visitor->Trace(right);
-  }
-
-  bool IsRange() const {
-    return left.op != MediaQueryOperator::kNone ||
-           right.op != MediaQueryOperator::kNone;
-  }
-
-  bool operator==(const MediaQueryExpBounds& o) const {
-    return left == o.left && right == o.right;
-  }
-  bool operator!=(const MediaQueryExpBounds& o) const { return !(*this == o); }
-
-  MediaQueryExpComparison left;
-  MediaQueryExpComparison right;
 };
 
 class CORE_EXPORT MediaQueryExp {
@@ -283,48 +180,39 @@ class CORE_EXPORT MediaQueryExp {
 
  public:
   // Returns an invalid MediaQueryExp if the arguments are invalid.
-  static MediaQueryExp Create(const AtomicString& media_feature,
-                              CSSParserTokenStream&,
-                              const CSSParserContext&);
-  static MediaQueryExp Create(const AtomicString& media_feature,
-                              const MediaQueryExpBounds&);
+  static MediaQueryExp Create(const String& media_feature,
+                              CSSParserTokenRange&,
+                              const CSSParserContext&,
+                              const ExecutionContext*);
   static MediaQueryExp Invalid() {
     return MediaQueryExp(String(), MediaQueryExpValue());
   }
 
   MediaQueryExp(const MediaQueryExp& other);
   ~MediaQueryExp();
-  void Trace(Visitor*) const;
 
-  const AtomicString& MediaFeature() const { return media_feature_; }
+  const String& MediaFeature() const { return media_feature_; }
 
-  const MediaQueryExpBounds& Bounds() const { return bounds_; }
+  MediaQueryExpValue ExpValue() const { return exp_value_; }
 
   bool IsValid() const { return !media_feature_.IsNull(); }
 
   bool operator==(const MediaQueryExp& other) const;
-  bool operator!=(const MediaQueryExp& other) const {
-    return !(*this == other);
-  }
 
   bool IsViewportDependent() const;
 
   bool IsDeviceDependent() const;
 
   bool IsWidthDependent() const;
+
   bool IsHeightDependent() const;
-  bool IsInlineSizeDependent() const;
-  bool IsBlockSizeDependent() const;
 
   String Serialize() const;
 
-  // Return the union of GetUnitFlags() from the expr values.
-  unsigned GetUnitFlags() const;
-
  private:
   MediaQueryExp(const String&, const MediaQueryExpValue&);
-  MediaQueryExp(const String&, const MediaQueryExpBounds&);
 
+<<<<<<< HEAD
   AtomicString media_feature_;
   MediaQueryExpBounds bounds_;
 };
@@ -546,13 +434,12 @@ struct DowncastTraits<MediaQueryUnknownExpNode> {
   static bool AllowFrom(const MediaQueryExpNode& node) {
     return node.GetType() == MediaQueryExpNode::Type::kUnknown;
   }
+=======
+  String media_feature_;
+  MediaQueryExpValue exp_value_;
+>>>>>>> chromium
 };
 
 }  // namespace blink
-
-WTF_ALLOW_MOVE_AND_INIT_WITH_MEM_FUNCTIONS(blink::MediaQueryExpValue)
-WTF_ALLOW_MOVE_AND_INIT_WITH_MEM_FUNCTIONS(blink::MediaQueryExpComparison)
-WTF_ALLOW_MOVE_AND_INIT_WITH_MEM_FUNCTIONS(blink::MediaQueryExpBounds)
-WTF_ALLOW_MOVE_AND_INIT_WITH_MEM_FUNCTIONS(blink::MediaQueryExp)
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_MEDIA_QUERY_EXP_H_

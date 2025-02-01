@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,29 +7,25 @@
 
 #include "third_party/blink/renderer/core/layout/background_bleed_avoidance.h"
 #include "third_party/blink/renderer/core/layout/geometry/box_sides.h"
-#include "third_party/blink/renderer/core/layout/geometry/box_strut.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_size.h"
 #include "third_party/blink/renderer/core/paint/paint_flags.h"
 #include "third_party/blink/renderer/core/style/style_image.h"
+#include "third_party/blink/renderer/platform/geometry/layout_rect_outsets.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/skia/include/core/SkBlendMode.h"
 
-namespace gfx {
-class Rect;
-}
-
 namespace blink {
 
 class BackgroundImageGeometry;
-class BoxBackgroundPaintContext;
 class ComputedStyle;
 class Document;
 class FillLayer;
 class FloatRoundedRect;
 class GraphicsContext;
 class ImageResourceObserver;
+class IntRect;
 class LayoutBox;
 class Node;
 struct PaintInfo;
@@ -43,7 +39,7 @@ class BoxPainterBase {
   STACK_ALLOCATED();
 
  public:
-  BoxPainterBase(const Document& document,
+  BoxPainterBase(const Document* document,
                  const ComputedStyle& style,
                  Node* node)
       : document_(document), style_(style), node_(node) {}
@@ -52,7 +48,7 @@ class BoxPainterBase {
                        const Color&,
                        const FillLayer&,
                        const PhysicalRect&,
-                       const BoxBackgroundPaintContext&,
+                       BackgroundImageGeometry&,
                        BackgroundBleedAvoidance = kBackgroundBleedNone);
 
   void PaintFillLayer(const PaintInfo&,
@@ -60,14 +56,14 @@ class BoxPainterBase {
                       const FillLayer&,
                       const PhysicalRect&,
                       BackgroundBleedAvoidance,
-                      const BoxBackgroundPaintContext&,
+                      BackgroundImageGeometry&,
                       bool object_has_multiple_boxes = false,
                       const PhysicalSize& flow_box_size = PhysicalSize());
 
   void PaintMaskImages(const PaintInfo&,
                        const PhysicalRect&,
                        const ImageResourceObserver&,
-                       const BoxBackgroundPaintContext&,
+                       BackgroundImageGeometry&,
                        PhysicalBoxSides sides_to_include);
 
   static void PaintNormalBoxShadow(
@@ -121,10 +117,15 @@ class BoxPainterBase {
                   Color bg_color,
                   const FillLayer&,
                   BackgroundBleedAvoidance,
+                  RespectImageOrientationEnum,
                   PhysicalBoxSides sides_to_include,
                   bool is_inline,
+<<<<<<< HEAD
                   bool is_painting_background_in_contents_space,
                   PaintFlags paint_flags);
+=======
+                  bool is_painting_scrolling_background);
+>>>>>>> chromium
 
     // FillLayerInfo is a temporary, stack-allocated container which cannot
     // outlive the StyleImage.  This would normally be a raw pointer, if not for
@@ -141,14 +142,16 @@ class BoxPainterBase {
     bool is_printing;
     bool should_paint_image;
     bool should_paint_color;
-    bool background_forced_to_white = false;
     // True if we paint background color off main thread, design doc here:
     // https://docs.google.com/document/d/1usCnwWs8HsH5FU_185q6MsrZehFmpl5QgbbB4pvHIjI/edit
     bool should_paint_color_with_paint_worklet_image;
   };
 
  protected:
-  void PaintFillLayerTextFillBox(const PaintInfo&,
+  virtual LayoutRectOutsets ComputeBorders() const = 0;
+  virtual LayoutRectOutsets ComputePadding() const = 0;
+  LayoutRectOutsets AdjustedBorderOutsets(const FillLayerInfo&) const;
+  void PaintFillLayerTextFillBox(GraphicsContext&,
                                  const FillLayerInfo&,
                                  Image*,
                                  SkBlendMode composite_op,
@@ -156,21 +159,25 @@ class BoxPainterBase {
                                  const PhysicalRect&,
                                  const PhysicalRect& scrolled_paint_rect,
                                  bool object_has_multiple_boxes);
-  virtual void PaintTextClipMask(const PaintInfo&,
-                                 const gfx::Rect& mask_rect,
+  virtual void PaintTextClipMask(GraphicsContext&,
+                                 const IntRect& mask_rect,
                                  const PhysicalOffset& paint_offset,
                                  bool object_has_multiple_boxes) = 0;
 
-  virtual PhysicalRect AdjustRectForScrolledContent(
-      GraphicsContext&,
-      const PhysicalBoxStrut& borders,
-      const PhysicalRect&) const = 0;
+  virtual PhysicalRect AdjustRectForScrolledContent(const PaintInfo&,
+                                                    const FillLayerInfo&,
+                                                    const PhysicalRect&) = 0;
   virtual FillLayerInfo GetFillLayerInfo(
       const Color&,
       const FillLayer&,
       BackgroundBleedAvoidance,
+<<<<<<< HEAD
       bool is_painting_background_in_contents_space,
       PaintFlags paint_flags) const = 0;
+=======
+      bool is_painting_scrolling_background) const = 0;
+  virtual bool IsPaintingScrollingBackground(const PaintInfo&) const = 0;
+>>>>>>> chromium
   static void PaintInsetBoxShadow(
       const PaintInfo&,
       const FloatRoundedRect&,
@@ -178,7 +185,7 @@ class BoxPainterBase {
       PhysicalBoxSides sides_to_include = PhysicalBoxSides());
 
  private:
-  const Document& document_;
+  const Document* document_;
   const ComputedStyle& style_;
   Node* node_;
 };

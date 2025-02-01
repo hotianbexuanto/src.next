@@ -35,7 +35,7 @@ class LayoutThemeMobile : public LayoutThemeDefault {
   static scoped_refptr<LayoutTheme> Create();
   String ExtraDefaultStyleSheet() override;
 
-  void AdjustInnerSpinButtonStyle(ComputedStyleBuilder&) const override;
+  void AdjustInnerSpinButtonStyle(ComputedStyle&) const override;
 
   String ExtraFullscreenStyleSheet() override;
 
@@ -64,6 +64,7 @@ class LayoutThemeMobile : public LayoutThemeDefault {
   ~LayoutThemeMobile() override;
 
  private:
+<<<<<<< HEAD
   static Color active_selection_background_color_;
   static Color active_selection_foreground_color_;
   static Color inactive_selection_background_color_;
@@ -74,6 +75,10 @@ class LayoutThemeMobile : public LayoutThemeDefault {
       Color::FromRGBA32(0x6633b5e5);
   static constexpr Color kDefaultActiveSelectionForegroundColor =
       Color::FromRGBA32(0xFF000000);
+=======
+  static const RGBA32 kDefaultTapHighlightColor = 0x6633b5e5;
+  static const RGBA32 kDefaultActiveSelectionBackgroundColor = 0x6633b5e5;
+>>>>>>> chromium
 };
 
 }  // namespace blink

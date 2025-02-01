@@ -28,15 +28,11 @@
 #include "third_party/blink/renderer/platform/graphics/gradient.h"
 
 #include <algorithm>
-#include <optional>
-
-#include "third_party/blink/renderer/platform/geometry/blend.h"
-#include "third_party/blink/renderer/platform/graphics/color.h"
-#include "third_party/blink/renderer/platform/graphics/dark_mode_settings_builder.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "third_party/blink/renderer/platform/geometry/float_rect.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_shader.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
-#include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkMatrix.h"
 #include "third_party/skia/include/core/SkShader.h"
@@ -62,7 +58,7 @@ static inline bool CompareStops(const Gradient::ColorStop& a,
 }
 
 void Gradient::AddColorStop(const Gradient::ColorStop& stop) {
-  if (stops_.empty()) {
+  if (stops_.IsEmpty()) {
     stops_sorted_ = true;
   } else {
     stops_sorted_ = stops_sorted_ && CompareStops(stops_.back(), stop);
@@ -73,9 +69,8 @@ void Gradient::AddColorStop(const Gradient::ColorStop& stop) {
 }
 
 void Gradient::AddColorStops(const Vector<Gradient::ColorStop>& stops) {
-  for (const auto& stop : stops) {
+  for (const auto& stop : stops)
     AddColorStop(stop);
-  }
 }
 
 void Gradient::SortStopsIfNecessary() const {
@@ -90,38 +85,16 @@ void Gradient::SortStopsIfNecessary() const {
   std::stable_sort(stops_.begin(), stops_.end(), CompareStops);
 }
 
-static SkColor4f ResolveStopColorWithMissingParams(
-    const Color& color,
-    const Color& neighbor,
-    Color::ColorSpace color_space,
-    const cc::ColorFilter* color_filter) {
-  std::optional<float> param0 =
-      color.Param0IsNone() ? neighbor.Param0() : color.Param0();
-  std::optional<float> param1 =
-      color.Param1IsNone() ? neighbor.Param1() : color.Param1();
-  std::optional<float> param2 =
-      color.Param2IsNone() ? neighbor.Param2() : color.Param2();
-  std::optional<float> alpha =
-      color.AlphaIsNone() ? neighbor.Alpha() : color.Alpha();
-  Color resolved_color =
-      Color::FromColorSpace(color_space, param0, param1, param2, alpha);
-  if (color_filter) {
-    return color_filter->FilterColor(
-        resolved_color.ToGradientStopSkColor4f(color_space));
-  }
-  return resolved_color.ToGradientStopSkColor4f(color_space);
-}
-
 // Collect sorted stop position and color information into the pos and colors
 // buffers, ensuring stops at both 0.0 and 1.0.
 // TODO(fmalita): theoretically Skia should provide the same 0.0/1.0 padding
 // (making this logic redundant), but in practice there are rendering diffs;
 // investigate.
 void Gradient::FillSkiaStops(ColorBuffer& colors, OffsetBuffer& pos) const {
-  if (stops_.empty()) {
+  if (stops_.IsEmpty()) {
     // A gradient with no stops must be transparent black.
     pos.push_back(WebCoreDoubleToSkScalar(0));
-    colors.push_back(SkColors::kTransparent);
+    colors.push_back(SK_ColorTRANSPARENT);
   } else if (stops_.front().stop > 0) {
     // Copy the first stop to 0.0. The first stop position may have a slight
     // rounding error, but we don't care in this float comparison, since
@@ -129,57 +102,31 @@ void Gradient::FillSkiaStops(ColorBuffer& colors, OffsetBuffer& pos) const {
     // with a stop at (0 + epsilon).
     pos.push_back(WebCoreDoubleToSkScalar(0));
     if (color_filter_) {
-      colors.push_back(color_filter_->FilterColor(
-          stops_.front().color.ToGradientStopSkColor4f(
-              color_space_interpolation_space_)));
+      colors.push_back(
+          color_filter_->filterColor(SkColor(stops_.front().color)));
     } else {
-      colors.push_back(stops_.front().color.ToGradientStopSkColor4f(
-          color_space_interpolation_space_));
+      colors.push_back(SkColor(stops_.front().color));
     }
   }
 
-  // Deal with none parameters.
-  for (wtf_size_t i = 0; i < stops_.size(); i++) {
-    Color color = stops_[i].color;
-    color.ConvertToColorSpace(color_space_interpolation_space_);
-    if (color.HasNoneParams()) {
-      if (i != 0) {
-        // Fill left
-        pos.push_back(WebCoreDoubleToSkScalar(stops_[i].stop));
-        colors.push_back(ResolveStopColorWithMissingParams(
-            color, stops_[i - 1].color, color_space_interpolation_space_,
-            color_filter_.get()));
-      }
-
-      if (i != stops_.size() - 1) {
-        // Fill right
-        pos.push_back(WebCoreDoubleToSkScalar(stops_[i].stop));
-        colors.push_back(ResolveStopColorWithMissingParams(
-            color, stops_[i + 1].color, color_space_interpolation_space_,
-            color_filter_.get()));
-      }
-    } else {
-      pos.push_back(WebCoreDoubleToSkScalar(stops_[i].stop));
-      if (color_filter_) {
-        colors.push_back(
-            color_filter_->FilterColor(stops_[i].color.ToGradientStopSkColor4f(
-                color_space_interpolation_space_)));
-      } else {
-        colors.push_back(stops_[i].color.ToGradientStopSkColor4f(
-            color_space_interpolation_space_));
-      }
-    }
+  for (const auto& stop : stops_) {
+    pos.push_back(WebCoreDoubleToSkScalar(stop.stop));
+    if (color_filter_)
+      colors.push_back(color_filter_->filterColor(SkColor(stop.color)));
+    else
+      colors.push_back(SkColor(stop.color));
   }
 
   // Copy the last stop to 1.0 if needed. See comment above about this float
   // comparison.
-  DCHECK(!pos.empty());
+  DCHECK(!pos.IsEmpty());
   if (pos.back() < 1) {
     pos.push_back(WebCoreDoubleToSkScalar(1));
     colors.push_back(colors.back());
   }
 }
 
+<<<<<<< HEAD
 SkGradientShader::Interpolation Gradient::ResolveSkInterpolation() const {
   using sk_colorspace = SkGradientShader::Interpolation::ColorSpace;
   using sk_hue_method = SkGradientShader::Interpolation::HueMethod;
@@ -271,15 +218,17 @@ SkGradientShader::Interpolation Gradient::ResolveSkInterpolation() const {
   return sk_interpolation;
 }
 
+=======
+>>>>>>> chromium
 sk_sp<PaintShader> Gradient::CreateShaderInternal(
-    const SkMatrix& local_matrix) {
+    const SkMatrix& local_matrix) const {
   SortStopsIfNecessary();
   DCHECK(stops_sorted_);
 
   ColorBuffer colors;
-  colors.reserve(stops_.size());
+  colors.ReserveCapacity(stops_.size());
   OffsetBuffer pos;
-  pos.reserve(stops_.size());
+  pos.ReserveCapacity(stops_.size());
 
   FillSkiaStops(colors, pos);
   DCHECK_GE(colors.size(), 2ul);
@@ -298,26 +247,18 @@ sk_sp<PaintShader> Gradient::CreateShaderInternal(
       break;
   }
 
-  if (is_dark_mode_enabled_) {
-    for (auto& color : colors) {
-      color = EnsureDarkModeFilter().InvertColorIfNeeded(
-          color, DarkModeFilter::ElementRole::kBackground);
-    }
-  }
-  sk_sp<PaintShader> shader = CreateShader(
-      colors, pos, tile, ResolveSkInterpolation(), local_matrix, colors.back());
+  uint32_t flags = color_interpolation_ == ColorInterpolation::kPremultiplied
+                       ? SkGradientShader::kInterpolateColorsInPremul_Flag
+                       : 0;
+  sk_sp<PaintShader> shader =
+      CreateShader(colors, pos, tile, flags, local_matrix, colors.back());
   DCHECK(shader);
 
   return shader;
 }
 
-void Gradient::ApplyToFlags(cc::PaintFlags& flags,
-                            const SkMatrix& local_matrix,
-                            const ImageDrawOptions& draw_options) {
-  if (is_dark_mode_enabled_ != draw_options.apply_dark_mode) {
-    is_dark_mode_enabled_ = draw_options.apply_dark_mode;
-    cached_shader_.reset();
-  }
+void Gradient::ApplyToFlags(PaintFlags& flags,
+                            const SkMatrix& local_matrix) const {
   if (!cached_shader_ || local_matrix != cached_shader_->GetLocalMatrix() ||
       flags.getColorFilter().get() != color_filter_.get()) {
     color_filter_ = flags.getColorFilter();
@@ -331,20 +272,12 @@ void Gradient::ApplyToFlags(cc::PaintFlags& flags,
   flags.setDither(true);
 }
 
-DarkModeFilter& Gradient::EnsureDarkModeFilter() {
-  if (!dark_mode_filter_) {
-    dark_mode_filter_ =
-        std::make_unique<DarkModeFilter>(GetCurrentDarkModeSettings());
-  }
-  return *dark_mode_filter_;
-}
-
 namespace {
 
 class LinearGradient final : public Gradient {
  public:
-  LinearGradient(const gfx::PointF& p0,
-                 const gfx::PointF& p1,
+  LinearGradient(const FloatPoint& p0,
+                 const FloatPoint& p1,
                  GradientSpreadMethod spread_method,
                  ColorInterpolation interpolation,
                  DegenerateHandling degenerate_handling)
@@ -359,9 +292,9 @@ class LinearGradient final : public Gradient {
   sk_sp<PaintShader> CreateShader(const ColorBuffer& colors,
                                   const OffsetBuffer& pos,
                                   SkTileMode tile_mode,
-                                  SkGradientShader::Interpolation interpolation,
+                                  uint32_t flags,
                                   const SkMatrix& local_matrix,
-                                  SkColor4f fallback_color) const override {
+                                  SkColor fallback_color) const override {
     if (GetDegenerateHandling() == DegenerateHandling::kDisallow &&
         p0_ == p1_) {
       return PaintShader::MakeEmpty();
@@ -370,19 +303,19 @@ class LinearGradient final : public Gradient {
     SkPoint pts[2] = {FloatPointToSkPoint(p0_), FloatPointToSkPoint(p1_)};
     return PaintShader::MakeLinearGradient(
         pts, colors.data(), pos.data(), static_cast<int>(colors.size()),
-        tile_mode, interpolation, 0 /* flags */, &local_matrix, fallback_color);
+        tile_mode, flags, &local_matrix, fallback_color);
   }
 
  private:
-  const gfx::PointF p0_;
-  const gfx::PointF p1_;
+  const FloatPoint p0_;
+  const FloatPoint p1_;
 };
 
 class RadialGradient final : public Gradient {
  public:
-  RadialGradient(const gfx::PointF& p0,
+  RadialGradient(const FloatPoint& p0,
                  float r0,
-                 const gfx::PointF& p1,
+                 const FloatPoint& p1,
                  float r1,
                  float aspect_ratio,
                  GradientSpreadMethod spread_method,
@@ -402,17 +335,17 @@ class RadialGradient final : public Gradient {
   sk_sp<PaintShader> CreateShader(const ColorBuffer& colors,
                                   const OffsetBuffer& pos,
                                   SkTileMode tile_mode,
-                                  SkGradientShader::Interpolation interpolation,
+                                  uint32_t flags,
                                   const SkMatrix& local_matrix,
-                                  SkColor4f fallback_color) const override {
+                                  SkColor fallback_color) const override {
     const SkMatrix* matrix = &local_matrix;
-    std::optional<SkMatrix> adjusted_local_matrix;
+    absl::optional<SkMatrix> adjusted_local_matrix;
     if (aspect_ratio_ != 1) {
       // CSS3 elliptical gradients: apply the elliptical scaling at the
       // gradient center point.
       DCHECK(p0_ == p1_);
       adjusted_local_matrix.emplace(local_matrix);
-      adjusted_local_matrix->preScale(1, 1 / aspect_ratio_, p0_.x(), p0_.y());
+      adjusted_local_matrix->preScale(1, 1 / aspect_ratio_, p0_.X(), p0_.Y());
       matrix = &*adjusted_local_matrix;
     }
 
@@ -429,12 +362,12 @@ class RadialGradient final : public Gradient {
     return PaintShader::MakeTwoPointConicalGradient(
         FloatPointToSkPoint(p0_), radius0, FloatPointToSkPoint(p1_), radius1,
         colors.data(), pos.data(), static_cast<int>(colors.size()), tile_mode,
-        interpolation, 0 /* flags */, matrix, fallback_color);
+        flags, matrix, fallback_color);
   }
 
  private:
-  const gfx::PointF p0_;
-  const gfx::PointF p1_;
+  const FloatPoint p0_;
+  const FloatPoint p1_;
   const float r0_;
   const float r1_;
   const float aspect_ratio_;  // For elliptical gradient, width / height.
@@ -442,7 +375,7 @@ class RadialGradient final : public Gradient {
 
 class ConicGradient final : public Gradient {
  public:
-  ConicGradient(const gfx::PointF& position,
+  ConicGradient(const FloatPoint& position,
                 float rotation,
                 float start_angle,
                 float end_angle,
@@ -462,9 +395,9 @@ class ConicGradient final : public Gradient {
   sk_sp<PaintShader> CreateShader(const ColorBuffer& colors,
                                   const OffsetBuffer& pos,
                                   SkTileMode tile_mode,
-                                  SkGradientShader::Interpolation interpolation,
+                                  uint32_t flags,
                                   const SkMatrix& local_matrix,
-                                  SkColor4f fallback_color) const override {
+                                  SkColor fallback_color) const override {
     if (GetDegenerateHandling() == DegenerateHandling::kDisallow &&
         start_angle_ == end_angle_) {
       return PaintShader::MakeEmpty();
@@ -473,22 +406,22 @@ class ConicGradient final : public Gradient {
     // Skia's sweep gradient angles are relative to the x-axis, not the y-axis.
     const float skia_rotation = rotation_ - 90;
     const SkMatrix* matrix = &local_matrix;
-    std::optional<SkMatrix> adjusted_local_matrix;
+    absl::optional<SkMatrix> adjusted_local_matrix;
     if (skia_rotation) {
       adjusted_local_matrix.emplace(local_matrix);
-      adjusted_local_matrix->preRotate(skia_rotation, position_.x(),
-                                       position_.y());
+      adjusted_local_matrix->preRotate(skia_rotation, position_.X(),
+                                       position_.Y());
       matrix = &*adjusted_local_matrix;
     }
 
     return PaintShader::MakeSweepGradient(
-        position_.x(), position_.y(), colors.data(), pos.data(),
+        position_.X(), position_.Y(), colors.data(), pos.data(),
         static_cast<int>(colors.size()), tile_mode, start_angle_, end_angle_,
-        interpolation, 0 /* flags */, matrix, fallback_color);
+        flags, matrix, fallback_color);
   }
 
  private:
-  const gfx::PointF position_;  // center point
+  const FloatPoint position_;  // center point
   const float rotation_;       // global rotation (deg)
   const float start_angle_;    // angle (deg) corresponding to color position 0
   const float end_angle_;      // angle (deg) corresponding to color position 1
@@ -497,8 +430,8 @@ class ConicGradient final : public Gradient {
 }  // namespace
 
 scoped_refptr<Gradient> Gradient::CreateLinear(
-    const gfx::PointF& p0,
-    const gfx::PointF& p1,
+    const FloatPoint& p0,
+    const FloatPoint& p1,
     GradientSpreadMethod spread_method,
     ColorInterpolation interpolation,
     DegenerateHandling degenerate_handling) {
@@ -507,9 +440,9 @@ scoped_refptr<Gradient> Gradient::CreateLinear(
 }
 
 scoped_refptr<Gradient> Gradient::CreateRadial(
-    const gfx::PointF& p0,
+    const FloatPoint& p0,
     float r0,
-    const gfx::PointF& p1,
+    const FloatPoint& p1,
     float r1,
     float aspect_ratio,
     GradientSpreadMethod spread_method,
@@ -521,7 +454,7 @@ scoped_refptr<Gradient> Gradient::CreateRadial(
 }
 
 scoped_refptr<Gradient> Gradient::CreateConic(
-    const gfx::PointF& position,
+    const FloatPoint& position,
     float rotation,
     float start_angle,
     float end_angle,

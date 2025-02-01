@@ -1,22 +1,15 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 
 #include <memory>
-
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
-#include "third_party/blink/renderer/core/css/properties/longhands.h"
-#include "third_party/blink/renderer/core/dom/element.h"
-#include "third_party/blink/renderer/core/dom/scroll_marker_group_pseudo_element.h"
-#include "third_party/blink/renderer/core/dom/scroll_marker_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
-#include "third_party/blink/renderer/core/html/html_slot_element.h"
-#include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 
 namespace blink {
@@ -36,14 +29,14 @@ class FocusControllerTest : public PageTestBase {
   }
 
  private:
-  void SetUp() override { PageTestBase::SetUp(gfx::Size()); }
+  void SetUp() override { PageTestBase::SetUp(IntSize()); }
 };
 
 TEST_F(FocusControllerTest, SetInitialFocus) {
   GetDocument().body()->setInnerHTML("<input><textarea>");
   auto* input = To<Element>(GetDocument().body()->firstChild());
   // Set sequential focus navigation point before the initial focus.
-  input->Focus();
+  input->focus();
   input->blur();
   GetFocusController().SetInitialFocus(mojom::blink::FocusType::kForward);
   EXPECT_EQ(input, GetDocument().FocusedElement())
@@ -57,7 +50,7 @@ TEST_F(FocusControllerTest, DoNotCrash1) {
       "tabindex='0'></p>");
   // <div> with shadow root
   auto* host = To<Element>(GetDocument().body()->firstChild());
-  host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+  host->AttachShadowRootInternal(ShadowRootType::kOpen);
   // "This test is for crbug.com/609012"
   Node* text = host->nextSibling();
   // <p>
@@ -81,7 +74,7 @@ TEST_F(FocusControllerTest, DoNotCrash2) {
   Node* text = target->nextSibling();
   // <div> with shadow root
   auto* host = To<Element>(text->nextSibling());
-  host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+  host->AttachShadowRootInternal(ShadowRootType::kOpen);
 
   // Set sequential focus navigation point at text node.
   GetDocument().SetSequentialFocusNavigationStartingPoint(text);
@@ -115,12 +108,12 @@ TEST_F(FocusControllerTest, SVGFocusableElementInForm) {
   auto* first = To<Element>(form->firstChild());
   auto* last = To<Element>(form->lastChild());
 
-  Element* next = GetFocusController().NextFocusableElementForImeAndAutofill(
+  Element* next = GetFocusController().NextFocusableElementInForm(
       first, mojom::blink::FocusType::kForward);
   EXPECT_EQ(next, last)
       << "SVG Element should be skipped even when focusable in form.";
 
-  Element* prev = GetFocusController().NextFocusableElementForImeAndAutofill(
+  Element* prev = GetFocusController().NextFocusableElementInForm(
       next, mojom::blink::FocusType::kBackward);
   EXPECT_EQ(prev, first)
       << "SVG Element should be skipped even when focusable in form.";
@@ -156,6 +149,7 @@ TEST_F(FocusControllerTest, FindFocusableAfterElement) {
             FindFocusableElementAfter(*first, mojom::blink::FocusType::kNone));
 }
 
+<<<<<<< HEAD
 TEST_F(FocusControllerTest, NextFocusableElementForImeAndAutofill) {
   GetDocument().body()->setInnerHTML(
       "<form>"
@@ -863,4 +857,6 @@ TEST_F(FocusControllerTest, FullCarouselWithExtraPseudoElementsFocusOrder) {
   }
 }
 
+=======
+>>>>>>> chromium
 }  // namespace blink

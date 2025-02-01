@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,9 +38,14 @@ base::ScopedFD FileDescriptorStore::TakeFD(
     const std::string& key,
     base::MemoryMappedFile::Region* region) {
   base::ScopedFD fd = MaybeTakeFD(key, region);
+<<<<<<< HEAD
   if (!fd.is_valid()) {
     DLOG(FATAL) << "Unknown global descriptor: " << key;
   }
+=======
+  if (!fd.is_valid())
+    DLOG(DCHECK) << "Unknown global descriptor: " << key;
+>>>>>>> chromium
   return fd;
 }
 

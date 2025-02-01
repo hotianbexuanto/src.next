@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,13 +21,6 @@ unsigned Report::MatchId() const {
   hash = WTF::HashInts(hash, url().IsNull() ? 0 : url().Impl()->GetHash());
   hash = WTF::HashInts(hash, type().Impl()->GetHash());
   return hash;
-}
-
-bool Report::ShouldSendReport() const {
-  // Don't report any URLs from extension code.
-  // TODO(356098278): Investigate whether extension URLs should be reported to
-  // an extension-defined endpoint, if the extension opts in to reporting.
-  return !body()->IsExtensionSource();
 }
 
 }  // namespace blink

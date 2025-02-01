@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,16 +6,14 @@
 #include "base/files/file_path.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
-#include "base/test/scoped_feature_list.h"
-#include "chrome/browser/chrome_browser_main_extra_parts_nacl_deprecation.h"
 #include "chrome/browser/extensions/crx_installer.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/common/chrome_content_client.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "components/nacl/common/nacl_constants.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/plugin_service.h"
 #include "content/public/browser/render_frame_host.h"
@@ -42,7 +40,7 @@ const char kExtensionId[] = "bjjcibdiodkkeanflmiijlcfieiemced";
 // .nexe is part of an extension from the Chrome Webstore.
 class NaClExtensionTest : public extensions::ExtensionBrowserTest {
  public:
-  NaClExtensionTest() { feature_list_.InitAndEnableFeature(kNaclAllow); }
+  NaClExtensionTest() {}
 
   void SetUpOnMainThread() override {
     extensions::ExtensionBrowserTest::SetUpOnMainThread();
@@ -73,30 +71,34 @@ class NaClExtensionTest : public extensions::ExtensionBrowserTest {
     switch (install_type) {
       case INSTALL_TYPE_COMPONENT:
         if (LoadExtensionAsComponent(file_path)) {
-          extension = registry->enabled_extensions().GetByID(kExtensionId);
+          extension = registry->GetExtensionById(
+              kExtensionId, extensions::ExtensionRegistry::ENABLED);
         }
         break;
 
       case INSTALL_TYPE_UNPACKED:
         // Install the extension from a folder so it's unpacked.
         if (LoadExtension(file_path)) {
-          extension = registry->enabled_extensions().GetByID(kExtensionId);
+          extension = registry->GetExtensionById(
+              kExtensionId, extensions::ExtensionRegistry::ENABLED);
         }
         break;
 
       case INSTALL_TYPE_FROM_WEBSTORE:
         // Install native_client.crx from the webstore.
         if (InstallExtensionFromWebstore(file_path, 1)) {
-          extension = registry->enabled_extensions().GetByID(
-              last_loaded_extension_id());
+          extension = registry->GetExtensionById(
+              last_loaded_extension_id(),
+              extensions::ExtensionRegistry::ENABLED);
         }
         break;
 
       case INSTALL_TYPE_NON_WEBSTORE:
         // Install native_client.crx but not from the webstore.
         if (extensions::ExtensionBrowserTest::InstallExtension(file_path, 1)) {
-          extension = registry->enabled_extensions().GetByID(
-              last_loaded_extension_id());
+          extension = registry->GetExtensionById(
+              last_loaded_extension_id(),
+              extensions::ExtensionRegistry::ENABLED);
         }
         break;
     }
@@ -125,24 +127,29 @@ class NaClExtensionTest : public extensions::ExtensionBrowserTest {
       run_loop.Run();
     }
 
-    static const base::FilePath path(nacl::kInternalNaClPluginFileName);
+    static const base::FilePath path(ChromeContentClient::kNaClPluginFileName);
     content::WebPluginInfo info;
     return PluginService::GetInstance()->GetPluginInfoByPath(path, &info);
   }
 
   void CheckPluginsCreated(const GURL& url, PluginType expected_to_succeed) {
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+    ui_test_utils::NavigateToURL(browser(), url);
     // Don't run tests if the NaCl plugin isn't loaded.
     if (!IsNaClPluginLoaded())
       return;
 
+    bool embedded_plugin_created = false;
+    bool content_handler_plugin_created = false;
     WebContents* web_contents =
         browser()->tab_strip_model()->GetActiveWebContents();
-    bool embedded_plugin_created =
-        content::EvalJs(web_contents, "EmbeddedPluginCreated();").ExtractBool();
-    bool content_handler_plugin_created =
-        content::EvalJs(web_contents, "ContentHandlerPluginCreated();")
-            .ExtractBool();
+    ASSERT_TRUE(content::ExecuteScriptAndExtractBool(
+        web_contents,
+        "window.domAutomationController.send(EmbeddedPluginCreated());",
+        &embedded_plugin_created));
+    ASSERT_TRUE(content::ExecuteScriptAndExtractBool(
+        web_contents,
+        "window.domAutomationController.send(ContentHandlerPluginCreated());",
+        &content_handler_plugin_created));
 
     EXPECT_EQ(embedded_plugin_created,
               (expected_to_succeed & PLUGIN_TYPE_EMBED) != 0);
@@ -155,9 +162,6 @@ class NaClExtensionTest : public extensions::ExtensionBrowserTest {
     CheckPluginsCreated(extension->GetResourceURL("test.html"),
                         expected_to_succeed);
   }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
 };
 
 // Test that the NaCl plugin isn't blocked for Webstore extensions.
@@ -244,7 +248,7 @@ IN_PROC_BROWSER_TEST_F(NaClExtensionTest, MainFrameIsRemote) {
 
   // Navigate to a page with an iframe.
   GURL main_url(embedded_test_server()->GetURL("a.com", "/iframe.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), main_url));
+  ui_test_utils::NavigateToURL(browser(), main_url);
 
   // Navigate the subframe to the extension's html file.
   content::WebContents* web_contents =
@@ -254,9 +258,8 @@ IN_PROC_BROWSER_TEST_F(NaClExtensionTest, MainFrameIsRemote) {
 
   // Sanity check - the test setup should cause main frame and subframe to be in
   // a different process.
-  content::RenderFrameHost* subframe = ChildFrameAt(web_contents, 0);
-  EXPECT_NE(web_contents->GetPrimaryMainFrame()->GetProcess(),
-            subframe->GetProcess());
+  content::RenderFrameHost* subframe = web_contents->GetAllFrames()[1];
+  EXPECT_NE(web_contents->GetMainFrame()->GetProcess(), subframe->GetProcess());
 
   // Insert a plugin element into the subframe.  Before the fix from
   // https://crrev.com/2932703005 this would have trigerred a crash reported in
@@ -267,18 +270,18 @@ IN_PROC_BROWSER_TEST_F(NaClExtensionTest, MainFrameIsRemote) {
       embed.name = "nacl_module";
       embed.type = "application/x-pnacl";
       embed.src = "doesnt-exist.nmf";
-      new Promise(resolve => {
-        embed.addEventListener('error', function() {
-            resolve(true);
-        });
-        document.body.appendChild(embed);
+      embed.addEventListener('error', function() {
+          window.domAutomationController.send(true);
       });
+      document.body.appendChild(embed);
        )";
-  EXPECT_EQ(true, EvalJs(subframe, script));
+  bool done;
+  EXPECT_TRUE(ExecuteScriptAndExtractBool(subframe, script, &done));
+  EXPECT_TRUE(done);
 
   // If we get here, then it means that the renderer didn't crash (the crash
   // would have prevented the "error" event from firing and so
-  // EvalJs above wouldn't return).
+  // ExecuteScriptAndExtractBool above wouldn't return).
 }
 
 }  // namespace

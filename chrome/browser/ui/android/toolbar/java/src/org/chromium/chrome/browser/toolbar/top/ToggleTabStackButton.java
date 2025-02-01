@@ -1,34 +1,30 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.toolbar.top;
 
 import android.content.Context;
-import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+import android.view.View;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.PluralsRes;
-import androidx.appcompat.widget.TooltipCompat;
 
-import org.chromium.base.Callback;
 import org.chromium.base.TraceEvent;
-import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.Supplier;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.chrome.browser.theme.ThemeUtils;
 import org.chromium.chrome.browser.toolbar.R;
+import org.chromium.chrome.browser.toolbar.TabCountProvider;
 import org.chromium.chrome.browser.toolbar.TabSwitcherDrawable;
-import org.chromium.chrome.browser.toolbar.TabSwitcherDrawable.TabSwitcherDrawableLocation;
-import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
-import org.chromium.ui.listmenu.ListMenuButton;
+import org.chromium.components.browser_ui.widget.highlight.PulseDrawable;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuButton;
+import org.chromium.ui.widget.Toast;
 
 /**
  * A button displaying the number of open tabs. Clicking the button toggles the tab switcher view.
  * TODO(twellington): Replace with TabSwitcherButtonCoordinator so code can be shared with bottom
- * toolbar.
+ *                    toolbar.
  */
+<<<<<<< HEAD
 public class ToggleTabStackButton extends ListMenuButton implements TabSwitcherDrawable.Observer {
     private final Callback<Integer> mTabCountSupplierObserver = this::onUpdateTabCount;
     private final Callback<Boolean> mNotificationDotObserver = this::onUpdateNotificationDot;
@@ -36,6 +32,18 @@ public class ToggleTabStackButton extends ListMenuButton implements TabSwitcherD
     private ObservableSupplier<Integer> mTabCountSupplier;
     private ObservableSupplier<Boolean> mNotificationDotSupplier;
     private Supplier<Boolean> mIsIncognitoSupplier;
+=======
+public class ToggleTabStackButton
+        extends ListMenuButton implements TabCountProvider.TabCountObserver, View.OnClickListener,
+                                          View.OnLongClickListener {
+    private TabSwitcherDrawable mTabSwitcherButtonDrawable;
+    private TabSwitcherDrawable mTabSwitcherButtonDrawableLight;
+    private TabCountProvider mTabCountProvider;
+    private OnClickListener mTabSwitcherListener;
+    private OnLongClickListener mTabSwitcherLongClickListener;
+    private PulseDrawable mHighlightDrawable;
+    private Drawable mNormalBackground;
+>>>>>>> chromium
 
     public ToggleTabStackButton(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -46,11 +54,11 @@ public class ToggleTabStackButton extends ListMenuButton implements TabSwitcherD
         super.onFinishInflate();
 
         mTabSwitcherButtonDrawable =
-                TabSwitcherDrawable.createTabSwitcherDrawable(
-                        getContext(),
-                        BrandedColorScheme.APP_DEFAULT,
-                        TabSwitcherDrawableLocation.TAB_TOOLBAR);
+                TabSwitcherDrawable.createTabSwitcherDrawable(getContext(), false);
+        mTabSwitcherButtonDrawableLight =
+                TabSwitcherDrawable.createTabSwitcherDrawable(getContext(), true);
         setImageDrawable(mTabSwitcherButtonDrawable);
+<<<<<<< HEAD
         mTabSwitcherButtonDrawable.addTabSwitcherDrawableObserver(this);
     }
 
@@ -93,6 +101,80 @@ public class ToggleTabStackButton extends ListMenuButton implements TabSwitcherD
         notificationDotSupplier.addObserver(mNotificationDotObserver);
 
         mIsIncognitoSupplier = isIncognitoSupplier;
+=======
+        setOnClickListener(this);
+        setOnLongClickListener(this);
+    }
+
+    /**
+     * Called to destroy the tab stack button.
+     */
+    void destroy() {
+        if (mTabCountProvider != null) mTabCountProvider.removeObserver(this);
+    }
+
+    /**
+     * Sets the OnClickListener that will be notified when the TabSwitcher button is pressed.
+     * @param listener The callback that will be notified when the TabSwitcher button is pressed.
+     */
+    void setOnTabSwitcherClickHandler(OnClickListener listener) {
+        mTabSwitcherListener = listener;
+    }
+
+    /**
+     * Sets the OnLongClickListern that will be notified when the TabSwitcher button is long
+     *         pressed.
+     * @param listener The callback that will be notified when the TabSwitcher button is long
+     *         pressed.
+     */
+    void setOnTabSwitcherLongClickHandler(OnLongClickListener listener) {
+        mTabSwitcherLongClickListener = listener;
+    }
+
+    /**
+     * Updates the contained drawable.
+     * @param useLightDrawables Whether light drawables should be used.
+     */
+    void setUseLightDrawables(boolean useLightDrawables) {
+        setImageDrawable(
+                useLightDrawables ? mTabSwitcherButtonDrawableLight : mTabSwitcherButtonDrawable);
+    }
+
+    /**
+     * @param provider The {@link TabCountProvider} used to observe the number of tabs in the
+     *                 current model.
+     */
+    void setTabCountProvider(TabCountProvider provider) {
+        mTabCountProvider = provider;
+        mTabCountProvider.addObserverAndTrigger(this);
+    }
+
+    @Override
+    public void onTabCountChanged(int numberOfTabs, boolean isIncognito) {
+        setEnabled(numberOfTabs >= 1);
+        setContentDescription(getResources().getQuantityString(
+                R.plurals.accessibility_toolbar_btn_tabswitcher_toggle, numberOfTabs,
+                numberOfTabs));
+        mTabSwitcherButtonDrawableLight.updateForTabCount(numberOfTabs, isIncognito);
+        mTabSwitcherButtonDrawable.updateForTabCount(numberOfTabs, isIncognito);
+    }
+
+    @Override
+    public void onClick(View v) {
+        if (mTabSwitcherListener != null && isClickable()) {
+            mTabSwitcherListener.onClick(this);
+        }
+    }
+
+    @Override
+    public boolean onLongClick(View v) {
+        if (mTabSwitcherLongClickListener != null && isLongClickable()) {
+            return mTabSwitcherLongClickListener.onLongClick(v);
+        } else {
+            CharSequence description = getResources().getString(R.string.open_tabs);
+            return Toast.showAnchoredToast(getContext(), v, description);
+        }
+>>>>>>> chromium
     }
 
     @Override
@@ -108,6 +190,7 @@ public class ToggleTabStackButton extends ListMenuButton implements TabSwitcherD
             super.onLayout(changed, left, top, right, bottom);
         }
     }
+<<<<<<< HEAD
 
     // TabSwitcherDrawable.Observer implementation.
 
@@ -165,4 +248,6 @@ public class ToggleTabStackButton extends ListMenuButton implements TabSwitcherD
     private void onUpdateNotificationDot(boolean showDot) {
         mTabSwitcherButtonDrawable.setNotificationIconStatus(showDot);
     }
+=======
+>>>>>>> chromium
 }

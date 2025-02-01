@@ -1,29 +1,37 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
+<<<<<<< HEAD
 import org.chromium.base.ThreadUtils.ThreadChecker;
 import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+=======
+import android.os.Process;
+>>>>>>> chromium
 
 import java.util.HashMap;
 
 /**
- * A class that implements type-safe heterogeneous container. It can associate an object of type T
- * with a type token (T.class) as a key. Mismatch of the type between them can be checked at compile
- * time, hence type-safe. Objects are held using strong reference in the container. {@code null} is
- * not allowed for key or object.
+ * A class that implements type-safe heterogeneous container. It can associate
+ * an object of type T with a type token (T.class) as a key. Mismatch of the
+ * type between them can be checked at compile time, hence type-safe. Objects
+ * are held using strong reference in the container. {@code null} is not allowed
+ * for key or object.
+ * <p>
+ * Can be used for an object that needs to have other objects attached to it
+ * without having to manage explicit references to them. Attached objects need
+ * to implement {@link UserData} so that they can be destroyed by {@link #destroy()}.
+ * <p>
+ * No operation takes effect once {@link #destroy()} is called.
+ * <p>
+ * Usage:
+
  *
- * <p>Can be used for an object that needs to have other objects attached to it without having to
- * manage explicit references to them. Attached objects need to implement {@link UserData} so that
- * they can be destroyed by {@link #destroy()}.
- *
- * <p>No operation takes effect once {@link #destroy()} is called.
- *
- * <p>Usage: <code>
+ * <code>
  * public class Foo {
  *     // Defines the container.
  *     private final UserDataHost mUserDataHost = new UserDataHost();
@@ -53,13 +61,15 @@ import java.util.HashMap;
  */
 @NullMarked
 public final class UserDataHost {
-    private final ThreadChecker mThreadChecker = new ThreadChecker();
+    private final long mThreadId = Process.myTid();
 
     private @Nullable HashMap<Class<? extends UserData>, UserData> mUserDataMap = new HashMap<>();
 
     @EnsuresNonNull("mUserDataMap")
     private void checkThreadAndState() {
-        mThreadChecker.assertOnValidThread();
+        if (mThreadId != Process.myTid()) {
+            throw new IllegalStateException("UserData must only be used on a single thread.");
+        }
         if (mUserDataMap == null) {
             throw new IllegalStateException("Operation is not allowed after destroy().");
         }

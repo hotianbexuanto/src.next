@@ -1,14 +1,10 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "components/embedder_support/user_agent_utils.h"
 
-#include <string>
-#include <vector>
-
 #include "base/command_line.h"
-#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -17,72 +13,20 @@
 #include "base/test/gtest_util.h"
 #include "base/test/scoped_command_line.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/version.h"
-#include "build/branding_buildflags.h"
 #include "build/build_config.h"
-#include "components/embedder_support/pref_names.h"
-#include "components/embedder_support/switches.h"
-#include "components/prefs/pref_registry_simple.h"
-#include "components/prefs/testing_pref_service.h"
 #include "components/version_info/version_info.h"
-#include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/user_agent.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features.h"
-#include "third_party/blink/public/common/user_agent/user_agent_brand_version_type.h"
-#include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
-#include "third_party/re2/src/re2/re2.h"
 
-#if BUILDFLAG(IS_POSIX)
+#if defined(USE_X11) || defined(USE_OZONE)
 #include <sys/utsname.h>
 #endif
-
-#if BUILDFLAG(IS_WIN)
-#include <windows.foundation.metadata.h>
-#include <wrl.h>
-
-#include "base/win/core_winrt_util.h"
-#include "base/win/hstring_reference.h"
-#include "base/win/scoped_hstring.h"
-#include "base/win/scoped_winrt_initializer.h"
-#endif  // BUILDFLAG(IS_WIN)
 
 namespace embedder_support {
 
 namespace {
-
-// A regular expression that matches Chrome/{major_version}.{minor_version} in
-// the User-Agent string, where the first capture is the {major_version} and the
-// second capture is the {minor_version}.
-static constexpr char kChromeProductVersionRegex[] =
-    "Chrome/([0-9]+).([0-9]+).([0-9]+).([0-9]+)";
-
-#if BUILDFLAG(IS_ANDROID)
-const char kAndroid[] =
-    "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/%s.0.0.0 "
-    "%sSafari/537.36";
-#else
-const char kDesktop[] =
-    "Mozilla/5.0 ("
-#if BUILDFLAG(IS_CHROMEOS)
-    "X11; CrOS x86_64 14541.0.0"
-#elif BUILDFLAG(IS_FUCHSIA)
-    "Fuchsia"
-#elif BUILDFLAG(IS_LINUX)
-    "X11; Linux x86_64"
-#elif BUILDFLAG(IS_MAC)
-    "Macintosh; Intel Mac OS X 10_15_7"
-#elif BUILDFLAG(IS_WIN)
-    "Windows NT 10.0; Win64; x64"
-#else
-#error Unsupported platform
-#endif
-    ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s.0.0.0 "
-    "Safari/537.36";
-#endif  // BUILDFLAG(IS_ANDROID)
 
 void CheckUserAgentStringOrdering(bool mobile_device) {
   std::vector<std::string> pieces;
@@ -119,11 +63,16 @@ void CheckUserAgentStringOrdering(bool mobile_device) {
 
   pieces = base::SplitStringUsingSubstr(os_str, "; ", base::KEEP_WHITESPACE,
                                         base::SPLIT_WANT_ALL);
-#if BUILDFLAG(IS_WIN)
-  // Post-UA Reduction there is a single <unifiedPlatform> value for Windows:
+#if defined(OS_WIN)
   // Windows NT 10.0; Win64; x64
-  ASSERT_TRUE(pieces[1] == "Win64");
-  ASSERT_TRUE(pieces[2] == "x64");
+  // Windows NT 10.0; WOW64
+  // Windows NT 10.0
+  std::string os_and_version = pieces[0];
+  for (unsigned int i = 1; i < pieces.size(); ++i) {
+    bool equals = ((pieces[i] == "WOW64") || (pieces[i] == "Win64") ||
+                   pieces[i] == "x64");
+    ASSERT_TRUE(equals);
+  }
   pieces = base::SplitStringUsingSubstr(pieces[0], " ", base::KEEP_WHITESPACE,
                                         base::SPLIT_WANT_ALL);
   ASSERT_EQ(3u, pieces.size());
@@ -133,9 +82,8 @@ void CheckUserAgentStringOrdering(bool mobile_device) {
   ASSERT_TRUE(base::StringToDouble(pieces[2], &version));
   ASSERT_LE(4.0, version);
   ASSERT_GT(11.0, version);
-#elif BUILDFLAG(IS_MAC)
-  // Post-UA Reduction there is a single <unifiedPlatform> value for macOS:
-  // Macintosh; Intel Mac OS X 10_15_7
+#elif defined(OS_MAC)
+  // Macintosh; Intel Mac OS X 10_15_4
   ASSERT_EQ(2u, pieces.size());
   ASSERT_EQ("Macintosh", pieces[0]);
   pieces = base::SplitStringUsingSubstr(pieces[1], " ", base::KEEP_WHITESPACE,
@@ -153,37 +101,49 @@ void CheckUserAgentStringOrdering(bool mobile_device) {
     // crbug.com/1175225
     if (major > 10)
       major = 10;
-    ASSERT_EQ(10, major);
+    ASSERT_EQ(base::StringPrintf("%d", major), pieces[0]);
   }
   int value;
   ASSERT_TRUE(base::StringToInt(pieces[1], &value));
   ASSERT_LE(0, value);
   ASSERT_TRUE(base::StringToInt(pieces[2], &value));
   ASSERT_LE(0, value);
-#elif BUILDFLAG(IS_CHROMEOS)
-  // Post-UA Reduction there is a single <unifiedPlatform> value for ChromeOS:
-  // X11; CrOS x86_64 14541.0.0
+#elif defined(USE_X11) || defined(USE_OZONE)
+  // X11; Linux x86_64
+  // X11; CrOS armv7l 4537.56.0
+  struct utsname unixinfo;
+  uname(&unixinfo);
+  std::string machine = unixinfo.machine;
+  if (strcmp(unixinfo.machine, "x86_64") == 0 &&
+      sizeof(void*) == sizeof(int32_t)) {
+    machine = "i686 (x86_64)";
+  }
   ASSERT_EQ(2u, pieces.size());
   ASSERT_EQ("X11", pieces[0]);
   pieces = base::SplitStringUsingSubstr(pieces[1], " ", base::KEEP_WHITESPACE,
                                         base::SPLIT_WANT_ALL);
+#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
+  // X11; CrOS armv7l 4537.56.0
+  //      ^^
   ASSERT_EQ(3u, pieces.size());
   ASSERT_EQ("CrOS", pieces[0]);
-  ASSERT_EQ("x86_64", pieces[1]);
-  ASSERT_EQ("14541.0.0", pieces[2]);
-#elif BUILDFLAG(IS_LINUX)
-  // Post-UA Reduction there is a single <unifiedPlatform> value for Linux:
-  // X11; Linux x86_64
-  ASSERT_EQ(2u, pieces.size());
-  ASSERT_EQ("X11", pieces[0]);
-  pieces = base::SplitStringUsingSubstr(pieces[1], " ", base::KEEP_WHITESPACE,
+  ASSERT_EQ(machine, pieces[1]);
+  pieces = base::SplitStringUsingSubstr(pieces[2], ".", base::KEEP_WHITESPACE,
                                         base::SPLIT_WANT_ALL);
+  for (unsigned int i = 1; i < pieces.size(); ++i) {
+    int value;
+    ASSERT_TRUE(base::StringToInt(pieces[i], &value));
+  }
+#else
+  // X11; Linux x86_64
+  //      ^^
   ASSERT_EQ(2u, pieces.size());
+  // This may not be Linux in all cases in the wild, but it is on the bots.
   ASSERT_EQ("Linux", pieces[0]);
-  ASSERT_EQ("x86_64", pieces[1]);
-#elif BUILDFLAG(IS_ANDROID)
-  // Post-UA Reduction there is a single <unifiedPlatform> value for Android:
-  // Linux; Android 10; K
+  ASSERT_EQ(machine, pieces[1]);
+#endif
+#elif defined(OS_ANDROID)
+  // Linux; Android 7.1.1; Samsung Chromebook 3
   ASSERT_GE(3u, pieces.size());
   ASSERT_EQ("Linux", pieces[0]);
   std::string model;
@@ -194,7 +154,6 @@ void CheckUserAgentStringOrdering(bool mobile_device) {
                                         base::SPLIT_WANT_ALL);
   ASSERT_EQ(2u, pieces.size());
   ASSERT_EQ("Android", pieces[0]);
-  ASSERT_EQ("10", pieces[1]);
   pieces = base::SplitStringUsingSubstr(pieces[1], ".", base::KEEP_WHITESPACE,
                                         base::SPLIT_WANT_ALL);
   for (unsigned int i = 1; i < pieces.size(); ++i) {
@@ -203,19 +162,16 @@ void CheckUserAgentStringOrdering(bool mobile_device) {
   }
 
   if (!model.empty()) {
-    if (base::SysInfo::GetAndroidBuildCodename() == "REL") {
-      ASSERT_EQ("K", model);
-    } else {
+    if (base::SysInfo::GetAndroidBuildCodename() == "REL")
+      ASSERT_EQ(base::SysInfo::HardwareModelName(), model);
+    else
       ASSERT_EQ("", model);
-    }
   }
-#elif BUILDFLAG(IS_FUCHSIA)
-  // Post-UA Reduction there is a single <unifiedPlatform> value for Fuchsia:
-  // Fuchsia
-  ASSERT_EQ(1u, pieces.size());
-  ASSERT_EQ("Fuchsia", pieces[0]);
-#else
-#error Unsupported platform
+#elif defined(OS_FUCHSIA)
+  // X11; Fuchsia
+  ASSERT_EQ(2u, pieces.size());
+  ASSERT_EQ("X11", pieces[0]);
+  ASSERT_EQ("Fuchsia", pieces[1]);
 #endif
 
   // Check that the version numbers match.
@@ -232,137 +188,10 @@ void CheckUserAgentStringOrdering(bool mobile_device) {
   }
 }
 
-#if BUILDFLAG(IS_WIN)
-
-// On Windows, the client hint sec-ch-ua-platform-version should be
-// the highest supported version of the UniversalApiContract.
-void VerifyWinPlatformVersion(std::string version) {
-  base::win::ScopedWinrtInitializer scoped_winrt_initializer;
-  ASSERT_TRUE(scoped_winrt_initializer.Succeeded());
-
-  base::win::HStringReference api_info_class_name(
-      RuntimeClass_Windows_Foundation_Metadata_ApiInformation);
-
-  Microsoft::WRL::ComPtr<
-      ABI::Windows::Foundation::Metadata::IApiInformationStatics>
-      api;
-  HRESULT result = base::win::RoGetActivationFactory(api_info_class_name.Get(),
-                                                     IID_PPV_ARGS(&api));
-  ASSERT_EQ(result, S_OK);
-
-  base::win::HStringReference universal_contract_name(
-      L"Windows.Foundation.UniversalApiContract");
-
-  std::vector<std::string> version_parts = base::SplitString(
-      version, ".", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-  EXPECT_EQ(version_parts[2], "0");
-
-  int major_version;
-  base::StringToInt(version_parts[0], &major_version);
-
-  // If this check fails, our highest known UniversalApiContract version
-  // needs to be updated.
-  EXPECT_LE(major_version,
-            GetHighestKnownUniversalApiContractVersionForTesting());
-
-  int minor_version;
-  base::StringToInt(version_parts[1], &minor_version);
-
-  boolean is_supported = false;
-  // Verify that the major and minor versions are supported.
-  result = api->IsApiContractPresentByMajor(universal_contract_name.Get(),
-                                            major_version, &is_supported);
-  EXPECT_EQ(result, S_OK);
-  EXPECT_TRUE(is_supported)
-      << " expected major version " << major_version << " to be supported.";
-  result = api->IsApiContractPresentByMajorAndMinor(
-      universal_contract_name.Get(), major_version, minor_version,
-      &is_supported);
-  EXPECT_EQ(result, S_OK);
-  EXPECT_TRUE(is_supported)
-      << " expected major version " << major_version << " and minor version "
-      << minor_version << " to be supported.";
-
-  // Verify that the next highest value is not supported.
-  result = api->IsApiContractPresentByMajorAndMinor(
-      universal_contract_name.Get(), major_version, minor_version + 1,
-      &is_supported);
-  EXPECT_EQ(result, S_OK);
-  EXPECT_FALSE(is_supported) << " expected minor version " << minor_version + 1
-                             << " to not be supported with a major version of "
-                             << major_version << ".";
-  result = api->IsApiContractPresentByMajor(universal_contract_name.Get(),
-                                            major_version + 1, &is_supported);
-  EXPECT_EQ(result, S_OK);
-  EXPECT_FALSE(is_supported) << " expected major version " << major_version + 1
-                             << " to not be supported.";
-}
-
-#endif  // BUILDFLAG(IS_WIN)
-
-bool ContainsBrandVersion(const blink::UserAgentBrandList& brand_list,
-                          const blink::UserAgentBrandVersion brand_version) {
-  for (const auto& brand_list_entry : brand_list) {
-    if (brand_list_entry == brand_version)
-      return true;
-  }
-  return false;
-}
-
 }  // namespace
 
-class UserAgentUtilsTest : public testing::Test,
-                           public testing::WithParamInterface<bool> {
- public:
-  // The minor version in the reduced UA string is always "0.0.0".
-  static constexpr char kReducedMinorVersion[] = "0.0.0";
-  // The minor version in the ReduceUserAgentMinorVersion experiment is always
-  // "0.X.0", where X is the frozen build version.
-  const std::string kReduceUserAgentMinorVersion =
-      "0." +
-      std::string(blink::features::kUserAgentFrozenBuildVersion.Get().data()) +
-      ".0";
-
-  std::string GetUserAgentMinorVersion(const std::string& user_agent_value) {
-    // A regular expression that matches Chrome/{major_version}.{minor_version}
-    // in the User-Agent string, where the {minor_version} is captured.
-    static constexpr char kChromeVersionRegex[] =
-        "Chrome/[0-9]+\\.([0-9]+\\.[0-9]+\\.[0-9]+)";
-    std::string minor_version;
-    EXPECT_TRUE(re2::RE2::PartialMatch(user_agent_value, kChromeVersionRegex,
-                                       &minor_version));
-    return minor_version;
-  }
-
-  std::string GetUserAgentPlatformOsCpu(const std::string& user_agent_value) {
-    // A regular expression that matches Mozilla/5.0 ({platform_oscpu})
-    // in the User-Agent string.
-    static constexpr char kChromePlatformOscpuRegex[] =
-        "^Mozilla\\/5\\.0 \\((.+)\\) AppleWebKit\\/537\\.36";
-    std::string platform_oscpu;
-    EXPECT_TRUE(re2::RE2::PartialMatch(
-        user_agent_value, kChromePlatformOscpuRegex, &platform_oscpu));
-    return platform_oscpu;
-  }
-
-  void VerifyGetUserAgentFunctions() {
-    // GetUserAgent should return user agent depends on
-    // kReduceUserAgentMinorVersion feature.
-    if (base::FeatureList::IsEnabled(
-            blink::features::kReduceUserAgentMinorVersion)) {
-      EXPECT_EQ(GetUserAgentMinorVersion(GetUserAgent()), kReducedMinorVersion);
-    } else {
-      EXPECT_NE(GetUserAgentMinorVersion(GetUserAgent()), kReducedMinorVersion);
-    }
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-TEST_F(UserAgentUtilsTest, UserAgentStringOrdering) {
-#if BUILDFLAG(IS_ANDROID)
+TEST(UserAgentUtilsTest, UserAgentStringOrdering) {
+#if defined(OS_ANDROID)
   const char* const kArguments[] = {"chrome"};
   base::test::ScopedCommandLine scoped_command_line;
   base::CommandLine* command_line = scoped_command_line.GetProcessCommandLine();
@@ -381,20 +210,11 @@ TEST_F(UserAgentUtilsTest, UserAgentStringOrdering) {
 #endif
 }
 
-TEST_F(UserAgentUtilsTest, CustomUserAgent) {
-  std::string custom_user_agent = "custom chrome user agent";
-  base::test::ScopedCommandLine scoped_command_line;
-  base::CommandLine* command_line = scoped_command_line.GetProcessCommandLine();
-  command_line->AppendSwitchASCII(kUserAgent, custom_user_agent);
-  ASSERT_TRUE(command_line->HasSwitch(kUserAgent));
-  // Make sure user-agent API returns value correctly when user provide custom
-  // user-agent.
-  EXPECT_EQ(GetUserAgent(), custom_user_agent);
-
+TEST(UserAgentUtilsTest, UserAgentStringFrozen) {
   base::test::ScopedFeatureList scoped_feature_list;
-  {
-    auto metadata = GetUserAgentMetadata();
+  scoped_feature_list.InitAndEnableFeature(blink::features::kReduceUserAgent);
 
+<<<<<<< HEAD
     // Verify low-entropy client hints aren't empty.
     const std::string major_version = version_info::GetMajorVersionNumber();
     const blink::UserAgentBrandVersion chromium_brand_version = {"Chromium",
@@ -445,15 +265,15 @@ TEST_F(UserAgentUtilsTest, UserAgentStringReduced) {
   scoped_feature_list.InitAndEnableFeature(
       blink::features::kReduceUserAgentMinorVersion);
 #if BUILDFLAG(IS_ANDROID)
+=======
+#if defined(OS_ANDROID)
+>>>>>>> chromium
   // Verify the correct user agent is returned when the UseMobileUserAgent
   // command line flag is present.
   const char* const kArguments[] = {"chrome"};
   base::test::ScopedCommandLine scoped_command_line;
   base::CommandLine* command_line = scoped_command_line.GetProcessCommandLine();
   command_line->InitFromArgv(1, kArguments);
-  const std::string major_version_number =
-      version_info::GetMajorVersionNumber();
-  const char* const major_version = major_version_number.c_str();
 
   // Verify the mobile user agent string is not returned when not using a mobile
   // user agent.
@@ -461,8 +281,11 @@ TEST_F(UserAgentUtilsTest, UserAgentStringReduced) {
   {
     std::string buffer = GetUserAgent();
     std::string device_compat = "";
-    EXPECT_EQ(buffer, base::StringPrintf(kAndroid, major_version,
-                                         device_compat.c_str()));
+    EXPECT_EQ(buffer,
+              base::StringPrintf(content::frozen_user_agent_strings::kAndroid,
+                                 content::GetUnifiedPlatform().c_str(),
+                                 version_info::GetMajorVersionNumber().c_str(),
+                                 device_compat.c_str()));
   }
 
   // Verify the mobile user agent string is returned when using a mobile user
@@ -472,14 +295,8 @@ TEST_F(UserAgentUtilsTest, UserAgentStringReduced) {
   {
     std::string buffer = GetUserAgent();
     std::string device_compat = "Mobile ";
-    EXPECT_EQ(buffer, base::StringPrintf(kAndroid, major_version,
-                                         device_compat.c_str()));
-  }
-
-#else
-  {
-    std::string buffer = GetUserAgent();
     EXPECT_EQ(buffer,
+<<<<<<< HEAD
               base::StringPrintf(
                   kDesktop, version_info::GetMajorVersionNumber().c_str()));
   }
@@ -623,31 +440,28 @@ TEST_F(UserAgentUtilsTest, ReduceUserAgentAndroidVersionDeviceModel) {
     std::string device_compat = "";
     EXPECT_EQ(buffer,
               base::StringPrintf(kAndroid,
+=======
+              base::StringPrintf(content::frozen_user_agent_strings::kAndroid,
+                                 content::GetUnifiedPlatform().c_str(),
+>>>>>>> chromium
                                  version_info::GetMajorVersionNumber().c_str(),
                                  device_compat.c_str()));
   }
-
-  // Verify the mobile deviceModel and androidVersion in the user agent string
-  // is reduced when using a mobile user agent.
-  command_line->AppendSwitch(switches::kUseMobileUserAgent);
-  ASSERT_TRUE(command_line->HasSwitch(switches::kUseMobileUserAgent));
+#else
   {
     std::string buffer = GetUserAgent();
-    EXPECT_EQ("Linux; Android 10; K", GetUserAgentPlatformOsCpu(buffer));
-    std::string device_compat = "Mobile ";
-    EXPECT_EQ(buffer,
-              base::StringPrintf(kAndroid,
-                                 version_info::GetMajorVersionNumber().c_str(),
-                                 device_compat.c_str()));
+    EXPECT_EQ(buffer, base::StringPrintf(
+                          content::frozen_user_agent_strings::kDesktop,
+                          content::GetUnifiedPlatform().c_str(),
+                          version_info::GetMajorVersionNumber().c_str()));
   }
-}
 #endif
+}
 
-TEST_F(UserAgentUtilsTest, UserAgentMetadata) {
+TEST(UserAgentUtilsTest, UserAgentMetadata) {
   auto metadata = GetUserAgentMetadata();
 
-  const std::string major_version = version_info::GetMajorVersionNumber();
-  const std::string full_version(version_info::GetVersionNumber());
+  std::string major_version = version_info::GetMajorVersionNumber();
 
   // According to spec, Sec-CH-UA should contain what project the browser is
   // based on (i.e. Chromium in this case) as well as the actual product.
@@ -657,84 +471,43 @@ TEST_F(UserAgentUtilsTest, UserAgentMetadata) {
   const blink::UserAgentBrandVersion chromium_brand_version = {"Chromium",
                                                                major_version};
   const blink::UserAgentBrandVersion product_brand_version = {
-      std::string(version_info::GetProductName()), major_version};
+      version_info::GetProductName(), version_info::GetMajorVersionNumber()};
+  bool contains_chromium_brand_version = false;
+  bool contains_product_brand_version = false;
 
-  EXPECT_TRUE(ContainsBrandVersion(metadata.brand_version_list,
-                                   chromium_brand_version));
-  EXPECT_TRUE(
-      ContainsBrandVersion(metadata.brand_version_list, product_brand_version));
+  for (const auto& brand_version : metadata.brand_version_list) {
+    if (brand_version == chromium_brand_version) {
+      contains_chromium_brand_version = true;
+    }
+    if (brand_version == product_brand_version) {
+      contains_product_brand_version = true;
+    }
+  }
 
-  // verify full version list
-  const blink::UserAgentBrandVersion chromium_brand_full_version = {
-      "Chromium", full_version};
-  const blink::UserAgentBrandVersion product_brand_full_version = {
-      std::string(version_info::GetProductName()), full_version};
+  EXPECT_TRUE(contains_chromium_brand_version);
+  EXPECT_TRUE(contains_product_brand_version);
 
-  EXPECT_TRUE(ContainsBrandVersion(metadata.brand_full_version_list,
-                                   chromium_brand_full_version));
-  EXPECT_TRUE(ContainsBrandVersion(metadata.brand_full_version_list,
-                                   product_brand_full_version));
-  EXPECT_EQ(metadata.full_version, full_version);
+  EXPECT_EQ(metadata.full_version, version_info::GetVersionNumber());
 
-#if BUILDFLAG(IS_WIN)
-  VerifyWinPlatformVersion(metadata.platform_version);
-#else
   int32_t major, minor, bugfix = 0;
   base::SysInfo::OperatingSystemVersionNumbers(&major, &minor, &bugfix);
   EXPECT_EQ(metadata.platform_version,
             base::StringPrintf("%d.%d.%d", major, minor, bugfix));
-#endif
   // This makes sure no extra information is added to the platform version.
   EXPECT_EQ(metadata.platform_version.find(";"), std::string::npos);
-  // If you're here because your change to GetOSType broke this test, it likely
-  // means that GetPlatformForUAMetadata needs a new special case to prevent
-  // breaking client hints. Check with the code owners for further guidance.
-#if BUILDFLAG(IS_WIN)
-  EXPECT_EQ(metadata.platform, "Windows");
-#elif BUILDFLAG(IS_IOS)
-  EXPECT_EQ(metadata.platform, "iOS");
-#elif BUILDFLAG(IS_MAC)
+  // TODO(crbug.com/1103047): This can be removed/re-refactored once we use
+  // "macOS" by default
+#if defined(OS_MAC)
   EXPECT_EQ(metadata.platform, "macOS");
-#elif BUILDFLAG(IS_CHROMEOS)
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  EXPECT_EQ(metadata.platform, "Chrome OS");
 #else
-  EXPECT_EQ(metadata.platform, "Chromium OS");
+  EXPECT_EQ(metadata.platform, version_info::GetOSType());
 #endif
-#elif BUILDFLAG(IS_ANDROID)
-  EXPECT_EQ(metadata.platform, "Android");
-#elif BUILDFLAG(IS_LINUX)
-  EXPECT_EQ(metadata.platform, "Linux");
-#elif BUILDFLAG(IS_FREEBSD)
-  EXPECT_EQ(metadata.platform, "FreeBSD");
-#elif BUILDFLAG(IS_OPENBSD)
-  EXPECT_EQ(metadata.platform, "OpenBSD");
-#elif BUILDFLAG(IS_SOLARIS)
-  EXPECT_EQ(metadata.platform, "Solaris");
-#elif BUILDFLAG(IS_FUCHSIA)
-  EXPECT_EQ(metadata.platform, "Fuchsia");
-#else
-  EXPECT_EQ(metadata.platform, "Unknown");
-#endif
-  EXPECT_EQ(metadata.architecture, content::GetCpuArchitecture());
+  EXPECT_EQ(metadata.architecture, content::GetLowEntropyCpuArchitecture());
   EXPECT_EQ(metadata.model, content::BuildModelInfo());
-  EXPECT_EQ(metadata.bitness, content::GetCpuBitness());
-  EXPECT_EQ(metadata.wow64, content::IsWoW64());
-  std::vector<std::string> expected_form_factors = {
-      metadata.mobile ? "Mobile" : "Desktop"};
-  EXPECT_EQ(metadata.form_factors, expected_form_factors);
-
-  // Verify only populate low-entropy client hints.
-  metadata = GetUserAgentMetadata(true);
-  EXPECT_TRUE(ContainsBrandVersion(metadata.brand_version_list,
-                                   chromium_brand_version));
-  EXPECT_TRUE(
-      ContainsBrandVersion(metadata.brand_version_list, product_brand_version));
-  // High entropy should be empty.
-  EXPECT_TRUE(metadata.brand_full_version_list.empty());
-  EXPECT_TRUE(metadata.full_version.empty());
+  EXPECT_EQ(metadata.bitness, content::GetLowEntropyCpuBitness());
 }
 
+<<<<<<< HEAD
 TEST_F(UserAgentUtilsTest, UserAgentMetadataXR) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitAndEnableFeature(
@@ -875,12 +648,25 @@ TEST_F(UserAgentUtilsTest, GenerateBrandVersionListAdditionalBrandVersions) {
       testing::HasSubstr("v=\"" +
                          std::string(version_info::GetVersionNumber()) + "\""));
 }
-
-TEST_F(UserAgentUtilsTest,
-       GenerateBrandVersionListWithGreaseBrandAndVersionOverride) {
+=======
+TEST(UserAgentUtilsTest, GenerateBrandVersionList) {
   blink::UserAgentMetadata metadata;
 
   metadata.brand_version_list =
+      GenerateBrandVersionList(84, absl::nullopt, "84", absl::nullopt);
+  std::string brand_list = metadata.SerializeBrandVersionList();
+  EXPECT_EQ(R"(" Not A;Brand";v="99", "Chromium";v="84")", brand_list);
+>>>>>>> chromium
+
+  metadata.brand_version_list =
+      GenerateBrandVersionList(85, absl::nullopt, "85", absl::nullopt);
+  std::string brand_list_diff = metadata.SerializeBrandVersionList();
+  // Make sure the lists are different for different seeds
+  EXPECT_EQ(R"("Chromium";v="85", " Not;A Brand";v="99")", brand_list_diff);
+  EXPECT_NE(brand_list, brand_list_diff);
+
+  metadata.brand_version_list =
+<<<<<<< HEAD
       GenerateBrandVersionList(84, std::nullopt, "84", true,
                                blink::UserAgentBrandVersionType::kMajorVersion);
   metadata.brand_full_version_list =
@@ -929,19 +715,23 @@ TEST_F(UserAgentUtilsTest, GenerateBrandVersionListWithBrand) {
                                blink::UserAgentBrandVersionType::kFullVersion);
   // 1. verify major version
   std::string brand_list_w_brand = metadata.SerializeBrandMajorVersionList();
+=======
+      GenerateBrandVersionList(84, "Totally A Brand", "84", absl::nullopt);
+  std::string brand_list_w_brand = metadata.SerializeBrandVersionList();
+>>>>>>> chromium
   EXPECT_EQ(
-      R"("Not;A=Brand";v="8", "Chromium";v="84", "Totally A Brand";v="84")",
+      R"(" Not A;Brand";v="99", "Chromium";v="84", "Totally A Brand";v="84")",
       brand_list_w_brand);
-  // 2. verify full version
-  std::string brand_list_w_brand_fv = metadata.SerializeBrandFullVersionList();
-  EXPECT_EQ(base::StrCat({"\"Not;A=Brand\";v=\"8.0.0.0\", ",
-                          "\"Chromium\";v=\"84.0.0.0\", ",
-                          "\"Totally A Brand\";v=\"84.0.0.0\""}),
-            brand_list_w_brand_fv);
-}
 
-TEST_F(UserAgentUtilsTest, GenerateBrandVersionListInvalidSeed) {
+  metadata.brand_version_list =
+      GenerateBrandVersionList(84, absl::nullopt, "84", "Clean GREASE");
+  std::string brand_list_grease_override = metadata.SerializeBrandVersionList();
+  EXPECT_EQ(R"("Clean GREASE";v="99", "Chromium";v="84")",
+            brand_list_grease_override);
+  EXPECT_NE(brand_list, brand_list_grease_override);
+
   // Should DCHECK on negative numbers
+<<<<<<< HEAD
   EXPECT_DCHECK_DEATH(GenerateBrandVersionList(
       -1, std::nullopt, "99", true,
       blink::UserAgentBrandVersionType::kMajorVersion));
@@ -1118,6 +908,10 @@ TEST_F(UserAgentUtilsTest, HeadlessUserAgent) {
 
   // In headless mode product name should have the Headless prefix.
   EXPECT_THAT(GetUserAgent(), testing::HasSubstr("HeadlessChrome/"));
+=======
+  EXPECT_DCHECK_DEATH(
+      GenerateBrandVersionList(-1, absl::nullopt, "99", absl::nullopt));
+>>>>>>> chromium
 }
 
 }  // namespace embedder_support

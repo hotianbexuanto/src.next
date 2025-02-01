@@ -1,20 +1,19 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_PRELOAD_HELPER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_PRELOAD_HELPER_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource.h"
 
 namespace blink {
 
 class AlternateSignedExchangeResourceInfo;
 class Document;
-class PendingLinkPreload;
 class LocalFrame;
+class SingleModuleClient;
 struct LinkLoadParameters;
 struct ViewportDescription;
 
@@ -25,25 +24,26 @@ class PreloadHelper final {
   STATIC_ONLY(PreloadHelper);
 
  public:
-  enum class LoadLinksFromHeaderMode {
-    kDocumentBeforeCommit,
-    kDocumentAfterCommitWithoutViewport,
-    kDocumentAfterCommitWithViewport,
-    kDocumentAfterLoadCompleted,
-    kSubresourceFromMemoryCache,
-    kSubresourceNotFromMemoryCache,
+  enum CanLoadResources {
+    kOnlyLoadResources,
+    kDoNotLoadResources,
+    kLoadResourcesAndPreconnect
   };
+
+  // Media links cannot be preloaded until the first chunk is parsed. The rest
+  // can be preloaded at commit time.
+  enum MediaPreloadPolicy { kLoadAll, kOnlyLoadNonMedia, kOnlyLoadMedia };
 
   static void LoadLinksFromHeader(
       const String& header_value,
       const KURL& base_url,
       LocalFrame&,
       Document*,  // can be nullptr
-      LoadLinksFromHeaderMode,
+      CanLoadResources,
+      MediaPreloadPolicy,
       const ViewportDescription*,  // can be nullptr
       std::unique_ptr<AlternateSignedExchangeResourceInfo>,
-      const base::UnguessableToken*
-          recursive_prefetch_token /* can be nullptr */);
+      const base::UnguessableToken* /* can be nullptr */);
   static Resource* StartPreload(ResourceType, FetchParameters&, Document&);
 
   // Currently only used for UseCounter.
@@ -60,25 +60,19 @@ class PreloadHelper final {
                                  Document*,
                                  LocalFrame*,
                                  LinkCaller);
-  static void PrefetchIfNeeded(const LinkLoadParameters&,
-                               Document&,
-                               PendingLinkPreload*);
-  static void PreloadIfNeeded(const LinkLoadParameters&,
-                              Document&,
-                              const KURL& base_url,
-                              LinkCaller,
-                              const ViewportDescription*,
-                              ParserDisposition,
-                              PendingLinkPreload*);
+  static Resource* PrefetchIfNeeded(const LinkLoadParameters&, Document&);
+  static Resource* PreloadIfNeeded(const LinkLoadParameters&,
+                                   Document&,
+                                   const KURL& base_url,
+                                   LinkCaller,
+                                   const ViewportDescription*,
+                                   ParserDisposition);
   static void ModulePreloadIfNeeded(const LinkLoadParameters&,
                                     Document&,
                                     const ViewportDescription*,
-                                    PendingLinkPreload*);
-  static void FetchCompressionDictionaryIfNeeded(const LinkLoadParameters&,
-                                                 Document&,
-                                                 PendingLinkPreload*);
+                                    SingleModuleClient*);
 
-  static std::optional<ResourceType> GetResourceTypeFromAsAttribute(
+  static absl::optional<ResourceType> GetResourceTypeFromAsAttribute(
       const String& as);
 };
 

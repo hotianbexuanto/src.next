@@ -1,22 +1,10 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "base/base64.h"
 
-#include <string_view>
-
-#include "base/numerics/checked_math.h"
-#include "base/strings/escape.h"
-#include "base/test/gtest_util.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/modp_b64/modp_b64.h"
 
 namespace base {
 
@@ -24,10 +12,11 @@ TEST(Base64Test, Basic) {
   const std::string kText = "hello world";
   const std::string kBase64Text = "aGVsbG8gd29ybGQ=";
 
+  std::string encoded;
   std::string decoded;
   bool ok;
 
-  std::string encoded = Base64Encode(kText);
+  Base64Encode(kText, &encoded);
   EXPECT_EQ(kBase64Text, encoded);
 
   ok = Base64Decode(encoded, &decoded);
@@ -35,6 +24,7 @@ TEST(Base64Test, Basic) {
   EXPECT_EQ(kText, decoded);
 }
 
+<<<<<<< HEAD
 TEST(Base64Test, ForgivingAndStrictDecode) {
   struct {
     const char* in;
@@ -116,32 +106,28 @@ TEST(Base64Test, ForgivingAndStrictDecode) {
   }
 }
 
+=======
+>>>>>>> chromium
 TEST(Base64Test, Binary) {
   const uint8_t kData[] = {0x00, 0x01, 0xFE, 0xFF};
 
-  std::string binary_encoded = Base64Encode(kData);
+  std::string binary_encoded = Base64Encode(make_span(kData));
 
-  // Check that encoding the same data through the std::string_view interface
-  // gives the same results.
-  std::string string_piece_encoded = Base64Encode(
-      std::string_view(reinterpret_cast<const char*>(kData), sizeof(kData)));
+  // Check that encoding the same data through the StringPiece interface gives
+  // the same results.
+  std::string string_piece_encoded;
+  Base64Encode(StringPiece(reinterpret_cast<const char*>(kData), sizeof(kData)),
+               &string_piece_encoded);
 
   EXPECT_EQ(binary_encoded, string_piece_encoded);
-
-  EXPECT_THAT(Base64Decode(binary_encoded),
-              testing::Optional(testing::ElementsAreArray(kData)));
-  EXPECT_FALSE(Base64Decode("invalid base64!"));
-
-  std::string encoded_with_prefix = "PREFIX";
-  Base64EncodeAppend(kData, &encoded_with_prefix);
-  EXPECT_EQ(encoded_with_prefix, "PREFIX" + binary_encoded);
 }
 
 TEST(Base64Test, InPlace) {
   const std::string kText = "hello world";
   const std::string kBase64Text = "aGVsbG8gd29ybGQ=";
+  std::string text(kText);
 
-  std::string text = Base64Encode(kText);
+  Base64Encode(text, &text);
   EXPECT_EQ(kBase64Text, text);
 
   bool ok = Base64Decode(text, &text);
@@ -149,6 +135,7 @@ TEST(Base64Test, InPlace) {
   EXPECT_EQ(text, kText);
 }
 
+<<<<<<< HEAD
 TEST(Base64Test, Overflow) {
   // `Base64Encode` makes the input larger, which means inputs whose base64
   // output overflows `size_t`. Actually allocating a span of this size will
@@ -171,4 +158,6 @@ TEST(Base64Test, Overflow) {
   EXPECT_TRUE(modp_b64_encode_data_len(max_len).IsValid());
 }
 
+=======
+>>>>>>> chromium
 }  // namespace base

@@ -1,18 +1,13 @@
 include_rules = [
-  "+components/app_constants/constants.h",
   "+components/crash/content/browser/error_reporting",
-  "+components/guest_view/common",
-  "+components/security_state/content",
   "+components/live_caption",
   "+dbus",
   "+extensions/strings/grit/extensions_strings.h",
   "+services/network/public",
+  "+ui/base",
 
   # For access to testing command line switches.
   "+ppapi/shared_impl",
-
-  # Fuzzer tests require ICU initialization.
-  "+third_party/icu/fuzzers/fuzzer_utils.h",
 
   # The extensions system should not depend on Chrome Platform Apps (or any
   # other component of the apps system).
@@ -27,6 +22,9 @@ specific_include_rules = {
     "+chrome/browser/apps/platform_apps/app_browsertest_util.h",
   ],
 
+  "content_script_apitest.cc": [
+    "+components/web_package/test_support",
+  ],
   "extension_protocols_unittest\.cc": [
     "+services/network/test",
   ],
@@ -44,18 +42,18 @@ specific_include_rules = {
   ],
 
   "chrome_extension_cookies\.h": [
-    # TODO(crbug.com/40672800): Remove.
+    # TODO(crbug.com/1049894): Remove.
     "+services/network/cookie_settings.h",
   ],
 
   "chrome_extension_cookies\.cc": [
-    # TODO(crbug.com/40672800): Remove.
+    # TODO(crbug.com/1049894): Remove.
     "+services/network/cookie_manager.h",
     "+services/network/restricted_cookie_manager.h",
   ],
 
   "webstore_private_apitest.cc" : [
-    # TODO(crbug.com/40135906): Remove this layering violation.
+    # TODO(crbug/1095814): Remove this layering violation.
     "+chrome/browser/ui/views/supervised_user/parent_permission_dialog_view.h",
   ],
 
@@ -85,6 +83,12 @@ specific_include_rules = {
 
   # This DEPS violation snuck in while there was a bug in the checkdeps tool.
   # https://crbug.com/1084826
+  "extension_browser_window_helper\.cc": [
+    "+chrome/browser/apps/app_service/launch_utils.h",
+  ],
+
+  # This DEPS violation snuck in while there was a bug in the checkdeps tool.
+  # https://crbug.com/1084826
   "extension_browsertest\.cc": [
     "+chrome/browser/apps/app_service/app_launch_params.h",
     "+chrome/browser/apps/app_service/app_service_proxy.h",
@@ -97,13 +101,4 @@ specific_include_rules = {
   "external_pref_loader\.cc": [
     "+chrome/browser/apps/user_type_filter.h",
   ],
-
-  "extension_service_unittest.cc" : [
-    "+components/services/storage/privileged/mojom/indexed_db_control.mojom.h",
-    "+components/services/storage/privileged/mojom/indexed_db_control_test.mojom.h",
-  ],
-
-  "window_open_apitest\.cc": [
-    "+ash/wm/window_pin_util.h",
-  ]
 }

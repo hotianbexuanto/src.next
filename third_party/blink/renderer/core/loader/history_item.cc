@@ -27,123 +27,38 @@
 
 #include <algorithm>
 #include <memory>
-#include <string>
 #include <utility>
-#include <vector>
 
+<<<<<<< HEAD
 #include "base/containers/span.h"
 #include "third_party/blink/public/common/page_state/page_state.h"
 #include "third_party/blink/public/common/page_state/page_state_serialization.h"
 #include "third_party/blink/public/platform/web_http_body.h"
 #include "third_party/blink/public/platform/web_url_request_util.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_script_value.h"
 #include "third_party/blink/renderer/core/html/forms/form_controller.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
 #include "third_party/blink/renderer/platform/network/encoded_form_data.h"
 #include "third_party/blink/renderer/platform/weborigin/security_policy.h"
 #include "third_party/blink/renderer/platform/wtf/uuid.h"
-#include "ui/gfx/geometry/point.h"
-#include "ui/gfx/geometry/point_conversions.h"
 
 namespace blink {
-
-namespace {
-
-std::vector<std::optional<std::u16string>> ToOptionalString16Vector(
-    base::span<const String> input) {
-  std::vector<std::optional<std::u16string>> output;
-  output.reserve(input.size());
-  for (const auto& i : input) {
-    output.emplace_back(WebString::ToOptionalString16(i));
-  }
-  return output;
-}
-
-}  // namespace
 
 static int64_t GenerateSequenceNumber() {
   // Initialize to the current time to reduce the likelihood of generating
   // identifiers that overlap with those from past/future browser sessions.
   static int64_t next =
-      (base::Time::Now() - base::Time::UnixEpoch()).InMicroseconds();
+      static_cast<int64_t>(base::Time::Now().ToDoubleT() * 1000000.0);
   return ++next;
-}
-
-HistoryItem* HistoryItem::Create(const PageState& page_state) {
-  ExplodedPageState exploded_page_state;
-  if (!DecodePageState(page_state.ToEncodedData(), &exploded_page_state)) {
-    return nullptr;
-  }
-
-  auto* new_item = MakeGarbageCollected<HistoryItem>();
-  const ExplodedFrameState& state = exploded_page_state.top;
-  new_item->SetURLString(WebString::FromUTF16(state.url_string));
-  new_item->SetReferrer(WebString::FromUTF16(state.referrer));
-  new_item->SetReferrerPolicy(state.referrer_policy);
-  new_item->SetTarget(WebString::FromUTF16(state.target));
-  if (state.state_object) {
-    new_item->SetStateObject(SerializedScriptValue::Create(
-        WebString::FromUTF16(*state.state_object)));
-  }
-
-  Vector<String> document_state;
-  for (auto& ds : state.document_state) {
-    document_state.push_back(WebString::FromUTF16(ds));
-  }
-  new_item->SetDocumentState(document_state);
-
-  new_item->SetScrollRestorationType(state.scroll_restoration_type);
-
-  if (state.did_save_scroll_or_scale_state) {
-    // TODO(crbug.com/1274078): Are these conversions from blink scroll offset
-    // to gfx::PointF and gfx::Point correct?
-    new_item->SetVisualViewportScrollOffset(
-        state.visual_viewport_scroll_offset.OffsetFromOrigin());
-    new_item->SetScrollOffset(
-        ScrollOffset(state.scroll_offset.OffsetFromOrigin()));
-    new_item->SetPageScaleFactor(state.page_scale_factor);
-  }
-
-  // These values are generated at HistoryItem construction time, and we only
-  // want to override those new values with old values if the old values are
-  // defined. A value of 0 means undefined in this context.
-  if (state.item_sequence_number) {
-    new_item->SetItemSequenceNumber(state.item_sequence_number);
-  }
-  if (state.document_sequence_number) {
-    new_item->SetDocumentSequenceNumber(state.document_sequence_number);
-  }
-  if (state.navigation_api_key) {
-    new_item->SetNavigationApiKey(
-        WebString::FromUTF16(state.navigation_api_key));
-  }
-  if (state.navigation_api_id) {
-    new_item->SetNavigationApiId(WebString::FromUTF16(state.navigation_api_id));
-  }
-
-  if (state.navigation_api_state) {
-    new_item->SetNavigationApiState(SerializedScriptValue::Create(
-        WebString::FromUTF16(*state.navigation_api_state)));
-  }
-
-  new_item->SetFormContentType(
-      WebString::FromUTF16(state.http_body.http_content_type));
-  if (state.http_body.request_body) {
-    new_item->SetFormData(
-        blink::GetWebHTTPBodyForRequestBody(*state.http_body.request_body));
-  }
-
-  new_item->SetScrollAnchorData(
-      {WebString::FromUTF16(state.scroll_anchor_selector),
-       state.scroll_anchor_offset, state.scroll_anchor_simhash});
-  return new_item;
 }
 
 HistoryItem::HistoryItem()
     : item_sequence_number_(GenerateSequenceNumber()),
       document_sequence_number_(GenerateSequenceNumber()),
-      navigation_api_key_(WTF::CreateCanonicalUUIDString()),
-      navigation_api_id_(WTF::CreateCanonicalUUIDString()) {}
+      app_history_key_(WTF::CreateCanonicalUUIDString()),
+      app_history_id_(WTF::CreateCanonicalUUIDString()) {}
 
 HistoryItem::~HistoryItem() = default;
 
@@ -155,12 +70,8 @@ KURL HistoryItem::Url() const {
   return KURL(url_string_);
 }
 
-const String& HistoryItem::GetReferrer() const {
+const Referrer& HistoryItem::GetReferrer() const {
   return referrer_;
-}
-
-network::mojom::ReferrerPolicy HistoryItem::GetReferrerPolicy() const {
-  return referrer_policy_;
 }
 
 void HistoryItem::SetURLString(const String& url_string) {
@@ -172,36 +83,35 @@ void HistoryItem::SetURL(const KURL& url) {
   SetURLString(url.GetString());
 }
 
-void HistoryItem::SetReferrer(const String& referrer) {
-  referrer_ = referrer;
-}
-
-void HistoryItem::SetReferrerPolicy(network::mojom::ReferrerPolicy policy) {
-  referrer_policy_ = policy;
-}
-
-HistoryItem::ViewState& HistoryItem::GetOrCreateViewState() {
-  if (!view_state_) {
-    view_state_ = ViewState();
-  }
-  return *view_state_;
+void HistoryItem::SetReferrer(const Referrer& referrer) {
+  // This should be a CHECK.
+  referrer_ = SecurityPolicy::GenerateReferrer(referrer.referrer_policy, Url(),
+                                               referrer.referrer);
 }
 
 void HistoryItem::SetVisualViewportScrollOffset(const ScrollOffset& offset) {
-  GetOrCreateViewState().visual_viewport_scroll_offset_ = offset;
+  if (!view_state_)
+    view_state_ = absl::make_optional<ViewState>();
+  view_state_->visual_viewport_scroll_offset_ = offset;
 }
 
 void HistoryItem::SetScrollOffset(const ScrollOffset& offset) {
-  GetOrCreateViewState().scroll_offset_ = offset;
+  if (!view_state_)
+    view_state_ = absl::make_optional<ViewState>();
+  view_state_->scroll_offset_ = offset;
 }
 
 void HistoryItem::SetPageScaleFactor(float scale_factor) {
-  GetOrCreateViewState().page_scale_factor_ = scale_factor;
+  if (!view_state_)
+    view_state_ = absl::make_optional<ViewState>();
+  view_state_->page_scale_factor_ = scale_factor;
 }
 
 void HistoryItem::SetScrollAnchorData(
     const ScrollAnchorData& scroll_anchor_data) {
-  GetOrCreateViewState().scroll_anchor_data_ = scroll_anchor_data;
+  if (!view_state_)
+    view_state_ = absl::make_optional<ViewState>();
+  view_state_->scroll_anchor_data_ = scroll_anchor_data;
 }
 
 void HistoryItem::SetDocumentState(const Vector<String>& state) {
@@ -213,16 +123,13 @@ void HistoryItem::SetDocumentState(DocumentState* state) {
   document_state_ = state;
 }
 
-const Vector<String>& HistoryItem::GetDocumentState() const {
-  // TODO(dcheng): This is super weird. It seems like it would be better to just
-  // populate the vector eagerly once when calling `SetDocumentState()` with a
-  // `DocumentState` object.
+const Vector<String>& HistoryItem::GetDocumentState() {
   if (document_state_)
     document_state_vector_ = document_state_->ToStateVector();
   return document_state_vector_;
 }
 
-Vector<String> HistoryItem::GetReferencedFilePaths() const {
+Vector<String> HistoryItem::GetReferencedFilePaths() {
   return FormController::GetReferencedFilePaths(GetDocumentState());
 }
 
@@ -247,20 +154,20 @@ void HistoryItem::SetFormContentType(const AtomicString& form_content_type) {
   form_content_type_ = form_content_type;
 }
 
-EncodedFormData* HistoryItem::FormData() const {
+EncodedFormData* HistoryItem::FormData() {
   return form_data_.get();
 }
 
-void HistoryItem::SetNavigationApiState(
+void HistoryItem::SetAppHistoryState(
     scoped_refptr<SerializedScriptValue> value) {
-  navigation_api_state_ = std::move(value);
+  app_history_state_ = std::move(value);
 }
 
 ResourceRequest HistoryItem::GenerateResourceRequest(
     mojom::FetchCacheMode cache_mode) {
   ResourceRequest request(url_string_);
-  request.SetReferrerString(referrer_);
-  request.SetReferrerPolicy(referrer_policy_);
+  request.SetReferrerString(referrer_.referrer);
+  request.SetReferrerPolicy(referrer_.referrer_policy);
   request.SetCacheMode(cache_mode);
   if (form_data_) {
     request.SetHttpMethod(http_names::kPOST);
@@ -275,6 +182,7 @@ void HistoryItem::Trace(Visitor* visitor) const {
   visitor->Trace(document_state_);
 }
 
+<<<<<<< HEAD
 PageState HistoryItem::ToPageState() const {
   ExplodedPageState state;
   state.referenced_files = GetReferencedFilePathsForSerialization();
@@ -368,4 +276,6 @@ HistoryItem::GetReferencedFilePathsForSerialization() const {
   return result;
 }
 
+=======
+>>>>>>> chromium
 }  // namespace blink

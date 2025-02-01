@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,7 +12,9 @@ import org.chromium.base.Log;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 
-/** Implements MagnifierWrapper interface. */
+/**
+ * Implements MagnifierWrapper interface.
+ */
 @SuppressLint("NewApi") // Magnifier requires API level 28.
 @NullMarked
 public class MagnifierWrapperImpl implements MagnifierWrapper {
@@ -22,7 +24,9 @@ public class MagnifierWrapperImpl implements MagnifierWrapper {
     private @Nullable Magnifier mMagnifier;
     private SelectionPopupControllerImpl.ReadbackViewCallback mCallback;
 
-    /** Constructor. */
+    /**
+     * Constructor.
+     */
     public MagnifierWrapperImpl(SelectionPopupControllerImpl.ReadbackViewCallback callback) {
         mCallback = callback;
     }
@@ -48,10 +52,5 @@ public class MagnifierWrapperImpl implements MagnifierWrapper {
     @Override
     public boolean isAvailable() {
         return mCallback.getReadbackView() != null;
-    }
-
-    @Override
-    public void childLocalSurfaceIdChanged() {
-        // Intentional not implemented.
     }
 }

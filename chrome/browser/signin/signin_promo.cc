@@ -1,17 +1,15 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/signin/signin_promo.h"
 
 #include "base/strings/string_number_conversions.h"
-#include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/google/google_brand.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
-#include "chrome/browser/signin/chrome_signin_pref_names.h"
 #include "chrome/browser/signin/signin_promo_util.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
@@ -25,7 +23,7 @@
 #include "net/base/url_util.h"
 #include "url/gurl.h"
 
-#if BUILDFLAG(IS_WIN)
+#if defined(OS_WIN)
 #include "base/win/windows_version.h"
 #endif
 
@@ -73,50 +71,23 @@ GURL GetEmbeddedReauthURLWithEmail(signin_metrics::AccessPoint access_point,
 }
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 
-GURL GetChromeSyncURLForDice(ChromeSyncUrlArgs args) {
+GURL GetChromeSyncURLForDice(const std::string& email,
+                             const std::string& continue_url) {
   GURL url = GaiaUrls::GetInstance()->signin_chrome_sync_dice();
-  if (!args.email.empty()) {
-    url = net::AppendQueryParameter(url, "email_hint", args.email);
-  }
-  if (!args.continue_url.is_empty()) {
-    url = net::AppendQueryParameter(url, "continue", args.continue_url.spec());
-  }
-  if (args.request_dark_scheme) {
-    url = net::AppendQueryParameter(url, "color_scheme", "dark");
-  }
-  switch (args.flow) {
-    // Default behavior.
-    case Flow::NONE:
-      break;
-    case Flow::PROMO:
-      url = net::AppendQueryParameter(url, "flow", "promo");
-      break;
-    case Flow::EMBEDDED_PROMO:
-      url = net::AppendQueryParameter(url, "flow", "embedded_promo");
-      break;
-  }
-  return url;
-}
-
-GURL GetChromeReauthURL(ChromeSyncUrlArgs args) {
-  GURL url = GaiaUrls::GetInstance()->reauth_chrome_dice();
-  if (!args.email.empty()) {
-    url = net::AppendQueryParameter(url, "Email", args.email);
-  }
-  if (!args.continue_url.is_empty()) {
-    url = net::AppendQueryParameter(url, "continue", args.continue_url.spec());
-  }
+  if (!email.empty())
+    url = net::AppendQueryParameter(url, "email_hint", email);
+  if (!continue_url.empty())
+    url = net::AppendQueryParameter(url, "continue", continue_url);
   return url;
 }
 
 GURL GetAddAccountURLForDice(const std::string& email,
-                             const GURL& continue_url) {
+                             const std::string& continue_url) {
   GURL url = GaiaUrls::GetInstance()->add_account_url();
   if (!email.empty())
     url = net::AppendQueryParameter(url, "Email", email);
-  if (!continue_url.is_empty()) {
-    url = net::AppendQueryParameter(url, "continue", continue_url.spec());
-  }
+  if (!continue_url.empty())
+    url = net::AppendQueryParameter(url, "continue", continue_url);
   return url;
 }
 
@@ -165,12 +136,15 @@ signin_metrics::Reason GetSigninReasonForEmbeddedPromoURL(const GURL& url) {
 void RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterIntegerPref(prefs::kDiceSigninUserMenuPromoCount, 0);
+<<<<<<< HEAD
   registry->RegisterIntegerPref(
       prefs::kAutofillSignInPromoDismissCountPerProfile, 0);
   registry->RegisterIntegerPref(prefs::kPasswordSignInPromoShownCountPerProfile,
                                 0);
   registry->RegisterIntegerPref(prefs::kAddressSignInPromoShownCountPerProfile,
                                 0);
+=======
+>>>>>>> chromium
 }
 
 }  // namespace signin

@@ -24,6 +24,7 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -36,38 +37,29 @@ unsigned g_suspension_count = 0;
 
 }  // namespace
 
-ScopedPagePauser::ScopedPagePauser(Page* primary_page) {
-  if (++g_suspension_count > 1) {
+ScopedPagePauser::ScopedPagePauser() {
+  if (++g_suspension_count > 1)
     return;
-  }
 
-  SetPaused(primary_page, true);
-  pause_handle_ = ThreadScheduler::Current()->ToMainThreadScheduler()
-                      ? ThreadScheduler::Current()
-                            ->ToMainThreadScheduler()
-                            ->PauseScheduler()
-                      : nullptr;
+  SetPaused(true);
+  pause_handle_ = ThreadScheduler::Current()->PauseScheduler();
 }
-
-ScopedPagePauser::ScopedPagePauser() : ScopedPagePauser(nullptr) {}
 
 ScopedPagePauser::~ScopedPagePauser() {
-  if (--g_suspension_count > 0) {
+  if (--g_suspension_count > 0)
     return;
-  }
 
-  SetPaused(nullptr, false);
+  SetPaused(false);
 }
 
-void ScopedPagePauser::SetPaused(Page* primary_page, bool paused) {
+void ScopedPagePauser::SetPaused(bool paused) {
   // Make a copy of the collection. Undeferring loads can cause script to run,
   // which would mutate ordinaryPages() in the middle of iteration.
-  HeapVector<Member<Page>> pages(Page::OrdinaryPages());
+  HeapVector<Member<Page>> pages;
+  CopyToVector(Page::OrdinaryPages(), pages);
 
-  for (const auto& page : pages) {
-    page->SetShowPausedHudOverlay(primary_page && page != primary_page);
+  for (const auto& page : pages)
     page->SetPaused(paused);
-  }
 }
 
 bool ScopedPagePauser::IsActive() {

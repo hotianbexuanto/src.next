@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,7 +19,9 @@ import org.chromium.base.task.AsyncTask;
 import java.io.File;
 import java.io.FileNotFoundException;
 
-/** Includes helper methods to interact with Android media store. */
+/**
+ * Includes helper methods to interact with Android media store.
+ */
 public class MediaStoreHelper {
     private static final String TAG = "MediaStoreHelper";
 
@@ -37,6 +39,7 @@ public class MediaStoreHelper {
      */
     public static void addImageToGalleryOnSDCard(String filePath, String mimeType) {
         // TODO(xingliu): Support Android Q when we have available device with SD card slot.
+<<<<<<< HEAD
         if (TextUtils.isEmpty(filePath) || mimeType == null || !mimeType.startsWith("image/")) {
             return;
         }
@@ -55,6 +58,23 @@ public class MediaStoreHelper {
                                 }
                             }
                         });
+=======
+        if (TextUtils.isEmpty(filePath) || mimeType == null || !mimeType.startsWith("image/")
+                || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return;
+        }
+
+        DownloadDirectoryProvider.getInstance().getAllDirectoriesOptions((dirs) -> {
+            for (DirectoryOption dir : dirs) {
+                // Scan the media file if it is on SD card.
+                if (dir.type == DirectoryOption.DownloadLocationDirectoryType.ADDITIONAL
+                        && filePath.contains(dir.location)) {
+                    addImageOnBlockingThread(filePath);
+                    return;
+                }
+            }
+        });
+>>>>>>> chromium
     }
 
     /**
@@ -68,6 +88,7 @@ public class MediaStoreHelper {
             @Override
             protected Void doInBackground() {
                 try {
+<<<<<<< HEAD
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         MediaScannerConnection.scanFile(
                                 ContextUtils.getApplicationContext(),
@@ -91,6 +112,14 @@ public class MediaStoreHelper {
                                 file.getName(),
                                 null);
                     }
+=======
+                    // The media store will decode the image to bitmap, compress, and maintain a
+                    // copy on disk.
+                    File file = new File(filePath);
+                    MediaStore.Images.Media.insertImage(
+                            ContextUtils.getApplicationContext().getContentResolver(), filePath,
+                            file.getName(), null);
+>>>>>>> chromium
                 } catch (FileNotFoundException e) {
                     Log.e(TAG, "Cannot find image file to add to gallery.", e);
                 }

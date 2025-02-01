@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,9 +11,9 @@
 
 namespace net {
 
-UploadBytesElementReader::UploadBytesElementReader(
-    base::span<const uint8_t> bytes)
-    : bytes_(bytes) {}
+UploadBytesElementReader::UploadBytesElementReader(const char* bytes,
+                                                   uint64_t length)
+    : bytes_(bytes), length_(length) {}
 
 UploadBytesElementReader::~UploadBytesElementReader() = default;
 
@@ -28,11 +28,11 @@ int UploadBytesElementReader::Init(CompletionOnceCallback callback) {
 }
 
 uint64_t UploadBytesElementReader::GetContentLength() const {
-  return bytes_.size();
+  return length_;
 }
 
 uint64_t UploadBytesElementReader::BytesRemaining() const {
-  return bytes_.size() - offset_;
+  return length_ - offset_;
 }
 
 bool UploadBytesElementReader::IsInMemory() const {
@@ -42,29 +42,42 @@ bool UploadBytesElementReader::IsInMemory() const {
 int UploadBytesElementReader::Read(IOBuffer* buf,
                                    int buf_length,
                                    CompletionOnceCallback callback) {
+<<<<<<< HEAD
   base::span<const uint8_t> bytes_to_read =
       bytes_.subspan(offset_, std::min(static_cast<size_t>(BytesRemaining()),
                                        base::checked_cast<size_t>(buf_length)));
   if (!bytes_to_read.empty()) {
     buf->span().copy_prefix_from(bytes_to_read);
   }
+=======
+  DCHECK_LT(0, buf_length);
 
-  offset_ += bytes_to_read.size();
-  return bytes_to_read.size();
+  const int num_bytes_to_read = static_cast<int>(
+      std::min(BytesRemaining(), static_cast<uint64_t>(buf_length)));
+>>>>>>> chromium
+
+  // Check if we have anything to copy first, because we are getting
+  // the address of an element in |bytes_| and that will throw an
+  // exception if |bytes_| is an empty vector.
+  if (num_bytes_to_read > 0)
+    memcpy(buf->data(), bytes_ + offset_, num_bytes_to_read);
+
+  offset_ += num_bytes_to_read;
+  return num_bytes_to_read;
 }
 
 UploadOwnedBytesElementReader::UploadOwnedBytesElementReader(
     std::vector<char>* data)
-    : UploadBytesElementReader(base::as_byte_span(*data)) {
+    : UploadBytesElementReader(data->data(), data->size()) {
   data_.swap(*data);
 }
 
 UploadOwnedBytesElementReader::~UploadOwnedBytesElementReader() = default;
 
-std::unique_ptr<UploadOwnedBytesElementReader>
+UploadOwnedBytesElementReader*
 UploadOwnedBytesElementReader::CreateWithString(const std::string& string) {
   std::vector<char> data(string.begin(), string.end());
-  return std::make_unique<UploadOwnedBytesElementReader>(&data);
+  return new UploadOwnedBytesElementReader(&data);
 }
 
 }  // namespace net

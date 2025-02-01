@@ -1,11 +1,14 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.omnibox.suggestions;
 
+<<<<<<< HEAD
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.components.omnibox.AutocompleteInput;
+=======
+>>>>>>> chromium
 import org.chromium.components.omnibox.AutocompleteMatch;
 import org.chromium.ui.modelutil.PropertyModel;
 
@@ -24,15 +27,17 @@ public interface SuggestionProcessor extends DropdownItemProcessor {
 
     /**
      * Populate a model for the given suggestion.
-     *
-     * @param input The input to produce the suggestions
      * @param suggestion The suggestion to populate the model for.
      * @param model The model to populate.
      * @param position The position of the suggestion in the list.
      */
+<<<<<<< HEAD
     void populateModel(
             AutocompleteInput input,
             AutocompleteMatch suggestion,
             PropertyModel model,
             int position);
+=======
+    void populateModel(AutocompleteMatch suggestion, PropertyModel model, int position);
+>>>>>>> chromium
 }

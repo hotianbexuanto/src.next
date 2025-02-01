@@ -1,12 +1,13 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_EXTENSIONS_CHROME_PROCESS_MANAGER_DELEGATE_H_
 #define CHROME_BROWSER_EXTENSIONS_CHROME_PROCESS_MANAGER_DELEGATE_H_
 
+#include "base/compiler_specific.h"
+#include "base/macros.h"
 #include "base/scoped_multi_source_observation.h"
-#include "base/scoped_observation.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager_observer.h"
 #include "chrome/browser/profiles/profile_observer.h"
@@ -15,7 +16,6 @@
 
 class Browser;
 class Profile;
-class ProfileManager;
 
 namespace extensions {
 
@@ -27,11 +27,6 @@ class ChromeProcessManagerDelegate : public ProcessManagerDelegate,
                                      public ProfileObserver {
  public:
   ChromeProcessManagerDelegate();
-
-  ChromeProcessManagerDelegate(const ChromeProcessManagerDelegate&) = delete;
-  ChromeProcessManagerDelegate& operator=(const ChromeProcessManagerDelegate&) =
-      delete;
-
   ~ChromeProcessManagerDelegate() override;
 
   // ProcessManagerDelegate:
@@ -48,18 +43,16 @@ class ChromeProcessManagerDelegate : public ProcessManagerDelegate,
 
   // ProfileManagerObserver:
   void OnProfileAdded(Profile* profile) override;
-  void OnProfileManagerDestroying() override;
 
   // ProfileObserver:
   void OnOffTheRecordProfileCreated(Profile* off_the_record_profile) override;
   void OnProfileWillBeDestroyed(Profile* profile) override;
 
  private:
-  base::ScopedObservation<ProfileManager, ProfileManagerObserver>
-      profile_manager_observation_{this};
-
   base::ScopedMultiSourceObservation<Profile, ProfileObserver>
       observed_profiles_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(ChromeProcessManagerDelegate);
 };
 
 }  // namespace extensions

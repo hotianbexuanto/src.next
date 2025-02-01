@@ -1,10 +1,16 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // This file exposes services in the browser to child processes.
 
+<<<<<<< HEAD
 #include "base/functional/bind.h"
+=======
+#include "content/browser/browser_child_process_host_impl.h"
+
+#include "base/bind.h"
+>>>>>>> chromium
 #include "base/no_destructor.h"
 #include "base/task/thread_pool.h"
 #include "build/build_config.h"
@@ -22,14 +28,20 @@
 #include "services/device/public/mojom/power_monitor.mojom.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/metrics/public/mojom/ukm_interface.mojom.h"
-#include "services/metrics/ukm_recorder_factory_impl.h"
+#include "services/metrics/ukm_recorder_interface.h"
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_MAC)
 #include "content/browser/sandbox_support_impl.h"
 #include "content/common/sandbox_support.mojom.h"
+=======
+#if defined(OS_MAC)
+#include "content/browser/sandbox_support_mac_impl.h"
+#include "content/common/sandbox_support_mac.mojom.h"
+>>>>>>> chromium
 #endif
 
-#if BUILDFLAG(IS_WIN)
+#if defined(OS_WIN)
 #include "content/browser/renderer_host/dwrite_font_proxy_impl_win.h"
 #include "content/browser/sandbox_support_impl.h"
 #include "content/common/sandbox_support.mojom.h"
@@ -52,24 +64,12 @@ GetBindHostReceiverInterceptor() {
 
 void BrowserChildProcessHostImpl::BindHostReceiver(
     mojo::GenericPendingReceiver receiver) {
-  // TODO(crbug.com/40285371): this function should run on the IO thread and
-  // calls functions documented as running on the IO thread.
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
-
   const auto& interceptor = GetBindHostReceiverInterceptor();
   if (interceptor) {
     interceptor.Run(this, &receiver);
-    if (!receiver) {
+    if (!receiver)
       return;
-    }
   }
-
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-  if (auto r = receiver.As<mojom::ThreadTypeSwitcher>()) {
-    child_thread_type_switcher_.Bind(std::move(r));
-    return;
-  }
-#endif  // (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
 
   if (auto r =
           receiver.As<memory_instrumentation::mojom::CoordinatorConnector>()) {
@@ -79,15 +79,21 @@ void BrowserChildProcessHostImpl::BindHostReceiver(
     return;
   }
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_MAC)
   if (auto r = receiver.As<mojom::SandboxSupport>()) {
     static base::NoDestructor<SandboxSupportImpl> sandbox_support;
+=======
+#if defined(OS_MAC)
+  if (auto r = receiver.As<mojom::SandboxSupportMac>()) {
+    static base::NoDestructor<SandboxSupportMacImpl> sandbox_support;
+>>>>>>> chromium
     sandbox_support->BindReceiver(std::move(r));
     return;
   }
 #endif
 
-#if BUILDFLAG(IS_WIN)
+#if defined(OS_WIN)
   if (auto r = receiver.As<mojom::FontCacheWin>()) {
     FontCacheDispatcher::Create(std::move(r));
     return;
@@ -107,32 +113,46 @@ void BrowserChildProcessHostImpl::BindHostReceiver(
 #endif
 
   if (auto r = receiver.As<mojom::FieldTrialRecorder>()) {
-    FieldTrialRecorder::Create(std::move(r));
+    GetUIThreadTaskRunner({})->PostTask(
+        FROM_HERE, base::BindOnce(&FieldTrialRecorder::Create, std::move(r)));
     return;
   }
 
   if (auto r = receiver.As<
                discardable_memory::mojom::DiscardableSharedMemoryManager>()) {
-    GetIOThreadTaskRunner({})->PostTask(
+    if (base::FeatureList::IsEnabled(features::kProcessHostOnUI)) {
+      GetIOThreadTaskRunner({})->PostTask(
+          FROM_HERE,
+          base::BindOnce(
+              [](mojo::PendingReceiver<
+                  discardable_memory::mojom::DiscardableSharedMemoryManager>
+                     r) {
+                discardable_memory::DiscardableSharedMemoryManager::Get()->Bind(
+                    std::move(r));
+              },
+              std::move(r)));
+    } else {
+      discardable_memory::DiscardableSharedMemoryManager::Get()->Bind(
+          std::move(r));
+    }
+    return;
+  }
+
+  if (auto r = receiver.As<device::mojom::PowerMonitor>()) {
+    // TODO(jam): When ProcessHostOnUI is the default just remove this PostTask.
+    GetUIThreadTaskRunner({})->PostTask(
         FROM_HERE,
         base::BindOnce(
-            [](mojo::PendingReceiver<
-                discardable_memory::mojom::DiscardableSharedMemoryManager> r) {
-              discardable_memory::DiscardableSharedMemoryManager::Get()->Bind(
-                  std::move(r));
+            [](mojo::PendingReceiver<device::mojom::PowerMonitor> r) {
+              GetDeviceService().BindPowerMonitor(std::move(r));
             },
             std::move(r)));
     return;
   }
 
-  if (auto r = receiver.As<device::mojom::PowerMonitor>()) {
-    GetDeviceService().BindPowerMonitor(std::move(r));
-    return;
-  }
-
-  if (auto r = receiver.As<ukm::mojom::UkmRecorderFactory>()) {
-    metrics::UkmRecorderFactoryImpl::Create(ukm::UkmRecorder::Get(),
-                                            std::move(r));
+  if (auto r = receiver.As<ukm::mojom::UkmRecorderInterface>()) {
+    metrics::UkmRecorderInterface::Create(ukm::UkmRecorder::Get(),
+                                          std::move(r));
     return;
   }
 

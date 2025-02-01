@@ -27,7 +27,6 @@
 
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
-#include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/video_painter.h"
 
 namespace blink {
@@ -39,20 +38,29 @@ LayoutVideo::LayoutVideo(HTMLVideoElement* video)
 
 LayoutVideo::~LayoutVideo() = default;
 
-PhysicalSize LayoutVideo::DefaultSize() {
-  return PhysicalSize(LayoutUnit(kDefaultWidth), LayoutUnit(kDefaultHeight));
+LayoutSize LayoutVideo::DefaultSize() {
+  return LayoutSize(kDefaultWidth, kDefaultHeight);
 }
 
 void LayoutVideo::IntrinsicSizeChanged() {
   NOT_DESTROYED();
   if (VideoElement()->IsShowPosterFlagSet())
     LayoutMedia::IntrinsicSizeChanged();
+<<<<<<< HEAD
   UpdateNaturalSize();
 }
 
 void LayoutVideo::UpdateNaturalSize() {
   NOT_DESTROYED();
   const PhysicalNaturalSizingInfo sizing_info = GetNaturalDimensions();
+=======
+  UpdateIntrinsicSize(/* is_in_layout */ false);
+}
+
+void LayoutVideo::UpdateIntrinsicSize(bool is_in_layout) {
+  NOT_DESTROYED();
+  LayoutSize size = CalculateIntrinsicSize(StyleRef().EffectiveZoom());
+>>>>>>> chromium
 
   // Never set the element size to zero when in a media document.
   if (sizing_info.size.IsEmpty() && GetDocument().IsMediaDocument()) {
@@ -64,12 +72,26 @@ void LayoutVideo::UpdateNaturalSize() {
   natural_dimensions_ = sizing_info;
 
   SetIntrinsicLogicalWidthsDirty();
-  SetNeedsLayoutAndFullPaintInvalidation(
-      layout_invalidation_reason::kSizeChanged);
+  if (!is_in_layout) {
+    SetNeedsLayoutAndFullPaintInvalidation(
+        layout_invalidation_reason::kSizeChanged);
+  }
 }
 
+<<<<<<< HEAD
 PhysicalNaturalSizingInfo LayoutVideo::GetNaturalDimensions() const {
+=======
+LayoutSize LayoutVideo::CalculateIntrinsicSize(float scale) {
+>>>>>>> chromium
   NOT_DESTROYED();
+
+  if (RuntimeEnabledFeatures::ExperimentalPoliciesEnabled()) {
+    if (video->IsDefaultIntrinsicSize()) {
+      LayoutSize size = DefaultSize();
+      size.Scale(scale);
+      return size;
+    }
+  }
 
   auto display_mode = GetDisplayMode();
   const auto* video = VideoElement();
@@ -93,6 +115,7 @@ PhysicalNaturalSizingInfo LayoutVideo::GetNaturalDimensions() const {
       }
       break;
     case kVideo:
+<<<<<<< HEAD
       // Otherwise, the natural dimensions are that of the video.
       if (const auto* player = video->GetWebMediaPlayer()) {
         gfx::Size video_size = player->NaturalSize();
@@ -100,22 +123,51 @@ PhysicalNaturalSizingInfo LayoutVideo::GetNaturalDimensions() const {
           PhysicalSize natural_size(video_size);
           natural_size.Scale(StyleRef().EffectiveZoom());
           return PhysicalNaturalSizingInfo::MakeFixed(natural_size);
+=======
+      if (const auto* player = MediaElement()->GetWebMediaPlayer()) {
+        IntSize size(player->NaturalSize());
+        if (!size.IsEmpty()) {
+          LayoutSize layout_size = LayoutSize(size);
+          layout_size.Scale(scale);
+          return layout_size;
+>>>>>>> chromium
         }
       }
       break;
   }
 
+<<<<<<< HEAD
   // Natural dimensions are missing.
   PhysicalSize default_size(DefaultSize());
   default_size.Scale(StyleRef().EffectiveZoom());
   return PhysicalNaturalSizingInfo::MakeFixed(default_size);
+=======
+  LayoutSize size = DefaultSize();
+  size.Scale(scale);
+  return size;
+>>>>>>> chromium
 }
 
 void LayoutVideo::ImageChanged(WrappedImagePtr new_image,
                                CanDeferInvalidation defer) {
   NOT_DESTROYED();
   LayoutMedia::ImageChanged(new_image, defer);
+<<<<<<< HEAD
   UpdateNaturalSize();
+=======
+
+  // Cache the image intrinsic size so we can continue to use it to draw the
+  // image correctly even if we know the video intrinsic size but aren't able to
+  // draw video frames yet (we don't want to scale the poster to the video size
+  // without keeping aspect ratio). We do not need to check
+  // |ShouldDisplayPosterImage| because the image can be ready before we find
+  // out we actually need it.
+  cached_image_size_ = IntrinsicSize();
+
+  // The intrinsic size is now that of the image, but in case we already had the
+  // intrinsic size of the video we call this here to restore the video size.
+  UpdateIntrinsicSize(/* is_in_layout */ false);
+>>>>>>> chromium
 }
 
 LayoutVideo::DisplayMode LayoutVideo::GetDisplayMode() const {
@@ -137,16 +189,13 @@ LayoutVideo::DisplayMode LayoutVideo::GetDisplayMode() const {
 void LayoutVideo::PaintReplaced(const PaintInfo& paint_info,
                                 const PhysicalOffset& paint_offset) const {
   NOT_DESTROYED();
-  if (ChildPaintBlockedByDisplayLock()) {
-    return;
-  }
   VideoPainter(*this).PaintReplaced(paint_info, paint_offset);
 }
 
-void LayoutVideo::UpdateAfterLayout() {
+void LayoutVideo::UpdateLayout() {
   NOT_DESTROYED();
-  LayoutMedia::UpdateAfterLayout();
-  InvalidateCompositing();
+  UpdatePlayer(/* is_in_layout */ true);
+  LayoutMedia::UpdateLayout();
 }
 
 HTMLVideoElement* LayoutVideo::VideoElement() const {
@@ -164,13 +213,20 @@ void LayoutVideo::StyleDidChange(StyleDifference diff,
 void LayoutVideo::UpdateFromElement() {
   NOT_DESTROYED();
   LayoutMedia::UpdateFromElement();
+<<<<<<< HEAD
   InvalidateCompositing();
   UpdateNaturalSize();
+=======
+  UpdatePlayer(/* is_in_layout */ false);
+
+>>>>>>> chromium
   SetShouldDoFullPaintInvalidation();
 }
 
-void LayoutVideo::InvalidateCompositing() {
+void LayoutVideo::UpdatePlayer(bool is_in_layout) {
   NOT_DESTROYED();
+  UpdateIntrinsicSize(is_in_layout);
+
   WebMediaPlayer* media_player = MediaElement()->GetWebMediaPlayer();
   if (!media_player)
     return;
@@ -179,18 +235,33 @@ void LayoutVideo::InvalidateCompositing() {
     return;
 
   VideoElement()->SetNeedsCompositingUpdate();
-  if (HasLayer())
-    Layer()->SetNeedsCompositingInputsUpdate();
 }
 
-PhysicalRect LayoutVideo::ReplacedContentRectFrom(
-    const PhysicalRect& base_content_rect) const {
+LayoutUnit LayoutVideo::ComputeReplacedLogicalWidth(
+    ShouldComputePreferred should_compute_preferred) const {
+  NOT_DESTROYED();
+  return LayoutReplaced::ComputeReplacedLogicalWidth(should_compute_preferred);
+}
+
+LayoutUnit LayoutVideo::ComputeReplacedLogicalHeight(
+    LayoutUnit estimated_used_width) const {
+  NOT_DESTROYED();
+  return LayoutReplaced::ComputeReplacedLogicalHeight(estimated_used_width);
+}
+
+LayoutUnit LayoutVideo::MinimumReplacedHeight() const {
+  NOT_DESTROYED();
+  return LayoutReplaced::MinimumReplacedHeight();
+}
+
+PhysicalRect LayoutVideo::ReplacedContentRect() const {
   NOT_DESTROYED();
   PhysicalRect replaced_content_rect =
       LayoutMedia::ReplacedContentRectFrom(base_content_rect);
   if (GetDisplayMode() == kVideo) {
     // Video codecs may need to restart from an I-frame when the output is
     // resized. Round size in advance to avoid 1px snap difference.
+<<<<<<< HEAD
     replaced_content_rect =
         PreSnappedRectForPersistentSizing(replaced_content_rect);
   } else {
@@ -198,6 +269,13 @@ PhysicalRect LayoutVideo::ReplacedContentRectFrom(
     // size of the image should be used for fitting instead.
   }
   return replaced_content_rect;
+=======
+    return PreSnappedRectForPersistentSizing(ComputeObjectFit());
+  }
+  // If we are displaying the poster image no pre-rounding is needed, but the
+  // size of the image should be used for fitting instead.
+  return ComputeObjectFit(&cached_image_size_);
+>>>>>>> chromium
 }
 
 bool LayoutVideo::SupportsAcceleratedRendering() const {
@@ -207,6 +285,10 @@ bool LayoutVideo::SupportsAcceleratedRendering() const {
 
 CompositingReasons LayoutVideo::AdditionalCompositingReasons() const {
   NOT_DESTROYED();
+  auto* element = To<HTMLMediaElement>(GetNode());
+  if (element->IsFullscreen() && element->UsesOverlayFullscreenVideo())
+    return CompositingReason::kVideo;
+
   if (GetDisplayMode() == kVideo && SupportsAcceleratedRendering())
     return CompositingReason::kVideo;
 

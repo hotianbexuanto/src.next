@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,10 +14,11 @@ namespace {
 
 constexpr unsigned kTooShortForSignature = 5;
 
-scoped_refptr<SegmentReader> CreateSegmentReader(
-    base::span<char> reference_data) {
-  PrepareReferenceData(reference_data);
-  scoped_refptr<SharedBuffer> data = SharedBuffer::Create(reference_data);
+scoped_refptr<SegmentReader> CreateSegmentReader(char* reference_data,
+                                                 size_t data_length) {
+  PrepareReferenceData(reference_data, data_length);
+  scoped_refptr<SharedBuffer> data = SharedBuffer::Create();
+  data->Append(reference_data, data_length);
   return SegmentReader::CreateFromSharedBuffer(std::move(data));
 }
 
@@ -27,7 +28,7 @@ class DecodingImageGeneratorTest : public testing::Test {};
 
 TEST_F(DecodingImageGeneratorTest, Create) {
   scoped_refptr<SharedBuffer> reference_data =
-      ReadFileToSharedBuffer(kDecodersTestingDir, "radient.gif");
+      ReadFile(kDecodersTestingDir, "radient.gif");
   scoped_refptr<SegmentReader> reader =
       SegmentReader::CreateFromSharedBuffer(std::move(reference_data));
   std::unique_ptr<SkImageGenerator> generator =
@@ -42,29 +43,18 @@ TEST_F(DecodingImageGeneratorTest, CreateWithNoSize) {
   // ImageDecoder.
   char reference_data[kDefaultTestSize];
   EXPECT_EQ(nullptr, DecodingImageGenerator::CreateAsSkImageGenerator(
-                         CreateSegmentReader(reference_data)->GetAsSkData()));
+                         CreateSegmentReader(reference_data, kDefaultTestSize)
+                             ->GetAsSkData()));
 }
 
 TEST_F(DecodingImageGeneratorTest, CreateWithNullImageDecoder) {
   // Construct dummy image data that will produce a null image decoder
   // due to data being too short for a signature.
   char reference_data[kTooShortForSignature];
-  EXPECT_EQ(nullptr, DecodingImageGenerator::CreateAsSkImageGenerator(
-                         CreateSegmentReader(reference_data)->GetAsSkData()));
-}
-
-// This is a regression test for crbug.com/341812566 and passes if it does not
-// crash under ASAN.
-TEST_F(DecodingImageGeneratorTest, AdjustedGetPixels) {
-  scoped_refptr<SharedBuffer> reference_data =
-      ReadFileToSharedBuffer(kDecodersTestingDir, "radient.gif");
-  scoped_refptr<SegmentReader> reader =
-      SegmentReader::CreateFromSharedBuffer(std::move(reference_data));
-  std::unique_ptr<SkImageGenerator> generator =
-      DecodingImageGenerator::CreateAsSkImageGenerator(reader->GetAsSkData());
-  SkImageInfo info = SkImageInfo::MakeA8(32, 32);
-  std::vector<size_t> memory(info.computeMinByteSize());
-  EXPECT_TRUE(generator->getPixels(info, memory.data(), info.minRowBytes()));
+  EXPECT_EQ(nullptr,
+            DecodingImageGenerator::CreateAsSkImageGenerator(
+                CreateSegmentReader(reference_data, kTooShortForSignature)
+                    ->GetAsSkData()));
 }
 
 // TODO(wkorman): Test Create with a null ImageFrameGenerator. We'd

@@ -1,25 +1,28 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_SHIFT_TRACKER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_SHIFT_TRACKER_H_
 
+<<<<<<< HEAD
 #include <vector>
 
 #include "base/check_op.h"
 #include "base/time/time.h"
 #include "cc/base/region.h"
+=======
+#include "third_party/blink/public/platform/web_vector.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_rect.h"
 #include "third_party/blink/renderer/core/layout/layout_shift_region.h"
 #include "third_party/blink/renderer/core/scroll/scroll_types.h"
 #include "third_party/blink/renderer/core/timing/layout_shift.h"
+#include "third_party/blink/renderer/platform/geometry/region.h"
 #include "third_party/blink/renderer/platform/graphics/dom_node_id.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/timer.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
-#include "ui/gfx/geometry/rect.h"
 
 namespace blink {
 
@@ -41,12 +44,12 @@ class CORE_EXPORT LayoutShiftTracker final
 
   bool NeedsToTrack(const LayoutObject&) const;
 
-  // |old_rect| and |new_rect| are border box rects, united with scrollable
-  // overflow rects if the box has scrollable overflow and doesn't clip
-  // overflow, in the local transform space (property_tree_state.Transform()).
-  // |old_paint_offset| and |new_paint_offset| are the offsets of the border box
-  // rect in the local transform space, which are the same as |old_rect.offset|
-  // and |new_rect.offset| respectively if the rects are border box rects.
+  // |old_rect| and |new_rect| are border box rects, united with layout overflow
+  // rects if the box has layout overflow and doesn't clip overflow, in the
+  // local transform space (property_tree_state.Transform()). |old_paint_offset|
+  // and |new_paint_offset| are the offsets of the border box rect in the local
+  // transform space, which are the same as |old_rect.offset| and
+  // |new_rect.offset| respectively if the rects are border box rects.
   // As we don't save the old property tree state, the caller should adjust
   // |old_rect| and |old_paint_offset| so that we can calculate the correct old
   // visual representation and old starting point in the initial containing
@@ -62,9 +65,9 @@ class CORE_EXPORT LayoutShiftTracker final
                          const PhysicalRect& old_rect,
                          const PhysicalRect& new_rect,
                          const PhysicalOffset& old_paint_offset,
-                         const gfx::Vector2dF& translation_delta,
-                         const gfx::Vector2dF& scroll_delta,
-                         const gfx::Vector2dF& scroll_anchor_adjustment,
+                         const FloatSize& translation_delta,
+                         const FloatSize& scroll_delta,
+                         const FloatSize& scroll_anchor_adjustment,
                          const PhysicalOffset& new_paint_offset);
 
   void NotifyTextPrePaint(const LayoutText& text,
@@ -72,9 +75,9 @@ class CORE_EXPORT LayoutShiftTracker final
                           const LogicalOffset& old_starting_point,
                           const LogicalOffset& new_starting_point,
                           const PhysicalOffset& old_paint_offset,
-                          const gfx::Vector2dF& translation_delta,
-                          const gfx::Vector2dF& scroll_delta,
-                          const gfx::Vector2dF& scroll_anchor_adjustment,
+                          const FloatSize& translation_delta,
+                          const FloatSize& scroll_delta,
+                          const FloatSize& scroll_anchor_adjustment,
                           const PhysicalOffset& new_paint_offset,
                           const LayoutUnit logical_height);
 
@@ -85,13 +88,12 @@ class CORE_EXPORT LayoutShiftTracker final
   void NotifyFindInPageInput();
   void NotifyChangeEvent();
   void NotifyZoomLevelChanged();
-  void NotifyBrowserInitiatedSameDocumentNavigation();
   bool IsActive() const { return is_active_; }
   double Score() const { return score_; }
   double WeightedScore() const { return weighted_score_; }
   float OverallMaxDistance() const { return overall_max_distance_; }
   bool ObservedInputOrScroll() const { return observed_input_or_scroll_; }
-  void Dispose();
+  void Dispose() { timer_.Stop(); }
   base::TimeTicks MostRecentInputTimestamp() {
     return most_recent_input_timestamp_;
   }
@@ -118,7 +120,7 @@ class CORE_EXPORT LayoutShiftTracker final
     static ReattachHookScope* top_;
     struct Geometry {
       PhysicalOffset paint_offset;
-      PhysicalSize size;
+      LayoutSize size;
       PhysicalRect visual_overflow_rect;
       bool has_paint_offset_translation;
     };
@@ -166,11 +168,11 @@ class CORE_EXPORT LayoutShiftTracker final
                      const PropertyTreeStateOrAlias&,
                      const PhysicalRect& old_rect,
                      const PhysicalRect& new_rect,
-                     const gfx::PointF& old_starting_point,
-                     const gfx::Vector2dF& translation_delta,
-                     const gfx::Vector2dF& scroll_offset_delta,
-                     const gfx::Vector2dF& scroll_anchor_adjustment,
-                     const gfx::PointF& new_starting_point);
+                     const FloatPoint& old_starting_point,
+                     const FloatSize& translation_delta,
+                     const FloatSize& scroll_offset_delta,
+                     const FloatSize& scroll_anchor_adjustment,
+                     const FloatPoint& new_starting_point);
 
   void ReportShift(double score_delta, double weighted_score_delta);
   void TimerFired(TimerBase*) {}
@@ -183,11 +185,9 @@ class CORE_EXPORT LayoutShiftTracker final
   // Sends layout shift rects to the heads-up display (HUD) layer, if
   // visualization is enabled (by --show-layout-shift-regions or devtools
   // "Layout Shift Regions" option).
-  void SendLayoutShiftRectsToHud(const Vector<gfx::Rect>& rects);
+  void SendLayoutShiftRectsToHud(const Vector<IntRect>& int_rects);
 
-  void UpdateInputTimestamps(base::TimeTicks timestamp);
-  bool HasRecentInput();
-
+  void UpdateInputTimestamp(base::TimeTicks timestamp);
   LayoutShift::AttributionList CreateAttributionList() const;
   void SubmitPerformanceEntry(double score_delta, bool input_detected) const;
   void NotifyPrePaintFinishedInternal();
@@ -250,19 +250,20 @@ class CORE_EXPORT LayoutShiftTracker final
   base::TimeTicks most_recent_input_timestamp_;
   bool most_recent_input_timestamp_initialized_;
 
-  // Timestamp used to run an imaginary timer for tracking period since last
-  // input processed. It resets 500ms after the most recent input is processed.
-  base::TimeTicks most_recent_input_processing_timestamp_;
-
   struct Attribution {
-    DOMNodeId node_id = kInvalidDOMNodeId;
-    gfx::Rect old_visual_rect;
-    gfx::Rect new_visual_rect;
+    DOMNodeId node_id;
+    IntRect old_visual_rect;
+    IntRect new_visual_rect;
+
+    Attribution();
+    Attribution(DOMNodeId node_id,
+                IntRect old_visual_rect,
+                IntRect new_visual_rect);
 
     explicit operator bool() const;
     bool Encloses(const Attribution&) const;
     bool MoreImpactfulThan(const Attribution&) const;
-    uint64_t Area() const;
+    int Area() const;
   };
 
   void MaybeRecordAttribution(const Attribution&);

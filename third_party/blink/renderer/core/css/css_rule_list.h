@@ -24,8 +24,7 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
 namespace blink {
@@ -43,19 +42,9 @@ class CSSRuleList : public ScriptWrappable {
   CSSRuleList& operator=(const CSSRuleList&) = delete;
 
   virtual unsigned length() const = 0;
-  CSSRule* item(unsigned index) const { return Item(index); }
+  virtual CSSRule* item(unsigned index) const = 0;
 
   virtual CSSStyleSheet* GetStyleSheet() const = 0;
-  virtual CSSRule* Item(unsigned index, bool trigger_use_counters) const = 0;
-  CSSRule* Item(unsigned index) const {
-    return Item(index, /*trigger_use_counters=*/true);
-  }
-
-  // Get an item, but signal that it's been requested internally from the
-  // engine, and not directly from a script.
-  CSSRule* ItemInternal(unsigned index) const {
-    return Item(index, /*trigger_use_counters=*/false);
-  }
 
  protected:
   CSSRuleList() = default;
@@ -73,9 +62,7 @@ class LiveCSSRuleList final : public CSSRuleList {
 
  private:
   unsigned length() const override { return rule_->length(); }
-  CSSRule* Item(unsigned index, bool trigger_use_counters) const override {
-    return rule_->Item(index, trigger_use_counters);
-  }
+  CSSRule* item(unsigned index) const override { return rule_->Item(index); }
   CSSStyleSheet* GetStyleSheet() const override {
     return rule_->parentStyleSheet();
   }

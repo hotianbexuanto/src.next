@@ -34,11 +34,9 @@
 
 namespace blink {
 
-class CascadeLayer;
 class CSSRuleList;
 class CSSKeyframeRule;
 class StyleRuleKeyframe;
-class CSSParserContext;
 
 class StyleRuleKeyframes final : public StyleRuleBase {
  public:
@@ -60,14 +58,11 @@ class StyleRuleKeyframes final : public StyleRuleBase {
   bool IsVendorPrefixed() const { return is_prefixed_; }
   void SetVendorPrefixed(bool is_prefixed) { is_prefixed_ = is_prefixed; }
 
-  int FindKeyframeIndex(const CSSParserContext*, const String& key) const;
+  int FindKeyframeIndex(const String& key) const;
 
   StyleRuleKeyframes* Copy() const {
     return MakeGarbageCollected<StyleRuleKeyframes>(*this);
   }
-
-  void SetCascadeLayer(const CascadeLayer* layer) { layer_ = layer; }
-  const CascadeLayer* GetCascadeLayer() const { return layer_.Get(); }
 
   void TraceAfterDispatch(blink::Visitor*) const;
 
@@ -75,7 +70,6 @@ class StyleRuleKeyframes final : public StyleRuleBase {
   unsigned Version() const { return version_; }
 
  private:
-  Member<const CascadeLayer> layer_;
   HeapVector<Member<StyleRuleKeyframe>> keyframes_;
   AtomicString name_;
   unsigned version_ : 31;
@@ -107,12 +101,12 @@ class CSSKeyframesRule final : public CSSRule {
   CSSRuleList* cssRules() const override;
 
   void appendRule(const ExecutionContext*, const String& rule);
-  void deleteRule(const ExecutionContext*, const String& key);
-  CSSKeyframeRule* findRule(const ExecutionContext*, const String& key);
+  void deleteRule(const String& key);
+  CSSKeyframeRule* findRule(const String& key);
 
   // For IndexedGetter and CSSRuleList.
   unsigned length() const;
-  CSSKeyframeRule* Item(unsigned index, bool trigger_use_counters = true) const;
+  CSSKeyframeRule* Item(unsigned index) const;
   CSSKeyframeRule* AnonymousIndexedGetter(unsigned index) const;
 
   bool IsVendorPrefixed() const { return is_prefixed_; }

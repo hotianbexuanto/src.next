@@ -28,6 +28,7 @@
 
 namespace blink {
 
+<<<<<<< HEAD
 // ComputedStyle::EffectiveAppearance() returns the effective appearance
 // to render the element by matching the element's computed style to an
 // AppearanceValue.
@@ -63,6 +64,37 @@ enum class AppearanceValue {
   kSearchFieldCancelButton,
   kSliderVertical,
   kBaseSelect,
+=======
+// Must follow css_value_keywords.json5 order
+// kAutoPart is never returned by ComputedStyle::EffectiveAppearance()
+enum ControlPart {
+  kNoControlPart,
+  kAutoPart,
+  kCheckboxPart,
+  kRadioPart,
+  kPushButtonPart,
+  kSquareButtonPart,
+  kButtonPart,
+  kInnerSpinButtonPart,
+  kListboxPart,
+  kMediaSliderPart,
+  kMediaSliderThumbPart,
+  kMediaVolumeSliderPart,
+  kMediaVolumeSliderThumbPart,
+  kMediaControlPart,
+  kMenulistPart,
+  kMenulistButtonPart,
+  kMeterPart,
+  kProgressBarPart,
+  kSliderHorizontalPart,
+  kSliderVerticalPart,
+  kSliderThumbHorizontalPart,
+  kSliderThumbVerticalPart,
+  kSearchFieldPart,
+  kSearchFieldCancelButtonPart,
+  kTextFieldPart,
+  kTextAreaPart,
+>>>>>>> chromium
 };
 
 }  // namespace blink

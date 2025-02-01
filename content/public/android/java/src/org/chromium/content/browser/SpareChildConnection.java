@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -86,9 +86,14 @@ public class SpareChildConnection {
      * @return a connection that has been bound or is being bound if one was created with the same
      * allocator as the one provided, null otherwise.
      */
+<<<<<<< HEAD
     public @Nullable ChildProcessConnection getConnection(
             ChildConnectionAllocator allocator,
             final ChildProcessConnection.ServiceCallback serviceCallback) {
+=======
+    public ChildProcessConnection getConnection(ChildConnectionAllocator allocator,
+            @NonNull final ChildProcessConnection.ServiceCallback serviceCallback) {
+>>>>>>> chromium
         assert LauncherThread.runningOnLauncherThread();
         if (isEmpty() || mConnectionAllocator != allocator || mConnectionServiceCallback != null) {
             return null;
@@ -102,13 +107,12 @@ public class SpareChildConnection {
             if (serviceCallback != null) {
                 // Post a task so the callback happens after the caller has retrieved the
                 // connection.
-                LauncherThread.post(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                serviceCallback.onChildStarted();
-                            }
-                        });
+                LauncherThread.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        serviceCallback.onChildStarted();
+                    }
+                });
             }
             clearConnection();
         }

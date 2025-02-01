@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -37,7 +37,7 @@ ActionHandlersHandler::~ActionHandlersHandler() = default;
 bool ActionHandlersHandler::Parse(Extension* extension, std::u16string* error) {
   const base::Value* entries = nullptr;
   if (!extension->manifest()->GetList(keys::kActionHandlers, &entries)) {
-    *error = errors::kInvalidActionHandlersType;
+    *error = base::ASCIIToUTF16(errors::kInvalidActionHandlersType);
     return false;
   }
 
@@ -45,23 +45,32 @@ bool ActionHandlersHandler::Parse(Extension* extension, std::u16string* error) {
   for (const base::Value& wrapped_value : entries->GetList()) {
     std::string value;
     if (wrapped_value.is_dict()) {
-      const base::Value::Dict& wrapped_dict = wrapped_value.GetDict();
-      const std::string* action =
-          wrapped_dict.FindString(keys::kActionHandlerActionKey);
-      if (!action) {
-        *error = errors::kInvalidActionHandlerDictionary;
+      const base::Value* action_value = wrapped_value.FindKeyOfType(
+          keys::kActionHandlerActionKey, base::Value::Type::STRING);
+      if (!action_value) {
+        *error = base::ASCIIToUTF16(errors::kInvalidActionHandlerDictionary);
         return false;
       }
+<<<<<<< HEAD
       value = *action;
+=======
+      value = action_value->GetString();
+      const base::Value* lock_screen_value = wrapped_value.FindKeyOfType(
+          keys::kActionHandlerEnabledOnLockScreenKey,
+          base::Value::Type::BOOLEAN);
+      if (lock_screen_value) {
+        enabled_on_lock_screen = lock_screen_value->GetBool();
+      }
+>>>>>>> chromium
     } else if (wrapped_value.is_string()) {
       value = wrapped_value.GetString();
     } else {
-      *error = errors::kInvalidActionHandlersType;
+      *error = base::ASCIIToUTF16(errors::kInvalidActionHandlersType);
       return false;
     }
 
     app_runtime::ActionType action_type = app_runtime::ParseActionType(value);
-    if (action_type == app_runtime::ActionType::kNone) {
+    if (action_type == app_runtime::ACTION_TYPE_NONE) {
       *error = ErrorUtils::FormatErrorMessageUTF16(
           errors::kInvalidActionHandlersActionType, value);
       return false;

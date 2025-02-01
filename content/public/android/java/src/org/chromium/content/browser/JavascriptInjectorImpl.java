@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,14 +6,18 @@ package org.chromium.content.browser;
 
 import android.util.Pair;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.UserData;
+<<<<<<< HEAD
 import org.chromium.build.annotations.DoNotInline;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+=======
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.DoNotInline;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
+import org.chromium.content.browser.remoteobjects.RemoteObjectInjector;
+>>>>>>> chromium
 import org.chromium.content.browser.webcontents.WebContentsImpl;
 import org.chromium.content.browser.webcontents.WebContentsImpl.UserDataFactory;
 import org.chromium.content_public.browser.JavascriptInjector;
@@ -25,7 +29,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** Implementation class of the interface {@link JavascriptInjector}. */
+/**
+ * Implementation class of the interface {@link JavascriptInjector}.
+ */
 @JNINamespace("content")
 @NullMarked
 public class JavascriptInjectorImpl implements JavascriptInjector, UserData {
@@ -36,27 +42,45 @@ public class JavascriptInjectorImpl implements JavascriptInjector, UserData {
 
     // The set is passed to native and stored in a weak reference, so ensure this
     // strong reference is not optimized away by R8.
-    @DoNotInline private final Set<Object> mRetainedObjects = new HashSet<>();
+    @DoNotInline
+    private final Set<Object> mRetainedObjects = new HashSet<>();
     private final Map<String, Pair<Object, Class>> mInjectedObjects = new HashMap<>();
     private long mNativePtr;
+    private RemoteObjectInjector mInjector;
+    private Boolean mUseMojo;
 
     /**
      * @param webContents {@link WebContents} object.
-     * @return {@link JavascriptInjector} object used for the give WebContents. Creates one if not
-     *     present.
+     * @param useMojo Whether to use {@link RemoteObjectInjector} methods
+     * @return {@link JavascriptInjector} object used for the give WebContents.
+     *         Creates one if not present.
      */
+<<<<<<< HEAD
     public static @Nullable JavascriptInjector fromWebContents(WebContents webContents) {
+=======
+    public static JavascriptInjector fromWebContents(WebContents webContents, boolean useMojo) {
+>>>>>>> chromium
         JavascriptInjectorImpl javascriptInjector =
                 ((WebContentsImpl) webContents)
                         .getOrSetUserData(
                                 JavascriptInjectorImpl.class, UserDataFactoryLazyHolder.INSTANCE);
+        javascriptInjector.setUseMojo(useMojo);
         return javascriptInjector;
     }
 
     public JavascriptInjectorImpl(WebContents webContents) {
-        mNativePtr =
-                JavascriptInjectorImplJni.get()
-                        .init(JavascriptInjectorImpl.this, webContents, mRetainedObjects);
+        mNativePtr = JavascriptInjectorImplJni.get().init(
+                JavascriptInjectorImpl.this, webContents, mRetainedObjects);
+        mInjector = new RemoteObjectInjector(webContents);
+        webContents.addObserver(mInjector);
+    }
+
+    public void setUseMojo(boolean useMojo) {
+        if (mUseMojo == null) {
+            mUseMojo = useMojo;
+        } else {
+            assert mUseMojo == useMojo;
+        }
     }
 
     @CalledByNative
@@ -71,9 +95,12 @@ public class JavascriptInjectorImpl implements JavascriptInjector, UserData {
 
     @Override
     public void setAllowInspection(boolean allow) {
-        if (mNativePtr != 0) {
-            JavascriptInjectorImplJni.get()
-                    .setAllowInspection(mNativePtr, JavascriptInjectorImpl.this, allow);
+        assert mUseMojo != null;
+        if (mUseMojo) {
+            mInjector.setAllowInspection(allow);
+        } else if (mNativePtr != 0) {
+            JavascriptInjectorImplJni.get().setAllowInspection(
+                    mNativePtr, JavascriptInjectorImpl.this, allow);
         }
     }
 
@@ -84,33 +111,36 @@ public class JavascriptInjectorImpl implements JavascriptInjector, UserData {
             @Nullable Class<? extends Annotation> requiredAnnotation) {
         if (object == null) return;
 
-        if (mNativePtr != 0) {
+        assert mUseMojo != null;
+        if (mUseMojo) {
+            mInjector.addInterface(object, name, requiredAnnotation);
+        } else if (mNativePtr != 0) {
             mInjectedObjects.put(name, new Pair<Object, Class>(object, requiredAnnotation));
-            JavascriptInjectorImplJni.get()
-                    .addInterface(
-                            mNativePtr,
-                            JavascriptInjectorImpl.this,
-                            object,
-                            name,
-                            requiredAnnotation);
+            JavascriptInjectorImplJni.get().addInterface(
+                    mNativePtr, JavascriptInjectorImpl.this, object, name, requiredAnnotation);
         }
     }
 
     @Override
     public void removeInterface(String name) {
-        mInjectedObjects.remove(name);
-        if (mNativePtr != 0) {
-            JavascriptInjectorImplJni.get()
-                    .removeInterface(mNativePtr, JavascriptInjectorImpl.this, name);
+        assert mUseMojo != null;
+        if (mUseMojo) {
+            mInjector.removeInterface(name);
+        } else {
+            mInjectedObjects.remove(name);
+            if (mNativePtr != 0) {
+                JavascriptInjectorImplJni.get().removeInterface(
+                        mNativePtr, JavascriptInjectorImpl.this, name);
+            }
         }
     }
 
     @NativeMethods
     interface Natives {
         long init(JavascriptInjectorImpl caller, WebContents webContents, Object retainedObjects);
-
         void setAllowInspection(
                 long nativeJavascriptInjector, JavascriptInjectorImpl caller, boolean allow);
+<<<<<<< HEAD
 
         void addInterface(
                 long nativeJavascriptInjector,
@@ -119,6 +149,10 @@ public class JavascriptInjectorImpl implements JavascriptInjector, UserData {
                 String name,
                 @Nullable Class requiredAnnotation);
 
+=======
+        void addInterface(long nativeJavascriptInjector, JavascriptInjectorImpl caller,
+                Object object, String name, Class requiredAnnotation);
+>>>>>>> chromium
         void removeInterface(
                 long nativeJavascriptInjector, JavascriptInjectorImpl caller, String name);
     }

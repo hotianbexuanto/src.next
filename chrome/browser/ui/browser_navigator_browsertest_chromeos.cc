@@ -1,11 +1,15 @@
-// Copyright 2012 The Chromium Authors
+// Copyright 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
 #include "chrome/browser/ui/browser_navigator_browsertest.h"
 
 #include "ash/constants/ash_switches.h"
 #include "ash/wm/window_pin_util.h"
+=======
+#include "ash/constants/ash_switches.h"
+>>>>>>> chromium
 #include "base/command_line.h"
 #include "chrome/browser/ash/login/chrome_restart_request.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
@@ -20,6 +24,8 @@
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "chromeos/ui/base/window_pin_type.h"
+#include "chromeos/ui/base/window_properties.h"
 #include "components/account_id/account_id.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
@@ -27,11 +33,16 @@
 
 namespace {
 
+<<<<<<< HEAD
 using BrowserNavigatorTestChromeOS = BrowserNavigatorTest;
 
+=======
+>>>>>>> chromium
 GURL GetGoogleURL() {
   return GURL("http://www.google.com/");
 }
+
+using BrowserNavigatorTestChromeOS = BrowserNavigatorTest;
 
 // Verifies that new browser is not opened for Signin profile.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestChromeOS, RestrictSigninProfile) {
@@ -39,7 +50,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestChromeOS, RestrictSigninProfile) {
 
   EXPECT_EQ(Browser::CreationStatus::kErrorProfileUnsuitable,
             Browser::GetCreationStatusForProfile(
-                ash::ProfileHelper::GetSigninProfile()));
+                chromeos::ProfileHelper::GetSigninProfile()));
 }
 
 // Verify that page navigation is blocked in locked fullscreen mode.
@@ -47,7 +58,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestChromeOS,
                        NavigationBlockedInLockedFullscreen) {
   // Set locked fullscreen state.
   aura::Window* window = browser()->window()->GetNativeWindow();
-  PinWindow(window, /*trusted=*/true);
+  window->SetProperty(chromeos::kWindowPinTypeKey,
+                      chromeos::WindowPinType::kTrustedPinned);
 
   // Navigate to a page.
   auto url = GURL(chrome::kChromeUIVersionURL);
@@ -67,7 +79,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestChromeOS,
   // As a sanity check unset the locked fullscreen state and make sure that the
   // navigation happens (the following EXPECTs fail if the next line isn't
   // executed).
-  UnpinWindow(window);
+  window->SetProperty(chromeos::kWindowPinTypeKey,
+                      chromeos::WindowPinType::kNone);
 
   Navigate(&params);
 
@@ -83,6 +96,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestChromeOS,
       params.browser->tab_strip_model()->GetActiveWebContents()->GetURL());
 }
 
+<<<<<<< HEAD
 // Verify that page navigation is allowed in locked fullscreen mode when locked
 // for OnTask. Only applicable for non-web browser scenarios.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestChromeOS,
@@ -112,15 +126,18 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestChromeOS,
       params.browser->tab_strip_model()->GetActiveWebContents()->GetURL());
 }
 
+=======
+>>>>>>> chromium
 // Subclass that tests navigation while in the Guest session.
 class BrowserGuestSessionNavigatorTest : public BrowserNavigatorTest {
  protected:
   void SetUpCommandLine(base::CommandLine* command_line) override {
     base::CommandLine command_line_copy = *command_line;
-    command_line_copy.AppendSwitchASCII(ash::switches::kLoginProfile, "user");
-    command_line_copy.AppendSwitch(ash::switches::kGuestSession);
-    ash::GetOffTheRecordCommandLine(GetGoogleURL(), command_line_copy,
-                                    command_line);
+    command_line_copy.AppendSwitchASCII(chromeos::switches::kLoginProfile,
+                                        "user");
+    command_line_copy.AppendSwitch(chromeos::switches::kGuestSession);
+    chromeos::GetOffTheRecordCommandLine(GetGoogleURL(), command_line_copy,
+                                         command_line);
   }
 };
 

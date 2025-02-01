@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,19 +13,28 @@ import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
-import org.chromium.base.metrics.RecordUserAction;
-import org.chromium.chrome.browser.toolbar.MenuBuilderHelper;
 import org.chromium.chrome.browser.toolbar.R;
+<<<<<<< HEAD
 import org.chromium.components.browser_ui.widget.BrowserUiListMenuUtils;
 import org.chromium.ui.listmenu.BasicListMenu;
 import org.chromium.ui.listmenu.ListMenu;
 import org.chromium.ui.listmenu.ListMenuButton;
 import org.chromium.ui.listmenu.ListMenuDelegate;
 import org.chromium.ui.listmenu.ListMenuItemProperties;
+=======
+import org.chromium.components.browser_ui.widget.listmenu.BasicListMenu;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenu;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuButton;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuButtonDelegate;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuItemProperties;
+>>>>>>> chromium
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.widget.RectProvider;
+import org.chromium.ui.widget.ViewRectProvider;
 
-/** Coordinator for the Adaptive Button action menu, responsible for creating a popup menu. */
+/**
+ * Coordinator for the Adaptive Button action menu, responsible for creating a popup menu.
+ */
 public class AdaptiveButtonActionMenuCoordinator {
     // For test.
     private BasicListMenu mListMenu;
@@ -40,10 +49,7 @@ public class AdaptiveButtonActionMenuCoordinator {
         if (!AdaptiveToolbarFeatures.isCustomizationEnabled()) return null;
 
         return view -> {
-            displayMenu(
-                    view.getContext(),
-                    (ListMenuButton) view,
-                    buildMenuItems(),
+            displayMenu(view.getContext(), (ListMenuButton) view, buildMenuItems(),
                     id -> onItemClicked.onResult(id));
             return true;
         };
@@ -58,24 +64,17 @@ public class AdaptiveButtonActionMenuCoordinator {
      * @param onItemClicked  The clicked listener handling clicks on TabSwitcherActionMenu.
      */
     @VisibleForTesting
-    public void displayMenu(
-            final Context context,
-            ListMenuButton anchorView,
-            ModelList listItems,
+    public void displayMenu(final Context context, ListMenuButton anchorView, ModelList listItems,
             Callback<Integer> onItemClicked) {
-        RectProvider rectProvider = MenuBuilderHelper.getRectProvider(anchorView);
-        mListMenu =
-                BrowserUiListMenuUtils.getBasicListMenu(
-                        context,
-                        listItems,
-                        (model) -> {
-                            onItemClicked.onResult(model.get(ListMenuItemProperties.MENU_ITEM_ID));
-                        });
+        RectProvider rectProvider = getRectProvider(anchorView);
+        mListMenu = new BasicListMenu(context, listItems, (model) -> {
+            onItemClicked.onResult(model.get(ListMenuItemProperties.MENU_ITEM_ID));
+        });
 
-        int verticalPadding =
-                context.getResources()
-                        .getDimensionPixelOffset(R.dimen.adaptive_button_menu_vertical_padding);
+        int verticalPadding = context.getResources().getDimensionPixelOffset(
+                R.dimen.adaptive_button_menu_vertical_padding);
         ListView listView = mListMenu.getListView();
+<<<<<<< HEAD
         listView.setPaddingRelative(
                 listView.getPaddingStart(),
                 verticalPadding,
@@ -87,30 +86,56 @@ public class AdaptiveButtonActionMenuCoordinator {
                     public ListMenu getListMenu() {
                         return mListMenu;
                     }
+=======
+        listView.setPaddingRelative(listView.getPaddingStart(), verticalPadding,
+                listView.getPaddingEnd(), verticalPadding);
+        ListMenuButtonDelegate delegate = new ListMenuButtonDelegate() {
+            @Override
+            public ListMenu getListMenu() {
+                return mListMenu;
+            }
+>>>>>>> chromium
 
-                    @Override
-                    public RectProvider getRectProvider(View listMenuButton) {
-                        return rectProvider;
-                    }
-                };
+            @Override
+            public RectProvider getRectProvider(View listMenuButton) {
+                return rectProvider;
+            }
+        };
 
-        anchorView.setDelegate(delegate, /* overrideOnClickListener= */ false);
+        anchorView.setDelegate(delegate);
         anchorView.showMenu();
-        RecordUserAction.record("MobileAdaptiveMenuShown");
     }
 
     @VisibleForTesting
     public ModelList buildMenuItems() {
         ModelList itemList = new ModelList();
+<<<<<<< HEAD
         itemList.add(
                 BrowserUiListMenuUtils.buildMenuListItem(
                         R.string.adaptive_toolbar_menu_edit_shortcut,
                         R.id.customize_adaptive_button_menu_id,
                         /* startIconId= */ 0,
                         /* enabled= */ true));
+=======
+        itemList.add(BasicListMenu.buildMenuListItem(R.string.adaptive_toolbar_menu_edit_shortcut,
+                R.id.customize_adaptive_button_menu_id, /*iconId=*/0, /*enabled=*/true));
+>>>>>>> chromium
         return itemList;
     }
 
+    private RectProvider getRectProvider(View anchorView) {
+        ViewRectProvider rectProvider = new ViewRectProvider(anchorView);
+        rectProvider.setIncludePadding(true);
+
+        int toolbarHeight = anchorView.getHeight();
+        int iconHeight =
+                anchorView.getResources().getDimensionPixelSize(R.dimen.toolbar_icon_height);
+        int paddingBottom = (toolbarHeight - iconHeight) / 2;
+        rectProvider.setInsetPx(0, 0, 0, paddingBottom);
+        return rectProvider;
+    }
+
+    @VisibleForTesting
     public View getContentViewForTesting() {
         return mListMenu.getContentView();
     }

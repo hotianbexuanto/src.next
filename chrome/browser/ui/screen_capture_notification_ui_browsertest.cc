@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,8 @@
 #include <memory>
 #include <string>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
+#include "base/macros.h"
 #include "base/run_loop.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
@@ -17,18 +18,12 @@
 class ScreenCaptureNotificationUiBrowserTest : public DialogBrowserTest {
  public:
   ScreenCaptureNotificationUiBrowserTest() = default;
-
-  ScreenCaptureNotificationUiBrowserTest(
-      const ScreenCaptureNotificationUiBrowserTest&) = delete;
-  ScreenCaptureNotificationUiBrowserTest& operator=(
-      const ScreenCaptureNotificationUiBrowserTest&) = delete;
-
   ~ScreenCaptureNotificationUiBrowserTest() override = default;
 
   // TestBrowserUi:
   void ShowUi(const std::string& name) override {
     screen_capture_notification_ui_ = ScreenCaptureNotificationUI::Create(
-        std::u16string(u"ScreenCaptureNotificationUI Browser Test"), nullptr);
+        std::u16string(u"ScreenCaptureNotificationUI Browser Test"));
     on_started_result_ = screen_capture_notification_ui_->OnStarted(
         base::BindOnce(
             [](ScreenCaptureNotificationUiBrowserTest* test) {
@@ -37,8 +32,7 @@ class ScreenCaptureNotificationUiBrowserTest : public DialogBrowserTest {
               }
             },
             base::Unretained(this)),
-        content::MediaStreamUI::SourceCallback(),
-        std::vector<content::DesktopMediaID>{});
+        content::MediaStreamUI::SourceCallback());
   }
 
   bool VerifyUi() override {
@@ -71,6 +65,8 @@ class ScreenCaptureNotificationUiBrowserTest : public DialogBrowserTest {
   std::unique_ptr<ScreenCaptureNotificationUI> screen_capture_notification_ui_;
   gfx::NativeViewId on_started_result_;
   std::unique_ptr<base::RunLoop> run_loop_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScreenCaptureNotificationUiBrowserTest);
 };
 
 IN_PROC_BROWSER_TEST_F(ScreenCaptureNotificationUiBrowserTest, InvokeUi) {

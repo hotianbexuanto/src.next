@@ -1,16 +1,14 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_host.h"
 
-#include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/shared_context_rate_limiter.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 
 namespace blink {
 
+<<<<<<< HEAD
 namespace {
 
 constexpr unsigned kMaxCanvasAnimationBacklog = 2;
@@ -28,6 +26,10 @@ CanvasResourceHost::CanvasResourceHost(gfx::Size size) : size_(size) {}
 
 CanvasResourceHost::~CanvasResourceHost() {
   ResetLayer();
+=======
+CanvasResourceProvider* CanvasResourceHost::ResourceProvider() const {
+  return resource_provider_.get();
+>>>>>>> chromium
 }
 
 std::unique_ptr<CanvasResourceProvider>
@@ -38,11 +40,16 @@ CanvasResourceHost::ReplaceResourceProvider(
   resource_provider_ = std::move(new_resource_provider);
   UpdateMemoryUsage();
   if (resource_provider_) {
-    resource_provider_->AlwaysEnableRasterTimersForTesting(
-        always_enable_raster_timers_for_testing_);
+    resource_provider_->Canvas()->restoreToCount(1);
+    InitializeForRecording(resource_provider_->Canvas());
+    // Using unretained here since CanvasResourceHost owns |resource_provider_|
+    // and is guaranteed to outlive it
+    resource_provider_->SetRestoreClipStackCallback(base::BindRepeating(
+        &CanvasResourceHost::InitializeForRecording, base::Unretained(this)));
   }
   if (old_resource_provider) {
-    old_resource_provider->SetCanvasResourceHost(nullptr);
+    old_resource_provider->SetRestoreClipStackCallback(
+        CanvasResourceProvider::RestoreMatrixClipStackCb());
   }
   return old_resource_provider;
 }
@@ -52,6 +59,7 @@ void CanvasResourceHost::DiscardResourceProvider() {
   UpdateMemoryUsage();
 }
 
+<<<<<<< HEAD
 void CanvasResourceHost::SetPreferred2DRasterMode(RasterModeHint hint) {
   // TODO(junov): move code that switches between CPU and GPU rasterization
   // to here.
@@ -298,6 +306,15 @@ bool CanvasResourceHost::IsResourceValid() {
   }
 
   return !!GetOrCreateCanvasResourceProvider(preferred_2d_raster_mode_);
+=======
+void CanvasResourceHost::InitializeForRecording(cc::PaintCanvas* canvas) {
+  canvas->save();
+  RestoreCanvasMatrixClipStack(canvas);
+}
+
+void CanvasResourceHost::SetFilterQuality(SkFilterQuality filter_quality) {
+  filter_quality_ = filter_quality;
+>>>>>>> chromium
 }
 
 }  // namespace blink

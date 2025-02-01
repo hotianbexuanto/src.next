@@ -1,45 +1,67 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
 import 'chrome://resources/cr_components/cr_shortcut_input/cr_shortcut_input.js';
+=======
+import 'chrome://resources/cr_elements/shared_style_css.m.js';
+import 'chrome://resources/cr_elements/shared_vars_css.m.js';
+import 'chrome://resources/cr_elements/md_select_css.m.js';
+import 'chrome://resources/polymer/v3_0/paper-styles/color.js';
+import './shortcut_input.js';
+>>>>>>> chromium
 
-import {I18nMixinLit} from 'chrome://resources/cr_elements/i18n_mixin_lit.js';
-import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import {CrContainerShadowBehavior} from 'chrome://resources/cr_elements/cr_container_shadow_behavior.m.js';
+import {html, mixinBehaviors, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {KeyboardShortcutDelegate} from './keyboard_shortcut_delegate.js';
-import {createDummyKeyboardShortcutDelegate} from './keyboard_shortcut_delegate.js';
-import {getCss} from './keyboard_shortcuts.css.js';
-import {getHtml} from './keyboard_shortcuts.html.js';
+import {KeyboardShortcutDelegate} from './keyboard_shortcut_delegate.js';
 
-const ExtensionsKeyboardShortcutsElementBase = I18nMixinLit(CrLitElement);
+/** Event interface for dom-repeat. */
+interface RepeaterEvent<T> extends CustomEvent {
+  model: {
+    get: (name: string) => T,
+    set: (name: string, val: T) => void,
+    index: number,
+  };
+}
+
+const ExtensionsKeyboardShortcutsElementBase =
+    mixinBehaviors([CrContainerShadowBehavior], PolymerElement) as
+    {new (): PolymerElement};
 
 // The UI to display and manage keyboard shortcuts set for extension commands.
-export class ExtensionsKeyboardShortcutsElement extends
+class ExtensionsKeyboardShortcutsElement extends
     ExtensionsKeyboardShortcutsElementBase {
   static get is() {
     return 'extensions-keyboard-shortcuts';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return html`{__html_template__}`;
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      delegate: {type: Object},
-      items: {type: Array},
+      delegate: Object,
+
+      items: Array,
+
+      /**
+       * Proxying the enum to be used easily by the html template.
+       */
+      CommandScope_: {
+        type: Object,
+        value: chrome.developerPrivate.CommandScope,
+      },
     };
   }
 
-  delegate: KeyboardShortcutDelegate = createDummyKeyboardShortcutDelegate();
-  items: chrome.developerPrivate.ExtensionInfo[] = [];
+  delegate: KeyboardShortcutDelegate;
+  items: Array<chrome.developerPrivate.ExtensionInfo>;
 
-  override firstUpdated() {
+  ready() {
+    super.ready();
     this.addEventListener('view-enter-start', this.onViewEnter_);
   }
 
@@ -57,34 +79,37 @@ export class ExtensionsKeyboardShortcutsElement extends
     chrome.metricsPrivate.recordUserAction('Options_ExtensionCommands');
   }
 
-  protected calculateShownItems_(): chrome.developerPrivate.ExtensionInfo[] {
+  private calculateShownItems_(): Array<chrome.developerPrivate.ExtensionInfo> {
     return this.items.filter(function(item) {
       return item.commands.length > 0;
     });
   }
 
-  protected computeScopeAriaLabel_(
-      item: chrome.developerPrivate.ExtensionInfo,
-      command: chrome.developerPrivate.Command): string {
-    return this.i18n('shortcutScopeLabel', command.description, item.name);
+  /**
+   * A polymer bug doesn't allow for databinding of a string property as a
+   * boolean, but it is correctly interpreted from a function.
+   * Bug: https://github.com/Polymer/polymer/issues/3669
+   */
+  private hasKeybinding_(keybinding: string): boolean {
+    return !!keybinding;
   }
 
   /**
    * Determines whether to disable the dropdown menu for the command's scope.
    */
-  protected computeScopeDisabled_(command: chrome.developerPrivate.Command):
+  private computeScopeDisabled_(command: chrome.developerPrivate.Command):
       boolean {
     return command.isExtensionAction || !command.isActive;
   }
 
-  protected onScopeChanged_(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    const extensionId = target.dataset['extensionId']!;
-    const commandName = target.dataset['commandName']!;
-    this.delegate.updateExtensionCommandScope(
-        extensionId, commandName,
-        (target.value as chrome.developerPrivate.CommandScope));
+  /**
+   * This function exists to force trigger an update when CommandScope_
+   * becomes available.
+   */
+  private triggerScopeChange_(scope: chrome.developerPrivate.CommandScope) {
+    return scope;
   }
+<<<<<<< HEAD
 
   protected isChromeScopeSelected_(command: chrome.developerPrivate.Command) {
     return command.scope === chrome.developerPrivate.CommandScope.CHROME;
@@ -101,13 +126,19 @@ export class ExtensionsKeyboardShortcutsElement extends
         command.scope === chrome.developerPrivate.CommandScope.GLOBAL;
   }
 }
+=======
+>>>>>>> chromium
 
-// Exported to be used in the autogenerated Lit template file
-export type KeyboardShortcutsElement = ExtensionsKeyboardShortcutsElement;
+  private onCloseButtonClick_() {
+    this.dispatchEvent(
+        new CustomEvent('close', {bubbles: true, composed: true}));
+  }
 
-declare global {
-  interface HTMLElementTagNameMap {
-    'extensions-keyboard-shortcuts': ExtensionsKeyboardShortcutsElement;
+  private onScopeChanged_(event: RepeaterEvent<string>) {
+    this.delegate.updateExtensionCommandScope(
+        event.model.get('item.id'), event.model.get('command.name'),
+        ((event.target as HTMLSelectElement).value as
+         chrome.developerPrivate.CommandScope));
   }
 }
 

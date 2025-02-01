@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,21 +7,23 @@ package org.chromium.base;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import com.google.errorprone.annotations.DoNotMock;
+import androidx.annotation.Nullable;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
+import org.chromium.base.annotations.CalledByNative;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 
 /**
- * This class mirrors unguessable_token.h. Since tokens are passed by value, we don't bother to
- * maintain a native token. This implements Parcelable so that it may be sent via binder.
+ * This class mirrors unguessable_token.h .  Since tokens are passed by value,
+ * we don't bother to maintain a native token.  This implements Parcelable so
+ * that it may be sent via binder.
  *
- * <p>To get one of these from native, one must start with a base::UnguessableToken, then create a
- * Java object from it. See unguessable_token_android.h for information.
+ * To get one of these from native, one must start with a
+ * base::UnguessableToken, then create a Java object from it.  See
+ * jni_unguessable_token.h for information.
  */
+<<<<<<< HEAD
 @NullMarked
 @DoNotMock("This is a simple value object.")
 @JNINamespace("base::android")
@@ -30,11 +32,30 @@ public final class UnguessableToken extends TokenBase implements Parcelable {
 
     public static UnguessableToken createForTesting() {
         return new UnguessableToken(++sCounterForTesting, ++sCounterForTesting);
+=======
+public class UnguessableToken implements Parcelable {
+    private final long mHigh;
+    private final long mLow;
+
+    private UnguessableToken(long high, long low) {
+        mHigh = high;
+        mLow = low;
+>>>>>>> chromium
     }
 
     @CalledByNative
-    private UnguessableToken(long high, long low) {
-        super(high, low);
+    private static UnguessableToken create(long high, long low) {
+        return new UnguessableToken(high, low);
+    }
+
+    @CalledByNative
+    public long getHighForSerialization() {
+        return mHigh;
+    }
+
+    @CalledByNative
+    public long getLowForSerialization() {
+        return mLow;
     }
 
     @Override
@@ -46,6 +67,20 @@ public final class UnguessableToken extends TokenBase implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeLong(mHigh);
         dest.writeLong(mLow);
+    }
+
+    @Override
+    public boolean equals(@Nullable Object obj) {
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        return ((UnguessableToken) obj).mHigh == mHigh && ((UnguessableToken) obj).mLow == mLow;
+    }
+
+    @Override
+    public int hashCode() {
+        int mLowHash = (int) (mLow ^ (mLow >>> 32));
+        int mHighHash = (int) (mHigh ^ (mHigh >>> 32));
+        return 31 * mLowHash + mHighHash;
     }
 
     public static final Parcelable.Creator<UnguessableToken> CREATOR =
@@ -67,15 +102,10 @@ public final class UnguessableToken extends TokenBase implements Parcelable {
                 }
             };
 
-    public long getHighForTesting() {
-        return mHigh;
-    }
-
-    public long getLowForTesting() {
-        return mLow;
-    }
-
     // To avoid unwieldy calls in JNI for tests, parcel and unparcel.
+    // TODO(liberato): It would be nice if we could include this only with a
+    // java driver that's linked only with unit tests, but i don't see a way
+    // to do that.
     @CalledByNative
     private UnguessableToken parcelAndUnparcelForTesting() {
         Parcel parcel = Parcel.obtain();
@@ -88,11 +118,4 @@ public final class UnguessableToken extends TokenBase implements Parcelable {
 
         return token;
     }
-
-    // Silences ObjectToString Error Prone warnings when printing instances.
-    @Override
-    @SuppressWarnings("RedundantOverride")
-    public String toString() {
-        return super.toString();
-    }
-}
+};

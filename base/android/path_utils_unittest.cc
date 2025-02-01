@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -53,8 +53,11 @@ TEST_F(PathUtilsTest, TestGetNativeLibraryDirectory) {
   // the base tests shared object.
   FilePath path;
   GetNativeLibraryDirectory(&path);
-  EXPECT_TRUE(base::PathExists(path.Append("libbase_unittests.so")) ||
-              base::PathExists(path.Append("libbase_unittests__library.so")));
+  EXPECT_TRUE(
+      base::PathExists(path.Append("libbase_unittests.so")) ||
+      base::PathExists(path.Append("libbase_unittests.cr.so")) ||
+      base::PathExists(path.Append("libbase_unittests__library.so")) ||
+      base::PathExists(path.Append("libbase_unittests__library.cr.so")));
 }
 
 }  // namespace android

@@ -1,11 +1,10 @@
-// Copyright 2021 The Chromium Authors
+// Copyright (c) 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CONTENT_BROWSER_SITE_INSTANCE_GROUP_MANAGER_H_
 #define CONTENT_BROWSER_SITE_INSTANCE_GROUP_MANAGER_H_
 
-#include "base/memory/raw_ptr.h"
 #include "content/public/browser/render_process_host_observer.h"
 
 namespace content {
@@ -33,10 +32,10 @@ class SiteInstanceImpl;
 // get assigned to groups. Currently this object only holds the logic for the
 // 'default process' model which implements mode 2 mentioned above for any
 // SiteInstance that does not require a dedicated process.
-class SiteInstanceGroupManager final : private RenderProcessHostObserver {
+class SiteInstanceGroupManager : private RenderProcessHostObserver {
  public:
   SiteInstanceGroupManager();
-  ~SiteInstanceGroupManager() override;
+  ~SiteInstanceGroupManager() final;
 
   // Returns a process that can be assigned to `site_instance`. This may be
   // the process for an existing group the SiteInstance is assigned to, or
@@ -60,11 +59,9 @@ class SiteInstanceGroupManager final : private RenderProcessHostObserver {
   // selecting an appropriate default process.
   void OnProcessSet(SiteInstanceImpl* site_instance);
 
-  RenderProcessHost* default_process() { return default_process_; }
-
  private:
   // RenderProcessHostObserver implementation.
-  void RenderProcessHostDestroyed(RenderProcessHost* host) override;
+  void RenderProcessHostDestroyed(RenderProcessHost* host) final;
 
   // Evaluates the process assigned to `site_instance` and determines if it is
   // suitable to be the default process. If suitable, it keeps a reference
@@ -76,7 +73,7 @@ class SiteInstanceGroupManager final : private RenderProcessHostObserver {
 
   // The process to use for any SiteInstance in this BrowsingInstance that
   // doesn't require a dedicated process.
-  raw_ptr<RenderProcessHost> default_process_ = nullptr;
+  RenderProcessHost* default_process_ = nullptr;
 };
 }  // namespace content
 

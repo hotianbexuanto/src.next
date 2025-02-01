@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -89,16 +89,24 @@ static_assert(sizeof(kBt601ColorProfile) == 380u);
 
 void Bt709ColorProfileData(Vector<char>& data) {
   DCHECK(WTF::IsMainThread());
-  DCHECK(data.empty());
+  DCHECK(data.IsEmpty());
 
+<<<<<<< HEAD
   data.AppendSpan(base::as_byte_span(kBt709ColorProfile));
+=======
+  data.Append(bt709ColorProfile::data(), bt709ColorProfile::size());
+>>>>>>> chromium
 }
 
 void Bt601ColorProfileData(Vector<char>& data) {
   DCHECK(WTF::IsMainThread());
-  DCHECK(data.empty());
+  DCHECK(data.IsEmpty());
 
+<<<<<<< HEAD
   data.AppendSpan(base::as_byte_span(kBt601ColorProfile));
+=======
+  data.Append(bt601ColorProfile::data(), bt601ColorProfile::size());
+>>>>>>> chromium
 }
 
 }  // namespace blink

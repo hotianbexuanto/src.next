@@ -1,39 +1,34 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/after_startup_task_utils.h"
 
 #include "base/containers/circular_deque.h"
+#include "base/lazy_instance.h"
+#include "base/macros.h"
 #include "base/memory/ptr_util.h"
 #include "base/metrics/histogram_macros.h"
-#include "base/no_destructor.h"
 #include "base/process/process.h"
+#include "base/sequenced_task_runner.h"
 #include "base/synchronization/atomic_flag.h"
-#include "base/task/sequenced_task_runner.h"
-#include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "chrome/browser/ui/browser_finder.h"
+#include "components/performance_manager/performance_manager_impl.h"
 #include "components/performance_manager/public/graph/graph.h"
 #include "components/performance_manager/public/graph/page_node.h"
-#include "components/performance_manager/public/performance_manager.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ui/ash/login/login_display_host.h"
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+#include "ui/views/linux_ui/linux_ui.h"
 #endif
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-#include "chromeos/startup/browser_params_proxy.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
 using content::BrowserThread;
 
 namespace {
-
-using performance_manager::PerformanceManager;
 
 struct AfterStartupTask {
   AfterStartupTask(const base::Location& from_here,
@@ -48,20 +43,18 @@ struct AfterStartupTask {
 };
 
 // The flag may be read on any thread, but must only be set on the UI thread.
-base::AtomicFlag& GetStartupCompleteFlag() {
-  static base::NoDestructor<base::AtomicFlag> startup_complete_flag;
-  return *startup_complete_flag;
-}
+base::LazyInstance<base::AtomicFlag>::Leaky g_startup_complete_flag;
 
 // The queue may only be accessed on the UI thread.
-base::circular_deque<AfterStartupTask*>& GetAfterStartupTasks() {
-  static base::NoDestructor<base::circular_deque<AfterStartupTask*>>
-      after_startup_tasks;
-  return *after_startup_tasks;
-}
+base::LazyInstance<base::circular_deque<AfterStartupTask*>>::Leaky
+    g_after_startup_tasks;
 
 bool IsBrowserStartupComplete() {
-  return GetStartupCompleteFlag().IsSet();
+  // Be sure to initialize the LazyInstance on the main thread since the flag
+  // may only be set on it's initializing thread.
+  if (!g_startup_complete_flag.IsCreated())
+    return false;
+  return g_startup_complete_flag.Get().IsSet();
 }
 
 void RunTask(std::unique_ptr<AfterStartupTask> queued_task) {
@@ -100,7 +93,7 @@ void QueueTask(std::unique_ptr<AfterStartupTask> queued_task) {
     ScheduleTask(std::move(queued_task));
     return;
   }
-  GetAfterStartupTasks().push_back(queued_task.release());
+  g_after_startup_tasks.Get().push_back(queued_task.release());
 }
 
 void SetBrowserStartupIsComplete() {
@@ -109,15 +102,9 @@ void SetBrowserStartupIsComplete() {
   if (IsBrowserStartupComplete())
     return;
 
-  size_t browser_count = 0;
-#if !BUILDFLAG(IS_ANDROID)
-  browser_count = chrome::GetTotalBrowserCount();
-#endif  // !BUILDFLAG(IS_ANDROID)
-  TRACE_EVENT_INSTANT1("startup", "Startup.StartupComplete",
-                       TRACE_EVENT_SCOPE_GLOBAL, "BrowserCount", browser_count);
-  GetStartupCompleteFlag().Set();
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
+  g_startup_complete_flag.Get().Set();
+#if defined(OS_MAC) || defined(OS_WIN) || defined(OS_LINUX) || \
+    defined(OS_CHROMEOS)
   // Process::Current().CreationTime() is not available on all platforms.
   const base::Time process_creation_time =
       base::Process::Current().CreationTime();
@@ -125,15 +112,24 @@ void SetBrowserStartupIsComplete() {
     UMA_HISTOGRAM_LONG_TIMES("Startup.AfterStartupTaskDelayedUntilTime",
                              base::Time::Now() - process_creation_time);
   }
-#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) ||
-        // BUILDFLAG(IS_CHROMEOS)
+#endif  // defined(OS_MAC) || defined(OS_WIN) || defined(OS_LINUX) ||
+        // defined(OS_CHROMEOS)
   UMA_HISTOGRAM_COUNTS_10000("Startup.AfterStartupTaskCount",
-                             GetAfterStartupTasks().size());
-  for (AfterStartupTask* queued_task : GetAfterStartupTasks()) {
+                             g_after_startup_tasks.Get().size());
+  for (AfterStartupTask* queued_task : g_after_startup_tasks.Get())
     ScheduleTask(base::WrapUnique(queued_task));
-  }
-  GetAfterStartupTasks().clear();
-  GetAfterStartupTasks().shrink_to_fit();
+  g_after_startup_tasks.Get().clear();
+  g_after_startup_tasks.Get().shrink_to_fit();
+
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+  // Make sure we complete the startup notification sequence, or launchers will
+  // get confused by not receiving the expected message from the main process.
+  views::LinuxUI* linux_ui = views::LinuxUI::instance();
+  if (linux_ui)
+    linux_ui->NotifyWindowManagerStartupComplete();
+#endif
 }
 
 // Observes the first visible page load and sets the startup complete
@@ -142,24 +138,14 @@ void SetBrowserStartupIsComplete() {
 class StartupObserver : public performance_manager::GraphOwned,
                         public performance_manager::PageNodeObserver {
  public:
-  StartupObserver(const StartupObserver&) = delete;
-  StartupObserver& operator=(const StartupObserver&) = delete;
-
   ~StartupObserver() override = default;
 
   static void Start();
 
  private:
-  using LoadingState = performance_manager::PageNode::LoadingState;
-
   StartupObserver() = default;
 
   void OnStartupComplete() {
-    if (!PerformanceManager::IsAvailable()) {
-      // Already shutting down before startup finished. Do not notify.
-      return;
-    }
-
     // This should only be called once.
     if (!startup_complete_) {
       startup_complete_ = true;
@@ -180,14 +166,15 @@ class StartupObserver : public performance_manager::GraphOwned,
   }
 
   // PageNodeObserver overrides
-  void OnLoadingStateChanged(const performance_manager::PageNode* page_node,
-                             LoadingState previous_state) override {
+  void OnLoadingStateChanged(
+      const performance_manager::PageNode* page_node) override {
     // Only interested in visible PageNodes
     if (page_node->IsVisible()) {
-      if (page_node->GetLoadingState() == LoadingState::kLoadedIdle ||
-          page_node->GetLoadingState() == LoadingState::kLoadingTimedOut) {
+      if (page_node->GetLoadingState() ==
+              performance_manager::PageNode::LoadingState::kLoadedIdle ||
+          page_node->GetLoadingState() ==
+              performance_manager::PageNode::LoadingState::kLoadingTimedOut)
         OnStartupComplete();
-      }
     }
   }
 
@@ -195,15 +182,16 @@ class StartupObserver : public performance_manager::GraphOwned,
     // Pass to the performance manager so we can get notified when
     // loading completes.  Ownership of this object is passed to the
     // performance manager.
-    DCHECK(PerformanceManager::IsAvailable());
-    PerformanceManager::PassToGraph(FROM_HERE, base::WrapUnique(this));
+    DCHECK(performance_manager::PerformanceManagerImpl::IsAvailable());
+    performance_manager::PerformanceManagerImpl::PassToGraph(
+        FROM_HERE, base::WrapUnique(this));
   }
 
   void TakeFromGraph() {
     // Remove this object from the performance manager.  This will
     // cause the object to be deleted.
-    DCHECK(PerformanceManager::IsAvailable());
-    PerformanceManager::CallOnGraph(
+    DCHECK(performance_manager::PerformanceManagerImpl::IsAvailable());
+    performance_manager::PerformanceManager::CallOnGraph(
         FROM_HERE, base::BindOnce(
                        [](performance_manager::GraphOwned* observer,
                           performance_manager::Graph* graph) {
@@ -213,6 +201,7 @@ class StartupObserver : public performance_manager::GraphOwned,
   }
 
   bool startup_complete_ = false;
+  DISALLOW_COPY_AND_ASSIGN(StartupObserver);
 };
 
 // static
@@ -227,35 +216,14 @@ void StartupObserver::Start() {
 void AfterStartupTaskUtils::StartMonitoringStartup() {
   // For Android, startup completion is signaled via
   // AfterStartupTaskUtils.java. We do not use the StartupObserver.
-#if !BUILDFLAG(IS_ANDROID)
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  // For Lacros, there may not be a Browser created at startup.
-  if (chromeos::BrowserParamsProxy::Get()->InitialBrowserAction() ==
-      crosapi::mojom::InitialBrowserAction::kDoNotOpenWindow) {
-    content::GetUIThreadTaskRunner({})->PostTask(
-        FROM_HERE, base::BindOnce(&SetBrowserStartupIsComplete));
-    return;
-  }
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  // If we are on a login screen which does not expect WebUI to be loaded,
-  // Browser won't be created at startup.
-  if (ash::LoginDisplayHost::default_host() &&
-      !ash::LoginDisplayHost::default_host()->IsWebUIStarted()) {
-    content::GetUIThreadTaskRunner({})->PostTask(
-        FROM_HERE, base::BindOnce(&SetBrowserStartupIsComplete));
-    return;
-  }
-#endif
-
+#if !defined(OS_ANDROID)
   StartupObserver::Start();
-#endif  // !BUILDFLAG(IS_ANDROID)
+#endif  // !defined(OS_ANDROID)
 
   // Add failsafe timeout
   content::GetUIThreadTaskRunner({})->PostDelayedTask(
       FROM_HERE, base::BindOnce(&SetBrowserStartupIsComplete),
-      base::Minutes(3));
+      base::TimeDelta::FromMinutes(3));
 }
 
 void AfterStartupTaskUtils::PostTask(
@@ -285,9 +253,9 @@ bool AfterStartupTaskUtils::IsBrowserStartupComplete() {
 }
 
 void AfterStartupTaskUtils::UnsafeResetForTesting() {
-  DCHECK(GetAfterStartupTasks().empty());
+  DCHECK(g_after_startup_tasks.Get().empty());
   if (!IsBrowserStartupComplete())
     return;
-  GetStartupCompleteFlag().UnsafeResetForTesting();  // IN-TEST
+  g_startup_complete_flag.Get().UnsafeResetForTesting();
   DCHECK(!IsBrowserStartupComplete());
 }

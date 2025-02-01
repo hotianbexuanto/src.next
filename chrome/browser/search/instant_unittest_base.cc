@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,9 +6,10 @@
 
 #include <string>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search/instant_service.h"
 #include "chrome/browser/search/instant_service_factory.h"
@@ -17,6 +18,7 @@
 #include "chrome/browser/search_engines/ui_thread_search_terms_data.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/search_test_utils.h"
+#include "components/image_fetcher/core/mock_image_fetcher.h"
 #include "components/search/search.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_service.h"
@@ -35,6 +37,9 @@ void InstantUnitTestBase::SetUp() {
 
   SetUserSelectedDefaultSearchProvider("{google:baseURL}");
   instant_service_ = InstantServiceFactory::GetForProfile(profile());
+
+  instant_service_->SetImageFetcherForTesting(
+      new testing::NiceMock<image_fetcher::MockImageFetcher>());
 }
 
 void InstantUnitTestBase::TearDown() {
@@ -62,10 +67,8 @@ void InstantUnitTestBase::SetUserSelectedDefaultSearchProvider(
   template_url_service_->SetUserSelectedDefaultSearchProvider(template_url);
 }
 
-TestingProfile* InstantUnitTestBase::CreateProfile(
-    const std::string& profile_name) {
-  TestingProfile* profile =
-      BrowserWithTestWindowTest::CreateProfile(profile_name);
+TestingProfile* InstantUnitTestBase::CreateProfile() {
+  TestingProfile* profile = BrowserWithTestWindowTest::CreateProfile();
   TemplateURLServiceFactory::GetInstance()->SetTestingFactoryAndUse(
       profile,
       base::BindRepeating(&TemplateURLServiceFactory::BuildInstanceFor));

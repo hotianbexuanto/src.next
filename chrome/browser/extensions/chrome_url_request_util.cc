@@ -1,20 +1,19 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/chrome_url_request_util.h"
 
 #include <memory>
-#include <string>
 #include <utility>
 
+#include "base/bind.h"
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
-#include "base/memory/ref_counted_memory.h"
 #include "base/memory/weak_ptr.h"
 #include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
+#include "base/task/post_task.h"
 #include "base/task/thread_pool.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/extensions/chrome_manifest_url_handlers.h"
@@ -22,9 +21,7 @@
 #include "extensions/browser/extension_protocols.h"
 #include "extensions/browser/extensions_browser_client.h"
 #include "extensions/browser/url_request_util.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/file_util.h"
-#include "mojo/public/c/system/types.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/base/completion_once_callback.h"
@@ -38,7 +35,6 @@
 #include "services/network/public/mojom/url_response_head.mojom.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/template_expressions.h"
-#include "url/gurl.h"
 
 using extensions::ExtensionsBrowserClient;
 
@@ -51,7 +47,8 @@ void DetermineCharset(const std::string& mime_type,
                        base::CompareCase::INSENSITIVE_ASCII)) {
     // All of our HTML files should be UTF-8 and for other resource types
     // (like images), charset doesn't matter.
-    DCHECK(base::IsStringUTF8(base::as_string_view(*data)));
+    DCHECK(base::IsStringUTF8(base::StringPiece(
+        reinterpret_cast<const char*>(data->front()), data->size())));
     *out_charset = "utf-8";
   }
 }
@@ -68,8 +65,12 @@ bool IsJavaScriptMimeType(std::string_view mime_type) {
 
 scoped_refptr<base::RefCountedMemory> GetResource(
     int resource_id,
+<<<<<<< HEAD
     const extensions::ExtensionId& extension_id,
     const std::string_view mime_type) {
+=======
+    const std::string& extension_id) {
+>>>>>>> chromium
   const ui::ResourceBundle& rb = ui::ResourceBundle::GetSharedInstance();
   scoped_refptr<base::RefCountedMemory> bytes =
       rb.LoadDataResourceBytes(resource_id);
@@ -80,6 +81,7 @@ scoped_refptr<base::RefCountedMemory> GetResource(
                 ->GetTemplateReplacementsForExtension(extension_id)
           : nullptr;
 
+<<<<<<< HEAD
   std::string temp_str;
   if (replacements && IsHtmlMimeType(mime_type)) {
     temp_str = ui::ReplaceTemplateExpressions(base::as_string_view(*bytes),
@@ -90,6 +92,14 @@ scoped_refptr<base::RefCountedMemory> GetResource(
     CHECK(ui::ReplaceTemplateExpressionsInJS(base::as_string_view(*bytes),
                                              *replacements, &temp_str));
     return base::MakeRefCounted<base::RefCountedString>(std::move(temp_str));
+=======
+  if (replacements) {
+    base::StringPiece input(reinterpret_cast<const char*>(bytes->front()),
+                            bytes->size());
+    std::string temp_str = ui::ReplaceTemplateExpressions(input, *replacements);
+    DCHECK(!temp_str.empty());
+    return base::RefCountedString::TakeString(&temp_str);
+>>>>>>> chromium
   } else {
     return bytes;
   }
@@ -99,9 +109,6 @@ scoped_refptr<base::RefCountedMemory> GetResource(
 // component extensions.
 class ResourceBundleFileLoader : public network::mojom::URLLoader {
  public:
-  ResourceBundleFileLoader(const ResourceBundleFileLoader&) = delete;
-  ResourceBundleFileLoader& operator=(const ResourceBundleFileLoader&) = delete;
-
   static void CreateAndStart(
       const network::ResourceRequest& request,
       mojo::PendingReceiver<network::mojom::URLLoader> loader,
@@ -122,7 +129,7 @@ class ResourceBundleFileLoader : public network::mojom::URLLoader {
       const std::vector<std::string>& removed_headers,
       const net::HttpRequestHeaders& modified_headers,
       const net::HttpRequestHeaders& modified_cors_exempt_headers,
-      const std::optional<GURL>& new_url) override {
+      const absl::optional<GURL>& new_url) override {
     NOTREACHED() << "No redirects for local file loads.";
   }
   // Current implementation reads all resource data at start of resource
@@ -195,19 +202,12 @@ class ResourceBundleFileLoader : public network::mojom::URLLoader {
       head->headers->AddHeader(net::HttpRequestHeaders::kContentType,
                                head->mime_type.c_str());
     }
-    client_->OnReceiveResponse(std::move(head), std::move(consumer_handle),
-                               std::nullopt);
+    client_->OnReceiveResponse(std::move(head));
+    client_->OnStartLoadingResponseBody(std::move(consumer_handle));
 
-    size_t actually_written_bytes = 0;
-    MojoResult result = producer_handle->WriteData(
-        *data, MOJO_WRITE_DATA_FLAG_NONE, actually_written_bytes);
-
-    if (result == MOJO_RESULT_OK) {
-      // All bytes should fit into the buffer size used in `CreateDataPipe`
-      // above.
-      CHECK_EQ(actually_written_bytes, data->size());
-    }
-
+    uint32_t write_size = data->size();
+    MojoResult result = producer_handle->WriteData(data->front(), &write_size,
+                                                   MOJO_WRITE_DATA_FLAG_NONE);
     OnFileWritten(result);
   }
 
@@ -241,6 +241,8 @@ class ResourceBundleFileLoader : public network::mojom::URLLoader {
   mojo::Remote<network::mojom::URLLoaderClient> client_;
   scoped_refptr<net::HttpResponseHeaders> response_headers_;
   base::WeakPtrFactory<ResourceBundleFileLoader> weak_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(ResourceBundleFileLoader);
 };
 
 }  // namespace
@@ -257,11 +259,10 @@ bool AllowCrossRendererResourceLoad(
     const Extension* extension,
     const ExtensionSet& extensions,
     const ProcessMap& process_map,
-    const GURL& upstream_url,
     bool* allowed) {
   if (url_request_util::AllowCrossRendererResourceLoad(
           request, destination, page_transition, child_id, is_incognito,
-          extension, extensions, process_map, upstream_url, allowed)) {
+          extension, extensions, process_map, allowed)) {
     return true;
   }
 

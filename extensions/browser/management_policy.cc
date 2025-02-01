@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -56,7 +56,8 @@ bool ManagementPolicy::Provider::MustRemainEnabled(
 
 bool ManagementPolicy::Provider::MustRemainDisabled(
     const Extension* extension,
-    disable_reason::DisableReason* reason) const {
+    disable_reason::DisableReason* reason,
+    std::u16string* error) const {
   return false;
 }
 
@@ -86,9 +87,10 @@ void ManagementPolicy::RegisterProviders(
     providers_.insert(provider.get());
 }
 
-bool ManagementPolicy::UserMayLoad(const Extension* extension) const {
-  return ApplyToProviderList(&Provider::UserMayLoad, "Installation", true,
-                             extension, /*error=*/nullptr);
+bool ManagementPolicy::UserMayLoad(const Extension* extension,
+                                   std::u16string* error) const {
+  return ApplyToProviderList(
+      &Provider::UserMayLoad, "Installation", true, extension, error);
 }
 
 bool ManagementPolicy::UserMayInstall(const Extension* extension,
@@ -127,21 +129,18 @@ bool ManagementPolicy::MustRemainEnabled(const Extension* extension,
       &Provider::MustRemainEnabled, "Disabling", false, extension, error);
 }
 
-bool ManagementPolicy::MustRemainDisabled(
-    const Extension* extension,
-    disable_reason::DisableReason* reason) const {
-  if (!UserMayLoad(extension)) {
-    if (reason) {
+bool ManagementPolicy::MustRemainDisabled(const Extension* extension,
+                                          disable_reason::DisableReason* reason,
+                                          std::u16string* error) const {
+  if (!UserMayLoad(extension, error)) {
+    if (reason)
       *reason = disable_reason::DISABLE_BLOCKED_BY_POLICY;
-    }
     return true;
   }
 
-  for (const auto& provider : providers_) {
-    if (provider->MustRemainDisabled(extension, reason)) {
+  for (auto it = providers_.cbegin(); it != providers_.cend(); ++it)
+    if ((*it)->MustRemainDisabled(extension, reason, error))
       return true;
-    }
-  }
 
   return false;
 }

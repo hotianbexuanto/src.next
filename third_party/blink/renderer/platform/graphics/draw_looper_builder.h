@@ -31,18 +31,17 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_DRAW_LOOPER_BUILDER_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_DRAW_LOOPER_BUILDER_H_
 
-#include "cc/paint/draw_looper.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
+#include "third_party/skia/include/effects/SkLayerDrawLooper.h"
 
-namespace gfx {
-class Vector2dF;
-}
+class SkDrawLooper;
 
 namespace blink {
 
 class Color;
+class FloatSize;
 
 class PLATFORM_EXPORT DrawLooperBuilder final {
   STACK_ALLOCATED();
@@ -62,19 +61,19 @@ class PLATFORM_EXPORT DrawLooperBuilder final {
 
   ~DrawLooperBuilder();
 
-  // Creates the cc::DrawLooper and passes ownership to the caller. The builder
+  // Creates the SkDrawLooper and passes ownership to the caller. The builder
   // should not be used any more after calling this method.
-  sk_sp<cc::DrawLooper> DetachDrawLooper();
+  sk_sp<SkDrawLooper> DetachDrawLooper();
 
   void AddUnmodifiedContent();
-  void AddShadow(const gfx::Vector2dF& offset,
+  void AddShadow(const FloatSize& offset,
                  float blur,
                  const Color&,
                  ShadowTransformMode = kShadowRespectsTransforms,
                  ShadowAlphaMode = kShadowRespectsAlpha);
 
  private:
-  cc::DrawLooperBuilder draw_looper_builder_;
+  SkLayerDrawLooper::Builder sk_draw_looper_builder_;
 };
 
 }  // namespace blink

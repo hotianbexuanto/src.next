@@ -1,12 +1,14 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 import 'chrome://resources/cr_elements/cr_drawer/cr_drawer.js';
-import 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render_lit.js';
-import 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
+import 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render.m.js';
+import 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.m.js';
 import 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
 import 'chrome://resources/cr_elements/cr_view_manager/cr_view_manager.js';
+import 'chrome://resources/cr_elements/hidden_style_css.m.js';
+import 'chrome://resources/cr_elements/shared_vars_css.m.js';
 import './activity_log/activity_log.js';
 import './detail_view.js';
 import './drop_overlay.js';
@@ -18,10 +20,12 @@ import './keyboard_shortcuts.js';
 import './load_error.js';
 import './options_dialog.js';
 import './sidebar.js';
-import './site_permissions/site_permissions.js';
-import './site_permissions/site_permissions_by_site.js';
 import './toolbar.js';
+// <if expr="chromeos">
+import './kiosk_dialog.js';
+// </if>
 
+<<<<<<< HEAD
 import {CrContainerShadowMixinLit} from 'chrome://resources/cr_elements/cr_container_shadow_mixin_lit.js';
 import {getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
 import type {CrViewManagerElement} from 'chrome://resources/cr_elements/cr_view_manager/cr_view_manager.js';
@@ -40,9 +44,20 @@ import {getCss} from './manager.css.js';
 import {getHtml} from './manager.html.js';
 import type {PageState} from './navigation_helper.js';
 import {Dialog, navigation, Page} from './navigation_helper.js';
+=======
+import {assert, assertNotReached} from 'chrome://resources/js/assert.m.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.m.js';
+import {html, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {CrViewManagerElement} from 'chrome://resources/cr_elements/cr_view_manager/cr_view_manager.js';
+
+import {ActivityLogExtensionPlaceholder} from './activity_log/activity_log.js';
+import {ExtensionsDetailViewElement} from './detail_view.js';
+// <if expr="chromeos">
+import {KioskBrowserProxyImpl} from './kiosk_browser_proxy.js';
+// </if>
+import {Dialog, navigation, Page, PageState} from './navigation_helper.js';
+>>>>>>> chromium
 import {Service} from './service.js';
-import type {ServiceInterface} from './service.js';
-import type {ExtensionsToolbarElement} from './toolbar.js';
 
 /**
  * Compares two extensions to determine which should come first in the list.
@@ -74,48 +89,73 @@ function compareExtensions(
 
 declare global {
   interface HTMLElementEventMap {
-    'load-error': CustomEvent<Error|chrome.developerPrivate.LoadError>;
+    'load-error': CustomEvent<chrome.developerPrivate.LoadError>;
   }
 }
 
-export interface ExtensionsManagerElement {
+interface ExtensionsManagerElement {
   $: {
-    toolbar: ExtensionsToolbarElement,
     viewManager: CrViewManagerElement,
-    'items-list': ExtensionsItemListElement,
   };
 }
 
+<<<<<<< HEAD
 // TODO(crbug.com/40270029): Always show a top shadow for the DETAILS, ERRORS and
 // SITE_PERMISSIONS_ALL_SITES pages.
 const ExtensionsManagerElementBase =
     I18nMixinLit(CrContainerShadowMixinLit(CrLitElement));
 
 export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
+=======
+class ExtensionsManagerElement extends PolymerElement {
+>>>>>>> chromium
   static get is() {
     return 'extensions-manager';
   }
 
-  static override get styles() {
-    return getCss();
-  }
-
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      canLoadUnpacked: {type: Boolean},
-      delegate: {type: Object},
-      inDevMode: {type: Boolean},
-      isMv2DeprecationNoticeDismissed: {type: Boolean},
-      showActivityLog: {type: Boolean},
-      enableEnhancedSiteControls: {type: Boolean},
-      devModeControlledByPolicy: {type: Boolean},
-      isChildAccount_: {type: Boolean},
-      incognitoAvailable_: {type: Boolean},
-      filter: {type: String},
+      canLoadUnpacked: {
+        type: Boolean,
+        value: false,
+      },
+
+      delegate: {
+        type: Object,
+        value() {
+          return Service.getInstance();
+        },
+      },
+
+      inDevMode: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('inDevMode'),
+      },
+
+      showActivityLog: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('showActivityLog'),
+      },
+
+      devModeControlledByPolicy: {
+        type: Boolean,
+        value: false,
+      },
+
+      isSupervised_: {
+        type: Boolean,
+        value: false,
+      },
+
+      incognitoAvailable_: {
+        type: Boolean,
+        value: false,
+      },
+
+      filter: {
+        type: String,
+        value: '',
+      },
 
       /**
        * The item currently displayed in the error subpage. We use a separate
@@ -124,92 +164,110 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
        * don't want the details view subpage to update when the item shown in
        * the errors page updates, and vice versa.
        */
-      errorPageItem_: {type: Object},
+      errorPageItem_: Object,
 
       /**
        * The item currently displayed in the details view subpage. See also
        * errorPageItem_.
        */
-      detailViewItem_: {type: Object},
+      detailViewItem_: Object,
 
       /**
        * The item that provides some information about the current extension
        * for the activity log view subpage. See also errorPageItem_.
        */
-      activityLogItem_: {type: Object},
+      activityLogItem_: Object,
 
-      extensions_: {type: Array},
-      apps_: {type: Array},
+      extensions_: Array,
+
+      apps_: Array,
 
       /**
        * Prevents page content from showing before data is first loaded.
        */
-      didInitPage_: {type: Boolean},
+      didInitPage_: {
+        type: Boolean,
+        value: false,
+      },
 
-      narrow_: {type: Boolean},
+      showDrawer_: Boolean,
 
-      showDrawer_: {type: Boolean},
-      showLoadErrorDialog_: {type: Boolean},
-      showInstallWarningsDialog_: {type: Boolean},
-      installWarnings_: {type: Array},
-      showOptionsDialog_: {type: Boolean},
+      showLoadErrorDialog_: Boolean,
+
+      showInstallWarningsDialog_: Boolean,
+
+      installWarnings_: Array,
+
+      showOptionsDialog_: Boolean,
 
       /**
        * Whether the last page the user navigated from was the activity log
        * page.
        */
-      fromActivityLog_: {type: Boolean},
+      fromActivityLog_: Boolean,
+
+      // <if expr="chromeos">
+      kioskEnabled_: {
+        type: Boolean,
+        value: false,
+      },
+
+      showKioskDialog_: {
+        type: Boolean,
+        value: false,
+      },
+      // </if>
     };
   }
 
-  canLoadUnpacked: boolean = false;
-  delegate: ServiceInterface = Service.getInstance();
-  inDevMode: boolean = loadTimeData.getBoolean('inDevMode');
-  isMv2DeprecationNoticeDismissed: boolean =
-      loadTimeData.getBoolean('MV2DeprecationNoticeDismissed');
-  showActivityLog: boolean = loadTimeData.getBoolean('showActivityLog');
-  enableEnhancedSiteControls: boolean =
-      loadTimeData.getBoolean('enableEnhancedSiteControls');
-  devModeControlledByPolicy: boolean = false;
-  protected isChildAccount_: boolean = false;
-  protected incognitoAvailable_: boolean = false;
-  filter: string = '';
-  protected errorPageItem_?: chrome.developerPrivate.ExtensionInfo;
-  protected detailViewItem_?: chrome.developerPrivate.ExtensionInfo;
-  protected activityLogItem_?: chrome.developerPrivate.ExtensionInfo|
+  canLoadUnpacked: boolean;
+  delegate: Service;
+  inDevMode: boolean;
+  showActivityLog: boolean;
+  devModeControlledByPolicy: boolean;
+  private isSupervised_: boolean;
+  private incognitoAvailable_: boolean;
+  filter: string;
+  private errorPageItem_?: chrome.developerPrivate.ExtensionInfo;
+  private detailViewItem_?: chrome.developerPrivate.ExtensionInfo;
+  private activityLogItem_?: chrome.developerPrivate.ExtensionInfo|
       ActivityLogExtensionPlaceholder;
-  protected extensions_: chrome.developerPrivate.ExtensionInfo[] = [];
-  protected apps_: chrome.developerPrivate.ExtensionInfo[] = [];
-  protected didInitPage_: boolean = false;
-  protected narrow_: boolean = false;
-  protected showDrawer_: boolean = false;
-  protected showLoadErrorDialog_: boolean = false;
-  protected showInstallWarningsDialog_: boolean = false;
-  protected installWarnings_: string[]|null = null;
-  protected showOptionsDialog_: boolean = false;
-  protected fromActivityLog_: boolean = false;
+  private extensions_: Array<chrome.developerPrivate.ExtensionInfo>;
+  private apps_: Array<chrome.developerPrivate.ExtensionInfo>;
+  private didInitPage_: boolean;
+  private showDrawer_: boolean;
+  private showLoadErrorDialog_: boolean;
+  private showInstallWarningsDialog_: boolean;
+  private installWarnings_: string[]|null;
+  private showOptionsDialog_: boolean;
+  private fromActivityLog_: boolean;
 
-  /**
-   * A promise resolver for any external files waiting for initPage_ to be
-   * called after the extensions info has been fetched.
-   */
-  private pageInitializedResolver_: PromiseResolver<void> =
-      new PromiseResolver<void>();
+  // <if expr="chromeos">
+  private kioskEnabled_: boolean;
+  private showKioskDialog_: boolean;
+  // </if>
 
-  /**
-   * The current page being shown. Default to null, and initPage_ will figure
-   * out the initial page based on url.
-   */
-  private currentPage_: PageState|null = null;
-
-  /**
-   * The ID of the listener on |navigation|. Stored so that the
-   * listener can be removed when this element is detached (happens in tests).
-   */
+  private currentPage_: PageState|null;
   private navigationListener_: number|null = null;
 
-  override firstUpdated(changedProperties: PropertyValues<this>) {
-    super.firstUpdated(changedProperties);
+  constructor() {
+    super();
+
+    /**
+     * The current page being shown. Default to null, and initPage_ will figure
+     * out the initial page based on url.
+     */
+    this.currentPage_ = null;
+
+    /**
+     * The ID of the listener on |navigation|. Stored so that the
+     * listener can be removed when this element is detached (happens in tests).
+     */
+    this.navigationListener_ = null;
+  }
+
+  ready() {
+    super.ready();
 
     this.addEventListener('load-error', this.onLoadError_);
     this.addEventListener('view-enter-start', this.onViewEnterStart_);
@@ -220,14 +278,12 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
 
     const onProfileStateChanged =
         (profileInfo: chrome.developerPrivate.ProfileInfo) => {
-          this.isChildAccount_ = profileInfo.isChildAccount;
+          this.isSupervised_ = profileInfo.isSupervised;
           this.incognitoAvailable_ = profileInfo.isIncognitoAvailable;
           this.devModeControlledByPolicy =
               profileInfo.isDeveloperModeControlledByPolicy;
           this.inDevMode = profileInfo.inDeveloperMode;
           this.canLoadUnpacked = profileInfo.canLoadUnpacked;
-          this.isMv2DeprecationNoticeDismissed =
-              profileInfo.isMv2DeprecationNoticeDismissed;
         };
     service.getProfileStateChangedTarget().addListener(onProfileStateChanged);
     service.getProfileConfiguration().then(onProfileStateChanged);
@@ -239,26 +295,16 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
       service.getItemStateChangedTarget().addListener(
           this.onItemStateChanged_.bind(this));
     });
+
+    // <if expr="chromeos">
+    KioskBrowserProxyImpl.getInstance().initializeKioskAppSettings().then(
+        params => {
+          this.kioskEnabled_ = params.kioskEnabled;
+        });
+    // </if>
   }
 
-  override updated(changedProperties: PropertyValues<this>) {
-    super.updated(changedProperties);
-
-    const changedPrivateProperties =
-        changedProperties as Map<PropertyKey, unknown>;
-    if (changedPrivateProperties.has('narrow_')) {
-      const drawer = this.shadowRoot!.querySelector('cr-drawer');
-      if (!this.narrow_ && drawer?.open) {
-        drawer.close();
-      }
-
-      // TODO(crbug.com/c/1451985): Handle changing focus if focus is on the
-      // sidebar or menu when it's about to disappear when `this.narrow_`
-      // changes.
-    }
-  }
-
-  override connectedCallback() {
+  connectedCallback() {
     super.connectedCallback();
 
     document.documentElement.classList.remove('loading');
@@ -270,19 +316,10 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
     });
   }
 
-  override disconnectedCallback() {
+  disconnectedCallback() {
     super.disconnectedCallback();
-    assert(this.navigationListener_);
-    assert(navigation.removeListener(this.navigationListener_));
+    assert(navigation.removeListener(this.navigationListener_!));
     this.navigationListener_ = null;
-  }
-
-  /**
-   * @return the promise of `pageInitializedResolver_` so tests can wait for the
-   * page to be initialized.
-   */
-  whenPageInitializedForTest(): Promise<void> {
-    return this.pageInitializedResolver_.promise;
   }
 
   /**
@@ -292,11 +329,6 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
   private initPage_() {
     this.didInitPage_ = true;
     this.changePage_(navigation.getCurrentPage());
-    this.pageInitializedResolver_.resolve();
-  }
-
-  protected onNarrowChanged_(e: CustomEvent<{value: boolean}>) {
-    this.narrow_ = e.detail.value;
   }
 
   private onItemStateChanged_(eventData: chrome.developerPrivate.EventData) {
@@ -316,7 +348,6 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
       case EventType.PERMISSIONS_CHANGED:
       case EventType.SERVICE_WORKER_STARTED:
       case EventType.SERVICE_WORKER_STOPPED:
-      case EventType.PINNED_ACTIONS_CHANGED:
         // |extensionInfo| can be undefined in the case of an extension
         // being unloaded right before uninstallation. There's nothing to do
         // here.
@@ -330,7 +361,7 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
         }
 
         const listId = this.getListId_(eventData.extensionInfo);
-        const currentIndex = this.getListFromId_(listId).findIndex(
+        const currentIndex = this.get(listId).findIndex(
             (item: chrome.developerPrivate.ExtensionInfo) =>
                 item.id === eventData.extensionInfo!.id);
 
@@ -354,29 +385,19 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
       case EventType.UNINSTALLED:
         this.removeItem_(eventData.item_id);
         break;
-      case EventType.CONFIGURATION_CHANGED:
-        const index = this.getIndexInList_('extensions_', eventData.item_id);
-        this.updateItem_(
-            'extensions_', index,
-            Object.assign({}, this.getData_(eventData.item_id), {
-              didAcknowledgeMV2DeprecationNotice:
-                  eventData.extensionInfo?.didAcknowledgeMV2DeprecationNotice,
-              safetyCheckText: eventData.extensionInfo?.safetyCheckText,
-            }));
-        break;
       default:
         assertNotReached();
     }
   }
 
-  protected onFilterChanged_(event: CustomEvent<string>) {
+  private onFilterChanged_(event: CustomEvent<string>) {
     if (this.currentPage_!.page !== Page.LIST) {
       navigation.navigateTo({page: Page.LIST});
     }
     this.filter = event.detail;
   }
 
-  protected onMenuButtonClick_() {
+  private onMenuButtonTap_() {
     this.showDrawer_ = true;
     setTimeout(() => {
       this.shadowRoot!.querySelector('cr-drawer')!.openDrawer();
@@ -398,9 +419,10 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
         return 'extensions_';
       case ExtensionType.THEME:
         assertNotReached('Don\'t send themes to the chrome://extensions page');
-      default:
-        assertNotReached();
+        break;
     }
+    assertNotReached();
+    return '';
   }
 
   /**
@@ -409,7 +431,7 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
    * @return The index of the item in the list, or -1 if not found.
    */
   private getIndexInList_(listId: string, itemId: string): number {
-    return this.getListFromId_(listId).findIndex(function(
+    return this.get(listId).findIndex(function(
         item: chrome.developerPrivate.ExtensionInfo) {
       return item.id === itemId;
     });
@@ -425,8 +447,8 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
    * Categorizes |extensionsAndApps| to apps and extensions and initializes
    * those lists.
    */
-  private initExtensionsAndApps_(extensionsAndApps:
-                                     chrome.developerPrivate.ExtensionInfo[]) {
+  private initExtensionsAndApps_(
+      extensionsAndApps: Array<chrome.developerPrivate.ExtensionInfo>) {
     extensionsAndApps.sort(compareExtensions);
     const apps: chrome.developerPrivate.ExtensionInfo[] = [];
     const extensions: chrome.developerPrivate.ExtensionInfo[] = [];
@@ -448,36 +470,14 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
       listId: string, item: chrome.developerPrivate.ExtensionInfo) {
     // We should never try and add an existing item.
     assert(this.getIndexInList_(listId, item.id) === -1);
-    const list = this.getListFromId_(listId);
-    let insertBeforeChild =
-        list.findIndex(function(listEl: chrome.developerPrivate.ExtensionInfo) {
-          return compareExtensions(listEl, item) > 0;
-        });
+    let insertBeforeChild = this.get(listId).findIndex(function(
+        listEl: chrome.developerPrivate.ExtensionInfo) {
+      return compareExtensions(listEl, item) > 0;
+    });
     if (insertBeforeChild === -1) {
-      insertBeforeChild = list.length;
+      insertBeforeChild = this.get(listId).length;
     }
-    this.updateList_(listId, insertBeforeChild, 0, item);
-  }
-
-  private getListFromId_(listId: string):
-      chrome.developerPrivate.ExtensionInfo[] {
-    assert(listId === 'extensions_' || listId === 'apps_');
-    return listId === 'extensions_' ? this.extensions_ : this.apps_;
-  }
-
-  // Intentionally creating a new array reference to notify the Lit item-list
-  // child via data bindings.
-  private updateList_(
-      listId: string, index: number, removeCount: number,
-      newItem?: chrome.developerPrivate.ExtensionInfo) {
-    const list = this.getListFromId_(listId);
-    if (newItem) {
-      list.splice(index, removeCount, newItem);
-    } else {
-      list.splice(index, removeCount);
-    }
-    listId === 'extensions_' ? this.extensions_ = list.slice() :
-                               this.apps_ = list.slice();
+    this.splice(listId, insertBeforeChild, 0, item);
   }
 
   /**
@@ -488,7 +488,7 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
       item: chrome.developerPrivate.ExtensionInfo) {
     // We should never try and update a non-existent item.
     assert(index >= 0);
-    this.updateList_(listId, index, 1, item);
+    this.set([listId, index], item);
 
     // Update the subpage if it is open and displaying the item. If it's not
     // open, we don't update the data even if it's displaying that item. We'll
@@ -509,64 +509,32 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
     }
   }
 
-  // When an item is removed while on the 'item list' page, move focus to the
-  // next item in the list with `listId` if available. If no items are in that
-  // list, focus to the search bar as a fallback.
-  // This is a fix for crbug.com/1416324 which causes focus to linger on a
-  // deleted element, which is then read by the screen reader.
-  private focusAfterItemRemoved_(listId: string, index: number) {
-    // A timeout is used so elements are focused after the DOM is updated.
-    setTimeout(() => {
-      const list = this.getListFromId_(listId);
-      if (list.length) {
-        const focusIndex = Math.min(list.length - 1, index);
-        const itemToFocusId = list[focusIndex]!.id;
-
-        // In the rare case where the item cannot be focused despite existing,
-        // focus the search bar.
-        if (!this.$['items-list'].focusItemButton(itemToFocusId)) {
-          this.$.toolbar.focusSearchInput();
-        }
-      } else {
-        this.$.toolbar.focusSearchInput();
-      }
-    }, 0);
-  }
-
   /**
    * @param itemId The id of item to remove.
    */
   private removeItem_(itemId: string) {
-    // Search for the item to be deleted in `extensions_`.
+    // Search for the item to be deleted in |extensions_|.
     let listId = 'extensions_';
     let index = this.getIndexInList_(listId, itemId);
     if (index === -1) {
-      // If not in `extensions_` it must be in `apps_`.
+      // If not in |extensions_| it must be in |apps_|.
       listId = 'apps_';
       index = this.getIndexInList_(listId, itemId);
     }
 
     // We should never try and remove a non-existent item.
     assert(index >= 0);
-    this.updateList_(listId, index, 1);
-    if (this.currentPage_!.page === Page.LIST) {
-      // Wait for the items list to be updated with the new value before trying
-      // to focus an item.
-      this.$['items-list'].updateComplete.then(() => {
-        this.focusAfterItemRemoved_(listId, index);
-      });
-    } else if (
-        (this.currentPage_!.page === Page.ACTIVITY_LOG ||
+    this.splice(listId, index, 1);
+    if ((this.currentPage_!.page === Page.ACTIVITY_LOG ||
          this.currentPage_!.page === Page.DETAILS ||
          this.currentPage_!.page === Page.ERRORS) &&
         this.currentPage_!.extensionId === itemId) {
-      // Leave the details page (the 'item list' page is a fine choice).
+      // Leave the details page (the 'list' page is a fine choice).
       navigation.replaceWith({page: Page.LIST});
     }
   }
 
-  private onLoadError_(
-      e: CustomEvent<Error|chrome.developerPrivate.LoadError>) {
+  private onLoadError_(e: CustomEvent<chrome.developerPrivate.LoadError>) {
     this.showLoadErrorDialog_ = true;
     setTimeout(() => {
       const dialog = this.shadowRoot!.querySelector('extensions-load-error')!;
@@ -591,10 +559,6 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
     const toPage = newPage.page;
     let data: chrome.developerPrivate.ExtensionInfo|undefined;
     let activityLogPlaceholder;
-    if (toPage === Page.LIST) {
-      // Dismiss menu notifications for extensions module of Safety Hub.
-      this.delegate.dismissSafetyHubExtensionsMenuNotification();
-    }
     if (newPage.extensionId) {
       data = this.getData_(newPage.extensionId);
       if (!data) {
@@ -616,9 +580,9 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
     }
 
     if (toPage === Page.DETAILS) {
-      this.detailViewItem_ = data;
+      this.detailViewItem_ = assert(data);
     } else if (toPage === Page.ERRORS) {
-      this.errorPageItem_ = data;
+      this.errorPageItem_ = assert(data);
     } else if (toPage === Page.ACTIVITY_LOG) {
       if (!this.showActivityLog) {
         // Redirect back to the details page if we try to view the
@@ -628,19 +592,11 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
         return;
       }
 
-      this.activityLogItem_ = data || activityLogPlaceholder;
-    } else if (
-        (toPage === Page.SITE_PERMISSIONS ||
-         toPage === Page.SITE_PERMISSIONS_ALL_SITES) &&
-        !this.enableEnhancedSiteControls) {
-      // Redirect back to the main page if we try to view the new site
-      // permissions page but the flag is not set.
-      navigation.replaceWith({page: Page.LIST});
-      return;
+      this.activityLogItem_ = data ? assert(data) : activityLogPlaceholder;
     }
 
     if (fromPage !== toPage) {
-      this.$.viewManager.switchView(toPage, 'no-animation', 'no-animation');
+      this.$.viewManager.switchView(toPage);
     }
 
     if (newPage.subpage) {
@@ -648,8 +604,7 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
       assert(newPage.extensionId);
       this.showOptionsDialog_ = true;
       setTimeout(() => {
-        this.shadowRoot!.querySelector('extensions-options-dialog')!.show(
-            data!,
+        this.shadowRoot!.querySelector('extensions-options-dialog')!.show(data!
         );
       }, 0);
     }
@@ -664,25 +619,25 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
    * This method detaches the drawer dialog completely. Should only be
    * triggered by the dialog's 'close' event.
    */
-  protected onDrawerClose_() {
+  private onDrawerClose_() {
     this.showDrawer_ = false;
   }
 
   /**
    * This method animates the closing of the drawer.
    */
-  protected onCloseDrawer_() {
+  private onCloseDrawer_() {
     const drawer = this.shadowRoot!.querySelector('cr-drawer');
     if (drawer && drawer.open) {
       drawer.close();
     }
   }
 
-  protected onLoadErrorDialogClose_() {
+  private onLoadErrorDialogClose_() {
     this.showLoadErrorDialog_ = false;
   }
 
-  protected onOptionsDialogClose_() {
+  private onOptionsDialogClose_() {
     this.showOptionsDialog_ = false;
     this.shadowRoot!.querySelector(
                         'extensions-detail-view')!.focusOptionsButton();
@@ -701,9 +656,7 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
     const viewType = (e.composedPath()[0] as HTMLElement).tagName;
     if (viewType === 'EXTENSIONS-ITEM-LIST' ||
         viewType === 'EXTENSIONS-KEYBOARD-SHORTCUTS' ||
-        viewType === 'EXTENSIONS-ACTIVITY-LOG' ||
-        viewType === 'EXTENSIONS-SITE-PERMISSIONS' ||
-        viewType === 'EXTENSIONS-SITE-PERMISSIONS-BY-SITE') {
+        viewType === 'EXTENSIONS-ACTIVITY-LOG') {
       return;
     }
 
@@ -721,7 +674,7 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
     }
   }
 
-  protected onShowInstallWarnings_(e: CustomEvent<string[]>) {
+  private onShowInstallWarnings_(e: CustomEvent<Array<string>>) {
     // Leverage Polymer data bindings instead of just assigning the
     // installWarnings on the dialog since the dialog hasn't been stamped
     // in the DOM yet.
@@ -729,10 +682,11 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
     this.showInstallWarningsDialog_ = true;
   }
 
-  protected onInstallWarningsDialogClose_() {
+  private onInstallWarningsDialogClose_() {
     this.installWarnings_ = null;
     this.showInstallWarningsDialog_ = false;
   }
+<<<<<<< HEAD
 
   /**
    * Show a toast when an unpacked extension becomes disabled when the user is
@@ -752,10 +706,21 @@ export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
         extensionInfo.disableReasons.unsupportedDeveloperExtension;
   }
 }
+=======
+>>>>>>> chromium
 
-declare global {
-  interface HTMLElementTagNameMap {
-    'extensions-manager': ExtensionsManagerElement;
+  // <if expr="chromeos">
+  private onKioskTap_() {
+    this.showKioskDialog_ = true;
+  }
+
+  private onKioskDialogClose_() {
+    this.showKioskDialog_ = false;
+  }
+  // </if>
+
+  static get template() {
+    return html`{__html_template__}`;
   }
 }
 

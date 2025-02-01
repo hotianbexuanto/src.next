@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,8 +18,14 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroid;
 import org.chromium.ui.display.DisplayAndroid.DisplayAndroidObserver;
 
+<<<<<<< HEAD
 /** Manages {@link WindowEventObserver} instances used for WebContents. */
 @NullMarked
+=======
+/**
+ * Manages {@link WindowEventObserver} instances used for WebContents.
+ */
+>>>>>>> chromium
 public final class WindowEventObserverManager implements DisplayAndroidObserver, UserData {
     private final ObserverList<WindowEventObserver> mWindowEventObservers = new ObserverList<>();
 

@@ -1,137 +1,57 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <utility>
 #include <vector>
 
+#include "base/bind.h"
+#include "base/command_line.h"
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "base/run_loop.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
-#include "base/time/time.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/history/history_service_factory.h"
-#include "chrome/browser/history/history_tab_helper.h"
 #include "chrome/browser/history/history_test_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
-#include "chrome/browser/sync/test/integration/sync_test.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/common/chrome_features.h"
+#include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/search_test_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/history/core/browser/history_db_task.h"
 #include "components/history/core/browser/history_service.h"
-#include "components/history/core/browser/history_service_observer.h"
 #include "components/history/core/common/pref_names.h"
-#include "components/history/core/test/history_service_test_util.h"
 #include "components/prefs/pref_service.h"
 #include "components/search_engines/template_url_service.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/browser/webui_config_map.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
-#include "content/public/test/fenced_frame_test_util.h"
-#include "content/public/test/prerender_test_util.h"
 #include "content/public/test/test_frame_navigation_observer.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
-#include "third_party/blink/public/common/features.h"
-#include "ui/webui/untrusted_web_ui_browsertest_util.h"
 #include "url/gurl.h"
 
 using content::BrowserThread;
-using ::testing::_;
-
-namespace {
-
-// Used to test if the History Service Observer gets called for both
-// `OnURLVisited()` and `OnURLVisitedWithNavigationId()`.
-class MockHistoryServiceObserver : public history::HistoryServiceObserver {
- public:
-  MockHistoryServiceObserver() = default;
-
-  MOCK_METHOD(void,
-              OnURLVisited,
-              (history::HistoryService*,
-               const history::URLRow&,
-               const history::VisitRow&),
-              (override));
-
-  MOCK_METHOD(void,
-              OnURLVisitedWithNavigationId,
-              (history::HistoryService*,
-               const history::URLRow&,
-               const history::VisitRow&,
-               std::optional<int64_t>),
-              (override));
-};
-
-// This helper class obtains, at ready-to-commit time,  the `visited_link_state`
-// value that was assigned to the navigation's `commit_params`.
-class VisitedLinkNavigationThrottleObserver
-    : public content::WebContentsObserver {
- public:
-  // Callers should pass in the `url` of the navigation they wish to intercept.
-  VisitedLinkNavigationThrottleObserver(content::WebContents* web_contents,
-                                        const GURL& url);
-  VisitedLinkNavigationThrottleObserver(
-      const VisitedLinkNavigationThrottleObserver&) = delete;
-  VisitedLinkNavigationThrottleObserver& operator=(
-      const VisitedLinkNavigationThrottleObserver&) = delete;
-  ~VisitedLinkNavigationThrottleObserver() override = default;
-
-  // Returns the `visited_link_state` value store in the navigation's
-  // `commit_params`.
-  std::optional<uint64_t> GetVisitedLinkSalt();
-
-  // content::WebContentsObserver:
-  void ReadyToCommitNavigation(
-      content::NavigationHandle* navigation_handle) override;
-
- private:
-  GURL url_;
-  std::optional<uint64_t> visited_link_salt_;
-};
-
-VisitedLinkNavigationThrottleObserver::VisitedLinkNavigationThrottleObserver(
-    content::WebContents* web_contents,
-    const GURL& url)
-    : content::WebContentsObserver(web_contents), url_(url) {}
-
-std::optional<uint64_t>
-VisitedLinkNavigationThrottleObserver::GetVisitedLinkSalt() {
-  return visited_link_salt_;
-}
-
-void VisitedLinkNavigationThrottleObserver::ReadyToCommitNavigation(
-    content::NavigationHandle* navigation_handle) {
-  // Return early if we intercept a different navigation.
-  if (navigation_handle->GetURL() != url_) {
-    return;
-  }
-  // Obtain the visited link state.
-  visited_link_salt_ =
-      content::GetVisitedLinkSaltForNavigation(navigation_handle);
-}
-
-}  // namespace
 
 class HistoryBrowserTest : public InProcessBrowserTest {
  protected:
+  HistoryBrowserTest() : test_server_() {
+    test_server_.ServeFilesFromSourceDirectory(GetChromeTestDataDir());
+  }
+
   void SetUpOnMainThread() override {
     host_resolver()->AddRule("*", "127.0.0.1");
-    embedded_https_test_server().ServeFilesFromSourceDirectory(
-        GetChromeTestDataDir());
-    ASSERT_TRUE(embedded_https_test_server().Start());
+    ASSERT_TRUE(test_server_.Start());
   }
 
   PrefService* GetPrefs() {
@@ -158,22 +78,18 @@ class HistoryBrowserTest : public InProcessBrowserTest {
     EXPECT_EQ(0U, urls.size());
   }
 
-  GURL GetTestFileURL(const char* filename) {
-    return embedded_https_test_server().GetURL(std::string("/History/") +
-                                               filename);
-  }
-
   void LoadAndWaitForURL(const GURL& url) {
     std::u16string expected_title(u"OK");
     content::TitleWatcher title_watcher(
         browser()->tab_strip_model()->GetActiveWebContents(), expected_title);
     title_watcher.AlsoWaitForTitle(u"FAIL");
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+    ui_test_utils::NavigateToURL(browser(), url);
     EXPECT_EQ(expected_title, title_watcher.WaitAndGetTitle());
   }
 
   void LoadAndWaitForFile(const char* filename) {
-    LoadAndWaitForURL(GetTestFileURL(filename));
+    GURL url = test_server_.GetURL(std::string("/History") + filename);
+    LoadAndWaitForURL(url);
   }
 
   bool HistoryContainsURL(const GURL& url) { return QueryURL(url).success; }
@@ -201,34 +117,6 @@ class HistoryBrowserTest : public InProcessBrowserTest {
     return query_url_result;
   }
 
-  std::vector<history::AnnotatedVisit> GetAllAnnotatedVisits() {
-    std::vector<history::AnnotatedVisit> annotated_visits;
-
-    history::HistoryService* history_service =
-        HistoryServiceFactory::GetForProfile(
-            browser()->profile(), ServiceAccessType::EXPLICIT_ACCESS);
-
-    base::CancelableTaskTracker tracker;
-
-    history::QueryOptions options;
-    options.duplicate_policy = history::QueryOptions::KEEP_ALL_DUPLICATES;
-
-    base::RunLoop run_loop;
-    history_service->GetAnnotatedVisits(
-        options,
-        /*compute_redirect_chain_start_properties=*/true,
-        /*get_unclustered_visits_only*/ false,
-        base::BindLambdaForTesting(
-            [&](std::vector<history::AnnotatedVisit> visits) {
-              annotated_visits = std::move(visits);
-              run_loop.Quit();
-            }),
-        &tracker);
-    run_loop.Run();
-
-    return annotated_visits;
-  }
-
  private:
   // Callback for HistoryService::QueryURL.
   void SaveResultAndQuit(bool* success_out,
@@ -243,6 +131,8 @@ class HistoryBrowserTest : public InProcessBrowserTest {
       *url_row_out = url_row;
     std::move(closure).Run();
   }
+
+  net::EmbeddedTestServer test_server_;
 };
 
 // Test that the browser history is saved (default setting).
@@ -258,7 +148,7 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, SavingHistoryEnabled) {
       browser()->profile(), ServiceAccessType::EXPLICIT_ACCESS));
   ExpectEmptyHistory();
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestUrl()));
+  ui_test_utils::NavigateToURL(browser(), GetTestUrl());
   WaitForHistoryBackendToRun(GetProfile());
 
   {
@@ -281,7 +171,7 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, SavingHistoryDisabled) {
       browser()->profile(), ServiceAccessType::EXPLICIT_ACCESS));
   ExpectEmptyHistory();
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestUrl()));
+  ui_test_utils::NavigateToURL(browser(), GetTestUrl());
   WaitForHistoryBackendToRun(GetProfile());
   ExpectEmptyHistory();
 }
@@ -294,7 +184,7 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, SavingHistoryEnabledThenDisabled) {
   ui_test_utils::WaitForHistoryToLoad(HistoryServiceFactory::GetForProfile(
       browser()->profile(), ServiceAccessType::EXPLICIT_ACCESS));
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestUrl()));
+  ui_test_utils::NavigateToURL(browser(), GetTestUrl());
   WaitForHistoryBackendToRun(GetProfile());
 
   {
@@ -305,7 +195,7 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, SavingHistoryEnabledThenDisabled) {
 
   GetPrefs()->SetBoolean(prefs::kSavingBrowserHistoryDisabled, true);
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestUrl()));
+  ui_test_utils::NavigateToURL(browser(), GetTestUrl());
   WaitForHistoryBackendToRun(GetProfile());
 
   {
@@ -325,13 +215,13 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, SavingHistoryDisabledThenEnabled) {
       browser()->profile(), ServiceAccessType::EXPLICIT_ACCESS));
   ExpectEmptyHistory();
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestUrl()));
+  ui_test_utils::NavigateToURL(browser(), GetTestUrl());
   WaitForHistoryBackendToRun(GetProfile());
   ExpectEmptyHistory();
 
   GetPrefs()->SetBoolean(prefs::kSavingBrowserHistoryDisabled, false);
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestUrl()));
+  ui_test_utils::NavigateToURL(browser(), GetTestUrl());
   WaitForHistoryBackendToRun(GetProfile());
 
   {
@@ -341,19 +231,25 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, SavingHistoryDisabledThenEnabled) {
   }
 }
 
-IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, VerifyHistoryLength1) {
+// Disabled after fixing this test class. See http://crbug.com/511442 for
+// details.
+IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, DISABLED_VerifyHistoryLength1) {
   // Test the history length for the following page transitions.
   //   -open-> Page 1.
   LoadAndWaitForFile("history_length_test_page_1.html");
 }
 
-IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, VerifyHistoryLength2) {
+// Disabled after fixing this test class. See http://crbug.com/511442 for
+// details.
+IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, DISABLED_VerifyHistoryLength2) {
   // Test the history length for the following page transitions.
   //   -open-> Page 2 -redirect-> Page 3.
   LoadAndWaitForFile("history_length_test_page_2.html");
 }
 
-IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, VerifyHistoryLength3) {
+// Disabled after fixing this test class. See http://crbug.com/511442 for
+// details.
+IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, DISABLED_VerifyHistoryLength3) {
   // Test the history length for the following page transitions.
   // -open-> Page 1 -> open Page 2 -redirect Page 3. open Page 4
   // -navigate_backward-> Page 3 -navigate_backward->Page 1
@@ -363,8 +259,10 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, VerifyHistoryLength3) {
   LoadAndWaitForFile("history_length_test_page_4.html");
 }
 
+// Disabled after fixing this test class. See http://crbug.com/511442 for
+// details.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest,
-                       ConsiderRedirectAfterGestureAsUserInitiated) {
+                       DISABLED_ConsiderRedirectAfterGestureAsUserInitiated) {
   // Test the history length for the following page transition.
   //
   // -open-> Page 11 -slow_redirect-> Page 12.
@@ -380,8 +278,10 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest,
   LoadAndWaitForFile("history_length_test_page_11.html");
 }
 
+// Disabled after fixing this test class. See http://crbug.com/511442 for
+// details.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest,
-                       ConsiderSlowRedirectAsUserInitiated) {
+                       DISABLED_ConsiderSlowRedirectAsUserInitiated) {
   // Test the history length for the following page transition.
   //
   // -open-> Page 21 -redirect-> Page 22.
@@ -392,23 +292,23 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest,
   LoadAndWaitForFile("history_length_test_page_21.html");
 }
 
-// TODO(crbug.com/41000594): Disabled because of flakiness and because for a
-// while history didn't support #q=searchTerm. Now that it does support these
-// type of URLs (crbug.com/619799), this test could be re-enabled if somebody
-// goes through the effort to wait for the various stages of the page loading.
+// TODO(crbug.com/22111): Disabled because of flakiness and because for a while
+// history didn't support #q=searchTerm. Now that it does support these type
+// of URLs (crbug.com/619799), this test could be re-enabled if somebody goes
+// through the effort to wait for the various stages of the page loading.
 // The loading strategy of the new, Polymer version of chrome://history is
 // sophisticated and multi-part, so we'd need to wait on or ensure a few things
 // are happening before running the test.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, DISABLED_HistorySearchXSS) {
   GURL url(std::string(chrome::kChromeUIHistoryURL) +
       "#q=%3Cimg%20src%3Dx%3Ax%20onerror%3D%22document.title%3D'XSS'%22%3E");
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  ui_test_utils::NavigateToURL(browser(), url);
   // Mainly, this is to ensure we send a synchronous message to the renderer
   // so that we're not susceptible (less susceptible?) to a race condition.
   // Should a race condition ever trigger, it won't result in flakiness.
   int num = ui_test_utils::FindInPage(
       browser()->tab_strip_model()->GetActiveWebContents(), u"<img", true, true,
-      nullptr, nullptr);
+      NULL, NULL);
   EXPECT_GT(num, 0);
   EXPECT_EQ(u"History",
             browser()->tab_strip_model()->GetActiveWebContents()->GetTitle());
@@ -416,7 +316,7 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, DISABLED_HistorySearchXSS) {
 
 // Verify that history persists after session restart.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, PRE_HistoryPersists) {
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestUrl()));
+  ui_test_utils::NavigateToURL(browser(), GetTestUrl());
   std::vector<GURL> urls(GetHistoryContents());
   ASSERT_EQ(1u, urls.size());
   ASSERT_EQ(GetTestUrl(), urls[0]);
@@ -433,47 +333,39 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, InvalidURLNoHistory) {
   GURL non_existant = ui_test_utils::GetTestUrl(
       base::FilePath().AppendASCII("History"),
       base::FilePath().AppendASCII("non_existant_file.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), non_existant));
+  ui_test_utils::NavigateToURL(browser(), non_existant);
   ExpectEmptyHistory();
 }
 
 // URLs with special schemes should not go in history.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, InvalidSchemeNoHistory) {
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+  GURL about_blank("about:blank");
+  ui_test_utils::NavigateToURL(browser(), about_blank);
   ExpectEmptyHistory();
-
-  ASSERT_TRUE(
-      ui_test_utils::NavigateToURL(browser(), GURL("view-source:about:blank")));
+  GURL view_source("view-source:about:blank");
+  ui_test_utils::NavigateToURL(browser(), view_source);
   ExpectEmptyHistory();
-
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("chrome://about")));
-  ExpectEmptyHistory();
-
-  content::WebUIConfigMap::GetInstance().AddUntrustedWebUIConfig(
-      std::make_unique<ui::TestUntrustedWebUIConfig>("test-host"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(
-      browser(), GURL("chrome-untrusted://test-host/title1.html")));
+  GURL chrome("chrome://about");
+  ui_test_utils::NavigateToURL(browser(), chrome);
   ExpectEmptyHistory();
 }
 
 // New tab page should not show up in history.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, NewTabNoHistory) {
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(),
-                                           GURL(chrome::kChromeUINewTabURL)));
+  ui_test_utils::NavigateToURL(browser(), GURL(chrome::kChromeUINewTabURL));
   ExpectEmptyHistory();
 }
 
 // Incognito browsing should not show up in history.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, IncognitoNoHistory) {
-  ASSERT_TRUE(
-      ui_test_utils::NavigateToURL(CreateIncognitoBrowser(), GetTestUrl()));
+  ui_test_utils::NavigateToURL(CreateIncognitoBrowser(), GetTestUrl());
   ExpectEmptyHistory();
 }
 
 // Multiple navigations to the same url should have a single history.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, NavigateMultiTimes) {
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestUrl()));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestUrl()));
+  ui_test_utils::NavigateToURL(browser(), GetTestUrl());
+  ui_test_utils::NavigateToURL(browser(), GetTestUrl());
   std::vector<GURL> urls(GetHistoryContents());
   ASSERT_EQ(1u, urls.size());
   ASSERT_EQ(GetTestUrl(), urls[0]);
@@ -489,9 +381,9 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, MultiTabsWindowsHistory) {
   GURL url4  = ui_test_utils::GetTestUrl(
       base::FilePath(), base::FilePath(FILE_PATH_LITERAL("simple.html")));
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
+  ui_test_utils::NavigateToURL(browser(), url1);
   Browser* browser2 = CreateBrowser(browser()->profile());
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser2, url2));
+  ui_test_utils::NavigateToURL(browser2, url2);
   ui_test_utils::NavigateToURLWithDisposition(
       browser2, url3, WindowOpenDisposition::NEW_FOREGROUND_TAB,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
@@ -517,20 +409,21 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, DownloadNoHistory) {
 }
 
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, HistoryRemovalRemovesTemplateURL) {
-  constexpr char kOrigin[] = "foo.com";
-  constexpr char16_t kOrigin16[] = u"foo.com";
+  constexpr char origin[] = "foo.com";
+  constexpr char16_t origin16[] = u"foo.com";
 
-  GURL url(embedded_https_test_server().GetURL(kOrigin, "/title3.html"));
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL url(embedded_test_server()->GetURL(origin, "/title3.html"));
 
   // Creating keyword shortcut manually.
   TemplateURLData data;
-  data.SetShortName(kOrigin16);
+  data.SetShortName(origin16);
   data.SetKeyword(u"keyword");
   data.SetURL(url.spec());
   data.safe_for_autoreplace = true;
 
   // Adding url to the history.
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  ui_test_utils::NavigateToURL(browser(), url);
   WaitForHistoryBackendToRun(GetProfile());
 
   EXPECT_TRUE(HistoryContainsURL(url));
@@ -544,7 +437,7 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, HistoryRemovalRemovesTemplateURL) {
 
   TemplateURL* t_url = model->Add(std::make_unique<TemplateURL>(data));
 
-  EXPECT_EQ(t_url, model->GetTemplateURLForHost(kOrigin));
+  EXPECT_EQ(t_url, model->GetTemplateURLForHost(origin));
 
   auto* history_service = HistoryServiceFactory::GetForProfile(
       browser()->profile(), ServiceAccessType::EXPLICIT_ACCESS);
@@ -564,10 +457,33 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, HistoryRemovalRemovesTemplateURL) {
   history_service->FlushForTest(run_loop.QuitClosure());
   run_loop.Run();
 
-  EXPECT_FALSE(model->GetTemplateURLForHost(kOrigin));
+  EXPECT_FALSE(model->GetTemplateURLForHost(origin));
 }
 
 namespace {
+
+// Grabs the RenderFrameHost for the frame navigating to the given URL.
+class RenderFrameHostGrabber : public content::WebContentsObserver {
+ public:
+  RenderFrameHostGrabber(content::WebContents* web_contents, const GURL& url)
+      : WebContentsObserver(web_contents), url_(url) {}
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override {
+    if (navigation_handle->GetURL() == url_) {
+      render_frame_host_ = navigation_handle->GetRenderFrameHost();
+      run_loop_.Quit();
+    }
+  }
+
+  void Wait() { run_loop_.Run(); }
+
+  content::RenderFrameHost* render_frame_host() { return render_frame_host_; }
+
+ private:
+  GURL url_;
+  content::RenderFrameHost* render_frame_host_ = nullptr;
+  base::RunLoop run_loop_;
+};
 
 // Simulates user clicking on a link inside the frame.
 // TODO(jam): merge with content/test/content_browser_test_utils_internal.h
@@ -592,12 +508,11 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, Subframe) {
       ui_test_utils::GetTestUrl(base::FilePath().AppendASCII("History"),
                                 base::FilePath().AppendASCII("target.html"));
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), main_page));
-  content::RenderFrameHost* frame = ChildFrameAt(browser()
-                                                     ->tab_strip_model()
-                                                     ->GetActiveWebContents()
-                                                     ->GetPrimaryMainFrame(),
-                                                 0);
+  RenderFrameHostGrabber rfh_grabber(
+      browser()->tab_strip_model()->GetActiveWebContents(), initial_subframe);
+  ui_test_utils::NavigateToURL(browser(), main_page);
+  rfh_grabber.Wait();
+  content::RenderFrameHost* frame = rfh_grabber.render_frame_host();
   ASSERT_TRUE(frame);
   ASSERT_TRUE(HistoryContainsURL(main_page));
   ASSERT_FALSE(HistoryContainsURL(initial_subframe));
@@ -610,16 +525,12 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, Subframe) {
   ASSERT_TRUE(HistoryContainsURL(manual_subframe));
 
   // After navigation, the current RenderFrameHost may change.
-  frame = ChildFrameAt(browser()
-                           ->tab_strip_model()
-                           ->GetActiveWebContents()
-                           ->GetPrimaryMainFrame(),
-                       0);
+  frame = rfh_grabber.render_frame_host();
   // Page-initiated location.replace subframe navigations should not show up in
   // history.
   std::string script = "location.replace('form.html')";
   content::TestFrameNavigationObserver observer(frame);
-  EXPECT_TRUE(ExecJs(frame, script));
+  EXPECT_TRUE(ExecuteScript(frame, script));
   observer.Wait();
   GURL auto_subframe =
       ui_test_utils::GetTestUrl(base::FilePath().AppendASCII("History"),
@@ -648,11 +559,11 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, RedirectHistory) {
 // Cross-site HTTP meta-refresh redirects should only have an entry for the
 // landing page.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, CrossSiteRedirectHistory) {
-  // Use the default embedded_https_test_server() for this test in order to
-  // support a cross-site redirect.
-  GURL landing_url(
-      embedded_https_test_server().GetURL("foo.com", "/title1.html"));
-  GURL redirector(embedded_https_test_server().GetURL(
+  // Use the default embedded_test_server() for this test in order to support a
+  // cross-site redirect.
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL landing_url(embedded_test_server()->GetURL("foo.com", "/title1.html"));
+  GURL redirector(embedded_test_server()->GetURL(
       "bar.com", "/client-redirect?" + landing_url.spec()));
   ui_test_utils::NavigateToURLBlockUntilNavigationsComplete(browser(),
                                                             redirector, 2);
@@ -670,8 +581,8 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, NavigateBringPageToTop) {
   GURL url2  = ui_test_utils::GetTestUrl(
       base::FilePath(), base::FilePath(FILE_PATH_LITERAL("title3.html")));
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url2));
+  ui_test_utils::NavigateToURL(browser(), url1);
+  ui_test_utils::NavigateToURL(browser(), url2);
 
   std::vector<GURL> urls(GetHistoryContents());
   ASSERT_EQ(2u, urls.size());
@@ -685,7 +596,7 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, ReloadBringPageToTop) {
   GURL url2  = ui_test_utils::GetTestUrl(
       base::FilePath(), base::FilePath(FILE_PATH_LITERAL("title3.html")));
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
+  ui_test_utils::NavigateToURL(browser(), url1);
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), url2, WindowOpenDisposition::NEW_BACKGROUND_TAB,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
@@ -712,8 +623,8 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, BackForwardBringPageToTop) {
   GURL url2  = ui_test_utils::GetTestUrl(
       base::FilePath(), base::FilePath(FILE_PATH_LITERAL("title3.html")));
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url2));
+  ui_test_utils::NavigateToURL(browser(), url1);
+  ui_test_utils::NavigateToURL(browser(), url2);
 
   content::WebContents* tab =
       browser()->tab_strip_model()->GetActiveWebContents();
@@ -735,17 +646,18 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, BackForwardBringPageToTop) {
 
 // Verify that pushState() correctly sets the title of the second history entry.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, PushStateSetsTitle) {
-  // Use the default embedded_https_test_server() for this test because
-  // pushState requires a real, non-file URL.
-  GURL url(embedded_https_test_server().GetURL("foo.com", "/title3.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  // Use the default embedded_test_server() for this test because pushState
+  // requires a real, non-file URL.
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL url(embedded_test_server()->GetURL("foo.com", "/title3.html"));
+  ui_test_utils::NavigateToURL(browser(), url);
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   std::u16string title = web_contents->GetTitle();
 
   // Do a pushState to create a new navigation entry and a new history entry.
-  ASSERT_TRUE(
-      content::ExecJs(web_contents, "history.pushState({},'','test.html')"));
+  ASSERT_TRUE(content::ExecuteScript(web_contents,
+                                     "history.pushState({},'','test.html')"));
   EXPECT_TRUE(content::WaitForLoadStop(web_contents));
 
   // This should result in two history entries.
@@ -763,25 +675,26 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, PushStateSetsTitle) {
 // Ensure that commits unrelated to the pending entry do not cause incorrect
 // updates to history.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, BeforeUnloadCommitDuringPending) {
-  // Use the default embedded_https_test_server() for this test because
-  // replaceState requires a real, non-file URL.
-  GURL url1(embedded_https_test_server().GetURL("foo.com", "/title3.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
+  // Use the default embedded_test_server() for this test because replaceState
+  // requires a real, non-file URL.
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL url1(embedded_test_server()->GetURL("foo.com", "/title3.html"));
+  ui_test_utils::NavigateToURL(browser(), url1);
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   std::u16string title1 = web_contents->GetTitle();
 
   // Create a beforeunload handler that does a replaceState during navigation,
   // unrelated to the destination URL (similar to Twitter).
-  ASSERT_TRUE(content::ExecJs(web_contents,
-                              "window.onbeforeunload = function() {"
-                              "history.replaceState({},'','test.html');"
-                              "};"));
-  GURL url2(embedded_https_test_server().GetURL("foo.com", "/test.html"));
+  ASSERT_TRUE(content::ExecuteScript(web_contents,
+                                     "window.onbeforeunload = function() {"
+                                     "history.replaceState({},'','test.html');"
+                                     "};"));
+  GURL url2(embedded_test_server()->GetURL("foo.com", "/test.html"));
 
   // Start a cross-site navigation to trigger the beforeunload, but don't let
   // the new URL commit yet.
-  GURL url3(embedded_https_test_server().GetURL("bar.com", "/title2.html"));
+  GURL url3(embedded_test_server()->GetURL("bar.com", "/title2.html"));
   content::TestNavigationManager manager(web_contents, url3);
   web_contents->GetController().LoadURL(
       url3, content::Referrer(), ui::PAGE_TRANSITION_LINK, std::string());
@@ -799,7 +712,7 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, BeforeUnloadCommitDuringPending) {
 
   // After the pending navigation commits and the new title arrives, there
   // should be another row with the new URL and title.
-  ASSERT_TRUE(manager.WaitForNavigationFinished());
+  manager.WaitForNavigationFinished();
   EXPECT_TRUE(content::WaitForLoadStop(web_contents));
   std::u16string title3 = web_contents->GetTitle();
   EXPECT_NE(title1, title3);
@@ -828,15 +741,15 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, SubmitFormAddsTargetPage) {
   GURL target = ui_test_utils::GetTestUrl(
       base::FilePath().AppendASCII("History"),
       base::FilePath().AppendASCII("target.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), form));
+  ui_test_utils::NavigateToURL(browser(), form);
 
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   std::u16string expected_title(u"Target Page");
   content::TitleWatcher title_watcher(
       browser()->tab_strip_model()->GetActiveWebContents(), expected_title);
-  ASSERT_TRUE(content::ExecJs(web_contents,
-                              "document.getElementById('form').submit()"));
+  ASSERT_TRUE(content::ExecuteScript(
+      web_contents, "document.getElementById('form').submit()"));
   EXPECT_EQ(expected_title, title_watcher.WaitAndGetTitle());
 
   std::vector<GURL> urls(GetHistoryContents());
@@ -878,9 +791,10 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, OneHistoryTabPerWindow) {
 // Verifies history.replaceState() to the same url without a user gesture does
 // not log a visit.
 IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, ReplaceStateSamePageIsNotRecorded) {
-  // Use the default embedded_https_test_server() for this test because
-  // replaceState requires a real, non-file URL.
-  GURL url(embedded_https_test_server().GetURL("foo.com", "/title3.html"));
+  // Use the default embedded_test_server() for this test because replaceState
+  // requires a real, non-file URL.
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL url(embedded_test_server()->GetURL("foo.com", "/title3.html"));
   NavigateParams params(browser(), url, ui::PAGE_TRANSITION_TYPED);
   params.user_gesture = false;
   ui_test_utils::NavigateToURL(&params);
@@ -888,9 +802,14 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, ReplaceStateSamePageIsNotRecorded) {
       browser()->tab_strip_model()->GetActiveWebContents();
 
   // Do a replaceState() to create a new navigation entry.
+<<<<<<< HEAD
   ASSERT_TRUE(
       content::ExecJs(web_contents, "history.replaceState({foo: 'bar'},'')",
                       content::EvalJsOptions::EXECUTE_SCRIPT_NO_USER_GESTURE));
+=======
+  ASSERT_TRUE(content::ExecuteScript(web_contents,
+                                     "history.replaceState({foo: 'bar'},'')"));
+>>>>>>> chromium
   content::WaitForLoadStop(web_contents);
 
   // Because there was no user gesture and the url did not change, there should
@@ -901,6 +820,7 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, ReplaceStateSamePageIsNotRecorded) {
   history::QueryURLResult url_result = QueryURL(url);
   EXPECT_EQ(1u, url_result.visits.size());
 }
+<<<<<<< HEAD
 
 // Verifies history.replaceState() to the same url with a user gesture logs
 // a visit.
@@ -1323,3 +1243,5 @@ IN_PROC_BROWSER_TEST_P(HistoryVisitedLinksBrowserTest, AddSaltForCrossOrigin) {
   EXPECT_NE(observer2.GetVisitedLinkSalt(), std::nullopt);
   EXPECT_NE(observer.GetVisitedLinkSalt(), observer2.GetVisitedLinkSalt());
 }
+=======
+>>>>>>> chromium

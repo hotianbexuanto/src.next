@@ -1,12 +1,12 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_HISTORY_HISTORY_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_HISTORY_HISTORY_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
-#include "chrome/browser/profiles/profile_keyed_service_factory.h"
+#include "base/memory/singleton.h"
+#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 #include "components/keyed_service/core/service_access_type.h"
 
 class Profile;
@@ -17,7 +17,7 @@ class HistoryService;
 
 // Singleton that owns all HistoryService and associates them with
 // Profiles.
-class HistoryServiceFactory : public ProfileKeyedServiceFactory {
+class HistoryServiceFactory : public BrowserContextKeyedServiceFactory {
  public:
   static history::HistoryService* GetForProfile(Profile* profile,
                                                 ServiceAccessType sat);
@@ -40,13 +40,15 @@ class HistoryServiceFactory : public ProfileKeyedServiceFactory {
   static TestingFactory GetDefaultFactory();
 
  private:
-  friend base::NoDestructor<HistoryServiceFactory>;
+  friend struct base::DefaultSingletonTraits<HistoryServiceFactory>;
 
   HistoryServiceFactory();
   ~HistoryServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
+      content::BrowserContext* context) const override;
+  content::BrowserContext* GetBrowserContextToUse(
       content::BrowserContext* context) const override;
   bool ServiceIsNULLWhileTesting() const override;
 };

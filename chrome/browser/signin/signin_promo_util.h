@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,28 +9,11 @@
 
 class Profile;
 
-namespace signin_metrics {
-enum class AccessPoint;
-}
-
-namespace autofill {
-class AutofillProfile;
-}
-
 namespace signin {
 
-// Whether we should show the sync promo.
-bool ShouldShowSyncPromo(Profile& profile);
-
-// Whether we should show the sign in promo after a password was saved.
-bool ShouldShowPasswordSignInPromo(Profile& profile);
-
-// Whether we should show the sign in promo after `address` was saved.
-bool ShouldShowAddressSignInPromo(Profile& profile,
-                                  const autofill::AutofillProfile& address);
-
-// Returns whether `access_point` has an equivalent autofill signin promo.
-bool IsAutofillSigninPromo(signin_metrics::AccessPoint access_point);
+// Returns true if the sign in promo should be visible.
+// |profile| is the profile of the tab the promo would be shown on.
+bool ShouldShowPromo(Profile* profile);
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 // Records that the sign in promo was shown, either for the account used for the

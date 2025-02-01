@@ -1,81 +1,60 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/process_map.h"
 
+<<<<<<< HEAD
 #include <algorithm>
 #include <string>
+=======
+>>>>>>> chromium
 #include <tuple>
 
-#include "base/containers/contains.h"
-#include "base/containers/map_util.h"
-#include "base/types/optional_util.h"
-#include "components/guest_view/buildflags/buildflags.h"
 #include "content/public/browser/child_process_security_policy.h"
-#include "content/public/browser/render_process_host.h"
 #include "content/public/common/url_constants.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/process_map_factory.h"
-#include "extensions/browser/script_injection_tracker.h"
-#include "extensions/buildflags/buildflags.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/features/feature.h"
-#include "extensions/common/mojom/context_type.mojom.h"
-#include "pdf/buildflags.h"
-
-#if BUILDFLAG(ENABLE_GUEST_VIEW)
-#include "extensions/browser/guest_view/web_view/web_view_renderer_state.h"
-#endif
-
-#if BUILDFLAG(ENABLE_PDF)
-#include "extensions/common/constants.h"
-#include "pdf/pdf_features.h"
-#endif
 
 namespace extensions {
 
-namespace {
-
-// Returns true if `process_id` is associated with a WebUI process.
-bool ProcessHasWebUIBindings(int process_id) {
-  // TODO(crbug.com/40676401): HasWebUIBindings does not always return true for
-  // WebUIs. This should be changed to use something else.
-  return content::ChildProcessSecurityPolicy::GetInstance()->HasWebUIBindings(
-      process_id);
-}
-
-// Returns true if `process_id` is associated with a webview owned by the
-// extension with the specified `extension_id`.
-bool IsWebViewProcessForExtension(int process_id,
-                                  const ExtensionId& extension_id) {
-#if BUILDFLAG(ENABLE_GUEST_VIEW)
-  WebViewRendererState* web_view_state = WebViewRendererState::GetInstance();
-  if (!web_view_state->IsGuest(process_id)) {
-    return false;
+// Item
+struct ProcessMap::Item {
+  Item(const std::string& extension_id, int process_id,
+       int site_instance_id)
+      : extension_id(extension_id),
+        process_id(process_id),
+        site_instance_id(site_instance_id) {
   }
 
-  std::string webview_owner;
-  int owner_process_id = -1;
-  bool found_info = web_view_state->GetOwnerInfo(process_id, &owner_process_id,
-                                                 &webview_owner);
-  return found_info && webview_owner == extension_id;
-#else
-  return false;
-#endif
-}
+  ~Item() {
+  }
 
-}  // namespace
+  Item(ProcessMap::Item&&) = default;
+  Item& operator=(ProcessMap::Item&&) = default;
+
+  bool operator<(const ProcessMap::Item& other) const {
+    return std::tie(extension_id, process_id, site_instance_id) <
+           std::tie(other.extension_id, other.process_id,
+                    other.site_instance_id);
+  }
+
+  std::string extension_id;
+  int process_id = 0;
+  int site_instance_id = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Item);
+};
+
 
 // ProcessMap
-ProcessMap::ProcessMap(content::BrowserContext* browser_context)
-    : browser_context_(browser_context) {}
+ProcessMap::ProcessMap() {
+}
 
-ProcessMap::~ProcessMap() = default;
-
-void ProcessMap::Shutdown() {
-  browser_context_ = nullptr;
+ProcessMap::~ProcessMap() {
 }
 
 // static
@@ -83,21 +62,40 @@ ProcessMap* ProcessMap::Get(content::BrowserContext* browser_context) {
   return ProcessMapFactory::GetForBrowserContext(browser_context);
 }
 
-bool ProcessMap::Insert(const ExtensionId& extension_id, int process_id) {
-  return items_.emplace(process_id, extension_id).second;
+bool ProcessMap::Insert(const std::string& extension_id, int process_id,
+                        int site_instance_id) {
+  return items_.insert(Item(extension_id, process_id, site_instance_id)).second;
 }
 
-int ProcessMap::Remove(int process_id) {
-  return items_.erase(process_id);
+bool ProcessMap::Remove(const std::string& extension_id, int process_id,
+                        int site_instance_id) {
+  return items_.erase(Item(extension_id, process_id, site_instance_id)) > 0;
 }
 
-bool ProcessMap::Contains(const ExtensionId& extension_id_in,
+int ProcessMap::RemoveAllFromProcess(int process_id) {
+  int result = 0;
+  for (auto iter = items_.begin(); iter != items_.end();) {
+    if (iter->process_id == process_id) {
+      items_.erase(iter++);
+      ++result;
+    } else {
+      ++iter;
+    }
+  }
+  return result;
+}
+
+bool ProcessMap::Contains(const std::string& extension_id,
                           int process_id) const {
-  auto* extension_id = base::FindOrNull(items_, process_id);
-  return extension_id && *extension_id == extension_id_in;
+  for (auto iter = items_.cbegin(); iter != items_.cend(); ++iter) {
+    if (iter->process_id == process_id && iter->extension_id == extension_id)
+      return true;
+  }
+  return false;
 }
 
 bool ProcessMap::Contains(int process_id) const {
+<<<<<<< HEAD
   return base::Contains(items_, process_id);
 }
 
@@ -180,65 +178,63 @@ bool ProcessMap::CanProcessHostContextType(
       // Don't consider extensions in webui (like content scripts) to be
       // webui.
       return !extension && ProcessHasWebUIBindings(process_id);
+=======
+  for (auto iter = items_.cbegin(); iter != items_.cend(); ++iter) {
+    if (iter->process_id == process_id)
+      return true;
+>>>>>>> chromium
   }
+  return false;
 }
 
-mojom::ContextType ProcessMap::GetMostLikelyContextType(
+std::set<std::string> ProcessMap::GetExtensionsInProcess(int process_id) const {
+  std::set<std::string> result;
+  for (auto iter = items_.cbegin(); iter != items_.cend(); ++iter) {
+    if (iter->process_id == process_id)
+      result.insert(iter->extension_id);
+  }
+  return result;
+}
+
+Feature::Context ProcessMap::GetMostLikelyContextType(
     const Extension* extension,
     int process_id,
     const GURL* url) const {
   // WARNING: This logic must match ScriptContextSet::ClassifyJavaScriptContext,
   // as much as possible.
 
-  // TODO(crbug.com/40676105): Move this into the !extension if statement below
+  // TODO(crbug.com/1055168): Move this into the !extension if statement below
   // or document why we want to return WEBUI_CONTEXT for content scripts in
   // WebUIs.
-  if (ProcessHasWebUIBindings(process_id)) {
-    return mojom::ContextType::kWebUi;
+  // TODO(crbug.com/1055656): HasWebUIBindings does not always return true for
+  // WebUIs. This should be changed to use something else.
+  if (content::ChildProcessSecurityPolicy::GetInstance()->HasWebUIBindings(
+          process_id)) {
+    return Feature::WEBUI_CONTEXT;
   }
 
   if (!extension) {
     // Note that blob/filesystem schemes associated with an inner URL of
     // chrome-untrusted will be considered regular pages.
-    if (url && url->SchemeIs(content::kChromeUIUntrustedScheme)) {
-      return mojom::ContextType::kUntrustedWebUi;
-    }
+    if (url && url->SchemeIs(content::kChromeUIUntrustedScheme))
+      return Feature::WEBUI_UNTRUSTED_CONTEXT;
 
-    return mojom::ContextType::kWebPage;
+    return Feature::WEB_PAGE_CONTEXT;
   }
 
-  const ExtensionId& extension_id = extension->id();
-  if (!Contains(extension_id, process_id)) {
-    // If the process map doesn't contain the process, it might be an extension
-    // frame in a webview.
-    // We (deliberately) don't add webview-hosted frames to the process map and
-    // don't classify them as kPrivilegedExtension contexts.
-    if (url && extension->origin().IsSameOriginWith(*url) &&
-        IsWebViewProcessForExtension(process_id, extension->id())) {
-      // Yep, it's an extension frame in a webview.
-#if BUILDFLAG(ENABLE_PDF)
-      // The PDF Viewer extension is an exception, since webviews need to be
-      // able to load the PDF Viewer. The PDF extension needs a
-      // kPrivilegedExtension context to load, so the PDF extension frame is
-      // added to the process map and shouldn't reach here.
-      if (chrome_pdf::features::IsOopifPdfEnabled()) {
-        CHECK_NE(extension_id, extension_misc::kPdfExtensionId);
-      }
-#endif  // BUILDFLAG(ENABLE_PDF)
-
-      return mojom::ContextType::kUnprivilegedExtension;
-    }
-
-    // Otherwise, it's a content script (the context in which an extension can
-    // run in an unassociated, non-webview process).
-    return mojom::ContextType::kContentScript;
+  if (!Contains(extension->id(), process_id)) {
+    // This could equally be UNBLESSED_EXTENSION_CONTEXT, but we don't record
+    // which processes have extension frames in them.
+    // TODO(kalman): Investigate this.
+    return Feature::CONTENT_SCRIPT_CONTEXT;
   }
 
   if (extension->is_hosted_app() &&
       extension->location() != mojom::ManifestLocation::kComponent) {
-    return mojom::ContextType::kPrivilegedWebPage;
+    return Feature::BLESSED_WEB_PAGE_CONTEXT;
   }
 
+<<<<<<< HEAD
   // TODO(crbug.com/40849649): Currently, offscreen document contexts
   // are misclassified as kPrivilegedExtension contexts. This is not ideal
   // because there is a mismatch between the browser and the renderer), but it's
@@ -252,6 +248,10 @@ mojom::ContextType ProcessMap::GetMostLikelyContextType(
   // that kPrivilegedExtension contexts don't).
 
   return mojom::ContextType::kPrivilegedExtension;
+=======
+  return is_lock_screen_context_ ? Feature::LOCK_SCREEN_EXTENSION_CONTEXT
+                                 : Feature::BLESSED_EXTENSION_CONTEXT;
+>>>>>>> chromium
 }
 
 }  // namespace extensions

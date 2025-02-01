@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium Authors
+# Copyright 2020 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,33 +6,25 @@ import("//build/config/android/rules.gni")
 import("//chrome/android/features/android_library_factory_tmpl.gni")
 
 android_library("java") {
-  resources_package = "org.chromium.chrome.browser.tabmodel"
-
   sources = [
-    "android/java/src/org/chromium/chrome/browser/tabmodel/ArchivedTabModelSelectorHolder.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/AsyncTabCreationParams.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/AsyncTabLauncher.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/AsyncTabCreator.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/AsyncTabParams.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/AsyncTabParamsManager.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/EmptyTabModel.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/EmptyTabRemover.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/EmptyTabModelFilter.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoStateProvider.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoTabHost.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoTabHostRegistry.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoTabHostUtils.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoTabModel.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoTabModelImpl.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoTabModelInternal.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoTabModelObserver.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/MismatchedIndicesHandler.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/NextTabPolicy.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/PassthroughTabRemover.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/PassthroughTabUngrouper.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/TabCloseType.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/TabClosureParams.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabCreator.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabCreatorManager.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabCreatorManagerSupplier.java",
+<<<<<<< HEAD
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroup.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupCollapsedUtils.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupColorUtils.java",
@@ -46,11 +38,14 @@ android_library("java") {
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupSyncIdUtils.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupTitleUtils.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupUtils.java",
+=======
+>>>>>>> chromium
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabList.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModel.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelActionListener.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelFilter.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelFilterFactory.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelFilterProvider.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelInitializer.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelInternal.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelObserver.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelOrderController.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelOrderControllerImpl.java",
@@ -60,37 +55,25 @@ android_library("java") {
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelSelectorSupplier.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelSelectorTabModelObserver.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelSelectorTabObserver.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelSelectorTabRegistrationObserver.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelUtils.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/TabRemover.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabReparentingParams.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/TabUngrouper.java",
-    "android/java/src/org/chromium/chrome/browser/tabmodel/TabUngrouperFactory.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabSwitchMetrics.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabWindowManager.java",
   ]
   deps = [
     "//base:base_java",
+<<<<<<< HEAD
     "//build/android:build_java",
     "//chrome/browser/flags:java",
+=======
+>>>>>>> chromium
     "//chrome/browser/profiles/android:java",
     "//chrome/browser/tab:java",
-    "//chrome/browser/tab_group_sync:features_java",
-    "//components/browser_ui/widget/android:java",
     "//components/embedder_support/android:util_java",
-    "//components/saved_tab_groups/public:java",
-    "//components/tab_groups:tab_groups_java",
     "//content/public/android:content_java",
-    "//third_party/android_deps:com_google_errorprone_error_prone_annotations_java",
     "//third_party/androidx:androidx_annotation_annotation_java",
-    "//third_party/androidx:androidx_collection_collection_java",
     "//ui/android:ui_full_java",
     "//url:gurl_java",
-  ]
-
-  deps += [
-    # TODO(crbug.com/370773585): Move the strings that are used from this target
-    # to a new resources target.
-    "//chrome/android/features/tab_ui:java_strings_grd",
   ]
 }
 
@@ -103,6 +86,7 @@ android_library_factory("factory_java") {
   ]
 }
 
+<<<<<<< HEAD
 robolectric_library("junit") {
   sources = [
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabClosureParamsUnitTest.java",
@@ -118,20 +102,23 @@ robolectric_library("junit") {
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabWindowManagerTest.java",
   ]
 
+=======
+android_library("javatests") {
+  testonly = true
+  sources = [ "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoTabModelTest.java" ]
+>>>>>>> chromium
   deps = [
-    ":factory_java",
     ":java",
+<<<<<<< HEAD
     ":test_support_java",
     "//base:base_java",
+=======
+>>>>>>> chromium
     "//base:base_java_test_support",
-    "//base:base_junit_test_support",
-    "//base/test:test_support_java",
-    "//build/android:build_java",
     "//chrome/android:chrome_java",
-    "//chrome/browser/commerce/price_tracking/android:java",
     "//chrome/browser/flags:java",
-    "//chrome/browser/profiles/android:java",
     "//chrome/browser/tab:java",
+<<<<<<< HEAD
     "//chrome/browser/tab_group_sync:features_java",
     "//chrome/browser/tab_ui/android:java",
     "//chrome/browser/tabmodel:java",
@@ -142,11 +129,15 @@ robolectric_library("junit") {
     "//third_party/androidx:androidx_collection_collection_java",
     "//third_party/androidx:androidx_test_core_java",
     "//third_party/androidx:androidx_test_espresso_espresso_core_java",
+=======
+    "//chrome/test/android:chrome_java_test_support",
+    "//content/public/android:content_java",
+    "//content/public/test/android:content_java_test_support",
+>>>>>>> chromium
     "//third_party/androidx:androidx_test_runner_java",
-    "//third_party/hamcrest:hamcrest_core_java",
-    "//third_party/jni_zero:jni_zero_java",
     "//third_party/junit",
     "//third_party/mockito:mockito_java",
+<<<<<<< HEAD
     "//ui/android:ui_java",
     "//ui/android:ui_java_test_support",
     "//url:gurl_junit_test_support",
@@ -164,5 +155,7 @@ robolectric_library("test_support_java") {
     "//content/public/android:content_full_java",
     "//third_party/mockito:mockito_java",
     "//url:url_java",
+=======
+>>>>>>> chromium
   ]
 }

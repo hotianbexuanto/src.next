@@ -1,12 +1,12 @@
-// Copyright 2012 The Chromium Authors
+// Copyright 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.storage.StorageManager;
@@ -16,9 +16,17 @@ import android.text.TextUtils;
 
 import androidx.annotation.RequiresApi;
 
+<<<<<<< HEAD
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JniType;
 
+=======
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.MainDex;
+import org.chromium.base.compat.ApiHelperForM;
+import org.chromium.base.compat.ApiHelperForQ;
+import org.chromium.base.compat.ApiHelperForR;
+>>>>>>> chromium
 import org.chromium.base.task.AsyncTask;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -33,9 +41,16 @@ import java.util.Set;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+<<<<<<< HEAD
 /** This class provides the path related methods for the native library. */
 @SuppressWarnings("NullAway") // Too hard to annotate this class.
 @NullMarked
+=======
+/**
+ * This class provides the path related methods for the native library.
+ */
+@MainDex
+>>>>>>> chromium
 public abstract class PathUtils {
     private static final String TAG = "PathUtils";
     private static final String THUMBNAIL_DIRECTORY_NAME = "textures";
@@ -50,10 +65,15 @@ public abstract class PathUtils {
     // If the FutureTask started in setPrivateDataDirectorySuffix() fails to complete by the time we
     // need the values, we will need the suffix so that we can restart the task synchronously on
     // the UI thread.
+<<<<<<< HEAD
     private static @Nullable String sDataDirectorySuffix;
     private static @Nullable String sCacheSubDirectory;
     private static @Nullable String sDataDirectoryBasePath;
     private static @Nullable String sCacheDirectoryBasePath;
+=======
+    private static String sDataDirectorySuffix;
+    private static String sCacheSubDirectory;
+>>>>>>> chromium
 
     // Prevent instantiation.
     private PathUtils() {}
@@ -65,8 +85,6 @@ public abstract class PathUtils {
         sDirPathFetchTask = null;
         sDataDirectorySuffix = null;
         sCacheSubDirectory = null;
-        sDataDirectoryBasePath = null;
-        sCacheDirectoryBasePath = null;
     }
 
     /**
@@ -85,11 +103,15 @@ public abstract class PathUtils {
         try {
             return sDirPathFetchTask.get();
         } catch (Exception e) {
-            throw JavaUtils.throwUnchecked(e);
+            throw new RuntimeException(e);
         }
     }
 
+    @SuppressLint("NewApi")
     private static void chmod(String path, int mode) {
+        // Both Os.chmod and ErrnoException require SDK >= 21. But while Dalvik on < 21 tolerates
+        // Os.chmod, it throws VerifyError for ErrnoException, so catch Exception instead.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return;
         try {
             Os.chmod(path, mode);
         } catch (Exception e) {
@@ -97,6 +119,7 @@ public abstract class PathUtils {
         }
     }
 
+<<<<<<< HEAD
     // TODO(crbug.com/41484704): Merge the Chrome and WebView implementations
     // of isPathUnderAppDir into one.
     @RequiresApi(Build.VERSION_CODES.N)
@@ -114,6 +137,8 @@ public abstract class PathUtils {
         }
     }
 
+=======
+>>>>>>> chromium
     /**
      * Fetch the path of the directory where private data is to be stored by the application. This
      * is meant to be called in an FutureTask in setPrivateDataDirectorySuffix(), but if we need the
@@ -122,42 +147,19 @@ public abstract class PathUtils {
      *
      * @see Context#getDir(String, int)
      */
+<<<<<<< HEAD
     @RequiresNonNull("sDataDirectorySuffix")
     private static String[] setPrivateDirectoryPathInternal() {
+=======
+    private static String[] setPrivateDataDirectorySuffixInternal() {
+>>>>>>> chromium
         String[] paths = new String[NUM_DIRECTORIES];
-        File dataDir = null;
-        File thumbnailDir = null;
         Context appContext = ContextUtils.getApplicationContext();
-        if (sDataDirectoryBasePath == null) {
-            dataDir = appContext.getDir(sDataDirectorySuffix, Context.MODE_PRIVATE);
-            thumbnailDir = appContext.getDir(THUMBNAIL_DIRECTORY_NAME, Context.MODE_PRIVATE);
-        } else {
-            dataDir = new File(sDataDirectoryBasePath, sDataDirectorySuffix);
-            dataDir.mkdirs();
-            thumbnailDir = new File(sDataDirectoryBasePath, THUMBNAIL_DIRECTORY_NAME);
-            thumbnailDir.mkdirs();
-        }
-
-        File cacheDir = null;
-        if (sCacheDirectoryBasePath != null) {
-            cacheDir = new File(sCacheDirectoryBasePath);
-        } else {
-            cacheDir = appContext.getCacheDir();
-        }
-        if (cacheDir != null) {
-            if (sCacheSubDirectory != null) {
-                cacheDir = new File(cacheDir, sCacheSubDirectory);
-            }
-            if (sCacheDirectoryBasePath != null || sCacheSubDirectory != null) {
-                cacheDir.mkdirs();
-                // Set to rwx--S--- as the Android cache dir has a distinct gid and is setgid.
-                chmod(cacheDir.getPath(), 02700);
-            }
-            paths[CACHE_DIRECTORY] = cacheDir.getPath();
-        }
-        paths[DATA_DIRECTORY] = dataDir.getPath();
+        paths[DATA_DIRECTORY] = appContext.getDir(
+                sDataDirectorySuffix, Context.MODE_PRIVATE).getPath();
         // MODE_PRIVATE results in rwxrwx--x, but we want rwx------, as a defence-in-depth measure.
         chmod(paths[DATA_DIRECTORY], 0700);
+<<<<<<< HEAD
         paths[THUMBNAIL_DIRECTORY] = thumbnailDir.getPath();
         return paths;
     }
@@ -207,7 +209,22 @@ public abstract class PathUtils {
                     : String.format("%s != %s", dataDirSuffix, sDataDirectorySuffix);
             assert TextUtils.equals(sCacheSubDirectory, cacheSubDir)
                     : String.format("%s != %s", cacheSubDir, sCacheSubDirectory);
+=======
+        paths[THUMBNAIL_DIRECTORY] = appContext.getDir(
+                THUMBNAIL_DIRECTORY_NAME, Context.MODE_PRIVATE).getPath();
+        if (appContext.getCacheDir() != null) {
+            if (sCacheSubDirectory == null) {
+                paths[CACHE_DIRECTORY] = appContext.getCacheDir().getPath();
+            } else {
+                File cacheDir = new File(appContext.getCacheDir(), sCacheSubDirectory);
+                cacheDir.mkdir();
+                paths[CACHE_DIRECTORY] = cacheDir.getPath();
+                // Set to rwx--S--- as the Android cache dir has a distinct gid and is setgid.
+                chmod(paths[CACHE_DIRECTORY], 02700);
+            }
+>>>>>>> chromium
         }
+        return paths;
     }
 
     /**
@@ -223,8 +240,30 @@ public abstract class PathUtils {
      * @param cacheSubDir The subdirectory in the cache directory to use, if non-null.
      * @see Context#getDir(String, int)
      */
+<<<<<<< HEAD
     public static void setPrivateDataDirectorySuffix(String suffix, @Nullable String cacheSubDir) {
         setPrivateDirectoryPath(null, null, suffix, cacheSubDir);
+=======
+    public static void setPrivateDataDirectorySuffix(String suffix, String cacheSubDir) {
+        // This method should only be called once, but many tests end up calling it multiple times,
+        // so adding a guard here.
+        if (!sInitializationStarted.getAndSet(true)) {
+            assert ContextUtils.getApplicationContext() != null;
+            sDataDirectorySuffix = suffix;
+            sCacheSubDirectory = cacheSubDir;
+
+            // We don't use an AsyncTask because this function is called in early Webview startup
+            // and it won't always have a UI thread available. Thus, we can't use AsyncTask which
+            // inherently posts to the UI thread for onPostExecute().
+            sDirPathFetchTask = new FutureTask<>(PathUtils::setPrivateDataDirectorySuffixInternal);
+            AsyncTask.THREAD_POOL_EXECUTOR.execute(sDirPathFetchTask);
+        } else {
+            assert TextUtils.equals(sDataDirectorySuffix, suffix)
+                : String.format("%s != %s", suffix, sDataDirectorySuffix);
+            assert TextUtils.equals(sCacheSubDirectory, cacheSubDir)
+                : String.format("%s != %s", cacheSubDir, sCacheSubDirectory);
+        }
+>>>>>>> chromium
     }
 
     public static void setPrivateDataDirectorySuffix(String suffix) {
@@ -256,8 +295,6 @@ public abstract class PathUtils {
         return getDirectoryPath(CACHE_DIRECTORY);
     }
 
-    // Should not be called from WebView, since it does not support being used in a multiprocess
-    // environment.
     @CalledByNative
     public static @JniType("std::string") String getThumbnailCacheDirectory() {
         return getDirectoryPath(THUMBNAIL_DIRECTORY);
@@ -271,8 +308,13 @@ public abstract class PathUtils {
      */
     @SuppressWarnings("unused")
     @CalledByNative
+<<<<<<< HEAD
     public static @JniType("std::string") String getDownloadsDirectory() {
         // TODO(crbug.com/41187555): Move calls to getDownloadsDirectory() to background thread.
+=======
+    public static @NonNull String getDownloadsDirectory() {
+        // TODO(crbug.com/508615): Move calls to getDownloadsDirectory() to background thread.
+>>>>>>> chromium
         try (StrictModeContext ignored = StrictModeContext.allowDiskReads()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // https://developer.android.com/preview/privacy/scoped-storage
@@ -298,48 +340,39 @@ public abstract class PathUtils {
     public static String[] getAllPrivateDownloadsDirectories() {
         List<File> files = new ArrayList<>();
         try (StrictModeContext ignored = StrictModeContext.allowDiskWrites()) {
-            File[] externalDirs =
-                    ContextUtils.getApplicationContext()
-                            .getExternalFilesDirs(Environment.DIRECTORY_DOWNLOADS);
+            File[] externalDirs = ContextUtils.getApplicationContext().getExternalFilesDirs(
+                    Environment.DIRECTORY_DOWNLOADS);
             files = (externalDirs == null) ? files : Arrays.asList(externalDirs);
         }
         return toAbsolutePathStrings(files);
     }
 
     /**
-     * @return The download directory for secondary storage on Q+, returned by {@link
-     *     MediaStore#getExternalVolumeNames(Context)}. Notices on Android R, apps can no longer
-     *     expose app's private directory for secondary storage. Apps should put files to
-     *     /storage/$volume_id/Download/ directory instead.
+     * @return The download directory for secondary storage on Q+, returned by
+     * {@link MediaStore#getExternalVolumeNames(Context)}. Notices on Android R, apps can no longer
+     * expose app's private directory for secondary storage. Apps should put files to
+     * /storage/$volume_id/Download/ directory instead.
      */
     @RequiresApi(Build.VERSION_CODES.R)
     @CalledByNative
     public static String[] getExternalDownloadVolumesNames() {
         ArrayList<File> files = new ArrayList<>();
         Set<String> volumes =
-                MediaStore.getExternalVolumeNames(ContextUtils.getApplicationContext());
+                ApiHelperForQ.getExternalVolumeNames(ContextUtils.getApplicationContext());
         for (String vol : volumes) {
             if (!TextUtils.isEmpty(vol) && !vol.contains(MediaStore.VOLUME_EXTERNAL_PRIMARY)) {
-                StorageManager manager =
-                        ContextUtils.getApplicationContext().getSystemService(StorageManager.class);
-                Uri uri = MediaStore.Files.getContentUri(vol);
-                try {
-                    File volumeDir = manager.getStorageVolume(uri).getDirectory();
-                    File volumeDownloadDir = new File(volumeDir, Environment.DIRECTORY_DOWNLOADS);
-                    // Happens in rare case when Android doesn't create the download directory for
-                    // this volume.
-                    if (!volumeDownloadDir.isDirectory()) {
-                        Log.w(
-                                TAG,
-                                "Download dir missing: %s, parent dir:%s, isDirectory:%s",
-                                volumeDownloadDir.getAbsolutePath(),
-                                volumeDir.getAbsolutePath(),
-                                volumeDir.isDirectory());
-                    }
-                    files.add(volumeDownloadDir);
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to get storage volume for uri: " + uri, e);
-                }
+                StorageManager manager = ApiHelperForM.getSystemService(
+                        ContextUtils.getApplicationContext(), StorageManager.class);
+                File volumeDir =
+                        ApiHelperForR.getVolumeDir(manager, MediaStore.Files.getContentUri(vol));
+                assert volumeDir.isDirectory();
+                assert volumeDir.exists();
+
+                File volumeDownloadDir =
+                        new File(volumeDir.getAbsolutePath(), Environment.DIRECTORY_DOWNLOADS);
+                assert volumeDownloadDir.isDirectory();
+                assert volumeDownloadDir.exists();
+                files.add(volumeDownloadDir);
             }
         }
 

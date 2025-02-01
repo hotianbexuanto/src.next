@@ -1,69 +1,81 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/style_rule.h"
 
-#include "third_party/blink/renderer/core/css/css_rule_list.h"
-#include "third_party/blink/renderer/core/css/css_scope_rule.h"
-#include "third_party/blink/renderer/core/css/css_style_rule.h"
 #include "third_party/blink/renderer/core/css/css_test_helpers.h"
-#include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 namespace blink {
 
-using css_test_helpers::ParseRule;
-
 class StyleRuleTest : public PageTestBase {};
 
-namespace {
+// Verifies that a StyleRuleScrollTimeline can be accessed even if
+// the runtime flag CSSScrollTimeline is disabled.
+//
+// Note that this test can be removed when the CSSScrollTimeline flag is
+// removed.
+TEST_F(StyleRuleTest, StyleRuleScrollTimelineGettersWithoutFeature) {
+  ScopedCSSScrollTimelineForTest scoped_feature(false);
 
-// Find first occurrence of a simple selector with the given PseudoType,
-// traversing into lists (e.g. :is()).
-const CSSSelector* FindPseudoSelector(const CSSSelector* selector,
-                                      CSSSelector::PseudoType pseudo_type) {
-  for (const CSSSelector* s = selector; s; s = s->NextSimpleSelector()) {
-    if (s->GetPseudoType() == pseudo_type) {
-      return s;
-    }
-    if (s->SelectorList()) {
-      for (const CSSSelector* complex = s->SelectorList()->First(); complex;
-           complex = CSSSelectorList::Next(*complex)) {
-        if (const CSSSelector* parent =
-                FindPseudoSelector(complex, pseudo_type)) {
-          return parent;
+  StyleRuleBase* base_rule = nullptr;
+
+  {
+    ScopedCSSScrollTimelineForTest scoped_feature(true);
+    base_rule = css_test_helpers::ParseRule(GetDocument(), R"CSS(
+        @scroll-timeline timeline {
+          source: selector(#foo);
+          start: 1px;
+          end: 2px;
+          time-range: 10s;
         }
-      }
-    }
+      )CSS");
   }
-  return nullptr;
+
+  ASSERT_TRUE(base_rule);
+  const auto* rule = To<StyleRuleScrollTimeline>(base_rule);
+
+  // Don't crash:
+  EXPECT_FALSE(rule->GetName().IsEmpty());
+  EXPECT_TRUE(rule->GetSource());
+  EXPECT_TRUE(rule->GetStart());
+  EXPECT_TRUE(rule->GetEnd());
+  EXPECT_TRUE(rule->GetTimeRange());
 }
 
-const CSSSelector* FindParentSelector(const CSSSelector* selector) {
-  return FindPseudoSelector(selector, CSSSelector::kPseudoParent);
-}
+TEST_F(StyleRuleTest, StyleRuleScrollTimelineCopy) {
+  ScopedCSSScrollTimelineForTest scoped_feature(true);
 
-const CSSSelector* FindUnparsedSelector(const CSSSelector* selector) {
-  return FindPseudoSelector(selector, CSSSelector::kPseudoUnparsed);
-}
+  auto* base_rule = css_test_helpers::ParseRule(GetDocument(), R"CSS(
+      @scroll-timeline timeline {
+        source: selector(#foo);
+        start: 1px;
+        end: 2px;
+        time-range: 10s;
+      }
+    )CSS");
 
-// Finds the CSSNestingType (as captured by the first kPseudoUnparsed selector)
-// and the parent rule for nesting (as captured by the first kPseudoParent
-// selector).
-std::pair<CSSNestingType, const StyleRule*> FindNestingContext(
-    const CSSSelector* selector) {
-  const CSSSelector* unparsed_selector = FindUnparsedSelector(selector);
-  const CSSSelector* parent_selector = FindParentSelector(selector);
-  return std::make_pair<CSSNestingType, const StyleRule*>(
-      unparsed_selector ? unparsed_selector->GetNestingType()
-                        : CSSNestingType::kNone,
-      parent_selector ? parent_selector->ParentRule() : nullptr);
-}
+  ASSERT_TRUE(base_rule);
+  auto* base_copy = base_rule->Copy();
 
-}  // namespace
+  EXPECT_NE(base_rule, base_copy);
+  EXPECT_EQ(base_rule->GetType(), base_copy->GetType());
+
+  auto* rule = DynamicTo<StyleRuleScrollTimeline>(base_rule);
+  auto* copy = DynamicTo<StyleRuleScrollTimeline>(base_copy);
+
+  ASSERT_TRUE(rule);
+  ASSERT_TRUE(copy);
+
+  EXPECT_EQ(rule->GetName(), copy->GetName());
+  EXPECT_EQ(rule->GetSource(), copy->GetSource());
+  EXPECT_EQ(rule->GetOrientation(), copy->GetOrientation());
+  EXPECT_EQ(rule->GetStart(), copy->GetStart());
+  EXPECT_EQ(rule->GetEnd(), copy->GetEnd());
+  EXPECT_EQ(rule->GetTimeRange(), copy->GetTimeRange());
+}
 
 TEST_F(StyleRuleTest, StyleRulePropertyCopy) {
   auto* base_rule = css_test_helpers::ParseRule(GetDocument(), R"CSS(
@@ -92,6 +104,7 @@ TEST_F(StyleRuleTest, StyleRulePropertyCopy) {
   EXPECT_EQ(rule->GetInitialValue(), copy->GetInitialValue());
 }
 
+<<<<<<< HEAD
 TEST_F(StyleRuleTest, SetPreludeTextReparentsStyleRules) {
   CSSStyleSheet* sheet = css_test_helpers::CreateStyleSheet(GetDocument());
   auto* scope_rule = DynamicTo<CSSScopeRule>(
@@ -397,4 +410,6 @@ TEST_F(StyleRuleTest, RenestStyleRuleStartingStyle) {
                 ->SelectorTextExpandingPseudoReferences(/*scope_id=*/0));
 }
 
+=======
+>>>>>>> chromium
 }  // namespace blink

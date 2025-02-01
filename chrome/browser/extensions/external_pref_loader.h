@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,8 @@
 #include <memory>
 #include <string>
 
-#include "base/memory/raw_ptr.h"
-#include "base/task/sequenced_task_runner.h"
+#include "base/compiler_specific.h"
+#include "base/macros.h"
 #include "base/values.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/extensions/external_loader.h"
@@ -32,7 +32,7 @@ class ExternalPrefLoader : public ExternalLoader {
     // owned by root and not writable by any non-root user.
     ENSURE_PATH_CONTROLLED_BY_ADMIN = 1 << 0,
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
     // Delay external preference load. It delays default apps installation
     // to not overload the system on first time user login.
     DELAY_LOAD_UNTIL_PRIORITY_SYNC = 1 << 1,
@@ -48,9 +48,6 @@ class ExternalPrefLoader : public ExternalLoader {
   // wait priority sync if DELAY_LOAD_UNTIL_PRIORITY_SYNC set.
   // |options| is combination of |Options|.
   ExternalPrefLoader(int base_path_id, int options, Profile* profile);
-
-  ExternalPrefLoader(const ExternalPrefLoader&) = delete;
-  ExternalPrefLoader& operator=(const ExternalPrefLoader&) = delete;
 
   const base::FilePath GetBaseCrxFilePath() override;
 
@@ -73,7 +70,7 @@ class ExternalPrefLoader : public ExternalLoader {
   friend class ExternalTestingLoader;
   friend class TestExternalPrefLoader;
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   class PrioritySyncReadyWaiter;
 #endif
 
@@ -81,7 +78,7 @@ class ExternalPrefLoader : public ExternalLoader {
   // |path| is only used for informational purposes (outputted when an error
   // occurs). An empty dictionary is returned in case of failure (e.g. invalid
   // path or json content).
-  static base::Value::Dict ExtractExtensionPrefs(
+  static std::unique_ptr<base::DictionaryValue> ExtractExtensionPrefs(
       base::ValueDeserializer* deserializer,
       const base::FilePath& path);
 
@@ -101,16 +98,16 @@ class ExternalPrefLoader : public ExternalLoader {
   // regarding which extensions to install. |prefs| will be modified to
   // receive the extracted extension information.
   // Must be called from the File thread.
-  void ReadExternalExtensionPrefFile(base::Value::Dict& prefs);
+  void ReadExternalExtensionPrefFile(base::DictionaryValue* prefs);
 
   // Extracts the information contained in standalone external extension
   // json files (<extension id>.json) regarding what external extensions
   // to install. |prefs| will be modified to receive the extracted extension
   // information.
   // Must be called from the File thread.
-  void ReadStandaloneExtensionPrefFiles(base::Value::Dict& prefs);
+  void ReadStandaloneExtensionPrefFiles(base::DictionaryValue* prefs);
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   void OnPrioritySyncReady(PrioritySyncReadyWaiter* waiter);
 #endif
 
@@ -120,7 +117,7 @@ class ExternalPrefLoader : public ExternalLoader {
 
   // Profile that loads these external prefs.
   // Needed for waiting for waiting priority sync.
-  raw_ptr<Profile, FlakyDanglingUntriaged> profile_;
+  Profile* profile_;
 
   // User type determined by |profile_|. Used to filter extensions. In some unit
   // tests may not be set.
@@ -129,9 +126,11 @@ class ExternalPrefLoader : public ExternalLoader {
   // Task runner for tasks that touch file.
   scoped_refptr<base::SequencedTaskRunner> file_task_runner_;
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   std::vector<std::unique_ptr<PrioritySyncReadyWaiter>> pending_waiter_list_;
 #endif
+
+  DISALLOW_COPY_AND_ASSIGN(ExternalPrefLoader);
 };
 
 }  // namespace extensions

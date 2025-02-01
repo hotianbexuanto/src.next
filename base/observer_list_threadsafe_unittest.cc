@@ -1,39 +1,37 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/observer_list_threadsafe.h"
 
 #include <memory>
-#include <optional>
-#include <utility>
 #include <vector>
 
+#include "base/bind.h"
 #include "base/compiler_specific.h"
-#include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/logging.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
+#include "base/sequenced_task_runner.h"
+#include "base/single_thread_task_runner.h"
 #include "base/synchronization/waitable_event.h"
-#include "base/task/sequenced_task_runner.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/task/post_task.h"
 #include "base/task/thread_pool.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/test/bind.h"
-#include "base/test/gtest_util.h"
 #include "base/test/task_environment.h"
-#include "base/test/test_waitable_event.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/thread_restrictions.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 namespace {
 
-constexpr int kThreadRunTime = 1000;  // ms to run the multi-threaded test.
+constexpr int kThreadRunTime = 2000;  // ms to run the multi-threaded test.
 
 class Foo {
  public:
@@ -65,37 +63,35 @@ class AddInObserve : public Foo {
 
   void Observe(int x) override {
     if (to_add_) {
-      observer_list->AddObserver(to_add_.get());
+      observer_list->AddObserver(to_add_);
       to_add_ = nullptr;
     }
   }
 
-  raw_ptr<ObserverListThreadSafe<Foo>> observer_list;
-  raw_ptr<Foo> to_add_;
+  ObserverListThreadSafe<Foo>* observer_list;
+  Foo* to_add_;
 };
 
 // A task for use in the ThreadSafeObserver test which will add and remove
 // itself from the notification list repeatedly.
-template <RemoveObserverPolicy RemovePolicy =
-              RemoveObserverPolicy::kAnySequence>
 class AddRemoveThread : public Foo {
-  using Self = AddRemoveThread<RemovePolicy>;
-  using ObserverList = ObserverListThreadSafe<Foo, RemovePolicy>;
-
  public:
-  AddRemoveThread(ObserverList* list,
-                  bool notify,
-                  scoped_refptr<SingleThreadTaskRunner> removal_task_runner)
+  AddRemoveThread(ObserverListThreadSafe<Foo>* list, bool notify)
       : list_(list),
         task_runner_(ThreadPool::CreateSingleThreadTaskRunner(
             {},
             SingleThreadTaskRunnerThreadMode::DEDICATED)),
+<<<<<<< HEAD
         removal_task_runner_(std::move(removal_task_runner)),
 
+=======
+        in_list_(false),
+>>>>>>> chromium
         start_(Time::Now()),
         do_notifies_(notify) {
     task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(&Self::AddTask, weak_factory_.GetWeakPtr()));
+        FROM_HERE,
+        base::BindOnce(&AddRemoveThread::AddTask, weak_factory_.GetWeakPtr()));
   }
 
   ~AddRemoveThread() override = default;
@@ -117,13 +113,9 @@ class AddRemoveThread : public Foo {
       list_->Notify(FROM_HERE, &Foo::Observe, 10);
     }
 
-    SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(&Self::AddTask, weak_factory_.GetWeakPtr()));
-  }
-
-  void RemoveTask() {
-    list_->RemoveObserver(this);
-    in_list_ = false;
+    ThreadTaskRunnerHandle::Get()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&AddRemoveThread::AddTask, weak_factory_.GetWeakPtr()));
   }
 
   void Observe(int x) override {
@@ -134,39 +126,28 @@ class AddRemoveThread : public Foo {
     // This callback should fire on the appropriate thread
     EXPECT_TRUE(task_runner_->BelongsToCurrentThread());
 
-    if (removal_task_runner_) {
-      // Remove the observer on a different thread, blocking the current thread
-      // until it's removed. Unretained is safe since the pointers are valid
-      // until the thread is unblocked.
-      base::TestWaitableEvent event;
-      removal_task_runner_->PostTask(
-          FROM_HERE, base::BindOnce(&Self::RemoveTask, base::Unretained(this))
-                         .Then(base::BindOnce(&base::TestWaitableEvent::Signal,
-                                              base::Unretained(&event))));
-      event.Wait();
-    } else {
-      // Remove the observer on the same thread.
-      RemoveTask();
-    }
-  }
-
-  scoped_refptr<SingleThreadTaskRunner> task_runner() const {
-    return task_runner_;
+    list_->RemoveObserver(this);
+    in_list_ = false;
   }
 
  private:
-  raw_ptr<ObserverList> list_;
+  ObserverListThreadSafe<Foo>* list_;
   scoped_refptr<SingleThreadTaskRunner> task_runner_;
+<<<<<<< HEAD
   // Optional task runner used to remove observers. This will be the main task
   // runner of a different AddRemoveThread.
   scoped_refptr<SingleThreadTaskRunner> removal_task_runner_;
   bool in_list_ = false;  // Are we currently registered for notifications.
                           // in_list_ is only used on |this| thread.
+=======
+  bool in_list_;  // Are we currently registered for notifications.
+                  // in_list_ is only used on |this| thread.
+>>>>>>> chromium
   Time start_;    // The time we started the test.
 
   bool do_notifies_;  // Whether these threads should do notifications.
 
-  base::WeakPtrFactory<Self> weak_factory_{this};
+  base::WeakPtrFactory<AddRemoveThread> weak_factory_{this};
 };
 
 }  // namespace
@@ -254,16 +235,16 @@ class FooRemover : public Foo {
   void AddFooToRemove(Foo* foo) { foos_.push_back(foo); }
 
   void Observe(int x) override {
-    std::vector<raw_ptr<Foo, VectorExperimental>> tmp;
+    std::vector<Foo*> tmp;
     tmp.swap(foos_);
-    for (Foo* it : tmp) {
+    for (auto* it : tmp) {
       list_->RemoveObserver(it);
     }
   }
 
  private:
   const scoped_refptr<ObserverListThreadSafe<Foo>> list_;
-  std::vector<raw_ptr<Foo, VectorExperimental>> foos_;
+  std::vector<Foo*> foos_;
 };
 
 TEST(ObserverListThreadSafeTest, RemoveMultipleObservers) {
@@ -286,26 +267,21 @@ TEST(ObserverListThreadSafeTest, RemoveMultipleObservers) {
 
 // A test driver for a multi-threaded notification loop.  Runs a number of
 // observer threads, each of which constantly adds/removes itself from the
-// observer list.  Optionally, if `cross_thread_notifies` is set to true, the
-// observer threads will also trigger notifications to all observers, and if
-// `cross_thread_removes` is set to true, the observer threads will also remove
-// observers added by other threads.
-template <
-    RemoveObserverPolicy RemovePolicy = RemoveObserverPolicy::kAnySequence>
+// observer list.  Optionally, if cross_thread_notifies is set to true, the
+// observer threads will also trigger notifications to all observers.
 static void ThreadSafeObserverHarness(int num_threads,
-                                      bool cross_thread_notifies = false,
-                                      bool cross_thread_removes = false) {
+                                      bool cross_thread_notifies) {
   test::TaskEnvironment task_environment;
 
-  auto observer_list =
-      base::MakeRefCounted<ObserverListThreadSafe<Foo, RemovePolicy>>();
-
+  scoped_refptr<ObserverListThreadSafe<Foo>> observer_list(
+      new ObserverListThreadSafe<Foo>);
   Adder a(1);
   Adder b(-1);
 
   observer_list->AddObserver(&a);
   observer_list->AddObserver(&b);
 
+<<<<<<< HEAD
   using TestThread = AddRemoveThread<RemovePolicy>;
   std::vector<std::unique_ptr<TestThread>> threaded_observers;
   threaded_observers.reserve(num_threads);
@@ -324,8 +300,15 @@ static void ThreadSafeObserverHarness(int num_threads,
       threaded_observers.push_back(std::make_unique<TestThread>(
           observer_list.get(), cross_thread_notifies, nullptr));
     }
+=======
+  std::vector<std::unique_ptr<AddRemoveThread>> threaded_observer;
+  threaded_observer.reserve(num_threads);
+  for (int index = 0; index < num_threads; index++) {
+    threaded_observer.push_back(std::make_unique<AddRemoveThread>(
+        observer_list.get(), cross_thread_notifies));
+>>>>>>> chromium
   }
-  ASSERT_EQ(static_cast<size_t>(num_threads), threaded_observers.size());
+  ASSERT_EQ(static_cast<size_t>(num_threads), threaded_observer.size());
 
   Time start = Time::Now();
   while (true) {
@@ -343,60 +326,25 @@ static void ThreadSafeObserverHarness(int num_threads,
 
 TEST(ObserverListThreadSafeTest, CrossThreadObserver) {
   // Use 7 observer threads.  Notifications only come from the main thread.
-  ThreadSafeObserverHarness(7);
+  ThreadSafeObserverHarness(7, false);
 }
 
 TEST(ObserverListThreadSafeTest, CrossThreadNotifications) {
   // Use 3 observer threads.  Notifications will fire from the main thread and
   // all 3 observer threads.
-  ThreadSafeObserverHarness(3, /*cross_thread_notifies=*/true);
-}
-
-TEST(ObserverListThreadSafeTest, CrossThreadRemoval) {
-  // Use 3 observer threads. Observers can be removed from any thread.
-  ThreadSafeObserverHarness(3, /*cross_thread_notifies=*/true,
-                            /*cross_thread_removes=*/true);
-}
-
-TEST(ObserverListThreadSafeTest, CrossThreadRemovalRestricted) {
-  // Use 3 observer threads. Observers must be removed from the thread that
-  // added them. This should succeed because the test doesn't break that
-  // restriction.
-  ThreadSafeObserverHarness<RemoveObserverPolicy::kAddingSequenceOnly>(
-      3, /*cross_thread_notifies=*/true, /*cross_thread_removes=*/false);
-}
-
-TEST(ObserverListThreadSafeDeathTest, CrossThreadRemovalRestricted) {
-  // Use 3 observer threads. Observers must be removed from the thread that
-  // added them. This should CHECK because the test breaks that restriction.
-  EXPECT_CHECK_DEATH(
-      ThreadSafeObserverHarness<RemoveObserverPolicy::kAddingSequenceOnly>(
-          3, /*cross_thread_notifies=*/true, /*cross_thread_removes=*/true));
+  ThreadSafeObserverHarness(3, true);
 }
 
 TEST(ObserverListThreadSafeTest, OutlivesTaskEnvironment) {
-  std::optional<test::TaskEnvironment> task_environment(std::in_place);
-  auto observer_list = base::MakeRefCounted<ObserverListThreadSafe<Foo>>();
+  absl::optional<test::TaskEnvironment> task_environment(absl::in_place);
+  scoped_refptr<ObserverListThreadSafe<Foo>> observer_list(
+      new ObserverListThreadSafe<Foo>);
 
   Adder a(1);
   observer_list->AddObserver(&a);
   task_environment.reset();
   // Test passes if we don't crash here.
   observer_list->Notify(FROM_HERE, &Foo::Observe, 1);
-  observer_list->RemoveObserver(&a);
-}
-
-TEST(ObserverListThreadSafeTest, OutlivesTaskEnvironmentRemovalRestricted) {
-  std::optional<test::TaskEnvironment> task_environment(std::in_place);
-  auto observer_list = base::MakeRefCounted<
-      ObserverListThreadSafe<Foo, RemoveObserverPolicy::kAddingSequenceOnly>>();
-
-  Adder a(1);
-  observer_list->AddObserver(&a);
-  task_environment.reset();
-  // Test passes if we don't crash here.
-  observer_list->Notify(FROM_HERE, &Foo::Observe, 1);
-  observer_list->RemoveObserver(&a);
 }
 
 namespace {

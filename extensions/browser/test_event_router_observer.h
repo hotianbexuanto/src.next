@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,8 +9,11 @@
 #include <memory>
 #include <string>
 
+<<<<<<< HEAD
 #include "base/run_loop.h"
 #include "base/scoped_observation.h"
+=======
+>>>>>>> chromium
 #include "extensions/browser/event_router.h"
 
 namespace extensions {
@@ -20,10 +23,6 @@ class TestEventRouterObserver : public EventRouter::TestObserver {
   using EventMap = std::map<std::string, std::unique_ptr<Event>>;
 
   explicit TestEventRouterObserver(EventRouter* event_router);
-
-  TestEventRouterObserver(const TestEventRouterObserver&) = delete;
-  TestEventRouterObserver& operator=(const TestEventRouterObserver&) = delete;
-
   ~TestEventRouterObserver() override;
 
   // Clears all recorded events.
@@ -32,19 +31,22 @@ class TestEventRouterObserver : public EventRouter::TestObserver {
   const EventMap& events() const { return events_; }
   const EventMap& dispatched_events() const { return dispatched_events_; }
 
-  // Waits until `events()` contains an event with `name`.
-  void WaitForEventWithName(const std::string& name);
-
  private:
   // EventRouter::TestObserver:
   void OnWillDispatchEvent(const Event& event) override;
-  void OnDidDispatchEventToProcess(const Event& event, int process_id) override;
+  void OnDidDispatchEventToProcess(const Event& event) override;
 
   EventMap events_;
   EventMap dispatched_events_;
+<<<<<<< HEAD
   base::ScopedObservation<EventRouter, EventRouter::TestObserver> observation_{
       this};
   std::unique_ptr<base::RunLoop> run_loop_;
+=======
+  EventRouter* event_router_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestEventRouterObserver);
+>>>>>>> chromium
 };
 
 }  // namespace extensions

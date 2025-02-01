@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,7 +20,7 @@ void LogConsoleMessage(blink::mojom::ConsoleMessageLevel log_level,
                        const std::u16string& source_id) {
   const int32_t resolved_level =
       is_builtin_component ? ConsoleMessageLevelToLogSeverity(log_level)
-                           : ::logging::LOGGING_INFO;
+                           : ::logging::LOG_INFO;
   if (::logging::GetMinLogLevel() > resolved_level)
     return;
 

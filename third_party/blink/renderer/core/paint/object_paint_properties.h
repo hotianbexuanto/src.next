@@ -1,35 +1,36 @@
-// Copyright 2023 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_OBJECT_PAINT_PROPERTIES_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_OBJECT_PAINT_PROPERTIES_H_
 
-#include <array>
 #include <memory>
 #include <utility>
-#include <variant>
 
 #include "base/dcheck_is_on.h"
 #include "base/functional/function_ref.h"
 #include "base/memory/ptr_util.h"
+#include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/graphics/paint/clip_paint_property_node.h"
 #include "third_party/blink/renderer/platform/graphics/paint/effect_paint_property_node.h"
 #include "third_party/blink/renderer/platform/graphics/paint/scroll_paint_property_node.h"
 #include "third_party/blink/renderer/platform/graphics/paint/transform_paint_property_node.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/sparse_vector.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
 namespace blink {
 
-// This class is for storing the paint property nodes created by a
-// LayoutObject. The object owns each of the property nodes directly and RefPtrs
-// are only used to harden against use-after-free bugs. These paint properties
-// are built/updated by PaintPropertyTreeBuilder during the PrePaint lifecycle
-// step.
+// This class stores the paint property nodes created by a LayoutObject. The
+// object owns each of the property nodes directly and RefPtrs are only used to
+// harden against use-after-free bugs. These paint properties are built/updated
+// by PaintPropertyTreeBuilder during the PrePaint lifecycle step.
 //
 // [update & clear implementation note] This class has Update[property](...) and
 // Clear[property]() helper functions for efficiently creating and updating
@@ -42,50 +43,52 @@ namespace blink {
 // nodes store parent pointers but not child pointers and these return values
 // are important for catching property tree structure changes which require
 // updating descendant's parent pointers.
-class CORE_EXPORT ObjectPaintProperties
-    : public GarbageCollected<ObjectPaintProperties> {
+class CORE_EXPORT ObjectPaintProperties {
+  USING_FAST_MALLOC(ObjectPaintProperties);
+
  public:
   ObjectPaintProperties() = default;
+  ObjectPaintProperties(const ObjectPaintProperties&) = delete;
+  ObjectPaintProperties& operator=(const ObjectPaintProperties&) = delete;
 #if DCHECK_IS_ON()
   ~ObjectPaintProperties() { DCHECK(!is_immutable_); }
 #endif
 
+<<<<<<< HEAD
   void Trace(Visitor* visitor) const { visitor->Trace(nodes_); }
 
  private:
 // Preprocessor macro declarations.
 //
+=======
+>>>>>>> chromium
 // The following defines 3 functions and one variable:
 // - Foo(): a getter for the property.
 // - UpdateFoo(): an update function.
 // - ClearFoo(): a clear function
 // - foo_: the variable itself.
 //
-// Note that Clear* functions return true if the property tree structure
+// Note that clear* functions return true if the property tree structure
 // changes (an existing node was deleted), and false otherwise. See the
 // class-level comment ("update & clear implementation note") for details
 // about why this is needed for efficient updates.
-#define ADD_NODE(type, function, field_id)                                  \
- public:                                                                    \
-  static_assert(field_id >= NodeId::kFirst##type);                          \
-  static_assert(field_id <= NodeId::kLast##type);                           \
-                                                                            \
-  const type##PaintPropertyNode* function() const {                         \
-    return GetNode<type##PaintPropertyNode>(field_id);                      \
-  }                                                                         \
-                                                                            \
-  PaintPropertyChangeType Update##function(                                 \
-      const type##PaintPropertyNodeOrAlias& parent,                         \
-      type##PaintPropertyNode::State&& state,                               \
-      const type##PaintPropertyNode::AnimationState& animation_state =      \
-          type##PaintPropertyNode::AnimationState()) {                      \
-    return Update<type##PaintPropertyNode, type##PaintPropertyNodeOrAlias>( \
-        field_id, parent, std::move(state), animation_state);               \
-  }                                                                         \
-                                                                            \
-  bool Clear##function() { return nodes_.EraseField(field_id); }            \
+#define ADD_NODE(type, function, variable)                                   \
+ public:                                                                     \
+  const type##PaintPropertyNode* function() const { return variable.get(); } \
+  PaintPropertyChangeType Update##function(                                  \
+      const type##PaintPropertyNodeOrAlias& parent,                          \
+      type##PaintPropertyNode::State&& state,                                \
+      const type##PaintPropertyNode::AnimationState& animation_state =       \
+          type##PaintPropertyNode::AnimationState()) {                       \
+    return Update(variable, parent, std::move(state), animation_state);      \
+  }                                                                          \
+  bool Clear##function() { return Clear(variable); }                         \
+                                                                             \
+ private:                                                                    \
+  scoped_refptr<type##PaintPropertyNode> variable
   // (End of ADD_NODE definition)
 
+<<<<<<< HEAD
 #define ADD_ALIAS_NODE(type, function, field_id)                        \
  public:                                                                \
   static_assert(field_id == NodeId::k##type##Alias);                    \
@@ -100,13 +103,29 @@ class CORE_EXPORT ObjectPaintProperties
   }                                                                     \
                                                                         \
   bool Clear##function() { return nodes_.EraseField(field_id); }        \
+=======
+#define ADD_ALIAS_NODE(type, function, variable)           \
+ public:                                                   \
+  const type##PaintPropertyNodeOrAlias* function() const { \
+    return variable.get();                                 \
+  }                                                        \
+  PaintPropertyChangeType Update##function(                \
+      const type##PaintPropertyNodeOrAlias& parent) {      \
+    return UpdateAlias(variable, parent);                  \
+  }                                                        \
+  bool Clear##function() { return Clear(variable); }       \
+                                                           \
+ private:                                                  \
+  scoped_refptr<type##PaintPropertyNodeAlias> variable
+>>>>>>> chromium
   // (End of ADD_ALIAS_NODE definition)
 
-#define ADD_TRANSFORM(function, field_id) \
-  ADD_NODE(Transform, function, field_id)
-#define ADD_EFFECT(function, field_id) ADD_NODE(Effect, function, field_id)
-#define ADD_CLIP(function, field_id) ADD_NODE(Clip, function, field_id)
+#define ADD_TRANSFORM(function, variable) \
+  ADD_NODE(Transform, function, variable)
+#define ADD_EFFECT(function, variable) ADD_NODE(Effect, function, variable)
+#define ADD_CLIP(function, variable) ADD_NODE(Clip, function, variable)
 
+<<<<<<< HEAD
   // Identifier used for indexing into the sparse vector of nodes. NOTE: when
   // adding a new node to this list, make sure to do the following. Update
   // the kLast<NodeType> value to reflect the value you added, and renumber all
@@ -224,48 +243,19 @@ class CORE_EXPORT ObjectPaintProperties
 
   // Transform node method declarations.
   //
+=======
+>>>>>>> chromium
   // The hierarchy of the transform subtree created by a LayoutObject is as
   // follows:
   // [ PaintOffsetTranslation ]
   // |   Normally paint offset is accumulated without creating a node until
   // |   we see, for example, transform or position:fixed.
-  // |
   // +-[ StickyTranslation ]
   //  /    This applies the sticky offset induced by position:sticky.
   // |
-  // +-[ AnchorPositionScrollTranslation ]
-  //  /    This applies the scrolling offset induced by CSS anchor positioning.
-  // |
-  // +-[ Translate ]
-  //   |   The transform from CSS 'translate' (including the effects of
-  //  /    'transform-origin').
-  // |
-  // +-[ Rotate ]
-  //   |   The transform from CSS 'rotate' (including the effects of
-  //  /    'transform-origin').
-  // |
-  // +-[ Scale ]
-  //   |   The transform from CSS 'scale' (including the effects of
-  //  /    'transform-origin').
-  // |
-  // +-[ Offset ]
-  //   |   The transform from the longhand properties that comprise the CSS
-  //  /    'offset' shorthand (including the effects of 'transform-origin').
-  // |
   // +-[ Transform ]
-  //   |   The transform from CSS 'transform' (including the effects of
-  //   |   'transform-origin').
-  //   |
-  //   |   For SVG, this also includes 'translate', 'rotate', 'scale',
-  //   |   'offset-*' (instead of the nodes above) and the effects of
-  //   |   some characteristics of the SVG viewport and the "SVG
-  //   |   additional translation" (for the x and y attributes on
-  //   |   svg:use).
-  //   |
-  //   |   This is the local border box space (see
-  //   |   FragmentData::LocalBorderBoxProperties); the nodes below influence
-  //   |   the transform for the children but not the LayoutObject itself.
-  //   |
+  //   |   The space created by CSS transform. This is the local border box
+  //   |   space.
   //   +-[ Perspective ]
   //     |   The space created by CSS perspective.
   //     +-[ ReplacedContentTransform ]
@@ -276,8 +266,10 @@ class CORE_EXPORT ObjectPaintProperties
   //         The space created by overflow clip. The translation equals the
   //         offset between the scrolling contents and the scrollable area of
   //         the container, both originated from the top-left corner, so it is
-  //         the scroll position (instead of scroll offset) of the
-  //         ScrollableArea.
+  //         the sum of scroll origin and scroll offset of the ScrollableArea.
+  //         To use any content offset based on ScrollOrigin() (e.g. LayoutBox
+  //         or InlineBox's PhysicalLocation()) in this space, we should add
+  //         ScrollOrigin() to the offset.
   //
   // ... +-[ TransformIsolationNode ]
   //         This serves as a parent to subtree transforms on an element with
@@ -287,6 +279,7 @@ class CORE_EXPORT ObjectPaintProperties
   //
   // This hierarchy is related to the order of transform operations in
   // https://drafts.csswg.org/css-transforms-2/#accumulated-3d-transformation-matrix-computation
+<<<<<<< HEAD
   bool HasCSSTransformPropertyNode() const {
     return nodes_.HasFieldInRange(NodeId::kFirstCSSTransform,
                                   NodeId::kLastCSSTransform);
@@ -308,53 +301,44 @@ class CORE_EXPORT ObjectPaintProperties
   ADD_TRANSFORM(Perspective, NodeId::kPerspective)
   ADD_TRANSFORM(ReplacedContentTransform, NodeId::kReplacedContentTransform)
   ADD_TRANSFORM(ScrollTranslation, NodeId::kScrollTranslation)
+=======
+  ADD_TRANSFORM(PaintOffsetTranslation, paint_offset_translation_);
+  ADD_TRANSFORM(StickyTranslation, sticky_translation_);
+  ADD_TRANSFORM(Transform, transform_);
+  ADD_TRANSFORM(Perspective, perspective_);
+  ADD_TRANSFORM(ReplacedContentTransform, replaced_content_transform_);
+  ADD_TRANSFORM(ScrollTranslation, scroll_translation_);
+>>>>>>> chromium
   using ScrollPaintPropertyNodeOrAlias = ScrollPaintPropertyNode;
-  ADD_ALIAS_NODE(Transform, TransformIsolationNode, NodeId::kTransformAlias)
+  ADD_NODE(Scroll, Scroll, scroll_);
+  ADD_ALIAS_NODE(Transform, TransformIsolationNode, transform_isolation_node_);
 
-  ADD_NODE(Scroll, Scroll, NodeId::kScroll)
-
-  // Effect node method declarations.
-  //
   // The hierarchy of the effect subtree created by a LayoutObject is as
   // follows:
-  // [ ElementCaptureEffect ]
-  // |     Isolated group to force an element to be painted separately.
-  // +-[ ViewTransitionSubframeRoot ]
-  //   |   Provides the root stacking context for a local subframe with an
-  //   |   active ViewTransition. This is used to implement the view transition
-  //  /    layer stacking context:
-  // |     https://drafts.csswg.org/css-view-transitions-1/#view-transition-layer
-  // +-[ ViewTransitionEffect ]
-  //   |   Provides the stacking context to paint all content for a Document,
-  //   |   including top layer elements, into an image used for ViewTransition.
-  //  /    This implements the capturing the image for the document element at:
-  // |     https://drafts.csswg.org/css-view-transitions-1/#capture-the-image-algorithm
-  // +-[ Effect ]
-  //   |   Isolated group to apply various CSS effects, including opacity,
-  //  /    mix-blend-mode, backdrop-filter, and for isolation if a mask needs
+  // [ Effect ]
+  // |     Isolated group to apply various CSS effects, including opacity,
+  // |     mix-blend-mode, backdrop-filter, and for isolation if a mask needs
   // |     to be applied or backdrop-dependent children are present.
-  // +-[ Mask ]
-  //   |   Isolated group for painting the CSS mask or the mask-based CSS
-  //  /    clip-path. This node will have SkBlendMode::kDstIn and shall paint
-  // |     last, i.e. after masked contents.
-  // +-[ ClipPathMask ]
-  //   |   Isolated group for painting the mask-based CSS clip-path. This node
-  //   |   will have SkBlendMode::kDstIn and shall paint last, i.e. after
-  //  /    clipped contents. If there is no Mask node, then this node is a
-  // |     direct child of the Effect node.
   // +-[ Filter ]
-  //   |   Isolated group for CSS filter. This is separate from Effect in case
-  //  /    there are masks which should be applied to the output of the filter
-  // |     instead of the input.
-  // +-[ VerticalScrollbarEffect / HorizontalScrollbarEffect / ScrollCorner ]
-  // |     Overlay Scrollbars on Aura and Android need effect node for fade
-  // |     animation. Also used in ViewTransitions to separate out scrollbars
-  // |     from the root snapshot.
+  // |     Isolated group for CSS filter.
+  // +-[ Mask ]
+  // | |   Isolated group for painting the CSS mask or the mask-based CSS
+  // | |   clip-path. This node will have SkBlendMode::kDstIn and shall paint
+  // | |   last, i.e. after masked contents.
+  // | +-[ ClipPathMask ]
+  // |     Isolated group for painting the mask-based CSS clip-path. This node
+  // |     will have SkBlendMode::kDstIn and shall paint last, i.e. after
+  // |     clipped contents. If there is no Mask node, then this node is a
+  // |     direct child of the Effect node.
+  // +-[ VerticalScrollbarEffect / HorizontalScrollbarEffect ]
+  //       Overlay Scrollbars on Aura and Android need effect node for fade
+  //       animation.
   //
   // ... +-[ EffectIsolationNode ]
   //       This serves as a parent to subtree effects on an element with paint
   //       containment, It is the deepest child of any effect tree on the
   //       contain: paint element.
+<<<<<<< HEAD
   ADD_EFFECT(ElementCaptureEffect, NodeId::kElementCaptureEffect)
   ADD_EFFECT(ViewTransitionSubframeRootEffect,
              NodeId::kViewTransitionSubframeRootEffect)
@@ -370,16 +354,24 @@ class CORE_EXPORT ObjectPaintProperties
 
   // Clip node declarations.
   //
+=======
+  ADD_EFFECT(Effect, effect_);
+  ADD_EFFECT(Filter, filter_);
+  ADD_EFFECT(VerticalScrollbarEffect, vertical_scrollbar_effect_);
+  ADD_EFFECT(HorizontalScrollbarEffect, horizontal_scrollbar_effect_);
+  ADD_EFFECT(Mask, mask_);
+  ADD_EFFECT(ClipPathMask, clip_path_mask_);
+  ADD_ALIAS_NODE(Effect, EffectIsolationNode, effect_isolation_node_);
+
+>>>>>>> chromium
   // The hierarchy of the clip subtree created by a LayoutObject is as follows:
-  // [ ViewTransitionClip ]
-  // |   Clip created only when there is an active ViewTransition. This is used
-  // |   to clip the element's painting to a subset close to the viewport.
-  // |   See https://drafts.csswg.org/css-view-transitions-1/
-  // |       #compute-the-interest-rectangle-algorithm for details.
+  // [ FragmentClip ]
+  // |    Clips to a fragment's bounds.
+  // |    This is only present for content under a fragmentation container.
   // +-[ ClipPathClip ]
   //   |  Clip created by path-based CSS clip-path. Only exists if the
   //  /   clip-path is "simple" that can be applied geometrically. This and
-  // |    the ClipPathMask effect node are mutually exclusive.
+  // /    the ClipPathMask effect node are mutually exclusive.
   // +-[ MaskClip ]
   //   |   Clip created by CSS mask or mask-based CSS clip-path.
   //   |   It serves two purposes:
@@ -396,14 +388,6 @@ class CORE_EXPORT ObjectPaintProperties
   //     +-[ OverflowControlsClip ]
   //     |   Clip created by overflow clip to clip overflow controls
   //     |   (scrollbars, resizer, scroll corner) that would overflow the box.
-  //     +-[ BackgroundClip ]
-  //     |   Clip created for CompositeBackgroundAttachmentFixed background
-  //     |   according to CSS background-clip.
-  //     +-[ PixelMovingFilterClipExpander ]
-  //       | Clip created by pixel-moving filter. Instead of intersecting with
-  //       | the current clip, this clip expands the current clip to include all
-  //      /  pixels in the filtered content that may affect the pixels in the
-  //     |   current clip.
   //     +-[ InnerBorderRadiusClip ]
   //       |   Clip created by a rounded border with overflow clip. This clip is
   //       |   not inset by scrollbars.
@@ -417,6 +401,7 @@ class CORE_EXPORT ObjectPaintProperties
   //       This serves as a parent to subtree clips on an element with paint
   //       containment. It is the deepest child of any clip tree on the contain:
   //       paint element.
+<<<<<<< HEAD
   ADD_CLIP(ClipPathClip, NodeId::kClipPathClip)
   ADD_CLIP(MaskClip, NodeId::kMaskClip)
   ADD_CLIP(CssClip, NodeId::kCssClip)
@@ -428,6 +413,17 @@ class CORE_EXPORT ObjectPaintProperties
   ADD_CLIP(OverflowClip, NodeId::kOverflowClip)
   ADD_CLIP(CssClipFixedPosition, NodeId::kCssClipFixedPosition)
   ADD_ALIAS_NODE(Clip, ClipIsolationNode, NodeId::kClipAlias)
+=======
+  ADD_CLIP(FragmentClip, fragment_clip_);
+  ADD_CLIP(ClipPathClip, clip_path_clip_);
+  ADD_CLIP(MaskClip, mask_clip_);
+  ADD_CLIP(CssClip, css_clip_);
+  ADD_CLIP(CssClipFixedPosition, css_clip_fixed_position_);
+  ADD_CLIP(OverflowControlsClip, overflow_controls_clip_);
+  ADD_CLIP(InnerBorderRadiusClip, inner_border_radius_clip_);
+  ADD_CLIP(OverflowClip, overflow_clip_);
+  ADD_ALIAS_NODE(Clip, ClipIsolationNode, clip_isolation_node_);
+>>>>>>> chromium
 
 #undef ADD_CLIP
 #undef ADD_EFFECT
@@ -435,6 +431,7 @@ class CORE_EXPORT ObjectPaintProperties
 #undef ADD_NODE
 #undef ADD_ALIAS_NODE
 
+<<<<<<< HEAD
   // For each node of `NodeType`, runs `action`, and returns true immediately
   // if `action` returns true, or returns false after iterating the nodes.
   template <typename NodeType>
@@ -455,6 +452,11 @@ class CORE_EXPORT ObjectPaintProperties
   // Debug-only state change validation method implementations.
   // Used by find_properties_needing_update.h for verifying state doesn't
   // change.
+=======
+ public:
+#if DCHECK_IS_ON()
+  // Used by FindPropertiesNeedingUpdate.h for verifying state doesn't change.
+>>>>>>> chromium
   void SetImmutable() const { is_immutable_ = true; }
   bool IsImmutable() const { return is_immutable_; }
   void SetMutable() const { is_immutable_ = false; }
@@ -472,6 +474,7 @@ class CORE_EXPORT ObjectPaintProperties
         << "Isolation nodes have to be created for all of transform, clip, and "
            "effect trees.";
   }
+<<<<<<< HEAD
 
   template <typename NodeType>
   void AddNodesToPrinter(PropertyTreePrinter& printer) const {
@@ -480,32 +483,12 @@ class CORE_EXPORT ObjectPaintProperties
       return false;
     });
   }
+=======
+>>>>>>> chromium
 #endif
 
-  // Direct update method implementations.
-  PaintPropertyChangeType DirectlyUpdateTransformAndOrigin(
-      TransformPaintPropertyNode::TransformAndOrigin&& transform_and_origin,
-      const TransformPaintPropertyNode::AnimationState& animation_state) {
-    CHECK(nodes_.HasField(NodeId::kTransform));
-    return GetNode<TransformPaintPropertyNode>(NodeId::kTransform)
-        ->DirectlyUpdateTransformAndOrigin(std::move(transform_and_origin),
-                                           animation_state);
-  }
-  PaintPropertyChangeType DirectlyUpdateOpacity(
-      float opacity,
-      const EffectPaintPropertyNode::AnimationState& animation_state) {
-    const bool has_effect = nodes_.HasField(NodeId::kEffect);
-    // TODO(yotha): Remove this check once we make sure crbug.com/1370268
-    // is fixed.
-    DCHECK(has_effect);
-    if (!has_effect) {
-      return PaintPropertyChangeType::kNodeAddedOrRemoved;
-    }
-    return GetNode<EffectPaintPropertyNode>(NodeId::kEffect)
-        ->DirectlyUpdateOpacity(opacity, animation_state);
-  }
-
  private:
+<<<<<<< HEAD
   using NodeList = SparseVector<NodeId, Member<PaintPropertyNode>, 2>;
 
   template <typename NodeType, typename ParentType>
@@ -573,6 +556,67 @@ class CORE_EXPORT ObjectPaintProperties
   }
 
   NodeList nodes_;
+=======
+  // Return true if the property tree structure changes (an existing node was
+  // deleted), and false otherwise. See the class-level comment ("update & clear
+  // implementation note") for details about why this is needed for efficiency.
+  template <typename PaintPropertyNode>
+  bool Clear(scoped_refptr<PaintPropertyNode>& field) {
+    if (field) {
+      field = nullptr;
+      return true;
+    }
+    return false;
+  }
+
+  // Return true if the property tree structure changes (a new node was
+  // created), and false otherwise. See the class-level comment ("update & clear
+  // implementation note") for details about why this is needed for efficiency.
+  template <typename PaintPropertyNode, typename PaintPropertyNodeOrAlias>
+  PaintPropertyChangeType Update(
+      scoped_refptr<PaintPropertyNode>& field,
+      const PaintPropertyNodeOrAlias& parent,
+      typename PaintPropertyNode::State&& state,
+      const typename PaintPropertyNode::AnimationState& animation_state) {
+    if (field) {
+      auto changed = field->Update(parent, std::move(state), animation_state);
+#if DCHECK_IS_ON()
+      DCHECK(!is_immutable_ || changed == PaintPropertyChangeType::kUnchanged)
+          << "Value changed while immutable. New state:\n"
+          << *field;
+#endif
+      return changed;
+    }
+    field = PaintPropertyNode::Create(parent, std::move(state));
+#if DCHECK_IS_ON()
+    DCHECK(!is_immutable_) << "Node added while immutable. New state:\n"
+                           << *field;
+#endif
+    return PaintPropertyChangeType::kNodeAddedOrRemoved;
+  }
+
+  template <typename PaintPropertyNodeAlias, typename PaintPropertyNodeOrAlias>
+  PaintPropertyChangeType UpdateAlias(
+      scoped_refptr<PaintPropertyNodeAlias>& field,
+      const PaintPropertyNodeOrAlias& parent) {
+    if (field) {
+      DCHECK(field->IsParentAlias());
+      auto changed = field->SetParent(parent);
+#if DCHECK_IS_ON()
+      DCHECK(!is_immutable_ || changed == PaintPropertyChangeType::kUnchanged)
+          << "Parent changed while immutable. New state:\n"
+          << *field;
+#endif
+      return changed;
+    }
+    field = PaintPropertyNodeAlias::Create(parent);
+#if DCHECK_IS_ON()
+    DCHECK(!is_immutable_) << "Node added while immutable. New state:\n"
+                           << *field;
+#endif
+    return PaintPropertyChangeType::kNodeAddedOrRemoved;
+  }
+>>>>>>> chromium
 
 #if DCHECK_IS_ON()
   mutable bool is_immutable_ = false;

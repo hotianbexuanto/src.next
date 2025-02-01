@@ -1,20 +1,18 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <stddef.h>
 
+#include "base/bind.h"
 #include "base/check_op.h"
-#include "base/command_line.h"
-#include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
 #include "chrome/browser/download/chrome_download_manager_delegate.h"
 #include "chrome/browser/download/download_core_service.h"
 #include "chrome/browser/download/download_core_service_factory.h"
 #include "chrome/browser/profiles/profile_manager.h"
-#include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/test_browser_window.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
@@ -27,6 +25,7 @@
 
 class TestingDownloadCoreService : public DownloadCoreService {
  public:
+<<<<<<< HEAD
   TestingDownloadCoreService() = default;
 
   TestingDownloadCoreService(const TestingDownloadCoreService&) = delete;
@@ -34,6 +33,10 @@ class TestingDownloadCoreService : public DownloadCoreService {
       delete;
 
   ~TestingDownloadCoreService() override = default;
+=======
+  TestingDownloadCoreService() : download_count_(0) {}
+  ~TestingDownloadCoreService() override {}
+>>>>>>> chromium
 
   // All methods that aren't expected to be called in the execution of
   // this unit test are marked to result in test failure.  Using a simple
@@ -47,11 +50,6 @@ class TestingDownloadCoreService : public DownloadCoreService {
 
   // DownloadCoreService
   ChromeDownloadManagerDelegate* GetDownloadManagerDelegate() override {
-    ADD_FAILURE();
-    return nullptr;
-  }
-
-  DownloadUIController* GetDownloadUIController() override {
     ADD_FAILURE();
     return nullptr;
   }
@@ -70,22 +68,28 @@ class TestingDownloadCoreService : public DownloadCoreService {
 #endif
   bool HasCreatedDownloadManager() override { return true; }
 
-  int BlockingShutdownCount() const override { return download_count_; }
+  int NonMaliciousDownloadCount() const override { return download_count_; }
 
-  void CancelDownloads(DownloadCoreService::CancelDownloadsTrigger) override {}
+  void CancelDownloads() override {}
 
   void SetDownloadManagerDelegateForTesting(
       std::unique_ptr<ChromeDownloadManagerDelegate> delegate) override {
     ADD_FAILURE();
   }
 
-  bool IsDownloadUiEnabled() override { return true; }
+  bool IsShelfEnabled() override { return true; }
 
   // KeyedService
   void Shutdown() override {}
 
  private:
+<<<<<<< HEAD
   int download_count_ = 0;
+=======
+  int download_count_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestingDownloadCoreService);
+>>>>>>> chromium
 };
 
 static std::unique_ptr<KeyedService> CreateTestingDownloadCoreService(
@@ -95,9 +99,14 @@ static std::unique_ptr<KeyedService> CreateTestingDownloadCoreService(
 
 class BrowserCloseTest : public testing::Test {
  public:
+<<<<<<< HEAD
   BrowserCloseTest() : profile_manager_(TestingBrowserProcess::GetGlobal()) {
     base::CommandLine::ForCurrentProcess()->AppendSwitch(switches::kNoFirstRun);
   }
+=======
+  BrowserCloseTest()
+      : profile_manager_(TestingBrowserProcess::GetGlobal()), name_index_(0) {}
+>>>>>>> chromium
 
   ~BrowserCloseTest() override = default;
 
@@ -173,8 +182,8 @@ class BrowserCloseTest : public testing::Test {
     CHECK(browser_windows_.end() == browser_windows_.find(profile));
     CHECK(browsers_.end() == browsers_.find(profile));
 
-    std::vector<raw_ptr<TestBrowserWindow, VectorExperimental>> windows;
-    std::vector<raw_ptr<Browser, VectorExperimental>> browsers;
+    std::vector<TestBrowserWindow*> windows;
+    std::vector<Browser*> browsers;
     for (int i = 0; i < num_windows; ++i) {
       TestBrowserWindow* window = new TestBrowserWindow();
       Browser::CreateParams params(profile, true);
@@ -192,11 +201,8 @@ class BrowserCloseTest : public testing::Test {
 
   // Note that the vector elements are all owned by this class and must be
   // cleaned up.
-  std::map<Profile*,
-           std::vector<raw_ptr<TestBrowserWindow, VectorExperimental>>>
-      browser_windows_;
-  std::map<Profile*, std::vector<raw_ptr<Browser, VectorExperimental>>>
-      browsers_;
+  std::map<Profile*, std::vector<TestBrowserWindow*>> browser_windows_;
+  std::map<Profile*, std::vector<Browser*>> browsers_;
 
   content::BrowserTaskEnvironment task_environment_;
   TestingProfileManager profile_manager_;
@@ -285,7 +291,11 @@ TEST_F(BrowserCloseTest, LastRegular) {
   EXPECT_EQ(Browser::DownloadCloseType::kBrowserShutdown,
             browser->OkToCloseWithInProgressDownloads(&num_downloads_blocking));
   EXPECT_EQ(num_downloads_blocking, 1);
+<<<<<<< HEAD
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
+=======
+#if defined(OS_MAC) || BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   EXPECT_EQ(true, browser->CanCloseWithInProgressDownloads());
 #else
   EXPECT_EQ(false, browser->CanCloseWithInProgressDownloads());

@@ -21,7 +21,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PROPERTY_VALUE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PROPERTY_VALUE_H_
 
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_property_name.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/css/css_value.h"
@@ -30,6 +29,33 @@
 
 namespace blink {
 
+<<<<<<< HEAD
+=======
+struct CORE_EXPORT CSSPropertyValueMetadata {
+  DISALLOW_NEW();
+  CSSPropertyValueMetadata(const CSSPropertyName&,
+                           bool is_set_from_shorthand,
+                           int index_in_shorthands_vector,
+                           bool important,
+                           bool implicit);
+
+  CSSPropertyID ShorthandID() const;
+  CSSPropertyID PropertyID() const;
+  CSSPropertyName Name() const;
+
+  AtomicString custom_name_;
+  unsigned property_id_ : kCSSPropertyIDBitLength;
+  unsigned is_set_from_shorthand_ : 1;
+  // If this property was set as part of an ambiguous shorthand, gives the index
+  // in the shorthands vector.
+  unsigned index_in_shorthands_vector_ : 2;
+  unsigned important_ : 1;
+  // Whether or not the property was set implicitly as the result of a
+  // shorthand.
+  unsigned implicit_ : 1;
+};
+
+>>>>>>> chromium
 class CORE_EXPORT CSSPropertyValue {
   DISALLOW_NEW();
 
@@ -40,6 +66,7 @@ class CORE_EXPORT CSSPropertyValue {
                    bool is_set_from_shorthand = false,
                    int index_in_shorthands_vector = 0,
                    bool implicit = false)
+<<<<<<< HEAD
       : property_id_(static_cast<unsigned>(name.Id())),
         is_set_from_shorthand_(is_set_from_shorthand),
         index_in_shorthands_vector_(index_in_shorthands_vector),
@@ -78,6 +105,24 @@ class CORE_EXPORT CSSPropertyValue {
            CSSProperty::Get(PropertyID()).IsAffectedByAll();
   }
   CSSPropertyName Name() const;
+=======
+      : metadata_(name,
+                  is_set_from_shorthand,
+                  index_in_shorthands_vector,
+                  important,
+                  implicit),
+        value_(value) {}
+
+  // FIXME: Remove this.
+  CSSPropertyValue(CSSPropertyValueMetadata metadata, const CSSValue& value)
+      : metadata_(metadata), value_(value) {}
+
+  CSSPropertyID Id() const { return metadata_.PropertyID(); }
+  bool IsSetFromShorthand() const { return metadata_.is_set_from_shorthand_; }
+  CSSPropertyID ShorthandID() const { return metadata_.ShorthandID(); }
+  bool IsImportant() const { return metadata_.important_; }
+  CSSPropertyName Name() const { return metadata_.Name(); }
+>>>>>>> chromium
 
   const CSSValue& Value() const { return *value_; }
 
@@ -102,15 +147,6 @@ class CORE_EXPORT CSSPropertyValue {
 
 }  // namespace blink
 
-namespace WTF {
-template <>
-struct VectorTraits<blink::CSSPropertyValue>
-    : VectorTraitsBase<blink::CSSPropertyValue> {
-  static const bool kCanInitializeWithMemset = true;
-  static const bool kCanClearUnusedSlotsWithMemset = true;
-  static const bool kCanMoveWithMemcpy = true;
-  static const bool kCanTraceConcurrently = true;
-};
-}  // namespace WTF
+WTF_ALLOW_MOVE_AND_INIT_WITH_MEM_FUNCTIONS(blink::CSSPropertyValue)
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PROPERTY_VALUE_H_

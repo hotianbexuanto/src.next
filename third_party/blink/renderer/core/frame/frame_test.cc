@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,6 @@
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-blink.h"
-#include "third_party/blink/renderer/core/animation/scroll_timeline.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/frame.h"
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
@@ -17,7 +15,11 @@
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/platform/testing/task_environment.h"
+=======
+#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -36,7 +38,8 @@ class FrameTest : public PageTestBase {
   void Navigate(const String& destinationUrl, bool user_activated) {
     const KURL& url = KURL(NullURL(), destinationUrl);
     auto navigation_params =
-        WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
+        WebNavigationParams::CreateWithHTMLBufferForTesting(
+            SharedBuffer::Create(), url);
     if (user_activated)
       navigation_params->is_user_activated = true;
     GetDocument().GetFrame()->Loader().CommitNavigation(
@@ -267,6 +270,7 @@ TEST_F(FrameTest, UserActivationTriggerHistograms) {
   histograms.ExpectTotalCount("Event.UserActivation.TriggerForTransient", 4);
 }
 
+<<<<<<< HEAD
 TEST_F(FrameTest, NavigateClearsScrollSnapshotClients) {
   ScrollTimeline::Create(&GetDocument(),
                          GetDocument().ScrollingElementNoLayout(),
@@ -324,4 +328,6 @@ TEST_F(FrameDetachTest, Remote) {
   EXPECT_EQ(nullptr, RemoteFrame::FromFrameToken(frame->GetRemoteFrameToken()));
 }
 
+=======
+>>>>>>> chromium
 }  // namespace blink

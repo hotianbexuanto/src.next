@@ -1,12 +1,18 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/browser.h"
 
+<<<<<<< HEAD
 #include "base/memory/raw_ptr.h"
 #include "build/build_config.h"
+=======
+#include "base/macros.h"
+#include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "chrome/app/chrome_command_ids.h"
+#include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
@@ -14,15 +20,18 @@
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
-#include "components/policy/core/common/policy_pref_names.h"
+#include "components/session_manager/core/session_manager.h"
+#include "components/user_manager/fake_user_manager.h"
+#include "components/user_manager/scoped_user_manager.h"
+#include "components/user_manager/user_names.h"
 #include "components/zoom/zoom_controller.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/web_contents_tester.h"
-#include "printing/buildflags/buildflags.h"
 #include "third_party/skia/include/core/SkColor.h"
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "components/session_manager/core/session_manager.h"
@@ -36,23 +45,26 @@ using content::WebContents;
 using content::WebContentsTester;
 
 #if BUILDFLAG(IS_CHROMEOS)
+=======
+using content::SiteInstance;
+using content::WebContents;
+using content::WebContentsTester;
+>>>>>>> chromium
 using session_manager::SessionState;
-#endif
 
 class BrowserUnitTest : public BrowserWithTestWindowTest {
  public:
-  BrowserUnitTest() = default;
-
-  BrowserUnitTest(const BrowserUnitTest&) = delete;
-  BrowserUnitTest& operator=(const BrowserUnitTest&) = delete;
-
-  ~BrowserUnitTest() override = default;
+  BrowserUnitTest() {}
+  ~BrowserUnitTest() override {}
 
   // Caller owns the memory.
   std::unique_ptr<WebContents> CreateTestWebContents() {
     return WebContentsTester::CreateTestWebContents(
         profile(), SiteInstance::Create(profile()));
   }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(BrowserUnitTest);
 };
 
 // Ensure crashed tabs are not reloaded when selected. crbug.com/232323
@@ -84,9 +96,7 @@ TEST_F(BrowserUnitTest, ReloadCrashedTab) {
   EXPECT_TRUE(raw_contents2->IsCrashed());
 
   // Selecting the second tab does not cause a load or clear the crash.
-  tab_strip_model->ActivateTabAt(
-      1, TabStripUserGestureDetails(
-             TabStripUserGestureDetails::GestureType::kOther));
+  tab_strip_model->ActivateTabAt(1, {TabStripModel::GestureType::kOther});
   EXPECT_TRUE(tab_strip_model->IsTabSelected(1));
   EXPECT_FALSE(raw_contents2->IsLoading());
   EXPECT_TRUE(raw_contents2->IsCrashed());
@@ -94,7 +104,7 @@ TEST_F(BrowserUnitTest, ReloadCrashedTab) {
 
 // This tests a workaround which is not necessary on Mac.
 // https://crbug.com/719230
-#if BUILDFLAG(IS_MAC)
+#if defined(OS_MAC)
 #define MAYBE_SetBackgroundColorForNewTab DISABLED_SetBackgroundColorForNewTab
 #else
 #define MAYBE_SetBackgroundColorForNewTab SetBackgroundColorForNewTab
@@ -108,8 +118,7 @@ TEST_F(BrowserUnitTest, MAYBE_SetBackgroundColorForNewTab) {
   WebContentsTester::For(raw_contents1)->NavigateAndCommit(GURL("about:blank"));
   WebContentsTester::For(raw_contents1)->TestSetIsLoading(false);
 
-  raw_contents1->GetPrimaryMainFrame()->GetView()->SetBackgroundColor(
-      SK_ColorRED);
+  raw_contents1->GetMainFrame()->GetView()->SetBackgroundColor(SK_ColorRED);
 
   // Add a second tab in the background.
   std::unique_ptr<WebContents> contents2 = CreateTestWebContents();
@@ -118,17 +127,12 @@ TEST_F(BrowserUnitTest, MAYBE_SetBackgroundColorForNewTab) {
   WebContentsTester::For(raw_contents2)->NavigateAndCommit(GURL("about:blank"));
   WebContentsTester::For(raw_contents2)->TestSetIsLoading(false);
 
-  tab_strip_model->ActivateTabAt(
-      1, TabStripUserGestureDetails(
-             TabStripUserGestureDetails::GestureType::kOther));
-  ASSERT_TRUE(
-      raw_contents2->GetPrimaryMainFrame()->GetView()->GetBackgroundColor());
-  EXPECT_EQ(
-      SK_ColorRED,
-      *raw_contents2->GetPrimaryMainFrame()->GetView()->GetBackgroundColor());
+  tab_strip_model->ActivateTabAt(1, {TabStripModel::GestureType::kOther});
+  ASSERT_TRUE(raw_contents2->GetMainFrame()->GetView()->GetBackgroundColor());
+  EXPECT_EQ(SK_ColorRED,
+            *raw_contents2->GetMainFrame()->GetView()->GetBackgroundColor());
 }
 
-#if BUILDFLAG(ENABLE_PRINTING)
 // Ensure the print command gets disabled when a tab crashes.
 TEST_F(BrowserUnitTest, DisablePrintOnCrashedTab) {
   TabStripModel* tab_strip_model = browser()->tab_strip_model();
@@ -151,7 +155,6 @@ TEST_F(BrowserUnitTest, DisablePrintOnCrashedTab) {
   EXPECT_FALSE(command_updater->IsCommandEnabled(IDC_PRINT));
   EXPECT_FALSE(chrome::CanPrint(browser()));
 }
-#endif  // BUILDFLAG(ENABLE_PRINTING)
 
 // Ensure the zoom-in and zoom-out commands get disabled when a tab crashes.
 TEST_F(BrowserUnitTest, DisableZoomOnCrashedTab) {
@@ -204,8 +207,8 @@ TEST_F(BrowserUnitTest, CreateBrowserFailsIfProfileDisallowsBrowserWindows) {
 
 // Tests BrowserCreate() when Incognito mode is disabled.
 TEST_F(BrowserUnitTest, CreateBrowserWithIncognitoModeDisabled) {
-  IncognitoModePrefs::SetAvailability(
-      profile()->GetPrefs(), policy::IncognitoModeAvailability::kDisabled);
+  IncognitoModePrefs::SetAvailability(profile()->GetPrefs(),
+                                      IncognitoModePrefs::DISABLED);
 
   // Creating a browser window in OTR profile should fail if incognito is
   // disabled.
@@ -223,8 +226,8 @@ TEST_F(BrowserUnitTest, CreateBrowserWithIncognitoModeDisabled) {
 
 // Tests BrowserCreate() when Incognito mode is forced.
 TEST_F(BrowserUnitTest, CreateBrowserWithIncognitoModeForced) {
-  IncognitoModePrefs::SetAvailability(
-      profile()->GetPrefs(), policy::IncognitoModeAvailability::kForced);
+  IncognitoModePrefs::SetAvailability(profile()->GetPrefs(),
+                                      IncognitoModePrefs::FORCED);
 
   // Creating a browser window in the original profile should fail if incognito
   // is forced.
@@ -243,7 +246,7 @@ TEST_F(BrowserUnitTest, CreateBrowserWithIncognitoModeForced) {
 
 // Tests BrowserCreate() with not restrictions on incognito mode.
 TEST_F(BrowserUnitTest, CreateBrowserWithIncognitoModeEnabled) {
-  ASSERT_EQ(policy::IncognitoModeAvailability::kEnabled,
+  ASSERT_EQ(IncognitoModePrefs::ENABLED,
             IncognitoModePrefs::GetAvailability(profile()->GetPrefs()));
 
   // Creating a browser in the original test profile should succeed.
@@ -265,6 +268,8 @@ TEST_F(BrowserUnitTest, CreateBrowserWithIncognitoModeEnabled) {
 
 #if BUILDFLAG(IS_CHROMEOS)
 TEST_F(BrowserUnitTest, CreateBrowserDuringKioskSplashScreen) {
+  session_manager::SessionManager session_manager;
+
   // Setting up user manager state to be in kiosk mode:
   // Creating a new user manager.
   auto* user_manager = new ash::FakeChromeUserManager();
@@ -276,8 +281,7 @@ TEST_F(BrowserUnitTest, CreateBrowserDuringKioskSplashScreen) {
 
   TestingProfile profile;
 
-  session_manager::SessionManager::Get()->SetSessionState(
-      SessionState::LOGIN_PRIMARY);
+  session_manager.SetSessionState(SessionState::LOGIN_PRIMARY);
   // Browser should not be created during login session state.
   EXPECT_EQ(Browser::CreationStatus::kErrorLoadingKiosk,
             Browser::GetCreationStatusForProfile(&profile));
@@ -285,7 +289,7 @@ TEST_F(BrowserUnitTest, CreateBrowserDuringKioskSplashScreen) {
   Browser::CreateParams create_params = Browser::CreateParams(&profile, false);
   std::unique_ptr<BrowserWindow> window = CreateBrowserWindow();
   create_params.window = window.get();
-  session_manager::SessionManager::Get()->SetSessionState(SessionState::ACTIVE);
+  session_manager.SetSessionState(SessionState::ACTIVE);
   std::unique_ptr<Browser> test_browser(Browser::Create(create_params));
   // Normal flow, creation succeeds.
   EXPECT_TRUE(test_browser);
@@ -294,12 +298,17 @@ TEST_F(BrowserUnitTest, CreateBrowserDuringKioskSplashScreen) {
 
 class BrowserBookmarkBarTest : public BrowserWithTestWindowTest {
  public:
+<<<<<<< HEAD
   BrowserBookmarkBarTest() = default;
 
   BrowserBookmarkBarTest(const BrowserBookmarkBarTest&) = delete;
   BrowserBookmarkBarTest& operator=(const BrowserBookmarkBarTest&) = delete;
 
   ~BrowserBookmarkBarTest() override = default;
+=======
+  BrowserBookmarkBarTest() {}
+  ~BrowserBookmarkBarTest() override {}
+>>>>>>> chromium
 
  protected:
   BookmarkBar::State window_bookmark_bar_state() const {
@@ -321,6 +330,7 @@ class BrowserBookmarkBarTest : public BrowserWithTestWindowTest {
  private:
   class BookmarkBarStateTestBrowserWindow : public TestBrowserWindow {
    public:
+<<<<<<< HEAD
     BookmarkBarStateTestBrowserWindow() : browser_(nullptr) {}
 
     BookmarkBarStateTestBrowserWindow(
@@ -329,6 +339,11 @@ class BrowserBookmarkBarTest : public BrowserWithTestWindowTest {
         const BookmarkBarStateTestBrowserWindow&) = delete;
 
     ~BookmarkBarStateTestBrowserWindow() override = default;
+=======
+    BookmarkBarStateTestBrowserWindow()
+        : browser_(nullptr), bookmark_bar_state_(BookmarkBar::HIDDEN) {}
+    ~BookmarkBarStateTestBrowserWindow() override {}
+>>>>>>> chromium
 
     void set_browser(Browser* browser) { browser_ = browser; }
 
@@ -353,9 +368,18 @@ class BrowserBookmarkBarTest : public BrowserWithTestWindowTest {
                                             reason);
     }
 
+<<<<<<< HEAD
     raw_ptr<Browser, DanglingUntriaged> browser_;  // Weak ptr.
     BookmarkBar::State bookmark_bar_state_ = BookmarkBar::HIDDEN;
+=======
+    Browser* browser_;  // Weak ptr.
+    BookmarkBar::State bookmark_bar_state_;
+
+    DISALLOW_COPY_AND_ASSIGN(BookmarkBarStateTestBrowserWindow);
+>>>>>>> chromium
   };
+
+  DISALLOW_COPY_AND_ASSIGN(BrowserBookmarkBarTest);
 };
 
 // Ensure bookmark bar states in Browser and BrowserWindow are in sync after
@@ -384,8 +408,7 @@ TEST_F(BrowserBookmarkBarTest, StateOnActiveTabChanged) {
 
   // Activate the 2nd tab which is non-NTP.
   browser()->tab_strip_model()->ActivateTabAt(
-      1, TabStripUserGestureDetails(
-             TabStripUserGestureDetails::GestureType::kOther));
+      1, {TabStripModel::GestureType::kOther});
   EXPECT_EQ(BookmarkBar::HIDDEN, browser()->bookmark_bar_state());
   EXPECT_EQ(BookmarkBar::HIDDEN, window_bookmark_bar_state());
 
@@ -396,15 +419,13 @@ TEST_F(BrowserBookmarkBarTest, StateOnActiveTabChanged) {
 
   // Activate the 1st tab which is NTP.
   browser()->tab_strip_model()->ActivateTabAt(
-      0, TabStripUserGestureDetails(
-             TabStripUserGestureDetails::GestureType::kOther));
+      0, {TabStripModel::GestureType::kOther});
   EXPECT_EQ(BookmarkBar::SHOW, browser()->bookmark_bar_state());
   EXPECT_EQ(BookmarkBar::SHOW, window_bookmark_bar_state());
 
   // Activate the 2nd tab which is non-NTP.
   browser()->tab_strip_model()->ActivateTabAt(
-      1, TabStripUserGestureDetails(
-             TabStripUserGestureDetails::GestureType::kOther));
+      1, {TabStripModel::GestureType::kOther});
   EXPECT_EQ(BookmarkBar::SHOW, browser()->bookmark_bar_state());
   EXPECT_EQ(BookmarkBar::SHOW, window_bookmark_bar_state());
 }

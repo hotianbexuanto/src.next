@@ -1,9 +1,11 @@
-# Copyright 2018 The Chromium Authors
+# Copyright 2018 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 static_library("webui") {
   sources = [
+    "mojo_bubble_web_ui_controller.cc",
+    "mojo_bubble_web_ui_controller.h",
     "mojo_web_ui_controller.cc",
     "mojo_web_ui_controller.h",
     "untrusted_web_ui_controller.cc",
@@ -14,8 +16,13 @@ static_library("webui") {
     "webui_allowlist.h",
     "webui_allowlist_provider.cc",
     "webui_allowlist_provider.h",
+<<<<<<< HEAD
     "webui_util.cc",
     "webui_util.h",
+=======
+    "webui_config.cc",
+    "webui_config.h",
+>>>>>>> chromium
   ]
 
   deps = [
@@ -25,6 +32,7 @@ static_library("webui") {
     "//services/service_manager/public/cpp",
     "//ui/webui/resources:resources_grit",
   ]
+<<<<<<< HEAD
 
   public_deps = [
     "//ui/base",
@@ -45,6 +53,8 @@ static_library("webui") {
       "color_change_listener/color_change_handler.h",
     ]
   }
+=======
+>>>>>>> chromium
 }
 
 source_set("test_support") {

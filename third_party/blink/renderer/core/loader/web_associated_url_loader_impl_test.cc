@@ -28,17 +28,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+<<<<<<< HEAD
+=======
+#include "third_party/blink/public/web/web_associated_url_loader.h"
+
+>>>>>>> chromium
 #include <memory>
 
+#include "base/cxx17_backports.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_url.h"
+#include "third_party/blink/public/platform/web_url_loader_mock_factory.h"
 #include "third_party/blink/public/platform/web_url_request.h"
 #include "third_party/blink/public/platform/web_url_response.h"
-#include "third_party/blink/public/web/web_associated_url_loader.h"
 #include "third_party/blink/public/web/web_associated_url_loader_client.h"
 #include "third_party/blink/public/web/web_associated_url_loader_options.h"
 #include "third_party/blink/public/web/web_frame.h"
@@ -46,9 +52,7 @@
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/url_loader_mock_factory.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -98,8 +102,13 @@ class WebAssociatedURLLoaderTest : public testing::Test,
         "visible_iframe.html",
         "zero_sized_iframe.html",
     };
+<<<<<<< HEAD
     for (const auto*& iframe_support_file : iframe_support_files) {
       RegisterMockedUrl(url_root, iframe_support_file);
+=======
+    for (size_t i = 0; i < base::size(iframe_support_files); ++i) {
+      RegisterMockedUrl(url_root, iframe_support_files[i]);
+>>>>>>> chromium
     }
 
     frame_test_helpers::LoadFrame(MainFrame(), url.GetString().Utf8().c_str());
@@ -150,10 +159,10 @@ class WebAssociatedURLLoaderTest : public testing::Test,
     did_download_data_ = true;
   }
 
-  void DidReceiveData(base::span<const char> data) override {
+  void DidReceiveData(const char* data, int data_length) override {
     did_receive_data_ = true;
-    EXPECT_TRUE(data.data());
-    EXPECT_GT(data.size(), 0u);
+    EXPECT_TRUE(data);
+    EXPECT_GT(data_length, 0);
   }
 
   void DidFinishLoading() override { did_finish_loading_ = true; }
@@ -248,7 +257,6 @@ class WebAssociatedURLLoaderTest : public testing::Test,
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   String frame_file_path_;
   frame_test_helpers::WebViewHelper helper_;
 
@@ -457,7 +465,7 @@ TEST_F(WebAssociatedURLLoaderTest, UntrustedCheckMethods) {
 }
 
 // This test is flaky on Windows and Android. See <http://crbug.com/471645>.
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
+#if defined(OS_WIN) || defined(OS_ANDROID)
 #define MAYBE_UntrustedCheckHeaders DISABLED_UntrustedCheckHeaders
 #else
 #define MAYBE_UntrustedCheckHeaders UntrustedCheckHeaders

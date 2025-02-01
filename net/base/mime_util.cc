@@ -1,29 +1,30 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#include "net/base/mime_util.h"
 
 #include <algorithm>
 #include <iterator>
 #include <map>
-#include <optional>
 #include <string>
-#include <string_view>
 #include <unordered_set>
 
 #include "base/base64.h"
 #include "base/check_op.h"
 #include "base/containers/span.h"
 #include "base/lazy_instance.h"
+<<<<<<< HEAD
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/no_destructor.h"
+=======
+>>>>>>> chromium
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
+#include "net/base/mime_util.h"
 #include "net/base/platform_mime_util.h"
 #include "net/http/http_util.h"
 
@@ -55,17 +56,17 @@ class MimeUtil : public PlatformMimeUtil {
                                          std::string* mime_type) const;
 
   bool GetPreferredExtensionForMimeType(
-      std::string_view mime_type,
+      const std::string& mime_type,
       base::FilePath::StringType* extension) const;
 
-  bool MatchesMimeType(std::string_view mime_type_pattern,
-                       std::string_view mime_type) const;
+  bool MatchesMimeType(const std::string &mime_type_pattern,
+                       const std::string &mime_type) const;
 
-  bool ParseMimeTypeWithoutParameter(std::string_view type_string,
+  bool ParseMimeTypeWithoutParameter(const std::string& type_string,
                                      std::string* top_level_type,
                                      std::string* subtype) const;
 
-  bool IsValidTopLevelMimeType(std::string_view type_string) const;
+  bool IsValidTopLevelMimeType(const std::string& type_string) const;
 
  private:
   friend struct base::LazyInstanceTraitsBase<MimeUtil>;
@@ -82,11 +83,11 @@ static base::LazyInstance<MimeUtil>::Leaky g_mime_util =
     LAZY_INSTANCE_INITIALIZER;
 
 struct MimeInfo {
-  const std::string_view mime_type;
+  const char* const mime_type;
 
   // Comma-separated list of possible extensions for the type. The first
   // extension is considered preferred.
-  const std::string_view extensions;
+  const char* const extensions;
 };
 
 // How to use the MIME maps
@@ -178,9 +179,9 @@ static const MimeInfo kPrimaryMappings[] = {
     {"image/avif", "avif"},
     {"image/gif", "gif"},
     {"image/jpeg", "jpeg,jpg"},
+    {"image/jxl", "jxl"},
     {"image/png", "png"},
-    {"image/apng", "png,apng"},
-    {"image/svg+xml", "svg,svgz"},
+    {"image/apng", "png"},
     {"image/webp", "webp"},
     {"multipart/related", "mht,mhtml"},
     {"text/css", "css"},
@@ -189,12 +190,6 @@ static const MimeInfo kPrimaryMappings[] = {
     {"text/xml", "xml"},
     {"video/mp4", "mp4,m4v"},
     {"video/ogg", "ogv,ogm"},
-
-    // This is a primary mapping (overrides the platform) rather than secondary
-    // to work around an issue when Excel is installed on Windows. Excel
-    // registers csv as application/vnd.ms-excel instead of text/csv from RFC
-    // 4180. See https://crbug.com/139105.
-    {"text/csv", "csv"},
 };
 
 // See comments above for details on how this list is used.
@@ -207,7 +202,6 @@ static const MimeInfo kSecondaryMappings[] = {
     {"application/gzip", "gz,tgz"},
     {"application/javascript", "js"},
     {"application/json", "json"},  // Per http://www.ietf.org/rfc/rfc4627.txt.
-    {"application/msword", "doc,dot"},
     {"application/octet-stream", "bin,exe,com"},
     {"application/pdf", "pdf"},
     {"application/pkcs7-mime", "p7m,p7c,p7z"},
@@ -215,18 +209,11 @@ static const MimeInfo kSecondaryMappings[] = {
     {"application/postscript", "ps,eps,ai"},
     {"application/rdf+xml", "rdf"},
     {"application/rss+xml", "rss"},
-    {"application/rtf", "rtf"},
     {"application/vnd.android.package-archive", "apk"},
     {"application/vnd.mozilla.xul+xml", "xul"},
     {"application/vnd.ms-excel", "xls"},
-    {"application/vnd.ms-powerpoint", "ppt"},
-    {"application/"
-     "vnd.openxmlformats-officedocument.presentationml.presentation",
-     "pptx"},
     {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
      "xlsx"},
-    {"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-     "docx"},
     {"application/x-gzip", "gz,tgz"},
     {"application/x-mpegurl", "m3u8"},
     {"application/x-shockwave-flash", "swf,swl"},
@@ -237,6 +224,7 @@ static const MimeInfo kSecondaryMappings[] = {
     {"audio/webm", "weba"},
     {"image/bmp", "bmp"},
     {"image/jpeg", "jfif,pjpeg,pjp"},
+    {"image/svg+xml", "svg,svgz"},
     {"image/tiff", "tiff,tif"},
     {"image/vnd.microsoft.icon", "ico"},
     {"image/x-png", "png"},
@@ -245,7 +233,6 @@ static const MimeInfo kSecondaryMappings[] = {
     {"text/calendar", "ics"},
     {"text/html", "ehtml"},
     {"text/plain", "txt,text"},
-    {"text/vtt", "vtt"},
     {"text/x-sh", "sh"},
     {"text/xml", "xsl,xbl,xslt"},
     {"video/mpeg", "mpeg,mpg"},
@@ -253,24 +240,31 @@ static const MimeInfo kSecondaryMappings[] = {
 
 // Finds mime type of |ext| from |mappings|.
 template <size_t num_mappings>
-static std::optional<std::string_view> FindMimeType(
-    const MimeInfo (&mappings)[num_mappings],
-    const std::string& ext) {
+static const char* FindMimeType(const MimeInfo (&mappings)[num_mappings],
+                                const std::string& ext) {
   for (const auto& mapping : mappings) {
-    for (std::string_view extension :
-         base::SplitStringPiece(mapping.extensions, ",", base::TRIM_WHITESPACE,
-                                base::SPLIT_WANT_ALL)) {
-      if (base::EqualsCaseInsensitiveASCII(extension, ext)) {
+    const char* extensions = mapping.extensions;
+    for (;;) {
+      size_t end_pos = strcspn(extensions, ",");
+      // The length check is required to prevent the StringPiece below from
+      // including uninitialized memory if ext is longer than extensions.
+      if (end_pos == ext.size() &&
+          base::EqualsCaseInsensitiveASCII(
+              base::StringPiece(extensions, ext.size()), ext)) {
         return mapping.mime_type;
       }
+      extensions += end_pos;
+      if (!*extensions)
+        break;
+      extensions += 1;  // skip over comma
     }
   }
-  return std::nullopt;
+  return nullptr;
 }
 
 static base::FilePath::StringType StringToFilePathStringType(
-    std::string_view string_piece) {
-#if BUILDFLAG(IS_WIN)
+    const base::StringPiece& string_piece) {
+#if defined(OS_WIN)
   return base::UTF8ToWide(string_piece);
 #else
   return std::string(string_piece);
@@ -281,7 +275,7 @@ static base::FilePath::StringType StringToFilePathStringType(
 // preferred extension in MimeInfo arrays.
 template <size_t num_mappings>
 static bool FindPreferredExtension(const MimeInfo (&mappings)[num_mappings],
-                                   std::string_view mime_type,
+                                   const std::string& mime_type,
                                    base::FilePath::StringType* result) {
   // There is no preferred extension for "application/octet-stream".
   if (mime_type == "application/octet-stream")
@@ -289,8 +283,11 @@ static bool FindPreferredExtension(const MimeInfo (&mappings)[num_mappings],
 
   for (const auto& mapping : mappings) {
     if (mapping.mime_type == mime_type) {
-      const size_t pos = mapping.extensions.find(',');
-      *result = StringToFilePathStringType(mapping.extensions.substr(0, pos));
+      const char* extensions = mapping.extensions;
+      const char* extension_end = strchr(extensions, ',');
+      size_t len =
+          extension_end ? extension_end - extensions : strlen(extensions);
+      *result = StringToFilePathStringType(base::StringPiece(extensions, len));
       return true;
     }
   }
@@ -309,7 +306,7 @@ bool MimeUtil::GetWellKnownMimeTypeFromExtension(
 }
 
 bool MimeUtil::GetPreferredExtensionForMimeType(
-    std::string_view mime_type,
+    const std::string& mime_type,
     base::FilePath::StringType* extension) const {
   // Search the MIME type in the platform DB first, then in kPrimaryMappings and
   // kSecondaryMappings.
@@ -358,10 +355,9 @@ bool MimeUtil::GetMimeTypeFromExtensionHelper(
 
   base::FilePath path_ext(ext);
   const string ext_narrow_str = path_ext.AsUTF8Unsafe();
-  std::optional<std::string_view> mime_type =
-      FindMimeType(kPrimaryMappings, ext_narrow_str);
+  const char* mime_type = FindMimeType(kPrimaryMappings, ext_narrow_str);
   if (mime_type) {
-    *result = mime_type.value();
+    *result = mime_type;
     return true;
   }
 
@@ -370,7 +366,7 @@ bool MimeUtil::GetMimeTypeFromExtensionHelper(
 
   mime_type = FindMimeType(kSecondaryMappings, ext_narrow_str);
   if (mime_type) {
-    *result = mime_type.value();
+    *result = mime_type;
     return true;
   }
 
@@ -387,12 +383,12 @@ MimeUtil::MimeUtil() = default;
 // or may not be case-sensitive, but they are usually case-sensitive. So, this
 // function matches values in *case-sensitive* manner, however note that this
 // may produce some false negatives.
-bool MatchesMimeTypeParameters(std::string_view mime_type_pattern,
-                               std::string_view mime_type) {
+bool MatchesMimeTypeParameters(const std::string& mime_type_pattern,
+                               const std::string& mime_type) {
   typedef std::map<std::string, std::string> StringPairMap;
 
-  const std::string_view::size_type semicolon = mime_type_pattern.find(';');
-  const std::string_view::size_type test_semicolon = mime_type.find(';');
+  const std::string::size_type semicolon = mime_type_pattern.find(';');
+  const std::string::size_type test_semicolon = mime_type.find(';');
   if (semicolon != std::string::npos) {
     if (test_semicolon == std::string::npos)
       return false;
@@ -439,20 +435,20 @@ bool MatchesMimeTypeParameters(std::string_view mime_type_pattern,
 //      *
 // Also tests mime parameters -- all parameters in the pattern must be present
 // in the tested type for a match to succeed.
-bool MimeUtil::MatchesMimeType(std::string_view mime_type_pattern,
-                               std::string_view mime_type) const {
+bool MimeUtil::MatchesMimeType(const std::string& mime_type_pattern,
+                               const std::string& mime_type) const {
   if (mime_type_pattern.empty())
     return false;
 
-  std::string_view::size_type semicolon = mime_type_pattern.find(';');
-  const std::string_view base_pattern = mime_type_pattern.substr(0, semicolon);
+  std::string::size_type semicolon = mime_type_pattern.find(';');
+  const std::string base_pattern(mime_type_pattern.substr(0, semicolon));
   semicolon = mime_type.find(';');
-  const std::string_view base_type = mime_type.substr(0, semicolon);
+  const std::string base_type(mime_type.substr(0, semicolon));
 
   if (base_pattern == "*" || base_pattern == "*/*")
     return MatchesMimeTypeParameters(mime_type_pattern, mime_type);
 
-  const std::string_view::size_type star = base_pattern.find('*');
+  const std::string::size_type star = base_pattern.find('*');
   if (star == std::string::npos) {
     if (base::EqualsCaseInsensitiveASCII(base_pattern, base_type))
       return MatchesMimeTypeParameters(mime_type_pattern, mime_type);
@@ -464,9 +460,9 @@ bool MimeUtil::MatchesMimeType(std::string_view mime_type_pattern,
   if (base_type.length() < base_pattern.length() - 1)
     return false;
 
-  std::string_view base_pattern_piece(base_pattern);
-  std::string_view left(base_pattern_piece.substr(0, star));
-  std::string_view right(base_pattern_piece.substr(star + 1));
+  base::StringPiece base_pattern_piece(base_pattern);
+  base::StringPiece left(base_pattern_piece.substr(0, star));
+  base::StringPiece right(base_pattern_piece.substr(star + 1));
 
   if (!base::StartsWith(base_type, left, base::CompareCase::INSENSITIVE_ASCII))
     return false;
@@ -478,7 +474,7 @@ bool MimeUtil::MatchesMimeType(std::string_view mime_type_pattern,
   return MatchesMimeTypeParameters(mime_type_pattern, mime_type);
 }
 
-bool ParseMimeType(std::string_view type_str,
+bool ParseMimeType(const std::string& type_str,
                    std::string* mime_type,
                    base::StringPairs* params) {
   // Trim leading and trailing whitespace from type.  We include '(' in
@@ -589,24 +585,23 @@ bool ParseMimeType(std::string_view type_str,
   return true;
 }
 
-bool MimeUtil::ParseMimeTypeWithoutParameter(std::string_view type_string,
-                                             std::string* top_level_type,
-                                             std::string* subtype) const {
-  std::vector<std::string_view> components = base::SplitStringPiece(
+bool MimeUtil::ParseMimeTypeWithoutParameter(
+    const std::string& type_string,
+    std::string* top_level_type,
+    std::string* subtype) const {
+  std::vector<std::string> components = base::SplitString(
       type_string, "/", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   if (components.size() != 2)
     return false;
-  components[0] = TrimWhitespaceASCII(components[0], base::TRIM_LEADING);
-  components[1] = TrimWhitespaceASCII(components[1], base::TRIM_TRAILING);
+  TrimWhitespaceASCII(components[0], base::TRIM_LEADING, &components[0]);
+  TrimWhitespaceASCII(components[1], base::TRIM_TRAILING, &components[1]);
   if (!HttpUtil::IsToken(components[0]) || !HttpUtil::IsToken(components[1]))
     return false;
 
   if (top_level_type)
-    top_level_type->assign(std::string(components[0]));
-
+    *top_level_type = components[0];
   if (subtype)
-    subtype->assign(std::string(components[1]));
-
+    *subtype = components[1];
   return true;
 }
 
@@ -616,12 +611,11 @@ static const char* const kLegalTopLevelTypes[] = {
     "message",     "model", "multipart", "text", "video",
 };
 
-bool MimeUtil::IsValidTopLevelMimeType(std::string_view type_string) const {
+bool MimeUtil::IsValidTopLevelMimeType(const std::string& type_string) const {
   std::string lower_type = base::ToLowerASCII(type_string);
   for (const char* const legal_type : kLegalTopLevelTypes) {
-    if (lower_type.compare(legal_type) == 0) {
+    if (lower_type.compare(legal_type) == 0)
       return true;
-    }
   }
 
   return type_string.size() > 2 &&
@@ -648,25 +642,25 @@ bool GetWellKnownMimeTypeFromExtension(const base::FilePath::StringType& ext,
   return g_mime_util.Get().GetWellKnownMimeTypeFromExtension(ext, mime_type);
 }
 
-bool GetPreferredExtensionForMimeType(std::string_view mime_type,
+bool GetPreferredExtensionForMimeType(const std::string& mime_type,
                                       base::FilePath::StringType* extension) {
   return g_mime_util.Get().GetPreferredExtensionForMimeType(mime_type,
                                                             extension);
 }
 
-bool MatchesMimeType(std::string_view mime_type_pattern,
-                     std::string_view mime_type) {
+bool MatchesMimeType(const std::string& mime_type_pattern,
+                     const std::string& mime_type) {
   return g_mime_util.Get().MatchesMimeType(mime_type_pattern, mime_type);
 }
 
-bool ParseMimeTypeWithoutParameter(std::string_view type_string,
+bool ParseMimeTypeWithoutParameter(const std::string& type_string,
                                    std::string* top_level_type,
                                    std::string* subtype) {
   return g_mime_util.Get().ParseMimeTypeWithoutParameter(
       type_string, top_level_type, subtype);
 }
 
-bool IsValidTopLevelMimeType(std::string_view type_string) {
+bool IsValidTopLevelMimeType(const std::string& type_string) {
   return g_mime_util.Get().IsValidTopLevelMimeType(type_string);
 }
 
@@ -678,10 +672,9 @@ static const char* const kStandardImageTypes[] = {"image/avif",
                                                   "image/bmp",
                                                   "image/cis-cod",
                                                   "image/gif",
-                                                  "image/heic",
-                                                  "image/heif",
                                                   "image/ief",
                                                   "image/jpeg",
+                                                  "image/jxl",
                                                   "image/webp",
                                                   "image/pict",
                                                   "image/pipeg",
@@ -744,8 +737,7 @@ static const char* const kStandardVideoTypes[] = {
 
 struct StandardType {
   const char* const leading_mime_type;
-  // TODO(367764863) Rewrite to base::raw_span.
-  RAW_PTR_EXCLUSION base::span<const char* const> standard_types;
+  base::span<const char* const> standard_types;
 };
 static const StandardType kStandardTypes[] = {{"image/", kStandardImageTypes},
                                               {"audio/", kStandardAudioTypes},
@@ -769,12 +761,12 @@ void GetExtensionsFromHardCodedMappings(
     bool prefix_match,
     std::unordered_set<base::FilePath::StringType>* extensions) {
   for (const auto& mapping : mappings) {
-    std::string_view cur_mime_type(mapping.mime_type);
+    base::StringPiece cur_mime_type(mapping.mime_type);
 
     if (base::StartsWith(cur_mime_type, mime_type,
                          base::CompareCase::INSENSITIVE_ASCII) &&
         (prefix_match || (cur_mime_type.length() == mime_type.length()))) {
-      for (std::string_view this_extension : base::SplitStringPiece(
+      for (const base::StringPiece& this_extension : base::SplitStringPiece(
                mapping.extensions, ",", base::TRIM_WHITESPACE,
                base::SPLIT_WANT_ALL)) {
         extensions->insert(StringToFilePathStringType(this_extension));
@@ -820,7 +812,7 @@ void UnorderedSetToVector(std::unordered_set<T>* source,
 // following characters are legal for boundaries:  '()+_,-./:=?
 // However the following characters, though legal, cause some sites
 // to fail: (),./:=+
-constexpr std::string_view kMimeBoundaryCharacters(
+constexpr base::StringPiece kMimeBoundaryCharacters(
     "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
 
 // Size of mime multipart boundary.
@@ -829,7 +821,7 @@ const size_t kMimeBoundarySize = 69;
 }  // namespace
 
 void GetExtensionsForMimeType(
-    std::string_view unsafe_mime_type,
+    const std::string& unsafe_mime_type,
     std::vector<base::FilePath::StringType>* extensions) {
   if (unsafe_mime_type == "*/*" || unsafe_mime_type == "*")
     return;
@@ -949,6 +941,7 @@ void AddMultipartFinalDelimiterForUpload(const std::string& mime_boundary,
   post_data->append("--" + mime_boundary + "--\r\n");
 }
 
+<<<<<<< HEAD
 // TODO(toyoshim): We may prefer to implement a strict RFC2616 media-type
 // (https://tools.ietf.org/html/rfc2616#section-3.7) parser.
 std::optional<std::string> ExtractMimeTypeFromMediaType(
@@ -976,4 +969,6 @@ ScopedOverrideGetMimeTypeForTesting::~ScopedOverrideGetMimeTypeForTesting() {
   GetOverridingMimeType().clear();
 }
 
+=======
+>>>>>>> chromium
 }  // namespace net

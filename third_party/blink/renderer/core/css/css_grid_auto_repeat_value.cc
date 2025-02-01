@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,11 +12,11 @@ namespace cssvalue {
 String CSSGridAutoRepeatValue::CustomCSSText() const {
   StringBuilder result;
   result.Append("repeat(");
-  result.Append(GetCSSValueNameAs<StringView>(AutoRepeatID()));
+  result.Append(getValueName(AutoRepeatID()));
   result.Append(", ");
   result.Append(CSSValueList::CustomCSSText());
   result.Append(')');
-  return result.ReleaseString();
+  return result.ToString();
 }
 
 bool CSSGridAutoRepeatValue::Equals(const CSSGridAutoRepeatValue& other) const {

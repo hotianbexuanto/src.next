@@ -29,9 +29,8 @@
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/geometry/layout_rect.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 
 namespace blink {
@@ -42,7 +41,6 @@ class Document;
 class Element;
 class FocusChangedObserver;
 class Frame;
-class HTMLElement;
 class HTMLFrameOwnerElement;
 class InputDeviceCapabilities;
 class LocalFrame;
@@ -87,6 +85,7 @@ class CORE_EXPORT FocusController final
       LocalFrame* to,
       InputDeviceCapabilities* source_capabilities = nullptr);
   static Element* FindFocusableElementInShadowHost(const Element& shadow_host);
+<<<<<<< HEAD
   static HTMLElement* FindScopeOwnerSlotOrReadingFlowContainer(const Element&);
 
   // Returns the next focusable element (likely an <input> field) after the
@@ -101,6 +100,10 @@ class CORE_EXPORT FocusController final
   Element* FindFocusableElementForImeAutofillAndTesting(mojom::blink::FocusType,
                                                         Element&,
                                                         OwnerMap&);
+=======
+  Element* NextFocusableElementInForm(Element*, mojom::blink::FocusType);
+  Element* FindFocusableElementAfter(Element& element, mojom::blink::FocusType);
+>>>>>>> chromium
 
   bool SetFocusedElement(Element*, Frame*, const FocusParams&);
   // |setFocusedElement| variant with SelectionBehaviorOnFocus::None,
@@ -116,8 +119,6 @@ class CORE_EXPORT FocusController final
   void SetFocusEmulationEnabled(bool);
 
   void RegisterFocusChangedObserver(FocusChangedObserver*);
-
-  static int AdjustedTabIndex(const Element&);
 
   void Trace(Visitor*) const;
 

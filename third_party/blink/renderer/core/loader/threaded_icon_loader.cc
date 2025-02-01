@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,32 +7,30 @@
 #include <algorithm>
 
 #include "base/metrics/histogram_macros.h"
-#include "base/numerics/safe_conversions.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/numerics/ranges.h"
 #include "skia/ext/image_operations.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
-#include "third_party/blink/public/platform/platform.h"
-#include "third_party/blink/public/platform/web_data.h"
-#include "third_party/blink/public/web/web_image.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
-#include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
-#include "third_party/blink/renderer/platform/heap/cross_thread_handle.h"
 #include "third_party/blink/renderer/platform/image-decoders/image_decoder.h"
 #include "third_party/blink/renderer/platform/image-decoders/image_frame.h"
 #include "third_party/blink/renderer/platform/image-decoders/segment_reader.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loader_options.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
-#include "third_party/blink/renderer/platform/scheduler/public/main_thread.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "third_party/blink/renderer/platform/scheduler/public/worker_pool.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_base.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_gfx.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 
 namespace blink {
 
+<<<<<<< HEAD
 namespace {
 
 void DecodeSVGOnMainThread(
@@ -128,10 +126,12 @@ void DecodeAndResizeImage(
 
 }  // namespace
 
+=======
+>>>>>>> chromium
 void ThreadedIconLoader::Start(
     ExecutionContext* execution_context,
     const ResourceRequestHead& resource_request,
-    const std::optional<gfx::Size>& resize_dimensions,
+    const absl::optional<gfx::Size>& resize_dimensions,
     IconCallback callback) {
   DCHECK(!stopped_);
   DCHECK(resource_request.Url().IsValid());
@@ -144,10 +144,15 @@ void ThreadedIconLoader::Start(
 
   ResourceLoaderOptions resource_loader_options(
       execution_context->GetCurrentWorld());
+  if (execution_context->IsWorkerGlobalScope())
+    resource_loader_options.request_initiator_context = kWorkerContext;
+
   threadable_loader_ = MakeGarbageCollected<ThreadableLoader>(
       *execution_context, this, resource_loader_options);
   threadable_loader_->SetTimeout(resource_request.TimeoutInterval());
   threadable_loader_->Start(ResourceRequest(resource_request));
+
+  start_time_ = base::TimeTicks::Now();
 }
 
 void ThreadedIconLoader::Stop() {
@@ -158,6 +163,7 @@ void ThreadedIconLoader::Stop() {
   }
 }
 
+<<<<<<< HEAD
 void ThreadedIconLoader::DidReceiveResponse(uint64_t,
                                             const ResourceResponse& response) {
   response_mime_type_ = response.MimeType();
@@ -165,6 +171,12 @@ void ThreadedIconLoader::DidReceiveResponse(uint64_t,
 
 void ThreadedIconLoader::DidReceiveData(base::span<const char> data) {
   data_.Append(data);
+=======
+void ThreadedIconLoader::DidReceiveData(const char* data, unsigned length) {
+  if (!data_)
+    data_ = SharedBuffer::Create();
+  data_->Append(data, length);
+>>>>>>> chromium
 }
 
 void ThreadedIconLoader::DidFinishLoading(uint64_t resource_identifier) {
@@ -176,9 +188,10 @@ void ThreadedIconLoader::DidFinishLoading(uint64_t resource_identifier) {
     return;
   }
 
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner =
-      threadable_loader_->GetTaskRunner();
+  UMA_HISTOGRAM_MEDIUM_TIMES("Blink.ThreadedIconLoader.LoadTime",
+                             base::TimeTicks::Now() - start_time_);
 
+<<<<<<< HEAD
   if (response_mime_type_ == "image/svg+xml") {
     PostCrossThreadTask(
         *Thread::MainThread()->GetTaskRunner(MainThreadTaskRunnerRestricted()),
@@ -190,21 +203,102 @@ void ThreadedIconLoader::DidFinishLoading(uint64_t resource_identifier) {
                                 MakeUnwrappingCrossThreadWeakHandle(this))));
     return;
   }
+=======
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner =
+      Thread::Current()->GetTaskRunner();
+>>>>>>> chromium
 
   worker_pool::PostTask(
       FROM_HERE,
       CrossThreadBindOnce(
+<<<<<<< HEAD
           &DecodeAndResizeImage, std::move(task_runner), std::move(data_),
           resize_dimensions_ ? *resize_dimensions_ : gfx::Size(),
           CrossThreadBindOnce(&ThreadedIconLoader::OnBackgroundTaskComplete,
                               MakeUnwrappingCrossThreadWeakHandle(this))));
+=======
+          &ThreadedIconLoader::DecodeAndResizeImageOnBackgroundThread,
+          WrapCrossThreadPersistent(this), std::move(task_runner),
+          SegmentReader::CreateFromSharedBuffer(std::move(data_))));
+>>>>>>> chromium
 }
 
-void ThreadedIconLoader::OnBackgroundTaskComplete(SkBitmap icon,
-                                                  double resize_scale) {
+void ThreadedIconLoader::DecodeAndResizeImageOnBackgroundThread(
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    scoped_refptr<SegmentReader> data) {
+  DCHECK(task_runner);
+  DCHECK(data);
+
+  auto notify_complete = [&](double refactor_scale) {
+    PostCrossThreadTask(
+        *task_runner, FROM_HERE,
+        CrossThreadBindOnce(&ThreadedIconLoader::OnBackgroundTaskComplete,
+                            WrapCrossThreadPersistent(this), refactor_scale));
+  };
+
+  std::unique_ptr<ImageDecoder> decoder = ImageDecoder::Create(
+      std::move(data), /* data_complete= */ true,
+      ImageDecoder::kAlphaPremultiplied, ImageDecoder::kDefaultBitDepth,
+      ColorBehavior::TransformToSRGB());
+
+  if (!decoder) {
+    notify_complete(-1.0);
+    return;
+  }
+
+  ImageFrame* image_frame = decoder->DecodeFrameBufferAtIndex(0);
+
+  if (!image_frame) {
+    notify_complete(-1.0);
+    return;
+  }
+
+  decoded_icon_ = image_frame->Bitmap();
+  if (!resize_dimensions_) {
+    notify_complete(1.0);
+    return;
+  }
+
+  // If the icon is larger than |resize_dimensions_| permits, we need to resize
+  // it as well. This can be done synchronously given that we're on a
+  // background thread already.
+  double scale = std::min(
+      static_cast<double>(resize_dimensions_->width()) / decoded_icon_.width(),
+      static_cast<double>(resize_dimensions_->height()) /
+          decoded_icon_.height());
+
+  if (scale >= 1.0) {
+    notify_complete(1.0);
+    return;
+  }
+
+  int resized_width =
+      base::ClampToRange(static_cast<int>(scale * decoded_icon_.width()), 1,
+                         resize_dimensions_->width());
+  int resized_height =
+      base::ClampToRange(static_cast<int>(scale * decoded_icon_.height()), 1,
+                         resize_dimensions_->height());
+
+  // Use the RESIZE_GOOD quality allowing the implementation to pick an
+  // appropriate method for the resize. Can be increased to RESIZE_BETTER
+  // or RESIZE_BEST if the quality looks poor.
+  SkBitmap resized_icon = skia::ImageOperations::Resize(
+      decoded_icon_, skia::ImageOperations::RESIZE_GOOD, resized_width,
+      resized_height);
+
+  if (resized_icon.isNull()) {
+    notify_complete(1.0);
+    return;
+  }
+
+  decoded_icon_ = std::move(resized_icon);
+  notify_complete(scale);
+}
+
+void ThreadedIconLoader::OnBackgroundTaskComplete(double resize_scale) {
   if (stopped_)
     return;
-  std::move(icon_callback_).Run(std::move(icon), resize_scale);
+  std::move(icon_callback_).Run(std::move(decoded_icon_), resize_scale);
 }
 
 void ThreadedIconLoader::DidFail(uint64_t, const ResourceError& error) {

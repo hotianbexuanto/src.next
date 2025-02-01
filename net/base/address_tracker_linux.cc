@@ -1,45 +1,39 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
 #ifdef UNSAFE_BUFFERS_BUILD
 // TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
 #pragma allow_unsafe_libc_calls
 #endif
 
+=======
+>>>>>>> chromium
 #include "net/base/address_tracker_linux.h"
 
 #include <errno.h>
 #include <linux/if.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
-
-#include <optional>
 #include <utility>
-#include <vector>
 
-#include "base/check.h"
-#include "base/compiler_specific.h"
-#include "base/containers/span.h"
-#include "base/dcheck_is_on.h"
+#include "base/callback_helpers.h"
 #include "base/files/scoped_file.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
 #include "base/logging.h"
-#include "base/memory/page_size.h"
 #include "base/posix/eintr_wrapper.h"
-#include "base/sequence_checker.h"
 #include "base/task/current_thread.h"
 #include "base/threading/scoped_blocking_call.h"
-#include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
 #include "net/base/network_interfaces_linux.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
 #include "base/android/build_info.h"
 #endif
 
-namespace net::internal {
+namespace net {
+namespace internal {
 
 namespace {
 
@@ -87,8 +81,8 @@ bool GetAddress(const struct nlmsghdr* header,
   // getaddrinfo in glibc (check_pf.c). Judging from kernel implementation of
   // NETLINK, IPv4 addresses have only the IFA_ADDRESS attribute, while IPv6
   // have the IFA_LOCAL attribute.
-  uint8_t* address = nullptr;
-  uint8_t* local = nullptr;
+  uint8_t* address = NULL;
+  uint8_t* local = NULL;
   int length = IFA_PAYLOAD(header);
   if (length > header_length) {
     LOG(ERROR) << "ifaddrmsg length exceeds bounds";
@@ -132,9 +126,7 @@ bool GetAddress(const struct nlmsghdr* header,
     address = local;
   if (!address)
     return false;
-  // SAFETY: `address` is only set above after `RTA_PAYLOAD` is checked against
-  // `address_length`.
-  *out = IPAddress(UNSAFE_BUFFERS(base::span(address, address_length)));
+  *out = IPAddress(address, address_length);
   return true;
 }
 
@@ -171,40 +163,35 @@ AddressTrackerLinux::AddressTrackerLinux()
       link_callback_(base::DoNothing()),
       tunnel_callback_(base::DoNothing()),
       ignored_interfaces_(),
+      connection_type_initialized_(false),
       connection_type_initialized_cv_(&connection_type_lock_),
-      tracking_(false) {}
+      current_connection_type_(NetworkChangeNotifier::CONNECTION_NONE),
+      tracking_(false),
+      threads_waiting_for_connection_type_initialization_(0) {}
 
 AddressTrackerLinux::AddressTrackerLinux(
     const base::RepeatingClosure& address_callback,
     const base::RepeatingClosure& link_callback,
     const base::RepeatingClosure& tunnel_callback,
-    const std::unordered_set<std::string>& ignored_interfaces,
-    scoped_refptr<base::SequencedTaskRunner> blocking_thread_runner)
+    const std::unordered_set<std::string>& ignored_interfaces)
     : get_interface_name_(GetInterfaceName),
       address_callback_(address_callback),
       link_callback_(link_callback),
       tunnel_callback_(tunnel_callback),
       ignored_interfaces_(ignored_interfaces),
+      connection_type_initialized_(false),
       connection_type_initialized_cv_(&connection_type_lock_),
+      current_connection_type_(NetworkChangeNotifier::CONNECTION_NONE),
       tracking_(true),
-      sequenced_task_runner_(std::move(blocking_thread_runner)) {
+      threads_waiting_for_connection_type_initialization_(0) {
   DCHECK(!address_callback.is_null());
   DCHECK(!link_callback.is_null());
-  DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
 AddressTrackerLinux::~AddressTrackerLinux() = default;
 
-void AddressTrackerLinux::InitWithFdForTesting(base::ScopedFD fd) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  netlink_fd_ = std::move(fd);
-  DumpInitialAddressesAndWatch();
-}
-
 void AddressTrackerLinux::Init() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
   // RTM_GETLINK stopped working in Android 11 (see
   // https://developer.android.com/preview/privacy/mac-address),
   // so AddressTrackerLinux should not be used in later versions
@@ -225,7 +212,7 @@ void AddressTrackerLinux::Init() {
     // Request notifications.
     struct sockaddr_nl addr = {};
     addr.nl_family = AF_NETLINK;
-    addr.nl_pid = 0;  // Let the kernel select a unique value.
+    addr.nl_pid = getpid();
     // TODO(szym): Track RTMGRP_LINK as well for ifi_type,
     // http://crbug.com/113993
     addr.nl_groups =
@@ -239,6 +226,7 @@ void AddressTrackerLinux::Init() {
     }
   }
 
+<<<<<<< HEAD
   DumpInitialAddressesAndWatch();
 }
 
@@ -336,6 +324,8 @@ AddressTrackerLinux::GetCurrentConnectionType() {
 void AddressTrackerLinux::DumpInitialAddressesAndWatch() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+=======
+>>>>>>> chromium
   // Request dump of addresses.
   struct sockaddr_nl peer = {};
   peer.nl_family = AF_NETLINK;
@@ -348,10 +338,10 @@ void AddressTrackerLinux::DumpInitialAddressesAndWatch() {
   request.header.nlmsg_len = NLMSG_LENGTH(sizeof(request.msg));
   request.header.nlmsg_type = RTM_GETADDR;
   request.header.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-  request.header.nlmsg_pid = 0;  // This field is opaque to netlink.
+  request.header.nlmsg_pid = getpid();
   request.msg.rtgen_family = AF_UNSPEC;
 
-  int rv = HANDLE_EINTR(
+  rv = HANDLE_EINTR(
       sendto(netlink_fd_.get(), &request, request.header.nlmsg_len, 0,
              reinterpret_cast<struct sockaddr*>(&peer), sizeof(peer)));
   if (rv < 0) {
@@ -388,9 +378,6 @@ void AddressTrackerLinux::DumpInitialAddressesAndWatch() {
   }
 
   if (tracking_) {
-    DCHECK(!sequenced_task_runner_ ||
-           sequenced_task_runner_->RunsTasksInCurrentSequence());
-
     watcher_ = base::FileDescriptorWatcher::WatchReadable(
         netlink_fd_.get(),
         base::BindRepeating(&AddressTrackerLinux::OnFileCanReadWithoutBlocking,
@@ -398,39 +385,58 @@ void AddressTrackerLinux::DumpInitialAddressesAndWatch() {
   }
 }
 
+void AddressTrackerLinux::AbortAndForceOnline() {
+  watcher_.reset();
+  netlink_fd_.reset();
+  AddressTrackerAutoLock lock(*this, connection_type_lock_);
+  current_connection_type_ = NetworkChangeNotifier::CONNECTION_UNKNOWN;
+  connection_type_initialized_ = true;
+  connection_type_initialized_cv_.Broadcast();
+}
+
+AddressTrackerLinux::AddressMap AddressTrackerLinux::GetAddressMap() const {
+  AddressTrackerAutoLock lock(*this, address_map_lock_);
+  return address_map_;
+}
+
+std::unordered_set<int> AddressTrackerLinux::GetOnlineLinks() const {
+  AddressTrackerAutoLock lock(*this, online_links_lock_);
+  return online_links_;
+}
+
+bool AddressTrackerLinux::IsInterfaceIgnored(int interface_index) const {
+  if (ignored_interfaces_.empty())
+    return false;
+
+  char buf[IFNAMSIZ] = {0};
+  const char* interface_name = get_interface_name_(interface_index, buf);
+  return ignored_interfaces_.find(interface_name) != ignored_interfaces_.end();
+}
+
+NetworkChangeNotifier::ConnectionType
+AddressTrackerLinux::GetCurrentConnectionType() {
+  // http://crbug.com/125097
+  base::ScopedAllowBaseSyncPrimitivesOutsideBlockingScope allow_wait;
+  AddressTrackerAutoLock lock(*this, connection_type_lock_);
+  // Make sure the initial connection type is set before returning.
+  threads_waiting_for_connection_type_initialization_++;
+  while (!connection_type_initialized_) {
+    connection_type_initialized_cv_.Wait();
+  }
+  threads_waiting_for_connection_type_initialization_--;
+  return current_connection_type_;
+}
+
 void AddressTrackerLinux::ReadMessages(bool* address_changed,
                                        bool* link_changed,
                                        bool* tunnel_changed) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   *address_changed = false;
   *link_changed = false;
   *tunnel_changed = false;
+  char buffer[4096];
   bool first_loop = true;
-
-  // Varying sources have different opinions regarding the buffer size needed
-  // for netlink messages to avoid truncation:
-  // - The official documentation on netlink says messages are generally 8kb
-  //   or the system page size, whichever is *larger*:
-  //   https://www.kernel.org/doc/html/v6.2/userspace-api/netlink/intro.html#buffer-sizing
-  // - The kernel headers would imply that messages are generally the system
-  //   page size or 8kb, whichever is *smaller*:
-  //   https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/linux/netlink.h?h=v6.2.2#n226
-  //   (libmnl follows this.)
-  // - The netlink(7) man page's example always uses a fixed size 8kb buffer:
-  //   https://man7.org/linux/man-pages/man7/netlink.7.html
-  // Here, we follow the guidelines in the documentation, for two primary
-  // reasons:
-  // - Erring on the side of a larger size is the safer way to go to avoid
-  //   MSG_TRUNC.
-  // - Since this is heap-allocated anyway, there's no risk to the stack by
-  //   using the larger size.
-
-  constexpr size_t kMinNetlinkBufferSize = 8 * 1024;
-  std::vector<char> buffer(
-      std::max(base::GetPageSize(), kMinNetlinkBufferSize));
-
   {
-    std::optional<base::ScopedBlockingCall> blocking_call;
+    absl::optional<base::ScopedBlockingCall> blocking_call;
     if (tracking_) {
       // If the loop below takes a long time to run, a new thread should added
       // to the current thread pool to ensure forward progress of all tasks.
@@ -438,10 +444,9 @@ void AddressTrackerLinux::ReadMessages(bool* address_changed,
     }
 
     for (;;) {
-      int rv =
-          HANDLE_EINTR(recv(netlink_fd_.get(), buffer.data(), buffer.size(),
-                            // Block the first time through loop.
-                            first_loop ? 0 : MSG_DONTWAIT));
+      int rv = HANDLE_EINTR(recv(netlink_fd_.get(), buffer, sizeof(buffer),
+                                 // Block the first time through loop.
+                                 first_loop ? 0 : MSG_DONTWAIT));
       first_loop = false;
       if (rv == 0) {
         LOG(ERROR) << "Unexpected shutdown of NETLINK socket.";
@@ -453,8 +458,7 @@ void AddressTrackerLinux::ReadMessages(bool* address_changed,
         PLOG(ERROR) << "Failed to recv from netlink socket";
         return;
       }
-      HandleMessage(buffer.data(), rv, address_changed, link_changed,
-                    tunnel_changed);
+      HandleMessage(buffer, rv, address_changed, link_changed, tunnel_changed);
     }
   }
   if (*link_changed || *address_changed)
@@ -466,7 +470,6 @@ void AddressTrackerLinux::HandleMessage(const char* buffer,
                                         bool* address_changed,
                                         bool* link_changed,
                                         bool* tunnel_changed) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(buffer);
   // Note that NLMSG_NEXT decrements |length| to reflect the number of bytes
   // remaining in |buffer|.
@@ -502,7 +505,7 @@ void AddressTrackerLinux::HandleMessage(const char* buffer,
           // prefix which can cause the linux kernel to frequently output two
           // back-to-back messages, one without the deprecated flag and one with
           // the deprecated flag but both with preferred lifetimes of 0. Avoid
-          // interpreting this as an actual change by canonicalizing the two
+          // interpretting this as an actual change by canonicalizing the two
           // messages by setting the deprecated flag based on the preferred
           // lifetime also.  http://crbug.com/268042
           if (really_deprecated)
@@ -511,14 +514,11 @@ void AddressTrackerLinux::HandleMessage(const char* buffer,
           // changed.
           auto it = address_map_.find(address);
           if (it == address_map_.end()) {
-            address_map_.insert(it, std::pair(address, msg_copy));
+            address_map_.insert(it, std::make_pair(address, msg_copy));
             *address_changed = true;
           } else if (memcmp(&it->second, &msg_copy, sizeof(msg_copy))) {
             it->second = msg_copy;
             *address_changed = true;
-          }
-          if (*address_changed && address_map_diff_.has_value()) {
-            (*address_map_diff_)[address] = msg_copy;
           }
         }
       } break;
@@ -532,12 +532,8 @@ void AddressTrackerLinux::HandleMessage(const char* buffer,
           break;
         if (GetAddress(header, length, &address, nullptr)) {
           AddressTrackerAutoLock lock(*this, address_map_lock_);
-          if (address_map_.erase(address)) {
+          if (address_map_.erase(address))
             *address_changed = true;
-            if (address_map_diff_.has_value()) {
-              (*address_map_diff_)[address] = std::nullopt;
-            }
-          }
         }
       } break;
       case RTM_NEWLINK: {
@@ -556,9 +552,6 @@ void AddressTrackerLinux::HandleMessage(const char* buffer,
           AddressTrackerAutoLock lock(*this, online_links_lock_);
           if (online_links_.insert(msg->ifi_index).second) {
             *link_changed = true;
-            if (online_links_diff_.has_value()) {
-              (*online_links_diff_)[msg->ifi_index] = true;
-            }
             if (IsTunnelInterface(msg->ifi_index))
               *tunnel_changed = true;
           }
@@ -566,9 +559,6 @@ void AddressTrackerLinux::HandleMessage(const char* buffer,
           AddressTrackerAutoLock lock(*this, online_links_lock_);
           if (online_links_.erase(msg->ifi_index)) {
             *link_changed = true;
-            if (online_links_diff_.has_value()) {
-              (*online_links_diff_)[msg->ifi_index] = false;
-            }
             if (IsTunnelInterface(msg->ifi_index))
               *tunnel_changed = true;
           }
@@ -584,9 +574,6 @@ void AddressTrackerLinux::HandleMessage(const char* buffer,
         AddressTrackerAutoLock lock(*this, online_links_lock_);
         if (online_links_.erase(msg->ifi_index)) {
           *link_changed = true;
-          if (online_links_diff_.has_value()) {
-            (*online_links_diff_)[msg->ifi_index] = false;
-          }
           if (IsTunnelInterface(msg->ifi_index))
             *tunnel_changed = true;
         }
@@ -598,23 +585,16 @@ void AddressTrackerLinux::HandleMessage(const char* buffer,
 }
 
 void AddressTrackerLinux::OnFileCanReadWithoutBlocking() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bool address_changed;
   bool link_changed;
   bool tunnel_changed;
   ReadMessages(&address_changed, &link_changed, &tunnel_changed);
-  if (diff_callback_) {
-    RunDiffCallback();
-  }
-  if (address_changed) {
+  if (address_changed)
     address_callback_.Run();
-  }
-  if (link_changed) {
+  if (link_changed)
     link_callback_.Run();
-  }
-  if (tunnel_changed) {
+  if (tunnel_changed)
     tunnel_callback_.Run();
-  }
 }
 
 bool AddressTrackerLinux::IsTunnelInterface(int interface_index) const {
@@ -629,7 +609,6 @@ bool AddressTrackerLinux::IsTunnelInterfaceName(const char* name) {
 }
 
 void AddressTrackerLinux::UpdateCurrentConnectionType() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   AddressTrackerLinux::AddressMap address_map = GetAddressMap();
   std::unordered_set<int> online_links = GetOnlineLinks();
 
@@ -657,27 +636,6 @@ void AddressTrackerLinux::UpdateCurrentConnectionType() {
   current_connection_type_ = type;
 }
 
-void AddressTrackerLinux::RunDiffCallback() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(tracking_);
-  DCHECK(address_map_diff_.has_value());
-  DCHECK(online_links_diff_.has_value());
-  // It's fine to access `address_map_diff_` and `online_links_diff_` without
-  // any locking here, as the only time they are ever accessed on another thread
-  // is in GetInitialDataAndStartRecordingDiffs(). But
-  // GetInitialDataAndStartRecordingDiffs() must be called before
-  // SetDiffCallback(), which must be called before RunDiffCallback(), so this
-  // function cannot overlap with any modifications on another thread.
-
-  // There should be a diff or the DiffCallback shouldn't be run.
-  if (address_map_diff_->empty() && online_links_diff_->empty()) {
-    return;
-  }
-  diff_callback_.Run(address_map_diff_.value(), online_links_diff_.value());
-  address_map_diff_->clear();
-  online_links_diff_->clear();
-}
-
 int AddressTrackerLinux::GetThreadsWaitingForConnectionTypeInitForTesting() {
   AddressTrackerAutoLock lock(*this, connection_type_lock_);
   return threads_waiting_for_connection_type_initialization_;
@@ -687,20 +645,19 @@ AddressTrackerLinux::AddressTrackerAutoLock::AddressTrackerAutoLock(
     const AddressTrackerLinux& tracker,
     base::Lock& lock)
     : tracker_(tracker), lock_(lock) {
-  if (tracker_->tracking_) {
-    lock_->Acquire();
+  if (tracker_.tracking_) {
+    lock_.Acquire();
   } else {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(tracker_->sequence_checker_);
+    DCHECK(tracker_.thread_checker_.CalledOnValidThread());
   }
 }
 
 AddressTrackerLinux::AddressTrackerAutoLock::~AddressTrackerAutoLock() {
-  if (tracker_->tracking_) {
-    lock_->AssertAcquired();
-    lock_->Release();
-  } else {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(tracker_->sequence_checker_);
+  if (tracker_.tracking_) {
+    lock_.AssertAcquired();
+    lock_.Release();
   }
 }
 
-}  // namespace net::internal
+}  // namespace internal
+}  // namespace net

@@ -1,37 +1,24 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/extensions_browser_client.h"
 
-#include <memory>
-#include <optional>
-
 #include "base/files/file_path.h"
-#include "base/functional/callback.h"
 #include "base/logging.h"
-#include "base/memory/ref_counted_memory.h"
 #include "components/update_client/update_client.h"
-#include "content/public/browser/browser_context.h"
-#include "content/public/browser/site_instance.h"
-#include "content/public/browser/storage_partition_config.h"
 #include "extensions/browser/extension_api_frame_id_map.h"
 #include "extensions/browser/extension_error.h"
-#include "extensions/browser/updater/scoped_extension_updater_keep_alive.h"
-#include "extensions/common/constants.h"
-#include "extensions/common/extension_id.h"
-#include "extensions/common/permissions/permission_set.h"
-#include "url/gurl.h"
 
 namespace extensions {
 
 namespace {
 
-ExtensionsBrowserClient* g_extension_browser_client = nullptr;
+ExtensionsBrowserClient* g_extension_browser_client = NULL;
 
 }  // namespace
 
-ExtensionsBrowserClient::ExtensionsBrowserClient() = default;
+ExtensionsBrowserClient::ExtensionsBrowserClient() {}
 ExtensionsBrowserClient::~ExtensionsBrowserClient() = default;
 
 ExtensionsBrowserClient* ExtensionsBrowserClient::Get() {
@@ -53,16 +40,15 @@ void ExtensionsBrowserClient::AddAPIProvider(
   providers_.push_back(std::move(provider));
 }
 
-void ExtensionsBrowserClient::StartTearDown() {}
-
 scoped_refptr<update_client::UpdateClient>
 ExtensionsBrowserClient::CreateUpdateClient(content::BrowserContext* context) {
   return scoped_refptr<update_client::UpdateClient>(nullptr);
 }
 
-std::unique_ptr<ScopedExtensionUpdaterKeepAlive>
-ExtensionsBrowserClient::CreateUpdaterKeepAlive(
-    content::BrowserContext* context) {
+std::unique_ptr<content::BluetoothChooser>
+ExtensionsBrowserClient::CreateBluetoothChooser(
+    content::RenderFrameHost* frame,
+    const content::BluetoothChooser::EventHandler& event_handler) {
   return nullptr;
 }
 
@@ -86,7 +72,7 @@ void ExtensionsBrowserClient::GetTabAndWindowIdForWebContents(
 }
 
 bool ExtensionsBrowserClient::IsExtensionEnabled(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     content::BrowserContext* context) const {
   return false;
 }
@@ -126,8 +112,13 @@ void ExtensionsBrowserClient::SetLastSaveFilePath(
     content::BrowserContext* context,
     const base::FilePath& path) {}
 
+const MediaRouterExtensionAccessLogger*
+ExtensionsBrowserClient::GetMediaRouterAccessLogger() const {
+  return nullptr;
+}
+
 bool ExtensionsBrowserClient::HasIsolatedStorage(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     content::BrowserContext* context) {
   return false;
 }
@@ -145,6 +136,7 @@ bool ExtensionsBrowserClient::IsValidTabId(
   return false;
 }
 
+<<<<<<< HEAD
 ScriptExecutor* ExtensionsBrowserClient::GetScriptExecutorForTab(
     content::WebContents& web_contents) {
   return nullptr;
@@ -263,4 +255,6 @@ ExtensionsBrowserClient::GetMediaDeviceSaltService(
   return nullptr;
 }
 
+=======
+>>>>>>> chromium
 }  // namespace extensions

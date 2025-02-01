@@ -30,21 +30,17 @@
 
 #include "base/types/zip.h"
 #include "third_party/blink/renderer/core/animation/document_timeline.h"
-#include "third_party/blink/renderer/core/css/cascade_layer_map.h"
 #include "third_party/blink/renderer/core/css/counter_style_map.h"
 #include "third_party/blink/renderer/core/css/css_font_selector.h"
-#include "third_party/blink/renderer/core/css/css_identifier_value.h"
 #include "third_party/blink/renderer/core/css/css_style_sheet.h"
 #include "third_party/blink/renderer/core/css/font_face.h"
 #include "third_party/blink/renderer/core/css/page_rule_collector.h"
 #include "third_party/blink/renderer/core/css/part_names.h"
 #include "third_party/blink/renderer/core/css/resolver/match_request.h"
-#include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/css/rule_feature_set.h"
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/css/style_rule.h"
-#include "third_party/blink/renderer/core/css/style_scope_data.h"
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
@@ -57,9 +53,8 @@ namespace blink {
 ScopedStyleResolver* ScopedStyleResolver::Parent() const {
   for (TreeScope* scope = GetTreeScope().ParentTreeScope(); scope;
        scope = scope->ParentTreeScope()) {
-    if (ScopedStyleResolver* resolver = scope->GetScopedStyleResolver()) {
+    if (ScopedStyleResolver* resolver = scope->GetScopedStyleResolver())
       return resolver;
-    }
   }
   return nullptr;
 }
@@ -67,24 +62,21 @@ ScopedStyleResolver* ScopedStyleResolver::Parent() const {
 void ScopedStyleResolver::AddKeyframeRules(const RuleSet& rule_set) {
   const HeapVector<Member<StyleRuleKeyframes>> keyframes_rules =
       rule_set.KeyframesRules();
-  for (auto rule : keyframes_rules) {
+  for (auto rule : keyframes_rules)
     AddKeyframeStyle(rule);
-  }
 }
 
 CounterStyleMap& ScopedStyleResolver::EnsureCounterStyleMap() {
-  if (!counter_style_map_) {
+  if (!counter_style_map_)
     counter_style_map_ = CounterStyleMap::CreateAuthorCounterStyleMap(*scope_);
-  }
   return *counter_style_map_;
 }
 
 void ScopedStyleResolver::AddFontFaceRules(const RuleSet& rule_set) {
-  // TODO(crbug.com/336876): We don't add @font-face rules of scoped style
-  // sheets for the moment.
-  if (!GetTreeScope().RootNode().IsDocumentNode()) {
+  // FIXME(BUG 72461): We don't add @font-face rules of scoped style sheets for
+  // the moment.
+  if (!GetTreeScope().RootNode().IsDocumentNode())
     return;
-  }
 
   Document& document = GetTreeScope().GetDocument();
   CSSFontSelector* css_font_selector =
@@ -92,32 +84,39 @@ void ScopedStyleResolver::AddFontFaceRules(const RuleSet& rule_set) {
   const HeapVector<Member<StyleRuleFontFace>> font_face_rules =
       rule_set.FontFaceRules();
   for (auto& font_face_rule : font_face_rules) {
-    if (FontFace* font_face = FontFace::Create(&document, font_face_rule,
-                                               false /* is_user_style */)) {
+    if (FontFace* font_face = FontFace::Create(&document, font_face_rule))
       css_font_selector->GetFontFaceCache()->Add(font_face_rule, font_face);
-    }
   }
-  if (font_face_rules.size()) {
+  if (font_face_rules.size())
     document.GetStyleResolver().InvalidateMatchedPropertiesCache();
-  }
 }
 
 void ScopedStyleResolver::AddCounterStyleRules(const RuleSet& rule_set) {
-  if (rule_set.CounterStyleRules().empty()) {
-    return;
+  if (!RuntimeEnabledFeatures::CSSAtRuleCounterStyleInShadowDOMEnabled()) {
+    // Our support of @counter-style rules in shadow DOM is experimental and
+    // non-standard. See https://github.com/w3c/csswg-drafts/issues/5693
+    if (!GetTreeScope().RootNode().IsDocumentNode())
+      return;
   }
+
+  if (rule_set.CounterStyleRules().IsEmpty())
+    return;
   EnsureCounterStyleMap().AddCounterStyles(rule_set);
 }
 
 void ScopedStyleResolver::AppendActiveStyleSheets(
     unsigned index,
     const ActiveStyleSheetVector& active_sheets) {
-  for (const ActiveStyleSheet& active_sheet :
-       base::span(active_sheets).subspan(index)) {
-    CSSStyleSheet* sheet = active_sheet.first;
-    media_query_result_flags_.Add(sheet->GetMediaQueryResultFlags());
-    if (!active_sheet.second) {
+  for (auto* active_iterator = active_sheets.begin() + index;
+       active_iterator != active_sheets.end(); active_iterator++) {
+    CSSStyleSheet* sheet = active_iterator->first;
+    viewport_dependent_media_query_results_.AppendVector(
+        sheet->ViewportDependentMediaQueryResults());
+    device_dependent_media_query_results_.AppendVector(
+        sheet->DeviceDependentMediaQueryResults());
+    if (!active_iterator->second)
       continue;
+<<<<<<< HEAD
     }
 
     RuleSet& rule_set = *active_sheet.second;
@@ -143,6 +142,14 @@ void ScopedStyleResolver::AppendActiveStyleSheets(
       AddRuleSetToRuleSetGroupList(&rule_set, rule_set_groups_);
     }
     AddImplicitScopeTriggers(*sheet, rule_set);
+=======
+    const RuleSet& rule_set = *active_iterator->second;
+    style_sheets_.push_back(sheet);
+    AddKeyframeRules(rule_set);
+    AddFontFaceRules(rule_set);
+    AddCounterStyleRules(rule_set);
+    AddSlottedRules(rule_set, sheet, index++);
+>>>>>>> chromium
   }
 }
 
@@ -150,44 +157,51 @@ void ScopedStyleResolver::CollectFeaturesTo(
     RuleFeatureSet& features,
     HeapHashSet<Member<const StyleSheetContents>>&
         visited_shared_style_sheet_contents) const {
-  features.MutableMediaQueryResultFlags().Add(media_query_result_flags_);
+  features.ViewportDependentMediaQueryResults().AppendVector(
+      viewport_dependent_media_query_results_);
+  features.DeviceDependentMediaQueryResults().AppendVector(
+      device_dependent_media_query_results_);
 
-  for (auto [sheet, rule_set] : active_style_sheets_) {
+  for (auto sheet : style_sheets_) {
     DCHECK(sheet->ownerNode() || sheet->IsConstructed());
     StyleSheetContents* contents = sheet->Contents();
     if (contents->HasOneClient() ||
-        visited_shared_style_sheet_contents.insert(contents).is_new_entry) {
-      features.Merge(rule_set->Features());
-    }
+        visited_shared_style_sheet_contents.insert(contents).is_new_entry)
+      features.Add(contents->GetRuleSet().Features());
+  }
+
+  if (slotted_rule_set_) {
+    for (const auto& rules : *slotted_rule_set_)
+      features.Add(rules->rule_set_->Features());
   }
 }
 
 void ScopedStyleResolver::ResetStyle() {
+<<<<<<< HEAD
   RemoveImplicitScopeTriggers();
   active_style_sheets_.clear();
   rule_set_groups_.clear();
   media_query_result_flags_.Clear();
+=======
+  style_sheets_.clear();
+  viewport_dependent_media_query_results_.clear();
+  device_dependent_media_query_results_.clear();
+>>>>>>> chromium
   keyframes_rule_map_.clear();
-  position_try_rule_map_.clear();
-  font_feature_values_storage_map_.clear();
-  function_rule_map_.clear();
-  if (counter_style_map_) {
+  if (counter_style_map_)
     counter_style_map_->Dispose();
-  }
-  cascade_layer_map_ = nullptr;
+  slotted_rule_set_ = nullptr;
   needs_append_all_sheets_ = false;
 }
 
 StyleRuleKeyframes* ScopedStyleResolver::KeyframeStylesForAnimation(
     const AtomicString& animation_name) {
-  if (keyframes_rule_map_.empty()) {
+  if (keyframes_rule_map_.IsEmpty())
     return nullptr;
-  }
 
   KeyframesRuleMap::iterator it = keyframes_rule_map_.find(animation_name);
-  if (it == keyframes_rule_map_.end()) {
+  if (it == keyframes_rule_map_.end())
     return nullptr;
-  }
 
   return it->value.Get();
 }
@@ -195,30 +209,22 @@ StyleRuleKeyframes* ScopedStyleResolver::KeyframeStylesForAnimation(
 void ScopedStyleResolver::AddKeyframeStyle(StyleRuleKeyframes* rule) {
   AtomicString name = rule->GetName();
 
-  KeyframesRuleMap::iterator it = keyframes_rule_map_.find(name);
-  if (it == keyframes_rule_map_.end() ||
-      KeyframeStyleShouldOverride(rule, it->value)) {
+  if (rule->IsVendorPrefixed()) {
+    KeyframesRuleMap::iterator it = keyframes_rule_map_.find(name);
+    if (it == keyframes_rule_map_.end())
+      keyframes_rule_map_.Set(name, rule);
+    else if (it->value->IsVendorPrefixed())
+      keyframes_rule_map_.Set(name, rule);
+  } else {
     keyframes_rule_map_.Set(name, rule);
   }
-}
-
-bool ScopedStyleResolver::KeyframeStyleShouldOverride(
-    const StyleRuleKeyframes* new_rule,
-    const StyleRuleKeyframes* existing_rule) const {
-  if (new_rule->IsVendorPrefixed() != existing_rule->IsVendorPrefixed()) {
-    return existing_rule->IsVendorPrefixed();
-  }
-  return !cascade_layer_map_ || cascade_layer_map_->CompareLayerOrder(
-                                    existing_rule->GetCascadeLayer(),
-                                    new_rule->GetCascadeLayer()) <= 0;
 }
 
 Element& ScopedStyleResolver::InvalidationRootForTreeScope(
     const TreeScope& tree_scope) {
   DCHECK(tree_scope.GetDocument().documentElement());
-  if (tree_scope.RootNode() == tree_scope.GetDocument()) {
+  if (tree_scope.RootNode() == tree_scope.GetDocument())
     return *tree_scope.GetDocument().documentElement();
-  }
   return To<ShadowRoot>(tree_scope.RootNode()).host();
 }
 
@@ -227,9 +233,8 @@ void ScopedStyleResolver::KeyframesRulesAdded(const TreeScope& tree_scope) {
   // TreeScope. @keyframes rules may apply to animations on elements in the
   // same TreeScope as the stylesheet, or the host element in the parent
   // TreeScope if the TreeScope is a shadow tree.
-  if (!tree_scope.GetDocument().documentElement()) {
+  if (!tree_scope.GetDocument().documentElement())
     return;
-  }
 
   ScopedStyleResolver* resolver = tree_scope.GetScopedStyleResolver();
   ScopedStyleResolver* parent_resolver =
@@ -247,19 +252,20 @@ void ScopedStyleResolver::KeyframesRulesAdded(const TreeScope& tree_scope) {
     had_unresolved_keyframes = true;
   }
 
-  StyleChangeReasonForTracing reason = StyleChangeReasonForTracing::Create(
-      style_change_reason::kKeyframesRuleChange);
   if (had_unresolved_keyframes) {
     // If an animation ended up not being started because no @keyframes
     // rules were found for the animation-name, we need to recalculate style
     // for the elements in the scope, including its shadow host if
     // applicable.
     InvalidationRootForTreeScope(tree_scope)
-        .SetNeedsStyleRecalc(kSubtreeStyleChange, reason);
+        .SetNeedsStyleRecalc(kSubtreeStyleChange,
+                             StyleChangeReasonForTracing::Create(
+                                 style_change_reason::kStyleSheetChange));
     return;
   }
 
   // If we have animations running, added/removed @keyframes may affect these.
+<<<<<<< HEAD
   tree_scope.GetDocument().Timeline().InvalidateKeyframeEffects(tree_scope,
                                                                 reason);
 }
@@ -285,42 +291,70 @@ void ScopedStyleResolver::ForAllStylesheets(ElementRuleCollector& collector,
   for (RuleSetGroup& rule_set_group : rule_set_groups_) {
     func(MatchRequest(rule_set_group, &scope_->RootNode(), collector));
   }
+=======
+  tree_scope.GetDocument().Timeline().InvalidateKeyframeEffects(tree_scope);
+>>>>>>> chromium
 }
 
 void ScopedStyleResolver::CollectMatchingElementScopeRules(
-    ElementRuleCollector& collector,
-    PartNames* part_names) {
-  ForAllStylesheets(
-      collector, [&collector, part_names](const MatchRequest& match_request) {
-        collector.CollectMatchingRules(match_request, part_names);
-      });
+    ElementRuleCollector& collector) {
+  wtf_size_t sheet_index = 0;
+  for (auto sheet : style_sheets_) {
+    DCHECK(sheet->ownerNode() || sheet->IsConstructed());
+    MatchRequest match_request(&sheet->Contents()->GetRuleSet(),
+                               &scope_->RootNode(), sheet, sheet_index++);
+    collector.CollectMatchingRules(match_request);
+  }
 }
 
 void ScopedStyleResolver::CollectMatchingShadowHostRules(
     ElementRuleCollector& collector) {
-  ForAllStylesheets(collector, [&collector](const MatchRequest& match_request) {
+  wtf_size_t sheet_index = 0;
+  for (auto sheet : style_sheets_) {
+    DCHECK(sheet->ownerNode() || sheet->IsConstructed());
+    MatchRequest match_request(&sheet->Contents()->GetRuleSet(),
+                               &scope_->RootNode(), sheet, sheet_index++);
     collector.CollectMatchingShadowHostRules(match_request);
-  });
+  }
 }
 
 void ScopedStyleResolver::CollectMatchingSlottedRules(
     ElementRuleCollector& collector) {
-  ForAllStylesheets(collector, [&collector](const MatchRequest& match_request) {
-    collector.CollectMatchingSlottedRules(match_request);
-  });
+  if (!slotted_rule_set_)
+    return;
+
+  for (const auto& rules : *slotted_rule_set_) {
+    MatchRequest request(rules->rule_set_.Get(), &GetTreeScope().RootNode(),
+                         rules->parent_style_sheet_, rules->parent_index_);
+    collector.CollectMatchingRules(request, true);
+  }
 }
 
 void ScopedStyleResolver::CollectMatchingPartPseudoRules(
     ElementRuleCollector& collector,
+<<<<<<< HEAD
     PartNames* part_names) {
   ForAllStylesheets(collector, [&](const MatchRequest& match_request) {
     collector.CollectMatchingPartPseudoRules(match_request, part_names);
   });
+=======
+    PartNames& part_names,
+    bool for_shadow_pseudo) {
+  wtf_size_t sheet_index = 0;
+  for (auto sheet : style_sheets_) {
+    DCHECK(sheet->ownerNode() || sheet->IsConstructed());
+    MatchRequest match_request(&sheet->Contents()->GetRuleSet(),
+                               &scope_->RootNode(), sheet, sheet_index++);
+    collector.CollectMatchingPartPseudoRules(match_request, part_names,
+                                             for_shadow_pseudo);
+  }
+>>>>>>> chromium
 }
 
 void ScopedStyleResolver::MatchPageRules(PageRuleCollector& collector) {
   // Currently, only @page rules in the document scope apply.
   DCHECK(scope_->RootNode().IsDocumentNode());
+<<<<<<< HEAD
   for (auto [sheet, rule_set] : active_style_sheets_) {
     collector.MatchPageRules(rule_set.Get(), CascadeOrigin::kAuthor, scope_,
                              GetCascadeLayerMap());
@@ -502,6 +536,10 @@ void ScopedStyleResolver::RemoveImplicitScopeTrigger(
   if (StyleScopeData* style_scope_data = element.GetStyleScopeData()) {
     style_scope_data->RemoveTriggeredImplicitScope(style_scope);
   }
+=======
+  for (auto sheet : style_sheets_)
+    collector.MatchPageRules(&sheet->Contents()->GetRuleSet());
+>>>>>>> chromium
 }
 
 void ScopedStyleResolver::QuietlySwapActiveStyleSheets(
@@ -515,13 +553,46 @@ void ScopedStyleResolver::QuietlySwapActiveStyleSheets(
 
 void ScopedStyleResolver::Trace(Visitor* visitor) const {
   visitor->Trace(scope_);
+<<<<<<< HEAD
   visitor->Trace(active_style_sheets_);
   visitor->Trace(rule_set_groups_);
+=======
+  visitor->Trace(style_sheets_);
+>>>>>>> chromium
   visitor->Trace(keyframes_rule_map_);
-  visitor->Trace(position_try_rule_map_);
-  visitor->Trace(function_rule_map_);
   visitor->Trace(counter_style_map_);
-  visitor->Trace(cascade_layer_map_);
+  visitor->Trace(slotted_rule_set_);
+}
+
+static void AddRules(RuleSet* rule_set,
+                     const HeapVector<MinimalRuleData>& rules) {
+  for (const auto& info : rules) {
+    // TODO(crbug.com/1145970): Store container_query on MinimalRuleData
+    // and propagate it here.
+    rule_set->AddRule(info.rule_, info.selector_index_, info.flags_,
+                      nullptr /* container_query */);
+  }
+}
+
+void ScopedStyleResolver::AddSlottedRules(const RuleSet& rules,
+                                          CSSStyleSheet* parent_style_sheet,
+                                          unsigned sheet_index) {
+  bool is_document_scope = GetTreeScope().RootNode().IsDocumentNode();
+  if (is_document_scope || rules.SlottedPseudoElementRules().IsEmpty())
+    return;
+
+  auto* slotted_rule_set = MakeGarbageCollected<RuleSet>();
+  AddRules(slotted_rule_set, rules.SlottedPseudoElementRules());
+
+  if (!slotted_rule_set_)
+    slotted_rule_set_ = MakeGarbageCollected<CSSStyleSheetRuleSubSet>();
+  slotted_rule_set_->push_back(MakeGarbageCollected<RuleSubSet>(
+      parent_style_sheet, sheet_index, slotted_rule_set));
+}
+
+void ScopedStyleResolver::RuleSubSet::Trace(Visitor* visitor) const {
+  visitor->Trace(parent_style_sheet_);
+  visitor->Trace(rule_set_);
 }
 
 }  // namespace blink

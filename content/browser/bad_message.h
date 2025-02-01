@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,12 @@
 #define CONTENT_BROWSER_BAD_MESSAGE_H_
 
 #include "base/debug/crash_logging.h"
+<<<<<<< HEAD
 #include "content/common/buildflags.h"
 #include "content/public/browser/child_process_id.h"
+=======
+#include "content/common/content_export.h"
+>>>>>>> chromium
 
 namespace content {
 class BrowserMessageFilter;
@@ -59,7 +63,7 @@ enum BadMessageReason {
   OBSOLETE_NMF_NO_PERMISSION_CLOSE = 31,
   OBSOLETE_NMF_NO_PERMISSION_VERIFY = 32,
   MH_INVALID_MIDI_PORT = 33,
-  MH_MIDI_SYSEX_PERMISSION = 34,
+  MH_SYS_EX_PERMISSION = 34,
   ACDH_REGISTER = 35,
   ACDH_UNREGISTER = 36,
   ACDH_SET_SPAWNING = 37,
@@ -220,7 +224,7 @@ enum BadMessageReason {
   ARH_UNEXPECTED_BITSTREAM = 191,
   RDH_NULL_CLIENT = 192,
   RVH_WEB_UI_BINDINGS_MISMATCH = 193,
-  OBSOLETE_WCI_NEW_WIDGET_PROCESS_MISMATCH = 194,
+  WCI_NEW_WIDGET_PROCESS_MISMATCH = 194,
   AUTH_INVALID_EFFECTIVE_DOMAIN = 195,
   AUTH_INVALID_RELYING_PARTY = 196,
   RWH_COPY_REQUEST_ATTEMPT = 197,
@@ -228,13 +232,13 @@ enum BadMessageReason {
   SYNC_COMPOSITOR_NO_BEGIN_FRAME = 199,
   WEBUI_BAD_HOST_ACCESS = 200,
   OBSOLETE_RFMF_BLOB_URL_TOKEN_FOR_NON_BLOB_URL = 201,
-  PSI_BAD_PERMISSION_DESCRIPTOR = 202,
+  PERMISSION_SERVICE_BAD_PERMISSION_DESCRIPTOR = 202,
   BLOB_URL_TOKEN_FOR_NON_BLOB_URL = 203,
   OBSOLETE_RFPH_BLOB_URL_TOKEN_FOR_NON_BLOB_URL = 204,
   RFH_ERROR_PROCESS_NON_ERROR_COMMIT = 205,
   RFH_ERROR_PROCESS_NON_UNIQUE_ORIGIN_COMMIT = 206,
   OBSOLETE_RFH_CANNOT_RENDER_FALLBACK_CONTENT = 207,
-  OBSOLETE_RFH_CHILD_FRAME_NEEDS_OWNER_ELEMENT_TYPE = 208,
+  RFH_CHILD_FRAME_NEEDS_OWNER_ELEMENT_TYPE = 208,
   OBSOLETE_RFH_INVALID_WEB_REPORTING_CRASH_ID = 209,
   RFH_DETACH_MAIN_FRAME = 210,
   RFH_BROWSER_INTERFACE_BROKER_MISSING = 211,
@@ -243,12 +247,12 @@ enum BadMessageReason {
   RFHI_BEGIN_NAVIGATION_MISSING_INITIATOR_ORIGIN = 214,
   RFHI_BEGIN_NAVIGATION_NON_WEBBY_TRANSITION = 215,
   RFH_NO_MATCHING_NAVIGATION_REQUEST_ON_COMMIT = 216,
-  OBSOLETE_AUTH_INVALID_ICON_URL = 217,
+  AUTH_INVALID_ICON_URL = 217,
   MDDH_INVALID_STREAM_SELECTION_INFO = 218,
   REGISTER_PROTOCOL_HANDLER_INVALID_URL = 219,
   NC_SAME_DOCUMENT_POST_COMMIT_ERROR = 220,
   RFH_INVALID_WEB_UI_CONTROLLER = 221,
-  OBSOLETE_RFPH_ADVANCE_FOCUS_INTO_PORTAL = 222,
+  RFPH_ADVANCE_FOCUS_INTO_PORTAL = 222,
   RFH_UNEXPECTED_EMBEDDING_TOKEN = 223,
   RFH_MISSING_EMBEDDING_TOKEN = 224,
   RFH_BAD_DOCUMENT_POLICY_HEADER = 225,
@@ -259,7 +263,7 @@ enum BadMessageReason {
   RFH_SUBFRAME_CAPTURE_ON_MAIN_FRAME = 230,
   RFH_CSP_ATTRIBUTE = 231,
   RFH_RECEIVED_ASSOCIATED_MESSAGE_WHILE_BFCACHED = 232,
-  OBSOLETE_RWH_CLOSE_PORTAL = 233,
+  RWH_CLOSE_PORTAL = 233,
   MSDH_INVALID_STREAM_TYPE = 234,
   RFH_CREATE_CHILD_FRAME_TOKENS_NOT_FOUND = 235,
   ASGH_ASSOCIATED_INTERFACE_REQUEST = 236,
@@ -276,6 +280,7 @@ enum BadMessageReason {
   MDDH_INVALID_PERMITTED_ORIGIN = 247,
   MDDH_NOT_TOP_LEVEL = 248,
   RFH_DID_CHANGE_IFRAME_ATTRIBUTE = 249,
+<<<<<<< HEAD
   FARI_LOGOUT_BAD_ENDPOINT = 250,
   OBSOLETE_RFH_CHILD_FRAME_UNEXPECTED_OWNER_ELEMENT_TYPE = 251,
   RFH_POPUP_REQUEST_WHILE_PRERENDERING = 252,
@@ -350,6 +355,9 @@ enum BadMessageReason {
   RFH_INITIATOR_BASE_URL_IS_EMPTY = 321,
   MDDH_SELECT_AUDIO_OUTPUT_WITHOUT_FEATURE = 322,
   MDDH_SET_PREFERRED_SINK_ID_WITHOUT_FEATURE = 323,
+=======
+
+>>>>>>> chromium
   // Please add new elements here. The naming convention is abbreviated class
   // name (e.g. RenderFrameHost becomes RFH) plus a unique description of the
   // reason. After making changes, you MUST update histograms.xml by running:
@@ -363,19 +371,22 @@ enum BadMessageReason {
 void ReceivedBadMessage(RenderProcessHost* host, BadMessageReason reason);
 
 // Equivalent to the above, but callable from any thread.
+<<<<<<< HEAD
 void ReceivedBadMessage(ChildProcessId render_process_id,
                         BadMessageReason reason);
 
 // TODO(crbug.com/379869738): Deprecated, please use ReceivedBadMessage with
 // ChildProcessId above.
 void ReceivedBadMessage(int render_process_id, BadMessageReason reason);
+=======
+CONTENT_EXPORT void ReceivedBadMessage(int render_process_id,
+                                       BadMessageReason reason);
+>>>>>>> chromium
 
-#if BUILDFLAG(CONTENT_ENABLE_LEGACY_IPC)
 // Called when a browser message filter receives a bad IPC message from a
 // renderer or other child process. Logs the event, records a histogram metric
 // for the |reason|, and terminates the process for |filter|.
 void ReceivedBadMessage(BrowserMessageFilter* filter, BadMessageReason reason);
-#endif
 
 // Site isolation. These keys help debug renderer kills such as
 // https://crbug.com/773140.

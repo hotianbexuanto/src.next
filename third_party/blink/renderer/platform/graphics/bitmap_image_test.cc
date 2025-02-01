@@ -28,38 +28,36 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "third_party/blink/renderer/platform/graphics/bitmap_image.h"
 
+<<<<<<< HEAD
 #include <array>
 
+=======
+#include "base/bind.h"
+>>>>>>> chromium
 #include "base/feature_list.h"
-#include "base/functional/bind.h"
-#include "base/numerics/safe_conversions.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/simple_test_tick_clock.h"
-#include "base/time/time.h"
 #include "cc/paint/image_provider.h"
 #include "cc/paint/skia_paint_canvas.h"
 #include "cc/tiles/mipmap_util.h"
 #include "media/media_buildflags.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features.h"
+#include "third_party/blink/renderer/platform/geometry/float_rect.h"
 #include "third_party/blink/renderer/platform/graphics/bitmap_image_metrics.h"
 #include "third_party/blink/renderer/platform/graphics/deferred_image_decoder.h"
 #include "third_party/blink/renderer/platform/graphics/image_observer.h"
 #include "third_party/blink/renderer/platform/graphics/test/mock_image_decoder.h"
 #include "third_party/blink/renderer/platform/scheduler/test/fake_task_runner.h"
+#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/testing_platform_support_with_mock_scheduler.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
+#include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkImage.h"
-#include "ui/gfx/geometry/rect_f.h"
 
 namespace blink {
 namespace {
@@ -136,8 +134,7 @@ class BitmapImageTest : public testing::Test {
 
     void DecodedSizeChangedTo(const Image*, size_t new_size) override {
       last_decoded_size_changed_delta_ =
-          base::checked_cast<int>(new_size) -
-          base::checked_cast<int>(last_decoded_size_);
+          SafeCast<int>(new_size) - SafeCast<int>(last_decoded_size_);
       last_decoded_size_ = new_size;
     }
     bool ShouldPauseAnimation(const Image*) override { return false; }
@@ -149,13 +146,9 @@ class BitmapImageTest : public testing::Test {
     int last_decoded_size_changed_delta_;
   };
 
-  void TearDown() override { image_.reset(); }
-
-  static Vector<char> ReadFile(const char* file_name) {
+  static scoped_refptr<SharedBuffer> ReadFile(const char* file_name) {
     String file_path = test::PlatformTestDataPath(file_name);
-    std::optional<Vector<char>> data = test::ReadFromFile(file_path);
-    CHECK(data && data->size());
-    return std::move(*data);
+    return test::ReadFromFile(file_path);
   }
 
   // Accessors to BitmapImage's protected methods.
@@ -170,21 +163,9 @@ class BitmapImageTest : public testing::Test {
   void LoadImage(const char* file_name) {
     CreateImage();
 
-    scoped_refptr<SharedBuffer> image_data =
-        SharedBuffer::Create(ReadFile(file_name));
+    scoped_refptr<SharedBuffer> image_data = ReadFile(file_name);
     ASSERT_TRUE(image_data.get());
 
-    image_->SetData(image_data, true);
-  }
-
-  void LoadBlinkWebTestsImage(const char* relative_path) {
-    CreateImage();
-
-    String file_path = test::BlinkWebTestsImagesTestDataPath(relative_path);
-    std::optional<Vector<char>> data = test::ReadFromFile(file_path);
-    ASSERT_TRUE(data && data->size());
-    scoped_refptr<SharedBuffer> image_data =
-        SharedBuffer::Create(std::move(*data));
     image_->SetData(image_data, true);
   }
 
@@ -197,8 +178,7 @@ class BitmapImageTest : public testing::Test {
   }
 
   SkBitmap GenerateBitmapForImage(const char* file_name) {
-    scoped_refptr<SharedBuffer> image_data =
-        SharedBuffer::Create(ReadFile(file_name));
+    scoped_refptr<SharedBuffer> image_data = ReadFile(file_name);
     EXPECT_TRUE(image_data.get());
     if (!image_data)
       return SkBitmap();
@@ -209,9 +189,9 @@ class BitmapImageTest : public testing::Test {
     CHECK(paint_image);
 
     SkBitmap bitmap;
-    SkImageInfo info = SkImageInfo::MakeN32Premul(image->Size().width(),
-                                                  image->Size().height());
-    bitmap.allocPixels(info, image->Size().width() * 4);
+    SkImageInfo info = SkImageInfo::MakeN32Premul(image->Size().Width(),
+                                                  image->Size().Height());
+    bitmap.allocPixels(info, image->Size().Width() * 4);
     bitmap.eraseColor(SK_AlphaTRANSPARENT);
     cc::SkiaPaintCanvas canvas(bitmap);
     canvas.drawImage(paint_image, 0u, 0u);
@@ -292,8 +272,7 @@ TEST_F(BitmapImageTest, maybeAnimated) {
 }
 
 TEST_F(BitmapImageTest, isAllDataReceived) {
-  scoped_refptr<SharedBuffer> image_data =
-      SharedBuffer::Create(ReadFile("green.jpg"));
+  scoped_refptr<SharedBuffer> image_data = ReadFile("green.jpg");
   ASSERT_TRUE(image_data.get());
 
   scoped_refptr<BitmapImage> image = BitmapImage::Create();
@@ -345,7 +324,7 @@ TEST_F(BitmapImageTest, correctDecodedDataSize) {
   LoadImage("anim_none.gif");
   image_->PaintImageForCurrentFrame();
   int frame_size =
-      static_cast<int>(image_->Size().Area64() * sizeof(ImageFrame::PixelData));
+      static_cast<int>(image_->Size().Area() * sizeof(ImageFrame::PixelData));
   EXPECT_EQ(frame_size, LastDecodedSizeChange());
 }
 
@@ -365,12 +344,17 @@ TEST_F(BitmapImageTest, recachingFrameAfterDataChanged) {
 }
 
 TEST_F(BitmapImageTest, ConstantImageIdForPartiallyLoadedImages) {
-  Vector<char> image_data_binary = ReadFile("green.jpg");
+  scoped_refptr<SharedBuffer> image_data = ReadFile("green.jpg");
+  ASSERT_TRUE(image_data.get());
 
   // Create a new buffer to partially supply the data.
   scoped_refptr<SharedBuffer> partial_buffer = SharedBuffer::Create();
+<<<<<<< HEAD
   partial_buffer->Append(
       base::span(image_data_binary).first(image_data_binary.size() - 4));
+=======
+  partial_buffer->Append(image_data->Data(), image_data->size() - 4);
+>>>>>>> chromium
 
   // First partial load. Repeated calls for a PaintImage should have the same
   // image until the data changes or the decoded data is destroyed.
@@ -378,7 +362,7 @@ TEST_F(BitmapImageTest, ConstantImageIdForPartiallyLoadedImages) {
   ASSERT_EQ(image_->SetData(partial_buffer, false), Image::kSizeAvailable);
   auto image1 = image_->PaintImageForCurrentFrame();
   auto image2 = image_->PaintImageForCurrentFrame();
-  EXPECT_TRUE(image1.IsSameForTesting(image2));
+  EXPECT_EQ(image1, image2);
   auto sk_image1 = image1.GetSwSkImage();
   auto sk_image2 = image2.GetSwSkImage();
   EXPECT_EQ(sk_image1->uniqueID(), sk_image2->uniqueID());
@@ -401,8 +385,6 @@ TEST_F(BitmapImageTest, ConstantImageIdForPartiallyLoadedImages) {
             image3.GetKeyForFrame(PaintImage::kDefaultFrameIndex));
 
   // Load complete. This should generate a new image id.
-  scoped_refptr<SharedBuffer> image_data =
-      SharedBuffer::Create(image_data_binary);
   image_->SetData(image_data, true);
   auto complete_image = image_->PaintImageForCurrentFrame();
   auto complete_sk_image = complete_image.GetSwSkImage();
@@ -433,7 +415,7 @@ TEST_F(BitmapImageTest, ImageForDefaultFrame_MultiFrame) {
   // But the PaintImage should be the same.
   auto paint_image1 = default_image1->PaintImageForCurrentFrame();
   auto paint_image2 = default_image2->PaintImageForCurrentFrame();
-  EXPECT_TRUE(paint_image1.IsSameForTesting(paint_image2));
+  EXPECT_EQ(paint_image1, paint_image2);
   EXPECT_EQ(paint_image1.GetSwSkImage()->uniqueID(),
             paint_image2.GetSwSkImage()->uniqueID());
 }
@@ -644,19 +626,19 @@ class BitmapImageTestWithMockDecoder : public BitmapImageTest,
 
   void DecoderBeingDestroyed() override {}
   void DecodeRequested() override {}
-  ImageFrame::Status GetStatus(wtf_size_t index) override {
+  ImageFrame::Status GetStatus(size_t index) override {
     if (index < frame_count_ - 1 || last_frame_complete_)
       return ImageFrame::Status::kFrameComplete;
     return ImageFrame::Status::kFramePartial;
   }
-  wtf_size_t FrameCount() override { return frame_count_; }
+  size_t FrameCount() override { return frame_count_; }
   int RepetitionCount() const override { return repetition_count_; }
   base::TimeDelta FrameDuration() const override { return duration_; }
 
  protected:
   base::TimeDelta duration_;
   int repetition_count_;
-  wtf_size_t frame_count_;
+  size_t frame_count_;
   bool last_frame_complete_;
 };
 
@@ -671,11 +653,11 @@ TEST_F(BitmapImageTestWithMockDecoder, ImageMetadataTracking) {
   ASSERT_TRUE(image);
   EXPECT_EQ(image.FrameCount(), frame_count_);
   EXPECT_EQ(image.completion_state(),
-            PaintImage::CompletionState::kPartiallyDone);
+            PaintImage::CompletionState::PARTIALLY_DONE);
   EXPECT_EQ(image.repetition_count(), repetition_count_);
   for (size_t i = 0; i < image.GetFrameMetadata().size(); ++i) {
     const auto& data = image.GetFrameMetadata()[i];
-    EXPECT_EQ(data.duration, base::Milliseconds(100));
+    EXPECT_EQ(data.duration, base::TimeDelta::FromMilliseconds(100));
     if (i == frame_count_ - 1 && !last_frame_complete_)
       EXPECT_FALSE(data.complete);
     else
@@ -683,7 +665,7 @@ TEST_F(BitmapImageTestWithMockDecoder, ImageMetadataTracking) {
   }
 
   // Now the load is finished.
-  duration_ = base::Seconds(1);
+  duration_ = base::TimeDelta::FromSeconds(1);
   repetition_count_ = kAnimationLoopInfinite;
   frame_count_ = 6u;
   last_frame_complete_ = true;
@@ -692,14 +674,14 @@ TEST_F(BitmapImageTestWithMockDecoder, ImageMetadataTracking) {
   image = image_->PaintImageForCurrentFrame();
   ASSERT_TRUE(image);
   EXPECT_EQ(image.FrameCount(), frame_count_);
-  EXPECT_EQ(image.completion_state(), PaintImage::CompletionState::kDone);
+  EXPECT_EQ(image.completion_state(), PaintImage::CompletionState::DONE);
   EXPECT_EQ(image.repetition_count(), repetition_count_);
   for (size_t i = 0; i < image.GetFrameMetadata().size(); ++i) {
     const auto& data = image.GetFrameMetadata()[i];
     if (i < 4u)
-      EXPECT_EQ(data.duration, base::Milliseconds(100));
+      EXPECT_EQ(data.duration, base::TimeDelta::FromMilliseconds(100));
     else
-      EXPECT_EQ(data.duration, base::Seconds(1));
+      EXPECT_EQ(data.duration, base::TimeDelta::FromSeconds(1));
     EXPECT_TRUE(data.complete);
   }
 }
@@ -862,30 +844,13 @@ TEST_F(BitmapHistogramTest, DecodedImageType) {
 #endif  // BUILDFLAG(ENABLE_AV1_DECODER)
 }
 
-TEST_F(BitmapHistogramTest, DecodedImageDensityKiBWeighted) {
+TEST_F(BitmapHistogramTest, DecodedImageDensityKiBWeighted_JpegDensity) {
+  // Test a 64x64 image, which should be too small to report any metrics.
   {
-    // Test images that don't report any density metrics.
     base::HistogramTester histogram_tester;
-    LoadImage("rgb-jpeg-red.jpg");           // 64x64
-    // 500x500 but animation is not reported.
-    LoadBlinkWebTestsImage("webp-animated-large.webp");
-#if BUILDFLAG(ENABLE_AV1_DECODER)
-    LoadImage("red-full-ranged-8bpc.avif");  // 3x3
-    // 159x159 but animation is not reported.
-    LoadBlinkWebTestsImage("avif/star-animated-8bpc.avif");
-    // 800x800 but 10-bit images are not reported.
-    LoadBlinkWebTestsImage(
-        "avif/red-at-12-oclock-with-color-profile-10bpc.avif");
-#endif
-    LoadImage("animated-10color.gif");       // 100x100 but GIF is not reported.
+    LoadImage("rgb-jpeg-red.jpg");
     histogram_tester.ExpectTotalCount(
         "Blink.DecodedImage.JpegDensity.KiBWeighted", 0);
-    histogram_tester.ExpectTotalCount(
-        "Blink.DecodedImage.WebPDensity.KiBWeighted2", 0);
-#if BUILDFLAG(ENABLE_AV1_DECODER)
-    histogram_tester.ExpectTotalCount(
-        "Blink.DecodedImage.AvifDensity.KiBWeighted2", 0);
-#endif
   }
 
   // 439x154, 23220 bytes --> 2.74 bpp, 23 KiB (rounded up)
@@ -897,17 +862,6 @@ TEST_F(BitmapHistogramTest, DecodedImageDensityKiBWeighted) {
   ExpectImageRecordsSample("blue-wheel-srgb-color-profile.jpg",
                            "Blink.DecodedImage.JpegDensity.KiBWeighted", 578,
                            72);
-
-  // 800x800, 19436 bytes --> 0.24, 19 KiB
-  ExpectImageRecordsSample("webp-color-profile-lossy.webp",
-                           "Blink.DecodedImage.WebPDensity.KiBWeighted2", 24,
-                           19);
-
-#if BUILDFLAG(ENABLE_AV1_DECODER)
-  // 840x1120, 18769 bytes --> 0.16, 18 KiB
-  ExpectImageRecordsSample(
-      "happy_dog.avif", "Blink.DecodedImage.AvifDensity.KiBWeighted2", 16, 18);
-#endif  // BUILDFLAG(ENABLE_AV1_DECODER)
 }
 
 }  // namespace blink

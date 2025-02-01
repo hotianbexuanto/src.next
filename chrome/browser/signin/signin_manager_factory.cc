@@ -1,20 +1,18 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/signin/signin_manager_factory.h"
 
+#include "base/logging.h"
+#include "build/build_config.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/signin/chrome_signin_client_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "components/signin/public/base/signin_switches.h"
-#include "components/signin/public/identity_manager/identity_manager.h"
-#include "components/signin/public/identity_manager/identity_utils.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
 
 // static
 SigninManagerFactory* SigninManagerFactory::GetInstance() {
-  static base::NoDestructor<SigninManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<SigninManagerFactory>::get();
 }
 
 // static
@@ -25,31 +23,18 @@ SigninManager* SigninManagerFactory::GetForProfile(Profile* profile) {
 }
 
 SigninManagerFactory::SigninManagerFactory()
-    : ProfileKeyedServiceFactory("SigninManager") {
+    : BrowserContextKeyedServiceFactory(
+          "SigninManager",
+          BrowserContextDependencyManager::GetInstance()) {
   DependsOn(IdentityManagerFactory::GetInstance());
-  DependsOn(ChromeSigninClientFactory::GetInstance());
 }
 
 SigninManagerFactory::~SigninManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-SigninManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SigninManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(profile);
-  PrefService* prefs = profile->GetPrefs();
-  if (!signin::IsImplicitBrowserSigninOrExplicitDisabled(identity_manager,
-                                                         prefs)) {
-    // The `SigninManager` isn't needed to update the primary account as it is
-    // set/cleared only on explicit user action (e.g. Sign in/Sign out from
-    // chrome UI).
-    return nullptr;
-  }
-
-  return std::make_unique<SigninManager>(
-      *prefs, *identity_manager,
-      *ChromeSigninClientFactory::GetForProfile(profile));
+  return new SigninManager(IdentityManagerFactory::GetForProfile(profile));
 }
 
 bool SigninManagerFactory::ServiceIsCreatedWithBrowserContext() const {

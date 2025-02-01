@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,8 @@
 #include <string>
 
 #include "base/compiler_specific.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/scoped_refptr.h"
+#include "base/macros.h"
+#include "base/memory/ref_counted.h"
 #include "base/observer_list.h"
 #include "base/version.h"
 #include "components/keyed_service/core/keyed_service.h"
@@ -18,8 +18,9 @@
 #include "extensions/common/extension_id.h"
 #include "extensions/common/extension_set.h"
 
-static_assert(BUILDFLAG(ENABLE_EXTENSIONS) ||
-              BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS));
+#if !BUILDFLAG(ENABLE_EXTENSIONS)
+#error "Extensions must be enabled"
+#endif
 
 namespace content {
 class BrowserContext;
@@ -48,10 +49,6 @@ class ExtensionRegistry : public KeyedService {
   };
 
   explicit ExtensionRegistry(content::BrowserContext* browser_context);
-
-  ExtensionRegistry(const ExtensionRegistry&) = delete;
-  ExtensionRegistry& operator=(const ExtensionRegistry&) = delete;
-
   ~ExtensionRegistry() override;
 
   // Returns the instance for the given |browser_context|.
@@ -78,7 +75,7 @@ class ExtensionRegistry : public KeyedService {
 
   // Returns the set of all installed extensions, regardless of state (enabled,
   // disabled, etc). Equivalent to GenerateInstalledExtensionSet(EVERYTHING).
-  ExtensionSet GenerateInstalledExtensionsSet() const;
+  std::unique_ptr<ExtensionSet> GenerateInstalledExtensionsSet() const;
 
   // Returns a set of all extensions in the subsets specified by |include_mask|.
   //  * enabled_extensions()     --> ExtensionRegistry::ENABLED
@@ -86,7 +83,8 @@ class ExtensionRegistry : public KeyedService {
   //  * terminated_extensions()  --> ExtensionRegistry::TERMINATED
   //  * blocklisted_extensions() --> ExtensionRegistry::BLOCKLISTED
   //  * blocked_extensions()     --> ExtensionRegistry::BLOCKED
-  ExtensionSet GenerateInstalledExtensionsSet(int include_mask) const;
+  std::unique_ptr<ExtensionSet> GenerateInstalledExtensionsSet(
+      int include_mask) const;
 
   // Returns the current version of the extension with the given |id|, if
   // one exists.
@@ -212,10 +210,11 @@ class ExtensionRegistry : public KeyedService {
   // subset of |enabled_extensions_|.
   ExtensionSet ready_extensions_;
 
-  base::ObserverList<ExtensionRegistryObserver>::UncheckedAndDanglingUntriaged
-      observers_;
+  base::ObserverList<ExtensionRegistryObserver>::Unchecked observers_;
 
-  const raw_ptr<content::BrowserContext> browser_context_;
+  content::BrowserContext* const browser_context_;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionRegistry);
 };
 
 }  // namespace extensions

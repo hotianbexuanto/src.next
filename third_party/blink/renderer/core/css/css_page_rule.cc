@@ -28,13 +28,13 @@
 #include "third_party/blink/renderer/core/css/style_rule.h"
 #include "third_party/blink/renderer/core/css/style_rule_css_style_declaration.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/heap.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 namespace blink {
 
 CSSPageRule::CSSPageRule(StyleRulePage* page_rule, CSSStyleSheet* parent)
-    : CSSGroupingRule(page_rule, parent), page_rule_(page_rule) {}
+    : CSSRule(parent), page_rule_(page_rule) {}
 
 CSSPageRule::~CSSPageRule() = default;
 
@@ -52,11 +52,10 @@ String CSSPageRule::selectorText() const {
   const CSSSelector* selector = page_rule_->Selector();
   if (selector) {
     String page_specification = selector->SelectorText();
-    if (!page_specification.empty()) {
+    if (!page_specification.IsEmpty())
       text.Append(page_specification);
-    }
   }
-  return text.ReleaseString();
+  return text.ToString();
 }
 
 void CSSPageRule::setSelectorText(const ExecutionContext* execution_context,
@@ -64,58 +63,44 @@ void CSSPageRule::setSelectorText(const ExecutionContext* execution_context,
   auto* context = MakeGarbageCollected<CSSParserContext>(
       ParserContext(execution_context->GetSecureContextMode()));
   DCHECK(context);
-  CSSSelectorList* selector_list = CSSParser::ParsePageSelector(
+  CSSSelectorList selector_list = CSSParser::ParsePageSelector(
       *context, parentStyleSheet() ? parentStyleSheet()->Contents() : nullptr,
       selector_text);
-  if (!selector_list || !selector_list->IsValid()) {
+  if (!selector_list.IsValid())
     return;
-  }
 
   CSSStyleSheet::RuleMutationScope mutation_scope(this);
 
-  page_rule_->WrapperAdoptSelectorList(selector_list);
+  page_rule_->WrapperAdoptSelectorList(std::move(selector_list));
 }
 
 String CSSPageRule::cssText() const {
-  // TODO(mstensho): Serialization needs to be specced:
-  // https://github.com/w3c/csswg-drafts/issues/9953
   StringBuilder result;
   result.Append("@page ");
   String page_selectors = selectorText();
   result.Append(page_selectors);
-  if (!page_selectors.empty()) {
+  if (!page_selectors.IsEmpty())
     result.Append(' ');
-  }
   result.Append("{ ");
   String decls = page_rule_->Properties().AsText();
   result.Append(decls);
-  if (!decls.empty()) {
+  if (!decls.IsEmpty())
     result.Append(' ');
-  }
-
-  unsigned size = length();
-  for (unsigned i = 0; i < size; i++) {
-    result.Append(ItemInternal(i)->cssText());
-    result.Append(" ");
-  }
-
   result.Append('}');
-  return result.ReleaseString();
+  return result.ToString();
 }
 
 void CSSPageRule::Reattach(StyleRuleBase* rule) {
   DCHECK(rule);
   page_rule_ = To<StyleRulePage>(rule);
-  if (properties_cssom_wrapper_) {
+  if (properties_cssom_wrapper_)
     properties_cssom_wrapper_->Reattach(page_rule_->MutableProperties());
-  }
-  CSSGroupingRule::Reattach(rule);
 }
 
 void CSSPageRule::Trace(Visitor* visitor) const {
   visitor->Trace(page_rule_);
   visitor->Trace(properties_cssom_wrapper_);
-  CSSGroupingRule::Trace(visitor);
+  CSSRule::Trace(visitor);
 }
 
 }  // namespace blink

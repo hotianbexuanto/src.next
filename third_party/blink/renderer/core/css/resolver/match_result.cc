@@ -40,10 +40,15 @@
 
 namespace blink {
 
+MatchedProperties::MatchedProperties() {
+  memset(&types_, 0, sizeof(types_));
+}
+
 void MatchedProperties::Trace(Visitor* visitor) const {
   visitor->Trace(properties);
 }
 
+<<<<<<< HEAD
 void MatchResult::AddMatchedProperties(const CSSPropertyValueSet* properties,
                                        MatchedProperties::Data data) {
   data.tree_order = current_tree_order_;
@@ -73,23 +78,54 @@ void MatchResult::AddMatchedProperties(const CSSPropertyValueSet* properties,
   }
   last_origin_ = data.origin;
 #endif
+=======
+void MatchResult::AddMatchedProperties(
+    const CSSPropertyValueSet* properties,
+    unsigned link_match_type,
+    ValidPropertyFilter valid_property_filter) {
+  matched_properties_.Grow(matched_properties_.size() + 1);
+  MatchedProperties& new_properties = matched_properties_.back();
+  new_properties.properties = const_cast<CSSPropertyValueSet*>(properties);
+  new_properties.types_.link_match_type = link_match_type;
+  new_properties.types_.valid_property_filter =
+      static_cast<std::underlying_type_t<ValidPropertyFilter>>(
+          valid_property_filter);
+  new_properties.types_.origin = current_origin_;
+  new_properties.types_.tree_order = current_tree_order_;
+>>>>>>> chromium
 }
 
-void MatchResult::BeginAddingAuthorRulesForTreeScope(
+void MatchResult::FinishAddingUARules() {
+  DCHECK_EQ(current_origin_, CascadeOrigin::kUserAgent);
+  current_origin_ = CascadeOrigin::kUser;
+}
+
+void MatchResult::FinishAddingUserRules() {
+  DCHECK_EQ(current_origin_, CascadeOrigin::kUser);
+  current_origin_ = CascadeOrigin::kAuthor;
+}
+
+void MatchResult::FinishAddingAuthorRulesForTreeScope(
     const TreeScope& tree_scope) {
-  current_tree_order_ =
-      ClampTo<decltype(current_tree_order_)>(tree_scopes_.size());
+  DCHECK_EQ(current_origin_, CascadeOrigin::kAuthor);
   tree_scopes_.push_back(&tree_scope);
+  current_tree_order_ = base::ClampAdd(current_tree_order_, 1);
+}
+
+MatchedExpansionsRange MatchResult::Expansions(const Document& document,
+                                               CascadeFilter filter) const {
+  return MatchedExpansionsRange(
+      MatchedExpansionsIterator(matched_properties_.begin(), document, filter,
+                                0),
+      MatchedExpansionsIterator(matched_properties_.end(), document, filter,
+                                matched_properties_.size()));
 }
 
 void MatchResult::Reset() {
   matched_properties_.clear();
-  matched_properties_hashes_.clear();
   is_cacheable_ = true;
-  depends_on_size_container_queries_ = false;
-#if DCHECK_IS_ON()
-  last_origin_ = CascadeOrigin::kNone;
-#endif
+  depends_on_container_queries_ = false;
+  current_origin_ = CascadeOrigin::kUserAgent;
   current_tree_order_ = 0;
   tree_scopes_.clear();
 }

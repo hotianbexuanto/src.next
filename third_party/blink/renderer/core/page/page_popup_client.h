@@ -34,11 +34,10 @@
 #include <string_view>
 
 #include "third_party/blink/renderer/core/core_export.h"
+#include "third_party/blink/renderer/platform/geometry/int_rect.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_utf8_adaptor.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
-#include "third_party/blink/renderer/platform/wtf/vector.h"
-#include "ui/gfx/geometry/rect.h"
 
 namespace blink {
 
@@ -50,7 +49,6 @@ class Locale;
 class Page;
 class PagePopup;
 class PagePopupController;
-class Settings;
 
 class CORE_EXPORT PagePopupClient {
  public:
@@ -59,7 +57,7 @@ class CORE_EXPORT PagePopupClient {
   // The content HTML supports:
   //  - No <select> popups
   //  - window.setValueAndClosePopup(number, string).
-  virtual void WriteDocument(SegmentedBuffer&) = 0;
+  virtual void WriteDocument(SharedBuffer*) = 0;
 
   virtual Element& OwnerElement() = 0;
 
@@ -97,12 +95,9 @@ class CORE_EXPORT PagePopupClient {
   // This is called when popup content or its owner's position changed.
   virtual void Update(bool force_update) {}
 
-  // Called when creating the popup to allow the popup implementation to adjust
-  // the settings used for the popup document.
-  virtual void AdjustSettings(Settings& popup_settings) {}
-
   virtual ~PagePopupClient() = default;
 
+<<<<<<< HEAD
   // Helper functions to be used in PagePopupClient::WriteDocument().
   static void AddString(const String&, SegmentedBuffer&);
   static void AddJavaScriptString(const StringView&, SegmentedBuffer&);
@@ -130,12 +125,30 @@ class CORE_EXPORT PagePopupClient {
 
  protected:
   void AdjustSettingsFromOwnerColorScheme(Settings& popup_settings);
+=======
+  // Helper functions to be used in PagePopupClient::writeDocument().
+  static void AddString(const String&, SharedBuffer*);
+  static void AddJavaScriptString(const String&, SharedBuffer*);
+  static void AddProperty(const char* name, const String& value, SharedBuffer*);
+  static void AddProperty(const char* name, int value, SharedBuffer*);
+  static void AddProperty(const char* name, unsigned value, SharedBuffer*);
+  static void AddProperty(const char* name, bool value, SharedBuffer*);
+  static void AddProperty(const char* name, double, SharedBuffer*);
+  static void AddProperty(const char* name,
+                          const Vector<String>& values,
+                          SharedBuffer*);
+  static void AddProperty(const char* name, const IntRect&, SharedBuffer*);
+  void AddLocalizedProperty(const char* name, int resource_id, SharedBuffer*);
+>>>>>>> chromium
 };
 
-inline void PagePopupClient::AddString(const String& str,
-                                       SegmentedBuffer& data) {
+inline void PagePopupClient::AddString(const String& str, SharedBuffer* data) {
   StringUTF8Adaptor utf8(str);
+<<<<<<< HEAD
   data.Append(base::span(utf8));
+=======
+  data->Append(utf8.data(), utf8.size());
+>>>>>>> chromium
 }
 
 }  // namespace blink

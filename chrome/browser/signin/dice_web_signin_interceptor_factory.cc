@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include "chrome/browser/signin/dice_web_signin_interceptor.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/signin/dice_web_signin_interceptor_delegate.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
 
 // static
 DiceWebSigninInterceptor* DiceWebSigninInterceptorFactory::GetForProfile(
@@ -19,12 +20,13 @@ DiceWebSigninInterceptor* DiceWebSigninInterceptorFactory::GetForProfile(
 //  static
 DiceWebSigninInterceptorFactory*
 DiceWebSigninInterceptorFactory::GetInstance() {
-  static base::NoDestructor<DiceWebSigninInterceptorFactory> instance;
-  return instance.get();
+  return base::Singleton<DiceWebSigninInterceptorFactory>::get();
 }
 
 DiceWebSigninInterceptorFactory::DiceWebSigninInterceptorFactory()
-    : ProfileKeyedServiceFactory("DiceWebSigninInterceptor") {
+    : BrowserContextKeyedServiceFactory(
+          "DiceWebSigninInterceptor",
+          BrowserContextDependencyManager::GetInstance()) {
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
@@ -35,10 +37,9 @@ void DiceWebSigninInterceptorFactory::RegisterProfilePrefs(
   DiceWebSigninInterceptor::RegisterProfilePrefs(registry);
 }
 
-std::unique_ptr<KeyedService>
-DiceWebSigninInterceptorFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* DiceWebSigninInterceptorFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<DiceWebSigninInterceptor>(
+  return new DiceWebSigninInterceptor(
       Profile::FromBrowserContext(context),
       std::make_unique<DiceWebSigninInterceptorDelegate>());
 }

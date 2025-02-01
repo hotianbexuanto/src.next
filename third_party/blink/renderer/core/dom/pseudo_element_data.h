@@ -1,36 +1,28 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_PSEUDO_ELEMENT_DATA_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_PSEUDO_ELEMENT_DATA_H_
 
-#include "base/notreached.h"
 #include "build/build_config.h"
-#include "third_party/blink/renderer/core/dom/column_pseudo_element.h"
-#include "third_party/blink/renderer/core/dom/element_rare_data_field.h"
-#include "third_party/blink/renderer/core/dom/transition_pseudo_element_data.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 
 namespace blink {
 
-class PseudoElementData final : public GarbageCollected<PseudoElementData>,
-                                public ElementRareDataField {
+class PseudoElementData final : public GarbageCollected<PseudoElementData> {
  public:
   PseudoElementData() = default;
   PseudoElementData(const PseudoElementData&) = delete;
   PseudoElementData& operator=(const PseudoElementData&) = delete;
 
-  void SetPseudoElement(PseudoId,
-                        PseudoElement*,
-                        const AtomicString& view_transition_name = g_null_atom);
-  PseudoElement* GetPseudoElement(
-      PseudoId,
-      const AtomicString& view_transition_name = g_null_atom) const;
+  void SetPseudoElement(PseudoId, PseudoElement*);
+  PseudoElement* GetPseudoElement(PseudoId) const;
 
   using PseudoElementVector = HeapVector<Member<PseudoElement>, 2>;
   PseudoElementVector GetPseudoElements() const;
 
+<<<<<<< HEAD
   const ColumnPseudoElementsVector* GetColumnPseudoElements() const {
     return column_pseudo_elements_;
   }
@@ -62,12 +54,14 @@ class PseudoElementData final : public GarbageCollected<PseudoElementData>,
     }
   }
 
+=======
+>>>>>>> chromium
   bool HasPseudoElements() const;
   void ClearPseudoElements();
-  void Trace(Visitor* visitor) const override {
-    visitor->Trace(generated_check_);
+  void Trace(Visitor* visitor) const {
     visitor->Trace(generated_before_);
     visitor->Trace(generated_after_);
+<<<<<<< HEAD
     visitor->Trace(generated_picker_icon_);
     visitor->Trace(generated_marker_);
     visitor->Trace(generated_first_letter_);
@@ -78,16 +72,17 @@ class PseudoElementData final : public GarbageCollected<PseudoElementData>,
     visitor->Trace(generated_scroll_button_inline_start_);
     visitor->Trace(generated_scroll_button_inline_end_);
     visitor->Trace(generated_scroll_button_block_end_);
+=======
+    visitor->Trace(generated_marker_);
+    visitor->Trace(generated_first_letter_);
+>>>>>>> chromium
     visitor->Trace(backdrop_);
-    visitor->Trace(transition_data_);
-    visitor->Trace(column_pseudo_elements_);
-    ElementRareDataField::Trace(visitor);
   }
 
  private:
-  Member<PseudoElement> generated_check_;
   Member<PseudoElement> generated_before_;
   Member<PseudoElement> generated_after_;
+<<<<<<< HEAD
   Member<PseudoElement> generated_picker_icon_;
   Member<PseudoElement> generated_marker_;
   Member<PseudoElement> generated_first_letter_;
@@ -98,18 +93,15 @@ class PseudoElementData final : public GarbageCollected<PseudoElementData>,
   Member<PseudoElement> generated_scroll_button_inline_start_;
   Member<PseudoElement> generated_scroll_button_inline_end_;
   Member<PseudoElement> generated_scroll_button_block_end_;
+=======
+  Member<PseudoElement> generated_marker_;
+  Member<PseudoElement> generated_first_letter_;
+>>>>>>> chromium
   Member<PseudoElement> backdrop_;
-
-  Member<TransitionPseudoElementData> transition_data_;
-
-  // Column pseudo elements are created once per column (fragmentainer)
-  // with style specified with ::column. They live here as array, since there is
-  // no Element for column (fragmentainer), and they should appear somewhere for
-  // focus and a11y.
-  Member<ColumnPseudoElementsVector> column_pseudo_elements_;
 };
 
 inline bool PseudoElementData::HasPseudoElements() const {
+<<<<<<< HEAD
   return generated_check_ || generated_before_ || generated_after_ ||
          generated_picker_icon_ || generated_marker_ || backdrop_ ||
          generated_first_letter_ || transition_data_ ||
@@ -147,18 +139,31 @@ inline void PseudoElementData::ClearPseudoElements() {
     transition_data_->ClearPseudoElements();
     transition_data_ = nullptr;
   }
+=======
+  return generated_before_ || generated_after_ || generated_marker_ ||
+         backdrop_ || generated_first_letter_;
 }
 
-inline void PseudoElementData::SetPseudoElement(
-    PseudoId pseudo_id,
-    PseudoElement* element,
-    const AtomicString& view_transition_name) {
+inline void PseudoElementData::ClearPseudoElements() {
+  SetPseudoElement(kPseudoIdBefore, nullptr);
+  SetPseudoElement(kPseudoIdAfter, nullptr);
+  SetPseudoElement(kPseudoIdMarker, nullptr);
+  SetPseudoElement(kPseudoIdBackdrop, nullptr);
+  SetPseudoElement(kPseudoIdFirstLetter, nullptr);
+>>>>>>> chromium
+}
+
+inline void PseudoElementData::SetPseudoElement(PseudoId pseudo_id,
+                                                PseudoElement* element) {
   PseudoElement* previous_element = nullptr;
   switch (pseudo_id) {
+<<<<<<< HEAD
     case kPseudoIdCheckMark:
       previous_element = generated_check_;
       generated_check_ = element;
       break;
+=======
+>>>>>>> chromium
     case kPseudoIdBefore:
       previous_element = generated_before_;
       generated_before_ = element;
@@ -167,14 +172,18 @@ inline void PseudoElementData::SetPseudoElement(
       previous_element = generated_after_;
       generated_after_ = element;
       break;
+<<<<<<< HEAD
     case kPseudoIdPickerIcon:
       previous_element = generated_picker_icon_;
       generated_picker_icon_ = element;
       break;
+=======
+>>>>>>> chromium
     case kPseudoIdMarker:
       previous_element = generated_marker_;
       generated_marker_ = element;
       break;
+<<<<<<< HEAD
     case kPseudoIdScrollMarkerGroupBefore:
       previous_element = generated_scroll_marker_group_before_;
       generated_scroll_marker_group_before_ = element;
@@ -203,6 +212,8 @@ inline void PseudoElementData::SetPseudoElement(
       previous_element = generated_scroll_button_block_end_;
       generated_scroll_button_block_end_ = element;
       break;
+=======
+>>>>>>> chromium
     case kPseudoIdBackdrop:
       previous_element = backdrop_;
       backdrop_ = element;
@@ -210,20 +221,6 @@ inline void PseudoElementData::SetPseudoElement(
     case kPseudoIdFirstLetter:
       previous_element = generated_first_letter_;
       generated_first_letter_ = element;
-      break;
-    case kPseudoIdViewTransition:
-    case kPseudoIdViewTransitionGroup:
-    case kPseudoIdViewTransitionImagePair:
-    case kPseudoIdViewTransitionNew:
-    case kPseudoIdViewTransitionOld:
-      if (element && !transition_data_)
-        transition_data_ = MakeGarbageCollected<TransitionPseudoElementData>();
-      if (transition_data_) {
-        transition_data_->SetPseudoElement(pseudo_id, element,
-                                           view_transition_name);
-        if (!transition_data_->HasPseudoElements())
-          transition_data_ = nullptr;
-      }
       break;
     default:
       NOTREACHED();
@@ -234,14 +231,19 @@ inline void PseudoElementData::SetPseudoElement(
 }
 
 inline PseudoElement* PseudoElementData::GetPseudoElement(
+<<<<<<< HEAD
     PseudoId pseudo_id,
     const AtomicString& view_transition_name) const {
   if (kPseudoIdCheckMark == pseudo_id) {
     return generated_check_.Get();
   }
+=======
+    PseudoId pseudo_id) const {
+>>>>>>> chromium
   if (kPseudoIdBefore == pseudo_id)
-    return generated_before_.Get();
+    return generated_before_;
   if (kPseudoIdAfter == pseudo_id)
+<<<<<<< HEAD
     return generated_after_.Get();
   if (kPseudoIdPickerIcon == pseudo_id) {
     return generated_picker_icon_.Get();
@@ -269,42 +271,43 @@ inline PseudoElement* PseudoElementData::GetPseudoElement(
   if (kPseudoIdScrollButtonBlockEnd == pseudo_id) {
     return generated_scroll_button_block_end_.Get();
   }
+=======
+    return generated_after_;
+  if (kPseudoIdMarker == pseudo_id)
+    return generated_marker_;
+>>>>>>> chromium
 // Workaround for CPU bug. This avoids compiler optimizing
 // this group of if conditions into switch. See http://crbug.com/855390.
 #if defined(ARCH_CPU_ARMEL)
   __asm__ volatile("");
 #endif
   if (kPseudoIdBackdrop == pseudo_id)
-    return backdrop_.Get();
+    return backdrop_;
   if (kPseudoIdFirstLetter == pseudo_id)
-    return generated_first_letter_.Get();
-  if (IsTransitionPseudoElement(pseudo_id)) {
-    return transition_data_ ? transition_data_->GetPseudoElement(
-                                  pseudo_id, view_transition_name)
-                            : nullptr;
-  }
+    return generated_first_letter_;
   return nullptr;
 }
 
 inline PseudoElementData::PseudoElementVector
 PseudoElementData::GetPseudoElements() const {
   PseudoElementData::PseudoElementVector result;
-  if (generated_check_) {
-    result.push_back(generated_check_);
-  }
   if (generated_before_)
     result.push_back(generated_before_);
   if (generated_after_)
     result.push_back(generated_after_);
+<<<<<<< HEAD
   if (generated_picker_icon_) {
     result.push_back(generated_picker_icon_);
   }
+=======
+>>>>>>> chromium
   if (generated_marker_)
     result.push_back(generated_marker_);
   if (generated_first_letter_)
     result.push_back(generated_first_letter_);
   if (backdrop_)
     result.push_back(backdrop_);
+<<<<<<< HEAD
   if (transition_data_)
     transition_data_->AddPseudoElements(&result);
   if (generated_scroll_marker_group_before_) {
@@ -331,6 +334,8 @@ PseudoElementData::GetPseudoElements() const {
   if (column_pseudo_elements_) {
     result.AppendVector(*column_pseudo_elements_);
   }
+=======
+>>>>>>> chromium
   return result;
 }
 

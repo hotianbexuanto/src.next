@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -44,15 +44,20 @@ IN_PROC_BROWSER_TEST_F(SharedModuleTest, SharedModule) {
 
 IN_PROC_BROWSER_TEST_F(SharedModuleTest, SharedModuleAllowlist) {
   ASSERT_TRUE(LoadExtension(test_data_dir_.AppendASCII("shared_module")
-                                .AppendASCII("shared_allowlist")));
+                                .AppendASCII("shared_whitelist")));
 
   EXPECT_FALSE(InstallExtension(test_data_dir_.AppendASCII("shared_module")
-                                    .AppendASCII("import_not_in_allowlist"),
+                                    .AppendASCII("import_not_in_whitelist"),
                                 0));
 }
 
+<<<<<<< HEAD
 IN_PROC_BROWSER_TEST_F(SharedModuleTest, SharedModuleInstallEvent) {
   ExtensionTestMessageListener listener1("ready");
+=======
+IN_PROC_BROWSER_TEST_F(ExtensionApiTest, SharedModuleInstallEvent) {
+  ExtensionTestMessageListener listener1("ready", false);
+>>>>>>> chromium
 
   const Extension* extension = LoadExtension(
       test_data_dir_.AppendASCII("shared_module").AppendASCII("shared"));

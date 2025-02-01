@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,10 +17,14 @@ import org.chromium.ui.display.DisplayAndroid.DisplayAndroidObserver;
  */
 @NullMarked
 public interface WindowEventObserver extends DisplayAndroidObserver {
-    /** This is called when the container view is attached to a window. */
+    /**
+     * This is called when the container view is attached to a window.
+     */
     default void onAttachedToWindow() {}
 
-    /** This is called when the container view is detached from a window. */
+    /**
+     * This is called when the container view is detached from a window.
+     */
     default void onDetachedFromWindow() {}
 
     /**
@@ -28,8 +32,15 @@ public interface WindowEventObserver extends DisplayAndroidObserver {
      */
     default void onWindowFocusChanged(boolean gainFocus) {}
 
+<<<<<<< HEAD
     /** Notifies observer when WindowAndroid is changed. */
     default void onWindowAndroidChanged(@Nullable WindowAndroid newWindowAndroid) {}
+=======
+    /**
+     * Notifies observer when WindowAndroid is changed.
+     */
+    default void onWindowAndroidChanged(WindowAndroid newWindowAndroid) {}
+>>>>>>> chromium
 
     /**
      * @see View#onConfigurationChanged()

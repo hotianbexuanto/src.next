@@ -26,7 +26,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_HTML_CANVAS_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_HTML_CANVAS_H_
 
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
 
 namespace blink {
@@ -37,10 +36,11 @@ class CORE_EXPORT LayoutHTMLCanvas final : public LayoutReplaced {
  public:
   explicit LayoutHTMLCanvas(HTMLCanvasElement*);
 
-  bool IsCanvas() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectCanvas || LayoutReplaced::IsOfType(type);
   }
+  PaintLayerType LayerTypeRequired() const override;
 
   void InvalidatePaint(const PaintInvalidatorContext&) const final;
 
@@ -57,6 +57,7 @@ class CORE_EXPORT LayoutHTMLCanvas final : public LayoutReplaced {
 
   void WillBeDestroyed() override;
 
+<<<<<<< HEAD
   void Trace(Visitor*) const override;
 
   LayoutObject* FirstChild() const {
@@ -85,21 +86,9 @@ class CORE_EXPORT LayoutHTMLCanvas final : public LayoutReplaced {
 
   void DidInvalidatePaintForPlacedElement(Element* placedElement);
 
+=======
+>>>>>>> chromium
  private:
-  LayoutObjectChildList* VirtualChildren() final {
-    NOT_DESTROYED();
-    return Children();
-  }
-  const LayoutObjectChildList* VirtualChildren() const final {
-    NOT_DESTROYED();
-    return Children();
-  }
-  bool CanHaveChildren() const final {
-    NOT_DESTROYED();
-    return RuntimeEnabledFeatures::CanvasPlaceElementEnabled();
-  }
-  bool IsChildAllowed(LayoutObject*, const ComputedStyle&) const final;
-
   void PaintReplaced(const PaintInfo&,
                      const PhysicalOffset& paint_offset) const override;
   void IntrinsicSizeChanged() override {
@@ -108,8 +97,16 @@ class CORE_EXPORT LayoutHTMLCanvas final : public LayoutReplaced {
   }
   PhysicalNaturalSizingInfo GetNaturalDimensions() const override;
 
+<<<<<<< HEAD
   LayoutObjectChildList children_;
   PhysicalSize natural_size_;
+=======
+  bool CanHaveAdditionalCompositingReasons() const override {
+    NOT_DESTROYED();
+    return true;
+  }
+  CompositingReasons AdditionalCompositingReasons() const override;
+>>>>>>> chromium
 };
 
 template <>

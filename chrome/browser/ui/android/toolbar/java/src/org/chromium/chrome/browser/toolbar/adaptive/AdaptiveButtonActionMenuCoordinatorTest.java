@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,17 +6,16 @@ package org.chromium.chrome.browser.toolbar.adaptive;
 
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
 
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ListView;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.filters.SmallTest;
 
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
@@ -28,10 +27,12 @@ import org.robolectric.annotation.Implements;
 
 import org.chromium.base.Callback;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.chrome.browser.toolbar.R;
-import org.chromium.ui.listmenu.ListMenuButton;
+import org.chromium.chrome.test.util.browser.Features;
+import org.chromium.chrome.test.util.browser.Features.DisableFeatures;
+import org.chromium.chrome.test.util.browser.Features.EnableFeatures;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuButton;
+import org.chromium.content_public.browser.test.util.TestThreadUtils;
 import org.chromium.ui.widget.AnchoredPopupWindow;
 
 /** Unit tests for the {@link AdaptiveButtonActionMenuCoordinator}. */
@@ -45,59 +46,37 @@ public class AdaptiveButtonActionMenuCoordinatorTest {
         protected void showPopupWindow() {}
     }
 
-    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public TestRule mProcessor = new Features.JUnitProcessor();
+    @Rule
+    public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    @Mock private Callback<Integer> mCallback;
-
-    @Test
-    @SmallTest
-    @EnableFeatures(ChromeFeatureList.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_V2)
-    public void testCreateOnLongClickListener() {
-        AdaptiveButtonActionMenuCoordinator coordinator = new AdaptiveButtonActionMenuCoordinator();
-        View.OnLongClickListener listener = coordinator.createOnLongClickListener(mCallback);
-
-        ListMenuButton menuView =
-                spy(
-                        new ListMenuButton(
-                                ApplicationProvider.getApplicationContext(),
-                                Robolectric.buildAttributeSet().build()));
-        doReturn(ApplicationProvider.getApplicationContext().getResources())
-                .when(menuView)
-                .getResources();
-
-        listener.onLongClick(menuView);
-
-        ViewGroup menuContent = (ViewGroup) coordinator.getContentViewForTesting();
-        ListView menuListView = menuContent.findViewById(R.id.app_menu_list);
-        menuListView.performItemClick(null, 0, menuListView.getAdapter().getItemId(0));
-
-        verify(menuView).showMenu();
-        verify(mCallback).onResult(R.id.customize_adaptive_button_menu_id);
-    }
+    @Mock
+    private Callback<Integer> mCallback;
 
     @Test
     @SmallTest
-    @EnableFeatures(ChromeFeatureList.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_V2)
-    public void testCreateOnLongClickListener_clickHandlerIsNotModified() {
-        AdaptiveButtonActionMenuCoordinator coordinator = new AdaptiveButtonActionMenuCoordinator();
-        View.OnLongClickListener listener = coordinator.createOnLongClickListener(mCallback);
+    @DisableFeatures({ChromeFeatureList.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR})
+    @EnableFeatures({ChromeFeatureList.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION})
+    public void testMenu() {
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            AdaptiveButtonActionMenuCoordinator coordinator =
+                    new AdaptiveButtonActionMenuCoordinator();
+            View.OnLongClickListener listener = coordinator.createOnLongClickListener(mCallback);
 
-        ListMenuButton menuView =
-                spy(
-                        new ListMenuButton(
-                                ApplicationProvider.getApplicationContext(),
-                                Robolectric.buildAttributeSet().build()));
-        doReturn(ApplicationProvider.getApplicationContext().getResources())
-                .when(menuView)
-                .getResources();
+            ListMenuButton menuView =
+                    spy(new ListMenuButton(ApplicationProvider.getApplicationContext(),
+                            Robolectric.buildAttributeSet().build()));
+            doReturn(ApplicationProvider.getApplicationContext().getResources())
+                    .when(menuView)
+                    .getResources();
 
-        // Long click menuView, menu should be shown.
-        listener.onLongClick(menuView);
+            listener.onLongClick(menuView);
+            ViewGroup menuContent = (ViewGroup) coordinator.getContentViewForTesting();
+            menuContent.getChildAt(0).performClick();
+        });
 
-        // Click menuView, nothing should happen.
-        menuView.performClick();
-
-        // Menu should have been shown once (on long click).
-        verify(menuView).showMenu();
+        // TODO(bttk): complete this test
+        // verify(mCallback).onResult(R.id.customize_adaptive_button_menu_id);
     }
 }

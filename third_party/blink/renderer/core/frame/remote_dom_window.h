@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,24 +24,31 @@ class RemoteDOMWindow final : public DOMWindow {
 
   // DOMWindow overrides:
   void Trace(Visitor*) const override;
+  void blur() override;
 
   void FrameDetached();
 
  protected:
   // Protected DOMWindow overrides:
-  void SchedulePostMessage(PostedMessage*) override;
+  void SchedulePostMessage(MessageEvent*,
+                           scoped_refptr<const SecurityOrigin> target,
+                           LocalDOMWindow* source) override;
 
  private:
-  // Intentionally private to prevent redundant checks.
+  // Intentionally private to prevent redundant checks when the type is
+  // already RemoteDOMWindow.
   bool IsLocalDOMWindow() const override { return false; }
+  bool IsRemoteDOMWindow() const override { return true; }
 
-  void ForwardPostMessage(PostedMessage*);
+  void ForwardPostMessage(MessageEvent*,
+                          scoped_refptr<const SecurityOrigin> target,
+                          LocalDOMWindow* source);
 };
 
 template <>
 struct DowncastTraits<RemoteDOMWindow> {
   static bool AllowFrom(const DOMWindow& window) {
-    return !window.IsLocalDOMWindow();
+    return window.IsRemoteDOMWindow();
   }
 };
 

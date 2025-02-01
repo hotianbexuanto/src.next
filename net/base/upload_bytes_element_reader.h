@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,8 +12,6 @@
 #include <vector>
 
 #include "base/compiler_specific.h"
-#include "base/containers/span.h"
-#include "base/memory/raw_span.h"
 #include "net/base/net_export.h"
 #include "net/base/upload_element_reader.h"
 
@@ -23,12 +21,13 @@ namespace net {
 // and is responsible for ensuring it outlives the UploadBytesElementReader.
 class NET_EXPORT UploadBytesElementReader : public UploadElementReader {
  public:
-  explicit UploadBytesElementReader(base::span<const uint8_t> bytes);
+  UploadBytesElementReader(const char* bytes, uint64_t length);
   UploadBytesElementReader(const UploadBytesElementReader&) = delete;
   UploadBytesElementReader& operator=(const UploadBytesElementReader&) = delete;
   ~UploadBytesElementReader() override;
 
-  base::span<const uint8_t> bytes() const { return bytes_; }
+  const char* bytes() const { return bytes_; }
+  uint64_t length() const { return length_; }
 
   // UploadElementReader overrides:
   const UploadBytesElementReader* AsBytesReader() const override;
@@ -41,8 +40,14 @@ class NET_EXPORT UploadBytesElementReader : public UploadElementReader {
            CompletionOnceCallback callback) override;
 
  private:
+<<<<<<< HEAD
   const base::raw_span<const uint8_t, DanglingUntriaged> bytes_;
   size_t offset_ = 0;
+=======
+  const char* const bytes_;
+  const uint64_t length_;
+  uint64_t offset_ = 0;
+>>>>>>> chromium
 };
 
 // A subclass of UplodBytesElementReader which owns the data given as a vector.
@@ -57,7 +62,7 @@ class NET_EXPORT UploadOwnedBytesElementReader
   ~UploadOwnedBytesElementReader() override;
 
   // Creates UploadOwnedBytesElementReader with a string.
-  static std::unique_ptr<UploadOwnedBytesElementReader> CreateWithString(
+  static UploadOwnedBytesElementReader* CreateWithString(
       const std::string& string);
 
  private:

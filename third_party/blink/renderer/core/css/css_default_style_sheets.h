@@ -27,8 +27,7 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/element_rule_collector.h"
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/heap/member.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -36,7 +35,6 @@ namespace blink {
 
 class Document;
 class Element;
-class MediaQueryEvaluator;
 class RuleFeatureSet;
 class RuleSet;
 class StyleSheetContents;
@@ -46,11 +44,7 @@ class CSSDefaultStyleSheets final
  public:
   CORE_EXPORT static CSSDefaultStyleSheets& Instance();
 
-  // Performs any initialization that should be done on renderer startup.
-  static void Init();
-
   static StyleSheetContents* ParseUASheet(const String&);
-  static const MediaQueryEvaluator& ScreenEval();
 
   CSSDefaultStyleSheets();
   CSSDefaultStyleSheets(const CSSDefaultStyleSheets&) = delete;
@@ -58,8 +52,8 @@ class CSSDefaultStyleSheets final
 
   bool EnsureDefaultStyleSheetsForElement(const Element&);
   bool EnsureDefaultStyleSheetsForPseudoElement(PseudoId);
-  void EnsureDefaultStyleSheetForFullscreen(const Element& element);
-  void RebuildFullscreenRuleSetIfMediaQueriesChanged(const Element& element);
+  bool EnsureDefaultStyleSheetForXrOverlay();
+  void EnsureDefaultStyleSheetForFullscreen();
   bool EnsureDefaultStyleSheetForForcedColors();
 
   RuleSet* DefaultHtmlStyle() { return default_html_style_.Get(); }
@@ -68,7 +62,6 @@ class CSSDefaultStyleSheets final
   RuleSet* DefaultHtmlQuirksStyle() { return default_html_quirks_style_.Get(); }
   RuleSet* DefaultPrintStyle() { return default_print_style_.Get(); }
   RuleSet* DefaultViewSourceStyle();
-  RuleSet* DefaultJSONDocumentStyle();
   RuleSet* DefaultForcedColorStyle() {
     return default_forced_color_style_.Get();
   }
@@ -78,13 +71,17 @@ class CSSDefaultStyleSheets final
   RuleSet* DefaultMediaControlsStyle() {
     return default_media_controls_style_.Get();
   }
-  RuleSet* DefaultForcedColorsMediaControlsStyle() {
-    return default_forced_colors_media_controls_style_.Get();
-  }
-  RuleSet* DefaultFullscreenStyle() { return default_fullscreen_style_.Get(); }
+
+  StyleSheetContents* EnsureMobileViewportStyleSheet();
+  StyleSheetContents* EnsureTelevisionViewportStyleSheet();
+  StyleSheetContents* EnsureXHTMLMobileProfileStyleSheet();
 
   StyleSheetContents* DefaultStyleSheet() { return default_style_sheet_.Get(); }
   StyleSheetContents* QuirksStyleSheet() { return quirks_style_sheet_.Get(); }
+<<<<<<< HEAD
+=======
+  StyleSheetContents* PopupStyleSheet() { return popup_style_sheet_.Get(); }
+>>>>>>> chromium
   StyleSheetContents* SvgStyleSheet() { return svg_style_sheet_.Get(); }
   StyleSheetContents* MathmlStyleSheet() { return mathml_style_sheet_.Get(); }
   StyleSheetContents* MediaControlsStyleSheet() {
@@ -127,21 +124,8 @@ class CSSDefaultStyleSheets final
 
   void Trace(Visitor*) const;
 
-  // Object that resets the default style sheets on destruction, freeing any SVG
-  // resources they might be holding. Unit tests that use MainThreadIsolate may
-  // need this to avoid DCHECKs relating to "default_microtask_queue_". This is
-  // because SVGImage holds a MicrotaskQueue through its IsolatedSVGDocumentHost
-  // which needs to be GC'ed before attempting to destroy the v8 Isolate.
-  class CORE_EXPORT TestingScope {
-   public:
-    TestingScope();
-    ~TestingScope();
-  };
-
  private:
   void InitializeDefaultStyles();
-  void VerifyUniversalRuleCount();
-  void Reset();
 
   enum class NamespaceType {
     kHTML,
@@ -161,22 +145,22 @@ class CSSDefaultStyleSheets final
   Member<RuleSet> default_forced_color_style_;
   Member<RuleSet> default_pseudo_element_style_;
   Member<RuleSet> default_media_controls_style_;
-  Member<RuleSet> default_fullscreen_style_;
-  Member<RuleSet> default_json_document_style_;
-  Member<RuleSet> default_forced_colors_media_controls_style_;
-  // If new RuleSets are added, make sure to add a new check in
-  // VerifyUniversalRuleCount() as universal rule buckets are performance
-  // sensitive. At least if the added UA styles are matched against all elements
-  // of a given namespace.
 
   Member<StyleSheetContents> default_style_sheet_;
+  Member<StyleSheetContents> mobile_viewport_style_sheet_;
+  Member<StyleSheetContents> television_viewport_style_sheet_;
+  Member<StyleSheetContents> xhtml_mobile_profile_style_sheet_;
   Member<StyleSheetContents> quirks_style_sheet_;
   Member<StyleSheetContents> svg_style_sheet_;
   Member<StyleSheetContents> mathml_style_sheet_;
   Member<StyleSheetContents> media_controls_style_sheet_;
-  Member<StyleSheetContents> permission_element_style_sheet_;
   Member<StyleSheetContents> text_track_style_sheet_;
   Member<StyleSheetContents> fullscreen_style_sheet_;
+<<<<<<< HEAD
+=======
+  Member<StyleSheetContents> popup_style_sheet_;
+  Member<StyleSheetContents> webxr_overlay_style_sheet_;
+>>>>>>> chromium
   Member<StyleSheetContents> marker_style_sheet_;
   Member<StyleSheetContents> scroll_button_style_sheet_;
   Member<StyleSheetContents> forced_colors_style_sheet_;

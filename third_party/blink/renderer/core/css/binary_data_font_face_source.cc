@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,45 +18,42 @@ BinaryDataFontFaceSource::BinaryDataFontFaceSource(CSSFontFace* css_font_face,
                                                    String& ots_parse_message)
     : custom_platform_data_(
           FontCustomPlatformData::Create(data, ots_parse_message)) {
-  if (!css_font_face || !css_font_face->GetFontFace()) {
+  if (!css_font_face || !css_font_face->GetFontFace())
     return;
-  }
   FontFace* font_face = css_font_face->GetFontFace();
   ExecutionContext* context = font_face->GetExecutionContext();
-  if (!context) {
+  if (!context)
     return;
-  }
   probe::FontsUpdated(context, font_face, String(),
-                      custom_platform_data_.Get());
+                      custom_platform_data_.get());
 }
 
-void BinaryDataFontFaceSource::Trace(Visitor* visitor) const {
-  visitor->Trace(custom_platform_data_);
-  CSSFontFaceSource::Trace(visitor);
-}
+BinaryDataFontFaceSource::~BinaryDataFontFaceSource() = default;
 
 bool BinaryDataFontFaceSource::IsValid() const {
-  return custom_platform_data_;
+  return custom_platform_data_.get();
 }
 
-SimpleFontData* BinaryDataFontFaceSource::CreateFontData(
+scoped_refptr<SimpleFontData> BinaryDataFontFaceSource::CreateFontData(
     const FontDescription& font_description,
     const FontSelectionCapabilities& font_selection_capabilities) {
-  return MakeGarbageCollected<SimpleFontData>(
+  return SimpleFontData::Create(
       custom_platform_data_->GetFontPlatformData(
           font_description.EffectiveFontSize(),
-          font_description.AdjustedSpecifiedSize(),
-          font_description.IsSyntheticBold() &&
-              font_description.SyntheticBoldAllowed(),
-          font_description.IsSyntheticItalic() &&
-              font_description.SyntheticItalicAllowed(),
+          font_description.IsSyntheticBold(),
+          font_description.IsSyntheticItalic(),
           font_description.GetFontSelectionRequest(),
           font_selection_capabilities, font_description.FontOpticalSizing(),
+<<<<<<< HEAD
           font_description.TextRendering(),
           font_description.ResolveFontFeatures(),
           font_description.Orientation(), font_description.VariationSettings(),
           font_description.GetFontPalette()),
       MakeGarbageCollected<CustomFontData>());
+=======
+          font_description.Orientation(), font_description.VariationSettings()),
+      CustomFontData::Create());
+>>>>>>> chromium
 }
 
 }  // namespace blink

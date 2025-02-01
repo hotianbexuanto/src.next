@@ -1,20 +1,20 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#include <optional>
 
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
 #include "base/android/library_loader/library_loader_hooks.h"
+<<<<<<< HEAD
 #include "base/android/pre_freeze_background_memory_trimmer.h"
+=======
+#include "base/base_jni_headers/ChildProcessService_jni.h"
+>>>>>>> chromium
 #include "base/debug/dump_without_crashing.h"
 #include "base/file_descriptor_store.h"
 #include "base/logging.h"
 #include "base/posix/global_descriptors.h"
-
-// Must come after all headers that specialize FromJniType() / ToJniType().
-#include "base/process_launcher_jni/ChildProcessService_jni.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using base::android::JavaIntArrayToIntVector;
 using base::android::JavaParamRef;
@@ -29,11 +29,11 @@ void JNI_ChildProcessService_RegisterFileDescriptors(
     const JavaParamRef<jintArray>& j_fds,
     const JavaParamRef<jlongArray>& j_offsets,
     const JavaParamRef<jlongArray>& j_sizes) {
-  std::vector<std::optional<std::string>> keys;
+  std::vector<absl::optional<std::string>> keys;
   JavaObjectArrayReader<jstring> keys_array(j_keys);
-  keys.reserve(checked_cast<size_t>(keys_array.size()));
+  keys.reserve(keys_array.size());
   for (auto str : keys_array) {
-    std::optional<std::string> key;
+    absl::optional<std::string> key;
     if (str) {
       key = base::android::ConvertJavaStringToUTF8(env, str);
     }
@@ -57,8 +57,8 @@ void JNI_ChildProcessService_RegisterFileDescriptors(
   for (size_t i = 0; i < ids.size(); i++) {
     base::MemoryMappedFile::Region region = {offsets.at(i),
                                              static_cast<size_t>(sizes.at(i))};
-    const std::optional<std::string>& key = keys.at(i);
-    const auto id = static_cast<GlobalDescriptors::Key>(ids.at(i));
+    const absl::optional<std::string>& key = keys.at(i);
+    int id = ids.at(i);
     int fd = fds.at(i);
     if (key) {
       base::FileDescriptorStore::GetInstance().Set(*key, base::ScopedFD(fd),

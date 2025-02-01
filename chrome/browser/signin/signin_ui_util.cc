@@ -1,20 +1,22 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/signin/signin_ui_util.h"
 
+<<<<<<< HEAD
 #include "base/auto_reset.h"
+=======
+#include "base/bind.h"
+#include "base/callback.h"
+#include "base/callback_helpers.h"
+>>>>>>> chromium
 #include "base/feature_list.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
-#include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/user_metrics.h"
 #include "base/notreached.h"
 #include "base/strings/strcat.h"
-#include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
@@ -26,54 +28,46 @@
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
-#include "chrome/browser/profiles/profile_manager.h"
-#include "chrome/browser/signin/account_consistency_mode_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/signin/signin_ui_delegate.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/ui/webui/signin/turn_sync_on_helper.h"
 #include "chrome/common/pref_names.h"
 #include "components/feature_engagement/public/tracker.h"
 #include "components/prefs/pref_service.h"
-#include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_pref_names.h"
-#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/accounts_in_cookie_jar_info.h"
+#include "components/signin/public/identity_manager/consent_level.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_utils.h"
-#include "components/signin/public/identity_manager/primary_account_mutator.h"
 #include "third_party/re2/src/re2/re2.h"
 #include "ui/gfx/font_list.h"
 #include "ui/gfx/text_elider.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/profiles/profile_helper.h"
-#include "chrome/browser/signin/signin_ui_chromeos_util.h"
-#include "components/account_manager_core/account_manager_facade.h"
-#include "components/account_manager_core/chromeos/account_manager_facade_factory.h"
-#include "components/user_manager/user.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+#endif
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
-#include "chrome/browser/signin/dice_tab_helper.h"
-#include "chrome/browser/signin/signin_ui_delegate_impl_dice.h"
-#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "chrome/browser/signin/account_consistency_mode_manager.h"
+#include "chrome/browser/ui/webui/signin/dice_turn_sync_on_helper.h"
+#endif
 
+<<<<<<< HEAD
 namespace signin_ui_util {
+=======
+>>>>>>> chromium
 namespace {
 
 // Key for storing animated identity per-profile data.
 const char kAnimatedIdentityKeyName[] = "animated_identity_user_data";
 
 constexpr base::TimeDelta kDelayForCrossWindowAnimationReplay =
-    base::Seconds(5);
+    base::TimeDelta::FromSeconds(5);
 
 // UserData attached to the user profile, keeping track of the last time the
 // animation was shown to the user.
@@ -123,6 +117,7 @@ class AvatarButtonUserData : public base::SupportsUserData::Data {
 };
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+<<<<<<< HEAD
 
 SigninUiDelegate* g_signin_ui_delegate_for_testing = nullptr;
 
@@ -136,7 +131,47 @@ SigninUiDelegate* GetSigninUiDelegate() {
 
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
+=======
+void CreateDiceTurnSyncOnHelper(
+    Profile* profile,
+    Browser* browser,
+    signin_metrics::AccessPoint signin_access_point,
+    signin_metrics::PromoAction signin_promo_action,
+    signin_metrics::Reason signin_reason,
+    const CoreAccountId& account_id,
+    DiceTurnSyncOnHelper::SigninAbortedMode signin_aborted_mode) {
+  // DiceTurnSyncOnHelper is suicidal (it will delete itself once it finishes
+  // enabling sync).
+  new DiceTurnSyncOnHelper(profile, browser, signin_access_point,
+                           signin_promo_action, signin_reason, account_id,
+                           signin_aborted_mode);
+}
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
+std::string GetReauthAccessPointHistogramSuffix(
+    signin_metrics::ReauthAccessPoint access_point) {
+  switch (access_point) {
+    case signin_metrics::ReauthAccessPoint::kUnknown:
+      NOTREACHED();
+      return std::string();
+    case signin_metrics::ReauthAccessPoint::kAutofillDropdown:
+      return "ToFillPassword";
+    case signin_metrics::ReauthAccessPoint::kPasswordSaveBubble:
+      return "ToSaveOrUpdatePassword";
+    case signin_metrics::ReauthAccessPoint::kPasswordSettings:
+      return "ToManageInSettings";
+    case signin_metrics::ReauthAccessPoint::kGeneratePasswordDropdown:
+    case signin_metrics::ReauthAccessPoint::kGeneratePasswordContextMenu:
+      return "ToGeneratePassword";
+    case signin_metrics::ReauthAccessPoint::kPasswordMoveBubble:
+      return "ToMovePassword";
+  }
+}
+
+>>>>>>> chromium
 }  // namespace
+
+namespace signin_ui_util {
 
 std::u16string GetAuthenticatedUsername(Profile* profile) {
   DCHECK(profile);
@@ -149,7 +184,7 @@ std::u16string GetAuthenticatedUsername(Profile* profile) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
     // See https://crbug.com/994798 for details.
     user_manager::User* user =
-        ash::ProfileHelper::Get()->GetUserByProfile(profile);
+        chromeos::ProfileHelper::Get()->GetUserByProfile(profile);
     // |user| may be null in tests.
     if (user)
       user_display_name = user->GetDisplayEmail();
@@ -157,6 +192,14 @@ std::u16string GetAuthenticatedUsername(Profile* profile) {
   }
 
   return base::UTF8ToUTF16(user_display_name);
+}
+
+void InitializePrefsForProfile(Profile* profile) {
+  if (profile->IsNewProfile()) {
+    // Suppresses the upgrade tutorial for a new profile.
+    profile->GetPrefs()->SetInteger(prefs::kProfileAvatarTutorialShown,
+                                    kUpgradeWelcomeTutorialShowMax + 1);
+  }
 }
 
 void ShowSigninErrorLearnMorePage(Profile* profile) {
@@ -168,6 +211,7 @@ void ShowSigninErrorLearnMorePage(Profile* profile) {
   Navigate(&params);
 }
 
+<<<<<<< HEAD
 void ShowReauthForPrimaryAccountWithAuthError(
     Profile* profile,
     signin_metrics::AccessPoint access_point) {
@@ -320,62 +364,88 @@ void SignInFromSingleAccountPromo(Profile* profile,
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 }
 
+=======
+>>>>>>> chromium
 void EnableSyncFromSingleAccountPromo(
-    Profile* profile,
-    const CoreAccountInfo& account,
+    Browser* browser,
+    const AccountInfo& account,
     signin_metrics::AccessPoint access_point) {
-  EnableSyncFromMultiAccountPromo(profile, account, access_point,
+  EnableSyncFromMultiAccountPromo(browser, account, access_point,
                                   /*is_default_promo_account=*/true);
 }
 
-void EnableSyncFromMultiAccountPromo(Profile* profile,
-                                     const CoreAccountInfo& account,
+void EnableSyncFromMultiAccountPromo(Browser* browser,
+                                     const AccountInfo& account,
                                      signin_metrics::AccessPoint access_point,
                                      bool is_default_promo_account) {
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+<<<<<<< HEAD
   DCHECK_NE(signin_metrics::AccessPoint::kUnknown, access_point);
+=======
+  internal::EnableSyncFromPromo(browser, account, access_point,
+                                is_default_promo_account,
+                                base::BindOnce(&CreateDiceTurnSyncOnHelper));
+#else
+  NOTREACHED();
+#endif
+}
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+namespace internal {
+void EnableSyncFromPromo(
+    Browser* browser,
+    const AccountInfo& account,
+    signin_metrics::AccessPoint access_point,
+    bool is_default_promo_account,
+    base::OnceCallback<
+        void(Profile* profile,
+             Browser* browser,
+             signin_metrics::AccessPoint signin_access_point,
+             signin_metrics::PromoAction signin_promo_action,
+             signin_metrics::Reason signin_reason,
+             const CoreAccountId& account_id,
+             DiceTurnSyncOnHelper::SigninAbortedMode signin_aborted_mode)>
+        create_dice_turn_sync_on_helper_callback) {
+  DCHECK(browser);
+  DCHECK_NE(signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN, access_point);
+  Profile* profile = browser->profile();
+>>>>>>> chromium
   DCHECK(!profile->IsOffTheRecord());
 
-  signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(profile);
-  if (identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync)) {
+  if (IdentityManagerFactory::GetForProfile(profile)->HasPrimaryAccount(
+          signin::ConsentLevel::kSync)) {
     DVLOG(1) << "There is already a primary account.";
     return;
   }
 
   if (account.IsEmpty()) {
-    signin_metrics::PromoAction new_account_promo_action =
-        identity_manager->GetAccountsWithRefreshTokens().empty()
-            ? signin_metrics::PromoAction::
-                  PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT
-            : signin_metrics::PromoAction::
-                  PROMO_ACTION_NEW_ACCOUNT_EXISTING_ACCOUNT;
-    GetSigninUiDelegate()->ShowSigninUI(profile, /*enable_sync=*/true,
-                                        access_point, new_account_promo_action);
+    chrome::ShowBrowserSignin(browser, access_point,
+                              signin::ConsentLevel::kSync);
     return;
   }
 
   DCHECK(!account.account_id.empty());
   DCHECK(!account.email.empty());
-  DCHECK(AccountConsistencyModeManager::IsDiceEnabledForProfile(profile) ||
-         AccountConsistencyModeManager::IsMirrorEnabledForProfile(profile));
+  DCHECK(AccountConsistencyModeManager::IsDiceEnabledForProfile(profile));
 
-  signin_metrics::PromoAction existing_account_promo_action =
+  signin_metrics::PromoAction promo_action =
       is_default_promo_account
           ? signin_metrics::PromoAction::PROMO_ACTION_WITH_DEFAULT
           : signin_metrics::PromoAction::PROMO_ACTION_NOT_DEFAULT;
 
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile);
   bool needs_reauth_before_enable_sync =
       !identity_manager->HasAccountWithRefreshToken(account.account_id) ||
       identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
           account.account_id);
   if (needs_reauth_before_enable_sync) {
-    GetSigninUiDelegate()->ShowReauthUI(profile, account.email,
-                                        /*enable_sync=*/true, access_point,
-                                        existing_account_promo_action);
+    browser->signin_view_controller()->ShowDiceEnableSyncTab(
+        access_point, promo_action, account.email);
     return;
   }
 
+<<<<<<< HEAD
   // In the UNO model, if the account was in the web-only signed in state,
   // turning on sync will sign the account in the profile and show the sync
   // confirmation dialog.
@@ -410,21 +480,33 @@ void EnableSyncFromMultiAccountPromo(Profile* profile,
 #else
   DUMP_WILL_BE_NOTREACHED();
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+=======
+  signin_metrics::LogSigninAccessPointStarted(access_point, promo_action);
+  signin_metrics::RecordSigninUserActionForAccessPoint(access_point,
+                                                       promo_action);
+  std::move(create_dice_turn_sync_on_helper_callback)
+      .Run(profile, browser, access_point, promo_action,
+           signin_metrics::Reason::kSigninPrimaryAccount, account.account_id,
+           DiceTurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT);
+>>>>>>> chromium
 }
+}  // namespace internal
 
-std::vector<AccountInfo> GetOrderedAccountsForDisplay(
-    const signin::IdentityManager* identity_manager,
-    bool restrict_to_accounts_eligible_for_sync) {
-  // Fetch account ids for accounts that have a token and are in cookie jar.
+std::vector<AccountInfo> GetAccountsForDicePromos(Profile* profile) {
+  // Fetch account ids for accounts that have a token.
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile);
   std::vector<AccountInfo> accounts_with_tokens =
       identity_manager->GetExtendedAccountInfoForAccountsWithRefreshToken();
-  signin::AccountsInCookieJarInfo accounts_in_jar =
-      identity_manager->GetAccountsInCookieJar();
+
   // Compute the default account.
   CoreAccountId default_account_id =
       identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin);
 
+  // Fetch account information for each id and make sure that the first account
+  // in the list matches the unconsented primary account (if available).
   std::vector<AccountInfo> accounts;
+<<<<<<< HEAD
 
   // First, add the primary account (if available), even if it is not in the
   // cookie jar.
@@ -455,40 +537,27 @@ std::vector<AccountInfo> GetOrderedAccountsForDisplay(
     if (it != accounts_with_tokens.end()) {
       accounts.push_back(std::move(*it));
     }
+=======
+  for (auto& account_info : accounts_with_tokens) {
+    DCHECK(!account_info.IsEmpty());
+    if (!signin::IsUsernameAllowedByPatternFromPrefs(
+            g_browser_process->local_state(), account_info.email)) {
+      continue;
+    }
+    if (account_info.account_id == default_account_id)
+      accounts.insert(accounts.begin(), std::move(account_info));
+    else
+      accounts.push_back(std::move(account_info));
+>>>>>>> chromium
   }
   return accounts;
 }
 
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
-
-AccountInfo GetSingleAccountForPromos(
-    const signin::IdentityManager* identity_manager) {
-  std::vector<AccountInfo> accounts = GetOrderedAccountsForDisplay(
-      identity_manager, /*restrict_to_accounts_eligible_for_sync=*/true);
+AccountInfo GetSingleAccountForDicePromos(Profile* profile) {
+  std::vector<AccountInfo> accounts = GetAccountsForDicePromos(profile);
   if (!accounts.empty())
     return accounts[0];
   return AccountInfo();
-}
-
-#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
-
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-
-content::WebContents* GetSignInTabWithAccessPoint(
-    BrowserWindowInterface* browser_window_interface,
-    signin_metrics::AccessPoint access_point) {
-  TabStripModel* tab_strip =
-      browser_window_interface->GetFeatures().tab_strip_model();
-  int tab_count = tab_strip->count();
-  for (int tab_index = 0; tab_index < tab_count; ++tab_index) {
-    content::WebContents* web_contents = tab_strip->GetWebContentsAt(tab_index);
-    DiceTabHelper* tab_helper = DiceTabHelper::FromWebContents(web_contents);
-    if (tab_helper && tab_helper->signin_access_point() == access_point &&
-        tab_helper->IsChromeSigninPage()) {
-      return web_contents;
-    }
-  }
-  return nullptr;
 }
 
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -571,6 +640,7 @@ bool ShouldShowAnimatedIdentityOnOpeningWindow(
   return identity_manager->GetAccountsWithRefreshTokens().size() > 1;
 }
 
+<<<<<<< HEAD
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 base::AutoReset<SigninUiDelegate*> SetSigninUiDelegateForTesting(  // IN-TEST
     SigninUiDelegate* delegate) {
@@ -579,9 +649,15 @@ base::AutoReset<SigninUiDelegate*> SetSigninUiDelegateForTesting(  // IN-TEST
 }
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
+=======
+>>>>>>> chromium
 void RecordAnimatedIdentityTriggered(Profile* profile) {
   AvatarButtonUserData::SetAnimatedIdentityLastShown(profile,
                                                      base::TimeTicks::Now());
+}
+
+void RecordAvatarIconHighlighted(Profile* profile) {
+  base::RecordAction(base::UserMetricsAction("AvatarToolbarButtonHighlighted"));
 }
 
 void RecordProfileMenuViewShown(Profile* profile) {
@@ -595,6 +671,13 @@ void RecordProfileMenuViewShown(Profile* profile) {
     base::RecordAction(base::UserMetricsAction("ProfileMenu_Opened_Guest"));
   } else if (profile->IsIncognitoProfile()) {
     base::RecordAction(base::UserMetricsAction("ProfileMenu_Opened_Incognito"));
+  }
+
+  base::TimeTicks last_shown =
+      AvatarButtonUserData::GetAnimatedIdentityLastShown(profile);
+  if (!last_shown.is_null()) {
+    base::UmaHistogramLongTimes("Profile.Menu.OpenedAfterAvatarAnimation",
+                                base::TimeTicks::Now() - last_shown);
   }
 }
 
@@ -610,6 +693,36 @@ void RecordProfileMenuClick(Profile* profile) {
   } else if (profile->IsIncognitoProfile()) {
     base::RecordAction(
         base::UserMetricsAction("ProfileMenu_ActionableItemClicked_Incognito"));
+  }
+}
+
+void RecordTransactionalReauthResult(
+    signin_metrics::ReauthAccessPoint access_point,
+    signin::ReauthResult result) {
+  const char kHistogramName[] = "Signin.TransactionalReauthResult";
+  base::UmaHistogramEnumeration(kHistogramName, result);
+
+  std::string access_point_suffix =
+      GetReauthAccessPointHistogramSuffix(access_point);
+  if (!access_point_suffix.empty()) {
+    std::string suffixed_histogram_name =
+        base::StrCat({kHistogramName, ".", access_point_suffix});
+    base::UmaHistogramEnumeration(suffixed_histogram_name, result);
+  }
+}
+
+void RecordTransactionalReauthUserAction(
+    signin_metrics::ReauthAccessPoint access_point,
+    SigninReauthViewController::UserAction user_action) {
+  const char kHistogramName[] = "Signin.TransactionalReauthUserAction";
+  base::UmaHistogramEnumeration(kHistogramName, user_action);
+
+  std::string access_point_suffix =
+      GetReauthAccessPointHistogramSuffix(access_point);
+  if (!access_point_suffix.empty()) {
+    std::string suffixed_histogram_name =
+        base::StrCat({kHistogramName, ".", access_point_suffix});
+    base::UmaHistogramEnumeration(suffixed_histogram_name, user_action);
   }
 }
 

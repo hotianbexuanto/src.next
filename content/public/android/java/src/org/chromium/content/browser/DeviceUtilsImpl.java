@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,8 +13,14 @@ import org.chromium.content_public.common.ContentSwitches;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.display.DisplayUtil;
 
+<<<<<<< HEAD
 /** A utility class that has helper methods for device configuration. */
 @NullMarked
+=======
+/**
+ * A utility class that has helper methods for device configuration.
+ */
+>>>>>>> chromium
 public class DeviceUtilsImpl {
     private DeviceUtilsImpl() {}
 
@@ -27,13 +33,18 @@ public class DeviceUtilsImpl {
      */
     public static void updateDeviceSpecificUserAgentSwitch(Context context) {
         try (StrictModeContext ignored = StrictModeContext.allowDiskReads()) {
+<<<<<<< HEAD
             if (isDisplayTabletSized(context)) {
                 CommandLine.getInstance().removeSwitch(ContentSwitches.USE_MOBILE_UA);
             } else {
+=======
+            if (!DeviceFormFactor.isTablet()) {
+>>>>>>> chromium
                 CommandLine.getInstance().appendSwitch(ContentSwitches.USE_MOBILE_UA);
             }
         }
     }
+<<<<<<< HEAD
 
     private static boolean isDisplayTabletSized(Context context) {
         // We do not use DisplayUtil.getCurrentSmallestScreenWidth() because it crashes on obtaining
@@ -41,4 +52,6 @@ public class DeviceUtilsImpl {
         int smallestWidth = DisplayUtil.getCurrentSmallestScreenWidthAllowingFallback(context);
         return smallestWidth >= DeviceFormFactor.MINIMUM_TABLET_WIDTH_DP;
     }
+=======
+>>>>>>> chromium
 }

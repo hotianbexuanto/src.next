@@ -1,24 +1,19 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "services/metrics/public/cpp/ukm_recorder.h"
 
+#include "base/bind.h"
 #include "base/feature_list.h"
-#include "base/functional/bind.h"
 #include "build/build_config.h"
-#include "net/base/url_util.h"
 #include "services/metrics/public/cpp/delegating_ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_entry_builder.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 
 namespace ukm {
 
-BASE_FEATURE(kUkmFeature, "Ukm", base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kUkmReduceAddEntryIPC,
-             "UkmReduceAddEntryIPC",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+const base::Feature kUkmFeature = {"Ukm", base::FEATURE_ENABLED_BY_DEFAULT};
 
 UkmRecorder::UkmRecorder() = default;
 
@@ -39,21 +34,27 @@ ukm::SourceId UkmRecorder::GetNewSourceID() {
 
 // static
 ukm::SourceId UkmRecorder::GetSourceIdForPaymentAppFromScope(
-    base::PassKey<content::PaymentAppProviderUtil>,
     const GURL& service_worker_scope) {
-  return UkmRecorder::GetSourceIdFromScopeImpl(service_worker_scope,
-                                               SourceIdType::PAYMENT_APP_ID);
+  ukm::SourceId source_id = ukm::SourceIdObj::FromOtherId(
+                                GetNewSourceID(), SourceIdType::PAYMENT_APP_ID)
+                                .ToInt64();
+  ukm::UkmRecorder::Get()->UpdateSourceURL(source_id, service_worker_scope);
+  return source_id;
 }
 
 // static
-ukm::SourceId UkmRecorder::GetSourceIdForWebIdentityFromScope(
-    base::PassKey<content::FedCmMetrics>,
-    const GURL& provider_url) {
-  return UkmRecorder::GetSourceIdFromScopeImpl(provider_url,
-                                               SourceIdType::WEB_IDENTITY_ID);
+ukm::SourceId UkmRecorder::GetSourceIdForWebApkManifestUrl(
+    const GURL& manifest_url) {
+  ukm::SourceId source_id =
+      ukm::SourceIdObj::FromOtherId(GetNewSourceID(), SourceIdType::WEBAPK_ID)
+          .ToInt64();
+  ukm::UkmRecorder* ukm_recorder = ukm::UkmRecorder::Get();
+  ukm_recorder->UpdateSourceURL(source_id, manifest_url);
+  return source_id;
 }
 
 // static
+<<<<<<< HEAD
 ukm::SourceId UkmRecorder::GetSourceIdForRedirectUrl(
     base::PassKey<content::BtmNavigationHandle>,
     const GURL& redirect_url) {
@@ -116,6 +117,17 @@ ukm::SourceId UkmRecorder::GetSourceIdForNotificationEvent(
     const GURL& origin) {
   return UkmRecorder::GetSourceIdFromScopeImpl(origin,
                                                SourceIdType::NOTIFICATION_ID);
+=======
+ukm::SourceId UkmRecorder::GetSourceIdForDesktopWebAppStartUrl(
+    const GURL& start_url) {
+  ukm::SourceId source_id =
+      ukm::SourceIdObj::FromOtherId(GetNewSourceID(),
+                                    SourceIdType::DESKTOP_WEB_APP_ID)
+          .ToInt64();
+  ukm::UkmRecorder* ukm_recorder = ukm::UkmRecorder::Get();
+  ukm_recorder->UpdateSourceURL(source_id, start_url);
+  return source_id;
+>>>>>>> chromium
 }
 
 void UkmRecorder::RecordOtherURL(ukm::SourceIdObj source_id, const GURL& url) {
@@ -126,29 +138,6 @@ void UkmRecorder::RecordAppURL(ukm::SourceIdObj source_id,
                                const GURL& url,
                                const AppType app_type) {
   UpdateAppURL(source_id.ToInt64(), url, app_type);
-}
-
-// static
-ukm::SourceId UkmRecorder::GetSourceIdFromScopeImpl(const GURL& scope_url,
-                                                    SourceIdType type) {
-  SourceId source_id =
-      SourceIdObj::FromOtherId(GetNewSourceID(), type).ToInt64();
-  UkmRecorder::Get()->UpdateSourceURL(source_id, scope_url);
-  return source_id;
-}
-
-void UkmRecorder::NotifyStartShutdown() {
-  for (auto& observer : observers_) {
-    observer.OnStartingShutdown();
-  }
-}
-
-void UkmRecorder::AddObserver(Observer* observer) {
-  observers_.AddObserver(observer);
-}
-
-void UkmRecorder::RemoveObserver(Observer* observer) {
-  observers_.RemoveObserver(observer);
 }
 
 }  // namespace ukm

@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,9 +9,9 @@
 #include <ostream>
 #include <utility>
 
+#include "base/bind.h"
+#include "base/callback.h"
 #include "base/check_op.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
 #include "base/notreached.h"
 
 namespace base {
@@ -38,6 +38,7 @@ AtExitManager::AtExitManager() : next_manager_(g_top_manager) {
 AtExitManager::~AtExitManager() {
   if (!g_top_manager) {
     NOTREACHED() << "Tried to ~AtExitManager without an AtExitManager";
+    return;
   }
   DCHECK_EQ(this, g_top_manager);
 
@@ -57,6 +58,7 @@ void AtExitManager::RegisterCallback(AtExitCallbackType func, void* param) {
 void AtExitManager::RegisterTask(base::OnceClosure task) {
   if (!g_top_manager) {
     NOTREACHED() << "Tried to RegisterCallback without an AtExitManager";
+    return;
   }
 
   AutoLock lock(g_top_manager->lock_);
@@ -70,6 +72,7 @@ void AtExitManager::RegisterTask(base::OnceClosure task) {
 void AtExitManager::ProcessCallbacksNow() {
   if (!g_top_manager) {
     NOTREACHED() << "Tried to ProcessCallbacksNow without an AtExitManager";
+    return;
   }
 
   // Callbacks may try to add new callbacks, so run them without holding

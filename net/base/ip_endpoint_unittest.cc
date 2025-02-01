@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,38 +9,21 @@
 
 #include "net/base/ip_endpoint.h"
 
-#include <string.h>
-
-#include <optional>
-#include <string>
-#include <tuple>
-
-#include "base/check_op.h"
-#include "base/notreached.h"
-#include "base/numerics/safe_conversions.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/sys_byteorder.h"
-#include "base/values.h"
 #include "build/build_config.h"
-#include "net/base/ip_address.h"
-#include "net/base/sockaddr_storage.h"
-#include "net/base/sys_addrinfo.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
-#include "testing/platform_test.h"
 
-#if BUILDFLAG(IS_WIN)
+#if defined(OS_WIN)
 #include <winsock2.h>
-
-#include <ws2bth.h>
-
-#include "base/test/gtest_util.h"   // For EXPECT_DCHECK_DEATH
-#include "net/base/winsock_util.h"  // For kBluetoothAddressSize
-#elif BUILDFLAG(IS_POSIX)
+#elif defined(OS_POSIX)
 #include <netinet/in.h>
 #endif
 
-using testing::Optional;
+#include "base/check_op.h"
+#include "base/notreached.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/sys_byteorder.h"
+#include "net/base/sockaddr_storage.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "testing/platform_test.h"
 
 namespace net {
 
@@ -61,6 +44,7 @@ const uint16_t* GetPortFieldFromSockaddr(const struct sockaddr* address,
     return &sockaddr->sin6_port;
   } else {
     NOTREACHED();
+    return nullptr;
   }
 }
 
@@ -99,11 +83,18 @@ struct TestData {
   IPAddress ip_address;
   std::optional<uint32_t> scope_id = std::nullopt;
 } tests[] = {
+<<<<<<< HEAD
     {"127.0.00.1", "127.0.0.1", false},
     {"192.168.1.1", "192.168.1.1", false},
     {"::1", "[::1]", true},
     {"2001:db8:0::42", "[2001:db8::42]", true},
     {"fe80::1", "[fe80::1]", true, IPAddress(), /*scope_id=*/1},
+=======
+  { "127.0.00.1", "127.0.0.1", false},
+  { "192.168.1.1", "192.168.1.1", false },
+  { "::1", "[::1]", true },
+  { "2001:db8:0::42", "[2001:db8::42]", true },
+>>>>>>> chromium
 };
 
 class IPEndPointTest : public PlatformTest {
@@ -125,10 +116,8 @@ class IPEndPointTest : public PlatformTest {
 };
 
 TEST_F(IPEndPointTest, Constructor) {
-  {
-    IPEndPoint endpoint;
-    EXPECT_EQ(0, endpoint.port());
-  }
+  IPEndPoint endpoint;
+  EXPECT_EQ(0, endpoint.port());
 
   for (const auto& test : tests) {
     IPEndPoint endpoint(test.ip_address, 80, test.scope_id);
@@ -175,6 +164,7 @@ TEST_F(IPEndPointTest, ToFromSockAddr) {
     socklen_t expected_size =
         test.ipv6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
     EXPECT_EQ(expected_size, storage.addr_len);
+<<<<<<< HEAD
     EXPECT_EQ(ip_endpoint.port(),
               GetPortFromSockaddr(storage.addr(), storage.addr_len));
     if (test.ipv6) {
@@ -182,6 +172,11 @@ TEST_F(IPEndPointTest, ToFromSockAddr) {
           reinterpret_cast<struct sockaddr_in6*>(storage.addr())->sin6_scope_id;
       EXPECT_EQ(scope_id, test.scope_id.value_or(0));
     }
+=======
+    EXPECT_EQ(ip_endpoint.port(), GetPortFromSockaddr(storage.addr,
+                                                      storage.addr_len));
+
+>>>>>>> chromium
     // And convert back to an IPEndPoint.
     IPEndPoint ip_endpoint2;
     EXPECT_TRUE(ip_endpoint2.FromSockAddr(storage.addr(), storage.addr_len));
@@ -211,6 +206,7 @@ TEST_F(IPEndPointTest, FromSockAddrBufTooSmall) {
   EXPECT_FALSE(ip_endpoint.FromSockAddr(sockaddr, sizeof(addr) - 1));
 }
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_WIN)
 
 namespace {
@@ -363,6 +359,8 @@ TEST_F(IPEndPointTest, WinBluetoothSockAddrCompareWithDifferentAddress) {
 }
 #endif
 
+=======
+>>>>>>> chromium
 TEST_F(IPEndPointTest, Equality) {
   uint16_t port = 0;
   for (const auto& test : tests) {
@@ -415,10 +413,8 @@ TEST_F(IPEndPointTest, LessThan) {
 }
 
 TEST_F(IPEndPointTest, ToString) {
-  {
-    IPEndPoint endpoint;
-    EXPECT_EQ(0, endpoint.port());
-  }
+  IPEndPoint endpoint;
+  EXPECT_EQ(0, endpoint.port());
 
   uint16_t port = 100;
   for (const auto& test : tests) {
@@ -435,6 +431,7 @@ TEST_F(IPEndPointTest, ToString) {
   EXPECT_EQ("", invalid_endpoint.ToStringWithoutPort());
 }
 
+<<<<<<< HEAD
 TEST_F(IPEndPointTest, RoundtripThroughValue) {
   for (const auto& test : tests) {
     IPEndPoint endpoint(test.ip_address, 1645, test.scope_id);
@@ -503,6 +500,8 @@ TEST_F(IPEndPointTest, FromMalformedValues) {
   EXPECT_FALSE(IPEndPoint::FromValue(invalid_scope_id).has_value());
 }
 
+=======
+>>>>>>> chromium
 }  // namespace
 
 }  // namespace net

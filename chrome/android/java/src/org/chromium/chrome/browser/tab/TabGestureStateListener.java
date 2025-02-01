@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,9 +30,8 @@ public final class TabGestureStateListener extends TabWebContentsUserData {
     public static TabGestureStateListener from(Tab tab) {
         TabGestureStateListener listener = tab.getUserDataHost().getUserData(USER_DATA_KEY);
         if (listener == null) {
-            listener =
-                    tab.getUserDataHost()
-                            .setUserData(USER_DATA_KEY, new TabGestureStateListener(tab));
+            listener = tab.getUserDataHost().setUserData(
+                    USER_DATA_KEY, new TabGestureStateListener(tab));
         }
         return listener;
     }
@@ -45,6 +44,7 @@ public final class TabGestureStateListener extends TabWebContentsUserData {
     @Override
     public void initWebContents(WebContents webContents) {
         GestureListenerManager manager = GestureListenerManager.fromWebContents(webContents);
+<<<<<<< HEAD
         assumeNonNull(manager);
         mGestureListener =
                 new GestureStateListener() {
@@ -53,32 +53,38 @@ public final class TabGestureStateListener extends TabWebContentsUserData {
                             int scrollOffsetY, int scrollExtentY, boolean isDirectionUp) {
                         onScrollingStateChanged();
                     }
+=======
+        mGestureListener = new GestureStateListener() {
+            private int mLastScrollOffsetY;
+>>>>>>> chromium
 
-                    @Override
-                    public void onFlingEndGesture(int scrollOffsetY, int scrollExtentY) {
-                        onScrollingStateChanged();
-                    }
+            @Override
+            public void onFlingStartGesture(int scrollOffsetY, int scrollExtentY) {
+                onScrollingStateChanged();
+            }
 
-                    @Override
-                    public void onScrollStarted(
-                            int scrollOffsetY, int scrollExtentY, boolean isDirectionUp) {
-                        onScrollingStateChanged();
-                    }
+            @Override
+            public void onFlingEndGesture(int scrollOffsetY, int scrollExtentY) {
+                onScrollingStateChanged();
+            }
 
-                    @Override
-                    public void onScrollEnded(int scrollOffsetY, int scrollExtentY) {
-                        onScrollingStateChanged();
-                    }
+            @Override
+            public void onScrollStarted(int scrollOffsetY, int scrollExtentY) {
+                onScrollingStateChanged();
+                mLastScrollOffsetY = scrollOffsetY;
+            }
 
-                    @Override
-                    public void onGestureBegin() {
-                        RewindableIterator<TabObserver> observers =
-                                ((TabImpl) mTab).getTabObservers();
-                        while (observers.hasNext()) {
-                            observers.next().onGestureBegin();
-                        }
-                    }
+            @Override
+            public void onScrollEnded(int scrollOffsetY, int scrollExtentY) {
+                onScrollingStateChanged();
+                RewindableIterator<TabObserver> observers = ((TabImpl) mTab).getTabObservers();
+                while (observers.hasNext()) {
+                    observers.next().onContentViewScrollingEnded(
+                            mLastScrollOffsetY - scrollOffsetY);
+                }
+            }
 
+<<<<<<< HEAD
                     @Override
                     public void onGestureEnd() {
                         RewindableIterator<TabObserver> observers =
@@ -97,6 +103,16 @@ public final class TabGestureStateListener extends TabWebContentsUserData {
                         }
                     }
                 };
+=======
+            private void onScrollingStateChanged() {
+                boolean scrolling = manager != null ? manager.isScrollInProgress() : false;
+                RewindableIterator<TabObserver> observers = ((TabImpl) mTab).getTabObservers();
+                while (observers.hasNext()) {
+                    observers.next().onContentViewScrollingStateChanged(scrolling);
+                }
+            }
+        };
+>>>>>>> chromium
         manager.addListener(mGestureListener);
     }
 

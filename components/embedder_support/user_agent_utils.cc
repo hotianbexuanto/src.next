@@ -1,30 +1,16 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "components/embedder_support/user_agent_utils.h"
 
-#include <array>
-#include <cstddef>
-#include <optional>
-#include <string>
-#include <vector>
-
 #include "base/command_line.h"
-#include "base/debug/stack_trace.h"
-#include "base/feature_list.h"
 #include "base/no_destructor.h"
 #include "base/strings/strcat.h"
-#include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/system/sys_info.h"
-#include "base/version.h"
 #include "build/branding_buildflags.h"
-#include "build/build_config.h"
-#include "components/embedder_support/pref_names.h"
 #include "components/embedder_support/switches.h"
-#include "components/policy/core/common/policy_pref_names.h"
-#include "components/prefs/pref_service.h"
 #include "components/version_info/version_info.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_features.h"
@@ -34,15 +20,9 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 
-#if BUILDFLAG(IS_WIN)
-#include <windows.h>
-
-#include "base/win/registry.h"
-#include "base/win/windows_version.h"
-#endif  // BUILDFLAG(IS_WIN)
-
 namespace embedder_support {
 
+<<<<<<< HEAD
 namespace {
 
 #if BUILDFLAG(IS_WIN)
@@ -328,24 +308,28 @@ std::string GetProductAndVersion(
 }
 
 std::optional<std::string> GetUserAgentFromCommandLine() {
+=======
+std::string GetProduct() {
+  return version_info::GetProductNameAndVersionForUserAgent();
+}
+
+std::string GetUserAgent() {
+>>>>>>> chromium
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(kUserAgent)) {
     std::string ua = command_line->GetSwitchValueASCII(kUserAgent);
-    if (net::HttpUtil::IsValidHeaderValue(ua)) {
+    if (net::HttpUtil::IsValidHeaderValue(ua))
       return ua;
-    }
     LOG(WARNING) << "Ignored invalid value for flag --" << kUserAgent;
   }
-  return std::nullopt;
-}
 
-std::string GetUserAgent(
-    UserAgentReductionEnterprisePolicyState user_agent_reduction) {
-  std::optional<std::string> custom_ua = GetUserAgentFromCommandLine();
-  if (custom_ua.has_value()) {
-    return custom_ua.value();
+  if (base::FeatureList::IsEnabled(blink::features::kReduceUserAgent)) {
+    return content::GetReducedUserAgent(
+        command_line->HasSwitch(switches::kUseMobileUserAgent),
+        version_info::GetMajorVersionNumber());
   }
 
+<<<<<<< HEAD
   return GetUserAgentInternal(user_agent_reduction);
 }
 
@@ -359,74 +343,84 @@ const blink::UserAgentBrandList GetUserAgentBrandFullVersionList(
     std::optional<blink::UserAgentBrandVersion> additional_brand_version) {
   return GetUserAgentBrandFullVersionListInternal(
       /*enable_updated_grease_by_policy=*/true, additional_brand_version);
+=======
+  std::string product = GetProduct();
+#if defined(OS_ANDROID)
+  if (command_line->HasSwitch(switches::kUseMobileUserAgent))
+    product += " Mobile";
+#endif
+  return content::BuildUserAgentFromProduct(product);
+>>>>>>> chromium
 }
 
 // Generate a pseudo-random permutation of the following brand/version pairs:
 //   1. The base project (i.e. Chromium)
 //   2. The browser brand, if available
-//   3. A randomized string containing GREASE characters to ensure proper
+//   3. A randomized string containing escaped characters to ensure proper
 //      header parsing, along with an arbitrarily low version to ensure proper
 //      version checking.
-//   4. Additional brand/version pairs.
 blink::UserAgentBrandList GenerateBrandVersionList(
     int seed,
+<<<<<<< HEAD
     std::optional<std::string> brand,
     const std::string& version,
     bool enable_updated_grease_by_policy,
     blink::UserAgentBrandVersionType output_version_type,
     std::optional<blink::UserAgentBrandVersion> additional_brand_version) {
+=======
+    absl::optional<std::string> brand,
+    std::string major_version,
+    absl::optional<std::string> maybe_greasey_brand) {
+>>>>>>> chromium
   DCHECK_GE(seed, 0);
+  const int npermutations = 6;  // 3!
+  int permutation = seed % npermutations;
 
+<<<<<<< HEAD
   blink::UserAgentBrandVersion greasey_bv = GetGreasedUserAgentBrandVersion(
       seed, enable_updated_grease_by_policy, output_version_type);
   blink::UserAgentBrandVersion chromium_bv = {"Chromium", version};
+=======
+  // Pick a stable permutation seeded by major version number. any values here
+  // and in order should be under three.
+  const std::vector<std::vector<int>> orders{{0, 1, 2}, {0, 2, 1}, {1, 0, 2},
+                                             {1, 2, 0}, {2, 0, 1}, {2, 1, 0}};
+  const std::vector<int> order = orders[permutation];
+  DCHECK_EQ(6u, orders.size());
+  DCHECK_EQ(3u, order.size());
 
-  blink::UserAgentBrandList brand_version_list = {std::move(greasey_bv),
-                                                  std::move(chromium_bv)};
+  // Previous values for indexes 0 and 1 were '\' and '"', temporarily removed
+  // because of compat issues
+  const std::vector<std::string> escaped_chars = {" ", " ", ";"};
+  std::string greasey_brand =
+      base::StrCat({escaped_chars[order[0]], "Not", escaped_chars[order[1]],
+                    "A", escaped_chars[order[2]], "Brand"});
+
+  blink::UserAgentBrandVersion greasey_bv = {
+      maybe_greasey_brand.value_or(greasey_brand), "99"};
+  blink::UserAgentBrandVersion chromium_bv = {"Chromium", major_version};
+
+  blink::UserAgentBrandList greased_brand_version_list(3);
+>>>>>>> chromium
+
   if (brand) {
-    brand_version_list.emplace_back(brand.value(), version);
-  }
-  if (additional_brand_version) {
-    brand_version_list.emplace_back(additional_brand_version.value());
-  }
+    blink::UserAgentBrandVersion brand_bv = {brand.value(), major_version};
 
-  return ShuffleBrandList(brand_version_list, seed);
-}
-
-// Process greased overridden brand version which is either major version or
-// full version, return the corresponding output version type.
-blink::UserAgentBrandVersion GetProcessedGreasedBrandVersion(
-    const std::string& greasey_brand,
-    const std::string& greasey_version,
-    blink::UserAgentBrandVersionType output_version_type) {
-  std::string greasey_major_version;
-  std::string greasey_full_version;
-  base::Version version(greasey_version);
-  DCHECK(version.IsValid());
-
-  // If the greased overridden version is a significant version type:
-  // * Major version: set the major version as the overridden version
-  // * Full version number: extending the version number with ".0.0.0"
-  // If the overridden version is full version format:
-  // * Major version: set the major version to match significant version format
-  // * Full version: set the full version as the overridden version
-  // https://wicg.github.io/ua-client-hints/#user-agent-full-version
-  if (version.components().size() > 1) {
-    greasey_major_version = base::NumberToString(version.components()[0]);
-    greasey_full_version = greasey_version;
+    greased_brand_version_list[order[0]] = greasey_bv;
+    greased_brand_version_list[order[1]] = chromium_bv;
+    greased_brand_version_list[order[2]] = brand_bv;
   } else {
-    greasey_major_version = greasey_version;
-    greasey_full_version = base::StrCat({greasey_version, ".0.0.0"});
+    greased_brand_version_list[seed % 2] = greasey_bv;
+    greased_brand_version_list[(seed + 1) % 2] = chromium_bv;
+
+    // If left, the last element would make a blank "" at the end of the header.
+    greased_brand_version_list.pop_back();
   }
 
-  blink::UserAgentBrandVersion output_greasey_bv = {
-      greasey_brand,
-      output_version_type == blink::UserAgentBrandVersionType::kFullVersion
-          ? greasey_full_version
-          : greasey_major_version};
-  return output_greasey_bv;
+  return greased_brand_version_list;
 }
 
+<<<<<<< HEAD
 blink::UserAgentBrandVersion GetGreasedUserAgentBrandVersion(
     int seed,
     bool enable_updated_grease_by_policy,
@@ -464,55 +458,55 @@ blink::UserAgentBrandVersion GetGreasedUserAgentBrandVersion(
     return GetProcessedGreasedBrandVersion(greasey_brand, greasey_version,
                                            output_version_type);
   }
+=======
+const blink::UserAgentBrandList& GetBrandVersionList() {
+  static const base::NoDestructor<blink::UserAgentBrandList>
+      greased_brand_version_list([] {
+        int major_version_number;
+        std::string major_version = version_info::GetMajorVersionNumber();
+        base::StringToInt(major_version, &major_version_number);
+        absl::optional<std::string> brand;
+#if !BUILDFLAG(CHROMIUM_BRANDING)
+        brand = version_info::GetProductName();
+#endif
+        absl::optional<std::string> maybe_param_override =
+            base::GetFieldTrialParamValueByFeature(features::kGreaseUACH,
+                                                   "brand_override");
+        if (maybe_param_override->empty())
+          maybe_param_override = absl::nullopt;
+
+        return GenerateBrandVersionList(major_version_number, brand,
+                                        major_version, maybe_param_override);
+      }());
+  return *greased_brand_version_list;
+>>>>>>> chromium
 }
 
+// TODO(crbug.com/1103047): This can be removed/re-refactored once we use
+// "macOS" by default
 std::string GetPlatformForUAMetadata() {
-#if BUILDFLAG(IS_MAC)
-  // TODO(crbug.com/40704421): This can be removed/re-refactored once we use
-  // "macOS" by default
+#if defined(OS_MAC)
   return "macOS";
-#elif BUILDFLAG(IS_CHROMEOS)
-  // TODO(crbug.com/40846294): The branding change to remove the space caused a
-  // regression that's solved here. Ideally, we would just use the new OS name
-  // without the space here too, but that needs a launch plan.
-# if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  return "Chrome OS";
-# else
-  return "Chromium OS";
-# endif
 #else
-  return std::string(version_info::GetOSType());
+  return version_info::GetOSType();
 #endif
 }
 
-blink::UserAgentMetadata GetUserAgentMetadata(bool only_low_entropy_ch) {
-  return GetUserAgentMetadata(nullptr, only_low_entropy_ch);
-}
-
-blink::UserAgentMetadata GetUserAgentMetadata(const PrefService* pref_service,
-                                              bool only_low_entropy_ch) {
+blink::UserAgentMetadata GetUserAgentMetadata() {
   blink::UserAgentMetadata metadata;
 
-  bool enable_updated_grease_by_policy = true;
-  // TODO(crbug.com/40838057): Remove this after M126 which deprecates the
-  // policy.
-  if (pref_service) {
-    if (pref_service->HasPrefPath(
-            policy::policy_prefs::kUserAgentClientHintsGREASEUpdateEnabled))
-      enable_updated_grease_by_policy = pref_service->GetBoolean(
-          policy::policy_prefs::kUserAgentClientHintsGREASEUpdateEnabled);
-  }
-
-  // Low entropy client hints.
-  metadata.brand_version_list = GetUserAgentBrandMajorVersionListInternal(
-      enable_updated_grease_by_policy, std::nullopt);
+  metadata.brand_version_list = GetBrandVersionList();
+  metadata.full_version = version_info::GetVersionNumber();
+  metadata.platform = GetPlatformForUAMetadata();
+  metadata.architecture = content::GetLowEntropyCpuArchitecture();
+  metadata.model = content::BuildModelInfo();
   metadata.mobile = false;
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+#if defined(OS_ANDROID)
   metadata.mobile = base::CommandLine::ForCurrentProcess()->HasSwitch(
       switches::kUseMobileUserAgent);
 #endif
-  metadata.platform = GetPlatformForUAMetadata();
 
+<<<<<<< HEAD
   // For users providing a valid user-agent override via the command line:
   // If kUACHOverrideBlank is enabled, set user-agent metadata with the
   // default blank values, otherwise return the default UserAgentMetadata values
@@ -543,61 +537,48 @@ blink::UserAgentMetadata GetUserAgentMetadata(const PrefService* pref_service,
 #if BUILDFLAG(IS_WIN)
   metadata.platform_version = GetWindowsPlatformVersion();
 #else
+=======
+>>>>>>> chromium
   int32_t major, minor, bugfix = 0;
   base::SysInfo::OperatingSystemVersionNumbers(&major, &minor, &bugfix);
   metadata.platform_version =
       base::StringPrintf("%d.%d.%d", major, minor, bugfix);
+<<<<<<< HEAD
 #endif
+=======
+  // These methods use the same information as the User-Agent string, but are
+  // "low entropy" in that they reduce the number of options for output to a
+  // set number. For more information, see the respective headers.
+  metadata.architecture = content::GetLowEntropyCpuArchitecture();
+  metadata.bitness = content::GetLowEntropyCpuBitness();
+>>>>>>> chromium
 
   return metadata;
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
 void SetDesktopUserAgentOverride(content::WebContents* web_contents,
                                  const blink::UserAgentMetadata& metadata,
                                  bool override_in_new_tabs) {
   const char kLinuxInfoStr[] = "X11; Linux x86_64";
+  std::string product = version_info::GetProductNameAndVersionForUserAgent();
 
   blink::UserAgentOverride spoofed_ua;
-  spoofed_ua.ua_string_override = content::BuildUserAgentFromOSAndProduct(
-      kLinuxInfoStr, GetProductAndVersion());
+  spoofed_ua.ua_string_override =
+      content::BuildUserAgentFromOSAndProduct(kLinuxInfoStr, product);
   spoofed_ua.ua_metadata_override = metadata;
   spoofed_ua.ua_metadata_override->platform = "Linux";
   spoofed_ua.ua_metadata_override->platform_version =
       std::string();  // match content::GetOSVersion(false) on Linux
   spoofed_ua.ua_metadata_override->model = std::string();
   spoofed_ua.ua_metadata_override->mobile = false;
-  spoofed_ua.ua_metadata_override->form_factors =
-      GetFormFactorsClientHint(metadata, /*is_mobile=*/false);
   // Match the above "CpuInfo" string, which is also the most common Linux
   // CPU architecture and bitness.`
   spoofed_ua.ua_metadata_override->architecture = "x86";
   spoofed_ua.ua_metadata_override->bitness = "64";
-  spoofed_ua.ua_metadata_override->wow64 = false;
 
   web_contents->SetUserAgentOverride(spoofed_ua, override_in_new_tabs);
 }
-#endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_WIN)
-int GetHighestKnownUniversalApiContractVersionForTesting() {
-  return kHighestKnownUniversalApiContractVersion;
-}
-#endif  // BUILDFLAG(IS_WIN)
-
-embedder_support::UserAgentReductionEnterprisePolicyState
-GetUserAgentReductionFromPrefs(const PrefService* pref_service) {
-  if (!pref_service->HasPrefPath(kReduceUserAgentMinorVersion))
-    return UserAgentReductionEnterprisePolicyState::kDefault;
-  switch (pref_service->GetInteger(kReduceUserAgentMinorVersion)) {
-    case 1:
-      return UserAgentReductionEnterprisePolicyState::kForceDisabled;
-    case 2:
-      return UserAgentReductionEnterprisePolicyState::kForceEnabled;
-    case 0:
-    default:
-      return UserAgentReductionEnterprisePolicyState::kDefault;
-  }
-}
+#endif  // OS_ANDROID
 
 }  // namespace embedder_support

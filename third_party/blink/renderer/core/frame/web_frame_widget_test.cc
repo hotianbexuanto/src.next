@@ -1,31 +1,25 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/functional/callback_helpers.h"
+#include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
+
+#include "base/callback_helpers.h"
 #include "base/run_loop.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
-#include "base/test/scoped_feature_list.h"
-#include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "cc/base/features.h"
 #include "cc/layers/solid_color_layer.h"
 #include "cc/test/property_tree_test_utils.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
-#include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/input/synthetic_web_input_event_builders.h"
-#include "third_party/blink/public/mojom/page/widget.mojom-shared.h"
-#include "third_party/blink/renderer/core/css/properties/css_property_ref.h"
-#include "third_party/blink/renderer/core/css/properties/longhands.h"
-#include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/dom/events/add_event_listener_options_resolved.h"
 #include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
-#include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/geometry/dom_rect.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_text_area_element.h"
@@ -46,6 +40,10 @@
 #if BUILDFLAG(IS_WIN)
 #include "components/stylus_handwriting/win/features.h"
 #endif  // BUILDFLAG(IS_WIN)
+=======
+#include "third_party/blink/renderer/core/testing/sim/sim_request.h"
+#include "third_party/blink/renderer/core/testing/sim/sim_test.h"
+>>>>>>> chromium
 
 namespace blink {
 
@@ -84,10 +82,6 @@ class WebFrameWidgetSimTest : public SimTest {};
 // WebFrameWidgetImpl requests a new viz::LocalSurfaceId to be allocated on the
 // impl thread.
 TEST_F(WebFrameWidgetSimTest, AutoResizeAllocatedLocalSurfaceId) {
-  LoadURL("about:blank");
-  // Resets CommitState::new_local_surface_id_request.
-  Compositor().BeginFrame();
-
   viz::ParentLocalSurfaceIdAllocator allocator;
 
   // Enable auto-resize.
@@ -159,20 +153,18 @@ TEST_F(WebFrameWidgetSimTest, FrameSinkIdHitTestAPI) {
   EXPECT_EQ(gfx::PointF(150.27, 150.25), point);
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
 TEST_F(WebFrameWidgetSimTest, ForceSendMetadataOnInput) {
-  const cc::LayerTreeHost* layer_tree_host =
+  cc::LayerTreeHost* layer_tree_host =
       WebView().MainFrameViewWidget()->LayerTreeHostForTesting();
   // We should not have any force send metadata requests at start.
-  EXPECT_FALSE(
-      layer_tree_host->pending_commit_state()->force_send_metadata_request);
+  EXPECT_FALSE(layer_tree_host->TakeForceSendMetadataRequest());
   // ShowVirtualKeyboard will trigger a text input state update.
   WebView().MainFrameViewWidget()->ShowVirtualKeyboard();
   // We should now have a force send metadata request.
-  EXPECT_TRUE(
-      layer_tree_host->pending_commit_state()->force_send_metadata_request);
+  EXPECT_TRUE(layer_tree_host->TakeForceSendMetadataRequest());
 }
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // defined(OS_ANDROID)
 
 // A test that forces a RemoteMainFrame to be created.
 class WebFrameWidgetImplRemoteFrameSimTest : public SimTest {
@@ -242,11 +234,11 @@ class MockHandledEventCallback {
                  void(mojom::InputEventResultState,
                       const ui::LatencyInfo&,
                       InputHandlerProxy::DidOverscrollParams*,
-                      std::optional<cc::TouchAction>));
+                      absl::optional<cc::TouchAction>));
 
-  WidgetBaseInputHandler::HandledEventCallback GetCallback() {
-    return WTF::BindOnce(&MockHandledEventCallback::HandleCallback,
-                         WTF::Unretained(this));
+  WebWidget::HandledEventCallback GetCallback() {
+    return base::BindOnce(&MockHandledEventCallback::HandleCallback,
+                          base::Unretained(this));
   }
 
  private:
@@ -254,14 +246,16 @@ class MockHandledEventCallback {
       mojom::InputEventResultState ack_state,
       const ui::LatencyInfo& latency_info,
       std::unique_ptr<InputHandlerProxy::DidOverscrollParams> overscroll,
-      std::optional<cc::TouchAction> touch_action) {
+      absl::optional<cc::TouchAction> touch_action) {
     Run(ack_state, latency_info, overscroll.get(), touch_action);
   }
 };
 
-class MockWebFrameWidgetImpl : public frame_test_helpers::TestWebFrameWidget {
+class MockWebFrameWidgetImpl : public SimWebFrameWidget {
  public:
-  using frame_test_helpers::TestWebFrameWidget::TestWebFrameWidget;
+  template <typename... Args>
+  explicit MockWebFrameWidgetImpl(Args&&... args)
+      : SimWebFrameWidget(std::forward<Args>(args)...) {}
 
   MOCK_METHOD1(HandleInputEvent,
                WebInputEventResult(const WebCoalescedInputEvent&));
@@ -273,13 +267,21 @@ class MockWebFrameWidgetImpl : public frame_test_helpers::TestWebFrameWidget {
                     const cc::OverscrollBehavior& overscroll_behavior,
                     bool event_processed));
 
+<<<<<<< HEAD
   MOCK_METHOD2(RequestDecode,
                void(const cc::DrawImage&, base::OnceCallback<void(bool)>));
+=======
+  MOCK_METHOD2(WillHandleGestureEvent,
+               void(const WebGestureEvent& event, bool* suppress));
+
+  // mojom::blink::WidgetHost overrides:
+  using SimWebFrameWidget::SetCursor;
+>>>>>>> chromium
 };
 
 class WebFrameWidgetImplSimTest : public SimTest {
  public:
-  frame_test_helpers::TestWebFrameWidget* CreateWebFrameWidget(
+  SimWebFrameWidget* CreateSimWebFrameWidget(
       base::PassKey<WebLocalFrame> pass_key,
       CrossVariantMojoAssociatedRemote<
           mojom::blink::FrameWidgetHostInterfaceBase> frame_widget_host,
@@ -295,28 +297,25 @@ class WebFrameWidgetImplSimTest : public SimTest {
       bool never_composited,
       bool is_for_child_local_root,
       bool is_for_nested_main_frame,
-      bool is_for_scalable_page) override {
+      SimCompositor* compositor) override {
     return MakeGarbageCollected<MockWebFrameWidgetImpl>(
-        pass_key, std::move(frame_widget_host), std::move(frame_widget),
-        std::move(widget_host), std::move(widget), std::move(task_runner),
-        frame_sink_id, hidden, never_composited, is_for_child_local_root,
-        is_for_nested_main_frame, is_for_scalable_page);
+        compositor, pass_key, std::move(frame_widget_host),
+        std::move(frame_widget), std::move(widget_host), std::move(widget),
+        std::move(task_runner), frame_sink_id, hidden, never_composited,
+        is_for_child_local_root, is_for_nested_main_frame);
   }
 
   MockWebFrameWidgetImpl* MockMainFrameWidget() {
     return static_cast<MockWebFrameWidgetImpl*>(MainFrame().FrameWidget());
   }
 
-  EventHandler& GetEventHandler() {
-    return GetDocument().GetFrame()->GetEventHandler();
-  }
-
   void SendInputEvent(const WebInputEvent& event,
-                      WidgetBaseInputHandler::HandledEventCallback callback) {
+                      WebWidget::HandledEventCallback callback) {
     MockMainFrameWidget()->ProcessInputEventSynchronouslyForTesting(
         WebCoalescedInputEvent(event.Clone(), {}, {}, ui::LatencyInfo()),
         std::move(callback));
   }
+<<<<<<< HEAD
 
   void OnStartStylusWriting() {
     MockMainFrameWidget()->OnStartStylusWriting(
@@ -324,6 +323,21 @@ class WebFrameWidgetImplSimTest : public SimTest {
         /*focus_widget_rect_in_dips=*/gfx::Rect(),
 #endif  // BUILDFLAG(IS_WIN)
         base::DoNothing());
+=======
+  void WillHandleGestureEvent(const blink::WebGestureEvent& event,
+                              bool* suppress) {
+    if (event.GetType() == WebInputEvent::Type::kGestureScrollUpdate) {
+      MockMainFrameWidget()->DidOverscroll(
+          gfx::Vector2dF(event.data.scroll_update.delta_x,
+                         event.data.scroll_update.delta_y),
+          gfx::Vector2dF(event.data.scroll_update.delta_x,
+                         event.data.scroll_update.delta_y),
+          event.PositionInWidget(),
+          gfx::Vector2dF(event.data.scroll_update.velocity_x,
+                         event.data.scroll_update.velocity_y));
+      *suppress = true;
+    }
+>>>>>>> chromium
   }
 
   const base::HistogramTester& histogram_tester() const {
@@ -359,6 +373,33 @@ TEST_F(WebFrameWidgetImplSimTest, CursorChange) {
   MockMainFrameWidget()->SetCursor(cursor);
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(widget_host.CursorSetCount(), 2u);
+}
+
+TEST_F(WebFrameWidgetImplSimTest, EventOverscroll) {
+  ON_CALL(*MockMainFrameWidget(), WillHandleGestureEvent(_, _))
+      .WillByDefault(testing::Invoke(
+          this, &WebFrameWidgetImplSimTest::WillHandleGestureEvent));
+  EXPECT_CALL(*MockMainFrameWidget(), HandleInputEvent(_))
+      .WillRepeatedly(::testing::Return(WebInputEventResult::kNotHandled));
+
+  WebGestureEvent scroll(WebInputEvent::Type::kGestureScrollUpdate,
+                         WebInputEvent::kNoModifiers, base::TimeTicks::Now());
+  scroll.SetPositionInWidget(gfx::PointF(-10, 0));
+  scroll.data.scroll_update.delta_y = 10;
+  MockHandledEventCallback handled_event;
+
+  InputHandlerProxy::DidOverscrollParams expected_overscroll;
+  expected_overscroll.latest_overscroll_delta = gfx::Vector2dF(0, 10);
+  expected_overscroll.accumulated_overscroll = gfx::Vector2dF(0, 10);
+  expected_overscroll.causal_event_viewport_point = gfx::PointF(-10, 0);
+  expected_overscroll.current_fling_velocity = gfx::Vector2dF();
+  // Overscroll notifications received while handling an input event should
+  // be bundled with the event ack IPC.
+  EXPECT_CALL(handled_event, Run(mojom::InputEventResultState::kConsumed, _,
+                                 testing::Pointee(expected_overscroll), _))
+      .Times(1);
+
+  SendInputEvent(scroll, handled_event.GetCallback());
 }
 
 TEST_F(WebFrameWidgetImplSimTest, RenderWidgetInputEventUmaMetrics) {
@@ -464,6 +505,7 @@ TEST_F(WebFrameWidgetImplSimTest, SendElasticOverscrollForTouchscreen) {
   SendInputEvent(scroll, base::DoNothing());
 }
 
+<<<<<<< HEAD
 TEST_F(WebFrameWidgetImplSimTest, TestStartStylusWritingForInputElement) {
   ScopedStylusHandwritingForTest enable_stylus_handwriting(true);
   WebView().MainFrameViewWidget()->Resize(gfx::Size(400, 400));
@@ -1156,6 +1198,8 @@ TEST_P(WebFrameWidgetProximateBoundsCollectionSimTestP,
 }
 #endif  // BUILDFLAG(IS_WIN)
 
+=======
+>>>>>>> chromium
 class NotifySwapTimesWebFrameWidgetTest : public SimTest {
  public:
   void SetUp() override {
@@ -1171,7 +1215,7 @@ class NotifySwapTimesWebFrameWidgetTest : public SimTest {
     color_layer->SetBounds(gfx::Size(100, 100));
     cc::CopyProperties(root_layer, color_layer.get());
     root_layer->SetChildLayerList(cc::LayerList({color_layer}));
-    color_layer->SetBackgroundColor(SkColors::kRed);
+    color_layer->SetBackgroundColor(SK_ColorRED);
   }
 
   WebFrameWidgetImpl* FrameWidgetBase() {
@@ -1187,25 +1231,22 @@ class NotifySwapTimesWebFrameWidgetTest : public SimTest {
 
     // Register callbacks for swap and presentation times.
     base::TimeTicks swap_time;
-    static_cast<WebFrameWidgetImpl*>(MainFrame().FrameWidget())
-        ->NotifySwapAndPresentationTimeForTesting(
-            {WTF::BindOnce(
-                 [](base::OnceClosure swap_quit_closure,
-                    base::TimeTicks* swap_time, base::TimeTicks timestamp) {
-                   CHECK(!timestamp.is_null());
-                   *swap_time = timestamp;
-                   std::move(swap_quit_closure).Run();
-                 },
-                 swap_run_loop.QuitClosure(), WTF::Unretained(&swap_time)),
-             WTF::BindOnce(
-                 [](base::OnceClosure presentation_quit_closure,
-                    const viz::FrameTimingDetails& presentation_details) {
-                   base::TimeTicks timestamp =
-                       presentation_details.presentation_feedback.timestamp;
-                   CHECK(!timestamp.is_null());
-                   std::move(presentation_quit_closure).Run();
-                 },
-                 presentation_run_loop.QuitClosure())});
+    MainFrame().FrameWidget()->NotifySwapAndPresentationTime(
+        base::BindOnce(
+            [](base::OnceClosure swap_quit_closure, base::TimeTicks* swap_time,
+               blink::WebSwapResult result, base::TimeTicks timestamp) {
+              DCHECK(!timestamp.is_null());
+              *swap_time = timestamp;
+              std::move(swap_quit_closure).Run();
+            },
+            swap_run_loop.QuitClosure(), &swap_time),
+        base::BindOnce(
+            [](base::OnceClosure presentation_quit_closure,
+               blink::WebSwapResult result, base::TimeTicks timestamp) {
+              DCHECK(!timestamp.is_null());
+              std::move(presentation_quit_closure).Run();
+            },
+            presentation_run_loop.QuitClosure()));
 
     // Composite and wait for the swap to complete.
     Compositor().BeginFrame(/*time_delta_in_seconds=*/0.016, /*raster=*/true);
@@ -1214,8 +1255,9 @@ class NotifySwapTimesWebFrameWidgetTest : public SimTest {
     // Present and wait for it to complete.
     viz::FrameTimingDetails timing_details;
     if (!swap_to_presentation.is_zero()) {
-      timing_details.presentation_feedback = gfx::PresentationFeedback(
-          swap_time + swap_to_presentation, base::Milliseconds(16), 0);
+      timing_details.presentation_feedback =
+          gfx::PresentationFeedback(swap_time + swap_to_presentation,
+                                    base::TimeDelta::FromMilliseconds(16), 0);
     }
     auto* last_frame_sink = GetWebFrameWidget().LastCreatedFrameSink();
     last_frame_sink->NotifyDidPresentCompositorFrame(1, timing_details);
@@ -1223,13 +1265,58 @@ class NotifySwapTimesWebFrameWidgetTest : public SimTest {
   }
 };
 
+TEST_F(NotifySwapTimesWebFrameWidgetTest, PresentationTimestampValid) {
+  base::HistogramTester histograms;
+
+  CompositeAndWaitForPresentation(base::TimeDelta::FromMilliseconds(2));
+
+  EXPECT_THAT(histograms.GetAllSamples(
+                  "PageLoad.Internal.Renderer.PresentationTime.Valid"),
+              testing::ElementsAre(base::Bucket(true, 1)));
+  EXPECT_THAT(
+      histograms.GetAllSamples(
+          "PageLoad.Internal.Renderer.PresentationTime.DeltaFromSwapTime"),
+      testing::ElementsAre(base::Bucket(2, 1)));
+}
+
+TEST_F(NotifySwapTimesWebFrameWidgetTest, PresentationTimestampInvalid) {
+  base::HistogramTester histograms;
+
+  CompositeAndWaitForPresentation(base::TimeDelta());
+
+  EXPECT_THAT(histograms.GetAllSamples(
+                  "PageLoad.Internal.Renderer.PresentationTime.Valid"),
+              testing::ElementsAre(base::Bucket(false, 1)));
+  EXPECT_THAT(
+      histograms.GetAllSamples(
+          "PageLoad.Internal.Renderer.PresentationTime.DeltaFromSwapTime"),
+      testing::IsEmpty());
+}
+
+TEST_F(NotifySwapTimesWebFrameWidgetTest,
+       PresentationTimestampEarlierThanSwaptime) {
+  base::HistogramTester histograms;
+
+  CompositeAndWaitForPresentation(base::TimeDelta::FromMilliseconds(-2));
+
+  EXPECT_THAT(histograms.GetAllSamples(
+                  "PageLoad.Internal.Renderer.PresentationTime.Valid"),
+              testing::ElementsAre(base::Bucket(false, 1)));
+  EXPECT_THAT(
+      histograms.GetAllSamples(
+          "PageLoad.Internal.Renderer.PresentationTime.DeltaFromSwapTime"),
+      testing::IsEmpty());
+}
+
 // Verifies that the presentation callback is called after the first successful
 // presentation (skips failed presentations in between).
 TEST_F(NotifySwapTimesWebFrameWidgetTest, NotifyOnSuccessfulPresentation) {
   base::HistogramTester histograms;
 
-  constexpr base::TimeDelta swap_to_failed = base::Microseconds(2);
-  constexpr base::TimeDelta failed_to_successful = base::Microseconds(3);
+  constexpr base::TimeDelta swap_to_failed =
+      base::TimeDelta::FromMicroseconds(2);
+  constexpr base::TimeDelta failed_to_successful =
+      base::TimeDelta::FromMicroseconds(3);
 
   base::RunLoop swap_run_loop;
   base::RunLoop presentation_run_loop;
@@ -1237,55 +1324,36 @@ TEST_F(NotifySwapTimesWebFrameWidgetTest, NotifyOnSuccessfulPresentation) {
   base::TimeTicks failed_presentation_time;
   base::TimeTicks successful_presentation_time;
 
-  WebFrameWidgetImpl::PromiseCallbacks callbacks = {
-      base::BindLambdaForTesting([&](base::TimeTicks timestamp) {
-        DCHECK(!timestamp.is_null());
-
-        // Now that the swap time is known, we can determine what
-        // timestamps should we use for the failed and the subsequent
-        // successful presentations.
-        DCHECK(failed_presentation_time.is_null());
-        failed_presentation_time = timestamp + swap_to_failed;
-        DCHECK(successful_presentation_time.is_null());
-        successful_presentation_time =
-            failed_presentation_time + failed_to_successful;
-
-        swap_run_loop.Quit();
-      }),
+  // Register callbacks for swap and presentation times.
+  MainFrame().FrameWidget()->NotifySwapAndPresentationTime(
       base::BindLambdaForTesting(
-          [&](const viz::FrameTimingDetails& presentation_details) {
-            base::TimeTicks timestamp =
-                presentation_details.presentation_feedback.timestamp;
-            CHECK(!timestamp.is_null());
-            CHECK(!failed_presentation_time.is_null());
-            CHECK(!successful_presentation_time.is_null());
+          [&](blink::WebSwapResult result, base::TimeTicks timestamp) {
+            DCHECK(!timestamp.is_null());
 
-            // Verify that this callback is run in response to the
-            // successful presentation, not the failed one before that.
+            // Now that the swap time is known, we can determine what timestamps
+            // should we use for the failed and the subsequent successful
+            // presentations.
+            DCHECK(failed_presentation_time.is_null());
+            failed_presentation_time = timestamp + swap_to_failed;
+            DCHECK(successful_presentation_time.is_null());
+            successful_presentation_time =
+                failed_presentation_time + failed_to_successful;
+
+            swap_run_loop.Quit();
+          }),
+      base::BindLambdaForTesting(
+          [&](blink::WebSwapResult result, base::TimeTicks timestamp) {
+            DCHECK(!timestamp.is_null());
+            DCHECK(!failed_presentation_time.is_null());
+            DCHECK(!successful_presentation_time.is_null());
+
+            // Verify that this callback is run in response to the successful
+            // presentation, not the failed one before that.
             EXPECT_NE(timestamp, failed_presentation_time);
             EXPECT_EQ(timestamp, successful_presentation_time);
 
             presentation_run_loop.Quit();
-          })};
-
-#if BUILDFLAG(IS_MAC)
-  // Assign a ca_layer error code.
-  constexpr gfx::CALayerResult ca_layer_error_code =
-      gfx::kCALayerFailedTileNotCandidate;
-
-  callbacks.core_animation_error_code_callback = base::BindLambdaForTesting(
-      [&](gfx::CALayerResult core_animation_error_code) {
-        // Verify that the error code received here is the same as the
-        // one sent to DidPresentCompositorFrame.
-        EXPECT_EQ(ca_layer_error_code, core_animation_error_code);
-
-        presentation_run_loop.Quit();
-      });
-#endif
-
-  // Register callbacks for swap and presentation times.
-  static_cast<WebFrameWidgetImpl*>(MainFrame().FrameWidget())
-      ->NotifySwapAndPresentationTimeForTesting(std::move(callbacks));
+          }));
 
   // Composite and wait for the swap to complete.
   Compositor().BeginFrame(/*time_delta_in_seconds=*/0.016, /*raster=*/true);
@@ -1295,7 +1363,7 @@ TEST_F(NotifySwapTimesWebFrameWidgetTest, NotifyOnSuccessfulPresentation) {
   DCHECK(!failed_presentation_time.is_null());
   viz::FrameTimingDetails failed_timing_details;
   failed_timing_details.presentation_feedback = gfx::PresentationFeedback(
-      failed_presentation_time, base::Milliseconds(16),
+      failed_presentation_time, base::TimeDelta::FromMilliseconds(16),
       gfx::PresentationFeedback::kFailure);
   GetWebFrameWidget().LastCreatedFrameSink()->NotifyDidPresentCompositorFrame(
       1, failed_timing_details);
@@ -1304,80 +1372,23 @@ TEST_F(NotifySwapTimesWebFrameWidgetTest, NotifyOnSuccessfulPresentation) {
   DCHECK(!successful_presentation_time.is_null());
   viz::FrameTimingDetails successful_timing_details;
   successful_timing_details.presentation_feedback = gfx::PresentationFeedback(
-      successful_presentation_time, base::Milliseconds(16), 0);
-#if BUILDFLAG(IS_MAC)
-  successful_timing_details.presentation_feedback.ca_layer_error_code =
-      ca_layer_error_code;
-#endif
+      successful_presentation_time, base::TimeDelta::FromMilliseconds(16), 0);
   GetWebFrameWidget().LastCreatedFrameSink()->NotifyDidPresentCompositorFrame(
       2, successful_timing_details);
 
   // Wait for the presentation callback to be called. It should be called with
   // the timestamp of the successful presentation.
   presentation_run_loop.Run();
-}
 
-// Tests that the presentation callback is only triggered if there’s
-// a successful commit to the compositor.
-TEST_F(NotifySwapTimesWebFrameWidgetTest,
-       ReportPresentationOnlyOnSuccessfulCommit) {
-  base::HistogramTester histograms;
-  constexpr base::TimeDelta delta = base::Milliseconds(16);
-  constexpr base::TimeDelta delta_from_swap_time = base::Microseconds(2);
-
-  base::RunLoop swap_run_loop;
-  base::RunLoop presentation_run_loop;
-  base::TimeTicks presentation_time;
-
-  // Register callbacks for swap and presentation times.
-  static_cast<WebFrameWidgetImpl*>(MainFrame().FrameWidget())
-      ->NotifySwapAndPresentationTimeForTesting(
-          {base::BindLambdaForTesting([&](base::TimeTicks timestamp) {
-             DCHECK(!timestamp.is_null());
-             DCHECK(presentation_time.is_null());
-
-             // Set the expected presentation time after the swap takes place.
-             presentation_time = timestamp + delta_from_swap_time;
-             swap_run_loop.Quit();
-           }),
-           base::BindLambdaForTesting(
-               [&](const viz::FrameTimingDetails& presentation_details) {
-                 base::TimeTicks timestamp =
-                     presentation_details.presentation_feedback.timestamp;
-                 CHECK(!timestamp.is_null());
-                 CHECK(!presentation_time.is_null());
-
-                 // Verify that the presentation is only reported on the
-                 // successful commit to the compositor.
-                 EXPECT_EQ(timestamp, presentation_time);
-                 presentation_run_loop.Quit();
-               })});
-
-  // Simulate a failed commit to the compositor, which should not trigger either
-  // a swap or a presentation callback in response.
-  auto* layer_tree_host = Compositor().LayerTreeHost();
-  layer_tree_host->GetSwapPromiseManager()->BreakSwapPromises(
-      cc::SwapPromise::DidNotSwapReason::COMMIT_FAILS);
-
-  // Check that a swap callback wasn't triggered for the above failed commit.
-  EXPECT_TRUE(presentation_time.is_null());
-
-  // Composite and wait for the swap to complete successfully.
-  Compositor().BeginFrame(delta.InSecondsF(), true);
-  swap_run_loop.Run();
-
-  // Make sure that the swap is completed successfully.
-  EXPECT_FALSE(presentation_time.is_null());
-
-  // Respond with a presentation feedback.
-  viz::FrameTimingDetails frame_timing_details;
-  frame_timing_details.presentation_feedback =
-      gfx::PresentationFeedback(presentation_time, delta, 0);
-  GetWebFrameWidget().LastCreatedFrameSink()->NotifyDidPresentCompositorFrame(
-      1, frame_timing_details);
-
-  // Wait for the presentation callback to be called.
-  presentation_run_loop.Run();
+  EXPECT_THAT(histograms.GetAllSamples(
+                  "PageLoad.Internal.Renderer.PresentationTime.Valid"),
+              testing::ElementsAre(base::Bucket(true, 1)));
+  const auto expected_sample = static_cast<base::HistogramBase::Sample>(
+      (swap_to_failed + failed_to_successful).InMilliseconds());
+  EXPECT_THAT(
+      histograms.GetAllSamples(
+          "PageLoad.Internal.Renderer.PresentationTime.DeltaFromSwapTime"),
+      testing::ElementsAre(base::Bucket(expected_sample, 1)));
 }
 
 // Tests that the value of VisualProperties::is_pinch_gesture_active is
@@ -1401,31 +1412,9 @@ TEST_F(WebFrameWidgetSimTest, ActivePinchGestureUpdatesLayerTreeHost) {
   EXPECT_FALSE(layer_tree_host->is_external_pinch_gesture_active_for_testing());
 }
 
-class WebFrameWidgetInputEventsSimTest
-    : public WebFrameWidgetSimTest,
-      public testing::WithParamInterface<bool> {
- public:
-  WebFrameWidgetInputEventsSimTest() {
-    if (GetParam()) {
-      feature_list_.InitAndEnableFeature(
-          features::kPausePagesPerBrowsingContextGroup);
-    } else {
-      feature_list_.InitAndDisableFeature(
-          features::kPausePagesPerBrowsingContextGroup);
-    }
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-INSTANTIATE_TEST_SUITE_P(All,
-                         WebFrameWidgetInputEventsSimTest,
-                         testing::Values(true, false));
-
 // Tests that dispatch buffered touch events does not process events during
 // drag and devtools handling.
-TEST_P(WebFrameWidgetInputEventsSimTest, DispatchBufferedTouchEvents) {
+TEST_F(WebFrameWidgetSimTest, DispatchBufferedTouchEvents) {
   auto* widget = WebView().MainFrameViewWidget();
 
   auto* listener = MakeGarbageCollected<TouchMoveEventListener>();
@@ -1449,31 +1438,25 @@ TEST_P(WebFrameWidgetInputEventsSimTest, DispatchBufferedTouchEvents) {
       base::DoNothing());
   EXPECT_TRUE(listener->GetInvokedStateAndReset());
 
-  const base::UnguessableToken browsing_context_group_token =
-      WebView().GetPage()->BrowsingContextGroupToken();
-
   // Expect listener does not get called, due to devtools flag.
   touch.MovePoint(0, 12, 12);
-  WebFrameWidgetImpl::SetIgnoreInputEvents(browsing_context_group_token, true);
+  WebFrameWidgetImpl::SetIgnoreInputEvents(true);
   widget->ProcessInputEventSynchronouslyForTesting(
       WebCoalescedInputEvent(touch.Clone(), {}, {}, ui::LatencyInfo()),
       base::DoNothing());
-  EXPECT_TRUE(
-      WebFrameWidgetImpl::IgnoreInputEvents(browsing_context_group_token));
+  EXPECT_TRUE(WebFrameWidgetImpl::IgnoreInputEvents());
   EXPECT_FALSE(listener->GetInvokedStateAndReset());
-  WebFrameWidgetImpl::SetIgnoreInputEvents(browsing_context_group_token, false);
+  WebFrameWidgetImpl::SetIgnoreInputEvents(false);
 
   // Expect listener does not get called, due to drag.
   touch.MovePoint(0, 14, 14);
-  widget->StartDragging(MainFrame().GetFrame(), WebDragData(),
-                        kDragOperationCopy, SkBitmap(), gfx::Vector2d(),
-                        gfx::Rect());
+  widget->StartDragging(WebDragData(), kDragOperationCopy, SkBitmap(),
+                        gfx::Point());
   widget->ProcessInputEventSynchronouslyForTesting(
       WebCoalescedInputEvent(touch.Clone(), {}, {}, ui::LatencyInfo()),
       base::DoNothing());
   EXPECT_TRUE(widget->DoingDragAndDrop());
-  EXPECT_FALSE(
-      WebFrameWidgetImpl::IgnoreInputEvents(browsing_context_group_token));
+  EXPECT_FALSE(WebFrameWidgetImpl::IgnoreInputEvents());
   EXPECT_FALSE(listener->GetInvokedStateAndReset());
 }
 
@@ -1495,8 +1478,7 @@ TEST_F(WebFrameWidgetSimTest, PropagateScaleToRemoteFrames) {
     WebFrame* grandchild = WebView().MainFrame()->FirstChild()->FirstChild();
     EXPECT_TRUE(grandchild);
     EXPECT_TRUE(grandchild->IsWebLocalFrame());
-    frame_test_helpers::SwapRemoteFrame(grandchild,
-                                        frame_test_helpers::CreateRemote());
+    grandchild->Swap(frame_test_helpers::CreateRemote());
   }
   auto* widget = WebView().MainFrameViewWidget();
   widget->SetPageScaleStateAndLimits(1.3f, true, 1.0f, 3.0f);
@@ -1509,6 +1491,7 @@ TEST_F(WebFrameWidgetSimTest, PropagateScaleToRemoteFrames) {
   WebView().MainFrame()->FirstChild()->FirstChild()->Detach();
 }
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_ANDROID)
 TEST_F(WebFrameWidgetSimTest, TestLineBoundsAreEmptyBeforeFocus) {
   WebView().ResizeVisualViewport(gfx::Size(1000, 1000));
@@ -2531,4 +2514,6 @@ TEST_F(EventHandlingWebFrameWidgetSimTest, RafAlignedEventWithUpdate) {
   EXPECT_EQ(TestSwapPromise::State::kResolved, swap_promise_state);
 }
 
+=======
+>>>>>>> chromium
 }  // namespace blink

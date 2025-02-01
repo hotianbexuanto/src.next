@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,11 +9,28 @@
 #include "base/metrics/histogram_macros_local.h"
 #include "base/notreached.h"
 #include "base/strings/stringprintf.h"
+<<<<<<< HEAD
 #include "net/base/port_util.h"
 #include "net/third_party/quiche/src/quiche/quic/core/http/spdy_utils.h"
 #include "net/third_party/quiche/src/quiche/quic/core/quic_versions.h"
+=======
+>>>>>>> chromium
 
 namespace net {
+
+namespace {
+
+quic::ParsedQuicVersion ParsedQuicVersionFromAlpn(
+    base::StringPiece str,
+    quic::ParsedQuicVersionVector supported_versions) {
+  for (const quic::ParsedQuicVersion& version : supported_versions) {
+    if (AlpnForVersion(version) == str)
+      return version;
+  }
+  return quic::ParsedQuicVersion::Unsupported();
+}
+
+}  // anonymous namespace
 
 void HistogramAlternateProtocolUsage(AlternateProtocolUsage usage,
                                      bool is_google_host) {
@@ -43,6 +60,7 @@ bool IsAlternateProtocolValid(NextProto protocol) {
       return true;
   }
   NOTREACHED();
+  return false;
 }
 
 bool IsProtocolEnabled(NextProto protocol,
@@ -51,7 +69,12 @@ bool IsProtocolEnabled(NextProto protocol,
   switch (protocol) {
     case NextProto::kProtoUnknown:
       NOTREACHED();
+<<<<<<< HEAD
     case NextProto::kProtoHTTP11:
+=======
+      return false;
+    case kProtoHTTP11:
+>>>>>>> chromium
       return true;
     case NextProto::kProtoHTTP2:
       return is_http2_enabled;
@@ -59,6 +82,7 @@ bool IsProtocolEnabled(NextProto protocol,
       return is_quic_enabled;
   }
   NOTREACHED();
+  return false;
 }
 
 AlternativeService::AlternativeService(NextProto protocol,
@@ -137,8 +161,6 @@ bool AlternativeServiceInfo::operator==(
     const AlternativeServiceInfo& other) const = default;
 
 std::string AlternativeServiceInfo::ToString() const {
-  // NOTE: Cannot use `base::UnlocalizedTimeFormatWithPattern()` since
-  // `net/DEPS` disallows `base/i18n`.
   base::Time::Exploded exploded;
   expiration_.LocalExplode(&exploded);
   return base::StringPrintf(
@@ -165,7 +187,7 @@ AlternativeServiceInfoVector ProcessAlternativeServices(
     bool is_quic_enabled,
     const quic::ParsedQuicVersionVector& supported_quic_versions) {
   // Convert spdy::SpdyAltSvcWireFormat::AlternativeService entries
-  // to AlternativeServiceInfo.
+  // to net::AlternativeServiceInfo.
   AlternativeServiceInfoVector alternative_service_info_vector;
   for (const spdy::SpdyAltSvcWireFormat::AlternativeService&
            alternative_service_entry : alternative_service_vector) {
@@ -175,13 +197,25 @@ AlternativeServiceInfoVector ProcessAlternativeServices(
 
     NextProto protocol =
         NextProtoFromString(alternative_service_entry.protocol_id);
+    // Check if QUIC version is supported. Filter supported QUIC versions.
     quic::ParsedQuicVersionVector advertised_versions;
+<<<<<<< HEAD
     if (protocol == NextProto::kProtoQUIC) {
       continue;  // Ignore legacy QUIC alt-svc advertisements.
+=======
+    if (protocol == kProtoQUIC) {
+      if (!IsProtocolEnabled(protocol, is_http2_enabled, is_quic_enabled))
+        continue;
+      if (!alternative_service_entry.version.empty()) {
+        advertised_versions = FilterSupportedAltSvcVersions(
+            alternative_service_entry, supported_quic_versions);
+        if (advertised_versions.empty())
+          continue;
+      }
+>>>>>>> chromium
     } else if (!IsAlternateProtocolValid(protocol)) {
-      quic::ParsedQuicVersion version =
-          quic::SpdyUtils::ExtractQuicVersionFromAltSvcEntry(
-              alternative_service_entry, supported_quic_versions);
+      quic::ParsedQuicVersion version = ParsedQuicVersionFromAlpn(
+          alternative_service_entry.protocol_id, supported_quic_versions);
       if (version == quic::ParsedQuicVersion::Unsupported()) {
         continue;
       }
@@ -198,7 +232,7 @@ AlternativeServiceInfoVector ProcessAlternativeServices(
                                            alternative_service_entry.port);
     base::Time expiration =
         base::Time::Now() +
-        base::Seconds(alternative_service_entry.max_age_seconds);
+        base::TimeDelta::FromSeconds(alternative_service_entry.max_age);
     AlternativeServiceInfo alternative_service_info;
     if (protocol == NextProto::kProtoQUIC) {
       alternative_service_info =

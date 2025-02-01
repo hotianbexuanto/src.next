@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,30 +21,26 @@ import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.view.MarginLayoutParamsCompat;
-import androidx.core.widget.ImageViewCompat;
 
-import org.chromium.base.MathUtils;
-import org.chromium.chrome.browser.lens.LensEntryPoint;
+import org.chromium.base.ApiCompatibilityUtils;
+import org.chromium.chrome.browser.lens.LensFeature;
 import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
 import org.chromium.chrome.browser.omnibox.status.StatusView;
-import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
-import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionHandler;
 import org.chromium.components.browser_ui.widget.CompositeTouchDelegate;
-import org.chromium.components.embedder_support.util.UrlUtilities;
-import org.chromium.ui.base.DeviceFormFactor;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** This class represents the location bar where the user types in URLs and search terms. */
+/**
+ * This class represents the location bar where the user types in URLs and
+ * search terms.
+ */
 public class LocationBarLayout extends FrameLayout {
     protected ImageButton mDeleteButton;
     protected ImageButton mMicButton;
     protected ImageButton mLensButton;
     protected UrlBar mUrlBar;
-    protected View mStatusViewLeftSpace;
-    protected View mStatusViewRightSpace;
 
     protected UrlBarCoordinator mUrlCoordinator;
     protected AutocompleteCoordinator mAutocompleteCoordinator;
@@ -54,18 +50,11 @@ public class LocationBarLayout extends FrameLayout {
     protected StatusCoordinator mStatusCoordinator;
 
     protected boolean mNativeInitialized;
-    protected boolean mHidingActionContainerForNarrowWindow;
-    protected int mMinimumUrlBarWidthPx;
 
     protected LinearLayout mUrlActionContainer;
 
     protected CompositeTouchDelegate mCompositeTouchDelegate;
-    protected SearchEngineUtils mSearchEngineUtils;
-    private float mUrlFocusPercentage;
-    private boolean mUrlBarLaidOutAtFocusedWidth;
-    private int mStatusIconAndUrlBarOffset;
-    private int mUrlActionContainerEndMargin;
-    private boolean mIsUrlFocusChangeInProgress;
+    protected SearchEngineLogoUtils mSearchEngineLogoUtils;
 
     public LocationBarLayout(Context context, AttributeSet attrs) {
         this(context, attrs, R.layout.location_bar);
@@ -82,20 +71,15 @@ public class LocationBarLayout extends FrameLayout {
         mDeleteButton = findViewById(R.id.delete_button);
         mUrlBar = findViewById(R.id.url_bar);
         mMicButton = findViewById(R.id.mic_button);
-        mLensButton = findViewById(R.id.lens_camera_button);
+        mLensButton = LensFeature.SEARCH_BOX_START_VARIANT_LENS_CAMERA_ASSISTED_SEARCH.getValue()
+                ? findViewById(R.id.lens_camera_button_start)
+                : findViewById(R.id.lens_camera_button_end);
         mUrlActionContainer = (LinearLayout) findViewById(R.id.url_action_container);
-        mStatusViewLeftSpace = findViewById(R.id.location_bar_status_view_left_space);
-        mStatusViewRightSpace = findViewById(R.id.location_bar_status_view_right_space);
-        mMinimumUrlBarWidthPx =
-                context.getResources().getDimensionPixelSize(R.dimen.location_bar_min_url_width);
-        mStatusIconAndUrlBarOffset =
-                OmniboxResourceProvider.getToolbarSidePaddingForNtp(context)
-                        - OmniboxResourceProvider.getToolbarSidePadding(context);
-        mUrlActionContainerEndMargin =
-                getResources().getDimensionPixelOffset(R.dimen.location_bar_url_action_offset);
     }
 
-    /** Called when activity is being destroyed. */
+    /**
+     * Called when activity is being destroyed.
+     */
     void destroy() {
         if (mAutocompleteCoordinator != null) {
             // Don't call destroy() on mAutocompleteCoordinator since we don't own it.
@@ -117,7 +101,7 @@ public class LocationBarLayout extends FrameLayout {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        updateLayoutParams(widthMeasureSpec);
+        updateLayoutParams();
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 
@@ -126,21 +110,22 @@ public class LocationBarLayout extends FrameLayout {
      * construction time.
      *
      * @param autocompleteCoordinator The coordinator for interacting with the autocomplete
-     *     subsystem.
+     *         subsystem.
      * @param urlCoordinator The coordinator for interacting with the url bar.
      * @param statusCoordinator The coordinator for interacting with the status icon.
      * @param locationBarDataProvider Provider of LocationBar data, e.g. url and title.
+     * @param searchEngineLogoUtils Allows querying the state of the search engine logo feature.
      */
     @CallSuper
-    public void initialize(
-            @NonNull AutocompleteCoordinator autocompleteCoordinator,
-            @NonNull UrlBarCoordinator urlCoordinator,
-            @NonNull StatusCoordinator statusCoordinator,
-            @NonNull LocationBarDataProvider locationBarDataProvider) {
+    public void initialize(@NonNull AutocompleteCoordinator autocompleteCoordinator,
+            @NonNull UrlBarCoordinator urlCoordinator, @NonNull StatusCoordinator statusCoordinator,
+            @NonNull LocationBarDataProvider locationBarDataProvider,
+            @NonNull SearchEngineLogoUtils searchEngineLogoUtils) {
         mAutocompleteCoordinator = autocompleteCoordinator;
         mUrlCoordinator = urlCoordinator;
         mStatusCoordinator = statusCoordinator;
         mLocationBarDataProvider = locationBarDataProvider;
+        mSearchEngineLogoUtils = searchEngineLogoUtils;
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PROTECTED)
@@ -149,7 +134,7 @@ public class LocationBarLayout extends FrameLayout {
     }
 
     /**
-     * Signals to LocationBarLayout that's it safe to call code that requires native to be loaded.
+     *  Signals to LocationBarLayout that's it safe to call code that requires native to be loaded.
      */
     public void onFinishNativeInitialization() {
         mNativeInitialized = true;
@@ -160,15 +145,15 @@ public class LocationBarLayout extends FrameLayout {
     }
 
     /* package */ void setMicButtonTint(ColorStateList colorStateList) {
-        ImageViewCompat.setImageTintList(mMicButton, colorStateList);
+        ApiCompatibilityUtils.setImageTintList(mMicButton, colorStateList);
     }
 
     /* package */ void setDeleteButtonTint(ColorStateList colorStateList) {
-        ImageViewCompat.setImageTintList(mDeleteButton, colorStateList);
+        ApiCompatibilityUtils.setImageTintList(mDeleteButton, colorStateList);
     }
 
     /* package */ void setLensButtonTint(ColorStateList colorStateList) {
-        ImageViewCompat.setImageTintList(mLensButton, colorStateList);
+        ApiCompatibilityUtils.setImageTintList(mLensButton, colorStateList);
     }
 
     @Override
@@ -185,86 +170,50 @@ public class LocationBarLayout extends FrameLayout {
     }
 
     /**
-     * Returns the width of the url actions container, including its internal and external margins.
+     * Specify whether location bar should present icons when focused.
+     * @param showIcon True if we should show the icons when the url is focused.
      */
-    private int getUrlActionContainerWidth() {
+    protected void setShowIconsWhenUrlFocused(boolean showIcon) {}
+
+    /**
+     * @return The margin to be applied to the URL bar based on the buttons currently visible next
+     *         to it, used to avoid text overlapping the buttons and vice versa.
+     */
+    private int getUrlContainerMarginEnd() {
         int urlContainerMarginEnd = 0;
-        // INVISIBLE views still take up space for the purpose of layout, so we consider the url
-        // action container's width unless it's GONE.
-        if (mUrlActionContainer != null && mUrlActionContainer.getVisibility() != View.GONE) {
-            for (View childView : getUrlContainerViewsForMargin()) {
-                ViewGroup.MarginLayoutParams childLayoutParams =
-                        (ViewGroup.MarginLayoutParams) childView.getLayoutParams();
-                urlContainerMarginEnd +=
-                        childLayoutParams.width
-                                + MarginLayoutParamsCompat.getMarginStart(childLayoutParams)
-                                + MarginLayoutParamsCompat.getMarginEnd(childLayoutParams);
-            }
+        for (View childView : getUrlContainerViewsForMargin()) {
+            ViewGroup.MarginLayoutParams childLayoutParams =
+                    (ViewGroup.MarginLayoutParams) childView.getLayoutParams();
+            urlContainerMarginEnd += childLayoutParams.width
+                    + MarginLayoutParamsCompat.getMarginStart(childLayoutParams)
+                    + MarginLayoutParamsCompat.getMarginEnd(childLayoutParams);
+        }
+        if (mUrlActionContainer != null && mUrlActionContainer.getVisibility() == View.VISIBLE) {
             ViewGroup.MarginLayoutParams urlActionContainerLayoutParams =
                     (ViewGroup.MarginLayoutParams) mUrlActionContainer.getLayoutParams();
             urlContainerMarginEnd +=
                     MarginLayoutParamsCompat.getMarginStart(urlActionContainerLayoutParams)
-                            + MarginLayoutParamsCompat.getMarginEnd(urlActionContainerLayoutParams);
+                    + MarginLayoutParamsCompat.getMarginEnd(urlActionContainerLayoutParams);
         }
-        urlContainerMarginEnd +=
-                mStatusCoordinator.isSearchEngineStatusIconVisible()
-                                && mStatusCoordinator.shouldDisplaySearchEngineIcon()
-                        ? getEndPaddingPixelSizeOnFocusDelta()
-                        : 0;
-        // Account for the URL action container end padding on tablets.
-        if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(getContext())) {
-            urlContainerMarginEnd +=
-                    getResources().getDimensionPixelSize(R.dimen.location_bar_url_action_padding);
-        }
+        urlContainerMarginEnd += mStatusCoordinator.getAdditionalUrlContainerMarginEnd();
         return urlContainerMarginEnd;
     }
 
     /**
-     * Updates the layout params for the location bar start aligned views and the url action
-     * container.
+     * Updates the layout params for the location bar start aligned views.
      */
-    void updateLayoutParams(int parentWidthMeasureSpec) {
+    @VisibleForTesting
+    void updateLayoutParams() {
         int startMargin = 0;
         for (int i = 0; i < getChildCount(); i++) {
             View childView = getChildAt(i);
             if (childView.getVisibility() != GONE) {
                 LayoutParams childLayoutParams = (LayoutParams) childView.getLayoutParams();
-                if (childView == mUrlBar) {
-                    boolean urlBarLaidOutAtFocusedWidth;
-                    if (mUrlFocusPercentage > 0.0f || mUrlBar.hasFocus()) {
-                        // Set a margin that places the url bar in its final, focused position.
-                        // During animation this will be compensated against using translation of
-                        // decreasing magnitude to avoid a jump.
-                        startMargin += getFocusedStatusViewSpacingDelta();
-                        urlBarLaidOutAtFocusedWidth = true;
-                    } else {
-                        urlBarLaidOutAtFocusedWidth = false;
-                    }
-
-                    // The behavior of setUrlFocusChangePercent() depends on the value of
-                    // mUrlBarLaidOutAtFocusedWidth. We don't control the timing of external calls
-                    // to setUrlFocusChangePercent() since it's driven by an animation. To avoid
-                    // getting into a stale state, we call setUrlFocusChangePercent() again whenever
-                    // the value of mUrlBarLaidOutAtFocusedWidth changes.
-                    if (mNativeInitialized
-                            && urlBarLaidOutAtFocusedWidth != mUrlBarLaidOutAtFocusedWidth) {
-                        mUrlBarLaidOutAtFocusedWidth = urlBarLaidOutAtFocusedWidth;
-                        setUrlFocusChangePercent(
-                                mUrlFocusPercentage,
-                                mUrlFocusPercentage,
-                                mIsUrlFocusChangeInProgress);
-                    }
-
-                    if (MarginLayoutParamsCompat.getMarginStart(childLayoutParams) != startMargin) {
-                        MarginLayoutParamsCompat.setMarginStart(childLayoutParams, startMargin);
-                        childView.setLayoutParams(childLayoutParams);
-                    }
-                    break;
-                }
                 if (MarginLayoutParamsCompat.getMarginStart(childLayoutParams) != startMargin) {
                     MarginLayoutParamsCompat.setMarginStart(childLayoutParams, startMargin);
                     childView.setLayoutParams(childLayoutParams);
                 }
+                if (childView == mUrlBar) break;
 
                 int widthMeasureSpec;
                 int heightMeasureSpec;
@@ -275,9 +224,8 @@ public class LocationBarLayout extends FrameLayout {
                     widthMeasureSpec =
                             MeasureSpec.makeMeasureSpec(getMeasuredWidth(), MeasureSpec.EXACTLY);
                 } else {
-                    widthMeasureSpec =
-                            MeasureSpec.makeMeasureSpec(
-                                    childLayoutParams.width, MeasureSpec.EXACTLY);
+                    widthMeasureSpec = MeasureSpec.makeMeasureSpec(
+                            childLayoutParams.width, MeasureSpec.EXACTLY);
                 }
                 if (childLayoutParams.height == LayoutParams.WRAP_CONTENT) {
                     heightMeasureSpec =
@@ -286,39 +234,18 @@ public class LocationBarLayout extends FrameLayout {
                     heightMeasureSpec =
                             MeasureSpec.makeMeasureSpec(getMeasuredHeight(), MeasureSpec.EXACTLY);
                 } else {
-                    heightMeasureSpec =
-                            MeasureSpec.makeMeasureSpec(
-                                    childLayoutParams.height, MeasureSpec.EXACTLY);
+                    heightMeasureSpec = MeasureSpec.makeMeasureSpec(
+                            childLayoutParams.height, MeasureSpec.EXACTLY);
                 }
                 childView.measure(widthMeasureSpec, heightMeasureSpec);
                 startMargin += childView.getMeasuredWidth();
             }
         }
 
-        ViewGroup.MarginLayoutParams urlActionContainerParams =
-                (ViewGroup.MarginLayoutParams) mUrlActionContainer.getLayoutParams();
-        if (urlActionContainerParams.getMarginEnd() != mUrlActionContainerEndMargin) {
-            urlActionContainerParams.setMarginEnd(mUrlActionContainerEndMargin);
-        }
-
-        int urlActionContainerWidth = getUrlActionContainerWidth();
-        int allocatedWidth = MeasureSpec.getSize(parentWidthMeasureSpec);
-        int availableWidth = allocatedWidth - startMargin - urlActionContainerWidth;
-        if (!mHidingActionContainerForNarrowWindow && availableWidth < mMinimumUrlBarWidthPx) {
-            mHidingActionContainerForNarrowWindow = true;
-            mUrlActionContainer.setVisibility(INVISIBLE);
-        } else if (mHidingActionContainerForNarrowWindow
-                && mUrlActionContainer.getVisibility() != VISIBLE
-                && availableWidth >= mMinimumUrlBarWidthPx) {
-            mHidingActionContainerForNarrowWindow = false;
-            mUrlActionContainer.setVisibility(VISIBLE);
-        }
-
-        int urlBarMarginEnd = mHidingActionContainerForNarrowWindow ? 0 : urlActionContainerWidth;
-
+        int urlContainerMarginEnd = getUrlContainerMarginEnd();
         LayoutParams urlLayoutParams = (LayoutParams) mUrlBar.getLayoutParams();
-        if (MarginLayoutParamsCompat.getMarginEnd(urlLayoutParams) != urlBarMarginEnd) {
-            MarginLayoutParamsCompat.setMarginEnd(urlLayoutParams, urlBarMarginEnd);
+        if (MarginLayoutParamsCompat.getMarginEnd(urlLayoutParams) != urlContainerMarginEnd) {
+            MarginLayoutParamsCompat.setMarginEnd(urlLayoutParams, urlContainerMarginEnd);
             mUrlBar.setLayoutParams(urlLayoutParams);
         }
     }
@@ -328,7 +255,7 @@ public class LocationBarLayout extends FrameLayout {
      * URL bar.
      *
      * @return A {@link List} of the views to be taken into account for URL bar margin to avoid
-     *     overlapping text and buttons.
+     *         overlapping text and buttons.
      */
     protected List<View> getUrlContainerViewsForMargin() {
         List<View> outList = new ArrayList<View>();
@@ -351,7 +278,7 @@ public class LocationBarLayout extends FrameLayout {
         mMicButton.setVisibility(shouldShow ? VISIBLE : GONE);
     }
 
-    /** Sets the visibility of the lens button. */
+    /** Sets the visibility of the mic button. */
     /* package */ void setLensButtonVisibility(boolean shouldShow) {
         mLensButton.setVisibility(shouldShow ? VISIBLE : GONE);
     }
@@ -360,18 +287,15 @@ public class LocationBarLayout extends FrameLayout {
         mStatusCoordinator.setUnfocusedLocationBarWidth(unfocusedWidth);
     }
 
+    @VisibleForTesting
     public StatusCoordinator getStatusCoordinatorForTesting() {
         return mStatusCoordinator;
     }
 
-    public void setStatusCoordinatorForTesting(StatusCoordinator statusCoordinator) {
-        mStatusCoordinator = statusCoordinator;
-    }
-
     /* package */ void setUrlActionContainerVisibility(int visibility) {
-        if (mHidingActionContainerForNarrowWindow && visibility == VISIBLE) return;
         mUrlActionContainer.setVisibility(visibility);
     }
+<<<<<<< HEAD
 
     /** Returns the increase in StatusView end padding, when the Url bar is focused. */
     public int getEndPaddingPixelSizeOnFocusDelta() {
@@ -578,4 +502,6 @@ public class LocationBarLayout extends FrameLayout {
     int getUrlActionContainerEndMarginForTesting() {
         return mUrlActionContainerEndMargin;
     }
+=======
+>>>>>>> chromium
 }

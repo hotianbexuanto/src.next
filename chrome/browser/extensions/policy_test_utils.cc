@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -33,9 +33,8 @@ constexpr char kFileNameToIntercept[] = "update_manifest.xml";
 std::unique_ptr<net::test_server::HttpResponse> InterceptMockHttp(
     net::EmbeddedTestServer* embedded_test_server,
     const net::test_server::HttpRequest& request) {
-  if (request.GetURL().ExtractFileName() != kFileNameToIntercept) {
+  if (request.GetURL().ExtractFileName() != kFileNameToIntercept)
     return nullptr;
-  }
 
   base::FilePath test_data_dir;
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir);
@@ -70,15 +69,14 @@ void SetExtensionInstallForcelistPolicy(
   // Extensions that are force-installed come from an update URL, which defaults
   // to the webstore. Use a mock URL for test with an update manifest that
   // includes the crx file of the test extension.
-  base::Value::List forcelist;
+  base::Value forcelist(base::Value::Type::LIST);
   forcelist.Append(base::StringPrintf("%s;%s", extension_id.c_str(),
                                       update_manifest_url.spec().c_str()));
 
   policy::PolicyMap policy;
   policy.Set(policy::key::kExtensionInstallForcelist,
              policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_MACHINE,
-             policy::POLICY_SOURCE_CLOUD, base::Value(std::move(forcelist)),
-             nullptr);
+             policy::POLICY_SOURCE_CLOUD, std::move(forcelist), nullptr);
 
   // Set the policy and wait until the extension is installed.
   extensions::TestExtensionRegistryObserver observer(

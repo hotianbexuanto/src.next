@@ -1,17 +1,14 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.m.js';
 
-import type {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
-import {assert} from 'chrome://resources/js/assert.js';
-import {EventTracker} from 'chrome://resources/js/event_tracker.js';
-import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.m.js';
+import {EventTracker} from 'chrome://resources/js/event_tracker.m.js';
+import {Debouncer, html, PolymerElement, timeOut} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {navigation, Page} from './navigation_helper.js';
-import {getCss} from './options_dialog.css.js';
-import {getHtml} from './options_dialog.html.js';
 
 /**
  * @return A signal that the document is ready. Need to wait for this, otherwise
@@ -38,44 +35,34 @@ export const OptionsDialogMinWidth = 400;
 // The maximum height in pixels for the options dialog.
 export const OptionsDialogMaxHeight = 640;
 
-interface ExtensionOptionsElement extends HTMLElement {
-  extension: string;
-  onclose: () => void;
-  onpreferredsizechanged: ((e: {height: number, width: number}) => void)|null;
-}
-
-export interface ExtensionsOptionsDialogElement {
+interface ExtensionsOptionsDialogElement {
   $: {
     body: HTMLElement,
     dialog: CrDialogElement,
   };
 }
 
-export class ExtensionsOptionsDialogElement extends CrLitElement {
+class ExtensionsOptionsDialogElement extends PolymerElement {
   static get is() {
     return 'extensions-options-dialog';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return html`{__html_template__}`;
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      extensionOptions_: {type: Object},
-      data_: {type: Object},
+      extensionOptions_: Object,
+      data_: Object,
     };
   }
 
-  private extensionOptions_?: ExtensionOptionsElement;
-  protected data_?: chrome.developerPrivate.ExtensionInfo;
+  private extensionOptions_: any;
+  private data_: chrome.developerPrivate.ExtensionInfo;
   private preferredSize_: {height: number, width: number}|null = null;
+  private debouncer_: Debouncer|null = null;
   private eventTracker_: EventTracker = new EventTracker();
-  private updateDialogSizeTimeout_: number|null = null;
 
   get open() {
     return this.$.dialog.open;
@@ -86,10 +73,7 @@ export class ExtensionsOptionsDialogElement extends CrLitElement {
    * into account the window width/height.
    */
   private updateDialogSize_() {
-    let headerHeight = this.$.body.offsetTop;
-    if (this.$.body.assignedSlot && this.$.body.assignedSlot.parentElement) {
-      headerHeight = this.$.body.assignedSlot.parentElement.offsetTop;
-    }
+    const headerHeight = this.$.body.offsetTop;
     const maxHeight =
         Math.min(0.9 * window.innerHeight, OptionsDialogMaxHeight);
     const effectiveHeight =
@@ -106,37 +90,30 @@ export class ExtensionsOptionsDialogElement extends CrLitElement {
     this.data_ = data;
     whenDocumentReady().then(() => {
       if (!this.extensionOptions_) {
-        this.extensionOptions_ = document.createElement('ExtensionOptions') as
-            ExtensionOptionsElement;
+        this.extensionOptions_ = document.createElement('ExtensionOptions');
       }
-      this.extensionOptions_.extension = this.data_!.id;
+      this.extensionOptions_.extension = this.data_.id;
       this.extensionOptions_.onclose = () => this.$.dialog.close();
 
+      const boundUpdateDialogSize = this.updateDialogSize_.bind(this);
       this.extensionOptions_.onpreferredsizechanged =
           (e: {height: number, width: number}) => {
             if (!this.$.dialog.open) {
               this.$.dialog.showModal();
             }
             this.preferredSize_ = e;
-            if (this.updateDialogSizeTimeout_) {
-              clearTimeout(this.updateDialogSizeTimeout_);
-            }
-            this.updateDialogSizeTimeout_ = setTimeout(() => {
-              this.updateDialogSizeTimeout_ = null;
-              this.updateDialogSize_();
-            }, 50);
+            this.debouncer_ = Debouncer.debounce(
+                this.debouncer_, timeOut.after(50), boundUpdateDialogSize);
           };
 
       // Add a 'resize' such that the dialog is resized when window size
       // changes.
-      const boundUpdateDialogSize = this.updateDialogSize_.bind(this);
       this.eventTracker_.add(window, 'resize', boundUpdateDialogSize);
       this.$.body.appendChild(this.extensionOptions_);
     });
   }
 
-  protected onClose_() {
-    assert(this.extensionOptions_);
+  private onClose_() {
     this.extensionOptions_.onpreferredsizechanged = null;
     this.eventTracker_.removeAll();
 

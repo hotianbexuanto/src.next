@@ -1,16 +1,18 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/process_manager.h"
 
-#include "build/android_buildflags.h"
+#include "base/macros.h"
 #include "content/public/browser/content_browser_client.h"
+#include "content/public/browser/notification_service.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/common/content_client.h"
 #include "content/public/test/test_browser_context.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extensions_test.h"
+#include "extensions/browser/notification_types.h"
 #include "extensions/browser/process_manager_delegate.h"
 #include "extensions/browser/test_extensions_browser_client.h"
 
@@ -55,9 +57,6 @@ class ProcessManagerTest : public ExtensionsTest {
  public:
   ProcessManagerTest() {}
 
-  ProcessManagerTest(const ProcessManagerTest&) = delete;
-  ProcessManagerTest& operator=(const ProcessManagerTest&) = delete;
-
   ~ProcessManagerTest() override {}
 
   void SetUp() override {
@@ -66,12 +65,6 @@ class ProcessManagerTest : public ExtensionsTest {
         std::make_unique<ExtensionRegistry>(browser_context());
     extensions_browser_client()->set_process_manager_delegate(
         &process_manager_delegate_);
-  }
-
-  void TearDown() override {
-    extensions_browser_client()->set_process_manager_delegate(nullptr);
-    extension_registry_.reset();
-    ExtensionsTest::TearDown();
   }
 
   // Use original_context() to make it clear it is a non-incognito context.
@@ -85,6 +78,8 @@ class ProcessManagerTest : public ExtensionsTest {
   std::unique_ptr<ExtensionRegistry>
       extension_registry_;  // Shared between BrowserContexts.
   TestProcessManagerDelegate process_manager_delegate_;
+
+  DISALLOW_COPY_AND_ASSIGN(ProcessManagerTest);
 };
 
 // Test that startup background hosts are created when the extension system
@@ -139,7 +134,49 @@ TEST_F(ProcessManagerTest, IsBackgroundHostAllowed) {
   // The extension system becoming ready still doesn't create the hosts.
   extension_system()->SetReady();
   base::RunLoop().RunUntilIdle();
+<<<<<<< HEAD
   EXPECT_FALSE(manager.startup_background_hosts_created_for_test());
+=======
+  EXPECT_FALSE(manager->startup_background_hosts_created_for_test());
+}
+
+// Test that extensions get grouped in the right SiteInstance (and therefore
+// process) based on their URLs.
+TEST_F(ProcessManagerTest, ProcessGrouping) {
+  // Extensions in different browser contexts should always be different
+  // SiteInstances.
+  std::unique_ptr<ProcessManager> manager1(ProcessManager::CreateForTesting(
+      original_context(), extension_registry()));
+  // NOTE: This context is not associated with the TestExtensionsBrowserClient.
+  // That's OK because we're not testing regular vs. incognito behavior.
+  TestBrowserContext another_context;
+  ExtensionRegistry another_registry(&another_context);
+  std::unique_ptr<ProcessManager> manager2(
+      ProcessManager::CreateForTesting(&another_context, &another_registry));
+
+  // Extensions with common origins ("scheme://id/") should be grouped in the
+  // same SiteInstance.
+  GURL ext1_url1("chrome-extension://ext1_id/index.html");
+  GURL ext1_url2("chrome-extension://ext1_id/monkey/monkey.html");
+  GURL ext2_url1("chrome-extension://ext2_id/index.html");
+
+  scoped_refptr<SiteInstance> site11 =
+      manager1->GetSiteInstanceForURL(ext1_url1);
+  scoped_refptr<SiteInstance> site12 =
+      manager1->GetSiteInstanceForURL(ext1_url2);
+  EXPECT_EQ(site11, site12);
+
+  scoped_refptr<SiteInstance> site21 =
+      manager1->GetSiteInstanceForURL(ext2_url1);
+  EXPECT_NE(site11, site21);
+
+  scoped_refptr<SiteInstance> other_profile_site =
+      manager2->GetSiteInstanceForURL(ext1_url1);
+  EXPECT_NE(site11, other_profile_site);
+
+  BrowserContextDependencyManager::GetInstance()->DestroyBrowserContextServices(
+      &another_context);
+>>>>>>> chromium
 }
 
 }  // namespace extensions

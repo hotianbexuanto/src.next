@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,8 +13,14 @@ import android.view.View;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.content_public.browser.MotionEventSynthesizer;
 
+<<<<<<< HEAD
 /** Injects synthetic touch events. All the coordinates are of physical unit. */
 @NullMarked
+=======
+/**
+ * Injects synthetic touch events. All the coordinates are of physical unit.
+ */
+>>>>>>> chromium
 public class MotionEventSynthesizerImpl implements MotionEventSynthesizer {
     private static final int MAX_NUM_POINTERS = 16;
 
@@ -90,154 +96,87 @@ public class MotionEventSynthesizerImpl implements MotionEventSynthesizer {
      *
      * @param action Type of the action to inject.
      * @param pointerCount The number of points associated with the event.
-     * @param pointerIndex The index of the event to send. In the case of
-     *        START and END, eg, we send a separate event as each pointer starts
-     *        or ends, respectively.
      * @param timeInMs Timestamp for the event.
      */
     @Override
-    public void inject(int action, int pointerCount, int pointerIndex, long timeInMs) {
+    public void inject(int action, int pointerCount, long timeInMs) {
         switch (action) {
-            case MotionEventAction.START:
-                {
-                    // We currently only handle two fingers.
-                    assert pointerIndex == 0 || pointerIndex == 1;
-                    assert pointerCount <= 2;
-                    int action_bitfield =
-                            pointerIndex == 0
-                                    ? MotionEvent.ACTION_DOWN
-                                    : MotionEvent.ACTION_POINTER_DOWN
-                                            | (1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
-                    mDownTimeInMs = timeInMs;
-                    MotionEvent event =
-                            MotionEvent.obtain(
-                                    mDownTimeInMs,
-                                    timeInMs,
-                                    action_bitfield,
-                                    pointerIndex + 1,
-                                    mPointerProperties,
-                                    mPointerCoords,
-                                    0,
-                                    0,
-                                    1,
-                                    1,
-                                    0,
-                                    0,
-                                    0,
-                                    0);
+            case MotionEventAction.START: {
+                mDownTimeInMs = timeInMs;
+                MotionEvent event =
+                        MotionEvent.obtain(mDownTimeInMs, timeInMs, MotionEvent.ACTION_DOWN, 1,
+                                mPointerProperties, mPointerCoords, 0, 0, 1, 1, 0, 0, 0, 0);
+                mTarget.dispatchTouchEvent(event);
+                event.recycle();
+
+                if (pointerCount > 1) {
+                    // This code currently only works for a max of 2 touch points.
+                    assert pointerCount == 2;
+
+                    int pointerIndex = 1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT;
+                    event = MotionEvent.obtain(mDownTimeInMs, timeInMs,
+                            MotionEvent.ACTION_POINTER_DOWN | pointerIndex, pointerCount,
+                            mPointerProperties, mPointerCoords, 0, 0, 1, 1, 0, 0, 0, 0);
                     mTarget.dispatchTouchEvent(event);
                     event.recycle();
-                    break;
                 }
-            case MotionEventAction.MOVE:
-                {
-                    MotionEvent event =
-                            MotionEvent.obtain(
-                                    mDownTimeInMs,
-                                    timeInMs,
-                                    MotionEvent.ACTION_MOVE,
-                                    pointerCount,
-                                    mPointerProperties,
-                                    mPointerCoords,
-                                    0,
-                                    0,
-                                    1,
-                                    1,
-                                    0,
-                                    0,
-                                    0,
-                                    0);
+                break;
+            }
+            case MotionEventAction.MOVE: {
+                MotionEvent event = MotionEvent.obtain(mDownTimeInMs, timeInMs,
+                        MotionEvent.ACTION_MOVE, pointerCount, mPointerProperties, mPointerCoords,
+                        0, 0, 1, 1, 0, 0, 0, 0);
+                mTarget.dispatchTouchEvent(event);
+                event.recycle();
+                break;
+            }
+            case MotionEventAction.CANCEL: {
+                MotionEvent event =
+                        MotionEvent.obtain(mDownTimeInMs, timeInMs, MotionEvent.ACTION_CANCEL, 1,
+                                mPointerProperties, mPointerCoords, 0, 0, 1, 1, 0, 0, 0, 0);
+                mTarget.dispatchTouchEvent(event);
+                event.recycle();
+                break;
+            }
+            case MotionEventAction.END: {
+                if (pointerCount > 1) {
+                    // This code currently only works for a max of 2 touch points.
+                    assert pointerCount == 2;
+
+                    int pointerIndex = 1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT;
+                    MotionEvent event = MotionEvent.obtain(mDownTimeInMs, timeInMs,
+                            MotionEvent.ACTION_POINTER_UP | pointerIndex, pointerCount,
+                            mPointerProperties, mPointerCoords, 0, 0, 1, 1, 0, 0, 0, 0);
                     mTarget.dispatchTouchEvent(event);
                     event.recycle();
-                    break;
                 }
-            case MotionEventAction.CANCEL:
-                {
-                    MotionEvent event =
-                            MotionEvent.obtain(
-                                    mDownTimeInMs,
-                                    timeInMs,
-                                    MotionEvent.ACTION_CANCEL,
-                                    1,
-                                    mPointerProperties,
-                                    mPointerCoords,
-                                    0,
-                                    0,
-                                    1,
-                                    1,
-                                    0,
-                                    0,
-                                    0,
-                                    0);
-                    mTarget.dispatchTouchEvent(event);
-                    event.recycle();
-                    break;
-                }
-            case MotionEventAction.END:
-                {
-                    // We currently only handle two fingers.
-                    assert pointerIndex == 0 || pointerIndex == 1;
-                    assert pointerCount <= 2;
-                    int action_bitfield =
-                            pointerIndex == 0
-                                    ? MotionEvent.ACTION_UP
-                                    : MotionEvent.ACTION_POINTER_UP
-                                            | (1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT);
-                    MotionEvent event =
-                            MotionEvent.obtain(
-                                    mDownTimeInMs,
-                                    timeInMs,
-                                    action_bitfield,
-                                    pointerIndex + 1,
-                                    mPointerProperties,
-                                    mPointerCoords,
-                                    0,
-                                    0,
-                                    1,
-                                    1,
-                                    0,
-                                    0,
-                                    0,
-                                    0);
-                    mTarget.dispatchTouchEvent(event);
-                    event.recycle();
-                    break;
-                }
-            case MotionEventAction.SCROLL:
-                {
-                    assert pointerCount == 1;
-                    MotionEvent event =
-                            MotionEvent.obtain(
-                                    mDownTimeInMs,
-                                    timeInMs,
-                                    MotionEvent.ACTION_SCROLL,
-                                    pointerCount,
-                                    mPointerProperties,
-                                    mPointerCoords,
-                                    0,
-                                    0,
-                                    1,
-                                    1,
-                                    0,
-                                    0,
-                                    InputDevice.SOURCE_CLASS_POINTER,
-                                    0);
-                    mTarget.dispatchGenericMotionEvent(event);
-                    event.recycle();
-                    break;
-                }
+
+                MotionEvent event =
+                        MotionEvent.obtain(mDownTimeInMs, timeInMs, MotionEvent.ACTION_UP, 1,
+                                mPointerProperties, mPointerCoords, 0, 0, 1, 1, 0, 0, 0, 0);
+                mTarget.dispatchTouchEvent(event);
+                event.recycle();
+                break;
+            }
+            case MotionEventAction.SCROLL: {
+                assert pointerCount == 1;
+                MotionEvent event = MotionEvent.obtain(mDownTimeInMs, timeInMs,
+                        MotionEvent.ACTION_SCROLL, pointerCount, mPointerProperties, mPointerCoords,
+                        0, 0, 1, 1, 0, 0, InputDevice.SOURCE_CLASS_POINTER, 0);
+                mTarget.dispatchGenericMotionEvent(event);
+                event.recycle();
+                break;
+            }
             case MotionEventAction.HOVER_ENTER:
             case MotionEventAction.HOVER_EXIT:
-            case MotionEventAction.HOVER_MOVE:
-                {
-                    injectHover(action, pointerCount, timeInMs);
-                    break;
-                }
-            default:
-                {
-                    assert false : "Unreached";
-                    break;
-                }
+            case MotionEventAction.HOVER_MOVE: {
+                injectHover(action, pointerCount, timeInMs);
+                break;
+            }
+            default: {
+                assert false : "Unreached";
+                break;
+            }
         }
     }
 
@@ -246,22 +185,9 @@ public class MotionEventSynthesizerImpl implements MotionEventSynthesizer {
         int androidAction = MotionEvent.ACTION_HOVER_ENTER;
         if (MotionEventAction.HOVER_EXIT == action) androidAction = MotionEvent.ACTION_HOVER_EXIT;
         if (MotionEventAction.HOVER_MOVE == action) androidAction = MotionEvent.ACTION_HOVER_MOVE;
-        MotionEvent event =
-                MotionEvent.obtain(
-                        mDownTimeInMs,
-                        timeInMs,
-                        androidAction,
-                        pointerCount,
-                        mPointerProperties,
-                        mPointerCoords,
-                        0,
-                        0,
-                        1,
-                        1,
-                        0,
-                        0,
-                        InputDevice.SOURCE_CLASS_POINTER,
-                        0);
+        MotionEvent event = MotionEvent.obtain(mDownTimeInMs, timeInMs, androidAction, pointerCount,
+                mPointerProperties, mPointerCoords, 0, 0, 1, 1, 0, 0,
+                InputDevice.SOURCE_CLASS_POINTER, 0);
         mTarget.dispatchGenericMotionEvent(event);
         event.recycle();
     }

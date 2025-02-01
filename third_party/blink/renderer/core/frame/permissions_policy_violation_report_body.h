@@ -1,15 +1,18 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_PERMISSIONS_POLICY_VIOLATION_REPORT_BODY_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_PERMISSIONS_POLICY_VIOLATION_REPORT_BODY_H_
 
+#include "third_party/blink/renderer/bindings/core/v8/source_location.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_object_builder.h"
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/frame/location_report_body.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+=======
+>>>>>>> chromium
 
 namespace blink {
 
@@ -24,10 +27,15 @@ class CORE_EXPORT PermissionsPolicyViolationReportBody
       const String& disposition,
       const String& allow_attribute = WTF::g_empty_string)
       : feature_id_(feature_id),
+<<<<<<< HEAD
         message_((allow_attribute.empty()
                       ? "Permissions policy violation: "
                       : "Potential permissions policy violation: ") +
                  (message.empty()
+=======
+        message_("Permissions policy violation: " +
+                 (message.IsEmpty()
+>>>>>>> chromium
                       ? feature_id + " is not allowed in this document."
                       : message)),
         disposition_(disposition),

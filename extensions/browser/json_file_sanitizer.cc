@@ -1,13 +1,13 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/json_file_sanitizer.h"
 
+#include "base/bind.h"
 #include "base/files/file_util.h"
-#include "base/functional/bind.h"
 #include "base/json/json_string_value_serializer.h"
-#include "base/task/sequenced_task_runner.h"
+#include "base/task_runner_util.h"
 #include "extensions/browser/extension_file_task_runner.h"
 #include "services/data_decoder/public/cpp/data_decoder.h"
 
@@ -26,9 +26,10 @@ std::tuple<std::string, bool, bool> ReadAndDeleteTextFile(
   return std::make_tuple(contents, read_success, delete_success);
 }
 
-bool WriteStringToFile(const std::string& contents,
-                       const base::FilePath& file_path) {
-  return base::WriteFile(file_path, contents);
+int WriteStringToFile(const std::string& contents,
+                      const base::FilePath& file_path) {
+  int size = static_cast<int>(contents.length());
+  return base::WriteFile(file_path, contents.data(), size);
 }
 
 }  // namespace
@@ -59,7 +60,7 @@ JsonFileSanitizer::~JsonFileSanitizer() = default;
 
 void JsonFileSanitizer::Start(data_decoder::DataDecoder* decoder) {
   if (file_paths_.empty()) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+    base::SequencedTaskRunnerHandle::Get()->PostTask(
         FROM_HERE, base::BindOnce(&JsonFileSanitizer::ReportSuccess,
                                   weak_factory_.GetWeakPtr()));
     return;
@@ -69,8 +70,9 @@ void JsonFileSanitizer::Start(data_decoder::DataDecoder* decoder) {
       json_parser_.BindNewPipeAndPassReceiver());
 
   for (const base::FilePath& path : file_paths_) {
-    io_task_runner_->PostTaskAndReplyWithResult(
-        FROM_HERE, base::BindOnce(&ReadAndDeleteTextFile, path),
+    base::PostTaskAndReplyWithResult(
+        io_task_runner_.get(), FROM_HERE,
+        base::BindOnce(&ReadAndDeleteTextFile, path),
         base::BindOnce(&JsonFileSanitizer::JsonFileRead,
                        weak_factory_.GetWeakPtr(), path));
   }
@@ -88,15 +90,14 @@ void JsonFileSanitizer::JsonFileRead(
     return;
   }
   json_parser_->Parse(std::get<0>(read_and_delete_result),
-                      base::JSON_PARSE_CHROMIUM_EXTENSIONS,
                       base::BindOnce(&JsonFileSanitizer::JsonParsingDone,
                                      weak_factory_.GetWeakPtr(), file_path));
 }
 
 void JsonFileSanitizer::JsonParsingDone(
     const base::FilePath& file_path,
-    std::optional<base::Value> json_value,
-    const std::optional<std::string>& error) {
+    absl::optional<base::Value> json_value,
+    const absl::optional<std::string>& error) {
   if (!json_value || !json_value->is_dict()) {
     ReportError(Status::kDecodingError, error ? *error : std::string());
     return;
@@ -111,16 +112,18 @@ void JsonFileSanitizer::JsonParsingDone(
     return;
   }
 
-  io_task_runner_->PostTaskAndReplyWithResult(
-      FROM_HERE,
+  int size = static_cast<int>(json_string.length());
+  base::PostTaskAndReplyWithResult(
+      io_task_runner_.get(), FROM_HERE,
       base::BindOnce(&WriteStringToFile, std::move(json_string), file_path),
       base::BindOnce(&JsonFileSanitizer::JsonFileWritten,
-                     weak_factory_.GetWeakPtr(), file_path));
+                     weak_factory_.GetWeakPtr(), file_path, size));
 }
 
 void JsonFileSanitizer::JsonFileWritten(const base::FilePath& file_path,
-                                        bool success) {
-  if (!success) {
+                                        int expected_size,
+                                        int actual_size) {
+  if (expected_size != actual_size) {
     ReportError(Status::kFileWriteError, std::string());
     return;
   }

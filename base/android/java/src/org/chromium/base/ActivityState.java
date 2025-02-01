@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,35 +11,45 @@ import org.chromium.build.annotations.NullMarked;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+<<<<<<< HEAD
 /** A set of states that represent the last state change of an Activity. */
 @NullMarked
+=======
+/**
+ * A set of states that represent the last state change of an Activity.
+ */
+>>>>>>> chromium
 @Retention(RetentionPolicy.SOURCE)
-@IntDef({
-    ActivityState.CREATED,
-    ActivityState.STARTED,
-    ActivityState.RESUMED,
-    ActivityState.PAUSED,
-    ActivityState.STOPPED,
-    ActivityState.DESTROYED
-})
+@IntDef({ActivityState.CREATED, ActivityState.STARTED, ActivityState.RESUMED, ActivityState.PAUSED,
+        ActivityState.STOPPED, ActivityState.DESTROYED})
 public @interface ActivityState {
-    /** Represents Activity#onCreate(). */
+    /**
+     * Represents Activity#onCreate().
+     */
     int CREATED = 1;
 
-    /** Represents Activity#onStart(). */
+    /**
+     * Represents Activity#onStart().
+     */
     int STARTED = 2;
 
-    /** Represents Activity#onResume(). */
+    /**
+     * Represents Activity#onResume().
+     */
     int RESUMED = 3;
 
-    /** Represents Activity#onPause(). */
+    /**
+     * Represents Activity#onPause().
+     */
     int PAUSED = 4;
 
-    /** Represents Activity#onStop(). */
+    /**
+     * Represents Activity#onStop().
+     */
     int STOPPED = 5;
 
     /**
-     * Represents Activity#onDestroy(). This is also used when the state of an Activity is unknown.
+     * Represents Activity#onDestroy().  This is also used when the state of an Activity is unknown.
      */
     int DESTROYED = 6;
 }

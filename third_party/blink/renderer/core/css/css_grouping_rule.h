@@ -23,7 +23,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_GROUPING_RULE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_GROUPING_RULE_H_
 
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_rule.h"
 #include "third_party/blink/renderer/core/css/style_rule.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -33,6 +32,7 @@ namespace blink {
 class ExceptionState;
 class CSSRuleList;
 
+<<<<<<< HEAD
 StyleRule* FindClosestParentStyleRuleOrNull(CSSRule* parent);
 
 struct NestingContext {
@@ -75,6 +75,8 @@ void QuietlyDeleteRule(unsigned index,
                        HeapVector<Member<StyleRuleBase>>& child_rules,
                        HeapVector<Member<CSSRule>>& child_rule_cssom_wrappers);
 
+=======
+>>>>>>> chromium
 class CORE_EXPORT CSSGroupingRule : public CSSRule {
   DEFINE_WRAPPERTYPEINFO();
 
@@ -101,13 +103,7 @@ class CORE_EXPORT CSSGroupingRule : public CSSRule {
 
   // For CSSRuleList
   unsigned length() const;
-  CSSRule* Item(unsigned index, bool trigger_use_counters = true) const;
-
-  // Get an item, but signal that it's been requested internally from the
-  // engine, and not directly from a script.
-  CSSRule* ItemInternal(unsigned index) const {
-    return Item(index, /*trigger_use_counters=*/false);
-  }
+  CSSRule* Item(unsigned index) const;
 
   void Trace(Visitor*) const override;
 
@@ -121,6 +117,7 @@ class CORE_EXPORT CSSGroupingRule : public CSSRule {
   mutable Member<CSSRuleList> rule_list_cssom_wrapper_;
 };
 
+<<<<<<< HEAD
 template <>
 struct DowncastTraits<CSSGroupingRule> {
   static bool AllowFrom(const CSSRule& rule) {
@@ -161,6 +158,8 @@ struct DowncastTraits<CSSGroupingRule> {
   }
 };
 
+=======
+>>>>>>> chromium
 }  // namespace blink
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_GROUPING_RULE_H_

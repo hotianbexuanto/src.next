@@ -1,35 +1,20 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_JAR_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_JAR_H_
 
-#include <optional>
-
-#include "mojo/public/cpp/base/shared_memory_version.h"
 #include "services/network/public/mojom/restricted_cookie_manager.mojom-blink.h"
-#include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
-#include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
 class Document;
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-//
-// LINT.IfChange(FirstCookieRequest)
-enum class FirstCookieRequest {
-  kFirstOperationWasSet = 0,
-  kFirstOperationWasGet = 1,
-  kFirstOperationWasCookiesEnabled = 2,
-  kMaxValue = kFirstOperationWasCookiesEnabled,
-};
-// LINT.ThenChange(//tools/metrics/histograms/metadata/blink/enums.xml:FirstCookieRequest)
 
-class CORE_EXPORT CookieJar : public GarbageCollected<CookieJar> {
+class CookieJar : public GarbageCollected<CookieJar> {
  public:
   explicit CookieJar(blink::Document* document);
   virtual ~CookieJar();
@@ -38,20 +23,9 @@ class CORE_EXPORT CookieJar : public GarbageCollected<CookieJar> {
   void SetCookie(const String& value);
   String Cookies();
   bool CookiesEnabled();
-  void SetCookieManager(
-      mojo::PendingRemote<network::mojom::blink::RestrictedCookieManager>
-          cookie_manager);
-
-  // Invalidate cached string. To be called explicitly from Document. This is
-  // used in cases where a Document action could change the ability for
-  // CookieJar to return values to JS without changing the value of the cookies
-  // themselves. For example changing storage access can stop the JS from being
-  // able to access the document's Cookie without the value ever changing. In
-  // that case it's faulty to treat a subsequent request as a cache hit so we
-  // invalidate.
-  void InvalidateCache();
 
  private:
+<<<<<<< HEAD
   void RequestRestrictedCookieManagerIfNeeded();
   void OnBackendDisconnect();
 
@@ -78,6 +52,9 @@ class CORE_EXPORT CookieJar : public GarbageCollected<CookieJar> {
   // cache version and/or cookie string on SET. Especially, if SET is the first
   // request.
   void LogFirstCookieRequest(FirstCookieRequest first_cookie_request);
+=======
+  bool RequestRestrictedCookieManagerIfNeeded();
+>>>>>>> chromium
 
   // Checks with probe function if devtools is active. If so, devtools overrides
   // are applied to the cookie operation.
@@ -85,6 +62,7 @@ class CORE_EXPORT CookieJar : public GarbageCollected<CookieJar> {
 
   HeapMojoRemote<network::mojom::blink::RestrictedCookieManager> backend_;
   Member<blink::Document> document_;
+<<<<<<< HEAD
 
   // Hash used to determine if the value returned by a call to
   // RestrictedCookieManager::GetCookiesString is the same as a previous one.
@@ -113,6 +91,8 @@ class CORE_EXPORT CookieJar : public GarbageCollected<CookieJar> {
   // be empty since that is a valid cookie string.
   String last_cookies_;
   bool is_first_operation_ = true;
+=======
+>>>>>>> chromium
 };
 
 }  // namespace blink

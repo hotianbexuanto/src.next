@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,87 +6,68 @@
 
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
+<<<<<<< HEAD
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
+=======
+#include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_attributes_entry.h"
-#include "chrome/browser/profiles/profile_attributes_storage.h"
-#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/managed_ui.h"
-#include "chrome/browser/ui/webui/management/management_ui.h"
-#include "chrome/common/webui_url_constants.h"
-#include "chrome/grit/branded_strings.h"
-#include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
-#include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/policy/core/browser/browser_policy_connector.h"
 #include "components/policy/core/common/management/management_service.h"
 #include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
-#include "components/strings/grit/components_strings.h"
-#include "components/supervised_user/core/common/supervised_user_constants.h"
-#include "components/vector_icons/vector_icons.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gmock/include/gmock/gmock.h"
-#include "ui/base/l10n/l10n_util.h"
-#include "ui/gfx/vector_icon_types.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
+<<<<<<< HEAD
 #include "ui/chromeos/devicetype_utils.h"
+=======
+>>>>>>> chromium
 #endif
 
 class ManagedUiTest : public InProcessBrowserTest {
  public:
   ManagedUiTest() = default;
-
-  ManagedUiTest(const ManagedUiTest&) = delete;
-  ManagedUiTest& operator=(const ManagedUiTest&) = delete;
-
   ~ManagedUiTest() override = default;
 
   void SetUpInProcessBrowserTestFixture() override {
-    provider_.SetDefaultReturns(
-        /*is_initialization_complete_return=*/true,
-        /*is_first_policy_load_complete_return=*/true);
+    ON_CALL(provider_, IsInitializationComplete(testing::_))
+        .WillByDefault(testing::Return(true));
+    ON_CALL(provider_, IsFirstPolicyLoadComplete(testing::_))
+        .WillByDefault(testing::Return(true));
     policy::BrowserPolicyConnectorBase::SetPolicyProviderForTesting(&provider_);
   }
 
   policy::MockConfigurationPolicyProvider* provider() { return &provider_; }
 
-  void AddEnterpriseManagedPolicies() {
-    policy::PolicyMap policy_map;
-    policy_map.Set("test-policy", policy::POLICY_LEVEL_MANDATORY,
-                   policy::POLICY_SCOPE_MACHINE, policy::POLICY_SOURCE_PLATFORM,
-                   base::Value("hello world"), nullptr);
-    provider()->UpdateChromePolicy(policy_map);
-  }
-
-  // Returns whether we expect the management UI to actually be displayed for
-  // supervised users in this test.
-  bool ExpectManagedUiForSupervisedUsers() const {
-#if BUILDFLAG(IS_CHROMEOS)
-    return false;
-#else
-    return true;
-#endif
-  }
-
  private:
   testing::NiceMock<policy::MockConfigurationPolicyProvider> provider_;
+
+  DISALLOW_COPY_AND_ASSIGN(ManagedUiTest);
 };
 
+<<<<<<< HEAD
 IN_PROC_BROWSER_TEST_F(
     ManagedUiTest,
     ShouldDisplayManagedUiNoPoliciesNotSupervisedReturnsFalse) {
   EXPECT_FALSE(ShouldDisplayManagedUi(browser()->profile()));
+=======
+IN_PROC_BROWSER_TEST_F(ManagedUiTest, ShouldDisplayManagedUiNoPolicies) {
+  EXPECT_FALSE(chrome::ShouldDisplayManagedUi(browser()->profile()));
+>>>>>>> chromium
 }
 
-IN_PROC_BROWSER_TEST_F(
-    ManagedUiTest,
-    ShouldDisplayManagedUiWithPoliciesNotSupervisedReturnsTrueOnDesktop) {
-  AddEnterpriseManagedPolicies();
+IN_PROC_BROWSER_TEST_F(ManagedUiTest, ShouldDisplayManagedUiOnDesktop) {
+  policy::PolicyMap policy_map;
+  policy_map.Set("test-policy", policy::POLICY_LEVEL_MANDATORY,
+                 policy::POLICY_SCOPE_MACHINE, policy::POLICY_SOURCE_PLATFORM,
+                 base::Value("hello world"), nullptr);
+  provider()->UpdateChromePolicy(policy_map);
 
 #if BUILDFLAG(IS_CHROMEOS)
   EXPECT_FALSE(ShouldDisplayManagedUi(browser()->profile()));
@@ -95,6 +76,7 @@ IN_PROC_BROWSER_TEST_F(
 #endif
 }
 
+<<<<<<< HEAD
 IN_PROC_BROWSER_TEST_F(ManagedUiTest, ShouldDisplayManagedUiSupervised) {
   TestingProfile::Builder builder;
   builder.SetIsSupervisedProfile();
@@ -113,6 +95,9 @@ IN_PROC_BROWSER_TEST_F(ManagedUiTest, GetDeviceManagedUiHelpLabelEnterprise) {
       policy::ManagementServiceFactory::GetForProfile(browser()->profile()),
       policy::EnterpriseManagementAuthority::CLOUD);
 
+=======
+IN_PROC_BROWSER_TEST_F(ManagedUiTest, GetManagedUiMenuItemLabel) {
+>>>>>>> chromium
   TestingProfile::Builder builder;
   auto profile = builder.Build();
 
@@ -121,6 +106,7 @@ IN_PROC_BROWSER_TEST_F(ManagedUiTest, GetDeviceManagedUiHelpLabelEnterprise) {
   builder_with_domain.OverridePolicyConnectorIsManagedForTesting(true);
   auto profile_with_domain = builder_with_domain.Build();
 
+<<<<<<< HEAD
   auto* profile_with_hosted_domain = browser()->profile();
   ProfileAttributesEntry* entry =
       g_browser_process->profile_manager()
@@ -816,6 +802,15 @@ IN_PROC_BROWSER_TEST_F(ManagedUiTest, GetManagedUiWebUILabelEnterprise) {
 
 #if !BUILDFLAG(IS_CHROMEOS)
 IN_PROC_BROWSER_TEST_F(ManagedUiTest, GetManagementPageSubtitle) {
+=======
+  EXPECT_EQ(u"Managed by your organization",
+            chrome::GetManagedUiMenuItemLabel(profile.get()));
+  EXPECT_EQ(u"Managed by example.com",
+            chrome::GetManagedUiMenuItemLabel(profile_with_domain.get()));
+}
+
+IN_PROC_BROWSER_TEST_F(ManagedUiTest, GetManagedUiWebUILabel) {
+>>>>>>> chromium
   TestingProfile::Builder builder;
   auto profile = builder.Build();
 
@@ -824,6 +819,7 @@ IN_PROC_BROWSER_TEST_F(ManagedUiTest, GetManagementPageSubtitle) {
   builder_with_domain.OverridePolicyConnectorIsManagedForTesting(true);
   auto profile_with_domain = builder_with_domain.Build();
 
+<<<<<<< HEAD
   auto* profile_with_hosted_domain = browser()->profile();
   ProfileAttributesEntry* entry =
       g_browser_process->profile_manager()
@@ -1149,19 +1145,33 @@ IN_PROC_BROWSER_TEST_F(ManagedUiTest, GetManagedUiWebUILabelSupervised) {
   } else {
     EXPECT_TRUE(GetManagedUiWebUILabel(profile.get()).empty());
   }
+=======
+  EXPECT_EQ(
+      u"Your <a href=\"chrome://management\">browser is managed</a> by your "
+      u"organization",
+      chrome::GetManagedUiWebUILabel(profile.get()));
+  EXPECT_EQ(
+      u"Your <a href=\"chrome://management\">browser is managed</a> by "
+      u"example.com",
+      chrome::GetManagedUiWebUILabel(profile_with_domain.get()));
+>>>>>>> chromium
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
 using ManagedUiTestCros = policy::DevicePolicyCrosBrowserTest;
 IN_PROC_BROWSER_TEST_F(ManagedUiTestCros, GetManagedUiWebUILabel) {
   policy::ScopedManagementServiceOverrideForTesting platform_management(
-      policy::ManagementServiceFactory::GetForPlatform(),
-      policy::EnterpriseManagementAuthority::DOMAIN_LOCAL);
+      policy::ManagementTarget::PLATFORM,
+      {policy::EnterpriseManagementAuthority::DOMAIN_LOCAL});
 
   EXPECT_EQ(
       u"Your <a target=\"_blank\" "
       u"href=\"chrome://management\">Chrome device is "
       u"managed</a> by example.com",
+<<<<<<< HEAD
       GetDeviceManagedUiWebUILabel());
+=======
+      chrome::GetDeviceManagedUiWebUILabel());
+>>>>>>> chromium
 }
 #endif

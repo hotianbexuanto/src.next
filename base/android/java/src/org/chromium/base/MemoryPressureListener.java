@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,10 +11,9 @@ import android.content.ComponentCallbacks2;
 import android.os.Handler;
 import android.os.Looper;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
-import org.chromium.base.library_loader.LibraryLoader;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.MainDex;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.memory.MemoryPressureCallback;
 import org.chromium.base.memory.SelfFreezeCallback;
 import org.chromium.build.annotations.NullMarked;
@@ -34,7 +33,11 @@ import org.chromium.build.annotations.Nullable;
  * main thread for Chrome, but can be some other thread for WebView), except for the self freeze
  * calls, which are done on the launcher thread.
  */
+<<<<<<< HEAD
 @NullMarked
+=======
+@MainDex
+>>>>>>> chromium
 public class MemoryPressureListener {
     /**
      * Sending an intent with this action to Chrome will cause it to issue a call to onLowMemory
@@ -62,15 +65,20 @@ public class MemoryPressureListener {
     private static final String ACTION_TRIM_MEMORY_MODERATE =
             "org.chromium.base.ACTION_TRIM_MEMORY_MODERATE";
 
+<<<<<<< HEAD
     private static @Nullable ObserverList<MemoryPressureCallback> sCallbacks;
     // This is used only on the Launcher thread.
     private static @Nullable ObserverList<SelfFreezeCallback> sSelfFreezeCallbacks;
     private static volatile @Nullable Handler sSelfFreezeHandler;
+=======
+    private static final ObserverList<MemoryPressureCallback> sCallbacks = new ObserverList<>();
+>>>>>>> chromium
 
-    /** Called by the native side to add native callback. */
+    /**
+     * Called by the native side to add native callback.
+     */
     @CalledByNative
     private static void addNativeCallback() {
-        ThreadUtils.assertOnUiThread();
         addCallback((pressure) -> MemoryPressureListenerJni.get().onMemoryPressure(pressure));
     }
 
@@ -80,8 +88,6 @@ public class MemoryPressureListener {
      * This method should be called only on ThreadUtils.UiThread.
      */
     public static void addCallback(MemoryPressureCallback callback) {
-        ThreadUtils.assertOnUiThread();
-        if (sCallbacks == null) sCallbacks = new ObserverList<>();
         sCallbacks.addObserver(callback);
     }
 
@@ -103,8 +109,6 @@ public class MemoryPressureListener {
      * ThreadUtils.UiThread.
      */
     public static void removeCallback(MemoryPressureCallback callback) {
-        ThreadUtils.assertOnUiThread();
-        if (sCallbacks == null) return;
         sCallbacks.removeObserver(callback);
     }
 
@@ -114,21 +118,25 @@ public class MemoryPressureListener {
     }
 
     /**
+<<<<<<< HEAD
      * Distributes |pressure| to all callbacks. This method should be called only on
      * ThreadUtils.UiThread.
      *
      * <p>This includes sending the notification to the native side, provided that
      * addNativeCallback() has been called. It does not trigger all the clients listening directly
      * to ComponentCallbacks2 notifications.
+=======
+     * Distributes |pressure| to all callbacks.
+     * This method should be called only on ThreadUtils.UiThread.
+>>>>>>> chromium
      */
     public static void notifyMemoryPressure(@MemoryPressureLevel int pressure) {
-        ThreadUtils.assertOnUiThread();
-        if (sCallbacks == null) return;
         for (MemoryPressureCallback callback : sCallbacks) {
             callback.onPressure(pressure);
         }
     }
 
+<<<<<<< HEAD
     public static void notifySelfFreeze() {
         ThreadUtils.assertOnUiThread();
         if (sSelfFreezeHandler != null) {
@@ -156,19 +164,20 @@ public class MemoryPressureListener {
         return MemoryPressureListenerJni.get().isTrimMemoryBackgroundCritical();
     }
 
+=======
+>>>>>>> chromium
     /**
      * Used by applications to simulate a memory pressure signal. By throwing certain intent
      * actions.
      */
     public static boolean handleDebugIntent(Activity activity, String action) {
-        ThreadUtils.assertOnUiThread();
         if (ACTION_LOW_MEMORY.equals(action)) {
             simulateLowMemoryPressureSignal(activity);
         } else if (ACTION_TRIM_MEMORY.equals(action)) {
             simulateTrimMemoryPressureSignal(activity, ComponentCallbacks2.TRIM_MEMORY_COMPLETE);
         } else if (ACTION_TRIM_MEMORY_RUNNING_CRITICAL.equals(action)) {
-            simulateTrimMemoryPressureSignal(
-                    activity, ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL);
+            simulateTrimMemoryPressureSignal(activity,
+                    ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL);
         } else if (ACTION_TRIM_MEMORY_MODERATE.equals(action)) {
             simulateTrimMemoryPressureSignal(activity, ComponentCallbacks2.TRIM_MEMORY_MODERATE);
         } else {
@@ -197,9 +206,5 @@ public class MemoryPressureListener {
     @NativeMethods
     interface Natives {
         void onMemoryPressure(@MemoryPressureLevel int pressure);
-
-        void onPreFreeze();
-
-        boolean isTrimMemoryBackgroundCritical();
     }
 }

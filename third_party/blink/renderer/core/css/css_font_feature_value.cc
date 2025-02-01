@@ -47,7 +47,7 @@ String CSSFontFeatureValue::CustomCSSText() const {
     builder.Append(' ');
     builder.Append(value_->CustomCSSText());
   }
-  return builder.ReleaseString();
+  return builder.ToString();
 }
 
 bool CSSFontFeatureValue::Equals(const CSSFontFeatureValue& other) const {

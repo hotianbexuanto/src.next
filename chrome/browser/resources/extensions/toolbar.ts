@@ -1,13 +1,17 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.m.js';
+import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.m.js';
 import 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
-import 'chrome://resources/cr_elements/policy/cr_tooltip_icon.js';
+import 'chrome://resources/cr_elements/hidden_style_css.m.js';
+import 'chrome://resources/cr_elements/policy/cr_tooltip_icon.m.js';
+import 'chrome://resources/cr_elements/shared_vars_css.m.js';
+import 'chrome://resources/polymer/v3_0/paper-styles/color.js';
 import './pack_dialog.js';
 
+<<<<<<< HEAD
 import {getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
 import type {CrToggleElement} from 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import type {CrToolbarElement} from 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
@@ -19,6 +23,13 @@ import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import {TOAST_DURATION_MS} from './item_util.js';
 import {getCss} from './toolbar.css.js';
 import {getHtml} from './toolbar.html.js';
+=======
+import {getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.m.js';
+import {I18nBehavior} from 'chrome://resources/js/i18n_behavior.m.js';
+import {listenOnce} from 'chrome://resources/js/util.m.js';
+import {IronA11yAnnouncer} from 'chrome://resources/polymer/v3_0/iron-a11y-announcer/iron-a11y-announcer.js';
+import {html, mixinBehaviors, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+>>>>>>> chromium
 
 export interface ToolbarDelegate {
   /**
@@ -31,125 +42,102 @@ export interface ToolbarDelegate {
 
   /** Updates all extensions. */
   updateAllExtensions(extensions: chrome.developerPrivate.ExtensionInfo[]):
-      Promise<void>;
+      Promise<string>;
 }
 
-class DummyToolbarDelegate {
-  setProfileInDevMode(_inDevMode: boolean) {}
-  loadUnpacked() {
-    return Promise.resolve(true);
-  }
-  updateAllExtensions(_extensions: chrome.developerPrivate.ExtensionInfo[]) {
-    return Promise.resolve();
-  }
-}
-
-export interface ExtensionsToolbarElement {
+interface ExtensionsToolbarElement {
   $: {
     devDrawer: HTMLElement,
-    devMode: CrToggleElement,
-    loadUnpacked: HTMLElement,
     packExtensions: HTMLElement,
-    toolbar: CrToolbarElement,
-    updateNow: HTMLElement,
   };
 }
 
-const ExtensionsToolbarElementBase = I18nMixinLit(CrLitElement);
+const ExtensionsToolbarElementBase =
+    mixinBehaviors([I18nBehavior], PolymerElement) as
+    {new (): PolymerElement & I18nBehavior};
 
-export class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
+class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
   static get is() {
     return 'extensions-toolbar';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return html`{__html_template__}`;
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      extensions: {type: Array},
-      delegate: {type: Object},
+      extensions: Array,
+      delegate: Object,
 
       inDevMode: {
         type: Boolean,
-        reflect: true,
+        value: false,
+        observer: 'onInDevModeChanged_',
+        reflectToAttribute: true,
       },
 
-      devModeControlledByPolicy: {type: Boolean},
-      isChildAccount: {type: Boolean},
+      devModeControlledByPolicy: Boolean,
+      isSupervised: Boolean,
 
-      narrow: {
-        type: Boolean,
-        notify: true,
-      },
+      // <if expr="chromeos">
+      kioskEnabled: Boolean,
+      // </if>
 
-      canLoadUnpacked: {type: Boolean},
+      canLoadUnpacked: Boolean,
 
-      expanded_: {type: Boolean},
-      showPackDialog_: {type: Boolean},
+      expanded_: Boolean,
+      showPackDialog_: Boolean,
 
       /**
        * Prevents initiating update while update is in progress.
        */
-      isUpdating_: {type: Boolean},
+      isUpdating_: {type: Boolean, value: false},
     };
   }
 
-  extensions: chrome.developerPrivate.ExtensionInfo[] = [];
-  delegate: ToolbarDelegate = new DummyToolbarDelegate();
-  inDevMode: boolean = false;
-  devModeControlledByPolicy: boolean = false;
-  isChildAccount: boolean = false;
+  extensions: Array<chrome.developerPrivate.ExtensionInfo>;
+  delegate: ToolbarDelegate;
+  inDevMode: boolean;
+  devModeControlledByPolicy: boolean;
+  isSupervised: boolean;
 
-  narrow: boolean = false;
-  canLoadUnpacked?: boolean;
+  // <if expr="chromeos">
+  kioskEnabled: boolean;
+  // </if>
 
-  protected expanded_: boolean = false;
-  protected showPackDialog_: boolean = false;
-  private isUpdating_: boolean = false;
+  canLoadUnpacked: boolean;
 
-  override firstUpdated(changedProperties: PropertyValues<this>) {
-    super.firstUpdated(changedProperties);
+  private expanded_: boolean;
+  private showPackDialog_: boolean;
+  private isUpdating_: boolean;
+
+
+  ready() {
+    super.ready();
     this.setAttribute('role', 'banner');
   }
 
-  override updated(changedProperties: PropertyValues<this>) {
-    super.updated(changedProperties);
-
-    if (changedProperties.has('inDevMode')) {
-      const previous = changedProperties.get('inDevMode')!;
-      this.onInDevModeChanged_(this.inDevMode, previous);
-    }
+  private fire_(eventName: string, detail?: any) {
+    this.dispatchEvent(
+        new CustomEvent(eventName, {bubbles: true, composed: true, detail}));
   }
 
-  focusSearchInput() {
-    this.$.toolbar.getSearchField().showAndFocus();
+  private shouldDisableDevMode_(): boolean {
+    return this.devModeControlledByPolicy || this.isSupervised;
   }
 
-  isSearchFocused(): boolean {
-    return this.$.toolbar.getSearchField().isSearchFocused();
-  }
-
-  protected shouldDisableDevMode_(): boolean {
-    return this.devModeControlledByPolicy || this.isChildAccount;
-  }
-
-  protected getTooltipText_(): string {
+  private getTooltipText_(): string {
     return this.i18n(
-        this.isChildAccount ? 'controlledSettingChildRestriction' :
-                              'controlledSettingPolicy');
+        this.isSupervised ? 'controlledSettingChildRestriction' :
+                            'controlledSettingPolicy');
   }
 
-  protected getIcon_(): string {
-    return this.isChildAccount ? 'cr20:kite' : 'cr20:domain';
+  private getIcon_(): string {
+    return this.isSupervised ? 'cr20:kite' : 'cr20:domain';
   }
 
-  protected onDevModeToggleChange_(e: CustomEvent<boolean>) {
+  private onDevModeToggleChange_(e: CustomEvent<boolean>) {
     this.delegate.setProfileInDevMode(e.detail);
     chrome.metricsPrivate.recordUserAction(
         'Options_ToggleDeveloperMode_' + (e.detail ? 'Enabled' : 'Disabled'));
@@ -179,7 +167,7 @@ export class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
     this.expanded_ = !this.expanded_;
   }
 
-  protected onLoadUnpackedClick_() {
+  private onLoadUnpackedTap_() {
     this.delegate.loadUnpacked()
         .then((success) => {
           if (success) {
@@ -189,22 +177,28 @@ export class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
           }
         })
         .catch(loadError => {
-          this.fire('load-error', loadError);
+          this.fire_('load-error', loadError);
         });
     chrome.metricsPrivate.recordUserAction('Options_LoadUnpackedExtension');
   }
 
-  protected onPackClick_() {
+  private onPackTap_() {
     chrome.metricsPrivate.recordUserAction('Options_PackExtension');
     this.showPackDialog_ = true;
   }
 
-  protected onPackDialogClose_() {
+  private onPackDialogClose_() {
     this.showPackDialog_ = false;
     this.$.packExtensions.focus();
   }
 
-  protected onUpdateNowClick_() {
+  // <if expr="chromeos">
+  private onKioskTap_() {
+    this.fire_('kiosk-tap');
+  }
+  // </if>
+
+  private onUpdateNowTap_() {
     // If already updating, do not initiate another update.
     if (this.isUpdating_) {
       return;
@@ -225,27 +219,10 @@ export class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
               this.isUpdating_ = false;
             },
             loadError => {
-              this.fire('load-error', loadError);
+              this.fire_('load-error', loadError);
               toastManager.hide();
               this.isUpdating_ = false;
             });
-  }
-
-  protected onNarrowChanged_(e: CustomEvent<{value: boolean}>) {
-    this.narrow = e.detail.value;
-  }
-
-  protected canLoadUnpacked_() {
-    return this.canLoadUnpacked === undefined || this.canLoadUnpacked;
-  }
-}
-
-// Exported to be used in the autogenerated Lit template file
-export type ToolbarElement = ExtensionsToolbarElement;
-
-declare global {
-  interface HTMLElementTagNameMap {
-    'extensions-toolbar': ExtensionsToolbarElement;
   }
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,7 +22,8 @@ void CollectedCookiesInfoBarDelegate::Create(
           new CollectedCookiesInfoBarDelegate())));
 }
 
-CollectedCookiesInfoBarDelegate::CollectedCookiesInfoBarDelegate() = default;
+CollectedCookiesInfoBarDelegate::CollectedCookiesInfoBarDelegate()
+    : ConfirmInfoBarDelegate() {}
 
 CollectedCookiesInfoBarDelegate::~CollectedCookiesInfoBarDelegate() = default;
 
@@ -32,7 +33,7 @@ CollectedCookiesInfoBarDelegate::GetIdentifier() const {
 }
 
 const gfx::VectorIcon& CollectedCookiesInfoBarDelegate::GetVectorIcon() const {
-  return vector_icons::kSettingsChromeRefreshIcon;
+  return vector_icons::kCookieIcon;
 }
 
 std::u16string CollectedCookiesInfoBarDelegate::GetMessageText() const {

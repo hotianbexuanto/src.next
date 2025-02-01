@@ -1,20 +1,14 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/browser_features.h"
 
-#include "base/feature_list.h"
-#include "build/branding_buildflags.h"
-#include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-
-#if BUILDFLAG(IS_WIN)
-#include "chrome/browser/net/system_network_context_manager.h"
-#endif
 
 namespace features {
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_ANDROID)
 // Kill switch for allowing TWAs to autoplay with sound without requiring a user
 // gesture to unlock, for parity with PWAs.
@@ -173,19 +167,30 @@ BASE_FEATURE(kNotificationOneTapUnsubscribe,
 base::FeatureParam<bool> kNotificationOneTapUnsubscribeUseServiceIntentParam{
     &kNotificationOneTapUnsubscribe, "use_service_intent", false};
 #endif
+=======
+// Enables using the ClosedTabCache to instantly restore recently closed tabs
+// using the "Reopen Closed Tab" button.
+const base::Feature kClosedTabCache{"ClosedTabCache",
+                                    base::FEATURE_DISABLED_BY_DEFAULT};
+
+// Destroy profiles when their last browser window is closed, instead of when
+// the browser exits.
+const base::Feature kDestroyProfileOnBrowserClose{
+    "DestroyProfileOnBrowserClose", base::FEATURE_DISABLED_BY_DEFAULT};
+>>>>>>> chromium
 
 // Enables executing the browser commands sent by the NTP promos.
-BASE_FEATURE(kPromoBrowserCommands,
-             "PromoBrowserCommands",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+const base::Feature kPromoBrowserCommands{"PromoBrowserCommands",
+                                          base::FEATURE_ENABLED_BY_DEFAULT};
 
 // Parameter name for the promo browser command ID provided along with
 // kPromoBrowserCommands.
 // The value of this parameter should be parsable as an unsigned integer and
 // should map to one of the browser commands specified in:
-// ui/webui/resources/js/browser_command/browser_command.mojom
-const char kBrowserCommandIdParam[] = "BrowserCommandIdParam";
+// chrome/browser/promo_browser_command/promo_browser_command.mojom
+const char kPromoBrowserCommandIdParam[] = "PromoBrowserCommandIdParam";
 
+<<<<<<< HEAD
 #if !BUILDFLAG(IS_ANDROID)
 // Keeps accessibility enabled for WebContents as ReadAnything observes changes
 // to the active WebContents. This is a holdback study to evaluate the impact of
@@ -366,5 +371,41 @@ BASE_FEATURE(kReportPakFileIntegrity,
 BASE_FEATURE(kRemovalOfIWAsFromTabCapture,
              "RemovalOfIWAsFromTabCapture",
              base::FEATURE_ENABLED_BY_DEFAULT);
+=======
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+// Enables reading and writing PWA notification permissions from quick settings
+// menu.
+const base::Feature kQuickSettingsPWANotifications{
+    "QuickSettingsPWA", base::FEATURE_DISABLED_BY_DEFAULT};
+
+// Enables being able to zoom a web page by double tapping in Chrome OS tablet
+// mode.
+const base::Feature kDoubleTapToZoomInTabletMode{
+    "DoubleTapToZoomInTabletMode", base::FEATURE_DISABLED_BY_DEFAULT};
+#endif
+
+#if !defined(OS_ANDROID)
+// Adds an item to the context menu that copies a link to the page with the
+// selected text highlighted.
+const base::Feature kCopyLinkToText{"CopyLinkToText",
+                                    base::FEATURE_ENABLED_BY_DEFAULT};
+
+// Adds a "Snooze" action to mute notifications during screen sharing sessions.
+const base::Feature kMuteNotificationSnoozeAction{
+    "MuteNotificationSnoozeAction", base::FEATURE_DISABLED_BY_DEFAULT};
+#endif
+
+// Shows a confirmation dialog when updates to PWAs identity (name and icon)
+// have been detected.
+const base::Feature kPwaUpdateDialogForNameAndIcon{
+    "PwaUpdateDialogForNameAndIcon", base::FEATURE_DISABLED_BY_DEFAULT};
+
+#if !defined(OS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+// Enables taking snapshots of the user data directory after a major
+// milestone update and restoring them after a version rollback.
+const base::Feature kUserDataSnapshot{"UserDataSnapshot",
+                                      base::FEATURE_ENABLED_BY_DEFAULT};
+#endif  // !defined(OS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 
 }  // namespace features

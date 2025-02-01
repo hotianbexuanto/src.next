@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,6 +11,7 @@
         CallWith=ScriptState,
         Measure,
         NewObject
+<<<<<<< HEAD
     ] static AbortSignal abort(optional any reason);
     [
         Exposed=(Window,Worker),
@@ -30,6 +31,11 @@
         CallWith=Isolate,
         MeasureAs=AbortSignalThrowIfAborted
     ] void throwIfAborted();
+=======
+    ] static AbortSignal abort();
+
+    readonly attribute boolean aborted;
+>>>>>>> chromium
 
     attribute EventHandler onabort;
 };

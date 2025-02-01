@@ -32,28 +32,30 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "skia/ext/image_operations.h"
-#include "third_party/blink/renderer/core/css_value_keywords.h"
-#include "third_party/blink/renderer/core/layout/layout_theme_font_provider.h"
 #include "third_party/blink/renderer/platform/fonts/font.h"
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
 #include "third_party/blink/renderer/platform/fonts/font_description.h"
 #include "third_party/blink/renderer/platform/fonts/font_metrics.h"
 #include "third_party/blink/renderer/platform/fonts/string_truncator.h"
 #include "third_party/blink/renderer/platform/fonts/text_run_paint_info.h"
+#include "third_party/blink/renderer/platform/geometry/float_point.h"
+#include "third_party/blink/renderer/platform/geometry/float_rect.h"
+#include "third_party/blink/renderer/platform/geometry/int_point.h"
 #include "third_party/blink/renderer/platform/graphics/bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/platform/text/bidi_paragraph.h"
+=======
+#include "third_party/blink/renderer/platform/text/bidi_text_run.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/text/text_run.h"
 #include "third_party/blink/renderer/platform/transforms/affine_transform.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
-#include "ui/gfx/geometry/point.h"
-#include "ui/gfx/geometry/point_f.h"
-#include "ui/gfx/geometry/rect_f.h"
 
 namespace blink {
 
@@ -73,22 +75,22 @@ const float kDragLinkUrlFontSize = 10;
 
 }  // anonymous namespace
 
-gfx::Vector2dF DragImage::ClampedImageScale(const gfx::Size& image_size,
-                                            const gfx::Size& size,
-                                            const gfx::Size& max_size) {
+FloatSize DragImage::ClampedImageScale(const IntSize& image_size,
+                                       const IntSize& size,
+                                       const IntSize& max_size) {
   // Non-uniform scaling for size mapping.
-  gfx::Vector2dF image_scale(
-      static_cast<float>(size.width()) / image_size.width(),
-      static_cast<float>(size.height()) / image_size.height());
+  FloatSize image_scale(
+      static_cast<float>(size.Width()) / image_size.Width(),
+      static_cast<float>(size.Height()) / image_size.Height());
 
   // Uniform scaling for clamping.
   const float clamp_scale_x =
-      size.width() > max_size.width()
-          ? static_cast<float>(max_size.width()) / size.width()
+      size.Width() > max_size.Width()
+          ? static_cast<float>(max_size.Width()) / size.Width()
           : 1;
   const float clamp_scale_y =
-      size.height() > max_size.height()
-          ? static_cast<float>(max_size.height()) / size.height()
+      size.Height() > max_size.Height()
+          ? static_cast<float>(max_size.Height()) / size.Height()
           : 1;
   image_scale.Scale(std::min(clamp_scale_x, clamp_scale_y));
 
@@ -98,9 +100,10 @@ gfx::Vector2dF DragImage::ClampedImageScale(const gfx::Size& image_size,
 std::unique_ptr<DragImage> DragImage::Create(
     Image* image,
     RespectImageOrientationEnum should_respect_image_orientation,
+    float device_scale_factor,
     InterpolationQuality interpolation_quality,
     float opacity,
-    gfx::Vector2dF image_scale) {
+    FloatSize image_scale) {
   if (!image)
     return nullptr;
 
@@ -116,21 +119,18 @@ std::unique_ptr<DragImage> DragImage::Create(
 
   SkBitmap bm;
   paint_image = Image::ResizeAndOrientImage(
-      paint_image, orientation, image_scale, opacity, interpolation_quality,
-      SkColorSpace::MakeSRGB());
+      paint_image, orientation, image_scale, opacity, interpolation_quality);
   if (!paint_image || !paint_image.GetSwSkImage()->asLegacyBitmap(&bm))
     return nullptr;
 
-  return base::WrapUnique(new DragImage(bm, interpolation_quality));
+  return base::WrapUnique(
+      new DragImage(bm, device_scale_factor, interpolation_quality));
 }
 
-static Font DeriveDragLabelFont(int size, FontSelectionValue font_weight) {
-  const AtomicString& family =
-      LayoutThemeFontProvider::SystemFontFamily(CSSValueID::kNone);
-
-  FontDescription description;
-  description.SetFamily(
-      FontFamily(family, FontFamily::InferredTypeFor(family)));
+static Font DeriveDragLabelFont(int size,
+                                FontSelectionValue font_weight,
+                                const FontDescription& system_font) {
+  FontDescription description = system_font;
   description.SetWeight(font_weight);
   description.SetSpecifiedSize(size);
   description.SetComputedSize(size);
@@ -138,16 +138,16 @@ static Font DeriveDragLabelFont(int size, FontSelectionValue font_weight) {
   return result;
 }
 
-// static
 std::unique_ptr<DragImage> DragImage::Create(const KURL& url,
                                              const String& in_label,
+                                             const FontDescription& system_font,
                                              float device_scale_factor) {
-  const Font label_font =
-      DeriveDragLabelFont(kDragLinkLabelFontSize, kBoldWeightValue);
+  const Font label_font = DeriveDragLabelFont(kDragLinkLabelFontSize,
+                                              BoldWeightValue(), system_font);
   const SimpleFontData* label_font_data = label_font.PrimaryFont();
   DCHECK(label_font_data);
-  const Font url_font =
-      DeriveDragLabelFont(kDragLinkUrlFontSize, kNormalWeightValue);
+  const Font url_font = DeriveDragLabelFont(kDragLinkUrlFontSize,
+                                            NormalWeightValue(), system_font);
   const SimpleFontData* url_font_data = url_font.PrimaryFont();
   DCHECK(url_font_data);
 
@@ -164,78 +164,100 @@ std::unique_ptr<DragImage> DragImage::Create(const KURL& url,
 
   String url_string = url.GetString();
   String label = in_label.StripWhiteSpace();
-  if (label.empty()) {
+  if (label.IsEmpty()) {
     draw_url_string = false;
     label = url_string;
   }
 
   // First step is drawing the link drag image width.
+<<<<<<< HEAD
   gfx::Size label_size(label_font.Width(TextRun(label)),
                        label_font_data->GetFontMetrics().Ascent() +
                            label_font_data->GetFontMetrics().Descent());
+=======
+  TextRun label_run(label.Impl());
+  TextRun url_run(url_string.Impl());
+  IntSize label_size(label_font.Width(label_run),
+                     label_font_data->GetFontMetrics().Ascent() +
+                         label_font_data->GetFontMetrics().Descent());
+>>>>>>> chromium
 
-  if (label_size.width() > max_drag_label_string_width_dip) {
-    label_size.set_width(max_drag_label_string_width_dip);
+  if (label_size.Width() > max_drag_label_string_width_dip) {
+    label_size.SetWidth(max_drag_label_string_width_dip);
     clip_label_string = true;
   }
 
-  gfx::Size url_string_size;
-  gfx::Size image_size(label_size.width() + kDragLabelBorderX * 2,
-                       label_size.height() + kDragLabelBorderY * 2);
+  IntSize url_string_size;
+  IntSize image_size(label_size.Width() + kDragLabelBorderX * 2,
+                     label_size.Height() + kDragLabelBorderY * 2);
 
   if (draw_url_string) {
+<<<<<<< HEAD
     url_string_size.set_width(url_font.Width(TextRun(url_string)));
     url_string_size.set_height(url_font_data->GetFontMetrics().Ascent() +
                                url_font_data->GetFontMetrics().Descent());
     image_size.set_height(image_size.height() + url_string_size.height());
     if (url_string_size.width() > max_drag_label_string_width_dip) {
       image_size.set_width(max_drag_label_string_width_dip);
+=======
+    url_string_size.SetWidth(url_font.Width(url_run));
+    url_string_size.SetHeight(url_font_data->GetFontMetrics().Ascent() +
+                              url_font_data->GetFontMetrics().Descent());
+    image_size.SetHeight(image_size.Height() + url_string_size.Height());
+    if (url_string_size.Width() > max_drag_label_string_width_dip) {
+      image_size.SetWidth(max_drag_label_string_width_dip);
+>>>>>>> chromium
       clip_url_string = true;
     } else {
-      image_size.set_width(
-          std::max(label_size.width(), url_string_size.width()) +
+      image_size.SetWidth(
+          std::max(label_size.Width(), url_string_size.Width()) +
           kDragLabelBorderX * 2);
     }
   }
 
   // We now know how big the image needs to be, so we create and
   // fill the background
-  gfx::Size scaled_image_size =
-      gfx::ScaleToFlooredSize(image_size, device_scale_factor);
+  IntSize scaled_image_size = image_size;
+  scaled_image_size.Scale(device_scale_factor);
   // TODO(fserb): are we sure this should be software?
   std::unique_ptr<CanvasResourceProvider> resource_provider(
       CanvasResourceProvider::CreateBitmapProvider(
+<<<<<<< HEAD
           scaled_image_size, GetN32FormatForCanvas(), kPremul_SkAlphaType,
           gfx::ColorSpace::CreateSRGB(),
+=======
+          scaled_image_size, kLow_SkFilterQuality, CanvasResourceParams(),
+>>>>>>> chromium
           CanvasResourceProvider::ShouldInitialize::kNo));
   if (!resource_provider)
     return nullptr;
 
-  resource_provider->Canvas().scale(device_scale_factor, device_scale_factor);
+  resource_provider->Canvas()->scale(device_scale_factor, device_scale_factor);
 
   const float kDragLabelRadius = 5;
 
-  gfx::Rect rect(image_size);
-  cc::PaintFlags background_paint;
+  IntRect rect(IntPoint(), image_size);
+  PaintFlags background_paint;
   background_paint.setColor(SkColorSetRGB(140, 140, 140));
   background_paint.setAntiAlias(true);
   SkRRect rrect;
-  rrect.setRectXY(SkRect::MakeWH(image_size.width(), image_size.height()),
+  rrect.setRectXY(SkRect::MakeWH(image_size.Width(), image_size.Height()),
                   kDragLabelRadius, kDragLabelRadius);
-  resource_provider->Canvas().drawRRect(rrect, background_paint);
+  resource_provider->Canvas()->drawRRect(rrect, background_paint);
 
   // Draw the text
-  cc::PaintFlags text_paint;
+  PaintFlags text_paint;
   if (draw_url_string) {
     if (clip_url_string)
       url_string = StringTruncator::CenterTruncate(
-          url_string, image_size.width() - (kDragLabelBorderX * 2.0f),
+          url_string, image_size.Width() - (kDragLabelBorderX * 2.0f),
           url_font);
-    gfx::PointF text_pos(
+    FloatPoint text_pos(
         kDragLabelBorderX,
-        image_size.height() -
+        image_size.Height() -
             (kLabelBorderYOffset + url_font_data->GetFontMetrics().Descent()));
     TextRun text_run(url_string);
+<<<<<<< HEAD
     if (RuntimeEnabledFeatures::DragImageNoNodeIdEnabled()) {
       url_font.DrawText(&resource_provider->Canvas(), text_run, text_pos,
                         text_paint);
@@ -243,34 +265,49 @@ std::unique_ptr<DragImage> DragImage::Create(const KURL& url,
       url_font.DrawText(&resource_provider->Canvas(), text_run, text_pos,
                         device_scale_factor, text_paint);
     }
+=======
+    url_font.DrawText(resource_provider->Canvas(), TextRunPaintInfo(text_run),
+                      text_pos, device_scale_factor, text_paint);
+>>>>>>> chromium
   }
 
-  if (clip_label_string) {
+  if (clip_label_string)
     label = StringTruncator::RightTruncate(
-        label, image_size.width() - (kDragLabelBorderX * 2.0f), label_font);
-  }
+        label, image_size.Width() - (kDragLabelBorderX * 2.0f), label_font);
 
+<<<<<<< HEAD
   TextRun text_run(label, BidiParagraph::BaseDirectionForStringOrLtr(label));
   gfx::Point text_pos(
+=======
+  bool has_strong_directionality;
+  TextRun text_run =
+      TextRunWithDirectionality(label, &has_strong_directionality);
+  IntPoint text_pos(
+>>>>>>> chromium
       kDragLabelBorderX,
       kDragLabelBorderY + label_font.GetFontDescription().ComputedPixelSize());
-  if (text_run.Direction() == TextDirection::kRtl) {
+  if (has_strong_directionality &&
+      text_run.Direction() == TextDirection::kRtl) {
     float text_width = label_font.Width(text_run);
-    int available_width = image_size.width() - kDragLabelBorderX * 2;
-    text_pos.set_x(available_width - ceilf(text_width));
+    int available_width = image_size.Width() - kDragLabelBorderX * 2;
+    text_pos.SetX(available_width - ceilf(text_width));
   }
-  label_font.DrawBidiText(&resource_provider->Canvas(),
-                          TextRunPaintInfo(text_run), gfx::PointF(text_pos),
-                          Font::kDoNotPaintIfFontNotReady, text_paint);
+  label_font.DrawBidiText(resource_provider->Canvas(),
+                          TextRunPaintInfo(text_run), FloatPoint(text_pos),
+                          Font::kDoNotPaintIfFontNotReady, device_scale_factor,
+                          text_paint);
 
-  scoped_refptr<StaticBitmapImage> image =
-      resource_provider->Snapshot(FlushReason::kNon2DCanvas);
-  return DragImage::Create(image.get(), kRespectImageOrientation);
+  scoped_refptr<StaticBitmapImage> image = resource_provider->Snapshot();
+  return DragImage::Create(image.get(), kRespectImageOrientation,
+                           device_scale_factor);
 }
 
 DragImage::DragImage(const SkBitmap& bitmap,
+                     float resolution_scale,
                      InterpolationQuality interpolation_quality)
-    : bitmap_(bitmap), interpolation_quality_(interpolation_quality) {}
+    : bitmap_(bitmap),
+      resolution_scale_(resolution_scale),
+      interpolation_quality_(interpolation_quality) {}
 
 DragImage::~DragImage() = default;
 

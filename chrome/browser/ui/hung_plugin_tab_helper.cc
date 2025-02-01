@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,10 +7,9 @@
 #include <algorithm>
 #include <memory>
 
+#include "base/bind.h"
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
-#include "base/not_fatal_until.h"
+#include "base/macros.h"
 #include "base/process/process.h"
 #include "build/build_config.h"
 #include "chrome/browser/hang_monitor/hang_crash_dump.h"
@@ -23,8 +22,36 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/child_process_data.h"
 #include "content/public/browser/plugin_service.h"
+#include "content/public/common/content_features.h"
 #include "content/public/common/process_type.h"
 #include "content/public/common/result_codes.h"
+
+namespace {
+
+// Called on the process thread to actually kill the plugin with the given child
+// ID. We specifically don't want this to be a member function since if the
+// user chooses to kill the plugin, we want to kill it even if they close the
+// tab first.
+//
+// Be careful with the child_id. It's supplied by the renderer which might be
+// hacked.
+void KillPluginOnProcessThread(int child_id) {
+  content::BrowserChildProcessHostIterator iter(
+      content::PROCESS_TYPE_PPAPI_PLUGIN);
+  while (!iter.Done()) {
+    const content::ChildProcessData& data = iter.GetData();
+    if (data.id == child_id) {
+      CrashDumpHungChildProcess(data.GetProcess().Handle());
+      data.GetProcess().Terminate(content::RESULT_CODE_HUNG, false);
+      return;
+    }
+    ++iter;
+  }
+  // Ignore the case where we didn't find the plugin, it may have terminated
+  // before this function could run.
+}
+
+}  // namespace
 
 // HungPluginTabHelper::PluginState -------------------------------------------
 
@@ -47,11 +74,11 @@ struct HungPluginTabHelper::PluginState {
   std::u16string name;
 
   // Possibly-null if we're not showing an infobar right now.
-  raw_ptr<infobars::InfoBar> infobar = nullptr;
+  infobars::InfoBar* infobar = nullptr;
 
   // Time to delay before re-showing the infobar for a hung plugin. This is
   // increased each time the user cancels it.
-  base::TimeDelta next_reshow_delay = base::Seconds(10);
+  base::TimeDelta next_reshow_delay = base::TimeDelta::FromSeconds(10);
 
   // Handles calling the helper when the infobar should be re-shown.
   base::OneShotTimer timer;
@@ -69,9 +96,16 @@ void HungPluginTabHelper::PluginCrashed(const base::FilePath& plugin_path,
                                         base::ProcessId plugin_pid) {
   // For now, just do a brute-force search to see if we have this plugin. Since
   // we'll normally have 0 or 1, this is fast.
+<<<<<<< HEAD
   const auto i =
       std::ranges::find(hung_plugins_, plugin_path,
                         [](const auto& elem) { return elem.second->path; });
+=======
+  const auto i = std::find_if(hung_plugins_.begin(), hung_plugins_.end(),
+                              [plugin_path](const auto& elem) {
+                                return elem.second->path == plugin_path;
+                              });
+>>>>>>> chromium
   if (i != hung_plugins_.end()) {
     if (i->second->infobar) {
       infobars::ContentInfoBarManager* infobar_manager =
@@ -120,9 +154,15 @@ void HungPluginTabHelper::PluginHungStatusChanged(
 
 void HungPluginTabHelper::OnInfoBarRemoved(infobars::InfoBar* infobar,
                                            bool animate) {
+<<<<<<< HEAD
   const auto i =
       std::ranges::find(hung_plugins_, infobar,
                         [](const auto& elem) { return elem.second->infobar; });
+=======
+  const auto i = std::find_if(
+      hung_plugins_.begin(), hung_plugins_.end(),
+      [infobar](const auto& elem) { return elem.second->infobar == infobar; });
+>>>>>>> chromium
   if (i != hung_plugins_.end()) {
     PluginState* state = i->second.get();
     state->infobar = nullptr;
@@ -144,32 +184,22 @@ void HungPluginTabHelper::OnManagerShuttingDown(
 }
 
 void HungPluginTabHelper::KillPlugin(int child_id) {
-  // Be careful with the child_id. It's supplied by the renderer which might be
-  // hacked.
-  content::BrowserChildProcessHostIterator iter(
-      content::PROCESS_TYPE_PPAPI_PLUGIN);
-  while (!iter.Done()) {
-    const content::ChildProcessData& data = iter.GetData();
-    if (data.id == child_id) {
-      CrashDumpHungChildProcess(data.GetProcess().Handle());
-      data.GetProcess().Terminate(content::RESULT_CODE_HUNG, false);
-      return;
-    }
-    ++iter;
+  if (base::FeatureList::IsEnabled(features::kProcessHostOnUI)) {
+    KillPluginOnProcessThread(child_id);
+  } else {
+    content::GetIOThreadTaskRunner({})->PostTask(
+        FROM_HERE, base::BindOnce(&KillPluginOnProcessThread, child_id));
   }
-  // Ignore the case where we didn't find the plugin, it may have terminated
-  // before this function could run.
 }
 
 HungPluginTabHelper::HungPluginTabHelper(content::WebContents* contents)
-    : content::WebContentsObserver(contents),
-      content::WebContentsUserData<HungPluginTabHelper>(*contents) {}
+    : content::WebContentsObserver(contents) {}
 
 void HungPluginTabHelper::OnReshowTimer(int child_id) {
   // The timer should have been cancelled if the record isn't in our map
   // anymore.
   auto found = hung_plugins_.find(child_id);
-  CHECK(found != hung_plugins_.end(), base::NotFatalUntil::M130);
+  DCHECK(found != hung_plugins_.end());
   DCHECK(!found->second->infobar);
   ShowBar(child_id, found->second.get());
 }
@@ -186,4 +216,4 @@ void HungPluginTabHelper::ShowBar(int child_id, PluginState* state) {
                                                      child_id, state->name);
 }
 
-WEB_CONTENTS_USER_DATA_KEY_IMPL(HungPluginTabHelper);
+WEB_CONTENTS_USER_DATA_KEY_IMPL(HungPluginTabHelper)

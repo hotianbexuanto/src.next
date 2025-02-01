@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,8 +10,7 @@
 #include "base/android/scoped_java_ref.h"
 #include "base/files/file_path.h"
 
-// Must come after all headers that specialize FromJniType() / ToJniType().
-#include "base/base_jni/PathUtils_jni.h"
+#include "base/base_jni_headers/PathUtils_jni.h"
 
 namespace base {
 namespace android {

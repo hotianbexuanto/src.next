@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,17 +10,19 @@
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ssl/security_state_tab_helper.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
-#include "chrome/browser/web_applications/web_app_helpers.h"
+#include "chrome/browser/web_applications/components/web_app_helpers.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/extensions/api/url_handlers/url_handlers_parser.h"
 #include "chrome/common/extensions/manifest_handlers/app_launch_info.h"
-#include "components/security_state/content/security_state_tab_helper.h"
+#include "chrome/common/extensions/manifest_handlers/app_theme_color_info.h"
 #include "components/security_state/core/security_state.h"
-#include "components/services/app_service/public/cpp/app_types.h"
+#include "components/url_formatter/url_formatter.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_view_host.h"
@@ -56,7 +58,9 @@ bool IsSameHostAndPort(const GURL& app_url, const GURL& page_url) {
 HostedAppBrowserController::HostedAppBrowserController(Browser* browser)
     : AppBrowserController(
           browser,
-          web_app::GetAppIdFromApplicationName(browser->app_name())) {}
+          web_app::GetAppIdFromApplicationName(browser->app_name())) {
+  DCHECK(!GetExtension() || !GetExtension()->from_bookmark());
+}
 
 HostedAppBrowserController::~HostedAppBrowserController() = default;
 
@@ -67,8 +71,14 @@ bool HostedAppBrowserController::HasMinimalUiButtons() const {
 ui::ImageModel HostedAppBrowserController::GetWindowAppIcon() const {
   // TODO(calamity): Use the app name to retrieve the app icon without using the
   // extensions tab helper to make icon load more immediate.
+<<<<<<< HEAD
 #if BUILDFLAG(IS_CHROMEOS)
   if (apps::AppServiceProxyFactory::IsAppServiceAvailableForProfile(
+=======
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  if (base::FeatureList::IsEnabled(features::kAppServiceAdaptiveIcon) &&
+      apps::AppServiceProxyFactory::IsAppServiceAvailableForProfile(
+>>>>>>> chromium
           browser()->profile())) {
     if (!app_icon_.isNull()) {
       return ui::ImageModel::FromImageSkia(app_icon_);
@@ -78,7 +88,8 @@ ui::ImageModel HostedAppBrowserController::GetWindowAppIcon() const {
     if (extension &&
         apps::AppServiceProxyFactory::GetForProfile(browser()->profile())
                 ->AppRegistryCache()
-                .GetAppType(extension->id()) != apps::AppType::kUnknown) {
+                .GetAppType(extension->id()) !=
+            apps::mojom::AppType::kUnknown) {
       LoadAppIcon(true /* allow_placeholder_icon */);
       return GetFallbackAppIcon();
     }
@@ -112,6 +123,24 @@ ui::ImageModel HostedAppBrowserController::GetWindowIcon() const {
   }
 
   return ui::ImageModel::FromImage(browser()->GetCurrentPageIcon());
+}
+
+absl::optional<SkColor> HostedAppBrowserController::GetThemeColor() const {
+  absl::optional<SkColor> web_theme_color =
+      AppBrowserController::GetThemeColor();
+  if (web_theme_color)
+    return web_theme_color;
+
+  const Extension* extension = GetExtension();
+  if (!extension)
+    return absl::nullopt;
+
+  absl::optional<SkColor> extension_theme_color =
+      AppThemeColorInfo::GetThemeColor(extension);
+  if (extension_theme_color)
+    return SkColorSetA(*extension_theme_color, SK_AlphaOPAQUE);
+
+  return absl::nullopt;
 }
 
 std::u16string HostedAppBrowserController::GetTitle() const {
@@ -154,7 +183,7 @@ bool HostedAppBrowserController::IsUrlInAppScope(const GURL& url) const {
 
 const Extension* HostedAppBrowserController::GetExtension() const {
   return ExtensionRegistry::Get(browser()->profile())
-      ->GetExtensionById(app_id(), ExtensionRegistry::EVERYTHING);
+      ->GetExtensionById(GetAppId(), ExtensionRegistry::EVERYTHING);
 }
 
 std::u16string HostedAppBrowserController::GetAppShortName() const {
@@ -222,26 +251,37 @@ void HostedAppBrowserController::OnTabInserted(content::WebContents* contents) {
   AppBrowserController::OnTabInserted(contents);
 
   const Extension* extension = GetExtension();
+  if (extension && extension->from_bookmark())
+    extension = nullptr;
   extensions::TabHelper::FromWebContents(contents)->SetExtensionApp(extension);
+  web_app::SetAppPrefsForWebContents(contents);
 }
 
 void HostedAppBrowserController::OnTabRemoved(content::WebContents* contents) {
   AppBrowserController::OnTabRemoved(contents);
 
   extensions::TabHelper::FromWebContents(contents)->SetExtensionApp(nullptr);
+  web_app::ClearAppPrefsForWebContents(contents);
 }
 
 void HostedAppBrowserController::LoadAppIcon(
     bool allow_placeholder_icon) const {
   apps::AppServiceProxyFactory::GetForProfile(browser()->profile())
-      ->LoadIcon(GetExtension()->id(), apps::IconType::kStandard,
+      ->LoadIcon(apps::mojom::AppType::kExtension, GetExtension()->id(),
+                 apps::mojom::IconType::kStandard,
                  extension_misc::EXTENSION_ICON_SMALL, allow_placeholder_icon,
                  base::BindOnce(&HostedAppBrowserController::OnLoadIcon,
-                                weak_ptr_factory_.GetMutableWeakPtr()));
+                                weak_ptr_factory_.GetWeakPtr()));
 }
 
+<<<<<<< HEAD
 void HostedAppBrowserController::OnLoadIcon(apps::IconValuePtr icon_value) {
   if (!icon_value || icon_value->icon_type != apps::IconType::kStandard) {
+=======
+void HostedAppBrowserController::OnLoadIcon(
+    apps::mojom::IconValuePtr icon_value) {
+  if (icon_value->icon_type != apps::mojom::IconType::kStandard)
+>>>>>>> chromium
     return;
   }
 

@@ -1,221 +1,145 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef EXTENSIONS_COMMON_CONSTANTS_H_
 #define EXTENSIONS_COMMON_CONSTANTS_H_
 
+<<<<<<< HEAD
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
 
 #include "base/containers/span.h"
+=======
+>>>>>>> chromium
 #include "base/files/file_path.h"
+#include "base/strings/string_piece_forward.h"
 #include "build/chromeos_buildflags.h"
-#include "extensions/common/extensions_export.h"
+#include "components/services/app_service/public/mojom/types.mojom-forward.h"
 
 namespace extensions {
 
 // Scheme we serve extension content from.
-inline constexpr char kExtensionScheme[] = "chrome-extension";
-
-// URL used to indicate that an extension resource load request was invalid.
-inline constexpr char kExtensionInvalidRequestURL[] =
-    "chrome-extension://invalid/";
+extern const char kExtensionScheme[];
 
 // The name of the manifest inside an extension.
-inline constexpr base::FilePath::CharType kManifestFilename[] =
-    FILE_PATH_LITERAL("manifest.json");
+extern const base::FilePath::CharType kManifestFilename[];
 
 // The name of the differential fingerprint file inside an extension.
-inline constexpr base::FilePath::CharType kDifferentialFingerprintFilename[] =
-    FILE_PATH_LITERAL("manifest.fingerprint");
+extern const base::FilePath::CharType kDifferentialFingerprintFilename[];
 
 // The name of locale folder inside an extension.
-inline constexpr base::FilePath::CharType kLocaleFolder[] =
-    FILE_PATH_LITERAL("_locales");
+extern const base::FilePath::CharType kLocaleFolder[];
 
 // The name of the messages file inside an extension.
-inline constexpr base::FilePath::CharType kMessagesFilename[] =
-    FILE_PATH_LITERAL("messages.json");
+extern const base::FilePath::CharType kMessagesFilename[];
 
 // The name of the gzipped messages file inside an extension.
-inline constexpr base::FilePath::CharType kGzippedMessagesFilename[] =
-    FILE_PATH_LITERAL("messages.json.gz");
+extern const base::FilePath::CharType kGzippedMessagesFilename[];
 
 // The base directory for subdirectories with platform-specific code.
-inline constexpr base::FilePath::CharType kPlatformSpecificFolder[] =
-    FILE_PATH_LITERAL("_platform_specific");
+extern const base::FilePath::CharType kPlatformSpecificFolder[];
 
 // A directory reserved for metadata, generated either by the webstore
 // or chrome.
-inline constexpr base::FilePath::CharType kMetadataFolder[] =
-    FILE_PATH_LITERAL("_metadata");
+extern const base::FilePath::CharType kMetadataFolder[];
 
 // Name of the verified contents file within the metadata folder.
-inline constexpr base::FilePath::CharType kVerifiedContentsFilename[] =
-    FILE_PATH_LITERAL("verified_contents.json");
+extern const base::FilePath::CharType kVerifiedContentsFilename[];
 
 // Name of the computed hashes file within the metadata folder.
-inline constexpr base::FilePath::CharType kComputedHashesFilename[] =
-    FILE_PATH_LITERAL("computed_hashes.json");
+extern const base::FilePath::CharType kComputedHashesFilename[];
 
 // Name of the indexed ruleset directory for the Declarative Net Request API.
-inline constexpr base::FilePath::CharType kIndexedRulesetDirectory[] =
-    FILE_PATH_LITERAL("generated_indexed_rulesets");
+extern const base::FilePath::CharType kIndexedRulesetDirectory[];
 
 // The name of the directory inside the profile where extensions are
 // installed to.
-inline constexpr char kInstallDirectoryName[] = "Extensions";
-
-// The name of the directory inside the profile where unpacked (e.g. from .zip
-// file) extensions are installed to.
-inline constexpr char kUnpackedInstallDirectoryName[] = "UnpackedExtensions";
+extern const char kInstallDirectoryName[];
 
 // The name of a temporary directory to install an extension into for
 // validation before finalizing install.
-inline constexpr char kTempExtensionName[] = "CRX_INSTALL";
+extern const char kTempExtensionName[];
 
 // The file to write our decoded message catalogs to, relative to the
 // extension_path.
-inline constexpr char kDecodedMessageCatalogsFilename[] =
-    "DECODED_MESSAGE_CATALOGS";
+extern const char kDecodedMessageCatalogsFilename[];
 
 // The filename to use for a background page generated from
 // background.scripts.
-inline constexpr char kGeneratedBackgroundPageFilename[] =
-    "_generated_background_page.html";
-
-// The URL piece between the extension ID and favicon URL.
-inline constexpr char kFaviconSourcePath[] = "_favicon";
+extern const char kGeneratedBackgroundPageFilename[];
 
 // Path to imported modules.
-inline constexpr char kModulesDir[] = "_modules";
+extern const char kModulesDir[];
 
 // The file extension (.crx) for extensions.
-inline constexpr base::FilePath::CharType kExtensionFileExtension[] =
-    FILE_PATH_LITERAL(".crx");
+extern const base::FilePath::CharType kExtensionFileExtension[];
 
 // The file extension (.pem) for private key files.
-inline constexpr base::FilePath::CharType kExtensionKeyFileExtension[] =
-    FILE_PATH_LITERAL(".pem");
+extern const base::FilePath::CharType kExtensionKeyFileExtension[];
 
-// Default frequency for auto updates, if turned on (5 hours).
-inline constexpr int kDefaultUpdateFrequencySeconds = 60 * 60 * 5;
+// Default frequency for auto updates, if turned on.
+extern const int kDefaultUpdateFrequencySeconds;
 
 // The name of the directory inside the profile where per-app local settings
 // are stored.
-inline constexpr base::FilePath::CharType kLocalAppSettingsDirectoryName[] =
-    FILE_PATH_LITERAL("Local App Settings");
+extern const char kLocalAppSettingsDirectoryName[];
 
 // The name of the directory inside the profile where per-extension local
 // settings are stored.
-inline constexpr base::FilePath::CharType
-    kLocalExtensionSettingsDirectoryName[] =
-        FILE_PATH_LITERAL("Local Extension Settings");
+extern const char kLocalExtensionSettingsDirectoryName[];
 
 // The name of the directory inside the profile where per-app synced settings
 // are stored.
-inline constexpr base::FilePath::CharType kSyncAppSettingsDirectoryName[] =
-    FILE_PATH_LITERAL("Sync App Settings");
+extern const char kSyncAppSettingsDirectoryName[];
 
 // The name of the directory inside the profile where per-extension synced
 // settings are stored.
-inline constexpr base::FilePath::CharType
-    kSyncExtensionSettingsDirectoryName[] =
-        FILE_PATH_LITERAL("Sync Extension Settings");
+extern const char kSyncExtensionSettingsDirectoryName[];
 
 // The name of the directory inside the profile where per-extension persistent
 // managed settings are stored.
-inline constexpr base::FilePath::CharType kManagedSettingsDirectoryName[] =
-    FILE_PATH_LITERAL("Managed Extension Settings");
+extern const char kManagedSettingsDirectoryName[];
 
 // The name of the database inside the profile where chrome-internal
 // extension state resides.
-inline constexpr base::FilePath::CharType kStateStoreName[] =
-    FILE_PATH_LITERAL("Extension State");
+extern const char kStateStoreName[];
 
 // The name of the database inside the profile where declarative extension
 // rules are stored.
-inline constexpr base::FilePath::CharType kRulesStoreName[] =
-    FILE_PATH_LITERAL("Extension Rules");
+extern const char kRulesStoreName[];
 
-// The name of the database inside the profile where persistent dynamic user
-// script metadata is stored.
-inline constexpr base::FilePath::CharType kScriptsStoreName[] =
-    FILE_PATH_LITERAL("Extension Scripts");
-
-// Statistics are logged to UMA with these strings as part of histogram name.
-// They can all be found under Extensions.Database.Open.<client>. Changing this
-// needs to synchronize with histograms.xml, AND will also become incompatible
-// with older browsers still reporting the previous values.
-inline constexpr char kSettingsDatabaseUMAClientName[] = "Settings";
-inline constexpr char kRulesDatabaseUMAClientName[] = "Rules";
-inline constexpr char kStateDatabaseUMAClientName[] = "State";
-inline constexpr char kScriptsDatabaseUMAClientName[] = "Scripts";
+// The URL query parameter key corresponding to multi-login user index.
+extern const char kAuthUserQueryKey[];
 
 // Mime type strings
-inline constexpr char kMimeTypeJpeg[] = "image/jpeg";
-inline constexpr char kMimeTypePng[] = "image/png";
+extern const char kMimeTypeJpeg[];
+extern const char kMimeTypePng[];
 
 // The extension id of the Web Store component application.
-inline constexpr char kWebStoreAppId[] = "ahfgeienlihckogmohjhadlkjgocpleb";
+extern const char kWebStoreAppId[];
 
 // The key used for signing some pieces of data from the webstore.
+<<<<<<< HEAD
 EXTENSIONS_EXPORT extern const base::span<const uint8_t>
     kWebstoreSignaturesPublicKey;
 
 // A preference for storing the extension's update URL data.
 inline constexpr char kUpdateURLData[] = "update_url_data";
+=======
+extern const uint8_t kWebstoreSignaturesPublicKey[];
+extern const size_t kWebstoreSignaturesPublicKeySize;
+>>>>>>> chromium
 
 // Thread identifier for the main renderer thread (as opposed to a service
 // worker thread).
 // This is the default thread id used for extension event listeners registered
 // from a non-service worker context
-inline constexpr int kMainThreadId = 0;
+extern const int kMainThreadId;
 
-// Enumeration of possible app launch sources.
-// This should be kept in sync with LaunchSource in
-// extensions/common/api/app_runtime.idl, and GetLaunchSourceEnum() in
-// extensions/browser/api/app_runtime/app_runtime_api.cc.
-// Note the enumeration is used in UMA histogram so entries
-// should not be re-ordered or removed.
-enum class AppLaunchSource {
-  kSourceNone = 0,
-  kSourceUntracked = 1,
-  kSourceAppLauncher = 2,
-  kSourceNewTabPage = 3,
-  kSourceReload = 4,
-  kSourceRestart = 5,
-  kSourceLoadAndLaunch = 6,
-  kSourceCommandLine = 7,
-  kSourceFileHandler = 8,
-  kSourceUrlHandler = 9,
-  kSourceSystemTray = 10,
-  kSourceAboutPage = 11,
-  kSourceKeyboard = 12,
-  kSourceExtensionsPage = 13,
-  kSourceManagementApi = 14,
-  kSourceEphemeralAppDeprecated = 15,
-  kSourceBackground = 16,
-  kSourceKiosk = 17,
-  kSourceChromeInternal = 18,
-  kSourceTest = 19,
-  kSourceInstalledNotification = 20,
-  kSourceContextMenu = 21,
-  kSourceArc = 22,
-  kSourceIntentUrl = 23,        // App launch triggered by a URL.
-  kSourceRunOnOsLogin = 24,     // App launched during OS login.
-  kSourceProtocolHandler = 25,  // App launch via protocol handler.
-  kSourceReparenting = 26,      // APP launch via reparenting.
-  kSourceAppHomePage = 27,      // App launch from chrome://apps (App Home).
-  kSourceFocusMode = 28,        // App launch from Focus Mode panel.
-  kSourceSparky = 29,           // App launch from Sparky.
-
-  // Add any new values above this one, and update kMaxValue to the highest
-  // enumerator value.
-  kMaxValue = kSourceSparky,
-};
+using apps::mojom::AppLaunchSource;
+using apps::mojom::LaunchContainer;
 
 // This enum is used for the launch type the user wants to use for an
 // application.
@@ -241,253 +165,159 @@ enum LaunchType {
 namespace extension_misc {
 
 // Matches chrome.tabs.TAB_ID_NONE.
-inline constexpr int kUnknownTabId = -1;
+const int kUnknownTabId = -1;
 
 // Matches chrome.windows.WINDOW_ID_NONE.
-inline constexpr int kUnknownWindowId = -1;
+const int kUnknownWindowId = -1;
 
 // Matches chrome.windows.WINDOW_ID_CURRENT.
-inline constexpr int kCurrentWindowId = -2;
+const int kCurrentWindowId = -2;
 
-using ExtensionIcons = int;
-inline constexpr ExtensionIcons EXTENSION_ICON_GIGANTOR = 512;
-inline constexpr ExtensionIcons EXTENSION_ICON_EXTRA_LARGE = 256;
-inline constexpr ExtensionIcons EXTENSION_ICON_LARGE = 128;
-inline constexpr ExtensionIcons EXTENSION_ICON_MEDIUM = 48;
-inline constexpr ExtensionIcons EXTENSION_ICON_SMALL = 32;
-inline constexpr ExtensionIcons EXTENSION_ICON_SMALLISH = 24;
-inline constexpr ExtensionIcons EXTENSION_ICON_BITTY = 16;
-inline constexpr ExtensionIcons EXTENSION_ICON_INVALID = 0;
+enum ExtensionIcons {
+  EXTENSION_ICON_GIGANTOR = 512,
+  EXTENSION_ICON_EXTRA_LARGE = 256,
+  EXTENSION_ICON_LARGE = 128,
+  EXTENSION_ICON_MEDIUM = 48,
+  EXTENSION_ICON_SMALL = 32,
+  EXTENSION_ICON_SMALLISH = 24,
+  EXTENSION_ICON_BITTY = 16,
+  EXTENSION_ICON_INVALID = 0,
+};
 
 // The extension id of the ChromeVox extension.
-inline constexpr char kChromeVoxExtensionId[] =
-#if BUILDFLAG(IS_CHROMEOS)
-    // The extension id for the built-in component extension.
-    "mndnfokpggljbaajbnioimlmbfngpief";
-#else
-    // The extension id for the web store extension.
-    "kgejglhpjiefppelpmljglcjbhoiplfn";
-#endif
+extern const char kChromeVoxExtensionId[];
+
+// The extension id of the feedback component extension.
+extern const char kFeedbackExtensionId[];
 
 // The extension id of the PDF extension.
-inline constexpr char kPdfExtensionId[] = "mhjfbmdgcfjbbpaeojofohoefgiehjai";
+extern const char kPdfExtensionId[];
 
 // The extension id of the Office Viewer component extension.
-inline constexpr char kQuickOfficeComponentExtensionId[] =
-    "bpmcpldpdmajfigpchkicefoigmkfalc";
+extern const char kQuickOfficeComponentExtensionId[];
 
 // The extension id of the Office Viewer extension on the internal webstore.
-inline constexpr char kQuickOfficeInternalExtensionId[] =
-    "ehibbfinohgbchlgdbfpikodjaojhccn";
+extern const char kQuickOfficeInternalExtensionId[];
 
 // The extension id of the Office Viewer extension.
-inline constexpr char kQuickOfficeExtensionId[] =
-    "gbkeegbaiigmenfmjfclcdgdpimamgkj";
+extern const char kQuickOfficeExtensionId[];
 
 // The extension id used for testing mimeHandlerPrivate.
-inline constexpr char kMimeHandlerPrivateTestExtensionId[] =
-    "oickdpebdnfbgkcaoklfcdhjniefkcji";
+extern const char kMimeHandlerPrivateTestExtensionId[];
+
+// The extension id of the Camera application.
+extern const char kCameraAppId[];
+
+// The extension id of the devoloper version of Camera application.
+extern const char kCameraAppDevId[];
+
+// The extension id of the Chrome component application.
+extern const char kChromeAppId[];
+
+// Fake extension ID for the Lacros chrome browser application.
+extern const char kLacrosAppId[];
 
 // The extension id of the Files Manager application.
-inline constexpr char kFilesManagerAppId[] = "hhaomjibdihmijegdhdafkllkbggdgoj";
+extern const char kFilesManagerAppId[];
 
 // The extension id of the Calculator application.
-inline constexpr char kCalculatorAppId[] = "joodangkbfjnajiiifokapkpmhfnpleo";
+extern const char kCalculatorAppId[];
 
 // The extension id of the demo Calendar application.
-inline constexpr char kCalendarDemoAppId[] = "fpgfohogebplgnamlafljlcidjedbdeb";
+extern const char kCalendarDemoAppId[];
 
 // The extension id of the GMail application.
-inline constexpr char kGmailAppId[] = "pjkljhegncpnkpknbcohdijeoejaedia";
+extern const char kGMailAppId[];
 
 // The extension id of the demo Google Docs application.
-inline constexpr char kGoogleDocsDemoAppId[] =
-    "chdaoodbokekbiiphekbfjdmiodccljl";
+extern const char kGoogleDocsDemoAppId[];
 
 // The extension id of the Google Docs PWA.
-inline constexpr char kGoogleDocsPwaAppId[] =
-    "cepkndkdlbllfhpfhledabdcdbidehkd";
+extern const char kGoogleDocsPwaAppId[];
 
 // The extension id of the Google Drive application.
-inline constexpr char kGoogleDriveAppId[] = "apdfllckaahabafndbhieahigkjlhalf";
+extern const char kGoogleDriveAppId[];
 
 // The extension id of the Google Meet PWA.
-inline constexpr char kGoogleMeetPwaAppId[] =
-    "dkainijpcknoofiakgccliajhbmlbhji";
+extern const char kGoogleMeetPwaAppId[];
 
 // The extension id of the demo Google Sheets application.
-inline constexpr char kGoogleSheetsDemoAppId[] =
-    "nifkmgcdokhkjghdlgflonppnefddien";
+extern const char kGoogleSheetsDemoAppId[];
 
 // The extension id of the Google Sheets PWA.
-inline constexpr char kGoogleSheetsPwaAppId[] =
-    "hcgjdbbnhkmopplfiibmdgghhdhbiidh";
+extern const char kGoogleSheetsPwaAppId[];
 
 // The extension id of the demo Google Slides application.
-inline constexpr char kGoogleSlidesDemoAppId[] =
-    "hdmobeajeoanbanmdlabnbnlopepchip";
+extern const char kGoogleSlidesDemoAppId[];
 
 // The extension id of the Google Keep application.
-inline constexpr char kGoogleKeepAppId[] = "hmjkmjkepdijhoojdojkdfohbdgmmhki";
+extern const char kGoogleKeepAppId[];
 
 // The extension id of the Youtube application.
-inline constexpr char kYoutubeAppId[] = "blpcfgokakmgnkcojhhkbfbldkacnbeo";
+extern const char kYoutubeAppId[];
 
 // The extension id of the Youtube PWA.
-inline constexpr char kYoutubePwaAppId[] = "agimnkijcaahngcdmfeangaknmldooml";
+extern const char kYoutubePwaAppId[];
 
 // The extension id of the Spotify PWA.
-inline constexpr char kSpotifyAppId[] = "pjibgclleladliembfgfagdaldikeohf";
+extern const char kSpotifyAppId[];
 
 // The extension id of the BeFunky PWA.
-inline constexpr char kBeFunkyAppId[] = "fjoomcalbeohjbnlcneddljemclcekeg";
+extern const char kBeFunkyAppId[];
 
 // The extension id of the Clipchamp PWA.
-inline constexpr char kClipchampAppId[] = "pfepfhbcedkbjdkanpimmmdjfgoddhkg";
+extern const char kClipchampAppId[];
 
 // The extension id of the GeForce NOW PWA.
-inline constexpr char kGeForceNowAppId[] = "egmafekfmcnknbdlbfbhafbllplmjlhn";
+extern const char kGeForceNowAppId[];
 
 // The extension id of the Zoom PWA.
-inline constexpr char kZoomAppId[] = "jldpdkiafafcejhceeincjmlkmibemgj";
+extern const char kZoomAppId[];
 
-// The extension id of the Sumo PWA.
-inline constexpr char kSumoAppId[] = "mfknjekfflbfdchhohffdpkokgfbfmdc";
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+// The extension id of the default Demo Mode Highlights app.
+extern const char kHighlightsAppId[];
 
-// The extension id of the Sumo PWA.
-inline constexpr char kAdobeSparkAppId[] = "magefboookdoiehjohjmbjmkepngibhm";
+// The extension id of the atlas Demo Mode Highlights app.
+extern const char kHighlightsAtlasAppId[];
 
-// The extension id of the Google Docs application.
-inline constexpr char kGoogleDocsAppId[] = "aohghmighlieiainnegkcijnfilokake";
+// The extension id of the default Demo Mode screensaver app.
+extern const char kScreensaverAppId[];
 
-// The extension id of the Google Sheets application.
-inline constexpr char kGoogleSheetsAppId[] = "felcaaldnbdncclmgdcncolpebgiejap";
+// The extension id of the atlas Demo Mode screensaver app.
+extern const char kScreensaverAtlasAppId[];
 
-// The extension id of the Google Slides application.
-inline constexpr char kGoogleSlidesAppId[] = "aapocclcgogkmnckokdopfmhonfmgoek";
+// The extension id of the krane Demo Mode screensaver app. That app is only
+// run on KRANE-ZDKS devices.
+extern const char kScreensaverKraneZdksAppId[];
 
-#if BUILDFLAG(IS_CHROMEOS)
 // The id of the testing extension allowed in the signin profile.
-inline constexpr char kSigninProfileTestExtensionId[] =
-    "mecfefiddjlmabpeilblgegnbioikfmp";
+extern const char kSigninProfileTestExtensionId[];
 
 // The id of the testing extension allowed in guest mode.
-inline constexpr char kGuestModeTestExtensionId[] =
-    "behllobkkfkfnphdnhnkndlbkcpglgmj";
-
-// The extension id of the Amazon Luna .ca Canada PWA.
-inline constexpr char kAmazonLunaAppIdCA[] = "agmpcdnpkedhhjldepagpgebdindblfd";
-
-// The extension id of the Amazon Luna .de Germany PWA.
-inline constexpr char kAmazonLunaAppIdDE[] = "lhedecbjcehgjijkmihhhfmdicbkkgkm";
-
-// The extension id of the Amazon Luna .es Spain PWA.
-inline constexpr char kAmazonLunaAppIdES[] = "befdkfemegjbohkncpbchjcgndhgajfg";
-
-// The extension id of the Amazon Luna .fr France PWA.
-inline constexpr char kAmazonLunaAppIdFR[] = "khklcoifabacgdieoekhmfcilgfmdmbh";
-
-// The extension id of the Amazon Luna .it Italy PWA.
-inline constexpr char kAmazonLunaAppIdIT[] = "agcdabkknemgfgbjdpckaehhncgkfcdi";
-
-// The extension id of the Amazon Luna .nl Netherlands PWA.
-inline constexpr char kAmazonLunaAppIdNL[] = "opkohmiamoeiojmgmhgelaaieecjifod";
-
-// The extension id of the Amazon Luna .pl Poland PWA.
-inline constexpr char kAmazonLunaAppIdPL[] = "alddamigfjonblpigkpieckmhbjdgadd";
-
-// The extension id of the Amazon Luna .co.uk UK PWA.
-inline constexpr char kAmazonLunaAppIdUK[] = "aolalpmkbpdlpjhmhhmcobipjkhlimkj";
-
-// The extension id of the Amazon Luna .com US PWA.
-inline constexpr char kAmazonLunaAppIdUS[] = "mdjpfbokiopdhidmalnpnmekjbajopld";
-
-// The extension id of the Boosteroid PWA.
-inline constexpr char kBoosteroidAppId[] = "ncjnbebeamfkkddkofiijnlpkcnobgin";
-
-// The extension id of the Cool Math Games PWA.
-inline constexpr char kCoolMathGamesAppId[] =
-    "moflhbhdponafajiefoaamnkbhpigdoc";
-
-// The extension id of the Now.gg UK PWA.
-inline constexpr char kNowGGAppIdUK[] = "nphngfagcmpkdicidafibmfcijfighif";
-
-// The extension id of the Now.gg US PWA.
-inline constexpr char kNowGGAppIdUS[] = "dgfmnbibgdaghllenpkjalbnljbffabj";
-
-// The extension id of the Poki PWA.
-inline constexpr char kPokiAppId[] = "nccldcgjjeeglpgcgebibmhmkakanigi";
-
-// The extension id of the Xbox Cloud Gaming PWA.
-inline constexpr char kXboxCloudGamingAppId[] =
-    "chcecgcbjkilfgeccdhoeaillkophnhg";
+extern const char kGuestModeTestExtensionId[];
 
 // Returns true if this app is part of the "system UI". Generally this is UI
 // that that on other operating systems would be considered part of the OS,
 // for example the file manager.
-EXTENSIONS_EXPORT bool IsSystemUIApp(std::string_view extension_id);
+bool IsSystemUIApp(base::StringPiece extension_id);
+#endif
 
-// The extension id of the default Demo Mode Highlights app.
-inline constexpr char kHighlightsAppId[] = "lpmakjfjcconjeehbidjclhdlpjmfjjj";
+// The extension id for the production version of Hangouts.
+extern const char kProdHangoutsExtensionId[];
 
-// The extension id of the default Demo Mode screensaver app.
-inline constexpr char kScreensaverAppId[] = "mnoijifedipmbjaoekhadjcijipaijjc";
-
-// The extension id of 2022 Demo Mode Highlights app.
-inline constexpr char kNewAttractLoopAppId[] =
-    "igilkdghcdehjdcpndaodgnjgdggiemm";
-
-// The extension id of 2022 Demo Mode screensaver app.
-inline constexpr char kNewHighlightsAppId[] =
-    "enchmnkoajljphdmahljlebfmpkkbnkj";
-
-// Returns true if this app is one of Demo Mode Chrome Apps, including
-// attract loop and highlights apps.
-EXTENSIONS_EXPORT bool IsDemoModeChromeApp(std::string_view extension_id);
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-// True if the id matches any of the QuickOffice extension ids.
-EXTENSIONS_EXPORT bool IsQuickOfficeExtension(std::string_view extension_id);
-
-// Returns if the app is managed by extension default apps. This is a hardcoded
-// list of default apps for Windows/Linux/MacOS platforms that should be
-// migrated from extension to web app.
-// TODO(crbug.com/40796281): remove after deault app migration is done.
-// This function is copied from
-// chrome/browser/web_applications/extension_status_utils.h.
-EXTENSIONS_EXPORT bool IsPreinstalledAppId(std::string_view app_id);
+// Extension ids used by Hangouts.
+extern const char* const kHangoutsExtensionIds[6];
 
 // Error message when enterprise policy blocks scripting of webpage.
-inline constexpr char kPolicyBlockedScripting[] =
-    "This page cannot be scripted due to an ExtensionsSettings policy.";
-
-// Error message when access to incognito preferences is denied.
-inline constexpr char kIncognitoErrorMessage[] =
-    "You do not have permission to access incognito preferences.";
-
-// Error message when setting a pref with "incognito_session_only"
-// scope is denied.
-inline constexpr char kIncognitoSessionOnlyErrorMessage[] =
-    "You cannot set a preference with scope 'incognito_session_only' when no "
-    "incognito window is open.";
-
-// Error message when an invalid color is provided to an API method.
-inline constexpr char kInvalidColorError[] =
-    "The color specification could not be parsed.";
+extern const char kPolicyBlockedScripting[];
 
 // The default block size for hashing used in content verification.
-inline constexpr int kContentVerificationDefaultBlockSize = 4096;
+extern const int kContentVerificationDefaultBlockSize;
 
-// The extension id of the Google Docs Offline extension.
-// TODO(crbug.com/325613709): This is only used to log targeted histograms to
-// diagnose corruption rates for this extension. Move this back to
-// chrome/common/extensions/extension_constants.h once the issue has been
-// resolved.
-inline constexpr char kDocsOfflineExtensionId[] =
-    "ghbmnnjooekpmoecnnnilnnbdlolhkhi";
-
-// This is used extensively, generally as a key in a dictionary.
-inline constexpr char kId[] = "id";
+// IDs for the Media Router Component Extension.
+extern const char kCastExtensionIdRelease[];
+extern const char kCastExtensionIdDev[];
 
 }  // namespace extension_misc
 

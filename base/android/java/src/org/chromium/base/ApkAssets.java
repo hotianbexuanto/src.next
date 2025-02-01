@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,7 +8,9 @@ import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.text.TextUtils;
+import android.util.Log;
 
+<<<<<<< HEAD
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
 import org.jni_zero.JniType;
@@ -16,18 +18,22 @@ import org.jni_zero.JniType;
 import org.chromium.build.BuildConfig;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+=======
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+>>>>>>> chromium
 
 import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * A utility class to retrieve references to uncompressed assets insides the apk. A reference is
- * defined as tuple (file descriptor, offset, size) enabling direct mapping without deflation. This
- * can be used even within the renderer process, since it just dup's the apk's fd.
+ * defined as tuple (file descriptor, offset, size) enabling direct mapping without deflation.
+ * This can be used even within the renderer process, since it just dup's the apk's fd.
  */
 @NullMarked
 @JNINamespace("base::android")
 public class ApkAssets {
+<<<<<<< HEAD
     private static final String TAG = "ApkAssets";
 
     // This isn't thread safe, but that's ok because it's only used for debugging.
@@ -44,15 +50,24 @@ public class ApkAssets {
             Context context = ContextUtils.getApplicationContext();
             if (!TextUtils.isEmpty(splitName) && BundleUtils.isIsolatedSplitInstalled(splitName)) {
                 context = BundleUtils.createIsolatedSplitContext(splitName);
+=======
+    private static final String LOGTAG = "ApkAssets";
+
+    @CalledByNative
+    public static long[] open(String fileName, String splitName) {
+        AssetFileDescriptor afd = null;
+        try {
+            Context context = ContextUtils.getApplicationContext();
+            if (!TextUtils.isEmpty(splitName)
+                    && BundleUtils.isIsolatedSplitInstalled(context, splitName)) {
+                context = BundleUtils.createIsolatedSplitContext(context, splitName);
+>>>>>>> chromium
             }
             AssetManager manager = context.getAssets();
-            afd = manager.openNonAssetFd(apkSubpath);
-            return new long[] {
-                afd.getParcelFileDescriptor().detachFd(), afd.getStartOffset(), afd.getLength()
-            };
+            afd = manager.openNonAssetFd(fileName);
+            return new long[] {afd.getParcelFileDescriptor().detachFd(), afd.getStartOffset(),
+                    afd.getLength()};
         } catch (IOException e) {
-            sLastError =
-                    "Error while loading asset " + apkSubpath + " from " + splitName + ": " + e;
             // As a general rule there's no point logging here because the caller should handle
             // receiving an fd of -1 sensibly, and the log message is either mirrored later, or
             // unwanted (in the case where a missing file is expected), or wanted but will be
@@ -63,8 +78,13 @@ public class ApkAssets {
             // For that reason, we only suppress the message when the exception message doesn't look
             // informative (Android framework passes the filename as the message on actual file not
             // found, and the empty string also wouldn't give any useful information for debugging).
+<<<<<<< HEAD
             if (!TextUtils.isEmpty(e.getMessage()) && !e.getMessage().equals(apkSubpath)) {
                 Log.e(TAG, sLastError);
+=======
+            if (!e.getMessage().equals("") && !e.getMessage().equals(fileName)) {
+                Log.e(LOGTAG, "Error while loading asset " + fileName + ": " + e);
+>>>>>>> chromium
             }
             return new long[] {-1, -1, -1};
         } finally {
@@ -73,10 +93,11 @@ public class ApkAssets {
                     afd.close();
                 }
             } catch (IOException e2) {
-                Log.e(TAG, "Unable to close AssetFileDescriptor", e2);
+                Log.e(LOGTAG, "Unable to close AssetFileDescriptor", e2);
             }
         }
     }
+<<<<<<< HEAD
 
     private static String maybeAddSuffix(String apkSubpath) {
         if (BuildConfig.APK_ASSETS_SUFFIX != null
@@ -101,4 +122,6 @@ public class ApkAssets {
         sLastError = null;
         return rv;
     }
+=======
+>>>>>>> chromium
 }

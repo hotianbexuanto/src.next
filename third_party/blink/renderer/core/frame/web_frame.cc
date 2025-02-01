@@ -1,13 +1,16 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/public/web/web_frame.h"
 
 #include <algorithm>
+<<<<<<< HEAD
 
 #include "base/containers/to_vector.h"
 #include "third_party/blink/public/mojom/frame/frame_replication_state.mojom.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/public/mojom/frame/tree_scope_type.mojom-blink.h"
 #include "third_party/blink/public/mojom/scroll/scrollbar_mode.mojom-blink.h"
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom-blink.h"
@@ -26,14 +29,16 @@
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 
 namespace blink {
 
-bool WebFrame::Swap(WebLocalFrame* frame) {
+bool WebFrame::Swap(WebFrame* frame) {
   return ToCoreFrame(*this)->Swap(frame);
 }
 
+<<<<<<< HEAD
 bool WebFrame::Swap(
     WebRemoteFrame* frame,
     CrossVariantMojoAssociatedRemote<mojom::blink::RemoteFrameHostInterfaceBase>
@@ -53,6 +58,8 @@ bool WebFrame::Swap(
   return true;
 }
 
+=======
+>>>>>>> chromium
 void WebFrame::Detach() {
   ToCoreFrame(*this)->Detach(FrameDetachType::kRemove);
 }
@@ -122,12 +129,6 @@ WebFrame* WebFrame::TraverseNext() const {
   return nullptr;
 }
 
-bool WebFrame::IsOutermostMainFrame() const {
-  Frame* core_frame = ToCoreFrame(*this);
-  CHECK(core_frame);
-  return core_frame->IsOutermostMainFrame();
-}
-
 WebFrame* WebFrame::FromFrameOwnerElement(const WebNode& web_node) {
   Node* node = web_node;
 
@@ -157,7 +158,7 @@ WebFrame::WebFrame(mojom::blink::TreeScopeType scope,
   DCHECK(frame_token.value());
 }
 
-void WebFrame::Close(DetachReason detach_reason) {}
+void WebFrame::Close() {}
 
 Frame* WebFrame::ToCoreFrame(const WebFrame& frame) {
   if (auto* web_local_frame = DynamicTo<WebLocalFrameImpl>(&frame))
@@ -165,6 +166,7 @@ Frame* WebFrame::ToCoreFrame(const WebFrame& frame) {
   if (frame.IsWebRemoteFrame())
     return To<WebRemoteFrameImpl>(frame).GetFrame();
   NOTREACHED();
+  return nullptr;
 }
 
 }  // namespace blink

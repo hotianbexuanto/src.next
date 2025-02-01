@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,15 +7,15 @@
 #include <memory>
 #include <utility>
 
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
+#include "base/bind.h"
+#include "base/callback_helpers.h"
 #include "base/strings/string_util.h"
 #include "base/values.h"
 #include "net/base/auth.h"
 #include "net/base/host_port_pair.h"
 #include "net/base/io_buffer.h"
-#include "net/base/proxy_chain.h"
 #include "net/base/proxy_delegate.h"
+#include "net/base/proxy_server.h"
 #include "net/http/http_basic_stream.h"
 #include "net/http/http_log_util.h"
 #include "net/http/http_network_session.h"
@@ -35,25 +35,33 @@ HttpProxyClientSocket::HttpProxyClientSocket(
     std::unique_ptr<StreamSocket> socket,
     const std::string& user_agent,
     const HostPortPair& endpoint,
-    const ProxyChain& proxy_chain,
-    size_t proxy_chain_index,
-    scoped_refptr<HttpAuthController> http_auth_controller,
+    const ProxyServer& proxy_server,
+    HttpAuthController* http_auth_controller,
+    bool tunnel,
+    bool using_spdy,
+    NextProto negotiated_protocol,
     ProxyDelegate* proxy_delegate,
     const NetworkTrafficAnnotationTag& traffic_annotation)
     : io_callback_(base::BindRepeating(&HttpProxyClientSocket::OnIOComplete,
                                        base::Unretained(this))),
-      user_agent_(user_agent),
+      next_state_(STATE_NONE),
       socket_(std::move(socket)),
+      is_reused_(false),
       endpoint_(endpoint),
-      auth_(std::move(http_auth_controller)),
-      proxy_chain_(proxy_chain),
-      proxy_chain_index_(proxy_chain_index),
+      auth_(http_auth_controller),
+      tunnel_(tunnel),
+      using_spdy_(using_spdy),
+      negotiated_protocol_(negotiated_protocol),
+      proxy_server_(proxy_server),
       proxy_delegate_(proxy_delegate),
       traffic_annotation_(traffic_annotation),
       net_log_(socket_->NetLog()) {
   // Synthesize the bits of a request that are actually used.
   request_.url = GURL("https://" + endpoint.ToString());
   request_.method = "CONNECT";
+  if (!user_agent.empty())
+    request_.extra_headers.SetHeader(HttpRequestHeaders::kUserAgent,
+                                     user_agent);
 }
 
 HttpProxyClientSocket::~HttpProxyClientSocket() {
@@ -82,6 +90,14 @@ HttpProxyClientSocket::GetAuthController() const {
   return auth_;
 }
 
+bool HttpProxyClientSocket::IsUsingSpdy() const {
+  return using_spdy_;
+}
+
+NextProto HttpProxyClientSocket::GetProxyNegotiatedProtocol() const {
+  return negotiated_protocol_;
+}
+
 const HttpResponseInfo* HttpProxyClientSocket::GetConnectResponseInfo() const {
   return response_.headers.get() ? &response_ : nullptr;
 }
@@ -90,6 +106,13 @@ int HttpProxyClientSocket::Connect(CompletionOnceCallback callback) {
   DCHECK(socket_);
   DCHECK(user_callback_.is_null());
 
+  // TODO(rch): figure out the right way to set up a tunnel with SPDY.
+  // This approach sends the complete HTTPS request to the proxy
+  // which allows the proxy to see "private" data.  Instead, we should
+  // create an SSL tunnel to the origin server using the CONNECT method
+  // inside a single SPDY stream.
+  if (using_spdy_ || !tunnel_)
+    next_state_ = STATE_DONE;
   if (next_state_ == STATE_DONE)
     return OK;
 
@@ -128,18 +151,39 @@ bool HttpProxyClientSocket::WasEverUsed() const {
   if (socket_)
     return socket_->WasEverUsed();
   NOTREACHED();
+  return false;
+}
+
+bool HttpProxyClientSocket::WasAlpnNegotiated() const {
+  if (socket_)
+    return socket_->WasAlpnNegotiated();
+  NOTREACHED();
+  return false;
 }
 
 NextProto HttpProxyClientSocket::GetNegotiatedProtocol() const {
+<<<<<<< HEAD
   // Do not delegate to `socket_`. While `socket_` may negotiate ALPN with the
   // proxy, this object represents the tunneled TCP connection to the origin.
   return NextProto::kProtoUnknown;
+=======
+  if (socket_)
+    return socket_->GetNegotiatedProtocol();
+  NOTREACHED();
+  return kProtoUnknown;
+>>>>>>> chromium
 }
 
 bool HttpProxyClientSocket::GetSSLInfo(SSLInfo* ssl_info) {
-  // Do not delegate to `socket_`. While `socket_` may connect to the proxy with
-  // TLS, this object represents the tunneled TCP connection to the origin.
+  if (socket_)
+    return socket_->GetSSLInfo(ssl_info);
+  NOTREACHED();
   return false;
+}
+
+void HttpProxyClientSocket::GetConnectionAttempts(
+    ConnectionAttempts* out) const {
+  out->clear();
 }
 
 int64_t HttpProxyClientSocket::GetTotalReceivedBytes() const {
@@ -217,7 +261,7 @@ int HttpProxyClientSocket::PrepareForAuthRestart() {
   // If the auth request had a body, need to drain it before reusing the socket.
   if (!http_stream_parser_->IsResponseBodyComplete()) {
     next_state_ = STATE_DRAIN_BODY;
-    drain_buf_ = base::MakeRefCounted<IOBufferWithSize>(kDrainBodyBufferSize);
+    drain_buf_ = base::MakeRefCounted<IOBuffer>(kDrainBodyBufferSize);
     return OK;
   }
 
@@ -307,6 +351,8 @@ int HttpProxyClientSocket::DoLoop(int last_io_result) {
         break;
       default:
         NOTREACHED() << "bad state";
+        rv = ERR_UNEXPECTED;
+        break;
     }
   } while (rv != ERR_IO_PENDING && next_state_ != STATE_NONE &&
            next_state_ != STATE_DONE);
@@ -343,16 +389,17 @@ int HttpProxyClientSocket::DoSendRequest() {
 
     if (proxy_delegate_) {
       HttpRequestHeaders proxy_delegate_headers;
-      int result = proxy_delegate_->OnBeforeTunnelRequest(
-          proxy_chain_, proxy_chain_index_, &proxy_delegate_headers);
-      if (result < 0) {
-        return result;
-      }
-
+      proxy_delegate_->OnBeforeTunnelRequest(proxy_server_,
+                                             &proxy_delegate_headers);
       extra_headers.MergeFrom(proxy_delegate_headers);
     }
 
-    BuildTunnelRequest(endpoint_, extra_headers, user_agent_, &request_line_,
+    std::string user_agent;
+    if (!request_.extra_headers.GetHeader(HttpRequestHeaders::kUserAgent,
+                                          &user_agent)) {
+      user_agent.clear();
+    }
+    BuildTunnelRequest(endpoint_, extra_headers, user_agent, &request_line_,
                        &request_headers_);
 
     NetLogRequestHeaders(net_log_,
@@ -362,8 +409,7 @@ int HttpProxyClientSocket::DoSendRequest() {
 
   parser_buf_ = base::MakeRefCounted<GrowableIOBuffer>();
   http_stream_parser_ = std::make_unique<HttpStreamParser>(
-      socket_.get(), is_reused_, request_.url, request_.method,
-      /*upload_data_stream=*/nullptr, parser_buf_.get(), net_log_);
+      socket_.get(), is_reused_, &request_, parser_buf_.get(), net_log_);
   return http_stream_parser_->SendRequest(request_line_, request_headers_,
                                           traffic_annotation_, &response_,
                                           io_callback_);
@@ -395,8 +441,8 @@ int HttpProxyClientSocket::DoReadHeadersComplete(int result) {
       response_.headers.get());
 
   if (proxy_delegate_) {
-    int rv = proxy_delegate_->OnTunnelHeadersReceived(
-        proxy_chain_, proxy_chain_index_, *response_.headers);
+    int rv = proxy_delegate_->OnTunnelHeadersReceived(proxy_server_,
+                                                      *response_.headers);
     if (rv != OK) {
       DCHECK_NE(ERR_IO_PENDING, rv);
       return rv;

@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,8 @@
 #include <string>
 
 #include "chrome/browser/apps/platform_apps/audio_focus_web_contents_observer.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/extensions/chrome_extension_web_contents_observer.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
@@ -15,8 +17,6 @@
 #include "chrome/browser/ui/prefs/prefs_tab_helper.h"
 #include "extensions/browser/extension_host.h"
 #include "extensions/browser/extension_system.h"
-#include "extensions/browser/extensions_browser_client.h"
-#include "extensions/common/extension_id.h"
 
 namespace extensions {
 
@@ -26,6 +26,7 @@ ChromeExtensionHostDelegate::~ChromeExtensionHostDelegate() = default;
 
 void ChromeExtensionHostDelegate::OnExtensionHostCreated(
     content::WebContents* web_contents) {
+  ChromeExtensionWebContentsObserver::CreateForWebContents(web_contents);
   PrefsTabHelper::CreateForWebContents(web_contents);
   apps::AudioFocusWebContentsObserver::CreateForWebContents(web_contents);
 }
@@ -40,19 +41,18 @@ void ChromeExtensionHostDelegate::OnMainFrameCreatedForBackgroundPage(
 
 void ChromeExtensionHostDelegate::CreateTab(
     std::unique_ptr<content::WebContents> web_contents,
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     WindowOpenDisposition disposition,
-    const blink::mojom::WindowFeatures& window_features,
+    const gfx::Rect& initial_rect,
     bool user_gesture) {
   // Verify that the browser is not shutting down. It can be the case if the
   // call is propagated through a posted task that was already in the queue when
   // shutdown started. See crbug.com/625646
-  if (ExtensionsBrowserClient::Get()->IsShuttingDown()) {
+  if (g_browser_process->IsShuttingDown())
     return;
-  }
 
   ExtensionTabUtil::CreateTab(std::move(web_contents), extension_id,
-                              disposition, window_features, user_gesture);
+                              disposition, initial_rect, user_gesture);
 }
 
 void ChromeExtensionHostDelegate::ProcessMediaAccessRequest(
@@ -66,7 +66,7 @@ void ChromeExtensionHostDelegate::ProcessMediaAccessRequest(
 
 bool ChromeExtensionHostDelegate::CheckMediaAccessPermission(
     content::RenderFrameHost* render_frame_host,
-    const url::Origin& security_origin,
+    const GURL& security_origin,
     blink::mojom::MediaStreamType type,
     const Extension* extension) {
   return MediaCaptureDevicesDispatcher::GetInstance()
@@ -76,9 +76,11 @@ bool ChromeExtensionHostDelegate::CheckMediaAccessPermission(
 
 content::PictureInPictureResult
 ChromeExtensionHostDelegate::EnterPictureInPicture(
-    content::WebContents* web_contents) {
-  return PictureInPictureWindowManager::GetInstance()
-      ->EnterVideoPictureInPicture(web_contents);
+    content::WebContents* web_contents,
+    const viz::SurfaceId& surface_id,
+    const gfx::Size& natural_size) {
+  return PictureInPictureWindowManager::GetInstance()->EnterPictureInPicture(
+      web_contents, surface_id, natural_size);
 }
 
 void ChromeExtensionHostDelegate::ExitPictureInPicture() {

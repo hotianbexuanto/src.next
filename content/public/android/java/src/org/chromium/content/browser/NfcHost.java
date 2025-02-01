@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,11 +7,13 @@ package org.chromium.content.browser;
 import android.app.Activity;
 import android.util.SparseArray;
 
-import org.jni_zero.CalledByNative;
-
 import org.chromium.base.Callback;
+<<<<<<< HEAD
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+=======
+import org.chromium.base.annotations.CalledByNative;
+>>>>>>> chromium
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.WindowAndroid;
 
@@ -32,7 +34,9 @@ class NfcHost implements WindowEventObserver {
     // changes.
     private @Nullable Callback<@Nullable Activity> mCallback;
 
-    /** Provides access to NfcHost via context ID. */
+    /**
+     * Provides access to NfcHost via context ID.
+     */
     public static NfcHost fromContextId(int contextId) {
         return sContextHostsMap.get(contextId);
     }
@@ -54,7 +58,12 @@ class NfcHost implements WindowEventObserver {
      * track changes to the Activity associated with its context ID (i.e., the activity associated
      * with |mWebContents|).
      */
+<<<<<<< HEAD
     public void trackActivityChanges(Callback<@Nullable Activity> callback) {
+=======
+
+    public void trackActivityChanges(Callback<Activity> callback) {
+>>>>>>> chromium
         // Only the main frame is allowed to access NFC
         // (https://w3c.github.io/web-nfc/#security-policies). The renderer enforces this by
         // dropping connection requests from nested frames.  Therefore, this class should never see
@@ -87,7 +96,9 @@ class NfcHost implements WindowEventObserver {
         sContextHostsMap.remove(mContextId);
     }
 
-    /** Updates the Activity associated with this instance. */
+    /**
+     * Updates the Activity associated with this instance.
+     */
     @Override
     public void onWindowAndroidChanged(@Nullable WindowAndroid newWindowAndroid) {
         Activity activity = null;

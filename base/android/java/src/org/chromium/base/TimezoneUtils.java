@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,9 @@ package org.chromium.base;
 
 import android.os.StrictMode;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.MainDex;
 
 import org.chromium.build.annotations.NullMarked;
 
@@ -15,8 +16,12 @@ import java.util.TimeZone;
 
 @NullMarked
 @JNINamespace("base::android")
+@MainDex
 class TimezoneUtils {
-    /** Guards this class from being instantiated. */
+    /**
+     * Guards this class from being instantiated.
+     */
+
     private TimezoneUtils() {}
 
     /**

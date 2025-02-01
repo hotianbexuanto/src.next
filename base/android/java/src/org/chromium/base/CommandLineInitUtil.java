@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,8 +13,14 @@ import org.chromium.build.annotations.Nullable;
 
 import java.io.File;
 
+<<<<<<< HEAD
 /** Provides implementation of command line initialization for Android. */
 @NullMarked
+=======
+/**
+ * Provides implementation of command line initialization for Android.
+ */
+>>>>>>> chromium
 public final class CommandLineInitUtil {
     /**
      * The location of the command line file needs to be in a protected
@@ -33,6 +39,7 @@ public final class CommandLineInitUtil {
      */
     private static final String COMMAND_LINE_FILE_PATH_DEBUG_APP = "/data/local/tmp";
 
+<<<<<<< HEAD
     /** The name of the command line file to pull arguments from. */
     private static @Nullable String sFilenameOverrideForTesting;
 
@@ -41,19 +48,26 @@ public final class CommandLineInitUtil {
     /** Set the filename to use. */
     public static void setFilenameOverrideForTesting(String value) {
         sFilenameOverrideForTesting = value;
+=======
+    private CommandLineInitUtil() {
     }
 
     /**
      * Initializes the CommandLine class, pulling command line arguments from {@code fileName}.
-     *
+     * @param fileName The name of the command line file to pull arguments from.
+     */
+    public static void initCommandLine(String fileName) {
+        initCommandLine(fileName, null);
+>>>>>>> chromium
+    }
+
+    /**
+     * Initializes the CommandLine class, pulling command line arguments from {@code fileName}.
      * @param fileName The name of the command line file to pull arguments from.
      * @param shouldUseDebugFlags If non-null, returns whether debug flags are allowed to be used.
      */
     public static void initCommandLine(
             String fileName, @Nullable Supplier<Boolean> shouldUseDebugFlags) {
-        if (sFilenameOverrideForTesting != null) {
-            fileName = sFilenameOverrideForTesting;
-        }
         assert !CommandLine.isInitialized();
         File commandLineFile = new File(COMMAND_LINE_FILE_PATH_DEBUG_APP, fileName);
         // shouldUseDebugCommandLine() uses IPC, so don't bother calling it if no flags file exists.
@@ -79,13 +93,19 @@ public final class CommandLineInitUtil {
         return context.getPackageName().equals(getDebugApp(context)) || BuildInfo.isDebugAndroid();
     }
 
+<<<<<<< HEAD
     private static @Nullable String getDebugApp(Context context) {
         boolean adbEnabled =
                 Settings.Global.getInt(context.getContentResolver(), Settings.Global.ADB_ENABLED, 0)
                         == 1;
+=======
+    private static String getDebugApp(Context context) {
+        boolean adbEnabled = Settings.Global.getInt(context.getContentResolver(),
+                Settings.Global.ADB_ENABLED, 0) == 1;
+>>>>>>> chromium
         if (adbEnabled) {
-            return Settings.Global.getString(
-                    context.getContentResolver(), Settings.Global.DEBUG_APP);
+            return Settings.Global.getString(context.getContentResolver(),
+                    Settings.Global.DEBUG_APP);
         }
         return null;
     }

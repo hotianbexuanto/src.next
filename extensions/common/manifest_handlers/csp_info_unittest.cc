@@ -1,17 +1,12 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/common/manifest_handlers/csp_info.h"
-
-#include <string_view>
-
+#include "base/cxx17_backports.h"
 #include "base/strings/stringprintf.h"
-#include "base/test/scoped_feature_list.h"
-#include "base/test/values_test_util.h"
 #include "components/version_info/channel.h"
 #include "extensions/common/error_utils.h"
-#include "extensions/common/extension_features.h"
 #include "extensions/common/features/feature_channel.h"
 #include "extensions/common/manifest_constants.h"
 #include "extensions/common/manifest_test.h"
@@ -23,7 +18,7 @@ namespace {
 namespace errors = manifest_errors;
 namespace keys = manifest_keys;
 
-std::string GetInvalidManifestKeyError(std::string_view key) {
+std::string GetInvalidManifestKeyError(base::StringPiece key) {
   return ErrorUtils::FormatErrorMessage(errors::kInvalidManifestKey, key);
 }
 
@@ -33,7 +28,7 @@ const char kDefaultSandboxedPageCSP[] =
 const char kDefaultExtensionPagesCSP[] =
     "script-src 'self' blob: filesystem:; "
     "object-src 'self' blob: filesystem:;";
-const char kDefaultSecureCSP[] = "script-src 'self';";
+const char kDefaultSecureCSP[] = "script-src 'self'; object-src 'self';";
 
 }  // namespace
 
@@ -106,7 +101,11 @@ TEST_F(CSPInfoUnitTest, SandboxedPages) {
                GetInvalidManifestKeyError(keys::kSandboxedPagesCSP)),
       Testcase("sandboxed_pages_invalid_5.json",
                GetInvalidManifestKeyError(keys::kSandboxedPagesCSP))};
+<<<<<<< HEAD
   RunTestcases(testcases, EXPECT_TYPE_ERROR);
+=======
+  RunTestcases(testcases, base::size(testcases), EXPECT_TYPE_ERROR);
+>>>>>>> chromium
 }
 
 TEST_F(CSPInfoUnitTest, CSPStringKey) {
@@ -117,7 +116,7 @@ TEST_F(CSPInfoUnitTest, CSPStringKey) {
             CSPInfo::GetExtensionPagesCSP(extension.get()));
 
   // Manifest V2 extensions bypass the main world CSP in their isolated worlds.
-  std::optional<std::string> isolated_world_csp =
+  const std::string* isolated_world_csp =
       CSPInfo::GetIsolatedWorldCSP(*extension);
   ASSERT_TRUE(isolated_world_csp);
   EXPECT_TRUE(isolated_world_csp->empty());
@@ -162,6 +161,7 @@ TEST_F(CSPInfoUnitTest, CSPDictionary_ExtensionPages) {
                    keys::kContentSecurityPolicy_ExtensionPagesPath,
                    "'unsafe-eval'", "worker-src")),
   };
+<<<<<<< HEAD
   RunTestcases(testcases, EXPECT_TYPE_ERROR);
 }
 
@@ -314,13 +314,16 @@ TEST_F(CSPInfoUnitTest, AllowWasmInMV3) {
     ASSERT_TRUE(extension.get());
     EXPECT_EQ(test_case.csp, CSPInfo::GetExtensionPagesCSP(extension.get()));
   }
+=======
+  RunTestcases(testcases, base::size(testcases), EXPECT_TYPE_ERROR);
+>>>>>>> chromium
 }
 
 TEST_F(CSPInfoUnitTest, CSPDictionary_Sandbox) {
   ScopedCurrentChannel channel(version_info::Channel::UNKNOWN);
 
   const char kCustomSandboxedCSP[] =
-      "sandbox; script-src https://www.google.com";
+      "sandbox; script-src 'self'; child-src 'self';";
   const char kCustomExtensionPagesCSP[] = "script-src; object-src;";
 
   struct {
@@ -355,7 +358,11 @@ TEST_F(CSPInfoUnitTest, CSPDictionary_Sandbox) {
       {"unsandboxed_csp.json",
        GetInvalidManifestKeyError(
            keys::kContentSecurityPolicy_SandboxedPagesPath)}};
+<<<<<<< HEAD
   RunTestcases(testcases, EXPECT_TYPE_ERROR);
+=======
+  RunTestcases(testcases, base::size(testcases), EXPECT_TYPE_ERROR);
+>>>>>>> chromium
 }
 
 // Ensures that using a dictionary for the keys::kContentSecurityPolicy manifest
@@ -368,58 +375,20 @@ TEST_F(CSPInfoUnitTest, CSPDictionaryMandatoryForV3) {
   const char* default_case_filenames[] = {"csp_dictionary_empty_v3.json",
                                           "csp_dictionary_missing_v3.json"};
 
-  // First, run through with loading the extensions as packed extensions.
   for (const char* filename : default_case_filenames) {
     SCOPED_TRACE(filename);
-    scoped_refptr<Extension> extension =
-        LoadAndExpectSuccess(filename, mojom::ManifestLocation::kInternal);
+    scoped_refptr<Extension> extension = LoadAndExpectSuccess(filename);
     ASSERT_TRUE(extension);
 
-    std::optional<std::string> isolated_world_csp =
+    const std::string* isolated_world_csp =
         CSPInfo::GetIsolatedWorldCSP(*extension);
     ASSERT_TRUE(isolated_world_csp);
-    std::string expected_csp = base::StringPrintf(
-        "script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' "
-        "%s; object-src 'self';",
-        extension->dynamic_url().spec().c_str());
-    EXPECT_EQ(expected_csp, *isolated_world_csp);
+    EXPECT_EQ(kDefaultSecureCSP, *isolated_world_csp);
 
     EXPECT_EQ(kDefaultSandboxedPageCSP,
               CSPInfo::GetSandboxContentSecurityPolicy(extension.get()));
     EXPECT_EQ(kDefaultSecureCSP,
               CSPInfo::GetExtensionPagesCSP(extension.get()));
-
-    EXPECT_EQ(
-        CSPHandler::GetMinimumMV3CSPForTesting(),
-        *CSPInfo::GetMinimumCSPToAppend(*extension, "not_sandboxed.html"));
-  }
-
-  // Repeat the test, loading the extensions as unpacked extensions.
-  // The minimum CSP we append (and thus the isolated world CSP) should be
-  // different, while the other CSPs should remain the same.
-  for (const char* filename : default_case_filenames) {
-    SCOPED_TRACE(filename);
-    scoped_refptr<Extension> extension =
-        LoadAndExpectSuccess(filename, mojom::ManifestLocation::kUnpacked);
-    ASSERT_TRUE(extension);
-
-    std::optional<std::string> isolated_world_csp =
-        CSPInfo::GetIsolatedWorldCSP(*extension);
-    ASSERT_TRUE(isolated_world_csp);
-    std::string expected_csp = base::StringPrintf(
-        "script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' "
-        "http://localhost:* http://127.0.0.1:* %s; object-src 'self';",
-        extension->dynamic_url().spec().c_str());
-    EXPECT_EQ(expected_csp, *isolated_world_csp);
-
-    EXPECT_EQ(kDefaultSandboxedPageCSP,
-              CSPInfo::GetSandboxContentSecurityPolicy(extension.get()));
-    EXPECT_EQ(kDefaultSecureCSP,
-              CSPInfo::GetExtensionPagesCSP(extension.get()));
-
-    EXPECT_EQ(
-        CSPHandler::GetMinimumUnpackedMV3CSPForTesting(),
-        *CSPInfo::GetMinimumCSPToAppend(*extension, "not_sandboxed.html"));
   }
 }
 

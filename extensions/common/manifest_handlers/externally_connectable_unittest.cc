@@ -1,16 +1,21 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
 #include "extensions/common/manifest_handlers/externally_connectable.h"
 
+=======
+>>>>>>> chromium
 #include <stddef.h>
 
 #include <algorithm>
 #include <iterator>
 
+#include "base/cxx17_backports.h"
 #include "extensions/common/error_utils.h"
 #include "extensions/common/manifest_constants.h"
+#include "extensions/common/manifest_handlers/externally_connectable.h"
 #include "extensions/common/manifest_test.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -24,8 +29,8 @@ namespace errors = externally_connectable_errors;
 
 class ExternallyConnectableTest : public ManifestTest {
  public:
-  ExternallyConnectableTest() = default;
-  ~ExternallyConnectableTest() override = default;
+  ExternallyConnectableTest() {}
+  ~ExternallyConnectableTest() override {}
 
  protected:
   ExternallyConnectableInfo* GetExternallyConnectableInfo(
@@ -194,31 +199,53 @@ TEST_F(ExternallyConnectableTest, AllIDs) {
 
 TEST_F(ExternallyConnectableTest, IdCanConnect) {
   // Not in order to test that ExternallyConnectableInfo sorts it.
+<<<<<<< HEAD
   const std::vector<ExtensionId> matches_ids = {"g", "h", "c", "i",
                                                 "a", "z", "b"};
 
   const std::vector<ExtensionId> nomatches_ids = {"2", "3", "1"};
+=======
+  std::string matches_ids_array[] = {"g", "h", "c", "i", "a", "z", "b"};
+  std::vector<std::string> matches_ids(
+      matches_ids_array, matches_ids_array + base::size(matches_ids_array));
+
+  std::string nomatches_ids_array[] = {"2", "3", "1"};
+>>>>>>> chromium
 
   // all_ids = false.
   {
     ExternallyConnectableInfo info(URLPatternSet(), matches_ids, false, false);
+<<<<<<< HEAD
     for (const auto& entry : matches_ids) {
       EXPECT_TRUE(info.IdCanConnect(entry));
     }
     for (const auto& entry : nomatches_ids) {
       EXPECT_FALSE(info.IdCanConnect(entry));
     }
+=======
+    for (size_t i = 0; i < matches_ids.size(); ++i)
+      EXPECT_TRUE(info.IdCanConnect(matches_ids[i]));
+    for (size_t i = 0; i < base::size(nomatches_ids_array); ++i)
+      EXPECT_FALSE(info.IdCanConnect(nomatches_ids_array[i]));
+>>>>>>> chromium
   }
 
   // all_ids = true.
   {
     ExternallyConnectableInfo info(URLPatternSet(), matches_ids, true, false);
+<<<<<<< HEAD
     for (const auto& entry : matches_ids) {
       EXPECT_TRUE(info.IdCanConnect(entry));
     }
     for (const auto& entry : nomatches_ids) {
       EXPECT_TRUE(info.IdCanConnect(entry));
     }
+=======
+    for (size_t i = 0; i < matches_ids.size(); ++i)
+      EXPECT_TRUE(info.IdCanConnect(matches_ids[i]));
+    for (size_t i = 0; i < base::size(nomatches_ids_array); ++i)
+      EXPECT_TRUE(info.IdCanConnect(nomatches_ids_array[i]));
+>>>>>>> chromium
   }
 }
 
@@ -239,65 +266,114 @@ TEST_F(ExternallyConnectableTest, ErrorBadMatches) {
                          errors::kErrorInvalidMatchPattern, "www.yahoo.com"));
 }
 
-TEST_F(ExternallyConnectableTest, AllURLs) {
+TEST_F(ExternallyConnectableTest, WarningNoAllURLs) {
+  scoped_refptr<Extension> extension = LoadAndExpectWarning(
+      "externally_connectable_error_all_urls.json",
+      ErrorUtils::FormatErrorMessage(errors::kErrorWildcardHostsNotAllowed,
+                                     "<all_urls>"));
+  ExternallyConnectableInfo* info = GetExternallyConnectableInfo(extension);
+  EXPECT_FALSE(info->matches.MatchesAllURLs());
+  EXPECT_FALSE(info->matches.ContainsPattern(
+      URLPattern(URLPattern::SCHEME_ALL, "<all_urls>")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("https://example.com")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("http://build.chromium.org")));
+}
+
+TEST_F(ExternallyConnectableTest, AllURLsNotWhitelisted) {
+  scoped_refptr<Extension> extension = LoadAndExpectSuccess(
+      "externally_connectable_all_urls_not_whitelisted.json");
+  ExternallyConnectableInfo* info = GetExternallyConnectableInfo(extension);
+  EXPECT_FALSE(info->matches.MatchesAllURLs());
+}
+
+TEST_F(ExternallyConnectableTest, AllHttpsURLsNotWhitelisted) {
+  scoped_refptr<Extension> extension = LoadAndExpectSuccess(
+      "externally_connectable_all_https_urls_not_whitelisted.json");
+  ExternallyConnectableInfo* info = GetExternallyConnectableInfo(extension);
+  EXPECT_FALSE(info->matches.MatchesAllURLs());
+  EXPECT_FALSE(info->matches.MatchesURL(GURL("https://example.com")));
+}
+
+TEST_F(ExternallyConnectableTest, AllURLsWhitelisted) {
   scoped_refptr<Extension> extension =
-      LoadAndExpectSuccess("externally_connectable_all_urls.json");
+      LoadAndExpectSuccess("externally_connectable_all_urls_whitelisted.json");
   ExternallyConnectableInfo* info = GetExternallyConnectableInfo(extension);
   EXPECT_TRUE(info->matches.MatchesAllURLs());
-
-  // Sanity check with a pattern and a few URLs.
   URLPattern pattern(URLPattern::SCHEME_ALL, "<all_urls>");
   EXPECT_TRUE(info->matches.ContainsPattern(pattern));
   EXPECT_TRUE(info->matches.MatchesURL(GURL("https://example.com")));
   EXPECT_TRUE(info->matches.MatchesURL(GURL("http://build.chromium.org")));
 }
 
-TEST_F(ExternallyConnectableTest, WildcardHost) {
-  scoped_refptr<Extension> extension =
-      LoadAndExpectSuccess("externally_connectable_wildcard_host.json");
+TEST_F(ExternallyConnectableTest, AllHttpsURLsWhitelisted) {
+  scoped_refptr<Extension> extension = LoadAndExpectSuccess(
+      "externally_connectable_all_https_urls_whitelisted.json");
   ExternallyConnectableInfo* info = GetExternallyConnectableInfo(extension);
-  EXPECT_TRUE(info->matches.ContainsPattern(
-      URLPattern(URLPattern::SCHEME_ALL, "http://*/*")));
-  EXPECT_TRUE(info->matches.MatchesURL(GURL("http://example.com")));
-  EXPECT_FALSE(info->matches.MatchesURL(GURL("https://example.com")));
+
+  URLPattern all_urls_pattern(URLPattern::SCHEME_ALL, "<all_urls>");
+  EXPECT_FALSE(info->matches.ContainsPattern(all_urls_pattern));
+
+  URLPattern https_urls_pattern(URLPattern::SCHEME_ALL, "https://*/*");
+  EXPECT_TRUE(info->matches.ContainsPattern(https_urls_pattern));
+
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("https://example.com")));
+  EXPECT_FALSE(info->matches.MatchesURL(GURL("http://build.chromium.org")));
 }
 
-TEST_F(ExternallyConnectableTest, TLD) {
-  scoped_refptr<Extension> extension =
-      LoadAndExpectSuccess("externally_connectable_tld.json");
+TEST_F(ExternallyConnectableTest, WarningWildcardHost) {
+  scoped_refptr<Extension> extension = LoadAndExpectWarning(
+      "externally_connectable_error_wildcard_host.json",
+      ErrorUtils::FormatErrorMessage(errors::kErrorWildcardHostsNotAllowed,
+                                     "http://*/*"));
   ExternallyConnectableInfo* info = GetExternallyConnectableInfo(extension);
-  EXPECT_TRUE(info->matches.ContainsPattern(
+  EXPECT_FALSE(info->matches.ContainsPattern(
+      URLPattern(URLPattern::SCHEME_ALL, "http://*/*")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("https://example.com")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("http://build.chromium.org")));
+}
+
+TEST_F(ExternallyConnectableTest, WarningNoTLD) {
+  scoped_refptr<Extension> extension = LoadAndExpectWarning(
+      "externally_connectable_error_tld.json",
+      ErrorUtils::FormatErrorMessage(errors::kErrorTopLevelDomainsNotAllowed,
+                                     "co.uk",
+                                     "http://*.co.uk/*"));
+  ExternallyConnectableInfo* info = GetExternallyConnectableInfo(extension);
+  EXPECT_FALSE(info->matches.ContainsPattern(
       URLPattern(URLPattern::SCHEME_ALL, "http://*.co.uk/*")));
-  EXPECT_FALSE(info->matches.MatchesURL(GURL("http://example.com")));
-  EXPECT_TRUE(info->matches.MatchesURL(GURL("http://example.co.uk")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("https://example.com")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("http://build.chromium.org")));
+}
+
+TEST_F(ExternallyConnectableTest, WarningNoEffectiveTLD) {
+  scoped_refptr<Extension> extension = LoadAndExpectWarning(
+      "externally_connectable_error_effective_tld.json",
+      ErrorUtils::FormatErrorMessage(errors::kErrorTopLevelDomainsNotAllowed,
+                                     "appspot.com",
+                                     "http://*.appspot.com/*"));
+  ExternallyConnectableInfo* info = GetExternallyConnectableInfo(extension);
+  EXPECT_FALSE(info->matches.ContainsPattern(
+      URLPattern(URLPattern::SCHEME_ALL, "http://*.appspot.com/*")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("https://example.com")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("http://build.chromium.org")));
+}
+
+TEST_F(ExternallyConnectableTest, WarningUnknownTLD) {
+  scoped_refptr<Extension> extension = LoadAndExpectWarning(
+      "externally_connectable_error_unknown_tld.json",
+      ErrorUtils::FormatErrorMessage(errors::kErrorTopLevelDomainsNotAllowed,
+                                     "notatld",
+                                     "http://*.notatld/*"));
+  ExternallyConnectableInfo* info = GetExternallyConnectableInfo(extension);
+  EXPECT_FALSE(info->matches.ContainsPattern(
+      URLPattern(URLPattern::SCHEME_ALL, "http://*.notatld/*")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("https://example.com")));
+  EXPECT_TRUE(info->matches.MatchesURL(GURL("http://build.chromium.org")));
 }
 
 TEST_F(ExternallyConnectableTest, WarningNothingSpecified) {
-  LoadAndExpectWarning("externally_connectable_empty_ids.json",
-                       errors::kErrorNothingSpecified);
-  LoadAndExpectWarning("externally_connectable_empty_matches.json",
-                       errors::kErrorNothingSpecified);
   LoadAndExpectWarning("externally_connectable_nothing_specified.json",
                        errors::kErrorNothingSpecified);
-}
-
-TEST_F(ExternallyConnectableTest, WarningUnusedAcceptsTlsChannelId) {
-  std::vector<std::string> expected_warnings;
-  expected_warnings.emplace_back(errors::kErrorNothingSpecified);
-  expected_warnings.emplace_back(errors::kErrorUnusedAcceptsTlsChannelId);
-  LoadAndExpectWarnings(
-      "externally_connectable_accepts_tls_channel_id_without_matches.json",
-      expected_warnings);
-}
-
-// Tests that the deprecated externally_connectable.all_urls permission doesn't
-// trigger a warning for an extension that requests it.
-// TODO(crbug.com/40864987): Remove this test when we remove the
-// externally_connectable.all_urls permission.
-TEST_F(ExternallyConnectableTest, DeprecatedAllUrlsPermission) {
-  scoped_refptr<const Extension> extension =
-      LoadAndExpectSuccess("externally_connectable_all_urls_permission.json");
-  EXPECT_TRUE(extension->install_warnings().empty());
 }
 
 }  // namespace extensions

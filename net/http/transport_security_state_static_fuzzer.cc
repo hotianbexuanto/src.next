@@ -1,11 +1,6 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
 
 #include <string>
 
@@ -20,8 +15,14 @@ class TransportSecurityStateStaticFuzzer {
     state->enable_static_pins_ = true;
     TransportSecurityState::STSState sts_result;
     TransportSecurityState::PKPState pkp_result;
-    return state->GetStaticSTSState(input, &sts_result) ||
-           state->GetStaticPKPState(input, &pkp_result);
+    return state->GetStaticDomainState(input, &sts_result, &pkp_result);
+  }
+
+  bool FuzzStaticExpectCTState(TransportSecurityState* state,
+                               const std::string& input) {
+    state->enable_static_expect_ct_ = true;
+    TransportSecurityState::ExpectCTState result;
+    return state->GetStaticExpectCTState(input, &result);
   }
 };
 
@@ -34,6 +35,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   net::TransportSecurityState state;
 
   helper.FuzzStaticDomainState(&state, input);
+  helper.FuzzStaticExpectCTState(&state, input);
 
   return 0;
 }

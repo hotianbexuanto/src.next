@@ -27,41 +27,32 @@
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+
 #include "third_party/blink/renderer/core/css/element_rule_collector.h"
 
-#include <utility>
-
-#include "base/containers/span.h"
-#include "base/substring_set_matcher/substring_set_matcher.h"
-#include "base/trace_event/common/trace_event_common.h"
-#include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-shared.h"
-#include "third_party/blink/renderer/core/css/cascade_layer_map.h"
-#include "third_party/blink/renderer/core/css/check_pseudo_has_cache_scope.h"
 #include "third_party/blink/renderer/core/css/container_query_evaluator.h"
 #include "third_party/blink/renderer/core/css/css_import_rule.h"
 #include "third_party/blink/renderer/core/css/css_keyframes_rule.h"
 #include "third_party/blink/renderer/core/css/css_media_rule.h"
-#include "third_party/blink/renderer/core/css/css_nested_declarations_rule.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
 #include "third_party/blink/renderer/core/css/css_rule_list.h"
 #include "third_party/blink/renderer/core/css/css_selector.h"
 #include "third_party/blink/renderer/core/css/css_style_rule.h"
 #include "third_party/blink/renderer/core/css/css_style_sheet.h"
 #include "third_party/blink/renderer/core/css/css_supports_rule.h"
-#include "third_party/blink/renderer/core/css/resolver/element_resolve_context.h"
-#include "third_party/blink/renderer/core/css/resolver/scoped_style_resolver.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver_stats.h"
 #include "third_party/blink/renderer/core/css/resolver/style_rule_usage_tracker.h"
-#include "third_party/blink/renderer/core/css/seeker.h"
-#include "third_party/blink/renderer/core/css/selector_checker-inl.h"
-#include "third_party/blink/renderer/core/css/selector_statistics.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/css/style_rule_nested_declarations.h"
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/layout_tree_builder_traversal.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/inspector/identifiers_factory.h"
 #include "third_party/blink/renderer/core/page/scrolling/fragment_anchor.h"
@@ -136,49 +127,33 @@ namespace blink {
 template <class CSSRuleCollection>
 static CSSRule* FindStyleRule(CSSRuleCollection* css_rules,
                               const StyleRule* style_rule);
+=======
+#include "third_party/blink/renderer/core/style/computed_style.h"
+
+namespace blink {
+>>>>>>> chromium
 
 namespace {
 
-const CSSStyleSheet* FindStyleSheet(const TreeScope* tree_scope_containing_rule,
-                                    const StyleEngine& style_engine,
-                                    const StyleRule* rule) {
-  if (tree_scope_containing_rule) {
-    for (const auto& [sheet, rule_set] :
-         tree_scope_containing_rule->GetScopedStyleResolver()
-             ->GetActiveStyleSheets()) {
-      if (FindStyleRule(sheet.Get(), rule) != nullptr) {
-        return sheet.Get();
-      }
-    }
-  }
-  for (const auto& [sheet, rule_set] : style_engine.ActiveUserStyleSheets()) {
-    if (FindStyleRule(sheet.Get(), rule) != nullptr) {
-      return sheet.Get();
-    }
-  }
-
-  return nullptr;  // Not found (e.g., the rule is from an UA style sheet).
-}
-
 unsigned AdjustLinkMatchType(EInsideLink inside_link,
                              unsigned link_match_type) {
-  if (inside_link == EInsideLink::kNotInsideLink) {
+  if (inside_link == EInsideLink::kNotInsideLink)
     return CSSSelector::kMatchLink;
-  }
   return link_match_type;
 }
 
-unsigned LinkMatchTypeFromInsideLink(EInsideLink inside_link) {
-  switch (inside_link) {
-    case EInsideLink::kNotInsideLink:
-      return CSSSelector::kMatchAll;
-    case EInsideLink::kInsideVisitedLink:
-      return CSSSelector::kMatchVisited;
-    case EInsideLink::kInsideUnvisitedLink:
-      return CSSSelector::kMatchLink;
+ContainerQueryEvaluator* FindContainerQueryEvaluator(
+    const AtomicString& name,
+    const StyleRecalcContext& style_recalc_context) {
+  if (auto* element =
+          ContainerQueryEvaluator::FindContainer(style_recalc_context, name)) {
+    return element->GetContainerQueryEvaluator();
   }
+
+  return nullptr;
 }
 
+<<<<<<< HEAD
 bool EvaluateAndAddContainerQueries(
     Element* style_container_candidate,
     const ContainerQuery& container_query,
@@ -334,6 +309,8 @@ void AggregateRulePerfData(
 // `TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED` for more details.
 static const unsigned char* g_selector_stats_tracing_enabled = nullptr;
 
+=======
+>>>>>>> chromium
 }  // namespace
 
 ElementRuleCollector::ElementRuleCollector(
@@ -341,27 +318,20 @@ ElementRuleCollector::ElementRuleCollector(
     const StyleRecalcContext& style_recalc_context,
     const SelectorFilter& filter,
     MatchResult& result,
+    ComputedStyle* style,
     EInsideLink inside_link)
     : context_(context),
       style_recalc_context_(style_recalc_context),
       selector_filter_(filter),
+      style_(style),
       mode_(SelectorChecker::kResolvingStyle),
-      can_use_fast_reject_(selector_filter_.ParentStackIsConsistent(
-          context.GetElement().IsPseudoElement()
-              ? LayoutTreeBuilderTraversal::ParentElement(
-                    *To<PseudoElement>(context.GetElement())
-                         .UltimateOriginatingElement())
-              : context.ParentElement())),
+      can_use_fast_reject_(
+          selector_filter_.ParentStackIsConsistent(context.ParentNode())),
+      same_origin_only_(false),
       matching_ua_rules_(false),
-      suppress_visited_(false),
+      include_empty_rules_(false),
       inside_link_(inside_link),
-      result_(result) {
-  if (!g_selector_stats_tracing_enabled) {
-    g_selector_stats_tracing_enabled =
-        TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(
-            TRACE_DISABLED_BY_DEFAULT("blink.debug"));
-  }
-}
+      result_(result) {}
 
 ElementRuleCollector::~ElementRuleCollector() = default;
 
@@ -384,105 +354,43 @@ void ElementRuleCollector::ClearMatchedRules() {
 }
 
 inline StyleRuleList* ElementRuleCollector::EnsureStyleRuleList() {
-  if (!style_rule_list_) {
+  if (!style_rule_list_)
     style_rule_list_ = MakeGarbageCollected<StyleRuleList>();
-  }
-  return style_rule_list_.Get();
+  return style_rule_list_;
 }
 
 inline RuleIndexList* ElementRuleCollector::EnsureRuleList() {
-  if (!css_rule_list_) {
+  if (!css_rule_list_)
     css_rule_list_ = MakeGarbageCollected<RuleIndexList>();
-  }
   return css_rule_list_.Get();
 }
 
 void ElementRuleCollector::AddElementStyleProperties(
     const CSSPropertyValueSet* property_set,
-    CascadeOrigin origin,
-    bool is_cacheable,
-    bool is_inline_style) {
-  if (!property_set) {
+    bool is_cacheable) {
+  if (!property_set)
     return;
-  }
   auto link_match_type = static_cast<unsigned>(CSSSelector::kMatchAll);
   result_.AddMatchedProperties(
-      property_set, {.link_match_type = static_cast<uint8_t>(
-                         AdjustLinkMatchType(inside_link_, link_match_type)),
-                     .is_inline_style = is_inline_style,
-                     .origin = origin});
-  if (!is_cacheable) {
+      property_set, AdjustLinkMatchType(inside_link_, link_match_type));
+  if (!is_cacheable)
     result_.SetIsCacheable(false);
-  }
-}
-
-void ElementRuleCollector::AddTryStyleProperties() {
-  const CSSPropertyValueSet* property_set = style_recalc_context_.try_set;
-  if (!property_set) {
-    return;
-  }
-  auto link_match_type = static_cast<unsigned>(CSSSelector::kMatchAll);
-  result_.AddMatchedProperties(
-      property_set, {.link_match_type = static_cast<uint8_t>(
-                         AdjustLinkMatchType(inside_link_, link_match_type)),
-                     .valid_property_filter = static_cast<uint8_t>(
-                         ValidPropertyFilter::kPositionTry),
-                     .is_try_style = true,
-                     .origin = CascadeOrigin::kAuthor});
-  result_.SetIsCacheable(false);
-}
-
-void ElementRuleCollector::AddTryTacticsStyleProperties() {
-  const CSSPropertyValueSet* property_set =
-      style_recalc_context_.try_tactics_set;
-  if (!property_set) {
-    return;
-  }
-  auto link_match_type = static_cast<unsigned>(CSSSelector::kMatchAll);
-  result_.AddMatchedProperties(
-      property_set, {.link_match_type = static_cast<uint8_t>(
-                         AdjustLinkMatchType(inside_link_, link_match_type)),
-                     .origin = CascadeOrigin::kAuthor,
-                     .is_try_tactics_style = true});
-  result_.SetIsCacheable(false);
 }
 
 static bool RulesApplicableInCurrentTreeScope(
     const Element* element,
     const ContainerNode* scoping_node) {
   // Check if the rules come from a shadow style sheet in the same tree scope.
-  DCHECK(element->IsInTreeScope());
   return !scoping_node ||
-         element->GetTreeScope() == scoping_node->GetTreeScope();
+         element->ContainingTreeScope() == scoping_node->ContainingTreeScope();
 }
 
-bool SlowMatchWithNoResultFlags(
-    const SelectorChecker& checker,
-    SelectorChecker::SelectorCheckingContext& context,
-    const CSSSelector& selector,
-    const RuleData& rule_data,
-    bool suppress_visited,
-    unsigned expected_proximity = std::numeric_limits<unsigned>::max()) {
-  SelectorChecker::MatchResult result;
-  context.selector = &selector;
-  context.match_visited = !suppress_visited && rule_data.LinkMatchType() ==
-                                                   CSSSelector::kMatchVisited;
-  bool match = checker.Match(context, result);
-  DCHECK_EQ(0, result.flags);
-  DCHECK_EQ(kPseudoIdNone, result.dynamic_pseudo);
-  if (match) {
-    DCHECK_EQ(expected_proximity, result.proximity);
-  }
-  return match;
-}
-
-template <bool stop_at_first_match, bool perf_trace_enabled>
-bool ElementRuleCollector::CollectMatchingRulesForListInternal(
-    base::span<const RuleData> rules,
+template <typename RuleDataListType>
+void ElementRuleCollector::CollectMatchingRulesForList(
+    const RuleDataListType* rules,
     const MatchRequest& match_request,
-    const RuleSet* rule_set,
-    int style_sheet_index,
     const SelectorChecker& checker,
+<<<<<<< HEAD
     SelectorChecker::SelectorCheckingContext& context) {
   bool force_starting_style = false;
   probe::ForceStartingStyle(context.element, &force_starting_style);
@@ -490,40 +398,30 @@ bool ElementRuleCollector::CollectMatchingRulesForListInternal(
                                  style_recalc_context_.old_style ||
                                  mode_ != SelectorChecker::kResolvingStyle) &&
                                 !force_starting_style;
+=======
+    PartRequest* part_request) {
+  if (!rules)
+    return;
+>>>>>>> chromium
 
-  CascadeLayerSeeker layer_seeker(stop_at_first_match ? nullptr : context.scope,
-                                  context.vtt_originating_element,
-                                  matching_ua_rules_,
-                                  matching_rules_from_no_style_sheet_,
-                                  &context.element->GetDocument(), rule_set);
-  Seeker<ContainerQuery> container_query_seeker(
-      rule_set->ContainerQueryIntervals());
-  Seeker<StyleScope> scope_seeker(rule_set->ScopeIntervals());
+  SelectorChecker::SelectorCheckingContext context(&context_.GetElement());
+  context.scope = match_request.scope;
+  context.pseudo_id = pseudo_style_request_.pseudo_id;
+  context.vtt_originating_element = match_request.vtt_originating_element;
 
+  unsigned rejected = 0;
   unsigned fast_rejected = 0;
   unsigned matched = 0;
-  SelectorStatisticsCollector selector_statistics_collector;
-  if (perf_trace_enabled) {
-    selector_statistics_collector.ReserveCapacity(
-        static_cast<wtf_size_t>(rules.size()));
-  }
 
-  for (const RuleData& rule_data : rules) {
-    if (perf_trace_enabled) {
-      selector_statistics_collector.EndCollectionForCurrentRule();
-      selector_statistics_collector.BeginCollectionForRule(&rule_data);
-    }
+  for (const auto& rule_data : *rules) {
     if (can_use_fast_reject_ &&
-        selector_filter_.FastRejectSelector(
-            rule_data.DescendantSelectorIdentifierHashes(
-                rule_set->BloomHashBacking()))) {
+        selector_filter_.FastRejectSelector<RuleData::kMaximumIdentifierCount>(
+            rule_data->DescendantSelectorIdentifierHashes())) {
       fast_rejected++;
-      if (perf_trace_enabled) {
-        selector_statistics_collector.SetWasFastRejected();
-      }
       continue;
     }
 
+<<<<<<< HEAD
     if (reject_starting_styles && rule_data.IsStartingStyle()) {
       continue;
     }
@@ -655,37 +553,71 @@ bool ElementRuleCollector::CollectMatchingRulesForListInternal(
         if (selects_scroll_state) {
           result_.SetDependsOnScrollStateContainerQueries();
         }
+=======
+    // Don't return cross-origin rules if we did not explicitly ask for them
+    // through SetSameOriginOnly.
+    if (same_origin_only_ && !rule_data->HasDocumentSecurityOrigin())
+      continue;
+
+    StyleRule* rule = rule_data->Rule();
+
+    // If the rule has no properties to apply, then ignore it in the non-debug
+    // mode.
+    if (!rule->ShouldConsiderForMatchingRules(include_empty_rules_))
+      continue;
+
+    const auto& selector = rule_data->Selector();
+    if (UNLIKELY(part_request && part_request->for_shadow_pseudo)) {
+      if (!selector.IsAllowedAfterPart()) {
+        DCHECK_EQ(selector.GetPseudoType(), CSSSelector::kPseudoPart);
+        rejected++;
+        continue;
+      }
+      DCHECK_EQ(selector.Relation(), CSSSelector::kUAShadow);
+    }
+
+    SelectorChecker::MatchResult result;
+    context.selector = &selector;
+    context.is_inside_visited_link =
+        rule_data->LinkMatchType() == CSSSelector::kMatchVisited;
+    DCHECK(!context.is_inside_visited_link ||
+           inside_link_ != EInsideLink::kNotInsideLink);
+    if (!checker.Match(context, result)) {
+      rejected++;
+      continue;
+    }
+    if (pseudo_style_request_.pseudo_id != kPseudoIdNone &&
+        pseudo_style_request_.pseudo_id != result.dynamic_pseudo) {
+      rejected++;
+      continue;
+    }
+    if (auto* container_query = rule_data->GetContainerQuery()) {
+      result_.SetDependsOnContainerQueries();
+
+      auto* evaluator = FindContainerQueryEvaluator(container_query->Name(),
+                                                    style_recalc_context_);
+
+      if (!evaluator || !evaluator->EvalAndAdd(*container_query)) {
+        rejected++;
+        continue;
+>>>>>>> chromium
       }
     }
 
     matched++;
-    if (perf_trace_enabled) {
-      selector_statistics_collector.SetDidMatch();
-    }
-    unsigned layer_order = layer_seeker.SeekLayerOrder(rule_data.GetPosition());
-    DidMatchRule(&rule_data, layer_order, container_query, result.proximity,
-                 result, style_sheet_index);
-  }
-
-  if (perf_trace_enabled) {
-    DCHECK_EQ(mode_, SelectorChecker::kResolvingStyle);
-    selector_statistics_collector.EndCollectionForCurrentRule();
-    AggregateRulePerfData(current_matching_tree_scope_,
-                          context_.GetElement().GetDocument().GetStyleEngine(),
-                          selector_statistics_collector.PerRuleStatistics());
+    DidMatchRule(rule_data, result, match_request);
   }
 
   StyleEngine& style_engine =
       context_.GetElement().GetDocument().GetStyleEngine();
-  if (!style_engine.Stats()) {
-    return false;
-  }
+  if (!style_engine.Stats())
+    return;
 
-  size_t rejected = rules.size() - fast_rejected - matched;
   INCREMENT_STYLE_STATS_COUNTER(style_engine, rules_rejected, rejected);
   INCREMENT_STYLE_STATS_COUNTER(style_engine, rules_fast_rejected,
                                 fast_rejected);
   INCREMENT_STYLE_STATS_COUNTER(style_engine, rules_matched, matched);
+<<<<<<< HEAD
   return false;
 }
 
@@ -771,61 +703,52 @@ DISABLE_CFI_PERF bool ElementRuleCollector::CollectMatchingRulesInternal(
 #endif
 
   SelectorChecker checker(part_names, pseudo_style_request_, mode_,
+=======
+}
+
+DISABLE_CFI_PERF
+void ElementRuleCollector::CollectMatchingRules(
+    const MatchRequest& match_request,
+    bool matching_tree_boundary_rules) {
+  DCHECK(match_request.rule_set);
+
+  SelectorChecker checker(style_.get(), nullptr, pseudo_style_request_, mode_,
+>>>>>>> chromium
                           matching_ua_rules_);
 
-  ContextWithStyleScopeFrame context(context_, match_request,
-                                     &pseudo_style_request_,
-                                     style_recalc_context_.style_scope_frame);
-  Element& element = *context.context.element;
+  Element& element = context_.GetElement();
   const AtomicString& pseudo_id = element.ShadowPseudoId();
-  if (!pseudo_id.empty()) {
+  if (!pseudo_id.IsEmpty()) {
     DCHECK(element.IsStyledElement());
-    for (const auto bundle : match_request.AllRuleSets()) {
-      if (CollectMatchingRulesForList<stop_at_first_match>(
-              bundle.rule_set->UAShadowPseudoElementRules(pseudo_id),
-              match_request, bundle.rule_set, bundle.style_sheet_index, checker,
-              context.context) &&
-          stop_at_first_match) {
-        return true;
-      }
-    }
+    CollectMatchingRulesForList(
+        match_request.rule_set->UAShadowPseudoElementRules(pseudo_id),
+        match_request, checker);
   }
 
   if (element.IsVTTElement()) {
-    for (const auto bundle : match_request.AllRuleSets()) {
-      if (CollectMatchingRulesForList<stop_at_first_match>(
-              bundle.rule_set->CuePseudoRules(), match_request, bundle.rule_set,
-              bundle.style_sheet_index, checker, context.context) &&
-          stop_at_first_match) {
-        return true;
-      }
-    }
+    CollectMatchingRulesForList(match_request.rule_set->CuePseudoRules(),
+                                match_request, checker);
   }
   // Check whether other types of rules are applicable in the current tree
   // scope. Criteria for this:
   // a) the rules are UA rules.
-  // b) the rules come from a shadow style sheet in the same tree scope as the
+  // b) matching tree boundary crossing rules.
+  // c) the rules come from a shadow style sheet in the same tree scope as the
   //    given element.
   // c) is checked in rulesApplicableInCurrentTreeScope.
-  if (!matching_ua_rules_ &&
-      !RulesApplicableInCurrentTreeScope(&element, match_request.Scope())) {
-    return false;
-  }
+  if (!matching_ua_rules_ && !matching_tree_boundary_rules &&
+      !RulesApplicableInCurrentTreeScope(&element, match_request.scope))
+    return;
 
   // We need to collect the rules for id, class, tag, and everything else into a
   // buffer and then sort the buffer.
   if (element.HasID()) {
-    for (const auto bundle : match_request.AllRuleSets()) {
-      if (CollectMatchingRulesForList<stop_at_first_match>(
-              bundle.rule_set->IdRules(element.IdForStyleResolution()),
-              match_request, bundle.rule_set, bundle.style_sheet_index, checker,
-              context.context) &&
-          stop_at_first_match) {
-        return true;
-      }
-    }
+    CollectMatchingRulesForList(
+        match_request.rule_set->IdRules(element.IdForStyleResolution()),
+        match_request, checker);
   }
   if (element.IsStyledElement() && element.HasClass()) {
+<<<<<<< HEAD
     for (const AtomicString& class_name : element.ClassNames()) {
       for (const auto bundle : match_request.AllRuleSets()) {
         if (CollectMatchingRulesForList<stop_at_first_match>(
@@ -905,10 +828,17 @@ DISABLE_CFI_PERF bool ElementRuleCollector::CollectMatchingRulesInternal(
 
       const AttributeCollection collection = element.AttributesWithoutUpdate();
       attributes = base::span(collection);
+=======
+    for (wtf_size_t i = 0; i < element.ClassNames().size(); ++i) {
+      CollectMatchingRulesForList(
+          match_request.rule_set->ClassRules(element.ClassNames()[i]),
+          match_request, checker);
+>>>>>>> chromium
     }
   }
 
   if (element.IsLink()) {
+<<<<<<< HEAD
     for (const auto bundle : match_request.RuleSetsWithLinkPseudoClassRules()) {
       if (CollectMatchingRulesForList<stop_at_first_match>(
               bundle.rule_set->LinkPseudoClassRules(), match_request,
@@ -972,10 +902,37 @@ DISABLE_CFI_PERF bool ElementRuleCollector::CollectMatchingRulesInternal(
         return true;
       }
     }
+=======
+    CollectMatchingRulesForList(match_request.rule_set->LinkPseudoClassRules(),
+                                match_request, checker);
+  }
+  if (inside_link_ != EInsideLink::kNotInsideLink) {
+    // Collect rules for visited links regardless of whether they affect
+    // rendering to prevent sniffing of visited links via CSS transitions.
+    // If the visited or unvisited style changes and an affected property has a
+    // transition rule, we create a transition even if it has no visible effect.
+    CollectMatchingRulesForList(match_request.rule_set->VisitedDependentRules(),
+                                match_request, checker);
+  }
+  if (SelectorChecker::MatchesFocusPseudoClass(element)) {
+    CollectMatchingRulesForList(match_request.rule_set->FocusPseudoClassRules(),
+                                match_request, checker);
+  }
+  if (SelectorChecker::MatchesFocusVisiblePseudoClass(element)) {
+    CollectMatchingRulesForList(
+        match_request.rule_set->FocusVisiblePseudoClassRules(), match_request,
+        checker);
+  }
+  if (SelectorChecker::MatchesSpatialNavigationInterestPseudoClass(element)) {
+    CollectMatchingRulesForList(
+        match_request.rule_set->SpatialNavigationInterestPseudoClassRules(),
+        match_request, checker);
+>>>>>>> chromium
   }
   AtomicString element_name = matching_ua_rules_
                                   ? element.localName()
                                   : element.LocalNameForSelectorMatching();
+<<<<<<< HEAD
   for (const auto bundle : match_request.AllRuleSets()) {
     if (CollectMatchingRulesForList<stop_at_first_match>(
             bundle.rule_set->TagRules(element_name), match_request,
@@ -994,72 +951,26 @@ DISABLE_CFI_PERF bool ElementRuleCollector::CollectMatchingRulesInternal(
     }
   }
   return false;
+=======
+  CollectMatchingRulesForList(match_request.rule_set->TagRules(element_name),
+                              match_request, checker);
+  CollectMatchingRulesForList(match_request.rule_set->UniversalRules(),
+                              match_request, checker);
+>>>>>>> chromium
 }
 
 void ElementRuleCollector::CollectMatchingShadowHostRules(
     const MatchRequest& match_request) {
-  SelectorChecker checker(nullptr, pseudo_style_request_, mode_,
+  SelectorChecker checker(style_.get(), nullptr, pseudo_style_request_, mode_,
                           matching_ua_rules_);
 
-  ContextWithStyleScopeFrame context(context_, match_request,
-                                     &pseudo_style_request_,
-                                     style_recalc_context_.style_scope_frame);
-
-  for (const auto bundle : match_request.AllRuleSets()) {
-    CollectMatchingRulesForList</*stop_at_first_match=*/false>(
-        bundle.rule_set->ShadowHostRules(), match_request, bundle.rule_set,
-        bundle.style_sheet_index, checker, context.context);
-    if (bundle.rule_set->MustCheckUniversalBucketForShadowHost()) {
-      CollectMatchingRulesForList</*stop_at_first_match=*/false>(
-          bundle.rule_set->UniversalRules(), match_request, bundle.rule_set,
-          bundle.style_sheet_index, checker, context.context);
-    }
-  }
-}
-
-bool ElementRuleCollector::CheckIfAnyShadowHostRuleMatches(
-    const MatchRequest& match_request) {
-  SelectorChecker checker(nullptr, pseudo_style_request_, mode_,
-                          matching_ua_rules_);
-
-  ContextWithStyleScopeFrame context(context_, match_request,
-                                     &pseudo_style_request_,
-                                     style_recalc_context_.style_scope_frame);
-
-  for (const auto bundle : match_request.AllRuleSets()) {
-    if (CollectMatchingRulesForList</*stop_at_first_match=*/true>(
-            bundle.rule_set->ShadowHostRules(), match_request, bundle.rule_set,
-            bundle.style_sheet_index, checker, context.context)) {
-      return true;
-    }
-    if (bundle.rule_set->MustCheckUniversalBucketForShadowHost()) {
-      if (CollectMatchingRulesForList</*stop_at_first_match=*/true>(
-              bundle.rule_set->UniversalRules(), match_request, bundle.rule_set,
-              bundle.style_sheet_index, checker, context.context)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-void ElementRuleCollector::CollectMatchingSlottedRules(
-    const MatchRequest& match_request) {
-  SelectorChecker checker(nullptr, pseudo_style_request_, mode_,
-                          matching_ua_rules_);
-  ContextWithStyleScopeFrame context(context_, match_request,
-                                     &pseudo_style_request_,
-                                     style_recalc_context_.style_scope_frame);
-
-  for (const auto bundle : match_request.AllRuleSets()) {
-    CollectMatchingRulesForList</*stop_at_first_match=*/false>(
-        bundle.rule_set->SlottedPseudoElementRules(), match_request,
-        bundle.rule_set, bundle.style_sheet_index, checker, context.context);
-  }
+  CollectMatchingRulesForList(match_request.rule_set->ShadowHostRules(),
+                              match_request, checker);
 }
 
 void ElementRuleCollector::CollectMatchingPartPseudoRules(
     const MatchRequest& match_request,
+<<<<<<< HEAD
     PartNames* part_names) {
   SelectorChecker checker(part_names, pseudo_style_request_, mode_,
                           matching_ua_rules_);
@@ -1073,56 +984,40 @@ void ElementRuleCollector::CollectMatchingPartPseudoRules(
         bundle.rule_set->PartPseudoRules(), match_request, bundle.rule_set,
         bundle.style_sheet_index, checker, context.context);
   }
+=======
+    PartNames& part_names,
+    bool for_shadow_pseudo) {
+  PartRequest request{part_names, for_shadow_pseudo};
+  SelectorChecker checker(style_.get(), &part_names, pseudo_style_request_,
+                          mode_, matching_ua_rules_);
+
+  CollectMatchingRulesForList(match_request.rule_set->PartPseudoRules(),
+                              match_request, checker, &request);
+>>>>>>> chromium
 }
 
-// Find the CSSRule within the CSSRuleCollection that corresponds to the
-// incoming StyleRule. This mapping is needed because Inspector needs to
-// interact with the CSSOM-wrappers (i.e. CSSRules) of the matched rules, but
-// ElementRuleCollector's result is a list of StyleRules.
-//
-// We also use it as a simple true/false for whether the StyleRule exists
-// in the given style sheet, because we don't track which style sheet
-// each matched rule came from in normal operation.
 template <class CSSRuleCollection>
-static CSSRule* FindStyleRule(CSSRuleCollection* css_rules,
-                              const StyleRule* style_rule) {
-  if (!css_rules) {
+CSSRule* ElementRuleCollector::FindStyleRule(CSSRuleCollection* css_rules,
+                                             StyleRule* style_rule) {
+  if (!css_rules)
     return nullptr;
-  }
-
-  for (unsigned i = 0; i < css_rules->length(); ++i) {
-    CSSRule* css_rule = css_rules->ItemInternal(i);
+  CSSRule* result = nullptr;
+  for (unsigned i = 0; i < css_rules->length() && !result; ++i) {
+    CSSRule* css_rule = css_rules->item(i);
     if (auto* css_style_rule = DynamicTo<CSSStyleRule>(css_rule)) {
-      if (css_style_rule->GetStyleRule() == style_rule) {
-        return css_rule;
-      }
-      if (CSSRule* result =
-              FindStyleRule(css_style_rule->cssRules(), style_rule);
-          result) {
-        return result;
-      }
+      if (css_style_rule->GetStyleRule() == style_rule)
+        result = css_rule;
     } else if (auto* css_import_rule = DynamicTo<CSSImportRule>(css_rule)) {
-      if (CSSRule* result =
-              FindStyleRule(css_import_rule->styleSheet(), style_rule);
-          result) {
-        return result;
-      }
-    } else if (CSSRule* result =
-                   FindStyleRule(css_rule->cssRules(), style_rule);
-               result) {
-      return result;
-    } else if (auto* nested_declarations =
-                   DynamicTo<CSSNestedDeclarationsRule>(css_rule)) {
-      if (nested_declarations->NestedDeclarationsRule()->InnerStyleRule() ==
-          style_rule) {
-        return nested_declarations->InnerCSSStyleRule();
-      }
+      result = FindStyleRule(css_import_rule->styleSheet(), style_rule);
+    } else {
+      result = FindStyleRule(css_rule->cssRules(), style_rule);
     }
   }
-  return nullptr;
+  return result;
 }
 
 void ElementRuleCollector::AppendCSSOMWrapperForRule(
+<<<<<<< HEAD
     const TreeScope* tree_scope_containing_rule,
     const MatchedRule& matched_rule,
     wtf_size_t position) {
@@ -1156,34 +1051,58 @@ void ElementRuleCollector::AppendCSSOMWrapperForRule(
     css_rule = rule->CreateCSSOMWrapper(position);
   }
   EnsureRuleList()->emplace_back(css_rule, matched_rule.SelectorIndex());
+=======
+    CSSStyleSheet* parent_style_sheet,
+    const RuleData* rule_data) {
+  // |parentStyleSheet| is 0 if and only if the |rule| is coming from User
+  // Agent. In this case, it is safe to create CSSOM wrappers without
+  // parentStyleSheets as they will be used only by inspector which will not try
+  // to edit them.
+  CSSRule* css_rule = nullptr;
+  StyleRule* rule = rule_data->Rule();
+  if (parent_style_sheet)
+    css_rule = FindStyleRule(parent_style_sheet, rule);
+  else
+    css_rule = rule->CreateCSSOMWrapper();
+  DCHECK(!parent_style_sheet || css_rule);
+  EnsureRuleList()->emplace_back(css_rule, rule_data->SelectorIndex());
+>>>>>>> chromium
 }
 
-void ElementRuleCollector::SortAndTransferMatchedRules(
-    CascadeOrigin origin,
-    bool is_vtt_embedded_style,
-    StyleRuleUsageTracker* tracker) {
-  if (matched_rules_.empty()) {
+void ElementRuleCollector::SortAndTransferMatchedRules() {
+  if (matched_rules_.IsEmpty())
     return;
-  }
 
   SortMatchedRules();
 
   if (mode_ == SelectorChecker::kCollectingStyleRules) {
+<<<<<<< HEAD
     for (const MatchedRule& matched_rule : matched_rules_) {
       EnsureStyleRuleList()->push_back(matched_rule.Rule());
     }
+=======
+    for (unsigned i = 0; i < matched_rules_.size(); ++i)
+      EnsureStyleRuleList()->push_back(matched_rules_[i].GetRuleData()->Rule());
+>>>>>>> chromium
     return;
   }
 
   if (mode_ == SelectorChecker::kCollectingCSSRules) {
     for (unsigned i = 0; i < matched_rules_.size(); ++i) {
+<<<<<<< HEAD
       AppendCSSOMWrapperForRule(current_matching_tree_scope_, matched_rules_[i],
                                 i);
+=======
+      AppendCSSOMWrapperForRule(
+          const_cast<CSSStyleSheet*>(matched_rules_[i].ParentStyleSheet()),
+          matched_rules_[i].GetRuleData());
+>>>>>>> chromium
     }
     return;
   }
 
   // Now transfer the set of matched rules over to our list of declarations.
+<<<<<<< HEAD
   for (const MatchedRule& matched_rule : matched_rules_) {
     result_.AddMatchedProperties(
         &matched_rule.Rule()->Properties(),
@@ -1198,27 +1117,34 @@ void ElementRuleCollector::SortAndTransferMatchedRules(
 
   if (tracker) {
     AddMatchedRulesToTracker(tracker);
+=======
+  for (unsigned i = 0; i < matched_rules_.size(); i++) {
+    const MatchedRule& matched_rule = matched_rules_[i];
+    const RuleData* rule_data = matched_rule.GetRuleData();
+    result_.AddMatchedProperties(
+        &rule_data->Rule()->Properties(),
+        AdjustLinkMatchType(inside_link_, rule_data->LinkMatchType()),
+        rule_data->GetValidPropertyFilter(matching_ua_rules_));
+>>>>>>> chromium
   }
 }
 
 void ElementRuleCollector::DidMatchRule(
     const RuleData* rule_data,
-    uint16_t layer_order,
-    const ContainerQuery* container_query,
-    unsigned proximity,
     const SelectorChecker::MatchResult& result,
-    int style_sheet_index) {
+    const MatchRequest& match_request) {
   PseudoId dynamic_pseudo = result.dynamic_pseudo;
-  // If we're matching normal rules, set a pseudo bit if we really just
-  // matched a pseudo-element.
+  // If we're matching normal rules, set a pseudo bit if we really just matched
+  // a pseudo-element.
   if (dynamic_pseudo != kPseudoIdNone &&
       pseudo_style_request_.pseudo_id == kPseudoIdNone) {
     if (mode_ == SelectorChecker::kCollectingCSSRules ||
-        mode_ == SelectorChecker::kCollectingStyleRules) {
+        mode_ == SelectorChecker::kCollectingStyleRules)
       return;
-    }
-    if (dynamic_pseudo > kLastTrackedPublicPseudoId) {
+    // FIXME: Matching should not modify the style directly.
+    if (!style_ || dynamic_pseudo >= kFirstInternalPseudoId)
       return;
+<<<<<<< HEAD
     }
     if ((dynamic_pseudo == kPseudoIdCheckMark ||
          dynamic_pseudo == kPseudoIdBefore ||
@@ -1287,64 +1213,48 @@ void ElementRuleCollector::DidMatchRule(
     }
     matched_rules_.emplace_back(rule_data, layer_order, proximity,
                                 style_sheet_index);
+=======
+    if ((dynamic_pseudo == kPseudoIdBefore ||
+         dynamic_pseudo == kPseudoIdAfter) &&
+        !rule_data->Rule()->Properties().HasProperty(CSSPropertyID::kContent))
+      return;
+    if (!rule_data->Rule()->Properties().IsEmpty())
+      style_->SetHasPseudoElementStyle(dynamic_pseudo);
+  } else {
+    matched_rules_.push_back(MatchedRule(
+        rule_data, match_request.style_sheet_index, match_request.style_sheet));
+>>>>>>> chromium
   }
 }
 
-void ElementRuleCollector::DumpAndClearRulesPerfMap() {
-  TRACE_EVENT1(
-      TRACE_DISABLED_BY_DEFAULT("blink.debug"), "SelectorStats",
-      "selector_stats", [&](perfetto::TracedValue context) {
-        perfetto::TracedDictionary dict = std::move(context).WriteDictionary();
-        {
-          perfetto::TracedArray array = dict.AddArray("selector_timings");
-          for (auto& it : GetSelectorStatisticsRuleMap()) {
-            perfetto::TracedValue item = array.AppendItem();
-            perfetto::TracedDictionary item_dict =
-                std::move(item).WriteDictionary();
-            item_dict.Add("selector", it.key.selector);
-            item_dict.Add("style_sheet_id", it.key.style_sheet_id);
-            item_dict.Add("elapsed (us)", it.value.elapsed);
-            item_dict.Add("match_attempts", it.value.match_attempts);
-            item_dict.Add("fast_reject_count", it.value.fast_reject_count);
-            item_dict.Add("match_count", it.value.match_count);
-          }
-        }
-      });
-  GetSelectorStatisticsRuleMap().clear();
-}
+static inline bool CompareRules(const MatchedRule& matched_rule1,
+                                const MatchedRule& matched_rule2) {
+  unsigned specificity1 = matched_rule1.Specificity();
+  unsigned specificity2 = matched_rule2.Specificity();
+  if (specificity1 != specificity2)
+    return specificity1 < specificity2;
 
-struct ElementRuleCollector::CompareRules {
-  inline bool operator()(const MatchedRule& matched_rule1,
-                         const MatchedRule& matched_rule2) const {
-#ifdef __SIZEOF_INT128__
-    // https://github.com/llvm/llvm-project/issues/108418
-    __uint128_t key1 = (__uint128_t{matched_rule1.SortKey()} << 64) |
-                       matched_rule1.GetPosition();
-    __uint128_t key2 = (__uint128_t{matched_rule2.SortKey()} << 64) |
-                       matched_rule2.GetPosition();
-#else
-    std::pair key1{matched_rule1.SortKey(), matched_rule1.GetPosition()};
-    std::pair key2{matched_rule2.SortKey(), matched_rule2.GetPosition()};
-#endif
-    return key1 < key2;
-  }
-};
+  return matched_rule1.GetPosition() < matched_rule2.GetPosition();
+}
 
 void ElementRuleCollector::SortMatchedRules() {
-  if (matched_rules_.size() > 1) {
-    std::sort(matched_rules_.begin(), matched_rules_.end(), CompareRules());
-  }
+  std::sort(matched_rules_.begin(), matched_rules_.end(), CompareRules);
 }
 
 void ElementRuleCollector::AddMatchedRulesToTracker(
     StyleRuleUsageTracker* tracker) const {
   for (auto matched_rule : matched_rules_) {
+<<<<<<< HEAD
     const StyleRule* rule = matched_rule.Rule();
     tracker->Track(
         FindStyleSheet(current_matching_tree_scope_,
                        context_.GetElement().GetDocument().GetStyleEngine(),
                        rule),
         rule);
+=======
+    tracker->Track(matched_rule.ParentStyleSheet(),
+                   matched_rule.GetRuleData()->Rule());
+>>>>>>> chromium
   }
 }
 

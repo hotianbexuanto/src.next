@@ -1,12 +1,10 @@
-// Copyright 2018 The Chromium Authors
+// Copyright (c) 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/strings/pattern.h"
 #include "base/strings/stringprintf.h"
-#include "base/values.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -14,6 +12,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "extensions/common/value_builder.h"
 #include "extensions/test/test_extension_dir.h"
 #include "net/dns/mock_host_resolver.h"
 
@@ -22,20 +21,18 @@ namespace extensions {
 namespace {
 
 // Returns true if |window.scriptExecuted| is true for the given frame.
-bool WasFrameWithScriptLoaded(content::RenderFrameHost* render_frame_host) {
-  if (!render_frame_host) {
+bool WasFrameWithScriptLoaded(content::RenderFrameHost* rfh) {
+  if (!rfh)
     return false;
-  }
-  return content::EvalJs(render_frame_host, "!!window.scriptExecuted")
-      .ExtractBool();
+  bool loaded = false;
+  EXPECT_TRUE(content::ExecuteScriptAndExtractBool(
+      rfh, "domAutomationController.send(!!window.scriptExecuted)", &loaded));
+  return loaded;
 }
 
 class ExtensionCSPBypassTest : public ExtensionBrowserTest {
  public:
   ExtensionCSPBypassTest() = default;
-
-  ExtensionCSPBypassTest(const ExtensionCSPBypassTest&) = delete;
-  ExtensionCSPBypassTest& operator=(const ExtensionCSPBypassTest&) = delete;
 
   void SetUpOnMainThread() override {
     host_resolver()->AddRule("same-origin.com", "127.0.0.1");
@@ -50,19 +47,18 @@ class ExtensionCSPBypassTest : public ExtensionBrowserTest {
   }
 
   const Extension* AddExtension(bool is_component, bool all_urls_permission) {
-    TestExtensionDir dir;
+    auto dir = std::make_unique<TestExtensionDir>();
 
     std::string unique_name = base::StringPrintf(
         "component=%d, all_urls=%d", is_component, all_urls_permission);
-    auto manifest =
-        base::Value::Dict()
-            .Set("name", unique_name)
-            .Set("version", "1")
-            .Set("manifest_version", 2)
-            .Set("web_accessible_resources", base::Value::List().Append("*"));
+    DictionaryBuilder manifest;
+    manifest.Set("name", unique_name)
+        .Set("version", "1")
+        .Set("manifest_version", 2)
+        .Set("web_accessible_resources", ListBuilder().Append("*").Build());
 
     if (all_urls_permission) {
-      manifest.Set("permissions", base::Value::List().Append("<all_urls>"));
+      manifest.Set("permissions", ListBuilder().Append("<all_urls>").Build());
     }
     if (is_component) {
       // LoadExtensionAsComponent requires the manifest to contain a key.
@@ -71,14 +67,14 @@ class ExtensionCSPBypassTest : public ExtensionBrowserTest {
       manifest.Set("key", key);
     }
 
-    dir.WriteFile(FILE_PATH_LITERAL("script.js"), "");
-    dir.WriteManifest(manifest);
+    dir->WriteFile(FILE_PATH_LITERAL("script.js"), "");
+    dir->WriteManifest(manifest.ToJSON());
 
     const Extension* extension = nullptr;
     if (is_component) {
-      extension = LoadExtensionAsComponent(dir.UnpackedPath());
+      extension = LoadExtensionAsComponent(dir->UnpackedPath());
     } else {
-      extension = LoadExtension(dir.UnpackedPath());
+      extension = LoadExtension(dir->UnpackedPath());
     }
     CHECK(extension);
     temp_dirs_.push_back(std::move(dir));
@@ -86,37 +82,35 @@ class ExtensionCSPBypassTest : public ExtensionBrowserTest {
   }
 
   bool CanLoadScript(const Extension* extension) {
-    content::RenderFrameHost* render_frame_host =
-        web_contents()->GetPrimaryMainFrame();
+    content::RenderFrameHost* rfh = web_contents()->GetMainFrame();
     std::string code = base::StringPrintf(
         R"(
-        function canLoadScript() {
-          const s = document.createElement('script');
-          try {
-            s.src = '%s';
-            document.body.appendChild(s);
-          } catch(e) {
-            // Blocked by TrustedTypes CSP.
-            return false;
-          }
-
+        var s = document.createElement('script');
+        s.src = '%s';
+        s.onload = function() {
           // Not blocked by CSP.
-          return true;
-        }
-        canLoadScript();
-        )",
+          window.domAutomationController.send(true);
+        };
+        s.onerror = function() {
+          // Blocked by CSP.
+          window.domAutomationController.send(false);
+        };
+        document.body.appendChild(s);)",
         extension->GetResourceURL("script.js").spec().c_str());
-    return EvalJs(render_frame_host, code).ExtractBool();
+    bool script_loaded = false;
+    EXPECT_TRUE(ExecuteScriptAndExtractBool(rfh, code, &script_loaded));
+    return script_loaded;
   }
 
   content::RenderFrameHost* GetFrameByName(const std::string& name) {
     return content::FrameMatchingPredicate(
-        web_contents()->GetPrimaryPage(),
-        base::BindRepeating(&content::FrameMatchesName, name));
+        web_contents(), base::BindRepeating(&content::FrameMatchesName, name));
   }
 
  private:
-  std::vector<TestExtensionDir> temp_dirs_;
+  std::vector<std::unique_ptr<TestExtensionDir>> temp_dirs_;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionCSPBypassTest);
 };
 
 }  // namespace
@@ -129,7 +123,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCSPBypassTest, LoadWebAccessibleScript) {
 
   // chrome-extension:-URLs can always bypass CSP in normal pages.
   GURL non_webui_url(embedded_test_server()->GetURL("/empty.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), non_webui_url));
+  ui_test_utils::NavigateToURL(browser(), non_webui_url);
 
   EXPECT_TRUE(CanLoadScript(component_ext_with_permission));
   EXPECT_TRUE(CanLoadScript(component_ext_without_permission));
@@ -137,8 +131,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCSPBypassTest, LoadWebAccessibleScript) {
   EXPECT_TRUE(CanLoadScript(ext_without_permission));
 
   // chrome-extension:-URLs can never bypass CSP in WebUI.
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(
-      browser(), GURL(chrome::kChromeUIExtensionsURL)));
+  ui_test_utils::NavigateToURL(browser(), GURL(chrome::kChromeUISettingsURL));
 
   EXPECT_FALSE(CanLoadScript(component_ext_with_permission));
   EXPECT_FALSE(CanLoadScript(component_ext_without_permission));
@@ -164,7 +157,10 @@ IN_PROC_BROWSER_TEST_F(ExtensionCSPBypassTest, InjectIframe) {
   // First, verify that adding an iframe to the page from the main world will
   // fail. Add the frame. Its onload event fires even if it's blocked
   // (see https://crbug.com/365457), and reports back.
-  EXPECT_EQ(true, content::EvalJs(web_contents(), "addIframe();"));
+  bool result = false;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractBool(web_contents(),
+                                                   "addIframe();", &result));
+  EXPECT_TRUE(result);
 
   // Use WasFrameWithScriptLoaded() to check whether the target frame really
   // loaded.
@@ -175,13 +171,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionCSPBypassTest, InjectIframe) {
   // Second, verify that adding an iframe to the page from the extension will
   // succeed. Click a button whose event handler runs in the extension's world
   // which bypasses CSP, and adds the iframe.
-  content::DOMMessageQueue message_queue;
-  EXPECT_TRUE(
-      content::ExecJs(browser()->tab_strip_model()->GetActiveWebContents(),
-                      "document.querySelector('#addIframeButton').click();"));
-  std::string ack;
-  EXPECT_TRUE(message_queue.WaitForMessage(&ack));
-  EXPECT_EQ("true", ack);
+  EXPECT_TRUE(content::ExecuteScriptAndExtractBool(
+      web_contents(), "document.querySelector('#addIframeButton').click();",
+      &result));
   frame = GetFrameByName("added-by-extension");
   ASSERT_TRUE(frame);
   EXPECT_TRUE(WasFrameWithScriptLoaded(frame));
@@ -226,12 +218,13 @@ IN_PROC_BROWSER_TEST_F(ExtensionCSPBypassTest, FrameAncestors) {
   ASSERT_TRUE(content::NavigateToURL(web_contents(), popup_url));
 
   // The iframe must be blocked because of CSP.
-  ASSERT_TRUE(console_observer.Wait());
-  content::RenderFrameHost* main_frame = web_contents()->GetPrimaryMainFrame();
-  content::RenderFrameHost* child_frame = ChildFrameAt(main_frame, 0);
-  EXPECT_EQ(popup_url, main_frame->GetLastCommittedURL());
-  EXPECT_EQ(iframe_url, child_frame->GetLastCommittedURL());
-  EXPECT_TRUE(child_frame->GetLastCommittedOrigin().opaque());
+  console_observer.Wait();
+  std::vector<content::RenderFrameHost*> render_frame_hosts =
+      web_contents()->GetAllFrames();
+  ASSERT_EQ(2u, render_frame_hosts.size());
+  EXPECT_EQ(popup_url, render_frame_hosts[0]->GetLastCommittedURL());
+  EXPECT_EQ(iframe_url, render_frame_hosts[1]->GetLastCommittedURL());
+  EXPECT_TRUE(render_frame_hosts[1]->GetLastCommittedOrigin().opaque());
 }
 
 }  // namespace extensions

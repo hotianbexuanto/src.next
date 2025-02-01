@@ -1,22 +1,13 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <tuple>
-
-#include "base/feature_list.h"
-#include "base/files/file_path.h"
-#include "base/strings/stringprintf.h"
-#include "base/test/scoped_feature_list.h"
-#include "base/values.h"
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "content/public/test/browser_test.h"
-#include "extensions/common/extension_features.h"
-#include "extensions/test/test_extension_dir.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
 namespace extensions {
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_ANDROID)
 
 constexpr char kBackgroundJS_SabDisallowed[] = R"(
@@ -100,8 +91,17 @@ class SharedArrayBufferTest
 };
 
 IN_PROC_BROWSER_TEST_P(SharedArrayBufferTest, TransferToWorker) {
-  ASSERT_TRUE(StartEmbeddedTestServer());
+=======
+using SharedArrayBufferTest = ExtensionApiTest;
 
+// Ensures extensions can use the SharedArrayBuffer API.
+IN_PROC_BROWSER_TEST_F(SharedArrayBufferTest, TransferToWorker) {
+>>>>>>> chromium
+  ASSERT_TRUE(StartEmbeddedTestServer());
+  ASSERT_TRUE(RunExtensionTest("shared_array_buffers")) << message_;
+}
+
+<<<<<<< HEAD
   bool is_cross_origin_isolated;
   bool is_platform_app;
   std::tie(is_cross_origin_isolated, is_platform_app) = GetParam();
@@ -159,4 +159,14 @@ INSTANTIATE_TEST_SUITE_P(
                                 is_platform_app ? "App" : "Extension");
     });
 
+=======
+// Ensures platform apps can use the SharedArrayBuffer API.
+IN_PROC_BROWSER_TEST_F(SharedArrayBufferTest, TransferToWorker_PlatformApp) {
+  ASSERT_TRUE(StartEmbeddedTestServer());
+  ASSERT_TRUE(RunExtensionTest("shared_array_buffers_platform_app",
+                               {.launch_as_platform_app = true}))
+      << message_;
+}
+
+>>>>>>> chromium
 }  // namespace extensions

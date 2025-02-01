@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,30 +9,21 @@
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
-namespace WTF {
-class String;
-}  // namespace WTF
-
 namespace blink {
-
-class CSSLengthResolver;
-class CSSPrimitiveValue;
-
 namespace cssvalue {
 
 class CSSAxisValue : public CSSValueList {
  public:
-  struct Axis : std::tuple<double, double, double> {};
-
   explicit CSSAxisValue(CSSValueID axis_name);
-  CSSAxisValue(const CSSPrimitiveValue* x,
-               const CSSPrimitiveValue* y,
-               const CSSPrimitiveValue* z);
+  CSSAxisValue(double x, double y, double z);
 
-  WTF::String CustomCSSText() const;
+  String CustomCSSText() const;
 
-  Axis ComputeAxis(const CSSLengthResolver&) const;
-  CSSValueID AxisName() const { return axis_name_; }
+  double X() const;
+
+  double Y() const;
+
+  double Z() const;
 
   void TraceAfterDispatch(blink::Visitor* visitor) const {
     CSSValueList::TraceAfterDispatch(visitor);

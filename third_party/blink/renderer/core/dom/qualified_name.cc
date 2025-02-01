@@ -40,7 +40,8 @@ struct SameSizeAsQualifiedNameImpl
 
 ASSERT_SIZE(QualifiedName::QualifiedNameImpl, SameSizeAsQualifiedNameImpl);
 
-using QualifiedNameCache = HashSet<QualifiedName::QualifiedNameImpl*>;
+using QualifiedNameCache =
+    HashSet<QualifiedName::QualifiedNameImpl*, QualifiedNameHash>;
 
 static QualifiedNameCache& GetQualifiedNameCache() {
   // This code is lockless and thus assumes it all runs on one thread!
@@ -59,13 +60,13 @@ struct QNameComponentsTranslator {
            data.components_.local_name_ == name->local_name_.Impl() &&
            data.components_.namespace_ == name->namespace_.Impl();
   }
-  static void Store(QualifiedName::QualifiedNameImpl*& location,
-                    const QualifiedNameData& data,
-                    unsigned) {
+  static void Translate(QualifiedName::QualifiedNameImpl*& location,
+                        const QualifiedNameData& data,
+                        unsigned) {
     const QualifiedNameComponents& components = data.components_;
     auto name = QualifiedName::QualifiedNameImpl::Create(
-        components.prefix_, components.local_name_, components.namespace_,
-        data.is_static_);
+        AtomicString(components.prefix_), AtomicString(components.local_name_),
+        AtomicString(components.namespace_), data.is_static_);
     name->AddRef();
     location = name.get();
   }
@@ -75,7 +76,7 @@ QualifiedName::QualifiedName(const AtomicString& p,
                              const AtomicString& l,
                              const AtomicString& n) {
   QualifiedNameData data = {
-      {p.Impl(), l.Impl(), n.empty() ? g_null_atom.Impl() : n.Impl()}, false};
+      {p.Impl(), l.Impl(), n.IsEmpty() ? g_null_atom.Impl() : n.Impl()}, false};
   QualifiedNameCache::AddResult add_result =
       GetQualifiedNameCache().AddWithTranslator<QNameComponentsTranslator>(
           data);
@@ -83,9 +84,6 @@ QualifiedName::QualifiedName(const AtomicString& p,
   if (add_result.is_new_entry)
     impl_->Release();
 }
-
-QualifiedName::QualifiedName(const AtomicString& local_name)
-    : QualifiedName(g_null_atom, local_name, g_null_atom) {}
 
 QualifiedName::QualifiedName(const AtomicString& p,
                              const AtomicString& l,

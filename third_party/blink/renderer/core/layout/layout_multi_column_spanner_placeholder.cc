@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,16 +9,15 @@
 
 namespace blink {
 
-static void CopyMarginProperties(
-    ComputedStyleBuilder& placeholder_style_builder,
-    const ComputedStyle& spanner_style) {
+static void CopyMarginProperties(ComputedStyle& placeholder_style,
+                                 const ComputedStyle& spanner_style) {
   // We really only need the block direction margins, but there are no setters
   // for that in ComputedStyle. Just copy all margin sides. The inline ones
   // don't matter anyway.
-  placeholder_style_builder.SetMarginLeft(spanner_style.MarginLeft());
-  placeholder_style_builder.SetMarginRight(spanner_style.MarginRight());
-  placeholder_style_builder.SetMarginTop(spanner_style.MarginTop());
-  placeholder_style_builder.SetMarginBottom(spanner_style.MarginBottom());
+  placeholder_style.SetMarginLeft(spanner_style.MarginLeft());
+  placeholder_style.SetMarginRight(spanner_style.MarginRight());
+  placeholder_style.SetMarginTop(spanner_style.MarginTop());
+  placeholder_style.SetMarginBottom(spanner_style.MarginBottom());
 }
 
 LayoutMultiColumnSpannerPlaceholder*
@@ -26,8 +25,7 @@ LayoutMultiColumnSpannerPlaceholder::CreateAnonymous(
     const ComputedStyle& parent_style,
     LayoutBox& layout_object_in_flow_thread) {
   LayoutMultiColumnSpannerPlaceholder* new_spanner =
-      MakeGarbageCollected<LayoutMultiColumnSpannerPlaceholder>(
-          &layout_object_in_flow_thread);
+      new LayoutMultiColumnSpannerPlaceholder(&layout_object_in_flow_thread);
   Document& document = layout_object_in_flow_thread.GetDocument();
   new_spanner->SetDocumentForAnonymous(&document);
   new_spanner->UpdateProperties(parent_style);
@@ -38,11 +36,6 @@ LayoutMultiColumnSpannerPlaceholder::LayoutMultiColumnSpannerPlaceholder(
     LayoutBox* layout_object_in_flow_thread)
     : LayoutBox(nullptr),
       layout_object_in_flow_thread_(layout_object_in_flow_thread) {}
-
-void LayoutMultiColumnSpannerPlaceholder::Trace(Visitor* visitor) const {
-  visitor->Trace(layout_object_in_flow_thread_);
-  LayoutBox::Trace(visitor);
-}
 
 void LayoutMultiColumnSpannerPlaceholder::
     LayoutObjectInFlowThreadStyleDidChange(const ComputedStyle* old_style) {
@@ -71,12 +64,11 @@ void LayoutMultiColumnSpannerPlaceholder::
 void LayoutMultiColumnSpannerPlaceholder::UpdateProperties(
     const ComputedStyle& parent_style) {
   NOT_DESTROYED();
-  ComputedStyleBuilder new_style_builder =
-      GetDocument().GetStyleResolver().CreateAnonymousStyleBuilderWithDisplay(
+  scoped_refptr<ComputedStyle> new_style =
+      GetDocument().GetStyleResolver().CreateAnonymousStyleWithDisplay(
           parent_style, EDisplay::kBlock);
-  CopyMarginProperties(new_style_builder,
-                       layout_object_in_flow_thread_->StyleRef());
-  SetStyle(new_style_builder.TakeStyle());
+  CopyMarginProperties(*new_style, layout_object_in_flow_thread_->StyleRef());
+  SetStyle(std::move(new_style));
 }
 
 void LayoutMultiColumnSpannerPlaceholder::InsertedIntoTree() {
@@ -102,14 +94,92 @@ void LayoutMultiColumnSpannerPlaceholder::WillBeRemovedFromTree() {
   LayoutBox::WillBeRemovedFromTree();
 }
 
-LayoutPoint LayoutMultiColumnSpannerPlaceholder::LocationInternal() const {
+bool LayoutMultiColumnSpannerPlaceholder::NeedsPreferredWidthsRecalculation()
+    const {
   NOT_DESTROYED();
-  return layout_object_in_flow_thread_->LocationInternal();
+  return layout_object_in_flow_thread_->NeedsPreferredWidthsRecalculation();
 }
 
-PhysicalSize LayoutMultiColumnSpannerPlaceholder::Size() const {
+void LayoutMultiColumnSpannerPlaceholder::RecalcVisualOverflow() {
   NOT_DESTROYED();
-  return layout_object_in_flow_thread_->Size();
+  LayoutBox::RecalcVisualOverflow();
+  ClearVisualOverflow();
+  AddContentsVisualOverflow(
+      layout_object_in_flow_thread_->VisualOverflowRect());
+}
+
+MinMaxSizes LayoutMultiColumnSpannerPlaceholder::PreferredLogicalWidths()
+    const {
+  NOT_DESTROYED();
+  // There should be no contribution from a spanner if the multicol container is
+  // size-contained. Normally we'd stop at the object that has contain:size
+  // applied, but for multicol, we descend into the children, in order to get
+  // the flow thread to calculate the correct preferred width (to honor
+  // column-count, column-width and column-gap). Since spanner placeholders are
+  // siblings of the flow thread, we need this check.
+  // TODO(crbug.com/953919): What should we return for display-locked content?
+  if (MultiColumnBlockFlow()->ShouldApplySizeContainment())
+    return MinMaxSizes();
+  return layout_object_in_flow_thread_->PreferredLogicalWidths();
+}
+
+void LayoutMultiColumnSpannerPlaceholder::UpdateLayout() {
+  NOT_DESTROYED();
+  DCHECK(NeedsLayout());
+
+  // The placeholder, like any other block level object, has its logical top
+  // calculated and set before layout. Copy this to the actual column-span:all
+  // object before laying it out, so that it gets paginated correctly, in case
+  // we have an enclosing fragmentation context.
+  if (layout_object_in_flow_thread_->LogicalTop() != LogicalTop()) {
+    layout_object_in_flow_thread_->SetLogicalTop(LogicalTop());
+    if (FlowThread()->EnclosingFragmentationContext())
+      layout_object_in_flow_thread_->SetChildNeedsLayout(kMarkOnlyThis);
+  }
+
+  // Lay out the actual column-span:all element.
+  layout_object_in_flow_thread_->LayoutIfNeeded();
+
+  // The spanner has now been laid out, so its height is known. Time to update
+  // the placeholder's height as well, so that we take up the correct amount of
+  // space in the multicol container.
+  UpdateLogicalHeight();
+
+  // Take the overflow from the spanner, so that it gets propagated to the
+  // multicol container and beyond.
+  ClearLayoutOverflow();
+  AddLayoutOverflow(layout_object_in_flow_thread_->LayoutOverflowRect());
+
+  ClearNeedsLayout();
+}
+
+void LayoutMultiColumnSpannerPlaceholder::ComputeLogicalHeight(
+    LayoutUnit,
+    LayoutUnit logical_top,
+    LogicalExtentComputedValues& computed_values) const {
+  NOT_DESTROYED();
+  computed_values.extent_ = layout_object_in_flow_thread_->LogicalHeight();
+  computed_values.position_ = logical_top;
+  computed_values.margins_.before_ = MarginBefore();
+  computed_values.margins_.after_ = MarginAfter();
+}
+
+void LayoutMultiColumnSpannerPlaceholder::Paint(
+    const PaintInfo& paint_info) const {
+  NOT_DESTROYED();
+  if (!layout_object_in_flow_thread_->HasSelfPaintingLayer())
+    layout_object_in_flow_thread_->Paint(paint_info);
+}
+
+bool LayoutMultiColumnSpannerPlaceholder::NodeAtPoint(
+    HitTestResult& result,
+    const HitTestLocation& hit_test_location,
+    const PhysicalOffset& accumulated_offset,
+    HitTestAction action) {
+  NOT_DESTROYED();
+  return !layout_object_in_flow_thread_->HasSelfPaintingLayer() &&
+         layout_object_in_flow_thread_->NodeAtPoint(result, hit_test_location,
+                                                    accumulated_offset, action);
 }
 
 }  // namespace blink

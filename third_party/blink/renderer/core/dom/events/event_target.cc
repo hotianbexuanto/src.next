@@ -34,26 +34,20 @@
 #include <memory>
 
 #include "base/format_macros.h"
-#include "base/time/time.h"
+#include "third_party/blink/public/web/web_settings.h"
 #include "third_party/blink/renderer/bindings/core/v8/js_based_event_listener.h"
 #include "third_party/blink/renderer/bindings/core/v8/js_event_listener.h"
-#include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_observable_event_listener_options.h"
+#include "third_party/blink/renderer/bindings/core/v8/source_location.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_addeventlisteneroptions_boolean.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_boolean_eventlisteneroptions.h"
 #include "third_party/blink/renderer/core/dom/abort_signal.h"
-#include "third_party/blink/renderer/core/dom/abort_signal_registry.h"
 #include "third_party/blink/renderer/core/dom/events/add_event_listener_options_resolved.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/events/event_dispatch_forbidden_scope.h"
 #include "third_party/blink/renderer/core/dom/events/event_target_impl.h"
-#include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
-#include "third_party/blink/renderer/core/dom/observable.h"
-#include "third_party/blink/renderer/core/dom/subscriber.h"
 #include "third_party/blink/renderer/core/editing/editor.h"
 #include "third_party/blink/renderer/core/events/event_util.h"
 #include "third_party/blink/renderer/core/events/pointer_event.h"
-#include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
 #include "third_party/blink/renderer/core/frame/frame_console.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/performance_monitor.h"
@@ -63,11 +57,10 @@
 #include "third_party/blink/renderer/core/pointer_type_names.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
-#include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "third_party/blink/renderer/platform/bindings/v8_dom_activity_logger.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
-#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#include "third_party/blink/renderer/platform/wtf/assertions.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/blink/renderer/platform/wtf/threading.h"
@@ -211,6 +204,7 @@ void CountFiringEventListeners(const Event& event,
   }
 }
 
+<<<<<<< HEAD
 // See documentation for `ObservableSubscribeDelegate` below.
 class ObservableEventListener final : public NativeEventListener {
  public:
@@ -370,6 +364,8 @@ void ObservableSubscribeDelegate::Trace(Visitor* visitor) const {
   Observable::SubscribeDelegate::Trace(visitor);
 }
 
+=======
+>>>>>>> chromium
 }  // namespace
 
 EventTargetData::EventTargetData() = default;
@@ -408,7 +404,9 @@ ServiceWorker* EventTarget::ToServiceWorker() {
   return nullptr;
 }
 
-void EventTarget::ResetEventQueueStatus(const AtomicString& event_type) {}
+PortalHost* EventTarget::ToPortalHost() {
+  return nullptr;
+}
 
 // An instance of EventTargetImpl is returned because EventTarget
 // is an abstract class, and making it non-abstract is unfavorable
@@ -494,6 +492,42 @@ void EventTarget::SetDefaultAddEventListenerOptions(
     }
   }
 
+  // For mousewheel event listeners that have the target as the window and
+  // a bound function name of "ssc_wheel" treat and no passive value default
+  // passive to true. See crbug.com/501568.
+  if (event_type == event_type_names::kMousewheel && ToLocalDOMWindow() &&
+      event_listener && !options->hasPassive()) {
+    JSBasedEventListener* v8_listener =
+        DynamicTo<JSBasedEventListener>(event_listener);
+    if (!v8_listener)
+      return;
+    v8::Local<v8::Value> callback_object =
+        v8_listener->GetListenerObject(*this);
+    if (!callback_object.IsEmpty() && callback_object->IsFunction() &&
+        strcmp(
+            "ssc_wheel",
+            *v8::String::Utf8Value(
+                v8::Isolate::GetCurrent(),
+                v8::Local<v8::Function>::Cast(callback_object)->GetName())) ==
+            0) {
+      options->setPassive(true);
+      if (executing_window) {
+        UseCounter::Count(executing_window->document(),
+                          WebFeature::kSmoothScrollJSInterventionActivated);
+
+        executing_window->GetFrame()->Console().AddMessage(
+            MakeGarbageCollected<ConsoleMessage>(
+                mojom::ConsoleMessageSource::kIntervention,
+                mojom::ConsoleMessageLevel::kWarning,
+                "Registering mousewheel event as passive due to "
+                "smoothscroll.js usage. The smoothscroll.js library is "
+                "buggy, no longer necessary and degrades performance. See "
+                "https://www.chromestatus.com/feature/5749447073988608"));
+      }
+      return;
+    }
+  }
+
   if (!options->hasPassive())
     options->setPassive(false);
 
@@ -509,14 +543,6 @@ void EventTarget::SetDefaultAddEventListenerOptions(
         GetExecutionContext(), PerformanceMonitor::kDiscouragedAPIUse,
         message_text, base::TimeDelta(), nullptr);
   }
-}
-
-Observable* EventTarget::when(const AtomicString& event_type,
-                              const ObservableEventListenerOptions* options) {
-  DCHECK(RuntimeEnabledFeatures::ObservableAPIEnabled());
-  return MakeGarbageCollected<Observable>(
-      GetExecutionContext(), MakeGarbageCollected<ObservableSubscribeDelegate>(
-                                 this, event_type, options));
 }
 
 bool EventTarget::addEventListener(const AtomicString& event_type,
@@ -556,6 +582,7 @@ bool EventTarget::addEventListener(
   }
 
   NOTREACHED();
+  return false;
 }
 
 bool EventTarget::addEventListener(const AtomicString& event_type,
@@ -584,6 +611,7 @@ bool EventTarget::AddEventListenerInternal(
   if (options->hasSignal() && options->signal()->aborted())
     return false;
 
+<<<<<<< HEAD
   // It doesn't make sense to add an event listener without an ExecutionContext
   // and some code below here assumes we have one.
   auto* execution_context = GetExecutionContext();
@@ -615,6 +643,8 @@ bool EventTarget::AddEventListenerInternal(
     return false;
   }
 
+=======
+>>>>>>> chromium
   if (event_type == event_type_names::kTouchcancel ||
       event_type == event_type_names::kTouchend ||
       event_type == event_type_names::kTouchmove ||
@@ -629,39 +659,32 @@ bool EventTarget::AddEventListenerInternal(
   }
 
   V8DOMActivityLogger* activity_logger =
-      V8DOMActivityLogger::CurrentActivityLoggerIfIsolatedWorld(
-          execution_context->GetIsolate());
+      V8DOMActivityLogger::CurrentActivityLoggerIfIsolatedWorld();
   if (activity_logger) {
     Vector<String> argv;
     argv.push_back(ToNode() ? ToNode()->nodeName() : InterfaceName());
     argv.push_back(event_type);
-    activity_logger->LogEvent(execution_context, "blinkAddEventListener", argv);
+    activity_logger->LogEvent("blinkAddEventListener", argv.size(),
+                              argv.data());
   }
 
-  RegisteredEventListener* registered_listener = nullptr;
+  RegisteredEventListener registered_listener;
   bool added = EnsureEventTargetData().event_listener_map.Add(
       event_type, listener, options, &registered_listener);
   if (added) {
-    CHECK(registered_listener);
     if (options->hasSignal()) {
       // Instead of passing the entire |options| here, which could create a
       // circular reference due to |options| holding a Member<AbortSignal>, just
       // pass the |options->capture()| boolean, which is the only thing
       // removeEventListener actually uses to find and remove the event
       // listener.
-      AbortSignal::AlgorithmHandle* handle =
-          options->signal()->AddAlgorithm(WTF::BindOnce(
-              [](EventTarget* event_target, const AtomicString& event_type,
-                 const EventListener* listener, bool capture) {
-                if (event_target) {
-                  event_target->removeEventListener(event_type, listener,
-                                                    capture);
-                }
-              },
-              WrapWeakPersistent(this), event_type,
-              WrapWeakPersistent(listener), options->capture()));
-      AbortSignalRegistry::From(*execution_context)
-          ->RegisterAbortAlgorithm(listener, handle);
+      options->signal()->AddAlgorithm(WTF::Bind(
+          [](EventTarget* event_target, const AtomicString& event_type,
+             const EventListener* listener, bool capture) {
+            event_target->removeEventListener(event_type, listener, capture);
+          },
+          WrapWeakPersistent(this), event_type, WrapWeakPersistent(listener),
+          options->capture()));
       if (const LocalDOMWindow* executing_window = ExecutingWindow()) {
         if (const Document* document = executing_window->document()) {
           document->CountUse(WebFeature::kAddEventListenerWithAbortSignal);
@@ -669,7 +692,16 @@ bool EventTarget::AddEventListenerInternal(
       }
     }
 
+<<<<<<< HEAD
     AddedEventListener(event_type, *registered_listener);
+=======
+    AddedEventListener(event_type, registered_listener);
+    if (IsA<JSBasedEventListener>(listener) &&
+        IsInstrumentedForAsyncStack(event_type)) {
+      probe::AsyncTaskScheduled(GetExecutionContext(), event_type,
+                                listener->async_task_id());
+    }
+>>>>>>> chromium
   }
   return added;
 }
@@ -677,6 +709,7 @@ bool EventTarget::AddEventListenerInternal(
 void EventTarget::AddedEventListener(
     const AtomicString& event_type,
     RegisteredEventListener& registered_listener) {
+<<<<<<< HEAD
   const LocalDOMWindow* executing_window = ExecutingWindow();
   Document* document =
       executing_window ? executing_window->document() : nullptr;
@@ -703,63 +736,33 @@ void EventTarget::AddedEventListener(
     } else if (RuntimeEnabledFeatures::WindowOnMoveEventEnabled() &&
                (event_type == event_type_names::kMove)) {
       UseCounter::Count(*document, WebFeature::kMoveEvent);
+=======
+  if (const LocalDOMWindow* executing_window = ExecutingWindow()) {
+    if (Document* document = executing_window->document()) {
+      if (event_type == event_type_names::kAuxclick) {
+        UseCounter::Count(*document, WebFeature::kAuxclickAddListenerCount);
+      } else if (event_type == event_type_names::kAppinstalled) {
+        UseCounter::Count(*document, WebFeature::kAppInstalledEventAddListener);
+      } else if (event_util::IsPointerEventType(event_type)) {
+        UseCounter::Count(*document, WebFeature::kPointerEventAddListenerCount);
+      } else if (event_type == event_type_names::kSlotchange) {
+        UseCounter::Count(*document, WebFeature::kSlotChangeEventAddListener);
+      } else if (event_type == event_type_names::kBeforematch) {
+        UseCounter::Count(*document, WebFeature::kBeforematchHandlerRegistered);
+      }
+>>>>>>> chromium
     }
   }
 
-  auto info = event_util::IsDOMMutationEventType(event_type);
-  if (info.is_mutation_event) {
+  if (event_util::IsDOMMutationEventType(event_type)) {
     if (ExecutionContext* context = GetExecutionContext()) {
-      if (RuntimeEnabledFeatures::MutationEventsEnabled(context) &&
-          (!document || document->SupportsLegacyDOMMutations())) {
-        String message_text = String::Format(
-            "Listener added for a '%s' mutation event. This event type is "
-            "deprecated, and will be removed from this browser VERY soon. "
-            "Usage of this event listener will cause performance issues today, "
-            "and represents a large risk of imminent site breakage. Consider "
-            "using MutationObserver instead. See "
-            "https://chromestatus.com/feature/5083947249172480 for more "
-            "information.",
-            event_type.GetString().Utf8().c_str());
-        PerformanceMonitor::ReportGenericViolation(
-            context, PerformanceMonitor::kDiscouragedAPIUse, message_text,
-            base::TimeDelta(), nullptr);
-        context->AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(
-            mojom::blink::ConsoleMessageSource::kDeprecation,
-            mojom::blink::ConsoleMessageLevel::kWarning, message_text));
-        Deprecation::CountDeprecation(context, info.listener_feature);
-        UseCounter::Count(context, WebFeature::kAnyMutationEventListenerAdded);
-      } else {
-        String message_text;
-        // Only show the special trial message if mutation events are disabled
-        // via the feature flag, and not via lack of embedder support.
-        if (!RuntimeEnabledFeatures::MutationEventsEnabled(context) &&
-            RuntimeEnabledFeatures::MutationEventsSpecialTrialMessageEnabled(
-                context)) {
-          message_text = String::Format(
-              "Usage of mutation events (%s) was detected. This event type has "
-              "been deprecated, and an early trial-run of complete removal is "
-              "underway. In this browser, mutation events are currently not "
-              "being fired. If you are a *user* experiencing a problem, please "
-              "report the issue to the operator of the website. If you are a "
-              "site owner, and you think this trial is causing an unexpected "
-              "issue, please report a bug at "
-              "https://issues.chromium.org/issues/"
-              "new?component=1456718&template=1948649. Note that these events "
-              "will stop being fired for ALL USERS starting in version 127, "
-              "which is the next release.",
-              event_type.GetString().Utf8().c_str());
-        } else {
-          message_text = String::Format(
-              "Listener added for a '%s' mutation event. Support for this "
-              "event type has been removed, and this event will no longer be "
-              "fired. See https://chromestatus.com/feature/5083947249172480 "
-              "for more information.",
-              event_type.GetString().Utf8().c_str());
-        }
-        context->AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(
-            mojom::blink::ConsoleMessageSource::kDeprecation,
-            mojom::blink::ConsoleMessageLevel::kError, message_text));
-      }
+      String message_text = String::Format(
+          "Added synchronous DOM mutation listener to a '%s' event. "
+          "Consider using MutationObserver to make the page more responsive.",
+          event_type.GetString().Utf8().c_str());
+      PerformanceMonitor::ReportGenericViolation(
+          context, PerformanceMonitor::kDiscouragedAPIUse, message_text,
+          base::TimeDelta(), nullptr);
     }
   }
 }
@@ -767,7 +770,7 @@ void EventTarget::AddedEventListener(
 bool EventTarget::removeEventListener(const AtomicString& event_type,
                                       V8EventListener* listener) {
   EventListener* event_listener = JSEventListener::CreateOrNull(listener);
-  return removeEventListener(event_type, event_listener, /*use_capture=*/false);
+  return removeEventListener(event_type, event_listener);
 }
 
 bool EventTarget::removeEventListener(
@@ -791,6 +794,7 @@ bool EventTarget::removeEventListener(
   }
 
   NOTREACHED();
+  return false;
 }
 
 bool EventTarget::removeEventListener(const AtomicString& event_type,
@@ -818,15 +822,34 @@ bool EventTarget::RemoveEventListenerInternal(
   if (!d)
     return false;
 
-  RegisteredEventListener* registered_listener;
+  wtf_size_t index_of_removed_listener;
+  RegisteredEventListener registered_listener;
 
   if (!d->event_listener_map.Remove(event_type, listener, options,
-                                    &registered_listener)) {
+                                    &index_of_removed_listener,
+                                    &registered_listener))
     return false;
-  }
 
-  CHECK(registered_listener);
-  RemovedEventListener(event_type, *registered_listener);
+  // Notify firing events planning to invoke the listener at 'index' that
+  // they have one less listener to invoke.
+  if (d->firing_event_iterators) {
+    for (const auto& firing_iterator : *d->firing_event_iterators) {
+      if (event_type != firing_iterator.event_type)
+        continue;
+
+      if (index_of_removed_listener >= firing_iterator.end)
+        continue;
+
+      --firing_iterator.end;
+      // Note that when firing an event listener,
+      // firingIterator.iterator indicates the next event listener
+      // that would fire, not the currently firing event
+      // listener. See EventTarget::fireEventListeners.
+      if (index_of_removed_listener < firing_iterator.iterator)
+        --firing_iterator.iterator;
+    }
+  }
+  RemovedEventListener(event_type, registered_listener);
   return true;
 }
 
@@ -840,11 +863,11 @@ RegisteredEventListener* EventTarget::GetAttributeRegisteredEventListener(
   if (!listener_vector)
     return nullptr;
 
-  for (auto& registered_listener : *listener_vector) {
-    EventListener* listener = registered_listener->Callback();
+  for (auto& event_listener : *listener_vector) {
+    EventListener* listener = event_listener.Callback();
     if (GetExecutionContext() && listener->IsEventHandler() &&
         listener->BelongsToTheCurrentWorld(GetExecutionContext()))
-      return registered_listener.Get();
+      return &event_listener;
   }
   return nullptr;
 }
@@ -859,6 +882,14 @@ bool EventTarget::SetAttributeEventListener(const AtomicString& event_type,
     return false;
   }
   if (registered_listener) {
+<<<<<<< HEAD
+=======
+    if (IsA<JSBasedEventListener>(listener) &&
+        IsInstrumentedForAsyncStack(event_type)) {
+      probe::AsyncTaskScheduled(GetExecutionContext(), event_type,
+                                listener->async_task_id());
+    }
+>>>>>>> chromium
     registered_listener->SetCallback(listener);
     return true;
   }
@@ -909,21 +940,10 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
 DispatchEventResult EventTarget::DispatchEventInternal(Event& event) {
   event.SetTarget(this);
   event.SetCurrentTarget(this);
-  event.SetEventPhase(Event::PhaseType::kAtTarget);
+  event.SetEventPhase(Event::kAtTarget);
   DispatchEventResult dispatch_result = FireEventListeners(event);
-  event.SetEventPhase(Event::PhaseType::kNone);
+  event.SetEventPhase(0);
   return dispatch_result;
-}
-
-EventTargetData* EventTarget::GetEventTargetData() {
-  return data_.Get();
-}
-
-EventTargetData& EventTarget::EnsureEventTargetData() {
-  if (!data_) {
-    data_ = MakeGarbageCollected<EventTargetData>();
-  }
-  return *data_;
 }
 
 static const AtomicString& LegacyType(const Event& event) {
@@ -1006,7 +1026,7 @@ DispatchEventResult EventTarget::FireEventListeners(Event& event) {
 
   EventListenerVector* legacy_listeners_vector = nullptr;
   AtomicString legacy_type_name = LegacyType(event);
-  if (!legacy_type_name.empty())
+  if (!legacy_type_name.IsEmpty())
     legacy_listeners_vector = d->event_listener_map.Find(legacy_type_name);
 
   EventListenerVector* listeners_vector =
@@ -1014,12 +1034,10 @@ DispatchEventResult EventTarget::FireEventListeners(Event& event) {
 
   bool fired_event_listeners = false;
   if (listeners_vector) {
-    // Calling `FireEventListener` causes a clone of `listeners_vector`.
     fired_event_listeners = FireEventListeners(event, d, *listeners_vector);
   } else if (event.isTrusted() && legacy_listeners_vector) {
     AtomicString unprefixed_type_name = event.type();
     event.SetType(legacy_type_name);
-    // Calling `FireEventListener` causes a clone of `legacy_listeners_vector`.
     fired_event_listeners =
         FireEventListeners(event, d, *legacy_listeners_vector);
     event.SetType(unprefixed_type_name);
@@ -1037,10 +1055,9 @@ DispatchEventResult EventTarget::FireEventListeners(Event& event) {
   return GetDispatchEventResult(event);
 }
 
-// Fire event listeners, creates a copy of EventListenerVector on being called.
 bool EventTarget::FireEventListeners(Event& event,
                                      EventTargetData* d,
-                                     EventListenerVector entry) {
+                                     EventListenerVector& entry) {
   // Fire all listeners registered for this event. Don't fire listeners removed
   // during event dispatch. Also, don't fire event listeners added during event
   // dispatch. Conveniently, all new event listeners will be added after or at
@@ -1053,6 +1070,13 @@ bool EventTarget::FireEventListeners(Event& event,
 
   CountFiringEventListeners(event, ExecutingWindow());
 
+  wtf_size_t i = 0;
+  wtf_size_t size = entry.size();
+  if (!d->firing_event_iterators)
+    d->firing_event_iterators = std::make_unique<FiringEventIteratorVector>();
+  d->firing_event_iterators->push_back(
+      FiringEventIterator(event.type(), i, size));
+
   base::TimeDelta blocked_event_threshold =
       BlockedEventsWarningThreshold(context, event);
   base::TimeTicks now;
@@ -1064,32 +1088,38 @@ bool EventTarget::FireEventListeners(Event& event,
   }
   bool fired_listener = false;
 
-  for (auto& registered_listener : entry) {
-    if (registered_listener->Removed()) [[unlikely]] {
-      continue;
-    }
-
+  while (i < size) {
     // If stopImmediatePropagation has been called, we just break out
     // immediately, without handling any more events on this target.
-    if (event.ImmediatePropagationStopped()) {
+    if (event.ImmediatePropagationStopped())
       break;
-    }
 
-    if (!registered_listener->ShouldFire(event)) {
+    RegisteredEventListener registered_listener = entry[i];
+
+    // Move the iterator past this event listener. This must match
+    // the handling of the FiringEventIterator::iterator in
+    // EventTarget::removeEventListener.
+    ++i;
+
+    if (!registered_listener.ShouldFire(event))
       continue;
-    }
 
-    EventListener* listener = registered_listener->Callback();
+    EventListener* listener = registered_listener.Callback();
     // The listener will be retained by Member<EventListener> in the
     // registeredListener, i and size are updated with the firing event iterator
     // in case the listener is removed from the listener vector below.
-    if (registered_listener->Once()) {
+    if (registered_listener.Once())
       removeEventListener(event.type(), listener,
-                          registered_listener->Capture());
-    }
-    event.SetHandlingPassive(EventPassiveMode(*registered_listener));
+                          registered_listener.Capture());
+
+    event.SetHandlingPassive(EventPassiveMode(registered_listener));
 
     probe::UserCallback probe(context, nullptr, event.type(), false, this);
+<<<<<<< HEAD
+=======
+    probe::AsyncTask async_task(context, listener->async_task_id(), "event",
+                                IsInstrumentedForAsyncStack(event.type()));
+>>>>>>> chromium
 
     // To match Mozilla, the AT_TARGET phase fires both capturing and bubbling
     // event listeners, even though that violates some versions of the DOM spec.
@@ -1098,16 +1128,19 @@ bool EventTarget::FireEventListeners(Event& event,
 
     // If we're about to report this event listener as blocking, make sure it
     // wasn't removed while handling the event.
-    if (should_report_blocked_event && !registered_listener->Removed() &&
-        !registered_listener->Passive() &&
-        !registered_listener->BlockedEventWarningEmitted() &&
+    if (should_report_blocked_event && i > 0 &&
+        entry[i - 1].Callback() == listener && !entry[i - 1].Passive() &&
+        !entry[i - 1].BlockedEventWarningEmitted() &&
         !event.defaultPrevented()) {
-      ReportBlockedEvent(*this, event, registered_listener,
+      ReportBlockedEvent(*this, event, &entry[i - 1],
                          now - event.PlatformTimeStamp());
     }
 
     event.SetHandlingPassive(Event::PassiveMode::kNotPassive);
+
+    CHECK_LE(i, size);
   }
+  d->firing_event_iterators->pop_back();
   return fired_listener;
 }
 
@@ -1139,8 +1172,18 @@ Vector<AtomicString> EventTarget::EventTypes() {
 }
 
 void EventTarget::RemoveAllEventListeners() {
-  if (auto* d = GetEventTargetData()) {
-    d->event_listener_map.Clear();
+  EventTargetData* d = GetEventTargetData();
+  if (!d)
+    return;
+  d->event_listener_map.Clear();
+
+  // Notify firing events planning to invoke the listener at 'index' that
+  // they have one less listener to invoke.
+  if (d->firing_event_iterators) {
+    for (const auto& iterator : *d->firing_event_iterators) {
+      iterator.iterator = 0;
+      iterator.end = 0;
+    }
   }
 }
 
@@ -1148,27 +1191,33 @@ void EventTarget::EnqueueEvent(Event& event, TaskType task_type) {
   ExecutionContext* context = GetExecutionContext();
   if (!context)
     return;
-  event.async_task_context()->Schedule(context, event.type());
+  probe::AsyncTaskScheduled(context, event.type(), event.async_task_id());
   context->GetTaskRunner(task_type)->PostTask(
       FROM_HERE,
-      WTF::BindOnce(&EventTarget::DispatchEnqueuedEvent, WrapPersistent(this),
-                    WrapPersistent(&event), WrapPersistent(context)));
+      WTF::Bind(&EventTarget::DispatchEnqueuedEvent, WrapPersistent(this),
+                WrapPersistent(&event), WrapPersistent(context)));
 }
 
 void EventTarget::DispatchEnqueuedEvent(Event* event,
                                         ExecutionContext* context) {
   if (!GetExecutionContext()) {
-    event->async_task_context()->Cancel();
+    probe::AsyncTaskCanceled(context, event->async_task_id());
     return;
   }
-  this->ResetEventQueueStatus(event->type());
-  probe::AsyncTask async_task(context, event->async_task_context());
+  probe::AsyncTask async_task(context, event->async_task_id());
   DispatchEvent(*event);
 }
 
-void EventTarget::Trace(Visitor* visitor) const {
-  ScriptWrappable::Trace(visitor);
-  visitor->Trace(data_);
+void EventTargetWithInlineData::Trace(Visitor* visitor) const {
+  EventTargetData::Trace(visitor);
+  EventTarget::Trace(visitor);
 }
+
+STATIC_ASSERT_ENUM(WebSettings::PassiveEventListenerDefault::kFalse,
+                   PassiveListenerDefault::kFalse);
+STATIC_ASSERT_ENUM(WebSettings::PassiveEventListenerDefault::kTrue,
+                   PassiveListenerDefault::kTrue);
+STATIC_ASSERT_ENUM(WebSettings::PassiveEventListenerDefault::kForceAllTrue,
+                   PassiveListenerDefault::kForceAllTrue);
 
 }  // namespace blink

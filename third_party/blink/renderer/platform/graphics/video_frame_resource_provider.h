@@ -1,13 +1,16 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_VIDEO_FRAME_RESOURCE_PROVIDER_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_VIDEO_FRAME_RESOURCE_PROVIDER_H_
 
+<<<<<<< HEAD
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
+=======
+>>>>>>> chromium
 #include "base/memory/weak_ptr.h"
 #include "cc/trees/layer_tree_settings.h"
 #include "components/viz/client/client_resource_provider.h"
@@ -23,10 +26,6 @@ class VideoResourceUpdater;
 namespace viz {
 class CompositorRenderPass;
 class RasterContextProvider;
-}
-
-namespace gpu {
-class ClientSharedImageInterface;
 }
 
 namespace blink {
@@ -45,9 +44,14 @@ class PLATFORM_EXPORT VideoFrameResourceProvider {
 
   virtual ~VideoFrameResourceProvider();
 
+<<<<<<< HEAD
   virtual void Initialize(
       viz::RasterContextProvider* media_context_provider,
       scoped_refptr<gpu::ClientSharedImageInterface> shared_image_interface);
+=======
+  virtual void Initialize(viz::RasterContextProvider* media_context_provider,
+                          viz::SharedBitmapReporter* shared_bitmap_reporter);
+>>>>>>> chromium
   virtual void AppendQuads(viz::CompositorRenderPass*,
                            scoped_refptr<media::VideoFrame>,
                            media::VideoTransformation,
@@ -69,7 +73,7 @@ class PLATFORM_EXPORT VideoFrameResourceProvider {
  private:
   const cc::LayerTreeSettings settings_;
 
-  raw_ptr<viz::RasterContextProvider> context_provider_;
+  viz::RasterContextProvider* context_provider_;
   std::unique_ptr<viz::ClientResourceProvider> resource_provider_;
   std::unique_ptr<media::VideoResourceUpdater> resource_updater_;
   bool use_sync_primitives_ = false;

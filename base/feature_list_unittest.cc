@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,27 +6,33 @@
 
 #include <stddef.h>
 
+<<<<<<< HEAD
 #include <algorithm>
 #include <array>
 #include <ostream>
 #include <set>
 #include <string>
 #include <string_view>
+=======
+>>>>>>> chromium
 #include <utility>
 #include <vector>
 
-#include "base/feature_list_buildflags.h"
-#include "base/feature_visitor.h"
+#include "base/cxx17_backports.h"
 #include "base/format_macros.h"
 #include "base/memory/read_only_shared_memory_region.h"
 #include "base/metrics/field_trial.h"
-#include "base/metrics/field_trial_param_associator.h"
 #include "base/metrics/persistent_memory_allocator.h"
+<<<<<<< HEAD
 #include "base/strings/strcat.h"
+=======
+#include "base/ranges/algorithm.h"
+#include "base/strings/string_piece.h"
+>>>>>>> chromium
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/scoped_feature_list.h"
-#include "build/chromeos_buildflags.h"
+#include "base/test/scoped_field_trial_list_resetter.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace base {
@@ -34,17 +40,17 @@ namespace base {
 namespace {
 
 constexpr char kFeatureOnByDefaultName[] = "OnByDefault";
-BASE_FEATURE(kFeatureOnByDefault,
-             kFeatureOnByDefaultName,
-             FEATURE_ENABLED_BY_DEFAULT);
+struct Feature kFeatureOnByDefault {
+  kFeatureOnByDefaultName, FEATURE_ENABLED_BY_DEFAULT
+};
 
 constexpr char kFeatureOffByDefaultName[] = "OffByDefault";
-BASE_FEATURE(kFeatureOffByDefault,
-             kFeatureOffByDefaultName,
-             FEATURE_DISABLED_BY_DEFAULT);
+struct Feature kFeatureOffByDefault {
+  kFeatureOffByDefaultName, FEATURE_DISABLED_BY_DEFAULT
+};
 
 std::string SortFeatureListString(const std::string& feature_list) {
-  std::vector<std::string_view> features =
+  std::vector<base::StringPiece> features =
       FeatureList::SplitFeatureListString(feature_list);
   std::ranges::sort(features);
   return JoinString(features, ",");
@@ -71,8 +77,13 @@ TEST_F(FeatureListTest, DefaultStates) {
   EXPECT_FALSE(FeatureList::IsEnabled(kFeatureOffByDefault));
 }
 
+<<<<<<< HEAD
 TEST_F(FeatureListTest, InitFromCommandLine) {
   struct TestCases {
+=======
+TEST_F(FeatureListTest, InitializeFromCommandLine) {
+  struct {
+>>>>>>> chromium
     const char* enable_features;
     const char* disable_features;
     bool expected_feature_on_state;
@@ -88,15 +99,15 @@ TEST_F(FeatureListTest, InitFromCommandLine) {
       {"OnByDefault", "OnByDefault,OffByDefault", false, false},
   });
 
-  for (size_t i = 0; i < std::size(test_cases); ++i) {
+  for (size_t i = 0; i < base::size(test_cases); ++i) {
     const auto& test_case = test_cases[i];
     SCOPED_TRACE(base::StringPrintf("Test[%" PRIuS "]: [%s] [%s]", i,
                                     test_case.enable_features,
                                     test_case.disable_features));
 
     auto feature_list = std::make_unique<FeatureList>();
-    feature_list->InitFromCommandLine(test_case.enable_features,
-                                      test_case.disable_features);
+    feature_list->InitializeFromCommandLine(test_case.enable_features,
+                                            test_case.disable_features);
     test::ScopedFeatureList scoped_feature_list;
     scoped_feature_list.InitWithFeatureList(std::move(feature_list));
 
@@ -106,20 +117,10 @@ TEST_F(FeatureListTest, InitFromCommandLine) {
     EXPECT_EQ(test_case.expected_feature_off_state,
               FeatureList::IsEnabled(kFeatureOffByDefault))
         << i;
-
-    // Reading the state of each feature again will pull it from their
-    // respective caches instead of performing the full lookup, which should
-    // yield the same result.
-    EXPECT_EQ(test_case.expected_feature_on_state,
-              FeatureList::IsEnabled(kFeatureOnByDefault))
-        << i;
-    EXPECT_EQ(test_case.expected_feature_off_state,
-              FeatureList::IsEnabled(kFeatureOffByDefault))
-        << i;
   }
 }
 
-TEST_F(FeatureListTest, InitFromCommandLineWithFeatureParams) {
+TEST_F(FeatureListTest, InitializeFromCommandLineWithFeatureParams) {
   struct {
     const std::string enable_features;
     const std::string expected_field_trial_created;
@@ -132,26 +133,21 @@ TEST_F(FeatureListTest, InitFromCommandLineWithFeatureParams) {
        {{"x", "test"}, {"y", "uma"}, {"z", "ukm"}}},
   };
 
-  // Clear global state so that repeated runs of this test don't flake.
-  // When https://crrev.com/c/3694674 is submitted, we should be able to remove
-  // this.
-  base::FieldTrialParamAssociator::GetInstance()->ClearAllParamsForTesting();
-
-  static BASE_FEATURE(kFeature, "Feature", FEATURE_DISABLED_BY_DEFAULT);
+  const Feature kFeature = {"Feature", FEATURE_DISABLED_BY_DEFAULT};
   for (const auto& test_case : test_cases) {
     SCOPED_TRACE(test_case.enable_features);
 
     auto feature_list = std::make_unique<FeatureList>();
-    feature_list->InitFromCommandLine(test_case.enable_features, "");
+    feature_list->InitializeFromCommandLine(test_case.enable_features, "");
     test::ScopedFeatureList scoped_feature_list;
     scoped_feature_list.InitWithFeatureList(std::move(feature_list));
 
     EXPECT_TRUE(FeatureList::IsEnabled(kFeature));
     EXPECT_TRUE(
         FieldTrialList::IsTrialActive(test_case.expected_field_trial_created));
-    std::map<std::string, std::string> actual_params;
-    EXPECT_TRUE(GetFieldTrialParamsByFeature(kFeature, &actual_params));
-    EXPECT_EQ(test_case.expected_feature_params, actual_params);
+    std::map<std::string, std::string> actualParams;
+    EXPECT_TRUE(GetFieldTrialParamsByFeature(kFeature, &actualParams));
+    EXPECT_EQ(test_case.expected_feature_params, actualParams);
   }
 }
 
@@ -172,8 +168,9 @@ TEST_F(FeatureListTest, CheckFeatureIdentity) {
 
   // Now, call it with a distinct struct for |kFeatureOnByDefaultName|, which
   // should return false.
-  static BASE_FEATURE(kFeatureOnByDefault2, kFeatureOnByDefaultName,
-                      FEATURE_ENABLED_BY_DEFAULT);
+  struct Feature kFeatureOnByDefault2 {
+    kFeatureOnByDefaultName, FEATURE_ENABLED_BY_DEFAULT
+  };
   EXPECT_FALSE(feature_list->CheckFeatureIdentity(kFeatureOnByDefault2));
 }
 
@@ -194,13 +191,12 @@ TEST_F(FeatureListTest, FieldTrialOverrides) {
   });
 
   FieldTrial::ActiveGroup active_group;
-  for (size_t i = 0; i < std::size(test_cases); ++i) {
+  for (size_t i = 0; i < base::size(test_cases); ++i) {
     const auto& test_case = test_cases[i];
     SCOPED_TRACE(base::StringPrintf("Test[%" PRIuS "]", i));
 
-    test::ScopedFeatureList outer_scope;
-    outer_scope.InitWithEmptyFeatureAndFieldTrialLists();
-
+    test::ScopedFieldTrialListResetter resetter;
+    FieldTrialList field_trial_list(nullptr);
     auto feature_list = std::make_unique<FeatureList>();
 
     FieldTrial* trial1 = FieldTrialList::CreateFieldTrial("TrialExample1", "A");
@@ -265,7 +261,7 @@ TEST_F(FeatureListTest, CommandLineEnableTakesPrecedenceOverFieldTrial) {
   auto feature_list = std::make_unique<FeatureList>();
 
   // The feature is explicitly enabled on the command-line.
-  feature_list->InitFromCommandLine(kFeatureOffByDefaultName, "");
+  feature_list->InitializeFromCommandLine(kFeatureOffByDefaultName, "");
 
   // But the FieldTrial would set the feature to disabled.
   FieldTrial* trial = FieldTrialList::CreateFieldTrial("TrialExample2", "A");
@@ -287,7 +283,7 @@ TEST_F(FeatureListTest, CommandLineDisableTakesPrecedenceOverFieldTrial) {
   auto feature_list = std::make_unique<FeatureList>();
 
   // The feature is explicitly disabled on the command-line.
-  feature_list->InitFromCommandLine("", kFeatureOffByDefaultName);
+  feature_list->InitializeFromCommandLine("", kFeatureOffByDefaultName);
 
   // But the FieldTrial would set the feature to enabled.
   FieldTrial* trial = FieldTrialList::CreateFieldTrial("TrialExample2", "A");
@@ -350,7 +346,7 @@ TEST_F(FeatureListTest, IsFeatureOverriddenFromCommandLine) {
       kFeatureOffByDefaultName, FeatureList::OVERRIDE_ENABLE_FEATURE));
 
   // Now, enable |kFeatureOffByDefaultName| via the command-line.
-  feature_list->InitFromCommandLine(kFeatureOffByDefaultName, "");
+  feature_list->InitializeFromCommandLine(kFeatureOffByDefaultName, "");
 
   // It should now be overridden for the enabled group.
   EXPECT_TRUE(feature_list->IsFeatureOverridden(kFeatureOffByDefaultName));
@@ -414,18 +410,17 @@ TEST_F(FeatureListTest, AssociateReportingFieldTrial) {
   const char kForcedOnGroupName[] = "ForcedOn";
   const char kForcedOffGroupName[] = "ForcedOff";
 
-  for (size_t i = 0; i < std::size(test_cases); ++i) {
+  for (size_t i = 0; i < base::size(test_cases); ++i) {
     const auto& test_case = test_cases[i];
     SCOPED_TRACE(base::StringPrintf("Test[%" PRIuS "]: [%s] [%s]", i,
                                     test_case.enable_features,
                                     test_case.disable_features));
 
-    test::ScopedFeatureList outer_scope;
-    outer_scope.InitWithEmptyFeatureAndFieldTrialLists();
-
+    test::ScopedFieldTrialListResetter resetter;
+    FieldTrialList field_trial_list(nullptr);
     auto feature_list = std::make_unique<FeatureList>();
-    feature_list->InitFromCommandLine(test_case.enable_features,
-                                      test_case.disable_features);
+    feature_list->InitializeFromCommandLine(test_case.enable_features,
+                                            test_case.disable_features);
 
     FieldTrial* enable_trial = nullptr;
     if (feature_list->IsFeatureOverriddenFromCommandLine(
@@ -513,10 +508,10 @@ TEST_F(FeatureListTest, RegisterExtraFeatureOverrides) {
   EXPECT_TRUE(FeatureList::IsEnabled(kFeatureOffByDefault));
 }
 
-TEST_F(FeatureListTest, InitFromCommandLineThenRegisterExtraOverrides) {
+TEST_F(FeatureListTest, InitializeFromCommandLineThenRegisterExtraOverrides) {
   auto feature_list = std::make_unique<FeatureList>();
-  feature_list->InitFromCommandLine(kFeatureOnByDefaultName,
-                                    kFeatureOffByDefaultName);
+  feature_list->InitializeFromCommandLine(kFeatureOnByDefaultName,
+                                          kFeatureOffByDefaultName);
   std::vector<FeatureList::FeatureOverrideInfo> overrides;
   overrides.emplace_back(std::cref(kFeatureOnByDefault),
                          FeatureList::OverrideState::OVERRIDE_DISABLE_FEATURE);
@@ -526,7 +521,7 @@ TEST_F(FeatureListTest, InitFromCommandLineThenRegisterExtraOverrides) {
   test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatureList(std::move(feature_list));
 
-  // The InitFromCommandLine supersedes the RegisterExtraFeatureOverrides
+  // The InitializeFromCommandLine supersedes the RegisterExtraFeatureOverrides
   // because it was called first.
   EXPECT_TRUE(FeatureList::IsEnabled(kFeatureOnByDefault));
   EXPECT_FALSE(FeatureList::IsEnabled(kFeatureOffByDefault));
@@ -541,10 +536,10 @@ TEST_F(FeatureListTest, InitFromCommandLineThenRegisterExtraOverrides) {
 
 TEST_F(FeatureListTest, GetFeatureOverrides) {
   auto feature_list = std::make_unique<FeatureList>();
-  feature_list->InitFromCommandLine("A,X", "D");
+  feature_list->InitializeFromCommandLine("A,X", "D");
 
-  static BASE_FEATURE(feature_b, "B", FEATURE_ENABLED_BY_DEFAULT);
-  static BASE_FEATURE(feature_c, "C", FEATURE_DISABLED_BY_DEFAULT);
+  Feature feature_b = {"B", FEATURE_ENABLED_BY_DEFAULT};
+  Feature feature_c = {"C", FEATURE_DISABLED_BY_DEFAULT};
   std::vector<FeatureList::FeatureOverrideInfo> overrides;
   overrides.emplace_back(std::cref(feature_b),
                          FeatureList::OverrideState::OVERRIDE_DISABLE_FEATURE);
@@ -574,7 +569,7 @@ TEST_F(FeatureListTest, GetFeatureOverrides) {
 
 TEST_F(FeatureListTest, GetFeatureOverrides_UseDefault) {
   auto feature_list = std::make_unique<FeatureList>();
-  feature_list->InitFromCommandLine("A,X", "D");
+  feature_list->InitializeFromCommandLine("A,X", "D");
 
   FieldTrial* trial = FieldTrialList::CreateFieldTrial("Trial", "Group");
   feature_list->RegisterFieldTrialOverride(
@@ -603,10 +598,10 @@ TEST_F(FeatureListTest, GetFieldTrial) {
   EXPECT_EQ(nullptr, FeatureList::GetFieldTrial(kFeatureOffByDefault));
 }
 
-TEST_F(FeatureListTest, InitFromCommandLine_WithFieldTrials) {
+TEST_F(FeatureListTest, InitializeFromCommandLine_WithFieldTrials) {
   FieldTrialList::CreateFieldTrial("Trial", "Group");
   auto feature_list = std::make_unique<FeatureList>();
-  feature_list->InitFromCommandLine("A,OffByDefault<Trial,X", "D");
+  feature_list->InitializeFromCommandLine("A,OffByDefault<Trial,X", "D");
   test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatureList(std::move(feature_list));
 
@@ -615,12 +610,12 @@ TEST_F(FeatureListTest, InitFromCommandLine_WithFieldTrials) {
   EXPECT_TRUE(FieldTrialList::IsTrialActive("Trial"));
 }
 
-TEST_F(FeatureListTest, InitFromCommandLine_UseDefault) {
+TEST_F(FeatureListTest, InitializeFromCommandLine_UseDefault) {
   FieldTrialList::CreateFieldTrial("T1", "Group");
   FieldTrialList::CreateFieldTrial("T2", "Group");
   auto feature_list = std::make_unique<FeatureList>();
-  feature_list->InitFromCommandLine("A,*OffByDefault<T1,*OnByDefault<T2,X",
-                                    "D");
+  feature_list->InitializeFromCommandLine(
+      "A,*OffByDefault<T1,*OnByDefault<T2,X", "D");
   test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatureList(std::move(feature_list));
 
@@ -633,7 +628,7 @@ TEST_F(FeatureListTest, InitFromCommandLine_UseDefault) {
   EXPECT_TRUE(FieldTrialList::IsTrialActive("T2"));
 }
 
-TEST_F(FeatureListTest, InitInstance) {
+TEST_F(FeatureListTest, InitializeInstance) {
   std::unique_ptr<base::FeatureList> feature_list(new base::FeatureList);
   test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatureList(std::move(feature_list));
@@ -642,12 +637,12 @@ TEST_F(FeatureListTest, InitInstance) {
   EXPECT_FALSE(FeatureList::IsEnabled(kFeatureOffByDefault));
 
   // Initialize from command line if we haven't yet.
-  FeatureList::InitInstance("", kFeatureOnByDefaultName);
+  FeatureList::InitializeInstance("", kFeatureOnByDefaultName);
   EXPECT_FALSE(FeatureList::IsEnabled(kFeatureOnByDefault));
   EXPECT_FALSE(FeatureList::IsEnabled(kFeatureOffByDefault));
 
   // Do not initialize from commandline if we have already.
-  FeatureList::InitInstance(kFeatureOffByDefaultName, "");
+  FeatureList::InitializeInstance(kFeatureOffByDefaultName, "");
   EXPECT_FALSE(FeatureList::IsEnabled(kFeatureOnByDefault));
   EXPECT_FALSE(FeatureList::IsEnabled(kFeatureOffByDefault));
 }
@@ -694,7 +689,7 @@ TEST_F(FeatureListTest, StoreAndRetrieveFeaturesFromSharedMemory) {
   EXPECT_FALSE(feature_list2->IsFeatureOverriddenFromCommandLine(
       kFeatureOnByDefaultName, FeatureList::OVERRIDE_DISABLE_FEATURE));
 
-  feature_list2->InitFromSharedMemory(&allocator);
+  feature_list2->InitializeFromSharedMemory(&allocator);
   // Check that the new feature list now has 2 overrides.
   EXPECT_TRUE(feature_list2->IsFeatureOverriddenFromCommandLine(
       kFeatureOffByDefaultName, FeatureList::OVERRIDE_ENABLE_FEATURE));
@@ -722,7 +717,7 @@ TEST_F(FeatureListTest, StoreAndRetrieveAssociatedFeaturesFromSharedMemory) {
   feature_list->AddFeaturesToAllocator(&allocator);
 
   std::unique_ptr<base::FeatureList> feature_list2(new base::FeatureList);
-  feature_list2->InitFromSharedMemory(&allocator);
+  feature_list2->InitializeFromSharedMemory(&allocator);
   feature_list2->FinalizeInitialization();
 
   // Check that the field trials are still associated.
@@ -734,6 +729,7 @@ TEST_F(FeatureListTest, StoreAndRetrieveAssociatedFeaturesFromSharedMemory) {
   EXPECT_EQ(associated_trial2, trial2);
 }
 
+<<<<<<< HEAD
 TEST_F(FeatureListTest, SetEarlyAccessInstance_AllowList) {
   test::ScopedFeatureList clear_feature_list;
   clear_feature_list.InitWithNullFeatureAndFieldTrialLists();
@@ -1041,4 +1037,6 @@ TEST(TestFeatureVisitor, FeatureWithPrefix) {
   EXPECT_EQ(actual_feature_state, expected_feature_state);
 }
 
+=======
+>>>>>>> chromium
 }  // namespace base

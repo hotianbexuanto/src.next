@@ -1,17 +1,14 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_STYLE_RULE_COUNTER_STYLE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_STYLE_RULE_COUNTER_STYLE_H_
 
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/parser/at_rule_descriptors.h"
 #include "third_party/blink/renderer/core/css/style_rule.h"
 
 namespace blink {
-
-class CascadeLayer;
 
 class CORE_EXPORT StyleRuleCounterStyle : public StyleRuleBase {
  public:
@@ -27,16 +24,16 @@ class CORE_EXPORT StyleRuleCounterStyle : public StyleRuleBase {
   bool HasValidSymbols() const;
 
   AtomicString GetName() const { return name_; }
-  const CSSValue* GetSystem() const { return system_.Get(); }
-  const CSSValue* GetNegative() const { return negative_.Get(); }
-  const CSSValue* GetPrefix() const { return prefix_.Get(); }
-  const CSSValue* GetSuffix() const { return suffix_.Get(); }
-  const CSSValue* GetRange() const { return range_.Get(); }
-  const CSSValue* GetPad() const { return pad_.Get(); }
-  const CSSValue* GetFallback() const { return fallback_.Get(); }
-  const CSSValue* GetSymbols() const { return symbols_.Get(); }
-  const CSSValue* GetAdditiveSymbols() const { return additive_symbols_.Get(); }
-  const CSSValue* GetSpeakAs() const { return speak_as_.Get(); }
+  const CSSValue* GetSystem() const { return system_; }
+  const CSSValue* GetNegative() const { return negative_; }
+  const CSSValue* GetPrefix() const { return prefix_; }
+  const CSSValue* GetSuffix() const { return suffix_; }
+  const CSSValue* GetRange() const { return range_; }
+  const CSSValue* GetPad() const { return pad_; }
+  const CSSValue* GetFallback() const { return fallback_; }
+  const CSSValue* GetSymbols() const { return symbols_; }
+  const CSSValue* GetAdditiveSymbols() const { return additive_symbols_; }
+  const CSSValue* GetSpeakAs() const { return speak_as_; }
 
   // Returns false if the new value is invalid or equivalent to the old value.
   bool NewValueInvalidOrEqual(AtRuleDescriptorID, const CSSValue*);
@@ -56,9 +53,6 @@ class CORE_EXPORT StyleRuleCounterStyle : public StyleRuleBase {
     return MakeGarbageCollected<StyleRuleCounterStyle>(*this);
   }
 
-  void SetCascadeLayer(const CascadeLayer* layer) { layer_ = layer; }
-  const CascadeLayer* GetCascadeLayer() const { return layer_.Get(); }
-
   void TraceAfterDispatch(blink::Visitor*) const;
 
  private:
@@ -75,8 +69,6 @@ class CORE_EXPORT StyleRuleCounterStyle : public StyleRuleBase {
   Member<const CSSValue> symbols_;
   Member<const CSSValue> additive_symbols_;
   Member<const CSSValue> speak_as_;
-
-  Member<const CascadeLayer> layer_;
 
   // Tracks mutations due to setter functions.
   int version_ = 0;

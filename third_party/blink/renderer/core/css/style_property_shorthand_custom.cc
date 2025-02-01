@@ -19,8 +19,9 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#include "third_party/blink/renderer/core/css/properties/longhands.h"
 #include "third_party/blink/renderer/core/style_property_shorthand.h"
+
+#include "base/cxx17_backports.h"
 
 namespace blink {
 
@@ -29,25 +30,25 @@ namespace blink {
 // change the spec to use this order, see:
 // https://github.com/w3c/csswg-drafts/issues/4223
 const StylePropertyShorthand& transitionShorthandForParsing() {
-  static const CSSProperty* kTransitionPropertiesWithAnimationType[] = {
-      &GetCSSPropertyTransitionBehavior(), &GetCSSPropertyTransitionDuration(),
+  static const CSSProperty* kTransitionProperties[] = {
+      &GetCSSPropertyTransitionDuration(),
       &GetCSSPropertyTransitionTimingFunction(),
       &GetCSSPropertyTransitionDelay(), &GetCSSPropertyTransitionProperty()};
-  static StylePropertyShorthand transition_longhands_with_animation_type(
-      CSSPropertyID::kTransition, kTransitionPropertiesWithAnimationType);
-
-  return transition_longhands_with_animation_type;
+  static StylePropertyShorthand transition_longhands(
+      CSSPropertyID::kTransition, kTransitionProperties,
+      base::size(kTransitionProperties));
+  return transition_longhands;
 }
 
 unsigned indexOfShorthandForLonghand(
     CSSPropertyID shorthand_id,
     const Vector<StylePropertyShorthand, 4>& shorthands) {
   for (unsigned i = 0; i < shorthands.size(); ++i) {
-    if (shorthands.at(i).id() == shorthand_id) {
+    if (shorthands.at(i).id() == shorthand_id)
       return i;
-    }
   }
   NOTREACHED();
+  return 0;
 }
 
 }  // namespace blink

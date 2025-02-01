@@ -1,21 +1,17 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.ui.appmenu;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import android.app.Activity;
 import android.graphics.Canvas;
 import android.graphics.Rect;
-import android.os.Build.VERSION_CODES;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -31,36 +27,41 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+<<<<<<< HEAD
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.BaseActivityTestRule;
+=======
+>>>>>>> chromium
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.DisabledTest;
-import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
-import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.LifecycleObserver;
-import org.chromium.chrome.browser.ui.appmenu.AppMenuHandler.AppMenuItemType;
 import org.chromium.chrome.browser.ui.appmenu.test.R;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
-import org.chromium.components.browser_ui.widget.chips.ChipView;
+import org.chromium.chrome.test.DummyUiChromeActivityTestCase;
 import org.chromium.components.browser_ui.widget.highlight.ViewHighlighterTestUtils;
+<<<<<<< HEAD
 import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.MVCListAdapter;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.test.util.BlankUiTestActivity;
+=======
+import org.chromium.content_public.browser.test.util.TestThreadUtils;
+import org.chromium.ui.test.util.DummyUiActivity;
+import org.chromium.ui.test.util.UiDisableIf;
+import org.chromium.ui.widget.ChipView;
+>>>>>>> chromium
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,6 +75,7 @@ import java.util.concurrent.TimeoutException;
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @Batch(Batch.PER_CLASS)
+<<<<<<< HEAD
 public class AppMenuTest {
     @ClassRule
     public static BaseActivityTestRule<BlankUiTestActivity> sActivityTestRule =
@@ -81,6 +83,9 @@ public class AppMenuTest {
 
     private static Activity sActivity;
 
+=======
+public class AppMenuTest extends DummyUiChromeActivityTestCase {
+>>>>>>> chromium
     private AppMenuCoordinatorImpl mAppMenuCoordinator;
     private AppMenuHandlerImpl mAppMenuHandler;
     private TestAppMenuPropertiesDelegate mPropertiesDelegate;
@@ -89,18 +94,11 @@ public class AppMenuTest {
     private TestActivityLifecycleDispatcher mLifecycleDispatcher;
     private MenuButtonDelegate mTestMenuButtonDelegate;
 
-    @Mock private Canvas mCanvas;
-    @Mock private WindowAndroid mWindowAndroid;
-    @Mock private BrowserControlsStateProvider mBrowserControlsStateProvider;
-    @Mock private KeyboardVisibilityDelegate mKeyboardDelegate;
-    // Tell R8 not to break the ability to mock the class.
-    @Mock private AppMenu mUnused;
-
-    @Captor
-    private ArgumentCaptor<KeyboardVisibilityDelegate.KeyboardVisibilityListener>
-            mKeyboardListenerCaptor;
+    @Mock
+    private Canvas mCanvas;
 
     @BeforeClass
+<<<<<<< HEAD
     public static void setupSuite() {
         sActivity = sActivityTestRule.launchActivity(null);
     }
@@ -132,6 +130,32 @@ public class AppMenuTest {
                         this::getAppRect,
                         mWindowAndroid,
                         mBrowserControlsStateProvider);
+=======
+    public static void setUpBeforeActivityLaunched() {
+        DummyUiActivity.setTestLayout(R.layout.test_app_menu_activity_layout);
+    }
+
+    @Override
+    public void setUpTest() throws Exception {
+        super.setUpTest();
+        MockitoAnnotations.initMocks(this);
+        TestThreadUtils.runOnUiThreadBlocking(this::setUpTestOnUiThread);
+        mLifecycleDispatcher.observerRegisteredCallbackHelper.waitForCallback(0);
+    }
+
+    @AfterClass
+    public static void tearDownAfterActivityDestroyed() {
+        AppMenuCoordinatorImpl.setHasPermanentMenuKeyForTesting(null);
+    }
+
+    private void setUpTestOnUiThread() {
+        mLifecycleDispatcher = new TestActivityLifecycleDispatcher();
+        mDelegate = new TestAppMenuDelegate();
+        mTestMenuButtonDelegate = new TestMenuButtonDelegate();
+        mAppMenuCoordinator = new AppMenuCoordinatorImpl(getActivity(), mLifecycleDispatcher,
+                mTestMenuButtonDelegate, mDelegate, getActivity().getWindow().getDecorView(),
+                getActivity().findViewById(R.id.menu_anchor_stub));
+>>>>>>> chromium
         mAppMenuHandler = mAppMenuCoordinator.getAppMenuHandlerImplForTesting();
         mMenuObserver = new TestAppMenuObserver();
         mAppMenuCoordinator.getAppMenuHandler().addObserver(mMenuObserver);
@@ -139,29 +163,28 @@ public class AppMenuTest {
                 (TestAppMenuPropertiesDelegate) mAppMenuCoordinator.getAppMenuPropertiesDelegate();
     }
 
+<<<<<<< HEAD
     private Rect getAppRect() {
         Rect appRect = new Rect();
         sActivity.getWindow().getDecorView().getWindowVisibleDisplayFrame(appRect);
         return appRect;
     }
 
+=======
+>>>>>>> chromium
     @Test
     @MediumTest
     public void testShowHideAppMenu() throws TimeoutException {
         showMenuAndAssert();
 
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.hideAppMenu());
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.hideAppMenu());
         mMenuObserver.menuHiddenCallback.waitForCallback(0);
 
-        Assert.assertEquals(
-                "Incorrect number of calls to #onMenuDismissed after hide",
-                1,
+        Assert.assertEquals("Incorrect number of calls to #onMenuDismissed after hide", 1,
                 mPropertiesDelegate.menuDismissedCallback.getCallCount());
 
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuCoordinator.destroy());
-        Assert.assertEquals(
-                "Incorrect number of calls to #onMenuDismissed after destroy",
-                1,
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuCoordinator.destroy());
+        Assert.assertEquals("Incorrect number of calls to #onMenuDismissed after destroy", 1,
                 mPropertiesDelegate.menuDismissedCallback.getCallCount());
     }
 
@@ -170,18 +193,14 @@ public class AppMenuTest {
     public void testHideAppMenuMultiple() throws TimeoutException {
         showMenuAndAssert();
 
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.getAppMenu().dismiss());
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.getAppMenu().dismiss());
         mMenuObserver.menuHiddenCallback.waitForCallback(0);
 
-        Assert.assertEquals(
-                "Incorrect number of calls to #onMenuDismissed after first call",
-                1,
+        Assert.assertEquals("Incorrect number of calls to #onMenuDismissed after first call", 1,
                 mPropertiesDelegate.menuDismissedCallback.getCallCount());
 
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.getAppMenu().dismiss());
-        Assert.assertEquals(
-                "Incorrect number of calls to #onMenuDismissed after second call",
-                1,
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.getAppMenu().dismiss());
+        Assert.assertEquals("Incorrect number of calls to #onMenuDismissed after second call", 1,
                 mPropertiesDelegate.menuDismissedCallback.getCallCount());
     }
 
@@ -197,27 +216,17 @@ public class AppMenuTest {
 
         // Check that top right corner of app menu aligns with the top right corner of the anchor.
         int alignmentSlop = viewRect.bottom - viewRect.top;
-        Assert.assertEquals(
-                "Popup should overlap top anchor. Anchor rect: "
-                        + viewRect
-                        + ", popup rect: "
-                        + popupRect,
-                viewRect.top,
-                popupRect.top,
-                alignmentSlop);
-        Assert.assertTrue(
-                "Popup should overlap top anchor. Anchor rect: "
-                        + viewRect
-                        + ", popup rect: "
-                        + popupRect,
+        Assert.assertEquals("Popup should overlap top anchor. Anchor rect: " + viewRect
+                        + ", popup rect: " + popupRect,
+                viewRect.top, popupRect.top, alignmentSlop);
+        Assert.assertTrue("Popup should overlap top anchor. Anchor rect: " + viewRect
+                        + ", popup rect: " + popupRect,
                 viewRect.top <= popupRect.top);
-        Assert.assertEquals(
-                "Popup should be aligned with right of anchor. Anchor rect: "
-                        + viewRect
-                        + ", popup rect: "
-                        + popupRect,
-                viewRect.right,
-                popupRect.right);
+        Assert.assertEquals("Popup should be aligned with right of anchor. Anchor rect: " + viewRect
+                        + ", popup rect: " + popupRect,
+                viewRect.right, popupRect.right);
+
+        AppMenuCoordinatorImpl.setHasPermanentMenuKeyForTesting(null);
     }
 
     @Test
@@ -231,38 +240,10 @@ public class AppMenuTest {
         Rect popupRect = getPopupLocationRect();
 
         // Check a basic alignment property. Full coverage checked in unit tests.
-        Assert.assertNotEquals(
-                "Popup should be offset from right of anchor."
-                        + "Anchor rect: "
-                        + viewRect
-                        + ", popup rect: "
-                        + popupRect,
-                viewRect.right,
-                popupRect.right);
-    }
-
-    @Test
-    @MediumTest
-    public void testShowAppMenu_AnimationTop() throws TimeoutException {
-        doReturn(ControlsPosition.TOP).when(mBrowserControlsStateProvider).getControlsPosition();
-        showMenuAndAssert();
-
-        Assert.assertEquals(
-                "Popup should use animation from top",
-                R.style.EndIconMenuAnim,
-                mAppMenuHandler.getAppMenu().getPopup().getAnimationStyle());
-    }
-
-    @Test
-    @MediumTest
-    public void testShowAppMenu_AnimationBottom() throws TimeoutException {
-        doReturn(ControlsPosition.BOTTOM).when(mBrowserControlsStateProvider).getControlsPosition();
-        showMenuAndAssert();
-
-        Assert.assertEquals(
-                "Popup should use animation from bottom",
-                R.style.EndIconMenuAnimBottom,
-                mAppMenuHandler.getAppMenu().getPopup().getAnimationStyle());
+        Assert.assertNotEquals("Popup should be offset from right of anchor."
+                        + "Anchor rect: " + viewRect + ", popup rect: " + popupRect,
+                viewRect.right, popupRect.right);
+        AppMenuCoordinatorImpl.setHasPermanentMenuKeyForTesting(null);
     }
 
     @Test
@@ -270,11 +251,9 @@ public class AppMenuTest {
     public void testShowDestroyAppMenu() throws TimeoutException {
         showMenuAndAssert();
 
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuCoordinator.destroy());
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuCoordinator.destroy());
 
-        Assert.assertEquals(
-                "Incorrect number of calls to #onMenuDismissed after destroy",
-                1,
+        Assert.assertEquals("Incorrect number of calls to #onMenuDismissed after destroy", 1,
                 mPropertiesDelegate.menuDismissedCallback.getCallCount());
     }
 
@@ -283,15 +262,13 @@ public class AppMenuTest {
     public void testClickMenuItem() throws TimeoutException {
         showMenuAndAssert();
 
-        ThreadUtils.runOnUiThreadBlocking(
-                () ->
-                        AppMenuTestSupport.callOnItemClick(
+        TestThreadUtils.runOnUiThreadBlocking(
+                ()
+                        -> AppMenuTestSupport.callOnItemClick(
                                 mAppMenuCoordinator, R.id.menu_item_three));
 
         mDelegate.itemSelectedCallbackHelper.waitForCallback(0);
-        Assert.assertEquals(
-                "Incorrect id for last selected item.",
-                R.id.menu_item_three,
+        Assert.assertEquals("Incorrect id for last selected item.", R.id.menu_item_three,
                 mDelegate.lastSelectedItemId);
     }
 
@@ -300,12 +277,10 @@ public class AppMenuTest {
     public void testClickMenuItem_Disabled() throws TimeoutException {
         showMenuAndAssert();
 
-        ThreadUtils.runOnUiThreadBlocking(
+        TestThreadUtils.runOnUiThreadBlocking(
                 () -> AppMenuTestSupport.callOnItemClick(mAppMenuCoordinator, R.id.menu_item_two));
 
-        Assert.assertEquals(
-                "Item selected callback should not have been called.",
-                0,
+        Assert.assertEquals("Item selected callback should not have been called.", 0,
                 mDelegate.itemSelectedCallbackHelper.getCallCount());
     }
 
@@ -314,13 +289,11 @@ public class AppMenuTest {
     public void testClickMenuItem_UsingPosition() throws TimeoutException {
         showMenuAndAssert();
 
-        ThreadUtils.runOnUiThreadBlocking(
+        TestThreadUtils.runOnUiThreadBlocking(
                 () -> mAppMenuHandler.getAppMenu().onItemClick(null, null, 0, 0));
 
         mDelegate.itemSelectedCallbackHelper.waitForCallback(0);
-        Assert.assertEquals(
-                "Incorrect id for last selected item.",
-                R.id.menu_item_one,
+        Assert.assertEquals("Incorrect id for last selected item.", R.id.menu_item_one,
                 mDelegate.lastSelectedItemId);
     }
 
@@ -331,6 +304,7 @@ public class AppMenuTest {
         showMenuAndAssert();
         AppMenu spiedMenu = Mockito.spy(mAppMenuHandler.getAppMenu());
 
+<<<<<<< HEAD
         View dummyView = new View(sActivity);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -338,6 +312,13 @@ public class AppMenuTest {
                             mAppMenuHandler.getAppMenu().getMenuItemPropertyModel(R.id.icon_one),
                             dummyView);
                 });
+=======
+        View dummyView = new View(getActivity());
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            spiedMenu.onItemLongClick(
+                    mAppMenuHandler.getAppMenu().getMenu().findItem(R.id.icon_one), dummyView);
+        });
+>>>>>>> chromium
 
         Mockito.verify(spiedMenu, Mockito.times(1)).showToastForItem("Icon One", dummyView);
     }
@@ -349,6 +330,7 @@ public class AppMenuTest {
         showMenuAndAssert();
         AppMenu spiedMenu = Mockito.spy(mAppMenuHandler.getAppMenu());
 
+<<<<<<< HEAD
         View dummyView = new View(sActivity);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -356,6 +338,13 @@ public class AppMenuTest {
                             mAppMenuHandler.getAppMenu().getMenuItemPropertyModel(R.id.icon_two),
                             dummyView);
                 });
+=======
+        View dummyView = new View(getActivity());
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            spiedMenu.onItemLongClick(
+                    mAppMenuHandler.getAppMenu().getMenu().findItem(R.id.icon_two), dummyView);
+        });
+>>>>>>> chromium
 
         Mockito.verify(spiedMenu, Mockito.times(1)).showToastForItem("2", dummyView);
     }
@@ -367,6 +356,7 @@ public class AppMenuTest {
         showMenuAndAssert();
         AppMenu spiedMenu = Mockito.spy(mAppMenuHandler.getAppMenu());
 
+<<<<<<< HEAD
         View dummyView = new View(sActivity);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -374,6 +364,13 @@ public class AppMenuTest {
                             mAppMenuHandler.getAppMenu().getMenuItemPropertyModel(R.id.icon_three),
                             dummyView);
                 });
+=======
+        View dummyView = new View(getActivity());
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            spiedMenu.onItemLongClick(
+                    mAppMenuHandler.getAppMenu().getMenu().findItem(R.id.icon_three), dummyView);
+        });
+>>>>>>> chromium
 
         Mockito.verify(spiedMenu, Mockito.times(0))
                 .showToastForItem(Mockito.any(CharSequence.class), Mockito.any(View.class));
@@ -382,8 +379,7 @@ public class AppMenuTest {
     @Test
     @MediumTest
     public void testAppMenuBlockers() throws TimeoutException {
-        Assert.assertTrue(
-                "App menu should be allowed to show, no blockers registered",
+        Assert.assertTrue("App menu should be allowed to show, no blockers registered",
                 AppMenuTestSupport.shouldShowAppMenu(mAppMenuCoordinator));
 
         AppMenuBlocker blocker1 = () -> false;
@@ -391,16 +387,15 @@ public class AppMenuTest {
 
         mAppMenuCoordinator.registerAppMenuBlocker(blocker1);
         mAppMenuCoordinator.registerAppMenuBlocker(blocker2);
-        Assert.assertFalse(
-                "App menu should not be allowed to show, both blockers registered",
+        Assert.assertFalse("App menu should not be allowed to show, both blockers registered",
                 AppMenuTestSupport.shouldShowAppMenu(mAppMenuCoordinator));
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuCoordinator.showAppMenuForKeyboardEvent());
+        TestThreadUtils.runOnUiThreadBlocking(
+                () -> mAppMenuCoordinator.showAppMenuForKeyboardEvent());
         Assert.assertFalse(
                 "App menu should not have been shown.", mAppMenuHandler.isAppMenuShowing());
 
         mAppMenuCoordinator.unregisterAppMenuBlocker(blocker1);
-        Assert.assertTrue(
-                "App menu should be allowed to show, only blocker2 registered",
+        Assert.assertTrue("App menu should be allowed to show, only blocker2 registered",
                 AppMenuTestSupport.shouldShowAppMenu(mAppMenuCoordinator));
         showMenuAndAssert();
     }
@@ -410,7 +405,7 @@ public class AppMenuTest {
     public void testSetMenuHighlight_StandardItem() throws TimeoutException {
         Assert.assertFalse(mMenuObserver.menuHighlighting);
 
-        ThreadUtils.runOnUiThreadBlocking(
+        TestThreadUtils.runOnUiThreadBlocking(
                 () -> mAppMenuHandler.setMenuHighlight(R.id.menu_item_one));
         mMenuObserver.menuHighlightChangedCallback.waitForCallback(0);
         Assert.assertTrue(mMenuObserver.menuHighlighting);
@@ -420,7 +415,7 @@ public class AppMenuTest {
         View itemView = getViewAtPosition(0);
         checkHighlightOn(itemView);
 
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.clearMenuHighlight());
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.clearMenuHighlight());
         mMenuObserver.menuHighlightChangedCallback.waitForCallback(1);
         Assert.assertFalse(mMenuObserver.menuHighlighting);
     }
@@ -431,7 +426,7 @@ public class AppMenuTest {
         mPropertiesDelegate.footerResourceId = R.layout.test_menu_footer;
         Assert.assertFalse(mMenuObserver.menuHighlighting);
 
-        ThreadUtils.runOnUiThreadBlocking(
+        TestThreadUtils.runOnUiThreadBlocking(
                 () -> mAppMenuHandler.setMenuHighlight(R.id.menu_footer_chip_view));
         mMenuObserver.menuHighlightChangedCallback.waitForCallback(0);
         Assert.assertTrue(mMenuObserver.menuHighlighting);
@@ -440,23 +435,15 @@ public class AppMenuTest {
         mPropertiesDelegate.footerInflatedCallback.waitForCallback(0);
 
         ChipView chipView =
-                (ChipView)
-                        mAppMenuHandler
-                                .getAppMenu()
-                                .getListView()
-                                .getRootView()
-                                .findViewById(R.id.menu_footer_chip_view);
+                (ChipView) mAppMenuHandler.getAppMenu().getListView().getRootView().findViewById(
+                        R.id.menu_footer_chip_view);
         checkHighlightOn(chipView);
 
         ViewHighlighterTestUtils.drawPulseDrawable(chipView, mCanvas);
-        Mockito.verify(mCanvas)
-                .drawRoundRect(
-                        Mockito.any(),
-                        eq((float) chipView.getCornerRadius()),
-                        eq((float) chipView.getCornerRadius()),
-                        Mockito.any());
+        Mockito.verify(mCanvas).drawRoundRect(Mockito.any(), eq((float) chipView.getCornerRadius()),
+                eq((float) chipView.getCornerRadius()), Mockito.any());
 
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.clearMenuHighlight());
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.clearMenuHighlight());
         mMenuObserver.menuHighlightChangedCallback.waitForCallback(1);
         Assert.assertFalse(mMenuObserver.menuHighlighting);
     }
@@ -468,7 +455,8 @@ public class AppMenuTest {
 
         Assert.assertFalse(mMenuObserver.menuHighlighting);
 
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.setMenuHighlight(R.id.icon_one));
+        TestThreadUtils.runOnUiThreadBlocking(
+                () -> mAppMenuHandler.setMenuHighlight(R.id.icon_one));
         mMenuObserver.menuHighlightChangedCallback.waitForCallback(0);
         Assert.assertTrue(mMenuObserver.menuHighlighting);
 
@@ -477,7 +465,7 @@ public class AppMenuTest {
         View itemView = ((LinearLayout) getViewAtPosition(3)).getChildAt(0);
         checkHighlightOn(itemView);
 
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.clearMenuHighlight());
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.clearMenuHighlight());
         mMenuObserver.menuHighlightChangedCallback.waitForCallback(1);
         Assert.assertFalse(mMenuObserver.menuHighlighting);
     }
@@ -487,146 +475,18 @@ public class AppMenuTest {
     public void testMenuItemContentChanged() throws TimeoutException {
         showMenuAndAssert();
         View itemView = getViewAtPosition(1);
-        Assert.assertEquals(
-                "Menu item text incorrect",
-                "Menu Item Two",
+        Assert.assertEquals("Menu item text incorrect", "Menu Item Two",
                 ((TextView) itemView.findViewById(R.id.menu_item_text)).getText());
 
         String newText = "Test!";
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mAppMenuHandler
-                            .getAppMenu()
-                            .getMenuItemPropertyModel(R.id.menu_item_two)
-                            .set(AppMenuItemProperties.TITLE, newText);
-                    mAppMenuHandler.menuItemContentChanged(R.id.menu_item_two);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mAppMenuHandler.getAppMenu().getMenu().findItem(R.id.menu_item_two).setTitle(newText);
+            mAppMenuHandler.menuItemContentChanged(R.id.menu_item_two);
+        });
 
         itemView = getViewAtPosition(1);
-        Assert.assertEquals(
-                "Menu item text incorrect",
-                newText,
+        Assert.assertEquals("Menu item text incorrect", newText,
                 ((TextView) itemView.findViewById(R.id.menu_item_text)).getText());
-    }
-
-    @Test
-    @MediumTest
-    public void testMenuItemRemoved() throws TimeoutException, ExecutionException {
-        showMenuAndAssert();
-        Assert.assertEquals(3, mAppMenuHandler.getModelListForTesting().size());
-        View itemView = getViewAtPosition(1);
-        Assert.assertEquals(
-                "Menu item text incorrect",
-                "Menu Item Two",
-                ((TextView) itemView.findViewById(R.id.menu_item_text)).getText());
-
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> mAppMenuHandler.getModelListForTesting().removeAt(1));
-
-        itemView = getViewAtPosition(1);
-        Assert.assertEquals(
-                "Menu item text incorrect",
-                "Menu Item Three",
-                ((TextView) itemView.findViewById(R.id.menu_item_text)).getText());
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    Assert.assertEquals(
-                            0,
-                            mAppMenuHandler
-                                    .getAppMenu()
-                                    .getMenuItemPropertyModel(R.id.menu_item_one)
-                                    .get(AppMenuItemProperties.POSITION));
-
-                    Assert.assertEquals(
-                            1,
-                            mAppMenuHandler
-                                    .getAppMenu()
-                                    .getMenuItemPropertyModel(R.id.menu_item_three)
-                                    .get(AppMenuItemProperties.POSITION));
-                });
-    }
-
-    @Test
-    @MediumTest
-    public void testMenuItemRangeRemoved() throws TimeoutException, ExecutionException {
-        showMenuAndAssert();
-        Assert.assertEquals(3, mAppMenuHandler.getModelListForTesting().size());
-        View itemView = getViewAtPosition(1);
-        Assert.assertEquals(
-                "Menu item text incorrect",
-                "Menu Item Two",
-                ((TextView) itemView.findViewById(R.id.menu_item_text)).getText());
-
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> mAppMenuHandler.getModelListForTesting().removeRange(0, 2));
-
-        Assert.assertEquals(1, mAppMenuHandler.getModelListForTesting().size());
-        itemView = getViewAtPosition(0);
-        Assert.assertEquals(
-                "Menu item text incorrect",
-                "Menu Item Three",
-                ((TextView) itemView.findViewById(R.id.menu_item_text)).getText());
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    Assert.assertEquals(
-                            0,
-                            mAppMenuHandler
-                                    .getAppMenu()
-                                    .getMenuItemPropertyModel(R.id.menu_item_three)
-                                    .get(AppMenuItemProperties.POSITION));
-                });
-    }
-
-    @Test
-    @MediumTest
-    public void testMenuItemAdded() throws TimeoutException {
-        showMenuAndAssert();
-        Assert.assertEquals(3, mAppMenuHandler.getModelListForTesting().size());
-        View itemView = getViewAtPosition(1);
-        Assert.assertEquals(
-                "Menu item text incorrect",
-                "Menu Item Two",
-                ((TextView) itemView.findViewById(R.id.menu_item_text)).getText());
-
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    PropertyModel model =
-                            new PropertyModel.Builder(AppMenuItemProperties.ALL_KEYS)
-                                    .with(AppMenuItemProperties.MENU_ITEM_ID, 13)
-                                    .with(AppMenuItemProperties.TITLE, "new item title")
-                                    .build();
-                    mAppMenuHandler
-                            .getModelListForTesting()
-                            .add(0, new MVCListAdapter.ListItem(AppMenuItemType.STANDARD, model));
-                });
-        // ensure clicking on the newly added item doesn't break anything
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> mAppMenuHandler.getAppMenu().onItemClick(null, null, 0, 0));
-
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    PropertyModel m = mAppMenuHandler.getAppMenu().getMenuItemPropertyModel(13);
-                    Assert.assertNotNull(m.get(AppMenuItemProperties.CLICK_HANDLER));
-                    Assert.assertEquals(0, m.get(AppMenuItemProperties.POSITION));
-                    Assert.assertEquals(
-                            1,
-                            mAppMenuHandler
-                                    .getAppMenu()
-                                    .getMenuItemPropertyModel(R.id.menu_item_one)
-                                    .get(AppMenuItemProperties.POSITION));
-                    Assert.assertEquals(
-                            2,
-                            mAppMenuHandler
-                                    .getAppMenu()
-                                    .getMenuItemPropertyModel(R.id.menu_item_two)
-                                    .get(AppMenuItemProperties.POSITION));
-                    Assert.assertEquals(
-                            3,
-                            mAppMenuHandler
-                                    .getAppMenu()
-                                    .getMenuItemPropertyModel(R.id.menu_item_three)
-                                    .get(AppMenuItemProperties.POSITION));
-                });
     }
 
     @Test
@@ -639,24 +499,18 @@ public class AppMenuTest {
         mPropertiesDelegate.headerInflatedCallback.waitForCallback(0);
         mPropertiesDelegate.footerInflatedCallback.waitForCallback(0);
 
-        Assert.assertEquals(
-                "Incorrect number of header views",
-                1,
+        Assert.assertEquals("Incorrect number of header views", 1,
                 mAppMenuHandler.getAppMenu().getListView().getHeaderViewsCount());
-        Assert.assertNotNull(
-                "Footer stub not inflated.",
-                mAppMenuHandler
-                        .getAppMenu()
-                        .getPopup()
-                        .getContentView()
-                        .findViewById(R.id.app_menu_footer));
+        Assert.assertNotNull("Footer stub not inflated.",
+                mAppMenuHandler.getAppMenu().getPopup().getContentView().findViewById(
+                        R.id.app_menu_footer));
     }
 
     @Test
     @MediumTest
     public void testAppMenuHiddenOnStopWithNative() throws TimeoutException {
         showMenuAndAssert();
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.onStopWithNative());
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.onStopWithNative());
         Assert.assertFalse(mAppMenuHandler.isAppMenuShowing());
     }
 
@@ -664,7 +518,7 @@ public class AppMenuTest {
     @MediumTest
     public void testAppMenuHiddenOnConfigurationChange() throws TimeoutException {
         showMenuAndAssert();
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.onConfigurationChanged(null));
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.onConfigurationChanged(null));
         Assert.assertFalse(mAppMenuHandler.isAppMenuShowing());
     }
 
@@ -674,13 +528,12 @@ public class AppMenuTest {
         showMenuAndAssert();
 
         AppMenu appMenu = mAppMenuHandler.getAppMenu();
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    KeyEvent down = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MENU);
-                    KeyEvent up = new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU);
-                    appMenu.onKey(appMenu.getListView(), KeyEvent.KEYCODE_MENU, down);
-                    appMenu.onKey(appMenu.getListView(), KeyEvent.KEYCODE_MENU, up);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            KeyEvent down = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MENU);
+            KeyEvent up = new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU);
+            appMenu.onKey(appMenu.getListView(), KeyEvent.KEYCODE_MENU, down);
+            appMenu.onKey(appMenu.getListView(), KeyEvent.KEYCODE_MENU, up);
+        });
         mMenuObserver.menuHiddenCallback.waitForCallback(0);
     }
 
@@ -691,8 +544,7 @@ public class AppMenuTest {
 
         AppMenu appMenu = mAppMenuHandler.getAppMenu();
         KeyEvent unrelated = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BOOKMARK);
-        Assert.assertFalse(
-                "#onKeyEvent should return false for unrelated codes",
+        Assert.assertFalse("#onKeyEvent should return false for unrelated codes",
                 appMenu.onKey(null, KeyEvent.KEYCODE_BOOKMARK, unrelated));
     }
 
@@ -703,8 +555,7 @@ public class AppMenuTest {
 
         AppMenu appMenu = mAppMenuHandler.getAppMenu();
         KeyEvent unrelated = new KeyEvent(KeyEvent.ACTION_MULTIPLE, KeyEvent.KEYCODE_MENU);
-        Assert.assertFalse(
-                "#onKeyEvent should return false for unrelated events",
+        Assert.assertFalse("#onKeyEvent should return false for unrelated events",
                 appMenu.onKey(null, KeyEvent.KEYCODE_MENU, unrelated));
     }
 
@@ -713,26 +564,23 @@ public class AppMenuTest {
     public void testAppMenuKeyEvent_IgnoreEventsWhenHidden() throws Exception {
         // Show app menu to initialize, then hide.
         showMenuAndAssert();
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.hideAppMenu());
+        TestThreadUtils.runOnUiThreadBlocking(() -> mAppMenuHandler.hideAppMenu());
         mMenuObserver.menuHiddenCallback.waitForCallback(0);
 
         AppMenu appMenu = mAppMenuHandler.getAppMenu();
         Assert.assertNull("ListView should be null.", appMenu.getListView());
         KeyEvent down = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MENU);
-        Assert.assertFalse(
-                "#onKeyEvent should return false when app menu hidden",
+        Assert.assertFalse("#onKeyEvent should return false when app menu hidden",
                 appMenu.onKey(null, KeyEvent.KEYCODE_MENU, null));
     }
 
     @Test
     @MediumTest
-    @DisableIf.Build(message = "Flaky crbug.com/1494912", sdk_is_greater_than = VERSION_CODES.Q)
     public void testAppMenuButtonHelper_DownUp() throws Exception {
         AppMenuButtonHelperImpl buttonHelper =
                 (AppMenuButtonHelperImpl) mAppMenuHandler.createAppMenuButtonHelper();
 
-        Assert.assertFalse(
-                "View should start unpressed",
+        Assert.assertFalse("View should start unpressed",
                 mTestMenuButtonDelegate.getMenuButtonView().isPressed());
         Assert.assertFalse("App menu should be not be active", buttonHelper.isAppMenuActive());
 
@@ -750,22 +598,17 @@ public class AppMenuTest {
         sendMotionEventToButtonHelper(
                 buttonHelper, mTestMenuButtonDelegate.getMenuButtonView(), upMotionEvent);
 
-        Assert.assertFalse(
-                "View should no longer be pressed",
+        Assert.assertFalse("View should no longer be pressed",
                 mTestMenuButtonDelegate.getMenuButtonView().isPressed());
         Assert.assertTrue("App menu should still be active", buttonHelper.isAppMenuActive());
     }
 
     @Test
     @MediumTest
-    @DisableIf.Build(
-            sdk_is_greater_than = VERSION_CODES.Q,
-            message = "Flaky. See crbug.com/41496891")
     public void testAppMenuButtonHelper_DownCancel() throws Exception {
         AppMenuButtonHelperImpl buttonHelper =
                 (AppMenuButtonHelperImpl) mAppMenuHandler.createAppMenuButtonHelper();
-        Assert.assertFalse(
-                "View should start unpressed",
+        Assert.assertFalse("View should start unpressed",
                 mTestMenuButtonDelegate.getMenuButtonView().isPressed());
 
         MotionEvent downMotionEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 0, 0, 0);
@@ -783,16 +626,14 @@ public class AppMenuTest {
         sendMotionEventToButtonHelper(
                 buttonHelper, mTestMenuButtonDelegate.getMenuButtonView(), cancelMotionEvent);
 
-        Assert.assertFalse(
-                "View should no longer be pressed",
+        Assert.assertFalse("View should no longer be pressed",
                 mTestMenuButtonDelegate.getMenuButtonView().isPressed());
     }
 
     @Test
     @MediumTest
     public void testAppMenuButtonHelper_ClickRunnable() throws Exception {
-        Assert.assertFalse(
-                "View should start unpressed",
+        Assert.assertFalse("View should start unpressed",
                 mTestMenuButtonDelegate.getMenuButtonView().isPressed());
 
         AppMenuButtonHelperImpl buttonHelper =
@@ -831,9 +672,7 @@ public class AppMenuTest {
         sendMotionEventToButtonHelper(
                 buttonHelper, mTestMenuButtonDelegate.getMenuButtonView(), downMotionEvent);
 
-        Assert.assertEquals(
-                "Runnable should still only have been called once",
-                1,
+        Assert.assertEquals("Runnable should still only have been called once", 1,
                 showCallbackHelper.getCallCount());
     }
 
@@ -863,22 +702,20 @@ public class AppMenuTest {
         AppMenuButtonHelperImpl buttonHelper =
                 (AppMenuButtonHelperImpl) mAppMenuHandler.createAppMenuButtonHelper();
 
-        ThreadUtils.runOnUiThreadBlocking(
-                () ->
-                        buttonHelper.performAccessibilityAction(
+        TestThreadUtils.runOnUiThreadBlocking(
+                ()
+                        -> buttonHelper.performAccessibilityAction(
                                 mTestMenuButtonDelegate.getMenuButtonView(),
-                                AccessibilityNodeInfo.ACTION_CLICK,
-                                null));
+                                AccessibilityNodeInfo.ACTION_CLICK, null));
 
         waitForMenuToShow(0);
         Assert.assertTrue("Menu should be showing", mAppMenuHandler.isAppMenuShowing());
 
-        ThreadUtils.runOnUiThreadBlocking(
-                () ->
-                        buttonHelper.performAccessibilityAction(
+        TestThreadUtils.runOnUiThreadBlocking(
+                ()
+                        -> buttonHelper.performAccessibilityAction(
                                 mTestMenuButtonDelegate.getMenuButtonView(),
-                                AccessibilityNodeInfo.ACTION_CLICK,
-                                null));
+                                AccessibilityNodeInfo.ACTION_CLICK, null));
 
         mMenuObserver.menuHiddenCallback.waitForCallback(0);
         Assert.assertFalse("Menu should be hidden", mAppMenuHandler.isAppMenuShowing());
@@ -890,7 +727,7 @@ public class AppMenuTest {
         AppMenuButtonHelperImpl buttonHelper =
                 (AppMenuButtonHelperImpl) mAppMenuHandler.createAppMenuButtonHelper();
 
-        ThreadUtils.runOnUiThreadBlocking(
+        TestThreadUtils.runOnUiThreadBlocking(
                 () -> buttonHelper.onEnterKeyPress(mTestMenuButtonDelegate.getMenuButtonView()));
 
         waitForMenuToShow(0);
@@ -899,14 +736,13 @@ public class AppMenuTest {
 
     @Test
     @MediumTest
-    @DisableIf.Device(DeviceFormFactor.TABLET)
+    @DisableIf.Device(type = {UiDisableIf.TABLET})
     @DisabledTest(message = "crbug.com/1186468")
     public void testDragHelper_ClickItem() throws Exception {
         AppMenuButtonHelperImpl buttonHelper =
                 (AppMenuButtonHelperImpl) mAppMenuHandler.createAppMenuButtonHelper();
 
-        Assert.assertFalse(
-                "View should start unpressed",
+        Assert.assertFalse("View should start unpressed",
                 mTestMenuButtonDelegate.getMenuButtonView().isPressed());
         Assert.assertFalse("App menu should be not be active", buttonHelper.isAppMenuActive());
 
@@ -934,9 +770,7 @@ public class AppMenuTest {
         mDelegate.itemSelectedCallbackHelper.waitForCallback(
                 "itemRect: " + firstItemScreenRect + " eventX: " + eventX + " eventY: " + eventY,
                 0);
-        Assert.assertEquals(
-                "Incorrect id for last selected item.",
-                R.id.menu_item_one,
+        Assert.assertEquals("Incorrect id for last selected item.", R.id.menu_item_one,
                 mDelegate.lastSelectedItemId);
     }
 
@@ -945,12 +779,13 @@ public class AppMenuTest {
     public void testCalculateHeightForItems_enoughSpace() throws Exception {
         showMenuAndAssert();
 
-        List<Integer> menuItemIds = new ArrayList<Integer>();
+        List<MenuItem> menuItems = new ArrayList<MenuItem>();
         List<Integer> heightList = new ArrayList<Integer>();
-        createMenuItem(menuItemIds, heightList, /* id= */ 0, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 1, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 2, /* height= */ 10);
+        createMenuItem(menuItems, heightList, 0 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 1 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 2 /* id */, 10 /* height */);
 
+<<<<<<< HEAD
         int height =
                 mAppMenuHandler
                         .getAppMenu()
@@ -959,6 +794,10 @@ public class AppMenuTest {
                                 heightList,
                                 /* groupDividerResourceId= */ -1,
                                 /* screenSpaceForItems= */ 35);
+=======
+        int height = mAppMenuHandler.getAppMenu().calculateHeightForItems(menuItems, heightList,
+                -1 /* groupDividerResourceId */, 35 /* availableScreenSpace */);
+>>>>>>> chromium
         Assert.assertEquals(30, height);
     }
 
@@ -967,12 +806,13 @@ public class AppMenuTest {
     public void testCalculateHeightForItems_notEnoughSpaceForOneItem() throws Exception {
         showMenuAndAssert();
 
-        List<Integer> menuItemIds = new ArrayList<Integer>();
+        List<MenuItem> menuItems = new ArrayList<MenuItem>();
         List<Integer> heightList = new ArrayList<Integer>();
-        createMenuItem(menuItemIds, heightList, /* id= */ 0, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 1, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 2, /* height= */ 10);
+        createMenuItem(menuItems, heightList, 0 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 1 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 2 /* id */, 10 /* height */);
 
+<<<<<<< HEAD
         int height =
                 mAppMenuHandler
                         .getAppMenu()
@@ -981,6 +821,10 @@ public class AppMenuTest {
                                 heightList,
                                 /* groupDividerResourceId= */ -1,
                                 /* screenSpaceForItems= */ 26);
+=======
+        int height = mAppMenuHandler.getAppMenu().calculateHeightForItems(menuItems, heightList,
+                -1 /* groupDividerResourceId */, 26 /* availableScreenSpace */);
+>>>>>>> chromium
         // The space only can fit the 1st and 2nd items and the partial 3rd item.
         Assert.assertEquals(25, height);
     }
@@ -990,12 +834,13 @@ public class AppMenuTest {
     public void testCalculateHeightForItems_notEnoughSpaceForTwoItem() throws Exception {
         showMenuAndAssert();
 
-        List<Integer> menuItemIds = new ArrayList<Integer>();
+        List<MenuItem> menuItems = new ArrayList<MenuItem>();
         List<Integer> heightList = new ArrayList<Integer>();
-        createMenuItem(menuItemIds, heightList, /* id= */ 0, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 1, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 2, /* height= */ 10);
+        createMenuItem(menuItems, heightList, 0 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 1 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 2 /* id */, 10 /* height */);
 
+<<<<<<< HEAD
         int height =
                 mAppMenuHandler
                         .getAppMenu()
@@ -1034,6 +879,14 @@ public class AppMenuTest {
         // partial 4th item. But the space for 4th item is 4, which is not enough to show partial
         // 3rd item(5 = LAST_ITEM_SHOW_FRACTION * 10), we show the partial 3rd item instead.
         Assert.assertEquals(25, height);
+=======
+        int height = mAppMenuHandler.getAppMenu().calculateHeightForItems(menuItems, heightList,
+                -1 /* groupDividerResourceId */, 24 /* availableScreenSpace */);
+        // The space only can fit the full 1st item, the full 2nd items and the partial 3rd item.
+        // But the space for 3rd item is 4, which is not enough to show partial 3rd item(5 =
+        // LAST_ITEM_SHOW_FRACTION * 10), we show the partial 2nd item instead.
+        Assert.assertEquals(15, height);
+>>>>>>> chromium
     }
 
     @Test
@@ -1041,14 +894,14 @@ public class AppMenuTest {
     public void testCalculateHeightForItems_notEnoughSpaceForDivider() throws Exception {
         showMenuAndAssert();
 
-        List<Integer> menuItemIds = new ArrayList<Integer>();
+        List<MenuItem> menuItems = new ArrayList<MenuItem>();
         List<Integer> heightList = new ArrayList<Integer>();
-        createMenuItem(menuItemIds, heightList, /* id= */ 0, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 1, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 2, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 3, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 4, /* height= */ 10);
+        createMenuItem(menuItems, heightList, 0 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 1 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 2 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 3 /* id */, 10 /* height */);
 
+<<<<<<< HEAD
         int height =
                 mAppMenuHandler
                         .getAppMenu()
@@ -1060,20 +913,28 @@ public class AppMenuTest {
         // The space only can fit the 1st, 2nd, 3rd, and partial 4th item. But the 4th item is a
         // divider line, so we show only the partial 3rd item.
         Assert.assertEquals(25, height);
+=======
+        int height = mAppMenuHandler.getAppMenu().calculateHeightForItems(menuItems, heightList,
+                2 /* groupDividerResourceId */, 26 /* availableScreenSpace */);
+        // The space only can fit the 1st, 2nd and the partial 3rd item. But 3rd item is divider
+        // line, so we only show the partial 2nd item.
+        Assert.assertEquals(15, height);
+>>>>>>> chromium
     }
 
     @Test
     @SmallTest
-    public void testCalculateHeightForItems_showPartialDivider() throws Exception {
+    public void testCalculateHeightForItems_notEnoughSpaceForDividerAndItem() throws Exception {
         showMenuAndAssert();
 
-        List<Integer> menuItemIds = new ArrayList<Integer>();
+        List<MenuItem> menuItems = new ArrayList<MenuItem>();
         List<Integer> heightList = new ArrayList<Integer>();
-        createMenuItem(menuItemIds, heightList, /* id= */ 0, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 1, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 2, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 3, /* height= */ 10);
+        createMenuItem(menuItems, heightList, 0 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 1 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 2 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 3 /* id */, 10 /* height */);
 
+<<<<<<< HEAD
         int height =
                 mAppMenuHandler
                         .getAppMenu()
@@ -1109,12 +970,15 @@ public class AppMenuTest {
                                 heightList,
                                 /* groupDividerResourceId= */ 2,
                                 /* screenSpaceForItems= */ 34);
+=======
+        int height = mAppMenuHandler.getAppMenu().calculateHeightForItems(menuItems, heightList,
+                2 /* groupDividerResourceId */, 34 /* availableScreenSpace */);
+>>>>>>> chromium
         // The space only can fit the full 1st, 2nd and 3rd item and the partial 4th item.
         // But the space for 4th item is 4, which is not enough to show partial 4th item(5 =
-        // LAST_ITEM_SHOW_FRACTION * 10), so we should show the partial 3rd item instead. The third
-        // item is a divider line, and the menu is small enough that we still want to use all
-        // available space.
-        Assert.assertEquals(34, height);
+        // LAST_ITEM_SHOW_FRACTION * 10), so we should show the partial 3rd item instead. But 3rd
+        // item is divider line, so we should partial 2nd item instead.
+        Assert.assertEquals(15, height);
     }
 
     @Test
@@ -1122,12 +986,13 @@ public class AppMenuTest {
     public void testCalculateHeightForItems_minimalHight() throws Exception {
         showMenuAndAssert();
 
-        List<Integer> menuItemIds = new ArrayList<Integer>();
+        List<MenuItem> menuItems = new ArrayList<MenuItem>();
         List<Integer> heightList = new ArrayList<Integer>();
-        createMenuItem(menuItemIds, heightList, /* id= */ 0, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 1, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 2, /* height= */ 10);
+        createMenuItem(menuItems, heightList, 0 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 1 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 2 /* id */, 10 /* height */);
 
+<<<<<<< HEAD
         int height =
                 mAppMenuHandler
                         .getAppMenu()
@@ -1136,6 +1001,10 @@ public class AppMenuTest {
                                 heightList,
                                 /* groupDividerResourceId= */ -1,
                                 /* screenSpaceForItems= */ 4);
+=======
+        int height = mAppMenuHandler.getAppMenu().calculateHeightForItems(menuItems, heightList,
+                -1 /* groupDividerResourceId */, 4 /* availableScreenSpace */);
+>>>>>>> chromium
         // The space is not enough for any item, but we still show 1 and half items at least.
         Assert.assertEquals(15, height);
     }
@@ -1146,12 +1015,13 @@ public class AppMenuTest {
             throws Exception {
         showMenuAndAssert();
 
-        List<Integer> menuItemIds = new ArrayList<Integer>();
+        List<MenuItem> menuItems = new ArrayList<MenuItem>();
         List<Integer> heightList = new ArrayList<Integer>();
-        createMenuItem(menuItemIds, heightList, /* id= */ 0, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 1, /* height= */ 10);
-        createMenuItem(menuItemIds, heightList, /* id= */ 2, /* height= */ 10);
+        createMenuItem(menuItems, heightList, 0 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 1 /* id */, 10 /* height */);
+        createMenuItem(menuItems, heightList, 2 /* id */, 10 /* height */);
 
+<<<<<<< HEAD
         int height =
                 mAppMenuHandler
                         .getAppMenu()
@@ -1160,10 +1030,15 @@ public class AppMenuTest {
                                 heightList,
                                 /* groupDividerResourceId= */ 1,
                                 /* screenSpaceForItems= */ 6);
+=======
+        int height = mAppMenuHandler.getAppMenu().calculateHeightForItems(menuItems, heightList,
+                1 /* groupDividerResourceId */, 6 /* availableScreenSpace */);
+>>>>>>> chromium
         // The space is not enough for any item, but we still show 1 and half items at least.
         Assert.assertEquals(15, height);
     }
 
+<<<<<<< HEAD
     @Test
     @SmallTest
     public void testCalculateHeightForItems_nagativeSpaceForZeroItems() throws Exception {
@@ -1202,15 +1077,20 @@ public class AppMenuTest {
         waitForMenuToShow(0);
     }
 
+=======
+>>>>>>> chromium
     private void createMenuItem(
-            List<Integer> menuItemIds, List<Integer> heightList, int id, int height) {
-        menuItemIds.add(id);
+            List<MenuItem> menuItems, List<Integer> heightList, int id, int height) {
+        Menu menu = mAppMenuHandler.getAppMenu().getMenu();
+        MenuItem item = menu.add(0, id, 0, "test menu item");
+        menuItems.add(item);
         heightList.add(height);
     }
 
     private void showMenuAndAssert() throws TimeoutException {
         int currentCallCount = mMenuObserver.menuShownCallback.getCallCount();
-        ThreadUtils.runOnUiThreadBlocking(() -> mAppMenuCoordinator.showAppMenuForKeyboardEvent());
+        TestThreadUtils.runOnUiThreadBlocking(
+                () -> mAppMenuCoordinator.showAppMenuForKeyboardEvent());
         waitForMenuToShow(currentCallCount);
     }
 
@@ -1218,13 +1098,12 @@ public class AppMenuTest {
         mMenuObserver.menuShownCallback.waitForCallback(currentCallCount);
         Assert.assertTrue("Menu should be showing", mAppMenuHandler.isAppMenuShowing());
 
-        ThreadUtils.runOnUiThreadBlocking(
+        TestThreadUtils.runOnUiThreadBlocking(
                 () -> mAppMenuHandler.getAppMenu().finishAnimationsForTests());
     }
 
-    private static class TestActivityLifecycleDispatcher implements ActivityLifecycleDispatcher {
+    private class TestActivityLifecycleDispatcher implements ActivityLifecycleDispatcher {
         public CallbackHelper observerRegisteredCallbackHelper = new CallbackHelper();
-
         @Override
         public void register(LifecycleObserver observer) {
             observerRegisteredCallbackHelper.notifyCalled();
@@ -1252,14 +1131,15 @@ public class AppMenuTest {
     private View getViewAtPosition(int index) {
         // Wait for the view to be available. This is necessary when the menu is first shown.
         CriteriaHelper.pollUiThread(
-                () ->
-                        AppMenuTestSupport.getListView(mAppMenuCoordinator).getChildAt(index)
-                                != null);
+                ()
+                        -> AppMenuTestSupport.getListView(mAppMenuCoordinator).getChildAt(index)
+                        != null);
         return AppMenuTestSupport.getListView(mAppMenuCoordinator).getChildAt(index);
     }
 
     private Rect getPopupLocationRect() {
         View contentView = mAppMenuHandler.getAppMenu().getPopup().getContentView();
+        CriteriaHelper.pollUiThread(() -> contentView.getHeight() != 0);
 
         Rect popupRect = new Rect();
         int[] popupLocation = new int[2];
@@ -1284,14 +1164,13 @@ public class AppMenuTest {
 
     private Rect getVisibleScreenRectAtPosition(int position) throws ExecutionException {
         View view = getViewAtPosition(position);
-        return ThreadUtils.runOnUiThreadBlocking(
+        return TestThreadUtils.runOnUiThreadBlocking(
                 () -> mAppMenuHandler.getAppMenuDragHelper().getScreenVisibleRect(view));
     }
 
-    private void sendMotionEventToButtonHelper(
-            AppMenuButtonHelperImpl helper, View view, MotionEvent event)
-            throws ExecutionException {
-        ThreadUtils.runOnUiThreadBlocking(() -> helper.onTouch(view, event));
+    private void sendMotionEventToButtonHelper(AppMenuButtonHelperImpl helper, View view,
+            MotionEvent event) throws ExecutionException {
+        TestThreadUtils.runOnUiThreadBlocking(() -> helper.onTouch(view, event));
     }
 
     private void checkHighlightOn(View view) {

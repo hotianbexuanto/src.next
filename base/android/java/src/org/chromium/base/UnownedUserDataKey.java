@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -63,6 +63,10 @@ import java.util.WeakHashMap;
  */
 @NullMarked
 public final class UnownedUserDataKey<T extends UnownedUserData> {
+<<<<<<< HEAD
+=======
+    @NonNull
+>>>>>>> chromium
     private final Class<T> mClazz;
     // A Set that uses WeakReference<UnownedUserDataHost> internally.
     private final Set<UnownedUserDataHost> mWeakHostAttachments =

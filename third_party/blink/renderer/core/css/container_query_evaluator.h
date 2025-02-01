@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,43 +6,28 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CONTAINER_QUERY_EVALUATOR_H_
 
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/css/container_selector.h"
-#include "third_party/blink/renderer/core/css/container_state.h"
 #include "third_party/blink/renderer/core/css/media_query_evaluator.h"
-#include "third_party/blink/renderer/core/css/media_query_exp.h"
-#include "third_party/blink/renderer/core/css/style_recalc_change.h"
 #include "third_party/blink/renderer/core/layout/geometry/axis.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_size.h"
-#include "third_party/blink/renderer/core/style/computed_style_constants.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 
 namespace blink {
 
-class ComputedStyle;
 class ContainerQuery;
 class Element;
-class MatchResult;
-class ScrollStateQuerySnapshot;
-class SnappedQueryScrollSnapshot;
 class StyleRecalcContext;
 
 class CORE_EXPORT ContainerQueryEvaluator final
     : public GarbageCollected<ContainerQueryEvaluator> {
  public:
-  explicit ContainerQueryEvaluator(Element& container);
+  static Element* FindContainer(const StyleRecalcContext& context,
+                                const AtomicString& container_name);
 
-  // Look for a container query container in the flat tree inclusive ancestor
-  // chain of 'starting_element'.
-  static Element* FindContainer(Element* starting_element,
-                                const ContainerSelector&,
-                                const TreeScope* selector_tree_scope);
-  static bool EvalAndAdd(Element* style_container_candidate,
-                         const StyleRecalcContext&,
-                         const ContainerQuery&,
-                         ContainerSelectorCache&,
-                         MatchResult&);
+  // Creates an evaluator with no containment, hence all queries evaluated
+  // against it will fail.
+  ContainerQueryEvaluator() = default;
 
+<<<<<<< HEAD
   // Width/Height are used by container relative units (qi, qb, etc).
   //
   // A return value of std::nullopt normally means that the relevant axis
@@ -60,9 +45,27 @@ class CORE_EXPORT ContainerQueryEvaluator final
   bool MayDependOnWritingDirection() const {
     return DependsOnSize() || DependsOnStuck() || DependsOnSnapped() ||
            DependsOnScrollable();
+=======
+  // Used by container relative units (qi, qb, etc).
+  double Width() const;
+  double Height() const;
+  void SetReferencedByUnit() { referenced_by_unit_ = true; }
+
+  bool Eval(const ContainerQuery&) const;
+
+  // Add a dependent query to this evaluator. During calls to ContainerChanged,
+  // all dependent queries are checked to see if the new size/axis information
+  // causes a change in the evaluation result.
+  void Add(const ContainerQuery&, bool result);
+
+  bool EvalAndAdd(const ContainerQuery& query) {
+    bool result = Eval(query);
+    Add(query, result);
+    return result;
+>>>>>>> chromium
   }
 
-  enum class Change : uint8_t {
+  enum class Change {
     // The update has no effect on the evaluation of queries associated with
     // this evaluator, and therefore we do not need to perform style recalc of
     // any elements which depend on this evaluator.
@@ -80,32 +83,12 @@ class CORE_EXPORT ContainerQueryEvaluator final
   //
   // Dependent queries are cleared when kUnnamed/kNamed is returned (and left
   // unchanged otherwise).
-  Change SizeContainerChanged(PhysicalSize, PhysicalAxes contained_axes);
-
-  // To be called during style recalc to make any necessary invalidation of
-  // container queries based on computed style changes on the container.
-  // style_changed is true if there is a diff between old_style and new_style.
-  StyleRecalcChange ApplyScrollStateAndStyleChanges(
-      const StyleRecalcChange& child_change,
-      const ComputedStyle& old_style,
-      const ComputedStyle& new_style,
-      bool style_changed);
-
-  // Set the pending snapped state when updating scroll snapshots.
-  // ApplyScrollState() will set the snapped state from the pending snapped
-  // state during style recalc.
-  void SetPendingSnappedStateFromScrollSnapshot(
-      const SnappedQueryScrollSnapshot&);
-
-  // We may need to update the internal CSSContainerValues of this evaluator
-  // when e.g. the rem unit changes.
-  void UpdateContainerValuesFromUnitChanges(StyleRecalcChange);
-
-  Element* ContainerElement() const;
+  Change ContainerChanged(PhysicalSize, PhysicalAxes contained_axes);
 
   void Trace(Visitor*) const;
 
  private:
+<<<<<<< HEAD
   friend class ContainerQueryEvaluatorTest;
 
   // Reconstruct CSSContainerValues based on the current ComputedStyle stored on
@@ -205,10 +188,17 @@ class CORE_EXPORT ContainerQueryEvaluator final
   bool EvalAndAdd(const ContainerQuery& query,
                   Change change,
                   MatchResult& match_result);
+=======
+  void SetData(PhysicalSize, PhysicalAxes contained_axes);
+  void ClearResults();
+  Change ComputeChange() const;
+>>>>>>> chromium
 
+  // TODO(crbug.com/1145970): Don't lean on MediaQueryEvaluator.
   Member<MediaQueryEvaluator> media_query_evaluator_;
   PhysicalSize size_;
   PhysicalAxes contained_axes_;
+<<<<<<< HEAD
   ContainerStuckPhysical stuck_horizontal_ = ContainerStuckPhysical::kNo;
   ContainerStuckPhysical stuck_vertical_ = ContainerStuckPhysical::kNo;
   ContainerSnappedFlags snapped_ =
@@ -230,6 +220,10 @@ class CORE_EXPORT ContainerQueryEvaluator final
   bool depends_on_snapped_ = false;
   bool depends_on_scrollable_ = false;
   bool depends_on_size_ = false;
+=======
+  HeapHashMap<Member<const ContainerQuery>, bool> results_;
+  bool referenced_by_unit_ = false;
+>>>>>>> chromium
 };
 
 }  // namespace blink

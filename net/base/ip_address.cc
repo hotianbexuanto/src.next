@@ -1,33 +1,28 @@
-// Copyright 2015 The Chromium Authors
+// Copyright (c) 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/base/ip_address.h"
 
-#include <stddef.h>
-
 #include <algorithm>
-#include <array>
 #include <climits>
-#include <optional>
-#include <string_view>
 
 #include "base/check_op.h"
-#include "base/debug/alias.h"
-#include "base/debug/crash_logging.h"
-#include "base/logging.h"
+#include "base/containers/stack_container.h"
+#include "base/cxx17_backports.h"
 #include "base/notreached.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_split.h"
 #include "base/strings/stringprintf.h"
-#include "base/trace_event/memory_usage_estimator.h"
-#include "base/values.h"
 #include "net/base/parse_number.h"
 #include "url/gurl.h"
 #include "url/url_canon_ip.h"
 
 namespace net {
 namespace {
+
+bool g_consider_loopback_ip_to_be_publicly_routable_for_testing = false;
 
 // The prefix for IPv6 mapped IPv4 addresses.
 // https://tools.ietf.org/html/rfc4291#section-2.5.5.2
@@ -61,43 +56,6 @@ bool IPAddressPrefixCheck(const IPAddressBytes& ip_address,
   return true;
 }
 
-bool CreateIPMask(IPAddressBytes* ip_address,
-                  size_t prefix_length_in_bits,
-                  size_t ip_address_length) {
-  if (ip_address_length != IPAddress::kIPv4AddressSize &&
-      ip_address_length != IPAddress::kIPv6AddressSize) {
-    return false;
-  }
-  if (prefix_length_in_bits > ip_address_length * 8) {
-    return false;
-  }
-
-  ip_address->Resize(ip_address_length);
-  size_t idx = 0;
-  // Set all fully masked bytes
-  size_t num_entire_bytes_in_prefix = prefix_length_in_bits / 8;
-  for (size_t i = 0; i < num_entire_bytes_in_prefix; ++i) {
-    (*ip_address)[idx++] = 0xff;
-  }
-
-  // In case the prefix was not a multiple of 8, there will be 1 byte
-  // which is only partially masked.
-  size_t remaining_bits = prefix_length_in_bits % 8;
-  if (remaining_bits != 0) {
-    uint8_t remaining_bits_mask = 0xFF << (8 - remaining_bits);
-    (*ip_address)[idx++] = remaining_bits_mask;
-  }
-
-  // Zero out any other bytes.
-  size_t bytes_remaining = ip_address_length - num_entire_bytes_in_prefix -
-                           (remaining_bits != 0 ? 1 : 0);
-  for (size_t i = 0; i < bytes_remaining; ++i) {
-    (*ip_address)[idx++] = 0;
-  }
-
-  return true;
-}
-
 // Returns false if |ip_address| matches any of the reserved IPv4 ranges. This
 // method operates on a list of reserved IPv4 ranges. Some ranges are
 // consolidated.
@@ -112,11 +70,11 @@ bool IsPubliclyRoutableIPv4(const IPAddressBytes& ip_address) {
     const uint8_t address[4];
     size_t prefix_length_in_bits;
   } static const kReservedIPv4Ranges[] = {
-      {{0, 0, 0, 0}, 8},      {{10, 0, 0, 0}, 8},     {{100, 64, 0, 0}, 10},
-      {{127, 0, 0, 0}, 8},    {{169, 254, 0, 0}, 16}, {{172, 16, 0, 0}, 12},
-      {{192, 0, 0, 0}, 24},   {{192, 0, 2, 0}, 24},   {{192, 88, 99, 0}, 24},
-      {{192, 168, 0, 0}, 16}, {{198, 18, 0, 0}, 15},  {{198, 51, 100, 0}, 24},
-      {{203, 0, 113, 0}, 24}, {{224, 0, 0, 0}, 3}};
+      {{0, 0, 0, 0}, 8},     {{10, 0, 0, 0}, 8},      {{100, 64, 0, 0}, 10},
+      {{127, 0, 0, 0}, 8},   {{169, 254, 0, 0}, 16},  {{172, 16, 0, 0}, 12},
+      {{192, 0, 2, 0}, 24},  {{192, 88, 99, 0}, 24},  {{192, 168, 0, 0}, 16},
+      {{198, 18, 0, 0}, 15}, {{198, 51, 100, 0}, 24}, {{203, 0, 113, 0}, 24},
+      {{224, 0, 0, 0}, 3}};
 
   for (const auto& range : kReservedIPv4Ranges) {
     if (IPAddressPrefixCheck(ip_address, range.address,
@@ -159,10 +117,11 @@ bool IsPubliclyRoutableIPv6(const IPAddressBytes& ip_address) {
   return false;
 }
 
-bool ParseIPLiteralToBytes(std::string_view ip_literal, IPAddressBytes* bytes) {
+bool ParseIPLiteralToBytes(const base::StringPiece& ip_literal,
+                           IPAddressBytes* bytes) {
   // |ip_literal| could be either an IPv4 or an IPv6 literal. If it contains
   // a colon however, it must be an IPv6 address.
-  if (ip_literal.find(':') != std::string_view::npos) {
+  if (ip_literal.find(':') != base::StringPiece::npos) {
     // GURL expects IPv6 hostnames to be surrounded with brackets.
     std::string host_brackets = base::StrCat({"[", ip_literal, "]"});
     url::Component host_comp(0, host_brackets.size());
@@ -184,7 +143,24 @@ bool ParseIPLiteralToBytes(std::string_view ip_literal, IPAddressBytes* bytes) {
 
 }  // namespace
 
+<<<<<<< HEAD
 IPAddressBytes::~IPAddressBytes() = default;
+=======
+IPAddressBytes::IPAddressBytes() : size_(0) {}
+
+IPAddressBytes::IPAddressBytes(const uint8_t* data, size_t data_len) {
+  Assign(data, data_len);
+}
+
+IPAddressBytes::~IPAddressBytes() = default;
+IPAddressBytes::IPAddressBytes(IPAddressBytes const& other) = default;
+
+void IPAddressBytes::Assign(const uint8_t* data, size_t data_len) {
+  size_ = data_len;
+  CHECK_GE(16u, data_len);
+  std::copy_n(data, data_len, bytes_.data());
+}
+>>>>>>> chromium
 
 bool IPAddressBytes::operator<(const IPAddressBytes& other) const {
   if (size_ == other.size_)
@@ -194,13 +170,18 @@ bool IPAddressBytes::operator<(const IPAddressBytes& other) const {
 }
 
 bool IPAddressBytes::operator==(const IPAddressBytes& other) const {
+<<<<<<< HEAD
   return std::ranges::equal(*this, other);
+=======
+  return size_ == other.size_ && std::equal(begin(), end(), other.begin());
+>>>>>>> chromium
 }
 
 bool IPAddressBytes::operator!=(const IPAddressBytes& other) const {
   return !(*this == other);
 }
 
+<<<<<<< HEAD
 void IPAddressBytes::Append(base::span<const uint8_t> data) {
   CHECK_LE(data.size(), static_cast<size_t>(16 - size_));
   size_ += data.size();
@@ -230,6 +211,57 @@ std::optional<IPAddress> IPAddress::FromIPLiteral(std::string_view ip_literal) {
   return address;
 }
 
+=======
+IPAddress::IPAddress() = default;
+
+IPAddress::IPAddress(const IPAddress& other) = default;
+
+IPAddress::IPAddress(const IPAddressBytes& address) : ip_address_(address) {}
+
+IPAddress::IPAddress(const uint8_t* address, size_t address_len)
+    : ip_address_(address, address_len) {}
+
+IPAddress::IPAddress(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) {
+  ip_address_.push_back(b0);
+  ip_address_.push_back(b1);
+  ip_address_.push_back(b2);
+  ip_address_.push_back(b3);
+}
+
+IPAddress::IPAddress(uint8_t b0,
+                     uint8_t b1,
+                     uint8_t b2,
+                     uint8_t b3,
+                     uint8_t b4,
+                     uint8_t b5,
+                     uint8_t b6,
+                     uint8_t b7,
+                     uint8_t b8,
+                     uint8_t b9,
+                     uint8_t b10,
+                     uint8_t b11,
+                     uint8_t b12,
+                     uint8_t b13,
+                     uint8_t b14,
+                     uint8_t b15) {
+  ip_address_.push_back(b0);
+  ip_address_.push_back(b1);
+  ip_address_.push_back(b2);
+  ip_address_.push_back(b3);
+  ip_address_.push_back(b4);
+  ip_address_.push_back(b5);
+  ip_address_.push_back(b6);
+  ip_address_.push_back(b7);
+  ip_address_.push_back(b8);
+  ip_address_.push_back(b9);
+  ip_address_.push_back(b10);
+  ip_address_.push_back(b11);
+  ip_address_.push_back(b12);
+  ip_address_.push_back(b13);
+  ip_address_.push_back(b14);
+  ip_address_.push_back(b15);
+}
+>>>>>>> chromium
 
 IPAddress::~IPAddress() = default;
 
@@ -246,12 +278,22 @@ bool IPAddress::IsValid() const {
 }
 
 bool IPAddress::IsPubliclyRoutable() const {
+  if (g_consider_loopback_ip_to_be_publicly_routable_for_testing &&
+      IsLoopback()) {
+    return true;
+  }
+
   if (IsIPv4()) {
     return IsPubliclyRoutableIPv4(ip_address_);
   } else if (IsIPv6()) {
     return IsPubliclyRoutableIPv6(ip_address_);
   }
   return true;
+}
+
+// static
+void IPAddress::ConsiderLoopbackIPToBePubliclyRoutableForTesting() {
+  g_consider_loopback_ip_to_be_publicly_routable_for_testing = true;
 }
 
 bool IPAddress::IsZero() const {
@@ -300,12 +342,7 @@ bool IPAddress::IsLinkLocal() const {
   return false;
 }
 
-bool IPAddress::IsUniqueLocalIPv6() const {
-  // [fc00::]/7
-  return IsIPv6() && ((ip_address_[0] & 0xFE) == 0xFC);
-}
-
-bool IPAddress::AssignFromIPLiteral(std::string_view ip_literal) {
+bool IPAddress::AssignFromIPLiteral(const base::StringPiece& ip_literal) {
   bool success = ParseIPLiteralToBytes(ip_literal, &ip_address_);
   if (!success)
     ip_address_.Resize(0);
@@ -348,20 +385,6 @@ IPAddress IPAddress::IPv6AllZeros() {
   return AllZeros(kIPv6AddressSize);
 }
 
-// static
-bool IPAddress::CreateIPv4Mask(IPAddress* ip_address,
-                               size_t mask_prefix_length) {
-  return CreateIPMask(&(ip_address->ip_address_), mask_prefix_length,
-                      kIPv4AddressSize);
-}
-
-// static
-bool IPAddress::CreateIPv6Mask(IPAddress* ip_address,
-                               size_t mask_prefix_length) {
-  return CreateIPMask(&(ip_address->ip_address_), mask_prefix_length,
-                      kIPv6AddressSize);
-}
-
 bool IPAddress::operator==(const IPAddress& that) const {
   return ip_address_ == that.ip_address_;
 }
@@ -393,15 +416,6 @@ std::string IPAddress::ToString() const {
   return str;
 }
 
-base::Value IPAddress::ToValue() const {
-  DCHECK(IsValid());
-  return base::Value(ToString());
-}
-
-size_t IPAddress::EstimateMemoryUsage() const {
-  return base::trace_event::EstimateMemoryUsage(ip_address_);
-}
-
 std::string IPAddressToStringWithPort(const IPAddress& address, uint16_t port) {
   std::string address_str = address.ToString();
   if (address_str.empty())
@@ -420,22 +434,24 @@ std::string IPAddressToPackedString(const IPAddress& address) {
 }
 
 IPAddress ConvertIPv4ToIPv4MappedIPv6(const IPAddress& address) {
-  CHECK(address.IsIPv4());
+  DCHECK(address.IsIPv4());
   // IPv4-mapped addresses are formed by:
   // <80 bits of zeros>  + <16 bits of ones> + <32-bit IPv4 address>.
-  IPAddressBytes bytes;
-  bytes.Append(kIPv4MappedPrefix);
-  bytes.Append(address.bytes());
-  return IPAddress(bytes);
+  base::StackVector<uint8_t, 16> bytes;
+  bytes->insert(bytes->end(), std::begin(kIPv4MappedPrefix),
+                std::end(kIPv4MappedPrefix));
+  bytes->insert(bytes->end(), address.bytes().begin(), address.bytes().end());
+  return IPAddress(bytes->data(), bytes->size());
 }
 
 IPAddress ConvertIPv4MappedIPv6ToIPv4(const IPAddress& address) {
   DCHECK(address.IsIPv4MappedIPv6());
 
-  IPAddressBytes bytes;
-  bytes.Append(
-      base::span(address.bytes()).subspan(std::size(kIPv4MappedPrefix)));
-  return IPAddress(bytes);
+  base::StackVector<uint8_t, 16> bytes;
+  bytes->insert(bytes->end(),
+                address.bytes().begin() + base::size(kIPv4MappedPrefix),
+                address.bytes().end());
+  return IPAddress(bytes->data(), bytes->size());
 }
 
 bool IPAddressMatchesPrefix(const IPAddress& ip_address,
@@ -443,10 +459,10 @@ bool IPAddressMatchesPrefix(const IPAddress& ip_address,
                             size_t prefix_length_in_bits) {
   // Both the input IP address and the prefix IP address should be either IPv4
   // or IPv6.
-  CHECK(ip_address.IsValid());
-  CHECK(ip_prefix.IsValid());
+  DCHECK(ip_address.IsValid());
+  DCHECK(ip_prefix.IsValid());
 
-  CHECK_LE(prefix_length_in_bits, ip_prefix.size() * 8);
+  DCHECK_LE(prefix_length_in_bits, ip_prefix.size() * 8);
 
   // In case we have an IPv6 / IPv4 mismatch, convert the IPv4 addresses to
   // IPv6 addresses in order to do the comparison.
@@ -464,14 +480,14 @@ bool IPAddressMatchesPrefix(const IPAddress& ip_address,
                               prefix_length_in_bits);
 }
 
-bool ParseCIDRBlock(std::string_view cidr_literal,
+bool ParseCIDRBlock(base::StringPiece cidr_literal,
                     IPAddress* ip_address,
                     size_t* prefix_length_in_bits) {
   // We expect CIDR notation to match one of these two templates:
   //   <IPv4-literal> "/" <number of bits>
   //   <IPv6-literal> "/" <number of bits>
 
-  std::vector<std::string_view> parts = base::SplitStringPiece(
+  std::vector<base::StringPiece> parts = base::SplitStringPiece(
       cidr_literal, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (parts.size() != 2)
     return false;
@@ -482,9 +498,8 @@ bool ParseCIDRBlock(std::string_view cidr_literal,
 
   // Parse the prefix length.
   uint32_t number_of_bits;
-  if (!ParseUint32(parts[1], ParseIntFormat::NON_NEGATIVE, &number_of_bits)) {
+  if (!ParseUint32(parts[1], &number_of_bits))
     return false;
-  }
 
   // Make sure the prefix length is in a valid range.
   if (number_of_bits > ip_address->size() * 8)
@@ -494,12 +509,13 @@ bool ParseCIDRBlock(std::string_view cidr_literal,
   return true;
 }
 
-bool ParseURLHostnameToAddress(std::string_view hostname,
+bool ParseURLHostnameToAddress(const base::StringPiece& hostname,
                                IPAddress* ip_address) {
   if (hostname.size() >= 2 && hostname.front() == '[' &&
       hostname.back() == ']') {
     // Strip the square brackets that surround IPv6 literals.
-    auto ip_literal = std::string_view(hostname).substr(1, hostname.size() - 2);
+    auto ip_literal =
+        base::StringPiece(hostname).substr(1, hostname.size() - 2);
     return ip_address->AssignFromIPLiteral(ip_literal) && ip_address->IsIPv6();
   }
 
@@ -523,6 +539,7 @@ size_t CommonPrefixLength(const IPAddress& a1, const IPAddress& a2) {
 }
 
 size_t MaskPrefixLength(const IPAddress& mask) {
+<<<<<<< HEAD
   IPAddressBytes all_ones;
   all_ones.Resize(mask.size());
   std::fill(all_ones.begin(), all_ones.end(), 0xFF);
@@ -629,6 +646,12 @@ IPAddress ConvertIPv4ToIPv4EmbeddedIPv6(const IPAddress& ipv4_address,
     case Dns64PrefixLength::kInvalid:
       return ipv4_address;
   }
+=======
+  base::StackVector<uint8_t, 16> all_ones;
+  all_ones->resize(mask.size(), 0xFF);
+  return CommonPrefixLength(mask,
+                            IPAddress(all_ones->data(), all_ones->size()));
+>>>>>>> chromium
 }
 
 }  // namespace net

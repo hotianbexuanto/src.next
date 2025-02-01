@@ -1,36 +1,57 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/paint/frame_painter.h"
 
-#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
-#include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
+=======
+#include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#include "third_party/blink/renderer/core/paint/frame_paint_timing.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_painter.h"
-#include "third_party/blink/renderer/core/paint/timing/frame_paint_timing.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
+#include "third_party/blink/renderer/platform/graphics/graphics_layer.h"
+#include "third_party/blink/renderer/platform/graphics/paint/cull_rect.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
-#include "third_party/blink/renderer/platform/graphics/paint/scoped_display_item_fragment.h"
+#include "third_party/blink/renderer/platform/loader/fetch/memory_cache.h"
 
 namespace blink {
 
 bool FramePainter::in_paint_contents_ = false;
 
-void FramePainter::Paint(GraphicsContext& context, PaintFlags paint_flags) {
+void FramePainter::Paint(GraphicsContext& context,
+                         const GlobalPaintFlags global_paint_flags,
+                         const CullRect& cull_rect) {
+  if (GetFrameView().ShouldThrottleRendering())
+    return;
+
+  GetFrameView().NotifyPageThatContentAreaWillPaint();
+
+  CullRect document_cull_rect(
+      Intersection(cull_rect.Rect(), GetFrameView().FrameRect()));
+  document_cull_rect.MoveBy(-GetFrameView().Location());
+
+  if (document_cull_rect.Rect().IsEmpty())
+    return;
+
+  PaintContents(context, global_paint_flags, document_cull_rect);
+}
+
+void FramePainter::PaintContents(GraphicsContext& context,
+                                 const GlobalPaintFlags global_paint_flags,
+                                 const CullRect& cull_rect) {
   Document* document = GetFrameView().GetFrame().GetDocument();
 
   if (GetFrameView().ShouldThrottleRendering() || !document->IsActive())
     return;
 
-  GetFrameView().NotifyPageThatContentAreaWillPaint();
-  ENTER_EMBEDDER_STATE(document->GetAgent().isolate(),
-                       &GetFrameView().GetFrame(), BlinkState::PAINT);
   LayoutView* layout_view = GetFrameView().GetLayoutView();
   if (!layout_view) {
     DLOG(ERROR) << "called FramePainter::paint with nil layoutObject";
@@ -42,18 +63,28 @@ void FramePainter::Paint(GraphicsContext& context, PaintFlags paint_flags) {
   if (!GetFrameView().CheckDoesNotNeedLayout())
     return;
 
-  // TODO(pdr): The following should check that the lifecycle is
-  // DocumentLifecycle::kInPaint but drag images currently violate this.
-  DCHECK_GE(document->Lifecycle().GetState(),
-            DocumentLifecycle::kPrePaintClean);
+  // TODO(wangxianzhu): The following check should be stricter, but currently
+  // this is blocked by the svg root issue (crbug.com/442939).
+  DCHECK(document->Lifecycle().GetState() >=
+         DocumentLifecycle::kCompositingAssignmentsClean);
 
   FramePaintTiming frame_paint_timing(context, &GetFrameView().GetFrame());
+<<<<<<< HEAD
+=======
+  DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT_WITH_CATEGORIES(
+      "devtools.timeline,rail", "Paint", inspector_paint_event::Data,
+      layout_view, PhysicalRect(cull_rect.Rect()), nullptr);
+>>>>>>> chromium
 
   bool is_top_level_painter = !in_paint_contents_;
   in_paint_contents_ = true;
 
   FontCachePurgePreventer font_cache_purge_preventer;
-  ScopedDisplayItemFragment display_item_fragment(context, 0u);
+
+  PaintLayerFlags root_layer_paint_flags = 0;
+  // This will prevent clipping the root PaintLayer to its visible content rect.
+  if (document->IsPrintingOrPaintingPreview())
+    root_layer_paint_flags = kPaintLayerPaintingOverflowContents;
 
   PaintLayer* root_layer = layout_view->Layer();
 
@@ -65,17 +96,22 @@ void FramePainter::Paint(GraphicsContext& context, PaintFlags paint_flags) {
 
   PaintLayerPainter layer_painter(*root_layer);
 
-  layer_painter.Paint(context, paint_flags);
+  float device_scale_factor = blink::DeviceScaleFactorDeprecated(
+      root_layer->GetLayoutObject().GetFrame());
+  context.SetDeviceScaleFactor(device_scale_factor);
+
+  layer_painter.Paint(context, cull_rect, global_paint_flags,
+                      root_layer_paint_flags);
 
   // Regions may have changed as a result of the visibility/z-index of element
   // changing.
-  if (document->DraggableRegionsDirty()) {
-    GetFrameView().UpdateDocumentDraggableRegions();
-  }
+  if (document->AnnotatedRegionsDirty())
+    GetFrameView().UpdateDocumentAnnotatedRegions();
 
   if (is_top_level_painter) {
     // Everything that happens after paintContents completions is considered
     // to be part of the next frame.
+    GetMemoryCache()->UpdateFramePaintTimestamp();
     in_paint_contents_ = false;
   }
 }

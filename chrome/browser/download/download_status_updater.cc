@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,12 +8,19 @@
 
 #include <vector>
 
+#include "base/macros.h"
 #include "base/memory/ptr_util.h"
 #include "build/build_config.h"
+<<<<<<< HEAD
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
 #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+=======
+#include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_keep_alive_types.h"
+#include "chrome/browser/profiles/scoped_profile_keep_alive.h"
 
 namespace {
 
@@ -29,7 +36,7 @@ namespace {
 class WasInProgressData : public base::SupportsUserData::Data {
  public:
   static bool Get(download::DownloadItem* item) {
-    return item->GetUserData(kKey) != nullptr;
+    return item->GetUserData(kKey) != NULL;
   }
 
   static void Clear(download::DownloadItem* item) {
@@ -40,11 +47,9 @@ class WasInProgressData : public base::SupportsUserData::Data {
     item->SetUserData(kKey, base::WrapUnique(this));
   }
 
-  WasInProgressData(const WasInProgressData&) = delete;
-  WasInProgressData& operator=(const WasInProgressData&) = delete;
-
  private:
   static const char kKey[];
+  DISALLOW_COPY_AND_ASSIGN(WasInProgressData);
 };
 
 const char WasInProgressData::kKey[] =
@@ -52,9 +57,17 @@ const char WasInProgressData::kKey[] =
 
 }  // anonymous namespace
 
+<<<<<<< HEAD
 DownloadStatusUpdater::DownloadStatusUpdater() = default;
 
 DownloadStatusUpdater::~DownloadStatusUpdater() = default;
+=======
+DownloadStatusUpdater::DownloadStatusUpdater() {
+}
+
+DownloadStatusUpdater::~DownloadStatusUpdater() {
+}
+>>>>>>> chromium
 
 bool DownloadStatusUpdater::GetProgress(float* progress,
                                         int* download_count) const {
@@ -68,7 +81,7 @@ bool DownloadStatusUpdater::GetProgress(float* progress,
     if (notifier->GetManager()) {
       content::DownloadManager::DownloadVector items;
       notifier->GetManager()->GetAllDownloads(&items);
-      for (download::DownloadItem* item : items) {
+      for (auto* item : items) {
         if (item->GetState() == download::DownloadItem::IN_PROGRESS) {
           ++*download_count;
           if (item->GetTotalBytes() <= 0) {
@@ -93,9 +106,8 @@ void DownloadStatusUpdater::AddManager(content::DownloadManager* manager) {
       std::make_unique<download::AllDownloadItemNotifier>(manager, this));
   content::DownloadManager::DownloadVector items;
   manager->GetAllDownloads(&items);
-  for (download::DownloadItem* item : items) {
+  for (auto* item : items)
     OnDownloadCreated(manager, item);
-  }
 }
 
 void DownloadStatusUpdater::OnDownloadCreated(content::DownloadManager* manager,
@@ -103,8 +115,7 @@ void DownloadStatusUpdater::OnDownloadCreated(content::DownloadManager* manager,
   // Ignore downloads loaded from history, which are in a terminal state.
   // TODO(benjhayden): Use the Observer interface to distinguish between
   // historical and started downloads.
-  if (item->GetState() == download::DownloadItem::IN_PROGRESS &&
-      !item->IsTransient()) {
+  if (item->GetState() == download::DownloadItem::IN_PROGRESS) {
     UpdateAppIconDownloadProgress(item);
     new WasInProgressData(item);
   }
@@ -114,8 +125,7 @@ void DownloadStatusUpdater::OnDownloadCreated(content::DownloadManager* manager,
 
 void DownloadStatusUpdater::OnDownloadUpdated(content::DownloadManager* manager,
                                               download::DownloadItem* item) {
-  if (item->GetState() == download::DownloadItem::IN_PROGRESS &&
-      !item->IsTransient()) {
+  if (item->GetState() == download::DownloadItem::IN_PROGRESS) {
     // If the item was interrupted/cancelled and then resumed/restarted, then
     // set WasInProgress so that UpdateAppIconDownloadProgress() will be called
     // when it completes.
@@ -178,7 +188,7 @@ void DownloadStatusUpdater::UpdateProfileKeepAlive(
   }
 }
 
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS_ASH)
+#if defined(OS_ANDROID) || BUILDFLAG(IS_CHROMEOS_ASH)
 void DownloadStatusUpdater::UpdateAppIconDownloadProgress(
     download::DownloadItem* download) {
   // TODO(avi): Implement for Android?

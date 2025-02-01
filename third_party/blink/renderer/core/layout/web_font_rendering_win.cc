@@ -1,10 +1,9 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/public/web/win/web_font_rendering.h"
 
-#include "third_party/blink/public/platform/web_font_rendering_client.h"
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
 
 namespace blink {
@@ -15,6 +14,7 @@ void WebFontRendering::SetSkiaFontManager(sk_sp<SkFontMgr> font_mgr) {
 }
 
 // static
+<<<<<<< HEAD
 void WebFontRendering::SetFontPrewarmer(WebFontPrewarmer* prewarmer) {
   FontCache::SetFontPrewarmer(prewarmer);
 }
@@ -28,6 +28,10 @@ WebFontPrewarmer* WebFontRendering::GetFontPrewarmer() {
 void WebFontRendering::SetFontRenderingClient(
     WebFontRenderingClient* rendering_client) {
   FontCache::SetFontPrewarmer(rendering_client);
+=======
+void WebFontRendering::AddSideloadedFontForTesting(sk_sp<SkTypeface> typeface) {
+  FontCache::AddSideloadedFontForTesting(std::move(typeface));
+>>>>>>> chromium
 }
 
 // static
@@ -56,6 +60,11 @@ void WebFontRendering::SetAntialiasedTextEnabled(bool enabled) {
 // static
 void WebFontRendering::SetLCDTextEnabled(bool enabled) {
   FontCache::SetLCDTextEnabled(enabled);
+}
+
+// static
+void WebFontRendering::SetUseSkiaFontFallback(bool use_skia_font_fallback) {
+  FontCache::SetUseSkiaFontFallback(use_skia_font_fallback);
 }
 
 }  // namespace blink

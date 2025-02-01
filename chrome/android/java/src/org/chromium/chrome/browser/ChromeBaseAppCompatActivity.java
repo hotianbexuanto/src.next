@@ -1,63 +1,56 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser;
 
+<<<<<<< HEAD
 import static android.app.Activity.OVERRIDE_TRANSITION_CLOSE;
 import static android.app.Activity.OVERRIDE_TRANSITION_OPEN;
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+=======
+import static org.chromium.chrome.browser.base.SplitCompatUtils.CHROME_SPLIT_NAME;
+>>>>>>> chromium
 
-import static org.chromium.chrome.browser.base.SplitCompatApplication.CHROME_SPLIT_NAME;
-
-import android.app.ActivityManager.TaskDescription;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+<<<<<<< HEAD
 import android.os.Build;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
+=======
+>>>>>>> chromium
 import android.os.Bundle;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewStub;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.LinearLayout.LayoutParams;
 
 import androidx.annotation.CallSuper;
+<<<<<<< HEAD
 import androidx.annotation.ColorInt;
 import androidx.annotation.IntDef;
 import androidx.annotation.LayoutRes;
+=======
+>>>>>>> chromium
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.annotation.StyleRes;
-import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
-import com.google.android.material.color.DynamicColors;
 
 import org.chromium.base.BuildInfo;
-import org.chromium.base.BundleUtils;
-import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
-import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.base.ServiceTracingProxyProvider;
 import org.chromium.chrome.browser.base.SplitChromeApplication;
+import org.chromium.chrome.browser.base.SplitCompatUtils;
+import org.chromium.chrome.browser.flags.CachedFeatureFlags;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.language.GlobalAppLocaleController;
-import org.chromium.chrome.browser.metrics.UmaSessionStats;
 import org.chromium.chrome.browser.night_mode.GlobalNightModeStateProviderHolder;
 import org.chromium.chrome.browser.night_mode.NightModeStateProvider;
 import org.chromium.chrome.browser.night_mode.NightModeUtils;
+<<<<<<< HEAD
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
 import org.chromium.components.browser_ui.edge_to_edge.EdgeToEdgeManager;
 import org.chromium.components.browser_ui.edge_to_edge.EdgeToEdgeStateProvider;
@@ -70,14 +63,13 @@ import org.chromium.ui.InsetObserver;
 import org.chromium.ui.base.ImmutableWeakReference;
 import org.chromium.ui.display.DisplaySwitches;
 import org.chromium.ui.display.DisplayUtil;
+=======
+import org.chromium.chrome.browser.ui.theme.ColorDelegateImpl;
+>>>>>>> chromium
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modaldialog.ModalDialogManagerHolder;
 import org.chromium.ui.util.AttrUtils;
 import org.chromium.ui.util.XrUtils;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.util.LinkedHashSet;
 
 /**
  * A subclass of {@link AppCompatActivity} that maintains states and objects applied to all
@@ -85,47 +77,22 @@ import java.util.LinkedHashSet;
  */
 public class ChromeBaseAppCompatActivity extends AppCompatActivity
         implements NightModeStateProvider.Observer, ModalDialogManagerHolder {
-    /**
-     * Chrome in automotive needs a persistent back button toolbar above all activities because
-     * AAOS/cars do not have a built in back button. This is implemented differently in each
-     * activity.
-     *
-     * Activities that use the <merge> tag or delay layout inflation cannot use WITH_TOOLBAR_VIEW.
-     * Activities that appear as Dialogs using themes do not have an automotive toolbar yet (NONE).
-     *
-     * Full screen alert dialogs display the automotive toolbar using FullscreenAlertDialog.
-     * Full screen dialogs display the automotive toolbar using ChromeDialog.
-     */
-    @IntDef({
-        AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW,
-        AutomotiveToolbarImplementation.NONE,
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    protected @interface AutomotiveToolbarImplementation {
-        /**
-         * Automotive toolbar is added by including the original layout into a bigger LinearLayout
-         * that has a Toolbar View, see
-         * R.layout.automotive_layout_with_horizontal_back_button_toolbar and
-         * R.layout.automotive_layout_with_vertical_back_button_toolbar.
-         */
-        int WITH_TOOLBAR_VIEW = 0;
-
-        /** Automotive toolbar is not added. */
-        int NONE = -1;
-    }
-
     private final ObservableSupplierImpl<ModalDialogManager> mModalDialogManagerSupplier =
             new ObservableSupplierImpl<>();
     protected final OneshotSupplierImpl<SystemBarColorHelper> mSystemBarColorHelperSupplier =
             new OneshotSupplierImpl<>();
 
     private NightModeStateProvider mNightModeStateProvider;
+<<<<<<< HEAD
     private LinkedHashSet<Integer> mThemeResIds = new LinkedHashSet<>();
     private ServiceTracingProxyProvider mServiceTracingProxyProvider;
     private InsetObserver mInsetObserver;
     private EdgeToEdgeStateProvider mEdgeToEdgeStateProvider;
     private EdgeToEdgeManager mEdgeToEdgeManager;
     private EdgeToEdgeLayoutCoordinator mEdgeToEdgeLayoutCoordinator;
+=======
+    private @StyleRes int mThemeResId;
+>>>>>>> chromium
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -133,29 +100,11 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
 
         // Make sure the "chrome" split is loaded before checking if ClassLoaders are equal.
         SplitChromeApplication.finishPreload(CHROME_SPLIT_NAME);
-        ClassLoader chromeModuleClassLoader = ChromeBaseAppCompatActivity.class.getClassLoader();
-        Context appContext = ContextUtils.getApplicationContext();
-        if (!chromeModuleClassLoader.equals(appContext.getClassLoader())) {
+        if (!ChromeBaseAppCompatActivity.class.getClassLoader().equals(
+                    ContextUtils.getApplicationContext().getClassLoader())) {
             // This should only happen on Android O. See crbug.com/1146745 for more info.
-            throw new IllegalStateException(
-                    "ClassLoader mismatch detected.\nA: "
-                            + chromeModuleClassLoader
-                            + "\nB: "
-                            + appContext.getClassLoader()
-                            + "\nC: "
-                            + chromeModuleClassLoader.getParent()
-                            + "\nD: "
-                            + appContext.getClassLoader().getParent()
-                            + "\nE: "
-                            + appContext);
+            throw new IllegalStateException("ClassLoader mismatch detected.");
         }
-        // If ClassLoader was corrected by SplitCompatAppComponentFactory, also need to correct
-        // the reference in the associated Context.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            BundleUtils.checkContextClassLoader(newBase, this);
-        }
-
-        mServiceTracingProxyProvider = ServiceTracingProxyProvider.create(newBase);
 
         mNightModeStateProvider = createNightModeStateProvider();
 
@@ -171,21 +120,24 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+<<<<<<< HEAD
         BundleUtils.restoreLoadedSplits(savedInstanceState);
 
         mEdgeToEdgeStateProvider = new EdgeToEdgeStateProvider(getWindow());
 
+=======
+        getSupportFragmentManager().setFragmentFactory(SplitCompatUtils.createFragmentFactory());
+>>>>>>> chromium
         mModalDialogManagerSupplier.set(createModalDialogManager());
 
         initializeNightModeStateProvider();
         mNightModeStateProvider.addObserver(this);
-
-        // onCreate may initialize some views, need to apply themes before that can happen.
-        applyThemeOverlays();
         super.onCreate(savedInstanceState);
+        applyThemeOverlays();
 
         // Activity level locale overrides must be done in onCreate.
         GlobalAppLocaleController.getInstance().maybeOverrideContextConfig(this);
+<<<<<<< HEAD
 
         setDefaultTaskDescription();
 
@@ -254,6 +206,8 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
                 mEdgeToEdgeManager.getEdgeToEdgeSystemBarColorHelper();
         edgeToEdgeSystemBarColorHelper.setStatusBarColor(defaultStatusBarColor);
         edgeToEdgeSystemBarColorHelper.setNavigationBarColor(defaultNavigationBarColor);
+=======
+>>>>>>> chromium
     }
 
     @Override
@@ -263,66 +217,28 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
             mModalDialogManagerSupplier.get().destroy();
             mModalDialogManagerSupplier.set(null);
         }
+<<<<<<< HEAD
         if (mEdgeToEdgeLayoutCoordinator != null) {
             mEdgeToEdgeLayoutCoordinator.destroy();
             mEdgeToEdgeLayoutCoordinator = null;
         }
         mEdgeToEdgeManager.destroy();
+=======
+>>>>>>> chromium
         super.onDestroy();
-    }
-
-    @Override
-    public ClassLoader getClassLoader() {
-        // Replace the default ClassLoader with a custom SplitAware one so that
-        // LayoutInflaters that use this ClassLoader can find view classes that
-        // live inside splits. Very useful when FragmentManger tries to inflate
-        // the UI automatically on restore.
-        return BundleUtils.getSplitCompatClassLoader();
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        BundleUtils.saveLoadedSplits(outState);
-    }
-
-    @Override
-    protected void onRestoreInstanceState(@Nullable Bundle state) {
-        if (state != null) {
-            // Ensure that classes from previously loaded splits can be read from the bundle.
-            // https://crbug.com/1382227
-            ClassLoader splitClassLoader = BundleUtils.getSplitCompatClassLoader();
-            state.setClassLoader(splitClassLoader);
-            // See: https://cs.android.com/search?q=Activity.java%20symbol:onRestoreInstanceState
-            Bundle windowState = state.getBundle("android:viewHierarchyState");
-            if (windowState != null) {
-                windowState.setClassLoader(splitClassLoader);
-            }
-        }
-        super.onRestoreInstanceState(state);
     }
 
     @Override
     public void setTheme(@StyleRes int resid) {
         super.setTheme(resid);
-        mThemeResIds.add(resid);
-    }
-
-    @Override
-    @RequiresApi(Build.VERSION_CODES.O)
-    public void onMultiWindowModeChanged(boolean inMultiWindowMode, Configuration configuration) {
-        super.onMultiWindowModeChanged(inMultiWindowMode, configuration);
-        onMultiWindowModeChanged(inMultiWindowMode);
+        mThemeResId = resid;
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         NightModeUtils.updateConfigurationForNightMode(
-                this, mNightModeStateProvider.isInNightMode(), newConfig, mThemeResIds);
-        // newConfig will have the default system locale so reapply the app locale override if
-        // needed: https://crbug.com/1248944
-        GlobalAppLocaleController.getInstance().maybeOverrideContextConfig(this);
+                this, mNightModeStateProvider.isInNightMode(), newConfig, mThemeResId);
     }
 
     // Implementation of ModalDialogManagerHolder
@@ -347,10 +263,12 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
      * Creates a {@link ModalDialogManager} for this class. Subclasses that need one should override
      * this method.
      */
-    protected @Nullable ModalDialogManager createModalDialogManager() {
+    @Nullable
+    protected ModalDialogManager createModalDialogManager() {
         return null;
     }
 
+<<<<<<< HEAD
     @VisibleForTesting
     public EdgeToEdgeLayoutCoordinator ensureEdgeToEdgeLayoutCoordinator() {
         if (mEdgeToEdgeLayoutCoordinator == null) {
@@ -375,24 +293,29 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
         return EdgeToEdgeUtils.isEdgeToEdgeEverywhereEnabled();
     }
 
+=======
+>>>>>>> chromium
     /**
      * Called during {@link #attachBaseContext(Context)} to allow configuration overrides to be
-     * applied. If this methods return true, the overrides will be applied using {@link
-     * #applyOverrideConfiguration(Configuration)}.
-     *
+     * applied. If this methods return true, the overrides will be applied using
+     * {@link #applyOverrideConfiguration(Configuration)}.
      * @param baseContext The base {@link Context} attached to this class.
-     * @param overrideConfig The {@link Configuration} that will be passed to {@link}
-     *     #applyOverrideConfiguration(Configuration)} if necessary.
+     * @param overrideConfig The {@link Configuration} that will be passed to
+     *                       @link #applyOverrideConfiguration(Configuration)} if necessary.
      * @return True if any configuration overrides were applied, and false otherwise.
      */
     @CallSuper
     protected boolean applyOverrides(Context baseContext, Configuration overrideConfig) {
+<<<<<<< HEAD
         applyOverridesForAutomotive(baseContext, overrideConfig);
         applyOverridesForXr(baseContext, overrideConfig);
+=======
+>>>>>>> chromium
         return NightModeUtils.applyOverridesForNightMode(
                 getNightModeStateProvider(), overrideConfig);
     }
 
+<<<<<<< HEAD
     @VisibleForTesting
     static void applyOverridesForAutomotive(Context baseContext, Configuration overrideConfig) {
         if (BuildInfo.getInstance().isAutomotive) {
@@ -414,6 +337,8 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
         }
     }
 
+=======
+>>>>>>> chromium
     /**
      * @return The {@link NightModeStateProvider} that provides the state of night mode.
      */
@@ -436,15 +361,14 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
      */
     protected void initializeNightModeStateProvider() {}
 
-    /** Apply theme overlay to this activity class. */
+    /**
+     * Apply theme overlay to this activity class.
+     */
     @CallSuper
     protected void applyThemeOverlays() {
-        // Note that if you're adding new overlays here, it's quite likely they're needed
-        // in org.chromium.chrome.browser.WarmupManager#applyContextOverrides for Custom Tabs
-        // UI that's pre-inflated using a themed application context as part of CCT warmup.
-        // Note: this should be called before any calls to `Window#getDecorView`.
-        DynamicColors.applyToActivityIfAvailable(this);
+        setTheme(R.style.ColorOverlay_ChromiumAndroid);
 
+<<<<<<< HEAD
         DeferredStartupHandler.getInstance()
                 .addDeferredTask(
                         () -> {
@@ -465,13 +389,20 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
             int elegantTextHeightOverlay = R.style.ThemeOverlay_BrowserUI_ElegantTextHeight;
             getTheme().applyStyle(elegantTextHeightOverlay, true);
             mThemeResIds.add(elegantTextHeightOverlay);
+=======
+        if (CachedFeatureFlags.isEnabled(ChromeFeatureList.DYNAMIC_COLOR_ANDROID)) {
+            new ColorDelegateImpl().applyDynamicColorsIfAvailable(this);
+>>>>>>> chromium
         }
-
-        if (Build.VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
-            int defaultFontFamilyOverlay =
-                    R.style.ThemeOverlay_BrowserUI_DefaultFontFamilyThemeOverlay;
-            getTheme().applyStyle(defaultFontFamilyOverlay, true);
-            mThemeResIds.add(defaultFontFamilyOverlay);
+        // Try to enable browser overscroll when content overscroll is enabled for consistency. This
+        // needs to be in a cached feature because activity startup happens before native is
+        // initialized. Unfortunately content overscroll is read in renderer threads, and these two
+        // are not synchronized. Typically the first time overscroll is enabled, the following will
+        // use the old value and then content will pick up the enabled value, causing one execution
+        // of inconsistency.
+        if (BuildInfo.isAtLeastS()
+                && !CachedFeatureFlags.isEnabled(ChromeFeatureList.ELASTIC_OVERSCROLL)) {
+            setTheme(R.style.ThemeOverlay_DisableOverscroll);
         }
 
         if (EdgeToEdgeUtils.isEdgeToEdgeEverywhereEnabled()
@@ -483,24 +414,20 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
         }
     }
 
-    /** Sets the default task description that will appear in the recents UI. */
-    protected void setDefaultTaskDescription() {
-        final TaskDescription taskDescription =
-                new TaskDescription(null, null, getColor(R.color.default_task_description_color));
-        setTaskDescription(taskDescription);
-    }
-
     // NightModeStateProvider.Observer implementation.
     @Override
     public void onNightModeStateChanged() {
         if (!isFinishing()) recreate();
     }
 
-    /** Required to make preference fragments use InMemorySharedPreferences in tests. */
+    /**
+     * Required to make preference fragments use InMemorySharedPreferences in tests.
+     */
     @Override
     public SharedPreferences getSharedPreferences(String name, int mode) {
         return ContextUtils.getApplicationContext().getSharedPreferences(name, mode);
     }
+<<<<<<< HEAD
 
     // Note that we do not need to (and can't) override getSystemService(Class<T>) as internally
     // that just gets the name of the Service and calls getSystemService(String) for backwards
@@ -654,4 +581,6 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
                     });
         }
     }
+=======
+>>>>>>> chromium
 }

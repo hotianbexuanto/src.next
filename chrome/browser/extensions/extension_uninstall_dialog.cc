@@ -1,11 +1,11 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/extension_uninstall_dialog.h"
 
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
+#include "base/bind.h"
+#include "base/callback_helpers.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
@@ -17,8 +17,11 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/browser/ui/native_window_tracker.h"
+#include "chrome/common/extensions/manifest_handlers/app_launch_info.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
+#include "components/url_formatter/elide_url.h"
 #include "content/public/browser/clear_site_data_utils.h"
 #include "extensions/browser/extension_dialog_auto_confirm.h"
 #include "extensions/browser/extension_system.h"
@@ -28,13 +31,14 @@
 #include "extensions/common/extension_urls.h"
 #include "extensions/common/manifest_handlers/icons_handler.h"
 #include "extensions/common/manifest_url_handlers.h"
+#include "ui/base/l10n/l10n_util.h"
+#include "ui/base/layout.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/image/image.h"
 #include "ui/gfx/image/image_skia.h"
-#include "ui/views/native_window_tracker.h"
 #include "url/origin.h"
 
 namespace extensions {
@@ -50,20 +54,18 @@ constexpr char kReferrerId[] = "chrome-remove-extension-dialog";
 
 float GetScaleFactor(gfx::NativeWindow window) {
   const display::Screen* screen = display::Screen::GetScreen();
-  if (!screen) {
+  if (!screen)
     return 1.0;  // Happens in unit_tests.
-  }
-  if (window) {
-    return screen->GetPreferredScaleFactorForWindow(window).value_or(1.0f);
-  }
+  if (window)
+    return screen->GetDisplayNearestWindow(window).device_scale_factor();
   return screen->GetPrimaryDisplay().device_scale_factor();
 }
 
-base::RepeatingClosure* g_on_will_show_callback = nullptr;
+ExtensionUninstallDialog::OnWillShowCallback* g_on_will_show_callback = nullptr;
 }  // namespace
 
 void ExtensionUninstallDialog::SetOnShownCallbackForTesting(
-    base::RepeatingClosure* callback) {
+    ExtensionUninstallDialog::OnWillShowCallback* callback) {
   g_on_will_show_callback = callback;
 }
 
@@ -74,8 +76,8 @@ ExtensionUninstallDialog::ExtensionUninstallDialog(
     : profile_(profile), parent_(parent), delegate_(delegate) {
   DCHECK(delegate_);
   if (parent)
-    parent_window_tracker_ = views::NativeWindowTracker::Create(parent);
-  profile_observation_.Observe(profile_.get());
+    parent_window_tracker_ = NativeWindowTracker::Create(parent);
+  profile_observation_.Observe(profile_);
 }
 
 ExtensionUninstallDialog::~ExtensionUninstallDialog() = default;
@@ -104,7 +106,7 @@ void ExtensionUninstallDialog::ConfirmUninstall(
   if (!profile_)
     return;
 
-  if (parent() && parent_window_tracker_->WasNativeWindowDestroyed()) {
+  if (parent() && parent_window_tracker_->WasNativeWindowClosed()) {
     OnDialogClosed(CLOSE_ACTION_CANCELED);
     return;
   }
@@ -113,6 +115,8 @@ void ExtensionUninstallDialog::ConfirmUninstall(
       ExtensionManagementFactory::GetForBrowserContext(profile_);
   show_report_abuse_checkbox_ =
       extension_management->UpdatesFromWebstore(*extension_);
+
+  show_remove_data_checkbox_ = extension_->from_bookmark();
 
   // Track that extension uninstalled externally.
   registry_observation_.Observe(ExtensionRegistry::Get(profile_));
@@ -132,20 +136,20 @@ void ExtensionUninstallDialog::OnIconUpdated(ChromeAppIcon* icon) {
 
   dialog_shown_ = true;
 
-  if (parent() && parent_window_tracker_->WasNativeWindowDestroyed()) {
+  if (parent() && parent_window_tracker_->WasNativeWindowClosed()) {
     OnDialogClosed(CLOSE_ACTION_CANCELED);
     return;
   }
 
-  if (g_on_will_show_callback != nullptr) {
-    g_on_will_show_callback->Run();
-  }
+  if (g_on_will_show_callback != nullptr)
+    g_on_will_show_callback->Run(this);
 
   switch (ScopedTestDialogAutoConfirm::GetAutoConfirmValue()) {
     case ScopedTestDialogAutoConfirm::NONE:
       Show();
       break;
     case ScopedTestDialogAutoConfirm::ACCEPT_AND_OPTION:
+    case ScopedTestDialogAutoConfirm::ACCEPT_AND_REMEMBER_OPTION:
       OnDialogClosed(CLOSE_ACTION_UNINSTALL_AND_CHECKBOX_CHECKED);
       break;
     case ScopedTestDialogAutoConfirm::ACCEPT:
@@ -177,14 +181,59 @@ void ExtensionUninstallDialog::OnProfileWillBeDestroyed(Profile* profile) {
   OnDialogClosed(CLOSE_ACTION_CANCELED);
 }
 
+std::string ExtensionUninstallDialog::GetHeadingText() {
+  if (triggering_extension_) {
+    return l10n_util::GetStringFUTF8(
+        IDS_EXTENSION_PROGRAMMATIC_UNINSTALL_PROMPT_HEADING,
+        base::UTF8ToUTF16(triggering_extension_->name()),
+        base::UTF8ToUTF16(extension_->name()));
+  }
+  return l10n_util::GetStringFUTF8(IDS_EXTENSION_UNINSTALL_PROMPT_HEADING,
+                                   base::UTF8ToUTF16(extension_->name()));
+}
+
+GURL ExtensionUninstallDialog::GetLaunchURL() const {
+  return AppLaunchInfo::GetFullLaunchURL(extension_.get());
+}
+
 bool ExtensionUninstallDialog::ShouldShowCheckbox() const {
-  return show_report_abuse_checkbox_;
+  return show_report_abuse_checkbox_ || show_remove_data_checkbox_;
+}
+
+std::u16string ExtensionUninstallDialog::GetCheckboxLabel() const {
+  DCHECK(ShouldShowCheckbox());
+
+  if (show_report_abuse_checkbox_) {
+    return triggering_extension_.get()
+               ? l10n_util::GetStringFUTF16(
+                     IDS_EXTENSION_PROMPT_UNINSTALL_REPORT_ABUSE_FROM_EXTENSION,
+                     base::UTF8ToUTF16(extension_->name()))
+               : l10n_util::GetStringUTF16(
+                     IDS_EXTENSION_PROMPT_UNINSTALL_REPORT_ABUSE);
+  }
+
+  DCHECK(show_remove_data_checkbox_);
+  return l10n_util::GetStringFUTF16(
+      IDS_EXTENSION_UNINSTALL_PROMPT_REMOVE_DATA_CHECKBOX,
+      url_formatter::FormatUrlForSecurityDisplay(
+          GetLaunchURL(), url_formatter::SchemeDisplay::OMIT_CRYPTOGRAPHIC));
 }
 
 void ExtensionUninstallDialog::OnDialogClosed(CloseAction action) {
   // Ensure the dialog isn't notified of an uninstallation after the dialog was
   // closed.
   registry_observation_.Reset();
+
+  // We don't want to artificially weight any of the options, so only record if
+  // a checkbox was shown.
+  if (show_report_abuse_checkbox_) {
+    UMA_HISTOGRAM_ENUMERATION("Extensions.UninstallDialogAction", action,
+                              CLOSE_ACTION_LAST);
+  } else if (show_remove_data_checkbox_) {
+    // TODO(crbug.com/1065748): Delete Webapp recording in extensions dialog.
+    UMA_HISTOGRAM_ENUMERATION("Webapp.UninstallDialogAction", action,
+                              CLOSE_ACTION_LAST);
+  }
 
   bool success = false;
   std::u16string error;
@@ -196,12 +245,24 @@ void ExtensionUninstallDialog::OnDialogClosed(CloseAction action) {
           "Extensions.UninstallDialogReportAbuseChecked"));
       base::RecordAction(
           base::UserMetricsAction("Extensions.UninstallDialogRemoveClick"));
-      // If the extension specifies a custom uninstall page via
-      // chrome.runtime.setUninstallURL, then at uninstallation its uninstall
-      // page opens. To ensure that the CWS Report Abuse page is the active
-      // tab at uninstallation, HandleReportAbuse() is called after
-      // Uninstall().
-      HandleReportAbuse();
+      if (show_remove_data_checkbox_) {
+        content::ClearSiteData(
+            base::BindRepeating(
+                [](content::BrowserContext* browser_context) {
+                  return browser_context;
+                },
+                base::Unretained(profile_)),
+            url::Origin::Create(GetLaunchURL()), true /*clear_cookies*/,
+            true /*clear_storage*/, true /*clear_cache*/,
+            false /*avoid_closing_connections*/, base::DoNothing());
+      } else {
+        // If the extension specifies a custom uninstall page via
+        // chrome.runtime.setUninstallURL, then at uninstallation its uninstall
+        // page opens. To ensure that the CWS Report Abuse page is the active
+        // tab at uninstallation, HandleReportAbuse() is called after
+        // Uninstall().
+        HandleReportAbuse();
+      }
       break;
     case CLOSE_ACTION_UNINSTALL:
       base::RecordAction(

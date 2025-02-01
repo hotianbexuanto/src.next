@@ -1,22 +1,14 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/chrome_extension_frame_host.h"
 
-#include "chrome/browser/extensions/activity_log/activity_log.h"
-#include "chrome/browser/extensions/error_console/error_console.h"
 #include "chrome/browser/extensions/extension_action_runner.h"
 #include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/common/extensions/extension_constants.h"
-#include "content/public/browser/render_frame_host.h"
-#include "content/public/browser/render_process_host.h"
 #include "extensions/browser/extension_registry.h"
-#include "extensions/browser/extension_util.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/extension_set.h"
-#include "extensions/common/extension_urls.h"
-#include "third_party/blink/public/common/logging/logging_utils.h"
 #include "url/gurl.h"
 
 namespace extensions {
@@ -28,12 +20,12 @@ ChromeExtensionFrameHost::ChromeExtensionFrameHost(
 ChromeExtensionFrameHost::~ChromeExtensionFrameHost() = default;
 
 void ChromeExtensionFrameHost::RequestScriptInjectionPermission(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     mojom::InjectionType script_type,
     mojom::RunLocation run_location,
     RequestScriptInjectionPermissionCallback callback) {
   ExtensionActionRunner* runner =
-      ExtensionActionRunner::GetForWebContents(web_contents_);
+      ExtensionActionRunner::GetForWebContents(web_contents());
   if (!runner) {
     std::move(callback).Run(false);
     return;
@@ -46,7 +38,7 @@ void ChromeExtensionFrameHost::GetAppInstallState(
     const GURL& requestor_url,
     GetAppInstallStateCallback callback) {
   ExtensionRegistry* registry =
-      ExtensionRegistry::Get(web_contents_->GetBrowserContext());
+      ExtensionRegistry::Get(web_contents()->GetBrowserContext());
   const ExtensionSet& extensions = registry->enabled_extensions();
   const ExtensionSet& disabled_extensions = registry->disabled_extensions();
 
@@ -63,12 +55,13 @@ void ChromeExtensionFrameHost::GetAppInstallState(
 
 void ChromeExtensionFrameHost::WatchedPageChange(
     const std::vector<std::string>& css_selectors) {
-  TabHelper* tab_helper = TabHelper::FromWebContents(web_contents_);
+  TabHelper* tab_helper = TabHelper::FromWebContents(web_contents());
   if (!tab_helper)
     return;
   tab_helper->OnWatchedPageChanged(css_selectors);
 }
 
+<<<<<<< HEAD
 void ChromeExtensionFrameHost::DetailedConsoleMessageAdded(
     const std::u16string& message,
     const std::u16string& source,
@@ -101,4 +94,6 @@ void ChromeExtensionFrameHost::ContentScriptsExecuting(
       ->OnScriptsExecuted(web_contents_, extension_id_to_scripts, frame_url);
 }
 
+=======
+>>>>>>> chromium
 }  // namespace extensions

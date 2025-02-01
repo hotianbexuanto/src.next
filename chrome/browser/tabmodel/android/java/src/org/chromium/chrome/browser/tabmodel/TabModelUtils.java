@@ -1,28 +1,16 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.tabmodel;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import org.chromium.base.Callback;
-import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.OneShotCallback;
-import org.chromium.base.supplier.OneshotSupplier;
-import org.chromium.base.supplier.OneshotSupplierImpl;
-import org.chromium.base.supplier.Supplier;
-import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabSelectionType;
+import org.chromium.chrome.browser.tab.state.CriticalPersistedTabData;
 import org.chromium.content_public.browser.WebContents;
-import org.chromium.ui.base.WindowAndroid;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.function.Predicate;
 
 /**
  * A set of convenience methods used for interacting with {@link TabList}s and {@link TabModel}s.
@@ -30,37 +18,89 @@ import java.util.function.Predicate;
 public class TabModelUtils {
     private TabModelUtils() {}
 
-    /** Returns the non-incognito instance of the {@link EmptyTabModel}. */
-    public static @NonNull TabModel getEmptyTabModel() {
-        return EmptyTabModel.getInstance(/* isIncognito= */ false);
+    /**
+<<<<<<< HEAD
+=======
+     * @param model The {@link TabModel} to act on.
+     * @param index The index of the {@link Tab} to close.
+     * @return      {@code true} if the {@link Tab} was found.
+     */
+    public static boolean closeTabByIndex(TabModel model, int index) {
+        Tab tab = model.getTabAt(index);
+        if (tab == null) return false;
+
+        return model.closeTab(tab);
     }
 
     /**
+     * @param model The {@link TabModel} to act on.
+     * @param tabId The id of the {@link Tab} to close.
+     * @return      {@code true} if the {@link Tab} was found.
+     */
+    public static boolean closeTabById(TabModel model, int tabId) {
+        return closeTabById(model, tabId, false);
+    }
+
+    /**
+     * @param model   The {@link TabModel} to act on.
+     * @param tabId   The id of the {@link Tab} to close.
+     * @param canUndo Whether or not this closure can be undone.
+     * @return        {@code true} if the {@link Tab} was found.
+     */
+    public static boolean closeTabById(TabModel model, int tabId, boolean canUndo) {
+        Tab tab = TabModelUtils.getTabById(model, tabId);
+        if (tab == null) return false;
+
+        return model.closeTab(tab, true, false, canUndo);
+    }
+
+    /**
+     * @param model The {@link TabModel} to act on.
+     * @return      {@code true} if the {@link Tab} was found.
+     */
+    public static boolean closeCurrentTab(TabModel model) {
+        Tab tab = TabModelUtils.getCurrentTab(model);
+        if (tab == null) return false;
+
+        return model.closeTab(tab);
+    }
+
+    /**
+>>>>>>> chromium
      * Find the index of the {@link Tab} with the specified id.
-     *
      * @param model The {@link TabModel} to act on.
      * @param tabId The id of the {@link Tab} to find.
-     * @return Specified {@link Tab} index or {@link TabList#INVALID_TAB_INDEX} if the {@link Tab}
-     *     is not found
+     * @return      Specified {@link Tab} index or {@link TabList#INVALID_TAB_INDEX} if the
+     *              {@link Tab} is not found
      */
     public static int getTabIndexById(TabList model, int tabId) {
         int count = model.getCount();
 
         for (int i = 0; i < count; i++) {
             Tab tab = model.getTabAt(i);
-            assert tab != null : "getTabAt() shouldn't return a null Tab from TabModel.";
-            if (tab != null && tab.getId() == tabId) return i;
+            if (tab.getId() == tabId) return i;
         }
 
         return TabModel.INVALID_TAB_INDEX;
     }
 
     /**
-     * Find the {@link Tab} index whose URL matches the specified URL.
-     *
+     * Find the {@link Tab} with the specified id.
      * @param model The {@link TabModel} to act on.
-     * @param url The URL to search for.
-     * @return Specified {@link Tab} or {@code null} if the {@link Tab} is not found
+     * @param tabId The id of the {@link Tab} to find.
+     * @return      Specified {@link Tab} or {@code null} if the {@link Tab} is not found
+     */
+    public static Tab getTabById(TabList model, int tabId) {
+        int index = getTabIndexById(model, tabId);
+        if (index == TabModel.INVALID_TAB_INDEX) return null;
+        return model.getTabAt(index);
+    }
+
+    /**
+     * Find the {@link Tab} index whose URL matches the specified URL.
+     * @param model The {@link TabModel} to act on.
+     * @param url   The URL to search for.
+     * @return      Specified {@link Tab} or {@code null} if the {@link Tab} is not found
      */
     public static int getTabIndexByUrl(TabList model, String url) {
         int count = model.getCount();
@@ -86,9 +126,8 @@ public class TabModelUtils {
 
     /**
      * Get the currently selected {@link Tab}.
-     *
      * @param model The {@link TabModel} to act on.
-     * @return The current {@link Tab} or {@code null} if no {@link Tab} is selected
+     * @returns     The current {@link Tab} or {@code null} if no {@link Tab} is selected
      */
     public static Tab getCurrentTab(TabList model) {
         int index = model.index();
@@ -110,32 +149,15 @@ public class TabModelUtils {
     }
 
     /**
-     * Selects a tab by its ID in the tab model selector.
-     *
-     * @param selector The {@link TabModelSelector} to act on.
-     * @param tabId The tab ID to select.
-     * @param type {@link TabSelectionType} how the tab selection was initiated.
-     */
-    public static void selectTabById(
-            @NonNull TabModelSelector selector, int tabId, @TabSelectionType int tabSelectionType) {
-        if (tabId == Tab.INVALID_TAB_ID) return;
-
-        TabModel model = selector.getModelForTabId(tabId);
-        if (model == null) return;
-
-        model.setIndex(getTabIndexById(model, tabId), tabSelectionType);
-    }
-
-    /**
      * A helper method that automatically passes {@link TabSelectionType#FROM_USER} as the selection
      * type to {@link TabModel#setIndex(int, TabSelectionType)}.
-     *
      * @param model The {@link TabModel} to act on.
      * @param index The index of the {@link Tab} to select.
      */
     public static void setIndex(TabModel model, int index) {
         model.setIndex(index, TabSelectionType.FROM_USER);
     }
+<<<<<<< HEAD
 
     /**
      * Returns the most recently visited Tab in the specified TabList that is not {@code tabId}.
@@ -155,11 +177,26 @@ public class TabModelUtils {
             if (timestamp != Tab.INVALID_TIMESTAMP && mostRecentTabTime < timestamp) {
                 mostRecentTabTime = timestamp;
                 mostRecentTab = tab;
+=======
+
+    /**
+     * Returns all the Tabs in the specified TabList that were opened from the Tab with the
+     * specified ID. The returned Tabs are in the same order as in the TabList.
+     * @param model The {@link TabModel} to act on.
+     * @param tabId The ID of the Tab whose children should be returned.
+     */
+    public static List<Tab> getChildTabs(TabList model, int tabId) {
+        Tab tab = model.getTabAt(tabId);
+
+        ArrayList<Tab> childTabs = new ArrayList<Tab>();
+        for (int i = 0; i < model.getCount(); i++) {
+            if (CriticalPersistedTabData.from(model.getTabAt(i)).getParentId() == tabId) {
+                childTabs.add(model.getTabAt(i));
+>>>>>>> chromium
             }
         }
-        return mostRecentTab;
-    }
 
+<<<<<<< HEAD
     /**
      * Executes an {@link Callback} when {@link TabModelSelector#isTabStateInitialized()} becomes
      * true. This will happen immediately and synchronously if the tab state is already initialized.
@@ -318,6 +355,9 @@ public class TabModelUtils {
             }
         }
         return ret;
+=======
+        return childTabs;
+>>>>>>> chromium
     }
 
     /** Returns the list of Tab IDs for the given Tabs. */

@@ -1,17 +1,14 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_NUMERIC_LITERAL_VALUE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_NUMERIC_LITERAL_VALUE_H_
 
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
 #include "third_party/blink/renderer/core/css/css_value_clamping_utils.h"
 
 namespace blink {
-
-class CSSLengthResolver;
 
 // Numeric values that can be expressed as a single unit (or a naked number or
 // percentage). The equivalence of CSS Typed OM's |CSSUnitValue| in the
@@ -28,24 +25,9 @@ class CORE_EXPORT CSSNumericLiteralValue : public CSSPrimitiveValue {
 
   bool IsAngle() const { return CSSPrimitiveValue::IsAngle(GetType()); }
   bool IsFontRelativeLength() const {
-    switch (GetType()) {
-      case UnitType::kQuirkyEms:
-      case UnitType::kEms:
-      case UnitType::kExs:
-      case UnitType::kRems:
-      case UnitType::kChs:
-      case UnitType::kIcs:
-      case UnitType::kLhs:
-      case UnitType::kCaps:
-      case UnitType::kRcaps:
-      case UnitType::kRexs:
-      case UnitType::kRchs:
-      case UnitType::kRics:
-      case UnitType::kRlhs:
-        return true;
-      default:
-        return false;
-    }
+    return GetType() == UnitType::kQuirkyEms || GetType() == UnitType::kEms ||
+           GetType() == UnitType::kExs || GetType() == UnitType::kRems ||
+           GetType() == UnitType::kChs;
   }
   bool IsQuirkyEms() const { return GetType() == UnitType::kQuirkyEms; }
   bool IsViewportPercentageLength() const {
@@ -64,6 +46,11 @@ class CORE_EXPORT CSSNumericLiteralValue : public CSSPrimitiveValue {
   }
   bool IsFlex() const { return CSSPrimitiveValue::IsFlex(GetType()); }
 
+<<<<<<< HEAD
+=======
+  bool IsZero() const { return !DoubleValue(); }
+
+>>>>>>> chromium
   bool IsComputationallyIndependent() const;
 
   double DoubleValue() const { return num_; }
@@ -74,31 +61,28 @@ class CORE_EXPORT CSSNumericLiteralValue : public CSSPrimitiveValue {
   double ComputeSeconds() const;
   double ComputeDegrees() const;
   double ComputeDotsPerPixel() const;
+<<<<<<< HEAD
   double ComputeInCanonicalUnit() const;
   double ComputeInCanonicalUnit(const CSSLengthResolver&) const;
   std::optional<double> GetValueIfKnown() const {
     return ComputeInCanonicalUnit();
   }
+=======
+>>>>>>> chromium
 
-  int ComputeInteger() const;
-  double ComputeNumber() const;
-  double ComputePercentage() const;
-  double ComputeLengthPx(const CSSLengthResolver&) const;
+  double ComputeLengthPx(
+      const CSSToLengthConversionData& conversion_data) const;
   bool AccumulateLengthArray(CSSLengthArray& length_array,
                              double multiplier) const;
   void AccumulateLengthUnitTypes(LengthTypeFlags& types) const;
 
   String CustomCSSText() const;
   bool Equals(const CSSNumericLiteralValue& other) const;
-  unsigned CustomHash() const;
-
-  UnitType CanonicalUnit() const;
-  CSSNumericLiteralValue* CreateCanonicalUnitValue() const;
 
   void TraceAfterDispatch(blink::Visitor* visitor) const;
 
  private:
-  const double num_;
+  double num_;
 };
 
 template <>

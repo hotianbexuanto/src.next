@@ -1,19 +1,13 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_OBSERVER_LIST_INTERNAL_H_
 #define BASE_OBSERVER_LIST_INTERNAL_H_
 
-#include <string>
-#include <type_traits>
-
 #include "base/base_export.h"
-#include "base/check.h"
+#include "base/check_op.h"
 #include "base/containers/linked_list.h"
-#include "base/dcheck_is_on.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/raw_ptr_exclusion.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list_types.h"
 
@@ -25,8 +19,6 @@ namespace base {
 namespace internal {
 
 // Adapter for putting raw pointers into an ObserverList<Foo>::Unchecked.
-template <base::RawPtrTraits ptr_traits = RawPtrTraits::kEmpty,
-          bool use_raw_pointer = false>
 class BASE_EXPORT UncheckedObserverAdapter {
  public:
   explicit UncheckedObserverAdapter(const void* observer)
@@ -45,24 +37,20 @@ class BASE_EXPORT UncheckedObserverAdapter {
   template <class ObserverType>
   static ObserverType* Get(const UncheckedObserverAdapter& adapter) {
     static_assert(
-        !std::is_base_of_v<CheckedObserver, ObserverType>,
+        !std::is_base_of<CheckedObserver, ObserverType>::value,
         "CheckedObserver classes must not use ObserverList<T>::Unchecked.");
     return static_cast<ObserverType*>(adapter.ptr_);
   }
 
-#if DCHECK_IS_ON()
-  std::string GetCreationStackString() const {
-    return "Observer created at:\n" + stack_.ToString();
-  }
-#endif  // DCHECK_IS_ON()
+#if EXPENSIVE_DCHECKS_ARE_ON()
+  std::string GetCreationStackString() const { return stack_.ToString(); }
+#endif  // EXPENSIVE_DCHECKS_ARE_ON()
 
  private:
-  using StorageType =
-      std::conditional_t<use_raw_pointer, void*, raw_ptr<void, ptr_traits>>;
-  StorageType ptr_;
-#if DCHECK_IS_ON()
+  void* ptr_;
+#if EXPENSIVE_DCHECKS_ARE_ON()
   base::debug::StackTrace stack_;
-#endif  // DCHECK_IS_ON()
+#endif  // EXPENSIVE_DCHECKS_ARE_ON()
 };
 
 // Adapter for CheckedObserver types so that they can use the same syntax as a
@@ -107,7 +95,7 @@ class BASE_EXPORT CheckedObserverAdapter {
   template <class ObserverType>
   static ObserverType* Get(const CheckedObserverAdapter& adapter) {
     static_assert(
-        std::is_base_of_v<CheckedObserver, ObserverType>,
+        std::is_base_of<CheckedObserver, ObserverType>::value,
         "Observers should inherit from base::CheckedObserver. "
         "Use ObserverList<T>::Unchecked to observe with raw pointers.");
     DCHECK(adapter.weak_ptr_);
@@ -160,20 +148,23 @@ class WeakLinkNode : public base::LinkNode<WeakLinkNode<ObserverList>> {
   }
 
   ObserverList* get() const {
+<<<<<<< HEAD
 #if EXPENSIVE_DCHECKS_ARE_ON()
     if (list_) {
       DCHECK_CALLED_ON_VALID_SEQUENCE(list_->iteration_sequence_checker_);
     }
 #endif  // EXPENSIVE_DCHECKS_ARE_ON()
+=======
+    if (list_)
+      DCHECK_CALLED_ON_VALID_SEQUENCE(list_->iteration_sequence_checker_);
+>>>>>>> chromium
     return list_;
   }
   ObserverList* operator->() const { return get(); }
   explicit operator bool() const { return get(); }
 
  private:
-  // `list_` is not a raw_ptr<...> for performance reasons: on-stack pointer +
-  // based on analysis of sampling profiler data and tab_search:top100:2020.
-  RAW_PTR_EXCLUSION ObserverList* list_ = nullptr;
+  ObserverList* list_ = nullptr;
 };
 
 }  // namespace internal

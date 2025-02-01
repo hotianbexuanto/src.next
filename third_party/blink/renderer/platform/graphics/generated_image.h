@@ -26,10 +26,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_GENERATED_IMAGE_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_GENERATED_IMAGE_H_
 
+#include "third_party/blink/renderer/platform/geometry/layout_size.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
-#include "ui/gfx/geometry/size_conversions.h"
-#include "ui/gfx/geometry/size_f.h"
 
 namespace blink {
 
@@ -39,10 +38,10 @@ class PLATFORM_EXPORT GeneratedImage : public Image {
 
   bool HasIntrinsicSize() const override { return false; }
 
-  gfx::Size SizeWithConfig(SizeConfig) const override {
-    return gfx::ToRoundedSize(size_);
+  IntSize SizeWithConfig(SizeConfig) const override {
+    return RoundedIntSize(size_);
   }
-  gfx::SizeF SizeWithConfigAsFloat(SizeConfig) const override { return size_; }
+  FloatSize SizeWithConfigAsFloat(SizeConfig) const override { return size_; }
 
   // Assume that generated content has no decoded data we need to worry about
   void DestroyDecodedData() override {}
@@ -52,38 +51,24 @@ class PLATFORM_EXPORT GeneratedImage : public Image {
  protected:
   void DrawPattern(GraphicsContext&,
                    const cc::PaintFlags&,
-                   const gfx::RectF& dest_rect,
+                   const FloatRect& dest_rect,
                    const ImageTilingInfo&,
-                   const ImageDrawOptions& draw_options) final;
-
-  // Implementation hook for the `DrawPattern()` implementation. `tile_rect` is
-  // a single tile rectangle including any spacing. `pattern_matrix` contains
-  // the transform from tile space to destination space. `src_rect` is the
-  // rectangle containing actual content (`tile_rect` minus any spacing).
-  //
-  // Provide an implementation of this for a subclass if it can generate a more
-  // efficient PaintShader than the default PaintRecord-based shader. If this
-  // is overridden, then the `DrawTile()` implementation can be empty since it
-  // won't be used.
-  virtual sk_sp<cc::PaintShader> CreateShader(
-      const gfx::RectF& tile_rect,
-      const SkMatrix* pattern_matrix,
-      const gfx::RectF& src_rect,
-      const ImageDrawOptions& draw_options);
+                   RespectImageOrientationEnum) final;
+  virtual sk_sp<cc::PaintShader> CreateShader(const FloatRect& tile_rect,
+                                              const SkMatrix* pattern_matrix,
+                                              const FloatRect& src_rect,
+                                              RespectImageOrientationEnum);
 
   // FIXME: Implement this to be less conservative.
   bool CurrentFrameKnownToBeOpaque() override { return false; }
 
-  GeneratedImage(const gfx::SizeF& size) : size_(size) {}
+  GeneratedImage(const FloatSize& size) : size_(size) {}
 
-  // Implementation hook for `CreateShader()`. Is passed a source rectangle
-  // (see `CreateShader()` above) that should be painted onto the provided
-  // PaintCanvas.
-  virtual void DrawTile(cc::PaintCanvas*,
-                        const gfx::RectF&,
-                        const ImageDrawOptions&) = 0;
+  virtual void DrawTile(GraphicsContext&,
+                        const FloatRect&,
+                        RespectImageOrientationEnum) = 0;
 
-  gfx::SizeF size_;
+  FloatSize size_;
 };
 
 }  // namespace blink

@@ -1,10 +1,10 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <stddef.h>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/extensions/extension_assets_manager_chromeos.h"
 #include "chrome/browser/extensions/extension_garbage_collector_chromeos.h"
@@ -56,6 +56,7 @@ bool ExtensionGarbageCollectorChromeOS::CanGarbageCollectSharedExtensions() {
   user_manager::UserManager* user_manager = user_manager::UserManager::Get();
   if (!user_manager) {
     NOTREACHED();
+    return false;
   }
 
   const user_manager::UserList& active_users = user_manager->GetLoggedInUsers();
@@ -65,7 +66,7 @@ bool ExtensionGarbageCollectorChromeOS::CanGarbageCollectSharedExtensions() {
     if (!active_users[i]->is_profile_created())
       return false;
     Profile* profile =
-        ash::ProfileHelper::Get()->GetProfileByUser(active_users[i]);
+        chromeos::ProfileHelper::Get()->GetProfileByUserUnsafe(active_users[i]);
     ExtensionGarbageCollectorChromeOS* gc =
         ExtensionGarbageCollectorChromeOS::Get(profile);
     if (gc && gc->crx_installs_in_progress_ > 0)
@@ -82,10 +83,8 @@ void ExtensionGarbageCollectorChromeOS::GarbageCollectSharedExtensions() {
             FROM_HERE,
             base::BindOnce(
                 &GarbageCollectExtensionsOnFileThread,
-                ExtensionAssetsManagerChromeOS::GetSharedInstallDir(), paths,
-                // No need to process unpacked because shared extensions can't
-                // be unpacked.
-                /*unpacked=*/false))) {
+                ExtensionAssetsManagerChromeOS::GetSharedInstallDir(),
+                paths))) {
       NOTREACHED();
     }
   }

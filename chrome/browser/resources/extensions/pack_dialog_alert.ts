@@ -1,63 +1,55 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.m.js';
+import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.m.js';
+import 'chrome://resources/cr_elements/shared_style_css.m.js';
 
-import type {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.m.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert.m.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.m.js';
+import {html, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {getCss} from './pack_dialog_alert.css.js';
-import {getHtml} from './pack_dialog_alert.html.js';
-
-export interface ExtensionsPackDialogAlertElement {
+interface ExtensionsPackDialogAlertElement {
   $: {
     dialog: CrDialogElement,
   };
 }
 
-export class ExtensionsPackDialogAlertElement extends CrLitElement {
+class ExtensionsPackDialogAlertElement extends PolymerElement {
   static get is() {
     return 'extensions-pack-dialog-alert';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return html`{__html_template__}`;
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      model: {type: Object},
-      cancelLabel_: {type: String},
-      confirmLabel_: {type: String},
-      title_: {type: String},
+      model: Object,
+      title_: String,
+      message_: String,
+      cancelLabel_: String,
+      confirmLabel_: String,
     };
   }
 
-  model: chrome.developerPrivate.PackDirectoryResponse = {
-    message: '',
-    item_path: '',
-    pem_path: '',
-    override_flags: 0,
-    status: chrome.developerPrivate.PackStatus.SUCCESS,
-  };
-  protected cancelLabel_: string|null = null;
+  private title_: string;
+  private message_: string;
+  private cancelLabel_: string|null = null;
   /** This needs to be initialized to trigger data-binding. */
-  protected confirmLabel_: string|null = '';
-  protected title_: string = '';
+  private confirmLabel_: string|null = '';
+  model: chrome.developerPrivate.PackDirectoryResponse;
 
   get returnValue(): string {
     return this.$.dialog.getNative().returnValue;
   }
 
-  override firstUpdated() {
+  ready() {
+    super.ready();
+
     // Initialize button label values for initial html binding.
     this.cancelLabel_ = null;
     this.confirmLabel_ = null;
@@ -78,18 +70,24 @@ export class ExtensionsPackDialogAlertElement extends CrLitElement {
         break;
       default:
         assertNotReached();
+        return;
     }
   }
 
-  protected getCancelButtonClass_(): string {
+  connectedCallback() {
+    super.connectedCallback();
+    this.$.dialog.showModal();
+  }
+
+  private getCancelButtonClass_(): string {
     return this.confirmLabel_ ? 'cancel-button' : 'action-button';
   }
 
-  protected onCancelClick_() {
+  private onCancelTap_() {
     this.$.dialog.cancel();
   }
 
-  protected onConfirmClick_() {
+  private onConfirmTap_() {
     // The confirm button should only be available in WARNING state.
     assert(this.model.status === chrome.developerPrivate.PackStatus.WARNING);
     this.$.dialog.close();

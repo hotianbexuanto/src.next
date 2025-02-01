@@ -1,10 +1,9 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/extensions/extension_installed_waiter.h"
 
-#include "base/task/single_thread_task_runner.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_list.h"
@@ -43,14 +42,20 @@ ExtensionInstalledWaiter::ExtensionInstalledWaiter(
       done_callback_(std::move(done_callback)) {
   extension_registry_observation_.Observe(
       extensions::ExtensionRegistry::Get(browser->profile()));
-  BrowserList::AddObserver(this);
+  removal_watcher_ = std::make_unique<ExtensionRemovalWatcher>(
+      browser, extension,
+      base::BindOnce(&ExtensionInstalledWaiter::OnExtensionRemoved,
+                     weak_factory_.GetWeakPtr()));
 }
 
 ExtensionInstalledWaiter::~ExtensionInstalledWaiter() {
   if (done_callback_ && g_giving_up_callback) {
     g_giving_up_callback->Run();
+<<<<<<< HEAD
   }
   BrowserList::RemoveObserver(this);
+=======
+>>>>>>> chromium
 }
 
 void ExtensionInstalledWaiter::RunCallbackIfExtensionInstalled() {
@@ -76,12 +81,13 @@ void ExtensionInstalledWaiter::OnExtensionLoaded(
 
   // Only call Wait() after all the other extension observers have had a chance
   // to run.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&ExtensionInstalledWaiter::RunCallbackIfExtensionInstalled,
                      weak_factory_.GetWeakPtr()));
 }
 
+<<<<<<< HEAD
 void ExtensionInstalledWaiter::OnExtensionUnloaded(
     content::BrowserContext* browser_context,
     const extensions::Extension* extension,
@@ -95,4 +101,8 @@ void ExtensionInstalledWaiter::OnBrowserRemoved(Browser* browser) {
   if (browser == browser_) {
     delete this;
   }
+=======
+void ExtensionInstalledWaiter::OnExtensionRemoved() {
+  delete this;
+>>>>>>> chromium
 }

@@ -1,12 +1,11 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/extensions/extension_installed_waiter.h"
 
+#include "base/callback_helpers.h"
 #include "base/command_line.h"
-#include "base/functional/callback_helpers.h"
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/load_error_reporter.h"
 #include "chrome/browser/extensions/test_extension_system.h"
@@ -72,8 +71,7 @@ class ExtensionInstalledWaiterTest : public BrowserWithTestWindowTest {
   }
 
  private:
-  raw_ptr<extensions::ExtensionService, DanglingUntriaged> extension_service_ =
-      nullptr;
+  extensions::ExtensionService* extension_service_ = nullptr;
 };
 
 TEST_F(ExtensionInstalledWaiterTest, ExtensionIsAlreadyInstalled) {
@@ -141,7 +139,7 @@ TEST_F(ExtensionInstalledWaiterTest, BrowserShutdownWhileWaiting) {
   auto foo = MakeExtensionNamed("foo");
   WaitFor(foo, browser.get());
 
-  browser.reset();
+  browser->OnWindowClosing();
   EXPECT_EQ(1, giving_up_called_);
   EXPECT_EQ(0, done_called_);
 }

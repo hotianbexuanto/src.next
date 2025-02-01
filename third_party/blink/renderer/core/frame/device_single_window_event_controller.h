@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,7 +8,7 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/platform_event_controller.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 
 namespace blink {
 
@@ -33,6 +33,7 @@ class CORE_EXPORT DeviceSingleWindowEventController
  protected:
   explicit DeviceSingleWindowEventController(LocalDOMWindow&);
 
+  bool IsSameSecurityOriginAsMainFrame() const;
   bool CheckPolicyFeatures(
       const Vector<network::mojom::PermissionsPolicyFeature>& features) const;
 
@@ -41,10 +42,6 @@ class CORE_EXPORT DeviceSingleWindowEventController
   virtual Event* LastEvent() const = 0;
   virtual const AtomicString& EventTypeName() const = 0;
   virtual bool IsNullEvent(Event*) const = 0;
-
-  void set_needs_checking_null_events(bool enabled) {
-    needs_checking_null_events_ = enabled;
-  }
 
  private:
   bool needs_checking_null_events_;

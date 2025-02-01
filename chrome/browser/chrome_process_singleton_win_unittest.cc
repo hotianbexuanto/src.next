@@ -1,21 +1,28 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/chrome_process_singleton.h"
 
+<<<<<<< HEAD
 #include <windows.h>
 
 #include <processthreadsapi.h>
 
+=======
+#include "base/bind.h"
+>>>>>>> chromium
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
 #include "base/files/file_path.h"
 #include "base/files/scoped_temp_dir.h"
+<<<<<<< HEAD
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
+=======
+>>>>>>> chromium
 #include "build/build_config.h"
 #include "chrome/common/chrome_features.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -23,13 +30,13 @@
 namespace {
 
 bool ServerCallback(int* callback_count,
-                    base::CommandLine command_line,
+                    const base::CommandLine& command_line,
                     const base::FilePath& current_directory) {
   ++(*callback_count);
   return true;
 }
 
-bool ClientCallback(base::CommandLine command_line,
+bool ClientCallback(const base::CommandLine& command_line,
                     const base::FilePath& current_directory) {
   ADD_FAILURE();
   return false;
@@ -43,15 +50,14 @@ TEST(ChromeProcessSingletonTest, Basic) {
 
   int callback_count = 0;
 
-  ChromeProcessSingleton ps1(profile_dir.GetPath());
-  ps1.Unlock(
+  ChromeProcessSingleton ps1(
+      profile_dir.GetPath(),
       base::BindRepeating(&ServerCallback, base::Unretained(&callback_count)));
+  ps1.Unlock();
 
-  ChromeProcessSingleton ps2(profile_dir.GetPath());
-  ps2.Unlock(base::BindRepeating(&ClientCallback));
-
-  EXPECT_FALSE(ps1.IsSingletonInstanceForTesting());
-  EXPECT_FALSE(ps2.IsSingletonInstanceForTesting());
+  ChromeProcessSingleton ps2(profile_dir.GetPath(),
+                             base::BindRepeating(&ClientCallback));
+  ps2.Unlock();
 
   ProcessSingleton::NotifyResult result = ps1.NotifyOtherProcessOrCreate();
 
@@ -60,9 +66,6 @@ TEST(ChromeProcessSingletonTest, Basic) {
 
   result = ps2.NotifyOtherProcessOrCreate();
   ASSERT_EQ(ProcessSingleton::PROCESS_NOTIFIED, result);
-
-  EXPECT_TRUE(ps1.IsSingletonInstanceForTesting());
-  EXPECT_FALSE(ps2.IsSingletonInstanceForTesting());
 
   ASSERT_EQ(1, callback_count);
 }
@@ -73,13 +76,13 @@ TEST(ChromeProcessSingletonTest, Lock) {
 
   int callback_count = 0;
 
-  ChromeProcessSingleton ps1(profile_dir.GetPath());
+  ChromeProcessSingleton ps1(
+      profile_dir.GetPath(),
+      base::BindRepeating(&ServerCallback, base::Unretained(&callback_count)));
 
-  ChromeProcessSingleton ps2(profile_dir.GetPath());
-  ps2.Unlock(base::BindRepeating(&ClientCallback));
-
-  EXPECT_FALSE(ps1.IsSingletonInstanceForTesting());
-  EXPECT_FALSE(ps2.IsSingletonInstanceForTesting());
+  ChromeProcessSingleton ps2(profile_dir.GetPath(),
+                             base::BindRepeating(&ClientCallback));
+  ps2.Unlock();
 
   ProcessSingleton::NotifyResult result = ps1.NotifyOtherProcessOrCreate();
 
@@ -90,14 +93,11 @@ TEST(ChromeProcessSingletonTest, Lock) {
   ASSERT_EQ(ProcessSingleton::PROCESS_NOTIFIED, result);
 
   ASSERT_EQ(0, callback_count);
-  ps1.Unlock(
-      base::BindRepeating(&ServerCallback, base::Unretained(&callback_count)));
+  ps1.Unlock();
   ASSERT_EQ(1, callback_count);
-
-  EXPECT_TRUE(ps1.IsSingletonInstanceForTesting());
-  EXPECT_FALSE(ps2.IsSingletonInstanceForTesting());
 }
 
+<<<<<<< HEAD
 TEST(ChromeProcessSingletonTest, OverridePrefetch) {
   base::test::ScopedFeatureList scoped_feature(
       features::kOverridePrefetchOnSingleton);
@@ -115,3 +115,55 @@ TEST(ChromeProcessSingletonTest, OverridePrefetch) {
   EXPECT_EQ(1UL, buckets.size());
   EXPECT_EQ(1, buckets[0].count);
 }
+=======
+#if defined(OS_WIN) && !defined(USE_AURA)
+namespace {
+
+void ModalNotificationHandler(bool* flag) {
+  *flag = true;
+}
+
+}  // namespace
+
+TEST(ChromeProcessSingletonTest, LockWithModalDialog) {
+  base::ScopedTempDir profile_dir;
+  ASSERT_TRUE(profile_dir.CreateUniqueTempDir());
+
+  int callback_count = 0;
+  bool called_modal_notification_handler = false;
+
+  ChromeProcessSingleton ps1(
+      profile_dir.GetPath(),
+      base::BindRepeating(&ServerCallback, base::Unretained(&callback_count)));
+  ps1.SetModalDialogNotificationHandler(base::BindRepeating(
+      &ModalNotificationHandler,
+      base::Unretained(&called_modal_notification_handler)));
+
+  ChromeProcessSingleton ps2(profile_dir.GetPath(),
+                             base::BindRepeating(&ClientCallback));
+  ps2.Unlock();
+
+  ProcessSingleton::NotifyResult result = ps1.NotifyOtherProcessOrCreate();
+
+  ASSERT_EQ(ProcessSingleton::PROCESS_NONE, result);
+  ASSERT_EQ(0, callback_count);
+
+  ASSERT_FALSE(called_modal_notification_handler);
+  result = ps2.NotifyOtherProcessOrCreate();
+  ASSERT_EQ(ProcessSingleton::PROCESS_NOTIFIED, result);
+  ASSERT_TRUE(called_modal_notification_handler);
+
+  ASSERT_EQ(0, callback_count);
+  ps1.SetModalDialogNotificationHandler(base::RepeatingClosure());
+  ps1.Unlock();
+  // The notifications sent while a modal dialog was open were processed after
+  // unlock.
+  ASSERT_EQ(2, callback_count);
+
+  // And now that the handler was cleared notifications will still be handled.
+  result = ps2.NotifyOtherProcessOrCreate();
+  ASSERT_EQ(ProcessSingleton::PROCESS_NOTIFIED, result);
+  ASSERT_EQ(3, callback_count);
+}
+#endif  // defined(OS_WIN) && !defined(USE_AURA)
+>>>>>>> chromium

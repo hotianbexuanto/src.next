@@ -26,8 +26,11 @@
 #include "third_party/blink/renderer/core/dom/decoded_data_document_parser.h"
 
 #include <memory>
+<<<<<<< HEAD
 
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-shared.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/document_encoding_data.h"
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder.h"
@@ -50,11 +53,18 @@ void DecodedDataDocumentParser::SetDecoder(
   decoder_ = std::move(decoder);
 }
 
-void DecodedDataDocumentParser::AppendBytes(base::span<const uint8_t> bytes) {
+TextResourceDecoder* DecodedDataDocumentParser::Decoder() {
+  return decoder_.get();
+}
+
+std::unique_ptr<TextResourceDecoder> DecodedDataDocumentParser::TakeDecoder() {
+  return std::move(decoder_);
+}
+
+void DecodedDataDocumentParser::AppendBytes(const char* data, size_t length) {
   TRACE_EVENT0("loading", "DecodedDataDocumentParser::AppendBytes");
-  if (bytes.empty()) {
+  if (!length)
     return;
-  }
 
   // This should be checking isStopped(), but XMLDocumentParser prematurely
   // stops parsing when handling an XSLT processing instruction and still
@@ -62,6 +72,7 @@ void DecodedDataDocumentParser::AppendBytes(base::span<const uint8_t> bytes) {
   if (IsDetached())
     return;
 
+<<<<<<< HEAD
   String auto_detected_charset;
   String decoded = decoder_->Decode(bytes, &auto_detected_charset);
   if (!auto_detected_charset.empty()) {
@@ -70,6 +81,9 @@ void DecodedDataDocumentParser::AppendBytes(base::span<const uint8_t> bytes) {
       GetDocument()->CountUse(WebFeature::kCharsetAutoDetectionISO2022JP);
     }
   }
+=======
+  String decoded = decoder_->Decode(data, length);
+>>>>>>> chromium
   UpdateDocument(decoded);
 }
 
@@ -89,24 +103,15 @@ void DecodedDataDocumentParser::Flush() {
   UpdateDocument(remaining_data);
 }
 
-void DecodedDataDocumentParser::AppendDecodedData(
-    const String& data,
-    const DocumentEncodingData& encoding_data) {
-  if (IsDetached())
-    return;
-
+void DecodedDataDocumentParser::UpdateDocument(String& decoded_data) {
   // A Document created from XSLT may have changed the encoding of the data
   // before feeding it to the parser, so don't overwrite the encoding data XSLT
   // provided about the original encoding.
   if (!DocumentXSLT::HasTransformSourceDocument(*GetDocument()))
-    GetDocument()->SetEncodingData(encoding_data);
+    GetDocument()->SetEncodingData(DocumentEncodingData(*decoder_.get()));
 
-  if (!data.empty())
-    Append(data);
-}
-
-void DecodedDataDocumentParser::UpdateDocument(const String& decoded_data) {
-  AppendDecodedData(decoded_data, DocumentEncodingData(*decoder_.get()));
+  if (!decoded_data.IsEmpty())
+    Append(decoded_data);
 }
 
 }  // namespace blink

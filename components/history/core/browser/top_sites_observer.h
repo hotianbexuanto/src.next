@@ -1,9 +1,11 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef COMPONENTS_HISTORY_CORE_BROWSER_TOP_SITES_OBSERVER_H_
 #define COMPONENTS_HISTORY_CORE_BROWSER_TOP_SITES_OBSERVER_H_
+
+#include "base/macros.h"
 
 namespace history {
 
@@ -22,12 +24,8 @@ class TopSitesObserver {
     FORCED_URL,
   };
 
-  TopSitesObserver() = default;
-
-  TopSitesObserver(const TopSitesObserver&) = delete;
-  TopSitesObserver& operator=(const TopSitesObserver&) = delete;
-
-  virtual ~TopSitesObserver() = default;
+  TopSitesObserver() {}
+  virtual ~TopSitesObserver() {}
 
   // Is called when TopSites finishes loading.
   virtual void TopSitesLoaded(TopSites* top_sites) = 0;
@@ -36,6 +34,9 @@ class TopSitesObserver {
   // changed, or one of the images changes.
   virtual void TopSitesChanged(TopSites* top_sites,
                                ChangeReason change_reason) = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(TopSitesObserver);
 };
 
 }  // namespace history

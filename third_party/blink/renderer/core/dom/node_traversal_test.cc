@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -86,11 +86,11 @@ TEST_F(NodeTraversalTest, NextFunctions) {
 
   Element* html = GetDocument().documentElement();
   Element* body = GetDocument().body();
-  Element* c0 = body->QuerySelector(AtomicString("#c0"));
-  Element* c1 = body->QuerySelector(AtomicString("#c1"));
-  Element* c00 = body->QuerySelector(AtomicString("#c00"));
-  Element* c01 = body->QuerySelector(AtomicString("#c01"));
-  Element* c10 = body->QuerySelector(AtomicString("#c10"));
+  Element* c0 = body->QuerySelector("#c0");
+  Element* c1 = body->QuerySelector("#c1");
+  Element* c00 = body->QuerySelector("#c00");
+  Element* c01 = body->QuerySelector("#c01");
+  Element* c10 = body->QuerySelector("#c10");
 
   EXPECT_EQ(c0, NodeTraversal::Next(*body));
   EXPECT_EQ(c00, NodeTraversal::Next(*c0));
@@ -125,9 +125,9 @@ TEST_F(NodeTraversalTest, LastWithin) {
       <div id='c1'></div>)");
 
   Element* body = GetDocument().body();
-  Element* c0 = body->QuerySelector(AtomicString("#c0"));
-  Element* c1 = body->QuerySelector(AtomicString("#c1"));
-  Element* c00 = body->QuerySelector(AtomicString("#c00"));
+  Element* c0 = body->QuerySelector("#c0");
+  Element* c1 = body->QuerySelector("#c1");
+  Element* c00 = body->QuerySelector("#c00");
 
   EXPECT_EQ(c1, NodeTraversal::LastWithin(*body));
   EXPECT_EQ(c1, NodeTraversal::LastWithinOrSelf(*body));
@@ -156,11 +156,11 @@ TEST_F(NodeTraversalTest, PreviousFunctions) {
   Element* html = GetDocument().documentElement();
   Element* head = GetDocument().head();
   Element* body = GetDocument().body();
-  Element* c0 = body->QuerySelector(AtomicString("#c0"));
-  Element* c1 = body->QuerySelector(AtomicString("#c1"));
-  Element* c00 = body->QuerySelector(AtomicString("#c00"));
-  Element* c01 = body->QuerySelector(AtomicString("#c01"));
-  Element* c10 = body->QuerySelector(AtomicString("#c10"));
+  Element* c0 = body->QuerySelector("#c0");
+  Element* c1 = body->QuerySelector("#c1");
+  Element* c00 = body->QuerySelector("#c00");
+  Element* c01 = body->QuerySelector("#c01");
+  Element* c10 = body->QuerySelector("#c10");
 
   EXPECT_EQ(head, NodeTraversal::Previous(*body));
   EXPECT_EQ(body, NodeTraversal::Previous(*c0));
@@ -200,10 +200,10 @@ TEST_F(NodeTraversalTest, ChildAt) {
       <div id='c2'></div>)");
 
   Element* body = GetDocument().body();
-  Element* c0 = body->QuerySelector(AtomicString("#c0"));
-  Element* c1 = body->QuerySelector(AtomicString("#c1"));
-  Element* c2 = body->QuerySelector(AtomicString("#c2"));
-  Element* c00 = body->QuerySelector(AtomicString("#c00"));
+  Element* c0 = body->QuerySelector("#c0");
+  Element* c1 = body->QuerySelector("#c1");
+  Element* c2 = body->QuerySelector("#c2");
+  Element* c00 = body->QuerySelector("#c00");
 
   const unsigned kNumberOfChildNodes = 3;
   std::array<Node*, 3> expected_child_nodes = {c0, c1, c2};
@@ -240,9 +240,9 @@ TEST_F(NodeTraversalTest, Siblings) {
       <div id='c2'></div>)");
 
   Element* body = GetDocument().body();
-  Element* c0 = body->QuerySelector(AtomicString("#c0"));
-  Element* c1 = body->QuerySelector(AtomicString("#c1"));
-  Element* c2 = body->QuerySelector(AtomicString("#c2"));
+  Element* c0 = body->QuerySelector("#c0");
+  Element* c1 = body->QuerySelector("#c1");
+  Element* c2 = body->QuerySelector("#c2");
 
   EXPECT_EQ(c0, NodeTraversal::FirstChild(*body));
   EXPECT_EQ(c2, NodeTraversal::LastChild(*body));
@@ -274,14 +274,14 @@ TEST_F(NodeTraversalTest, commonAncestor) {
       <div id='c2'></div>)");
 
   Element* body = GetDocument().body();
-  Element* c0 = body->QuerySelector(AtomicString("#c0"));
-  Element* c1 = body->QuerySelector(AtomicString("#c1"));
-  Element* c2 = body->QuerySelector(AtomicString("#c2"));
+  Element* c0 = body->QuerySelector("#c0");
+  Element* c1 = body->QuerySelector("#c1");
+  Element* c2 = body->QuerySelector("#c2");
 
-  Element* c00 = body->QuerySelector(AtomicString("#c00"));
-  Element* c01 = body->QuerySelector(AtomicString("#c01"));
-  Element* c10 = body->QuerySelector(AtomicString("#c10"));
-  Element* c000 = body->QuerySelector(AtomicString("#c000"));
+  Element* c00 = body->QuerySelector("#c00");
+  Element* c01 = body->QuerySelector("#c01");
+  Element* c10 = body->QuerySelector("#c10");
+  Element* c000 = body->QuerySelector("#c000");
 
   TestCommonAncestor(body, *c0, *c1);
   TestCommonAncestor(body, *c1, *c2);
@@ -303,7 +303,7 @@ TEST_F(NodeTraversalTest, AncestorsOf) {
         </div>
       </div>)");
 
-  Element* child = GetDocument().getElementById(AtomicString("child"));
+  Element* child = GetDocument().getElementById("child");
 
   HeapVector<Member<Node>> expected_nodes;
   for (Node* parent = NodeTraversal::Parent(*child); parent;
@@ -326,7 +326,7 @@ TEST_F(NodeTraversalTest, InclusiveAncestorsOf) {
         </div>
       </div>)");
 
-  Element* child = GetDocument().getElementById(AtomicString("child"));
+  Element* child = GetDocument().getElementById("child");
 
   HeapVector<Member<Node>> expected_nodes;
   for (Node* parent = child; parent; parent = NodeTraversal::Parent(*parent)) {

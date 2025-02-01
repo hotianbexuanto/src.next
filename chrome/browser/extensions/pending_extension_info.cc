@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,10 +30,17 @@ PendingExtensionInfo::PendingExtensionInfo(
       mark_acknowledged_(mark_acknowledged),
       remote_install_(remote_install) {}
 
-PendingExtensionInfo::PendingExtensionInfo(PendingExtensionInfo&& other) =
+PendingExtensionInfo::PendingExtensionInfo()
+    : update_url_(),
+      should_allow_install_(NULL),
+      is_from_sync_(true),
+      install_source_(mojom::ManifestLocation::kInvalidLocation),
+      creation_flags_(Extension::NO_FLAGS),
+      mark_acknowledged_(false),
+      remote_install_(false) {}
+
+PendingExtensionInfo::PendingExtensionInfo(const PendingExtensionInfo& other) =
     default;
-PendingExtensionInfo& PendingExtensionInfo::operator=(
-    PendingExtensionInfo&& other) = default;
 
 PendingExtensionInfo::~PendingExtensionInfo() = default;
 
@@ -47,9 +54,8 @@ int PendingExtensionInfo::CompareTo(const PendingExtensionInfo& other) const {
     int comparison = version_.CompareTo(other.version_);
 
     // If the versions differ then return the version comparison result.
-    if (comparison != 0) {
+    if (comparison != 0)
       return comparison;
-    }
   }
 
   // The versions aren't specified, or they are the same version. Check

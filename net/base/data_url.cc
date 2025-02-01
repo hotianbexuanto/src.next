@@ -1,22 +1,33 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // NOTE: based loosely on mozilla's nsDataChannel.cpp
 
+#include <algorithm>
+
 #include "net/base/data_url.h"
 
+<<<<<<< HEAD
 #include <algorithm>
 #include <string>
 #include <string_view>
 
 #include "base/base64.h"
 #include "base/command_line.h"
+=======
+#include "base/base64.h"
+#include "base/containers/cxx20_erase.h"
+>>>>>>> chromium
 #include "base/strings/escape.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
+<<<<<<< HEAD
 #include "net/base/base64.h"
 #include "net/base/features.h"
+=======
+>>>>>>> chromium
 #include "net/base/mime_util.h"
 #include "net/http/http_response_headers.h"
 #include "net/http/http_util.h"
@@ -24,6 +35,7 @@
 
 namespace net {
 
+<<<<<<< HEAD
 namespace {
 
 // Determine if we are in the deprecated mode of whitespace removal
@@ -63,6 +75,8 @@ bool IsFurtherOptimizeParsingDataUrlsEnabled() {
 
 }  // namespace
 
+=======
+>>>>>>> chromium
 bool DataURL::Parse(const GURL& url,
                     std::string* mime_type,
                     std::string* charset,
@@ -74,15 +88,23 @@ bool DataURL::Parse(const GURL& url,
   DCHECK(charset->empty());
   DCHECK(!data || data->empty());
 
-  // Avoid copying the URL content which can be expensive for large URLs.
-  std::string_view content = url.GetContentPiece();
+  std::string content = url.GetContent();
 
+<<<<<<< HEAD
   std::string_view::const_iterator comma = std::ranges::find(content, ',');
   if (comma == content.end())
+=======
+  std::string::const_iterator begin = content.begin();
+  std::string::const_iterator end = content.end();
+
+  std::string::const_iterator comma = std::find(begin, end, ',');
+
+  if (comma == end)
+>>>>>>> chromium
     return false;
 
-  std::vector<std::string_view> meta_data =
-      base::SplitStringPiece(base::MakeStringPiece(content.begin(), comma), ";",
+  std::vector<base::StringPiece> meta_data =
+      base::SplitStringPiece(base::MakeStringPiece(begin, comma), ";",
                              base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   // These are moved to |mime_type| and |charset| on success.
@@ -94,8 +116,8 @@ bool DataURL::Parse(const GURL& url,
     ++iter;
   }
 
-  static constexpr std::string_view kBase64Tag("base64");
-  static constexpr std::string_view kCharsetTag("charset=");
+  static constexpr base::StringPiece kBase64Tag("base64");
+  static constexpr base::StringPiece kCharsetTag("charset=");
 
   bool base64_encoded = false;
   for (; iter != meta_data.cend(); ++iter) {
@@ -143,12 +165,13 @@ bool DataURL::Parse(const GURL& url,
     // spaces itself, anyways. Should we just trim leading spaces instead?
     // Allowing random intermediary spaces seems unnecessary.
 
-    auto raw_body = base::MakeStringPiece(comma + 1, content.end());
+    auto raw_body = base::MakeStringPiece(comma + 1, end);
 
     // For base64, we may have url-escaped whitespace which is not part
     // of the data, and should be stripped. Otherwise, the escaped whitespace
     // could be part of the payload, so don't strip it.
     if (base64_encoded) {
+<<<<<<< HEAD
       if (IsSimdutfBase64SupportEnabled()) {
         if (IsFurtherOptimizeParsingDataUrlsEnabled()) {
           // Based on https://fetch.spec.whatwg.org/#data-url-processor, we can
@@ -226,22 +249,34 @@ bool DataURL::Parse(const GURL& url,
             }
           }
         }
+=======
+      std::string unescaped_body = base::UnescapeBinaryURLComponent(raw_body);
+
+      // Strip spaces, which aren't allowed in Base64 encoding.
+      base::EraseIf(unescaped_body, base::IsAsciiWhitespace<char>);
+
+      size_t length = unescaped_body.length();
+      size_t padding_needed = 4 - (length % 4);
+      // If the input wasn't padded, then we pad it as necessary until we have a
+      // length that is a multiple of 4 as required by our decoder. We don't
+      // correct if the input was incorrectly padded. If |padding_needed| == 3,
+      // then the input isn't well formed and decoding will fail with or without
+      // padding.
+      if ((padding_needed == 1 || padding_needed == 2) &&
+          unescaped_body[length - 1] != '=') {
+        unescaped_body.resize(length + padding_needed, '=');
+>>>>>>> chromium
       }
+      if (!base::Base64Decode(unescaped_body, data))
+        return false;
     } else {
-      // `temp`'s storage needs to be outside feature check since `raw_body` is
-      // a string_view.
+      // Strip whitespace for non-text MIME types.
       std::string temp;
-      // Strip whitespace for non-text MIME types. This is controlled either by
-      // the feature (finch kill switch) or an enterprise policy which sets the
-      // command line flag.
-      if (!base::FeatureList::IsEnabled(features::kKeepWhitespaceForDataUrls) ||
-          HasRemoveWhitespaceCommandLineFlag()) {
-        if (!(mime_type_value.compare(0, 5, "text/") == 0 ||
-              mime_type_value.find("xml") != std::string::npos)) {
-          temp = std::string(raw_body);
-          std::erase_if(temp, base::IsAsciiWhitespace<char>);
-          raw_body = temp;
-        }
+      if (!(mime_type_value.compare(0, 5, "text/") == 0 ||
+            mime_type_value.find("xml") != std::string::npos)) {
+        temp = std::string(raw_body);
+        base::EraseIf(temp, base::IsAsciiWhitespace<char>);
+        raw_body = temp;
       }
 
       *data = base::UnescapeBinaryURLComponent(raw_body);
@@ -254,7 +289,7 @@ bool DataURL::Parse(const GURL& url,
 }
 
 Error DataURL::BuildResponse(const GURL& url,
-                             std::string_view method,
+                             base::StringPiece method,
                              std::string* mime_type,
                              std::string* charset,
                              std::string* data,
@@ -278,14 +313,10 @@ Error DataURL::BuildResponse(const GURL& url,
   if (!charset->empty())
     content_type.append(";charset=" + *charset);
   // The terminal double CRLF isn't needed by TryToCreate().
-  if (base::FeatureList::IsEnabled(features::kOptimizeParsingDataUrls)) {
-    *headers = HttpResponseHeaders::TryToCreateForDataURL(content_type);
-  } else {
-    *headers = HttpResponseHeaders::TryToCreate(
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type:" +
-        content_type);
-  }
+  *headers = HttpResponseHeaders::TryToCreate(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type:" +
+      content_type);
   // Above line should always succeed - TryToCreate() only fails when there are
   // nulls in the string, and DataURL::Parse() can't return nulls in anything
   // but the |data| argument.

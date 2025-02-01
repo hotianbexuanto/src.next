@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,28 +6,19 @@
 
 #include <stdint.h>
 
+#include <algorithm>
 #include <iostream>
+#include <limits>
 #include <memory>
-#include <optional>
-#include <string_view>
 #include <unordered_set>
 
 #include "base/pickle.h"
-#include "base/strings/stringprintf.h"
 #include "base/time/time.h"
-#include "base/types/optional_util.h"
 #include "base/values.h"
-#include "net/base/cronet_buildflags.h"
-#include "net/base/tracing.h"
 #include "net/http/http_byte_range.h"
-#include "net/http/http_response_headers_test_util.h"
 #include "net/http/http_util.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include "net/log/net_log_capture_mode.h"
 #include "testing/gtest/include/gtest/gtest.h"
-
-#if !BUILDFLAG(CRONET_BUILD)
-#include "third_party/perfetto/include/perfetto/test/traced_value_test_support.h"
-#endif
 
 namespace net {
 
@@ -66,32 +57,37 @@ class HttpResponseHeadersCacheControlTest : public HttpResponseHeadersTest {
     raw_headers += cache_control;
     raw_headers += "\n";
     HeadersToRaw(&raw_headers);
-    headers_ = base::MakeRefCounted<HttpResponseHeaders>(raw_headers);
+    headers_ = new HttpResponseHeaders(raw_headers);
   }
 
   const scoped_refptr<HttpResponseHeaders>& headers() { return headers_; }
+
+  // Return a pointer to a TimeDelta object. For use when the value doesn't
+  // matter.
+  TimeDelta* TimeDeltaPointer() { return &delta_; }
 
   // Get the max-age value. This should only be used in tests where a valid
   // max-age parameter is expected to be present.
   TimeDelta GetMaxAgeValue() {
     DCHECK(headers_.get()) << "Call InitializeHeadersWithCacheControl() first";
-    std::optional<TimeDelta> max_age_value = headers()->GetMaxAgeValue();
-    EXPECT_TRUE(max_age_value);
-    return max_age_value.value();
+    TimeDelta max_age_value;
+    EXPECT_TRUE(headers()->GetMaxAgeValue(&max_age_value));
+    return max_age_value;
   }
 
   // Get the stale-while-revalidate value. This should only be used in tests
   // where a valid max-age parameter is expected to be present.
   TimeDelta GetStaleWhileRevalidateValue() {
     DCHECK(headers_.get()) << "Call InitializeHeadersWithCacheControl() first";
-    std::optional<TimeDelta> stale_while_revalidate_value =
-        headers()->GetStaleWhileRevalidateValue();
-    EXPECT_TRUE(stale_while_revalidate_value);
-    return stale_while_revalidate_value.value();
+    TimeDelta stale_while_revalidate_value;
+    EXPECT_TRUE(
+        headers()->GetStaleWhileRevalidateValue(&stale_while_revalidate_value));
+    return stale_while_revalidate_value;
   }
 
  private:
   scoped_refptr<HttpResponseHeaders> headers_;
+  TimeDelta delta_;
 };
 
 class CommonHttpResponseHeadersTest
@@ -99,12 +95,38 @@ class CommonHttpResponseHeadersTest
       public ::testing::WithParamInterface<TestData> {
 };
 
-constexpr auto ToSimpleString = test::HttpResponseHeadersToSimpleString;
+// Returns a simple text serialization of the given
+// |HttpResponseHeaders|. This is used by tests to verify that an
+// |HttpResponseHeaders| matches an expectation string.
+//
+//  * One line per header, written as:
+//        HEADER_NAME: HEADER_VALUE\n
+//  * The original case of header names is preserved.
+//  * Whitespace around head names/values is stripped.
+//  * Repeated headers are not aggregated.
+//  * Headers are listed in their original order.
+std::string ToSimpleString(const scoped_refptr<HttpResponseHeaders>& parsed) {
+  std::string result = parsed->GetStatusLine() + "\n";
 
-// Transform to readable output format (so it's easier to see diffs).
-void EscapeForPrinting(std::string* s) {
-  std::replace(s->begin(), s->end(), ' ', '_');
-  std::replace(s->begin(), s->end(), '\n', '\\');
+  size_t iter = 0;
+  std::string name;
+  std::string value;
+  while (parsed->EnumerateHeaderLines(&iter, &name, &value)) {
+    std::string new_line = name + ": " + value + "\n";
+
+    // Verify that |name| and |value| do not contain ':' or '\n' (if they did
+    // it would make this serialized format ambiguous).
+    if (std::count(new_line.begin(), new_line.end(), '\n') != 1 ||
+        std::count(new_line.begin(), new_line.end(), ':') != 1) {
+      ADD_FAILURE() << "Unexpected characters in the header name or value: "
+                    << new_line;
+      return result;
+    }
+
+    result += new_line;
+  }
+
+  return result;
 }
 
 TEST_P(CommonHttpResponseHeadersTest, TestCommon) {
@@ -114,15 +136,17 @@ TEST_P(CommonHttpResponseHeadersTest, TestCommon) {
   HeadersToRaw(&raw_headers);
   std::string expected_headers(test.expected_headers);
 
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(raw_headers);
+  scoped_refptr<HttpResponseHeaders> parsed(
+      new HttpResponseHeaders(raw_headers));
   std::string headers = ToSimpleString(parsed);
 
-  EscapeForPrinting(&headers);
-  EscapeForPrinting(&expected_headers);
+  // Transform to readable output format (so it's easier to see diffs).
+  std::replace(headers.begin(), headers.end(), ' ', '_');
+  std::replace(headers.begin(), headers.end(), '\n', '\\');
+  std::replace(expected_headers.begin(), expected_headers.end(), ' ', '_');
+  std::replace(expected_headers.begin(), expected_headers.end(), '\n', '\\');
 
   EXPECT_EQ(expected_headers, headers);
-
-  SCOPED_TRACE(test.raw_headers);
 
   EXPECT_TRUE(test.expected_version == parsed->GetHttpVersion());
   EXPECT_EQ(test.expected_response_code, parsed->response_code());
@@ -277,98 +301,6 @@ TestData response_headers_tests[] = {
      "cache-Control: no-store\n",
 
      HttpVersion(1, 1), 200, "OK"},
-    {// Has multiple-value cache-control header.
-     "HTTP/1.1 200 OK\n"
-     "Cache-Control: private, no-store\n",
-
-     "HTTP/1.1 200 OK\n"
-     "Cache-Control: private, no-store\n",
-
-     HttpVersion(1, 1), 200, "OK"},
-    {// Missing HTTP.
-     " 200 Yes\n",
-
-     "HTTP/1.0 200 Yes\n",
-
-     HttpVersion(1, 0), 200, "Yes"},
-    {// Only HTTP.
-     "HTTP\n",
-
-     "HTTP/1.0 200 OK\n",
-
-     HttpVersion(1, 0), 200, "OK"},
-    {// Missing HTTP version.
-     "HTTP 404 No\n",
-
-     "HTTP/1.0 404 No\n",
-
-     HttpVersion(1, 0), 404, "No"},
-    {// Missing dot in HTTP version.
-     "HTTP/1 304 Not Friday\n",
-
-     "HTTP/1.0 304 Not Friday\n",
-
-     HttpVersion(1, 0), 304, "Not Friday"},
-    {// Multi-digit HTTP version (our error detection is bad).
-     "HTTP/234.01 204 Nothing here\n",
-
-     "HTTP/2.0 204 Nothing here\n",
-
-     HttpVersion(2, 0), 204, "Nothing here"},
-    {// HTTP minor version attached to response code (pretty bad parsing).
-     "HTTP/1 302.1 Bad parse\n",
-
-     "HTTP/1.1 302 .1 Bad parse\n",
-
-     HttpVersion(1, 1), 302, ".1 Bad parse"},
-    {// HTTP minor version inside the status text (bad parsing).
-     "HTTP/1 410 Gone in 0.1 seconds\n",
-
-     "HTTP/1.1 410 Gone in 0.1 seconds\n",
-
-     HttpVersion(1, 1), 410, "Gone in 0.1 seconds"},
-    {// Status text smushed into response code.
-     "HTTP/1.1 426Smush\n",
-
-     "HTTP/1.1 426 Smush\n",
-
-     HttpVersion(1, 1), 426, "Smush"},
-    {// Tab not recognised as separator (this is standard compliant).
-     "HTTP/1.1\t500 204 Bad\n",
-
-     "HTTP/1.1 204 Bad\n",
-
-     HttpVersion(1, 1), 204, "Bad"},
-    {// Junk after HTTP version is ignored.
-     "HTTP/1.1ignored 201 Not ignored\n",
-
-     "HTTP/1.1 201 Not ignored\n",
-
-     HttpVersion(1, 1), 201, "Not ignored"},
-    {// Tab gets included in status text.
-     "HTTP/1.1 501\tStatus\t\n",
-
-     "HTTP/1.1 501 \tStatus\t\n",
-
-     HttpVersion(1, 1), 501, "\tStatus\t"},
-    {// Zero response code.
-     "HTTP/1.1 0 Zero\n",
-
-     "HTTP/1.1 0 Zero\n",
-
-     HttpVersion(1, 1), 0, "Zero"},
-    {// Oversize response code.
-     "HTTP/1.1 20230904 Monday\n",
-
-     "HTTP/1.1 20230904 Monday\n",
-
-     HttpVersion(1, 1), 20230904, "Monday"},
-    {// Overflowing response code.
-     "HTTP/1.1 9123456789 Overflow\n",
-
-     "HTTP/1.1 9123456789 Overflow\n",
-
-     HttpVersion(1, 1), 2147483647, "Overflow"},
 };
 
 INSTANTIATE_TEST_SUITE_P(HttpResponseHeaders,
@@ -391,13 +323,13 @@ TEST_P(PersistenceTest, Persist) {
 
   std::string headers = test.raw_headers;
   HeadersToRaw(&headers);
-  auto parsed1 = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed1(new HttpResponseHeaders(headers));
 
   base::Pickle pickle;
   parsed1->Persist(&pickle, test.options);
 
   base::PickleIterator iter(pickle);
-  auto parsed2 = base::MakeRefCounted<HttpResponseHeaders>(&iter);
+  scoped_refptr<HttpResponseHeaders> parsed2(new HttpResponseHeaders(&iter));
 
   EXPECT_EQ(std::string(test.expected_headers), ToSimpleString(parsed2));
 }
@@ -526,7 +458,7 @@ const struct PersistData persistence_tests[] = {
      "HTTP/1.1 200 OK\n"
      "Set-Cookie: foo=bar\n"
      "Foo: 2\n"
-     "Clear-Site-Data: \"cookies\"\n"
+     "Clear-Site-Data: { \"types\" : [ \"cookies\" ] }\n"
      "Bar: 3\n",
 
      "HTTP/1.1 200 OK\n"
@@ -573,21 +505,9 @@ TEST(HttpResponseHeadersTest, EnumerateHeader_Coalesced) {
       "cache-Control: no-store\n"
       "cache-Control:\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   size_t iter = 0;
-  EXPECT_EQ("", parsed->EnumerateHeader(&iter, "cache-control"));
-  EXPECT_EQ("", parsed->EnumerateHeader(&iter, "cache-control"));
-  EXPECT_EQ("private", parsed->EnumerateHeader(&iter, "cache-control"));
-  EXPECT_EQ("no-cache=\"set-cookie,server\"",
-            parsed->EnumerateHeader(&iter, "cache-control"));
-  EXPECT_EQ("", parsed->EnumerateHeader(&iter, "cache-control"));
-  EXPECT_EQ("no-store", parsed->EnumerateHeader(&iter, "cache-control"));
-  EXPECT_EQ("", parsed->EnumerateHeader(&iter, "cache-control"));
-  EXPECT_FALSE(parsed->EnumerateHeader(&iter, "cache-control"));
-
-  // Test the deprecated overload that returns values as std::strings.
-  iter = 0;
   std::string value;
   ASSERT_TRUE(parsed->EnumerateHeader(&iter, "cache-control", &value));
   EXPECT_EQ("", value);
@@ -614,17 +534,9 @@ TEST(HttpResponseHeadersTest, EnumerateHeader_Challenge) {
       "WWW-Authenticate:Digest realm=foobar, nonce=x, domain=y\n"
       "WWW-Authenticate:Basic realm=quatar\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   size_t iter = 0;
-  EXPECT_EQ("Digest realm=foobar, nonce=x, domain=y",
-            parsed->EnumerateHeader(&iter, "WWW-Authenticate"));
-  EXPECT_EQ("Basic realm=quatar",
-            parsed->EnumerateHeader(&iter, "WWW-Authenticate"));
-  EXPECT_FALSE(parsed->EnumerateHeader(&iter, "WWW-Authenticate"));
-
-  // Test the deprecated overload that returns values as std::strings.
-  iter = 0;
   std::string value;
   EXPECT_TRUE(parsed->EnumerateHeader(&iter, "WWW-Authenticate", &value));
   EXPECT_EQ("Digest realm=foobar, nonce=x, domain=y", value);
@@ -641,14 +553,8 @@ TEST(HttpResponseHeadersTest, EnumerateHeader_DateValued) {
       "Date: Tue, 07 Aug 2007 23:10:55 GMT\n"
       "Last-Modified: Wed, 01 Aug 2007 23:23:45 GMT\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
-  EXPECT_EQ("Tue, 07 Aug 2007 23:10:55 GMT",
-            parsed->EnumerateHeader(nullptr, "date"));
-  EXPECT_EQ("Wed, 01 Aug 2007 23:23:45 GMT",
-            parsed->EnumerateHeader(nullptr, "last-modified"));
-
-  // Test the deprecated overload that returns values as std::strings.
   std::string value;
   EXPECT_TRUE(parsed->EnumerateHeader(nullptr, "date", &value));
   EXPECT_EQ("Tue, 07 Aug 2007 23:10:55 GMT", value);
@@ -665,21 +571,24 @@ TEST(HttpResponseHeadersTest, DefaultDateToGMT) {
       "Last-Modified: Tue, 07 Aug 2007 19:10:55 EDT\n"
       "Expires: Tue, 07 Aug 2007 23:10:55 UTC\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
   base::Time expected_value;
   ASSERT_TRUE(base::Time::FromString("Tue, 07 Aug 2007 23:10:55 GMT",
                                      &expected_value));
 
+  base::Time value;
   // When the timezone is missing, GMT is a good guess as its what RFC2616
   // requires.
-  EXPECT_EQ(expected_value, parsed->GetDateValue());
+  EXPECT_TRUE(parsed->GetDateValue(&value));
+  EXPECT_EQ(expected_value, value);
   // If GMT is missing but an RFC822-conforming one is present, use that.
-  EXPECT_EQ(expected_value, parsed->GetLastModifiedValue());
+  EXPECT_TRUE(parsed->GetLastModifiedValue(&value));
+  EXPECT_EQ(expected_value, value);
   // If an unknown timezone is present, treat like a missing timezone and
   // default to GMT.  The only example of a web server not specifying "GMT"
   // used "UTC" which is equivalent to GMT.
-  EXPECT_THAT(parsed->GetExpiresValue(),
-              testing::AnyOf(std::nullopt, expected_value));
+  if (parsed->GetExpiresValue(&value))
+    EXPECT_EQ(expected_value, value);
 }
 
 TEST(HttpResponseHeadersTest, GetAgeValue10) {
@@ -687,8 +596,10 @@ TEST(HttpResponseHeadersTest, GetAgeValue10) {
       "HTTP/1.1 200 OK\n"
       "Age: 10\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
-  EXPECT_EQ(base::Seconds(10), parsed->GetAgeValue());
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
+  base::TimeDelta age;
+  ASSERT_TRUE(parsed->GetAgeValue(&age));
+  EXPECT_EQ(10, age.InSeconds());
 }
 
 TEST(HttpResponseHeadersTest, GetAgeValue0) {
@@ -696,8 +607,10 @@ TEST(HttpResponseHeadersTest, GetAgeValue0) {
       "HTTP/1.1 200 OK\n"
       "Age: 0\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
-  EXPECT_EQ(base::TimeDelta(), parsed->GetAgeValue());
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
+  base::TimeDelta age;
+  ASSERT_TRUE(parsed->GetAgeValue(&age));
+  EXPECT_EQ(0, age.InSeconds());
 }
 
 TEST(HttpResponseHeadersTest, GetAgeValueBogus) {
@@ -705,8 +618,9 @@ TEST(HttpResponseHeadersTest, GetAgeValueBogus) {
       "HTTP/1.1 200 OK\n"
       "Age: donkey\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
-  EXPECT_FALSE(parsed->GetAgeValue());
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
+  base::TimeDelta age;
+  ASSERT_FALSE(parsed->GetAgeValue(&age));
 }
 
 TEST(HttpResponseHeadersTest, GetAgeValueNegative) {
@@ -714,8 +628,9 @@ TEST(HttpResponseHeadersTest, GetAgeValueNegative) {
       "HTTP/1.1 200 OK\n"
       "Age: -10\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
-  EXPECT_FALSE(parsed->GetAgeValue());
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
+  base::TimeDelta age;
+  ASSERT_FALSE(parsed->GetAgeValue(&age));
 }
 
 TEST(HttpResponseHeadersTest, GetAgeValueLeadingPlus) {
@@ -723,8 +638,9 @@ TEST(HttpResponseHeadersTest, GetAgeValueLeadingPlus) {
       "HTTP/1.1 200 OK\n"
       "Age: +10\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
-  EXPECT_FALSE(parsed->GetAgeValue());
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
+  base::TimeDelta age;
+  ASSERT_FALSE(parsed->GetAgeValue(&age));
 }
 
 TEST(HttpResponseHeadersTest, GetAgeValueOverflow) {
@@ -732,11 +648,12 @@ TEST(HttpResponseHeadersTest, GetAgeValueOverflow) {
       "HTTP/1.1 200 OK\n"
       "Age: 999999999999999999999999999999999999999999\n";
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
+  base::TimeDelta age;
+  ASSERT_TRUE(parsed->GetAgeValue(&age));
 
   // Should have saturated to 2^32 - 1.
-  EXPECT_EQ(base::Seconds(static_cast<int64_t>(0xFFFFFFFFL)),
-            parsed->GetAgeValue());
+  EXPECT_EQ(static_cast<int64_t>(0xFFFFFFFFL), age.InSeconds());
 }
 
 struct ContentTypeTestData {
@@ -758,7 +675,7 @@ TEST_P(ContentTypeTest, GetMimeType) {
 
   std::string headers(test.raw_headers);
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   std::string value;
   EXPECT_EQ(test.has_mimetype, parsed->GetMimeType(&value));
@@ -766,7 +683,8 @@ TEST_P(ContentTypeTest, GetMimeType) {
   value.clear();
   EXPECT_EQ(test.has_charset, parsed->GetCharset(&value));
   EXPECT_EQ(test.charset, value);
-  EXPECT_EQ(parsed->GetNormalizedHeader("content-type"), test.all_content_type);
+  EXPECT_TRUE(parsed->GetNormalizedHeader("content-type", &value));
+  EXPECT_EQ(test.all_content_type, value);
 }
 
 // clang-format off
@@ -930,7 +848,7 @@ TEST_P(RequiresValidationTest, RequiresValidation) {
 
   std::string headers(test.headers);
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   ValidationType validation_type =
       parsed->RequiresValidation(request_time, response_time, current_time);
@@ -984,29 +902,6 @@ const struct RequiresValidationTestData requires_validation_tests[] = {
     {"HTTP/1.1 206 Partial Content\n"
      "date: Wed, 28 Nov 2007 00:40:11 GMT\n"
      "last-modified: Wed, 27 Nov 2007 08:00:00 GMT\n"
-     "\n",
-     VALIDATION_NONE},
-    // Last-modified heuristic: modified a while ago and it's VALIDATION_NONE
-    // (fresh) like above but VALIDATION_SYNCHRONOUS if expires header value is
-    // "0".
-    {"HTTP/1.1 200 OK\n"
-     "date: Wed, 28 Nov 2007 00:40:11 GMT\n"
-     "last-modified: Tue, 27 Nov 2007 08:00:00 GMT\n"
-     "expires: 0\n"
-     "\n",
-     VALIDATION_SYNCHRONOUS},
-    {"HTTP/1.1 200 OK\n"
-     "date: Wed, 28 Nov 2007 00:40:11 GMT\n"
-     "last-modified: Tue, 27 Nov 2007 08:00:00 GMT\n"
-     "expires:  0 \n"
-     "\n",
-     VALIDATION_SYNCHRONOUS},
-    // The cache is fresh if the expires header value is an invalid date string
-    // except for "0"
-    {"HTTP/1.1 200 OK\n"
-     "date: Wed, 28 Nov 2007 00:40:11 GMT\n"
-     "last-modified: Tue, 27 Nov 2007 08:00:00 GMT\n"
-     "expires: banana \n"
      "\n",
      VALIDATION_NONE},
     // Last-modified heuristic: modified recently.
@@ -1144,11 +1039,13 @@ TEST_P(UpdateTest, Update) {
 
   std::string orig_headers(test.orig_headers);
   HeadersToRaw(&orig_headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(orig_headers);
+  scoped_refptr<HttpResponseHeaders> parsed(
+      new HttpResponseHeaders(orig_headers));
 
   std::string new_headers(test.new_headers);
   HeadersToRaw(&new_headers);
-  auto new_parsed = base::MakeRefCounted<HttpResponseHeaders>(new_headers);
+  scoped_refptr<HttpResponseHeaders> new_parsed(
+      new HttpResponseHeaders(new_headers));
 
   parsed->Update(*new_parsed.get());
 
@@ -1278,7 +1175,7 @@ TEST_P(EnumerateHeaderLinesTest, EnumerateHeaderLines) {
 
   std::string headers(test.headers);
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   std::string name, value, lines;
 
@@ -1337,7 +1234,7 @@ TEST_P(IsRedirectTest, IsRedirect) {
 
   std::string headers(test.headers);
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   std::string location;
   EXPECT_EQ(parsed->IsRedirect(&location), test.is_redirect);
@@ -1408,92 +1305,6 @@ INSTANTIATE_TEST_SUITE_P(HttpResponseHeaders,
                          IsRedirectTest,
                          testing::ValuesIn(is_redirect_tests));
 
-struct HasStorageAccessRetryTestData {
-  const char* headers;
-  std::optional<std::string> expected_origin;
-
-  bool want_result;
-};
-
-class HasStorageAccessRetryTest
-    : public HttpResponseHeadersTest,
-      public ::testing::WithParamInterface<HasStorageAccessRetryTestData> {};
-
-TEST_P(HasStorageAccessRetryTest, HasStorageAccessRetry) {
-  const HasStorageAccessRetryTestData test = GetParam();
-
-  std::string headers(test.headers);
-  HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
-
-  EXPECT_EQ(parsed->HasStorageAccessRetryHeader(
-                base::OptionalToPtr(test.expected_origin)),
-            test.want_result);
-}
-
-const HasStorageAccessRetryTestData has_storage_access_retry_tests[] = {
-    // No expected initiator; explicit allowlist.
-    {"HTTP/1.1 200 OK\n"
-     R"(Activate-Storage-Access: retry; allowed-origin="https://example.com:123")"
-     "\n",
-     std::nullopt, false},
-    // No expected initiator; wildcard allowlist matches anyway, since the
-    // server says anything goes.
-    {"HTTP/1.1 200 OK\n"
-     R"(Activate-Storage-Access: retry; allowed-origin=*)"
-     "\n",
-     std::nullopt, true},
-    // No allowlist, no expected initiator.
-    {"HTTP/1.1 200 OK\n"
-     "Activate-Storage-Access: retry\n",
-     std::nullopt, false},
-    // No allowlist.
-    {"HTTP/1.1 200 OK\n"
-     "Activate-Storage-Access: retry\n",
-     "https://example.com", false},
-    // Invalid structured header.
-    {"HTTP/1.1 200 OK\n"
-     R"(Activate-Storage-Access: retry, allowed-origin:"https://example.com:123")"
-     "\n",
-     "https://example.com:123", false},
-    // Unknown parameter.
-    {"HTTP/1.1 200 OK\n"
-     R"(Activate-Storage-Access: retry; frobnify="https://example.com:123")"
-     "\n",
-     "https://example.com:123", false},
-    // allowed-origin parameter present along with unrecognized parameter.
-    {"HTTP/1.1 200 OK\n"
-     R"(Activate-Storage-Access: retry; frobnify=*;)"
-     R"( allowed-origin="https://example.com:123")"
-     "\n",
-     "https://example.com:123", true},
-    // Allowlist and expected initiator match.
-    {"HTTP/1.1 200 OK\n"
-     R"(Activate-Storage-Access: retry; allowed-origin="https://example.com:123")"
-     "\n",
-     "https://example.com:123", true},
-    // Allowlist and expected initiator mismatch.
-    {"HTTP/1.1 200 OK\n"
-     R"(Activate-Storage-Access: retry; allowed-origin="https://example.com")"
-     "\n",
-     "https://example.com:123", false},
-    // This is a list, not an item, so it is ignored.
-    {"HTTP/1.1 200 OK\n"
-     R"(Activate-Storage-Access: foo, retry; allowed-origin=*, bar)"
-     "\n",
-     "https://example.com", false},
-    // This is a list (supplied in multiple field lines), not an item, so it is
-    // ignored.
-    {"HTTP/1.1 200 OK\n"
-     "Activate-Storage-Access: foo\n"
-     "Activate-Storage-Access: retry; allowed-origin=*, bar\n",
-     "https://example.com", false},
-};
-
-INSTANTIATE_TEST_SUITE_P(HttpResponseHeaders,
-                         HasStorageAccessRetryTest,
-                         testing::ValuesIn(has_storage_access_retry_tests));
-
 struct ContentLengthTestData {
   const char* headers;
   int64_t expected_len;
@@ -1509,7 +1320,7 @@ TEST_P(GetContentLengthTest, GetContentLength) {
 
   std::string headers(test.headers);
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   EXPECT_EQ(test.expected_len, parsed->GetContentLength());
 }
@@ -1589,7 +1400,7 @@ TEST_P(ContentRangeTest, GetContentRangeFor206) {
 
   std::string headers(test.headers);
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   int64_t first_byte_position;
   int64_t last_byte_position;
@@ -1648,7 +1459,7 @@ TEST_P(IsKeepAliveTest, IsKeepAlive) {
 
   std::string headers(test.headers);
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   EXPECT_EQ(test.expected_keep_alive, parsed->IsKeepAlive());
 }
@@ -1808,13 +1619,9 @@ TEST_P(HasStrongValidatorsTest, HasStrongValidators) {
 
   std::string headers(test.headers);
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   EXPECT_EQ(test.expected_result, parsed->HasStrongValidators());
-  // Having string validators implies having validators.
-  if (parsed->HasStrongValidators()) {
-    EXPECT_TRUE(parsed->HasValidators());
-  }
 }
 
 const HasStrongValidatorsTestData strong_validators_tests[] = {
@@ -1870,7 +1677,7 @@ INSTANTIATE_TEST_SUITE_P(HttpResponseHeaders,
 TEST(HttpResponseHeadersTest, HasValidatorsNone) {
   std::string headers("HTTP/1.1 200 OK");
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
   EXPECT_FALSE(parsed->HasValidators());
 }
 
@@ -1879,7 +1686,7 @@ TEST(HttpResponseHeadersTest, HasValidatorsEtag) {
       "HTTP/1.1 200 OK\n"
       "etag: \"anything\"");
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
   EXPECT_TRUE(parsed->HasValidators());
 }
 
@@ -1888,7 +1695,7 @@ TEST(HttpResponseHeadersTest, HasValidatorsLastModified) {
       "HTTP/1.1 200 OK\n"
       "Last-Modified: Wed, 28 Nov 2007 00:40:10 GMT");
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
   EXPECT_TRUE(parsed->HasValidators());
 }
 
@@ -1897,7 +1704,7 @@ TEST(HttpResponseHeadersTest, HasValidatorsWeakEtag) {
       "HTTP/1.1 200 OK\n"
       "etag: W/\"anything\"");
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
   EXPECT_TRUE(parsed->HasValidators());
 }
 
@@ -1916,13 +1723,19 @@ TEST(HttpResponseHeadersTest, GetNormalizedHeaderWithEmptyValues) {
       "a:\n");
   HeadersToRaw(&headers);
   auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  std::string value;
 
-  EXPECT_EQ(parsed->GetNormalizedHeader("a"), ", , ");
-  EXPECT_EQ(parsed->GetNormalizedHeader("b"), ", *");
-  EXPECT_EQ(parsed->GetNormalizedHeader("c"), "*, ");
-  EXPECT_EQ(parsed->GetNormalizedHeader("d"), "*, *");
-  EXPECT_EQ(parsed->GetNormalizedHeader("e"), "");
-  EXPECT_EQ(parsed->GetNormalizedHeader("f"), std::nullopt);
+  EXPECT_TRUE(parsed->GetNormalizedHeader("a", &value));
+  EXPECT_EQ(value, ", , ");
+  EXPECT_TRUE(parsed->GetNormalizedHeader("b", &value));
+  EXPECT_EQ(value, ", *");
+  EXPECT_TRUE(parsed->GetNormalizedHeader("c", &value));
+  EXPECT_EQ(value, "*, ");
+  EXPECT_TRUE(parsed->GetNormalizedHeader("d", &value));
+  EXPECT_EQ(value, "*, *");
+  EXPECT_TRUE(parsed->GetNormalizedHeader("e", &value));
+  EXPECT_EQ(value, "");
+  EXPECT_FALSE(parsed->GetNormalizedHeader("f", &value));
 }
 
 TEST(HttpResponseHeadersTest, GetNormalizedHeaderWithCommas) {
@@ -1936,15 +1749,21 @@ TEST(HttpResponseHeadersTest, GetNormalizedHeaderWithCommas) {
       "a: ,");
   HeadersToRaw(&headers);
   auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  std::string value;
 
   // TODO(mmenke): "Normalized" headers probably should preserve the
   // leading/trailing whitespace from the original headers.
-  EXPECT_EQ(parsed->GetNormalizedHeader("a"), "foo, bar, ,");
-  EXPECT_EQ(parsed->GetNormalizedHeader("b"), ", foo, bar,");
-  EXPECT_EQ(parsed->GetNormalizedHeader("c"), ",,,");
-  EXPECT_EQ(parsed->GetNormalizedHeader("d"), ",  ,  ,");
-  EXPECT_EQ(parsed->GetNormalizedHeader("e"), ",\t,\t,");
-  EXPECT_EQ(parsed->GetNormalizedHeader("f"), std::nullopt);
+  ASSERT_TRUE(parsed->GetNormalizedHeader("a", &value));
+  EXPECT_EQ("foo, bar, ,", value);
+  ASSERT_TRUE(parsed->GetNormalizedHeader("b", &value));
+  EXPECT_EQ(", foo, bar,", value);
+  ASSERT_TRUE(parsed->GetNormalizedHeader("c", &value));
+  EXPECT_EQ(",,,", value);
+  ASSERT_TRUE(parsed->GetNormalizedHeader("d", &value));
+  EXPECT_EQ(",  ,  ,", value);
+  ASSERT_TRUE(parsed->GetNormalizedHeader("e", &value));
+  EXPECT_EQ(",\t,\t,", value);
+  EXPECT_FALSE(parsed->GetNormalizedHeader("f", &value));
 }
 
 TEST(HttpResponseHeadersTest, AddHeader) {
@@ -2006,31 +1825,6 @@ TEST(HttpResponseHeadersTest, SetHeader) {
       ToSimpleString(headers));
 }
 
-TEST(HttpResponseHeadersTest, TryToCreateWithNul) {
-  static constexpr char kHeadersWithNuls[] = {
-      "HTTP/1.1 200 OK\0"
-      "Content-Type: application/octet-stream\0"};
-  // The size must be specified explicitly to include the nul characters.
-  static constexpr std::string_view kHeadersWithNulsAsStringPiece(
-      kHeadersWithNuls, sizeof(kHeadersWithNuls));
-  scoped_refptr<HttpResponseHeaders> headers =
-      HttpResponseHeaders::TryToCreate(kHeadersWithNulsAsStringPiece);
-  EXPECT_EQ(headers, nullptr);
-}
-
-#if !BUILDFLAG(CRONET_BUILD)
-// Cronet disables tracing so this test would fail.
-TEST(HttpResponseHeadersTest, TracingSupport) {
-  scoped_refptr<HttpResponseHeaders> headers = HttpResponseHeaders::TryToCreate(
-      "HTTP/1.1 200 OK\n"
-      "connection: keep-alive\n");
-  ASSERT_TRUE(headers);
-
-  EXPECT_EQ(perfetto::TracedValueToString(headers),
-            "{response_code:200,headers:[{name:connection,value:keep-alive}]}");
-}
-#endif
-
 struct RemoveHeaderTestData {
   const char* orig_headers;
   const char* to_remove;
@@ -2047,7 +1841,8 @@ TEST_P(RemoveHeaderTest, RemoveHeader) {
 
   std::string orig_headers(test.orig_headers);
   HeadersToRaw(&orig_headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(orig_headers);
+  scoped_refptr<HttpResponseHeaders> parsed(
+      new HttpResponseHeaders(orig_headers));
 
   std::string name(test.to_remove);
   parsed->RemoveHeader(name);
@@ -2099,7 +1894,8 @@ TEST_P(RemoveHeadersTest, RemoveHeaders) {
 
   std::string orig_headers(test.orig_headers);
   HeadersToRaw(&orig_headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(orig_headers);
+  scoped_refptr<HttpResponseHeaders> parsed(
+      new HttpResponseHeaders(orig_headers));
 
   std::unordered_set<std::string> to_remove;
   for (auto* header : test.to_remove) {
@@ -2162,7 +1958,8 @@ TEST_P(RemoveIndividualHeaderTest, RemoveIndividualHeader) {
 
   std::string orig_headers(test.orig_headers);
   HeadersToRaw(&orig_headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(orig_headers);
+  scoped_refptr<HttpResponseHeaders> parsed(
+      new HttpResponseHeaders(orig_headers));
 
   std::string name(test.to_remove_name);
   std::string value(test.to_remove_value);
@@ -2263,7 +2060,8 @@ TEST_P(ReplaceStatusTest, ReplaceStatus) {
 
   std::string orig_headers(test.orig_headers);
   HeadersToRaw(&orig_headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(orig_headers);
+  scoped_refptr<HttpResponseHeaders> parsed(
+      new HttpResponseHeaders(orig_headers));
 
   std::string name(test.new_status);
   parsed->ReplaceStatusLine(name);
@@ -2328,7 +2126,8 @@ TEST_P(UpdateWithNewRangeTest, UpdateWithNewRange) {
 
   std::string orig_headers(test.orig_headers);
   std::replace(orig_headers.begin(), orig_headers.end(), '\n', '\0');
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(orig_headers + '\0');
+  scoped_refptr<HttpResponseHeaders> parsed(
+      new HttpResponseHeaders(orig_headers + '\0'));
   int64_t content_size = parsed->GetContentLength();
 
   // Update headers without replacing status line.
@@ -2372,44 +2171,44 @@ INSTANTIATE_TEST_SUITE_P(HttpResponseHeaders,
 
 TEST_F(HttpResponseHeadersCacheControlTest, AbsentMaxAgeReturnsFalse) {
   InitializeHeadersWithCacheControl("nocache");
-  EXPECT_FALSE(headers()->GetMaxAgeValue());
+  EXPECT_FALSE(headers()->GetMaxAgeValue(TimeDeltaPointer()));
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest, MaxAgeWithNoParameterRejected) {
   InitializeHeadersWithCacheControl("max-age=,private");
-  EXPECT_FALSE(headers()->GetMaxAgeValue());
+  EXPECT_FALSE(headers()->GetMaxAgeValue(TimeDeltaPointer()));
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest, MaxAgeWithSpaceParameterRejected) {
   InitializeHeadersWithCacheControl("max-age= ,private");
-  EXPECT_FALSE(headers()->GetMaxAgeValue());
+  EXPECT_FALSE(headers()->GetMaxAgeValue(TimeDeltaPointer()));
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest, MaxAgeWithInterimSpaceIsRejected) {
   InitializeHeadersWithCacheControl("max-age=1 2");
-  EXPECT_FALSE(headers()->GetMaxAgeValue());
+  EXPECT_FALSE(headers()->GetMaxAgeValue(TimeDeltaPointer()));
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest, MaxAgeWithMinusSignIsRejected) {
   InitializeHeadersWithCacheControl("max-age=-7");
-  EXPECT_FALSE(headers()->GetMaxAgeValue());
+  EXPECT_FALSE(headers()->GetMaxAgeValue(TimeDeltaPointer()));
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest,
        MaxAgeWithSpaceBeforeEqualsIsRejected) {
   InitializeHeadersWithCacheControl("max-age = 7");
-  EXPECT_FALSE(headers()->GetMaxAgeValue());
+  EXPECT_FALSE(headers()->GetMaxAgeValue(TimeDeltaPointer()));
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest,
        MaxAgeWithLeadingandTrailingSpaces) {
   InitializeHeadersWithCacheControl("max-age= 7  ");
-  EXPECT_EQ(base::Seconds(7), GetMaxAgeValue());
+  EXPECT_EQ(TimeDelta::FromSeconds(7), GetMaxAgeValue());
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest, MaxAgeFirstMatchUsed) {
   InitializeHeadersWithCacheControl("max-age=10, max-age=20");
-  EXPECT_EQ(base::Seconds(10), GetMaxAgeValue());
+  EXPECT_EQ(TimeDelta::FromSeconds(10), GetMaxAgeValue());
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest, MaxAgeBogusFirstMatchUsed) {
@@ -2417,23 +2216,22 @@ TEST_F(HttpResponseHeadersCacheControlTest, MaxAgeBogusFirstMatchUsed) {
   // ignored and so "max-age=20" is used.
   InitializeHeadersWithCacheControl(
       "max-age10, max-age=now, max-age=20, max-age=30");
-  EXPECT_EQ(base::Seconds(20), GetMaxAgeValue());
+  EXPECT_EQ(TimeDelta::FromSeconds(20), GetMaxAgeValue());
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest, MaxAgeCaseInsensitive) {
   InitializeHeadersWithCacheControl("Max-aGe=15");
-  EXPECT_EQ(base::Seconds(15), GetMaxAgeValue());
+  EXPECT_EQ(TimeDelta::FromSeconds(15), GetMaxAgeValue());
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest, MaxAgeOverflow) {
   InitializeHeadersWithCacheControl("max-age=99999999999999999999");
-  EXPECT_EQ(base::TimeDelta::FiniteMax().InSeconds(),
-            GetMaxAgeValue().InSeconds());
+  EXPECT_EQ(TimeDelta::FiniteMax().InSeconds(), GetMaxAgeValue().InSeconds());
 }
 
 struct MaxAgeTestData {
   const char* max_age_string;
-  const std::optional<int64_t> expected_seconds;
+  const absl::optional<int64_t> expected_seconds;
 };
 
 class MaxAgeEdgeCasesTest
@@ -2451,21 +2249,21 @@ TEST_P(MaxAgeEdgeCasesTest, MaxAgeEdgeCases) {
     EXPECT_EQ(test.expected_seconds.value(), GetMaxAgeValue().InSeconds())
         << " for max-age=" << test.max_age_string;
   } else {
-    EXPECT_FALSE(headers()->GetMaxAgeValue());
+    EXPECT_FALSE(headers()->GetMaxAgeValue(TimeDeltaPointer()));
   }
 }
 
 const MaxAgeTestData max_age_tests[] = {
     {" 1 ", 1},  // Spaces are ignored.
-    {"-1", std::nullopt},
-    {"--1", std::nullopt},
-    {"2s", std::nullopt},
-    {"3 days", std::nullopt},
-    {"'4'", std::nullopt},
-    {"\"5\"", std::nullopt},
-    {"0x6", std::nullopt},  // Hex not parsed as hex.
-    {"7F", std::nullopt},   // Hex without 0x still not parsed as hex.
-    {"010", 10},            // Octal not parsed as octal.
+    {"-1", absl::nullopt},
+    {"--1", absl::nullopt},
+    {"2s", absl::nullopt},
+    {"3 days", absl::nullopt},
+    {"'4'", absl::nullopt},
+    {"\"5\"", absl::nullopt},
+    {"0x6", absl::nullopt},  // Hex not parsed as hex.
+    {"7F", absl::nullopt},   // Hex without 0x still not parsed as hex.
+    {"010", 10},             // Octal not parsed as octal.
     {"9223372036853", 9223372036853},
     {"9223372036854", 9223372036854},
     {"9223372036855", 9223372036854},
@@ -2481,31 +2279,31 @@ INSTANTIATE_TEST_SUITE_P(HttpResponseHeadersCacheControl,
 TEST_F(HttpResponseHeadersCacheControlTest,
        AbsentStaleWhileRevalidateReturnsFalse) {
   InitializeHeadersWithCacheControl("max-age=3600");
-  EXPECT_FALSE(headers()->GetStaleWhileRevalidateValue());
+  EXPECT_FALSE(headers()->GetStaleWhileRevalidateValue(TimeDeltaPointer()));
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest,
        StaleWhileRevalidateWithoutValueRejected) {
   InitializeHeadersWithCacheControl("max-age=3600,stale-while-revalidate=");
-  EXPECT_FALSE(headers()->GetStaleWhileRevalidateValue());
+  EXPECT_FALSE(headers()->GetStaleWhileRevalidateValue(TimeDeltaPointer()));
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest,
        StaleWhileRevalidateWithInvalidValueIgnored) {
   InitializeHeadersWithCacheControl("max-age=3600,stale-while-revalidate=true");
-  EXPECT_FALSE(headers()->GetStaleWhileRevalidateValue());
+  EXPECT_FALSE(headers()->GetStaleWhileRevalidateValue(TimeDeltaPointer()));
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest, StaleWhileRevalidateValueReturned) {
   InitializeHeadersWithCacheControl("max-age=3600,stale-while-revalidate=7200");
-  EXPECT_EQ(base::Seconds(7200), GetStaleWhileRevalidateValue());
+  EXPECT_EQ(TimeDelta::FromSeconds(7200), GetStaleWhileRevalidateValue());
 }
 
 TEST_F(HttpResponseHeadersCacheControlTest,
        FirstStaleWhileRevalidateValueUsed) {
   InitializeHeadersWithCacheControl(
       "stale-while-revalidate=1,stale-while-revalidate=7200");
-  EXPECT_EQ(base::Seconds(1), GetStaleWhileRevalidateValue());
+  EXPECT_EQ(TimeDelta::FromSeconds(1), GetStaleWhileRevalidateValue());
 }
 
 struct GetCurrentAgeTestData {
@@ -2531,7 +2329,7 @@ TEST_P(GetCurrentAgeTest, GetCurrentAge) {
 
   std::string headers(test.headers);
   HeadersToRaw(&headers);
-  auto parsed = base::MakeRefCounted<HttpResponseHeaders>(headers);
+  scoped_refptr<HttpResponseHeaders> parsed(new HttpResponseHeaders(headers));
 
   base::TimeDelta age =
       parsed->GetCurrentAge(request_time, response_time, current_time);
@@ -2570,244 +2368,6 @@ const struct GetCurrentAgeTestData get_current_age_tests[] = {
 INSTANTIATE_TEST_SUITE_P(HttpResponseHeaders,
                          GetCurrentAgeTest,
                          testing::ValuesIn(get_current_age_tests));
-
-TEST(HttpResponseHeadersBuilderTest, Version) {
-  for (HttpVersion version :
-       {HttpVersion(1, 0), HttpVersion(1, 1), HttpVersion(2, 0)}) {
-    auto headers = HttpResponseHeaders::Builder(version, "200").Build();
-    EXPECT_EQ(base::StringPrintf("HTTP/%d.%d 200", version.major_value(),
-                                 version.minor_value()),
-              headers->GetStatusLine());
-    EXPECT_EQ(version, headers->GetHttpVersion());
-  }
-}
-
-struct BuilderStatusLineTestData {
-  const std::string_view status;
-  const std::string_view expected_status_line;
-  const int expected_response_code;
-  const std::string_view expected_status_text;
-};
-
-// Provide GTest with a method to print the BuilderStatusLineTestData, for ease
-// of debugging.
-void PrintTo(const BuilderStatusLineTestData& data, std::ostream* os) {
-  *os << "\"" << data.status << "\", \"" << data.expected_status_line << "\", "
-      << data.expected_response_code << ", \"" << data.expected_status_text
-      << "\"}";
-}
-
-class BuilderStatusLineTest
-    : public HttpResponseHeadersTest,
-      public ::testing::WithParamInterface<BuilderStatusLineTestData> {};
-
-TEST_P(BuilderStatusLineTest, Common) {
-  const auto& [status, expected_status_line, expected_response_code,
-               expected_status_text] = GetParam();
-
-  auto http_response_headers =
-      HttpResponseHeaders::Builder({1, 1}, status).Build();
-
-  EXPECT_EQ(expected_status_line, http_response_headers->GetStatusLine());
-  EXPECT_EQ(expected_response_code, http_response_headers->response_code());
-  EXPECT_EQ(expected_status_text, http_response_headers->GetStatusText());
-}
-
-constexpr BuilderStatusLineTestData kBuilderStatusLineTests[] = {
-    {// Simple case.
-     "200 OK",
-
-     "HTTP/1.1 200 OK", 200, "OK"},
-    {// No status text.
-     "200",
-
-     "HTTP/1.1 200", 200, ""},
-    {// Empty status.
-     "",
-
-     "HTTP/1.1 200", 200, ""},
-    {// Space status.
-     " ",
-
-     "HTTP/1.1 200", 200, ""},
-    {// Spaces removed from status.
-     "    204       No content   ",
-
-     "HTTP/1.1 204 No content", 204, "No content"},
-    {// Tabs treated as terminating whitespace.
-     "204   \t  No  content \t ",
-
-     "HTTP/1.1 204 \t  No  content \t", 204, "\t  No  content \t"},
-    {// Status text smushed into response code.
-     "426Smush",
-
-     "HTTP/1.1 426 Smush", 426, "Smush"},
-    {// Tab gets included in status text.
-     "501\tStatus\t",
-
-     "HTTP/1.1 501 \tStatus\t", 501, "\tStatus\t"},
-    {// Zero response code.
-     "0 Zero",
-
-     "HTTP/1.1 0 Zero", 0, "Zero"},
-    {// Oversize response code.
-     "20230904 Monday",
-
-     "HTTP/1.1 20230904 Monday", 20230904, "Monday"},
-    {// Overflowing response code.
-     "9123456789 Overflow",
-
-     "HTTP/1.1 9123456789 Overflow", 2147483647, "Overflow"},
-};
-
-INSTANTIATE_TEST_SUITE_P(HttpResponseHeaders,
-                         BuilderStatusLineTest,
-                         testing::ValuesIn(kBuilderStatusLineTests));
-
-struct BuilderHeadersTestData {
-  const std::vector<std::pair<std::string_view, std::string_view>> headers;
-  const std::string_view expected_headers;
-};
-
-// Provide GTest with a method to print the BuilderHeadersTestData, for ease of
-// debugging.
-void PrintTo(const BuilderHeadersTestData& data, std::ostream* os) {
-  *os << "{";
-  for (const auto& header : data.headers) {
-    *os << "{\"" << header.first << "\", \"" << header.second << "\"},";
-  }
-  std::string expected_headers(data.expected_headers);
-  EscapeForPrinting(&expected_headers);
-  *os << "}, \"" << expected_headers << "\"}";
-}
-
-class BuilderHeadersTest
-    : public HttpResponseHeadersTest,
-      public ::testing::WithParamInterface<BuilderHeadersTestData> {};
-
-TEST_P(BuilderHeadersTest, Common) {
-  const auto& [headers, expected_headers_const] = GetParam();
-  HttpResponseHeaders::Builder builder({1, 1}, "200");
-  for (const auto& [key, value] : headers) {
-    builder.AddHeader(key, value);
-  }
-  auto http_response_headers = builder.Build();
-
-  std::string output_headers = ToSimpleString(http_response_headers);
-  std::string expected_headers(expected_headers_const);
-
-  EscapeForPrinting(&output_headers);
-  EscapeForPrinting(&expected_headers);
-
-  EXPECT_EQ(expected_headers, output_headers);
-}
-
-const BuilderHeadersTestData builder_headers_tests[] = {
-    {// Single header.
-     {{"Content-Type", "text/html"}},
-
-     "HTTP/1.1 200\n"
-     "Content-Type: text/html\n"},
-    {// Multiple headers.
-     {
-         {"Content-Type", "text/html"},
-         {"Content-Length", "6"},
-         {"Set-Cookie", "a=1"},
-     },
-
-     "HTTP/1.1 200\n"
-     "Content-Type: text/html\n"
-     "Content-Length: 6\n"
-     "Set-Cookie: a=1\n"},
-    {// Empty header value.
-     {{"Pragma", ""}},
-
-     "HTTP/1.1 200\n"
-     "Pragma: \n"},
-    {// Multiple header value.
-     {{"Cache-Control", "no-cache, no-store"}},
-
-     "HTTP/1.1 200\n"
-     "Cache-Control: no-cache, no-store\n"},
-    {// Spaces are removed around values, but when EnumerateHeaderLines()
-     // rejoins continuations, it keeps interior spaces. .
-     {{"X-Commas", "   ,  ,    "}},
-
-     "HTTP/1.1 200\n"
-     "X-Commas: ,  ,\n"},
-    {// Single value is trimmed.
-     {{"Pragma", "     no-cache   "}},
-
-     "HTTP/1.1 200\n"
-     "Pragma: no-cache\n"},
-    {// Location header is trimmed.
-     {{"Location", "   http://example.com/   "}},
-
-     "HTTP/1.1 200\n"
-     "Location: http://example.com/\n"},
-};
-
-INSTANTIATE_TEST_SUITE_P(HttpResponseHeaders,
-                         BuilderHeadersTest,
-                         testing::ValuesIn(builder_headers_tests));
-
-TEST(HttpResponseHeadersTest, StrictlyEqualsSuccess) {
-  constexpr char kRawHeaders[] =
-      "HTTP/1.1 200\n"
-      "Content-Type:application/octet-stream\n"
-      "Cache-Control:no-cache, no-store\n";
-  std::string raw_headers = kRawHeaders;
-  HeadersToRaw(&raw_headers);
-  const auto parsed = base::MakeRefCounted<HttpResponseHeaders>(raw_headers);
-  const auto built = HttpResponseHeaders::Builder({1, 1}, "200")
-                         .AddHeader("Content-Type", "application/octet-stream")
-                         .AddHeader("Cache-Control", "no-cache, no-store")
-                         .Build();
-  EXPECT_TRUE(parsed->StrictlyEquals(*built));
-  EXPECT_TRUE(built->StrictlyEquals(*parsed));
-}
-
-TEST(HttpResponseHeadersTest, StrictlyEqualsVersionMismatch) {
-  const auto http10 = HttpResponseHeaders::Builder({1, 0}, "200").Build();
-  const auto http11 = HttpResponseHeaders::Builder({1, 1}, "200").Build();
-  EXPECT_FALSE(http10->StrictlyEquals(*http11));
-  EXPECT_FALSE(http11->StrictlyEquals(*http10));
-}
-
-TEST(HttpResponseHeadersTest, StrictlyEqualsResponseCodeMismatch) {
-  const auto response200 = HttpResponseHeaders::Builder({1, 1}, "200").Build();
-  const auto response404 = HttpResponseHeaders::Builder({1, 1}, "404").Build();
-  EXPECT_FALSE(response200->StrictlyEquals(*response404));
-  EXPECT_FALSE(response404->StrictlyEquals(*response200));
-}
-
-TEST(HttpResponseHeadersTest, StrictlyEqualsStatusTextMismatch) {
-  const auto ok = HttpResponseHeaders::Builder({1, 1}, "200 OK").Build();
-  const auto ng = HttpResponseHeaders::Builder({1, 1}, "200 NG").Build();
-  EXPECT_FALSE(ok->StrictlyEquals(*ng));
-  EXPECT_FALSE(ng->StrictlyEquals(*ok));
-}
-
-TEST(HttpResponseHeadersTest, StrictlyEqualsRawMismatch) {
-  // These are designed so that the offsets of names and values will be the
-  // same.
-  std::string raw1 =
-      "HTTP/1.1 200\n"
-      "Pragma :None\n";
-  std::string raw2 =
-      "HTTP/1.1 200\n"
-      "Pragma: None\n";
-  HeadersToRaw(&raw1);
-  HeadersToRaw(&raw2);
-  const auto parsed1 = base::MakeRefCounted<HttpResponseHeaders>(raw1);
-  const auto parsed2 = base::MakeRefCounted<HttpResponseHeaders>(raw2);
-  EXPECT_FALSE(parsed1->StrictlyEquals(*parsed2));
-  EXPECT_FALSE(parsed2->StrictlyEquals(*parsed1));
-}
-
-// There's no known way to produce an HttpResponseHeaders object with the same
-// `raw_headers_` but different `parsed_` structures, so there's no test for
-// that.
 
 }  // namespace
 

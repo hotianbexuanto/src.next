@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,9 +7,13 @@ package org.chromium.chrome.browser.tabmodel;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabCreationState;
 
-/** Observes changes to the tab model selector. */
+/**
+ * Observes changes to the tab model selector.
+ */
 public interface TabModelSelectorObserver {
-    /** Called whenever the {@link TabModel} has changed. */
+    /**
+     * Called whenever the {@link TabModel} has changed.
+     */
     default void onChange() {}
 
     /**
@@ -27,11 +31,18 @@ public interface TabModelSelectorObserver {
     default void onTabHidden(Tab tab) {}
 
     /**
+<<<<<<< HEAD
+=======
+     * Called when a different tab model has been selected.
+     * @param newModel The newly selected tab model.
+     * @param oldModel The previously selected tab model.
+     */
+    default void onTabModelSelected(TabModel newModel, TabModel oldModel) {}
+
+    /**
+>>>>>>> chromium
      * Called when the tab state has been initialized and the current tab count and tab model states
      * are reliable.
      */
     default void onTabStateInitialized() {}
-
-    /** Called when the tab model selector is detroyed. */
-    default void onDestroyed() {}
 }

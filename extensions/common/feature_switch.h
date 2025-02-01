@@ -1,14 +1,14 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef EXTENSIONS_COMMON_FEATURE_SWITCH_H_
 #define EXTENSIONS_COMMON_FEATURE_SWITCH_H_
 
-#include <optional>
 #include <string>
 
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class CommandLine;
@@ -28,6 +28,7 @@ namespace extensions {
 // 4. Otherwise, the default value is used.
 class FeatureSwitch {
  public:
+  static FeatureSwitch* force_dev_mode_highlighting();
   static FeatureSwitch* prompt_for_external_extensions();
   static FeatureSwitch* embedded_extension_options();
   static FeatureSwitch* trace_app_source();
@@ -47,14 +48,11 @@ class FeatureSwitch {
   class ScopedOverride {
    public:
     ScopedOverride(FeatureSwitch* feature, bool override_value);
-
-    ScopedOverride(const ScopedOverride&) = delete;
-    ScopedOverride& operator=(const ScopedOverride&) = delete;
-
     ~ScopedOverride();
    private:
-    raw_ptr<FeatureSwitch> feature_;
+    FeatureSwitch* feature_;
     FeatureSwitch::OverrideValue previous_value_;
+    DISALLOW_COPY_AND_ASSIGN(ScopedOverride);
   };
 
   // |switch_name| can be null, in which case the feature is controlled solely
@@ -64,11 +62,6 @@ class FeatureSwitch {
   FeatureSwitch(const base::CommandLine* command_line,
                 const char* switch_name,
                 DefaultValue default_value);
-
-  FeatureSwitch(const FeatureSwitch&) = delete;
-  FeatureSwitch& operator=(const FeatureSwitch&) = delete;
-
-  ~FeatureSwitch();
 
   // Consider using ScopedOverride instead.
   void SetOverrideValue(OverrideValue value);
@@ -82,12 +75,13 @@ class FeatureSwitch {
   std::string GetLegacyDisableFlag() const;
   bool ComputeValue() const;
 
-  // TODO(crbug.com/40269737): detect under BRP.
-  raw_ptr<const base::CommandLine, DanglingUntriaged> command_line_;
+  const base::CommandLine* command_line_;
   const char* switch_name_;
   bool default_value_;
   OverrideValue override_value_;
-  mutable std::optional<bool> cached_value_;
+  mutable absl::optional<bool> cached_value_;
+
+  DISALLOW_COPY_AND_ASSIGN(FeatureSwitch);
 };
 
 }  // namespace extensions

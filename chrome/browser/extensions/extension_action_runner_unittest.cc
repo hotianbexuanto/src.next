@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,13 +9,19 @@
 #include <map>
 #include <utility>
 
-#include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
+#include "base/bind.h"
 #include "base/values.h"
+#include "chrome/browser/extensions/active_tab_permission_granter.h"
 #include "chrome/browser/extensions/api/extension_action/extension_action_api.h"
+<<<<<<< HEAD
 #include "chrome/browser/extensions/permissions/active_tab_permission_granter.h"
 #include "chrome/browser/extensions/permissions/permissions_updater.h"
 #include "chrome/browser/extensions/permissions/scripting_permissions_modifier.h"
+=======
+#include "chrome/browser/extensions/extension_action_runner.h"
+#include "chrome/browser/extensions/permissions_updater.h"
+#include "chrome/browser/extensions/scripting_permissions_modifier.h"
+>>>>>>> chromium
 #include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
@@ -23,17 +29,16 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/navigation_simulator.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/extension_features.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/mojom/injection_type.mojom-shared.h"
 #include "extensions/common/mojom/run_location.mojom-shared.h"
 #include "extensions/common/user_script.h"
+#include "extensions/common/value_builder.h"
 
 namespace extensions {
 
@@ -49,11 +54,6 @@ const char kAllHostsPermission[] = "*://*/*";
 // ExtensionActionRunner correctly interfaces in the system) is done in the
 // ExtensionActionRunnerBrowserTests.
 class ExtensionActionRunnerUnitTest : public ChromeRenderViewHostTestHarness {
- public:
-  ExtensionActionRunnerUnitTest(const ExtensionActionRunnerUnitTest&) = delete;
-  ExtensionActionRunnerUnitTest& operator=(
-      const ExtensionActionRunnerUnitTest&) = delete;
-
  protected:
   ExtensionActionRunnerUnitTest();
   ~ExtensionActionRunnerUnitTest() override;
@@ -68,51 +68,59 @@ class ExtensionActionRunnerUnitTest : public ChromeRenderViewHostTestHarness {
   // a script.
   bool RequiresUserConsent(const Extension* extension) const;
 
-  // Request an injection for the given `extension` at idle.
+  // Request an injection for the given |extension|.
   void RequestInjection(const Extension* extension);
   void RequestInjection(const Extension* extension,
                         mojom::RunLocation run_location);
 
   // Returns the number of times a given extension has had a script execute.
-  size_t GetExecutionCountForExtension(const ExtensionId& extension_id) const;
+  size_t GetExecutionCountForExtension(const std::string& extension_id) const;
 
   ExtensionActionRunner* runner() const { return extension_action_runner_; }
 
  private:
   // Returns a closure to use as a script execution for a given extension.
   ExtensionActionRunner::ScriptInjectionCallback
-  GetExecutionCallbackForExtension(const ExtensionId& extension_id);
+  GetExecutionCallbackForExtension(const std::string& extension_id);
 
   // Increment the number of executions for the given |extension_id|.
-  void IncrementExecutionCount(const ExtensionId& extension_id, bool granted);
+  void IncrementExecutionCount(const std::string& extension_id, bool granted);
 
   void SetUp() override;
 
   void TearDown() override;
 
   // The associated ExtensionActionRunner.
+<<<<<<< HEAD
   raw_ptr<ExtensionActionRunner> extension_action_runner_ = nullptr;
+=======
+  ExtensionActionRunner* extension_action_runner_ = nullptr;
+>>>>>>> chromium
 
   // The map of observed executions, keyed by extension id.
-  std::map<ExtensionId, int> extension_executions_;
+  std::map<std::string, int> extension_executions_;
 
   scoped_refptr<const Extension> extension_;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionActionRunnerUnitTest);
 };
 
 ExtensionActionRunnerUnitTest::ExtensionActionRunnerUnitTest() = default;
 ExtensionActionRunnerUnitTest::~ExtensionActionRunnerUnitTest() = default;
 
 const Extension* ExtensionActionRunnerUnitTest::AddExtension() {
-  const ExtensionId kId = crx_file::id_util::GenerateId("all_hosts_extension");
+  const std::string kId = crx_file::id_util::GenerateId("all_hosts_extension");
   extension_ =
       ExtensionBuilder()
-          .SetManifest(base::Value::Dict()
-                           .Set("name", "all_hosts_extension")
-                           .Set("description", "an extension")
-                           .Set("manifest_version", 2)
-                           .Set("version", "1.0.0")
-                           .Set("permissions", base::Value::List().Append(
-                                                   kAllHostsPermission)))
+          .SetManifest(
+              DictionaryBuilder()
+                  .Set("name", "all_hosts_extension")
+                  .Set("description", "an extension")
+                  .Set("manifest_version", 2)
+                  .Set("version", "1.0.0")
+                  .Set("permissions",
+                       ListBuilder().Append(kAllHostsPermission).Build())
+                  .Build())
           .SetLocation(mojom::ManifestLocation::kInternal)
           .SetID(kId)
           .Build();
@@ -154,17 +162,16 @@ void ExtensionActionRunnerUnitTest::RequestInjection(
 }
 
 size_t ExtensionActionRunnerUnitTest::GetExecutionCountForExtension(
-    const ExtensionId& extension_id) const {
+    const std::string& extension_id) const {
   auto iter = extension_executions_.find(extension_id);
-  if (iter != extension_executions_.end()) {
+  if (iter != extension_executions_.end())
     return iter->second;
-  }
   return 0u;
 }
 
 ExtensionActionRunner::ScriptInjectionCallback
 ExtensionActionRunnerUnitTest::GetExecutionCallbackForExtension(
-    const ExtensionId& extension_id) {
+    const std::string& extension_id) {
   // We use base unretained here, but if this ever gets executed outside of
   // this test's lifetime, we have a major problem anyway.
   return base::BindOnce(&ExtensionActionRunnerUnitTest::IncrementExecutionCount,
@@ -172,11 +179,10 @@ ExtensionActionRunnerUnitTest::GetExecutionCallbackForExtension(
 }
 
 void ExtensionActionRunnerUnitTest::IncrementExecutionCount(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     bool granted) {
-  if (!granted) {
+  if (!granted)
     return;
-  }
   ++extension_executions_[extension_id];
 }
 
@@ -191,6 +197,7 @@ void ExtensionActionRunnerUnitTest::SetUp() {
   DCHECK(extension_action_runner_);
 }
 
+<<<<<<< HEAD
 void ExtensionActionRunnerUnitTest::TearDown() {
   extension_action_runner_ = nullptr;
   ChromeRenderViewHostTestHarness::TearDown();
@@ -222,6 +229,8 @@ TEST_F(ExtensionActionRunnerUnitTest, GrantTabPermissions) {
   EXPECT_FALSE(runner()->WantsToRun(extension));
 }
 
+=======
+>>>>>>> chromium
 // Test that extensions with all_hosts require permission to execute, and, once
 // that permission is granted, do execute.
 TEST_F(ExtensionActionRunnerUnitTest, RequestPermissionAndExecute) {
@@ -320,9 +329,8 @@ TEST_F(ExtensionActionRunnerUnitTest, MultiplePendingInjection) {
 
   const size_t kNumInjections = 3u;
   // Queue multiple pending injections.
-  for (size_t i = 0u; i < kNumInjections; ++i) {
+  for (size_t i = 0u; i < kNumInjections; ++i)
     RequestInjection(extension);
-  }
 
   EXPECT_EQ(0u, GetExecutionCountForExtension(extension->id()));
 
@@ -469,20 +477,20 @@ TEST_F(ExtensionActionRunnerUnitTest, TestDifferentScriptRunLocations) {
 
   NavigateAndCommit(GURL("https://www.foo.com"));
 
-  EXPECT_EQ(BLOCKED_ACTION_NONE, runner()->GetBlockedActions(extension->id()));
+  EXPECT_EQ(BLOCKED_ACTION_NONE, runner()->GetBlockedActions(extension));
 
   RequestInjection(extension, mojom::RunLocation::kDocumentEnd);
   EXPECT_EQ(BLOCKED_ACTION_SCRIPT_OTHER,
-            runner()->GetBlockedActions(extension->id()));
+            runner()->GetBlockedActions(extension));
   RequestInjection(extension, mojom::RunLocation::kDocumentIdle);
   EXPECT_EQ(BLOCKED_ACTION_SCRIPT_OTHER,
-            runner()->GetBlockedActions(extension->id()));
+            runner()->GetBlockedActions(extension));
   RequestInjection(extension, mojom::RunLocation::kDocumentStart);
   EXPECT_EQ(BLOCKED_ACTION_SCRIPT_AT_START | BLOCKED_ACTION_SCRIPT_OTHER,
-            runner()->GetBlockedActions(extension->id()));
+            runner()->GetBlockedActions(extension));
 
   runner()->RunForTesting(extension);
-  EXPECT_EQ(BLOCKED_ACTION_NONE, runner()->GetBlockedActions(extension->id()));
+  EXPECT_EQ(BLOCKED_ACTION_NONE, runner()->GetBlockedActions(extension));
 }
 
 TEST_F(ExtensionActionRunnerUnitTest, TestWebRequestBlocked) {
@@ -491,21 +499,20 @@ TEST_F(ExtensionActionRunnerUnitTest, TestWebRequestBlocked) {
 
   NavigateAndCommit(GURL("https://www.foo.com"));
 
-  EXPECT_EQ(BLOCKED_ACTION_NONE, runner()->GetBlockedActions(extension->id()));
+  EXPECT_EQ(BLOCKED_ACTION_NONE, runner()->GetBlockedActions(extension));
   EXPECT_FALSE(runner()->WantsToRun(extension));
 
   runner()->OnWebRequestBlocked(extension);
-  EXPECT_EQ(BLOCKED_ACTION_WEB_REQUEST,
-            runner()->GetBlockedActions(extension->id()));
+  EXPECT_EQ(BLOCKED_ACTION_WEB_REQUEST, runner()->GetBlockedActions(extension));
   EXPECT_TRUE(runner()->WantsToRun(extension));
 
   RequestInjection(extension);
   EXPECT_EQ(BLOCKED_ACTION_WEB_REQUEST | BLOCKED_ACTION_SCRIPT_OTHER,
-            runner()->GetBlockedActions(extension->id()));
+            runner()->GetBlockedActions(extension));
   EXPECT_TRUE(runner()->WantsToRun(extension));
 
   NavigateAndCommit(GURL("https://www.bar.com"));
-  EXPECT_EQ(BLOCKED_ACTION_NONE, runner()->GetBlockedActions(extension->id()));
+  EXPECT_EQ(BLOCKED_ACTION_NONE, runner()->GetBlockedActions(extension));
   EXPECT_FALSE(runner()->WantsToRun(extension));
 }
 

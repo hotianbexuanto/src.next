@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,68 +9,56 @@
 
 #include "base/check.h"
 
-#include <optional>
+// check.h is a widely included header and its size has significant impact on
+// build time. Try not to raise this limit unless absolutely necessary. See
+// https://chromium.googlesource.com/chromium/src/+/HEAD/docs/wmax_tokens.md
+#ifndef NACL_TC_REV
+#pragma clang max_tokens_here 17000
+#endif
 
 #include "base/check_op.h"
-#include "base/check_version_internal.h"
-#include "base/debug/alias.h"
-#include "base/debug/dump_without_crashing.h"
 #include "base/logging.h"
-#include "base/thread_annotations.h"
-#include "base/types/cxx23_to_underlying.h"
 #include "build/build_config.h"
-
-#if BUILDFLAG(IS_NACL)
-// Forward declaring this ptr for code simplicity below, we'll never dereference
-// it under NaCl.
-namespace base::debug {
-class CrashKeyString;
-}  // namespace base::debug
-#else
-#include "base/debug/crash_logging.h"
-#endif  // !BUILDFLAG(IS_NACL)
 
 namespace logging {
 
-namespace {
-
-LogSeverity GetDumpSeverity() {
-#if defined(OFFICIAL_BUILD)
-  return DCHECK_IS_ON() ? LOGGING_DCHECK : LOGGING_ERROR;
-#else
-  // Crash outside official builds (outside user-facing builds) to detect
-  // invariant violations early in release-build testing like fuzzing, etc.
-  // These should eventually be migrated to fatal CHECKs.
-  return LOGGING_FATAL;
-#endif
+CheckError CheckError::Check(const char* file,
+                             int line,
+                             const char* condition) {
+  CheckError check_error(new LogMessage(file, line, LOGGING_FATAL));
+  check_error.stream() << "Check failed: " << condition << ". ";
+  return check_error;
 }
 
-LogSeverity GetNotFatalUntilSeverity(base::NotFatalUntil fatal_milestone) {
-  if (fatal_milestone != base::NotFatalUntil::NoSpecifiedMilestoneInternal &&
-      base::to_underlying(fatal_milestone) <= BASE_CHECK_VERSION_INTERNAL) {
-    return LOGGING_FATAL;
-  }
-  return GetDumpSeverity();
+CheckError CheckError::CheckOp(const char* file,
+                               int line,
+                               CheckOpResult* check_op_result) {
+  CheckError check_error(new LogMessage(file, line, LOGGING_FATAL));
+  check_error.stream() << "Check failed: " << check_op_result->message_;
+  free(check_op_result->message_);
+  check_op_result->message_ = nullptr;
+  return check_error;
 }
 
-LogSeverity GetCheckSeverity(base::NotFatalUntil fatal_milestone) {
-  // CHECKs are fatal unless `fatal_milestone` overrides it.
-  if (fatal_milestone == base::NotFatalUntil::NoSpecifiedMilestoneInternal) {
-    return LOGGING_FATAL;
-  }
-  return GetNotFatalUntilSeverity(fatal_milestone);
+CheckError CheckError::DCheck(const char* file,
+                              int line,
+                              const char* condition) {
+  CheckError check_error(new LogMessage(file, line, LOGGING_DCHECK));
+  check_error.stream() << "Check failed: " << condition << ". ";
+  return check_error;
 }
 
-base::debug::CrashKeyString* GetNotReachedCrashKey() {
-#if BUILDFLAG(IS_NACL)
-  return nullptr;
-#else
-  static auto* const key = ::base::debug::AllocateCrashKeyString(
-      "Logging-NOTREACHED_MESSAGE", base::debug::CrashKeySize::Size1024);
-  return key;
-#endif  // BUILDFLAG(IS_NACL)
+CheckError CheckError::DCheckOp(const char* file,
+                                int line,
+                                CheckOpResult* check_op_result) {
+  CheckError check_error(new LogMessage(file, line, LOGGING_DCHECK));
+  check_error.stream() << "Check failed: " << check_op_result->message_;
+  free(check_op_result->message_);
+  check_op_result->message_ = nullptr;
+  return check_error;
 }
 
+<<<<<<< HEAD
 base::debug::CrashKeyString* GetDCheckCrashKey() {
 #if BUILDFLAG(IS_NACL)
   return nullptr;
@@ -298,22 +286,57 @@ CheckError CheckError::DumpWillBeCheckOp(char* log_message_str,
 
 CheckError CheckError::DPCheck(const char* condition,
                                const base::Location& location) {
+=======
+CheckError CheckError::PCheck(const char* file,
+                              int line,
+                              const char* condition) {
   SystemErrorCode err_code = logging::GetLastSystemErrorCode();
-#if BUILDFLAG(IS_WIN)
-  auto* const log_message = new DCheckWin32ErrorLogMessage(location, err_code);
-#elif BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
-  auto* const log_message = new DCheckErrnoLogMessage(location, err_code);
+#if defined(OS_WIN)
+  CheckError check_error(
+      new Win32ErrorLogMessage(file, line, LOGGING_FATAL, err_code));
+#elif defined(OS_POSIX) || defined(OS_FUCHSIA)
+  CheckError check_error(
+      new ErrnoLogMessage(file, line, LOGGING_FATAL, err_code));
 #endif
-  log_message->stream() << "Check failed: " << condition << ". ";
-  return CheckError(log_message);
+  check_error.stream() << "Check failed: " << condition << ". ";
+  return check_error;
 }
 
+CheckError CheckError::PCheck(const char* file, int line) {
+  return PCheck(file, line, "");
+}
+
+CheckError CheckError::DPCheck(const char* file,
+                               int line,
+                               const char* condition) {
+>>>>>>> chromium
+  SystemErrorCode err_code = logging::GetLastSystemErrorCode();
+#if defined(OS_WIN)
+  CheckError check_error(
+      new Win32ErrorLogMessage(file, line, LOGGING_DCHECK, err_code));
+#elif defined(OS_POSIX) || defined(OS_FUCHSIA)
+  CheckError check_error(
+      new ErrnoLogMessage(file, line, LOGGING_DCHECK, err_code));
+#endif
+  check_error.stream() << "Check failed: " << condition << ". ";
+  return check_error;
+}
+
+<<<<<<< HEAD
 CheckError CheckError::NotImplemented(const char* function,
                                       const base::Location& location) {
   auto* const log_message = new LogMessage(
       location.file_name(), location.line_number(), LOGGING_ERROR);
   log_message->stream() << "Not implemented reached in " << function;
   return CheckError(log_message);
+=======
+CheckError CheckError::NotImplemented(const char* file,
+                                      int line,
+                                      const char* function) {
+  CheckError check_error(new LogMessage(file, line, LOGGING_ERROR));
+  check_error.stream() << "Not implemented reached in " << function;
+  return check_error;
+>>>>>>> chromium
 }
 
 std::ostream& CheckError::stream() {
@@ -321,27 +344,15 @@ std::ostream& CheckError::stream() {
 }
 
 CheckError::~CheckError() {
-  // TODO(crbug.com/40254046): Consider splitting out CHECK from DCHECK so that
-  // the destructor can be marked [[noreturn]] and we don't need to check
-  // severity in the destructor.
-  const bool is_fatal = log_message_->severity() == LOGGING_FATAL;
   // Note: This function ends up in crash stack traces. If its full name
   // changes, the crash server's magic signature logic needs to be updated.
   // See cl/306632920.
-
-  // Reset before `ImmediateCrash()` to ensure the message is flushed.
-  log_message_.reset();
-
-  // Make sure we crash even if LOG(FATAL) has been overridden.
-  // TODO(crbug.com/40254046): Remove severity checking in the destructor when
-  // LOG(FATAL) is [[noreturn]] and can't be overridden.
-  if (is_fatal) {
-    base::ImmediateCrash();
-  }
+  delete log_message_;
 }
 
 CheckError::CheckError(LogMessage* log_message) : log_message_(log_message) {}
 
+<<<<<<< HEAD
 // Note: This function ends up in crash stack traces. If its full name changes,
 // the crash server's magic signature logic needs to be updated. See
 // cl/306632920.
@@ -437,8 +448,10 @@ NotReachedNoreturnError::~NotReachedNoreturnError() {
 }
 
 void RawCheckFailure(const char* message) {
+=======
+void RawCheck(const char* message) {
+>>>>>>> chromium
   RawLog(LOGGING_FATAL, message);
-  __builtin_unreachable();
 }
 
 }  // namespace logging

@@ -1,21 +1,13 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_EXTENSIONS_BROWSERTEST_UTIL_H_
 #define CHROME_BROWSER_EXTENSIONS_BROWSERTEST_UTIL_H_
 
-#include <string>
-#include "base/run_loop.h"
-#include "chrome/browser/extensions/extension_action_runner.h"
-
 class Browser;
 class GURL;
 class Profile;
-
-namespace base {
-class RunLoop;
-}
 
 namespace content {
 class WebContents;
@@ -39,6 +31,7 @@ Browser* LaunchAppBrowser(Profile* profile, const Extension* app);
 // Adds a tab to |browser| and returns the newly added WebContents.
 content::WebContents* AddTab(Browser* browser, const GURL& url);
 
+<<<<<<< HEAD
 // Returns the number of WindowControllers with the Profile `profile`.
 size_t GetWindowControllerCountInProfile(Profile* profile);
 
@@ -76,6 +69,8 @@ class BlockedActionWaiter : public ExtensionActionRunner::TestObserver {
   base::RunLoop run_loop_;
 };
 
+=======
+>>>>>>> chromium
 }  // namespace browsertest_util
 }  // namespace extensions
 

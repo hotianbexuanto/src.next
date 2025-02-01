@@ -1,26 +1,17 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
 
-#include "base/process/memory.h"
 #include "components/viz/common/gpu/context_provider.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_graphics_context_3d_provider.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
-#include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
-#include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
-#include "third_party/blink/renderer/platform/wtf/cross_thread_copier_skia.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/skia/include/core/SkImage.h"
 
@@ -29,8 +20,6 @@ namespace blink {
 scoped_refptr<UnacceleratedStaticBitmapImage>
 UnacceleratedStaticBitmapImage::Create(sk_sp<SkImage> image,
                                        ImageOrientation orientation) {
-  if (!image)
-    return nullptr;
   DCHECK(!image->isTextureBacked());
   return base::AdoptRef(
       new UnacceleratedStaticBitmapImage(std::move(image), orientation));
@@ -77,6 +66,14 @@ UnacceleratedStaticBitmapImage::~UnacceleratedStaticBitmapImage() {
   }
 }
 
+IntSize UnacceleratedStaticBitmapImage::SizeInternal() const {
+  return IntSize(paint_image_.width(), paint_image_.height());
+}
+
+bool UnacceleratedStaticBitmapImage::IsPremultiplied() const {
+  return paint_image_.GetAlphaType() == SkAlphaType::kPremul_SkAlphaType;
+}
+
 bool UnacceleratedStaticBitmapImage::CurrentFrameKnownToBeOpaque() {
   return paint_image_.IsOpaque();
 }
@@ -84,18 +81,16 @@ bool UnacceleratedStaticBitmapImage::CurrentFrameKnownToBeOpaque() {
 void UnacceleratedStaticBitmapImage::Draw(
     cc::PaintCanvas* canvas,
     const cc::PaintFlags& flags,
-    const gfx::RectF& dst_rect,
-    const gfx::RectF& src_rect,
-    const ImageDrawOptions& draw_options) {
+    const FloatRect& dst_rect,
+    const FloatRect& src_rect,
+    const SkSamplingOptions& sampling,
+    RespectImageOrientationEnum should_respect_image_orientation,
+    ImageClampingMode clamp_mode,
+    ImageDecodingMode) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  auto image = PaintImageForCurrentFrame();
-  if (image.may_be_lcp_candidate() != draw_options.may_be_lcp_candidate) {
-    image = PaintImageBuilder::WithCopy(std::move(image))
-                .set_may_be_lcp_candidate(draw_options.may_be_lcp_candidate)
-                .TakePaintImage();
-  }
-  StaticBitmapImage::DrawHelper(canvas, flags, dst_rect, src_rect, draw_options,
-                                image);
+  StaticBitmapImage::DrawHelper(canvas, flags, dst_rect, src_rect, sampling,
+                                clamp_mode, should_respect_image_orientation,
+                                PaintImageForCurrentFrame());
 }
 
 PaintImage UnacceleratedStaticBitmapImage::PaintImageForCurrentFrame() {
@@ -106,18 +101,30 @@ void UnacceleratedStaticBitmapImage::Transfer() {
   DETACH_FROM_THREAD(thread_checker_);
 
   original_skia_image_ = paint_image_.GetSwSkImage();
-  original_skia_image_task_runner_ =
-      ThreadScheduler::Current()->CleanupTaskRunner();
+  original_skia_image_task_runner_ = Thread::Current()->GetTaskRunner();
+}
+
+scoped_refptr<StaticBitmapImage>
+UnacceleratedStaticBitmapImage::ConvertToColorSpace(
+    sk_sp<SkColorSpace> color_space,
+    SkColorType color_type) {
+  DCHECK(color_space);
+
+  sk_sp<SkImage> skia_image = PaintImageForCurrentFrame().GetSwSkImage();
+  // If we don't need to change the color type, use SkImage::makeColorSpace()
+  if (skia_image->colorType() == color_type) {
+    skia_image = skia_image->makeColorSpace(color_space);
+  } else {
+    skia_image =
+        skia_image->makeColorTypeAndColorSpace(color_type, color_space);
+  }
+  return UnacceleratedStaticBitmapImage::Create(skia_image, orientation_);
 }
 
 bool UnacceleratedStaticBitmapImage::CopyToResourceProvider(
-    CanvasResourceProvider* resource_provider,
-    const gfx::Rect& copy_rect) {
+    CanvasResourceProvider* resource_provider) {
   DCHECK(resource_provider);
-  DCHECK(IsOriginTopLeft());
 
-  // Extract content to SkPixmap. Pixels are CPU backed resource and this
-  // should be freed.
   sk_sp<SkImage> image = paint_image_.GetSwSkImage();
   if (!image)
     return false;
@@ -127,6 +134,7 @@ bool UnacceleratedStaticBitmapImage::CopyToResourceProvider(
     return false;
 
   const void* pixels = pixmap.addr();
+<<<<<<< HEAD
   const size_t source_row_bytes = pixmap.rowBytes();
   const size_t source_height = pixmap.height();
 
@@ -150,17 +158,24 @@ bool UnacceleratedStaticBitmapImage::CopyToResourceProvider(
              static_cast<const uint8_t*>(pixels) +
                  (y_offset + src_y) * source_row_bytes + x_offset_bytes,
              dest_row_bytes);
+=======
+  const size_t row_bytes = pixmap.rowBytes();
+  std::vector<uint8_t> flipped;
+  DCHECK(IsOriginTopLeft());
+  if (!resource_provider->IsOriginTopLeft()) {
+    const int height = pixmap.height();
+    flipped.resize(row_bytes * height);
+    for (int i = 0; i < height; ++i) {
+      memcpy(flipped.data() + i * row_bytes,
+             static_cast<const uint8_t*>(pixels) + (height - 1 - i) * row_bytes,
+             row_bytes);
+>>>>>>> chromium
     }
-    pixels = dest_pixels.data();
+    pixels = flipped.data();
   }
 
-  return resource_provider->WritePixels(copy_rect_info, pixels, dest_row_bytes,
+  return resource_provider->WritePixels(pixmap.info(), pixels, row_bytes,
                                         /*x=*/0, /*y=*/0);
-}
-
-SkImageInfo UnacceleratedStaticBitmapImage::GetSkImageInfo() const {
-  return paint_image_.GetSkImageInfo().makeWH(paint_image_.width(),
-                                              paint_image_.height());
 }
 
 }  // namespace blink

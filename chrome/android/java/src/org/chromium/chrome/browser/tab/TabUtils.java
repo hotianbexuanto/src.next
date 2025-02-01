@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,65 +6,33 @@ package org.chromium.chrome.browser.tab;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.graphics.Bitmap;
-import android.graphics.Matrix;
 import android.graphics.Point;
 import android.graphics.Rect;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
-import android.util.Size;
 import android.view.Display;
-import android.widget.ImageView;
-import android.widget.ImageView.ScaleType;
 
-import androidx.annotation.IntDef;
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.BuildInfo;
-import org.chromium.base.ContextUtils;
+import org.chromium.base.ApplicationStatus;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
-import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeProvider;
-import org.chromium.components.browser_ui.site_settings.WebsitePreferenceBridge;
-import org.chromium.components.browser_ui.util.AutomotiveUtils;
-import org.chromium.components.browser_ui.util.DimensionCompat;
-import org.chromium.components.content_settings.ContentSettingValues;
-import org.chromium.components.content_settings.ContentSettingsType;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroidManager;
-import org.chromium.ui.display.DisplayUtil;
-import org.chromium.url.GURL;
 
+<<<<<<< HEAD
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /** Collection of utility methods that operates on Tab. */
+=======
+/**
+ * Collection of utility methods that operates on Tab.
+ */
+>>>>>>> chromium
 public class TabUtils {
-    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    public static final float PORTRAIT_THUMBNAIL_ASPECT_RATIO = 0.85f;
-
-    /** Define the callers of NavigationControllerImpl#setUseDesktopUserAgent. */
-    @IntDef({
-        UseDesktopUserAgentCaller.ON_MENU_OR_KEYBOARD_ACTION,
-        UseDesktopUserAgentCaller.LOAD_IF_NEEDED,
-        UseDesktopUserAgentCaller.RELOAD,
-        UseDesktopUserAgentCaller.RELOAD_IGNORING_CACHE,
-        UseDesktopUserAgentCaller.OTHER
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface UseDesktopUserAgentCaller {
-        int ON_MENU_OR_KEYBOARD_ACTION = 0;
-        int LOAD_IF_NEEDED = 100;
-        int RELOAD = 200;
-        int RELOAD_IGNORING_CACHE = 300;
-        int OTHER = 400;
-    }
+    private static final String REQUEST_DESKTOP_SCREEN_WIDTH_PARAM = "screen_width_dp";
 
     // Do not instantiate this class.
     private TabUtils() {}
@@ -72,7 +40,8 @@ public class TabUtils {
     /**
      * @return {@link Activity} associated with the given tab.
      */
-    public static @Nullable Activity getActivity(Tab tab) {
+    @Nullable
+    public static Activity getActivity(Tab tab) {
         WebContents webContents = tab != null ? tab.getWebContents() : null;
         if (webContents == null || webContents.isDestroyed()) return null;
         WindowAndroid window = webContents.getTopLevelNativeWindow();
@@ -88,8 +57,6 @@ public class TabUtils {
      * @param context The application context.
      * @return The estimated prerender size in pixels.
      */
-    // status_bar_height is not a public framework resource, so we have to getIdentifier()
-    @SuppressWarnings("DiscouragedApi")
     public static Rect estimateContentSize(Context context) {
         // The size is estimated as:
         // X = screenSizeX
@@ -106,11 +73,9 @@ public class TabUtils {
         } catch (Resources.NotFoundException e) {
             // Nothing, this is just a best effort estimate.
         }
-        screenBounds.set(
-                0,
+        screenBounds.set(0,
                 resources.getDimensionPixelSize(R.dimen.custom_tabs_control_container_height),
-                screenSize.x,
-                screenSize.y);
+                screenSize.x, screenSize.y);
         return screenBounds;
     }
 
@@ -120,78 +85,42 @@ public class TabUtils {
 
     /**
      * Call when tab need to switch user agent between desktop and mobile.
-     *
      * @param tab The tab to be switched the user agent.
      * @param switchToDesktop Whether switching the user agent to desktop.
-     * @param caller The caller of this method.
+     * @param forcedByUser Whether this was triggered by users action.
      */
-    public static void switchUserAgent(Tab tab, boolean switchToDesktop, int caller) {
+    public static void switchUserAgent(Tab tab, boolean switchToDesktop, boolean forcedByUser) {
         final boolean reloadOnChange = !tab.isNativePage();
-        tab.getWebContents()
-                .getNavigationController()
-                .setUseDesktopUserAgent(switchToDesktop, reloadOnChange, caller);
+        tab.getWebContents().getNavigationController().setUseDesktopUserAgent(
+                switchToDesktop, reloadOnChange);
+        if (forcedByUser) ((TabImpl) tab).setUserForcedUserAgent();
     }
 
     /**
-     * Get UseDesktopUserAgent setting from webContents.
-     * @param webContents The webContents used to retrieve UseDesktopUserAgent setting.
-     * @return Whether the webContents is set to use desktop user agent.
+     * Check if the tab is large enough for displaying desktop sites. This method will only check
+     * for tablets, if the device is a phone, will return false regardless of tab size.
+     * @param tab The tab to be checked if the size is large enough for desktop site.
+     * @return Whether or not the screen size is large enough for desktop sites.
      */
-    public static boolean isUsingDesktopUserAgent(WebContents webContents) {
-        return webContents != null
-                && webContents.getNavigationController().getUseDesktopUserAgent();
-    }
-
-    /**
-     * Get tabUserAgent from the tab, which represents the tab level RDS setting.
-     * @param tab The tab used to retrieve tabUserAgent.
-     * @return The tab level RDS setting.
-     */
-    public static @TabUserAgent int getTabUserAgent(Tab tab) {
-        @TabUserAgent int tabUserAgent = tab.getUserAgent();
-        WebContents webContents = tab.getWebContents();
-        boolean currentRequestDesktopSite = isUsingDesktopUserAgent(webContents);
-        // TabUserAgent.UNSET means this is a pre-existing tab from an earlier build. In this case
-        // we set the TabUserAgent bit based on last committed entry's user agent. If webContents is
-        // null, this method is triggered too early, and we cannot read the last committed entry's
-        // user agent yet. We will skip for now and let the following call set the TabUserAgent bit.
-        if (webContents != null && tabUserAgent == TabUserAgent.UNSET) {
-            if (currentRequestDesktopSite) {
-                tabUserAgent = TabUserAgent.DESKTOP;
-            } else {
-                tabUserAgent = TabUserAgent.DEFAULT;
-            }
-            tab.setUserAgent(tabUserAgent);
+    public static boolean isTabLargeEnoughForDesktopSite(Tab tab) {
+        if (!DeviceFormFactor.isNonMultiDisplayContextOnTablet(tab.getContext())) {
+            // The device is a phone, do not check the tab size.
+            return false;
         }
-        return tabUserAgent;
-    }
-
-    /**
-     * Read Request Desktop Site ContentSettings.
-     * @param profile The profile used to retrieve ContentSettings.
-     * @param url The Url used to retrieve site level ContentSettings.
-     * @return Whether Request Desktop Site is enabled in ContentSettings.
-     */
-    public static boolean readRequestDesktopSiteContentSettings(
-            Profile profile, @Nullable GURL url) {
-        return url != null && TabUtils.isDesktopSiteEnabled(profile, url);
-    }
-
-    /**
-     * Check if Request Desktop Site ContentSettings is global setting.
-     * @param profile The profile used to retrieve ContentSettings.
-     * @param url The Url used to retrieve ContentSettings.
-     * @return Whether Request Desktop Site ContentSettings is global setting.
-     */
-    public static boolean isRequestDesktopSiteContentSettingsGlobal(
-            Profile profile, @Nullable GURL url) {
-        if (url == null) {
-            return true;
+        Activity activity = ((TabImpl) tab).getActivity();
+        if (activity == null) {
+            // It is possible that we are in custom tabs or tests, and need to access the activity
+            // differently.
+            activity = ApplicationStatus.getLastTrackedFocusedActivity();
+            if (activity == null) return false;
         }
-        return WebsitePreferenceBridge.isContentSettingGlobal(
-                profile, ContentSettingsType.REQUEST_DESKTOP_SITE, url, url);
-    }
+        int windowWidth = activity.getWindow().getDecorView().getWidth();
+        int minWidthForDesktopSite = ChromeFeatureList.getFieldTrialParamByFeatureAsInt(
+                ChromeFeatureList.REQUEST_DESKTOP_SITE_FOR_TABLETS,
+                REQUEST_DESKTOP_SCREEN_WIDTH_PARAM,
+                /* Set a very large size as default to serve as a disabled screen width. */ 4096);
 
+<<<<<<< HEAD
     /**
      * Check if Request Desktop Site global setting is enabled.
      * @param profile The profile of the tab.
@@ -367,5 +296,8 @@ public class TabUtils {
         final int thumbnailMargin =
                 (int) context.getResources().getDimension(R.dimen.tab_grid_card_thumbnail_margin);
         return 2 * (tabGridCardMargin + thumbnailMargin);
+=======
+        return minWidthForDesktopSite <= windowWidth;
+>>>>>>> chromium
     }
 }

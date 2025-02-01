@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -39,7 +39,7 @@ class ColorCorrectionTestUtils {
   static void CompareColorCorrectedPixels(
       const void* actual_pixels,
       const void* expected_pixels,
-      size_t num_pixels,
+      int num_pixels,
       PixelFormat pixel_format,
       PixelsAlphaMultiply alpha_multiplied = kAlphaUnmultiplied,
       UnpremulRoundTripTolerance premul_unpremul_tolerance =
@@ -48,9 +48,9 @@ class ColorCorrectionTestUtils {
   static bool ConvertPixelsToColorSpaceAndPixelFormatForTest(
       void* src_data,
       size_t num_elements,
-      PredefinedColorSpace src_color_space,
+      CanvasColorSpace src_color_space,
       ImageDataStorageFormat src_storage_format,
-      PredefinedColorSpace dst_color_space,
+      CanvasColorSpace dst_color_space,
       CanvasPixelFormat dst_canvas_pixel_format,
       base::span<uint8_t> converted_pixels,
       PixelFormat pixel_format_for_f16_canvas);

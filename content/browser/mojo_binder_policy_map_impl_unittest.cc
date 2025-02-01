@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,8 +7,8 @@
 #include "base/test/gtest_util.h"
 #include "base/test/task_environment.h"
 #include "content/browser/browser_interface_binders.h"
-#include "content/public/test/mojo_capability_control_test_interfaces.mojom.h"
 #include "content/test/test_content_browser_client.h"
+#include "content/test/test_mojo_binder_policy_applier_unittest.mojom.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -24,46 +24,34 @@ class MojoBinderPolicyMapImplTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
 };
 
-// Verifies the SetNonAssociatedPolicy method works.
-TEST_F(MojoBinderPolicyMapImplTest, SetNonAssociatedPolicy) {
+// Verifies SetPolicy function works.
+TEST_F(MojoBinderPolicyMapImplTest, SetPolicy) {
   MojoBinderPolicyMapImpl policy_map;
-  policy_map.SetNonAssociatedPolicy<content::mojom::TestInterfaceForDefer>(
-      MojoBinderNonAssociatedPolicy::kDefer);
+  policy_map.SetPolicy<content::mojom::TestInterfaceForDefer>(
+      MojoBinderPolicy::kDefer);
   EXPECT_EQ(
-      policy_map.GetNonAssociatedMojoBinderPolicyOrDieForTesting(
+      policy_map.GetMojoBinderPolicyOrDieForTesting(
           mojo::Remote<
               content::mojom::TestInterfaceForDefer>::InterfaceType::Name_),
-      MojoBinderNonAssociatedPolicy::kDefer);
+      MojoBinderPolicy::kDefer);
 }
 
-// Verifies the SetAssociatedPolicy method works.
-TEST_F(MojoBinderPolicyMapImplTest, SetAssociatedPolicy) {
-  MojoBinderPolicyMapImpl policy_map;
-  policy_map.SetAssociatedPolicy<content::mojom::TestInterfaceForDefer>(
-      MojoBinderAssociatedPolicy::kGrant);
-  EXPECT_EQ(
-      policy_map.GetAssociatedMojoBinderPolicyOrDieForTesting(
-          mojo::Remote<
-              content::mojom::TestInterfaceForDefer>::InterfaceType::Name_),
-      MojoBinderAssociatedPolicy::kGrant);
-}
-
-// Verifies if the given interface is not found in the map,
-// GetNonAssociatedMojoBinderPolicy will return the given `default_policy`.
+// Verifies if the given interface is not found in the map, GetMojoBinderPolicy
+// will return the given `default_policy`.
 TEST_F(MojoBinderPolicyMapImplTest, InterfaceNotFound) {
   MojoBinderPolicyMapImpl policy_map;
   EXPECT_EQ(
-      policy_map.GetNonAssociatedMojoBinderPolicy(
+      policy_map.GetMojoBinderPolicy(
           mojo::Remote<
               content::mojom::TestInterfaceForDefer>::InterfaceType::Name_,
-          MojoBinderNonAssociatedPolicy::kDefer),
-      MojoBinderNonAssociatedPolicy::kDefer);
+          MojoBinderPolicy::kDefer),
+      MojoBinderPolicy::kDefer);
   EXPECT_EQ(
-      policy_map.GetNonAssociatedMojoBinderPolicy(
+      policy_map.GetMojoBinderPolicy(
           mojo::Remote<
               content::mojom::TestInterfaceForDefer>::InterfaceType::Name_,
-          MojoBinderNonAssociatedPolicy::kCancel),
-      MojoBinderNonAssociatedPolicy::kCancel);
+          MojoBinderPolicy::kCancel),
+      MojoBinderPolicy::kCancel);
 }
 
 class MojoBinderPolicyTestContentBrowserClient
@@ -71,8 +59,8 @@ class MojoBinderPolicyTestContentBrowserClient
  public:
   void RegisterMojoBinderPoliciesForSameOriginPrerendering(
       MojoBinderPolicyMap& policy_map) override {
-    policy_map.SetNonAssociatedPolicy<content::mojom::TestInterfaceForDefer>(
-        MojoBinderNonAssociatedPolicy::kDefer);
+    policy_map.SetPolicy<content::mojom::TestInterfaceForDefer>(
+        MojoBinderPolicy::kDefer);
   }
 };
 
@@ -84,10 +72,10 @@ TEST_F(MojoBinderPolicyMapImplTest, RegisterMojoBinderPolicyMap) {
   test_browser_client.RegisterMojoBinderPoliciesForSameOriginPrerendering(
       policy_map);
   EXPECT_EQ(
-      policy_map.GetNonAssociatedMojoBinderPolicyOrDieForTesting(
+      policy_map.GetMojoBinderPolicyOrDieForTesting(
           mojo::Remote<
               content::mojom::TestInterfaceForDefer>::InterfaceType::Name_),
-      MojoBinderNonAssociatedPolicy::kDefer);
+      MojoBinderPolicy::kDefer);
 }
 
 }  // namespace

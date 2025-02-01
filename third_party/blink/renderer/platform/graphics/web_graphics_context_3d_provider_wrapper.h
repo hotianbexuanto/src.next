@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -53,9 +53,7 @@ class PLATFORM_EXPORT WebGraphicsContext3DProviderWrapper {
  private:
   std::unique_ptr<GraphicsContext3DUtils> utils_;
   std::unique_ptr<WebGraphicsContext3DProvider> context_provider_;
-  // RAW_PTR_EXCLUSION: Performance reasons(based on analysis of speedometer3).
-  base::ObserverList<DestructionObserver>::UncheckedAndRawPtrExcluded
-      observers_;
+  base::ObserverList<DestructionObserver>::Unchecked observers_;
   base::WeakPtrFactory<WebGraphicsContext3DProviderWrapper> weak_ptr_factory_{
       this};
 };

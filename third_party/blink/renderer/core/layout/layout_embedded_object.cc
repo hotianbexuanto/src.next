@@ -30,6 +30,11 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/html/html_plugin_element.h"
+<<<<<<< HEAD
+=======
+#include "third_party/blink/renderer/core/layout/intrinsic_sizing_info.h"
+#include "third_party/blink/renderer/core/layout/layout_analyzer.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/natural_sizing_info.h"
 #include "third_party/blink/renderer/core/page/page.h"
@@ -62,6 +67,7 @@ static String LocalizedUnavailablePluginReplacementText(
                         // details.
   }
   NOTREACHED();
+  return String();
 }
 
 void LayoutEmbeddedObject::SetPluginAvailability(
@@ -90,23 +96,65 @@ void LayoutEmbeddedObject::PaintReplaced(
   EmbeddedObjectPainter(*this).PaintReplaced(paint_info, paint_offset);
 }
 
-void LayoutEmbeddedObject::UpdateAfterLayout() {
+void LayoutEmbeddedObject::UpdateLayout() {
   NOT_DESTROYED();
-  LayoutEmbeddedContent::UpdateAfterLayout();
+  DCHECK(NeedsLayout());
+  LayoutAnalyzer::Scope analyzer(*this);
+
+  UpdateLogicalWidth();
+  UpdateLogicalHeight();
+
+  ClearLayoutOverflow();
+
+  UpdateAfterLayout();
+
   if (!GetEmbeddedContentView() && GetFrameView())
     GetFrameView()->AddPartToUpdate(*this);
+
+  ClearSelfNeedsLayoutOverflowRecalc();
+  ClearNeedsLayout();
 }
 
 PhysicalNaturalSizingInfo LayoutEmbeddedObject::GetNaturalDimensions() const {
   NOT_DESTROYED();
   NaturalSizingInfo sizing_info;
   FrameView* frame_view = ChildFrameView();
+<<<<<<< HEAD
   if (frame_view && frame_view->GetIntrinsicSizingInfo(sizing_info)) {
     // Scale based on our zoom as the embedded document doesn't have that info.
     sizing_info.size.Scale(StyleRef().EffectiveZoom());
     return PhysicalNaturalSizingInfo::FromSizingInfo(sizing_info);
+=======
+  if (frame_view && frame_view->GetIntrinsicSizingInfo(intrinsic_sizing_info)) {
+    // Handle zoom & vertical writing modes here, as the embedded document
+    // doesn't know about them.
+    intrinsic_sizing_info.size.Scale(StyleRef().EffectiveZoom());
+
+    // Handle an overridden aspect ratio
+    const StyleAspectRatio& aspect_ratio = StyleRef().AspectRatio();
+    if (aspect_ratio.GetType() == EAspectRatioType::kRatio ||
+        (aspect_ratio.GetType() == EAspectRatioType::kAutoAndRatio &&
+         intrinsic_sizing_info.aspect_ratio.IsEmpty())) {
+      intrinsic_sizing_info.aspect_ratio.SetWidth(
+          aspect_ratio.GetRatio().Width());
+      intrinsic_sizing_info.aspect_ratio.SetHeight(
+          aspect_ratio.GetRatio().Height());
+    }
+
+    if (!IsHorizontalWritingMode())
+      intrinsic_sizing_info.Transpose();
+    return;
+>>>>>>> chromium
   }
   return LayoutEmbeddedContent::GetNaturalDimensions();
+}
+
+bool LayoutEmbeddedObject::NeedsPreferredWidthsRecalculation() const {
+  NOT_DESTROYED();
+  if (LayoutEmbeddedContent::NeedsPreferredWidthsRecalculation())
+    return true;
+  FrameView* frame_view = ChildFrameView();
+  return frame_view && frame_view->HasIntrinsicSizingInfo();
 }
 
 }  // namespace blink

@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,8 @@
 namespace blink {
 
 enum MapCoordinatesMode {
+  kIsFixed = 1 << 0,
+
   // Only needed in some special cases to intentionally ignore transforms.
   kIgnoreTransforms = 1 << 2,
 
@@ -26,6 +28,7 @@ enum MapCoordinatesMode {
   kIgnoreScrollOriginAndOffset = 1 << 6,
 
   // If the local root frame has a remote frame parent, apply the transformation
+<<<<<<< HEAD
   // from the local root frame to the remote main frame. The coordinates are
   // relative to the remote main frame document, i.e., (0, 0) maps to where the
   // remote main frame's content starts.
@@ -39,6 +42,19 @@ enum MapCoordinatesMode {
   // onscreen. This is because we don't sync scroll updates from the main
   // frame's root scroller. See kSkipUnnecessaryRemoteFrameGeometryPropagation.
   kApplyRemoteViewportTransform = 1 << 8,
+=======
+  // from the local root frame to the remote main frame.
+  kApplyRemoteMainFrameTransform = 1 << 6,
+
+  // Whether to use GeometryMapper to optimize for speed. This can only be
+  // used it the callsites are in a lifecycle state >= kPrePaintClean.
+  // This flag is not implemented in all methods that take a MapCoordinatesMode
+  // parameter;  see particular methods for more details.
+  kUseGeometryMapperMode = 1 << 7,
+
+  // Ignore the scroll offset of the mapped-to ancestor.
+  kIgnoreScrollOffsetOfAncestor = 1 << 8,
+>>>>>>> chromium
 };
 typedef unsigned MapCoordinatesFlags;
 

@@ -1,11 +1,6 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
 
 // See "SSPI Sample Application" at
 // http://msdn.microsoft.com/en-us/library/aa918273.aspx
@@ -14,7 +9,7 @@
 
 #include "base/base64.h"
 #include "base/logging.h"
-#include "base/notreached.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -32,47 +27,48 @@ using DelegationType = HttpAuth::DelegationType;
 
 namespace {
 
-base::Value::Dict SecurityStatusToValue(Error mapped_error,
-                                        SECURITY_STATUS status) {
-  base::Value::Dict params;
-  params.Set("net_error", mapped_error);
-  params.Set("security_status", static_cast<int>(status));
+base::Value SecurityStatusToValue(Error mapped_error, SECURITY_STATUS status) {
+  base::Value params{base::Value::Type::DICTIONARY};
+  params.SetIntKey("net_error", mapped_error);
+  params.SetIntKey("security_status", status);
   return params;
 }
 
-base::Value::Dict AcquireCredentialsHandleParams(const std::u16string* domain,
-                                                 const std::u16string* user,
-                                                 Error result,
-                                                 SECURITY_STATUS status) {
-  base::Value::Dict params;
+base::Value AcquireCredentialsHandleParams(const std::u16string* domain,
+                                           const std::u16string* user,
+                                           Error result,
+                                           SECURITY_STATUS status) {
+  base::Value params{base::Value::Type::DICTIONARY};
   if (domain && user) {
-    params.Set("domain", base::UTF16ToUTF8(*domain));
-    params.Set("user", base::UTF16ToUTF8(*user));
+    params.SetStringKey("domain", base::UTF16ToUTF8(*domain));
+    params.SetStringKey("user", base::UTF16ToUTF8(*user));
   }
-  params.Set("status", SecurityStatusToValue(result, status));
+  params.SetKey("status", SecurityStatusToValue(result, status));
   return params;
 }
 
-base::Value::Dict ContextFlagsToValue(DWORD flags) {
-  base::Value::Dict params;
-  params.Set("value", base::StringPrintf("0x%08lx", flags));
-  params.Set("delegated", (flags & ISC_RET_DELEGATE) == ISC_RET_DELEGATE);
-  params.Set("mutual", (flags & ISC_RET_MUTUAL_AUTH) == ISC_RET_MUTUAL_AUTH);
+base::Value ContextFlagsToValue(DWORD flags) {
+  base::Value params{base::Value::Type::DICTIONARY};
+  params.SetStringKey("value", base::StringPrintf("0x%08lx", flags));
+  params.SetBoolKey("delegated",
+                    (flags & ISC_RET_DELEGATE) == ISC_RET_DELEGATE);
+  params.SetBoolKey("mutual",
+                    (flags & ISC_RET_MUTUAL_AUTH) == ISC_RET_MUTUAL_AUTH);
   return params;
 }
 
-base::Value::Dict ContextAttributesToValue(SSPILibrary* library,
-                                           PCtxtHandle handle,
-                                           DWORD attributes) {
-  base::Value::Dict params;
+base::Value ContextAttributesToValue(SSPILibrary* library,
+                                     PCtxtHandle handle,
+                                     DWORD attributes) {
+  base::Value params{base::Value::Type::DICTIONARY};
 
   SecPkgContext_NativeNames native_names = {0};
   auto qc_result = library->QueryContextAttributesEx(
       handle, SECPKG_ATTR_NATIVE_NAMES, &native_names, sizeof(native_names));
   if (qc_result == SEC_E_OK && native_names.sClientName &&
       native_names.sServerName) {
-    params.Set("source", base::as_u16cstr(native_names.sClientName));
-    params.Set("target", base::as_u16cstr(native_names.sServerName));
+    params.SetStringKey("source", base::as_u16cstr(native_names.sClientName));
+    params.SetStringKey("target", base::as_u16cstr(native_names.sServerName));
   }
 
   SecPkgContext_NegotiationInfo negotiation_info = {0};
@@ -81,34 +77,34 @@ base::Value::Dict ContextAttributesToValue(SSPILibrary* library,
       sizeof(negotiation_info));
   if (qc_result == SEC_E_OK && negotiation_info.PackageInfo &&
       negotiation_info.PackageInfo->Name) {
-    params.Set("mechanism",
-               base::as_u16cstr(negotiation_info.PackageInfo->Name));
-    params.Set("open", negotiation_info.NegotiationState !=
-                           SECPKG_NEGOTIATION_COMPLETE);
+    params.SetStringKey("mechanism",
+                        base::as_u16cstr(negotiation_info.PackageInfo->Name));
+    params.SetBoolKey("open", negotiation_info.NegotiationState !=
+                                  SECPKG_NEGOTIATION_COMPLETE);
   }
 
   SecPkgContext_Authority authority = {0};
   qc_result = library->QueryContextAttributesEx(handle, SECPKG_ATTR_AUTHORITY,
                                                 &authority, sizeof(authority));
   if (qc_result == SEC_E_OK && authority.sAuthorityName) {
-    params.Set("authority", base::as_u16cstr(authority.sAuthorityName));
+    params.SetStringKey("authority",
+                        base::as_u16cstr(authority.sAuthorityName));
   }
 
-  params.Set("flags", ContextFlagsToValue(attributes));
+  params.SetKey("flags", ContextFlagsToValue(attributes));
   return params;
 }
 
-base::Value::Dict InitializeSecurityContextParams(SSPILibrary* library,
-                                                  PCtxtHandle handle,
-                                                  Error result,
-                                                  SECURITY_STATUS status,
-                                                  DWORD attributes) {
-  base::Value::Dict params;
-  params.Set("status", SecurityStatusToValue(result, status));
-  if (result == OK) {
-    params.Set("context",
-               ContextAttributesToValue(library, handle, attributes));
-  }
+base::Value InitializeSecurityContextParams(SSPILibrary* library,
+                                            PCtxtHandle handle,
+                                            Error result,
+                                            SECURITY_STATUS status,
+                                            DWORD attributes) {
+  base::Value params{base::Value::Type::DICTIONARY};
+  params.SetKey("status", SecurityStatusToValue(result, status));
+  if (result == OK)
+    params.SetKey("context",
+                  ContextAttributesToValue(library, handle, attributes));
   return params;
 }
 
@@ -216,10 +212,10 @@ Error MapInitializeSecurityContextStatusToError(SECURITY_STATUS status) {
     case SEC_E_INSUFFICIENT_MEMORY:
       return ERR_OUT_OF_MEMORY;
     case SEC_E_UNSUPPORTED_FUNCTION:
-      DUMP_WILL_BE_NOTREACHED();
+      NOTREACHED();
       return ERR_UNEXPECTED;
     case SEC_E_INVALID_HANDLE:
-      DUMP_WILL_BE_NOTREACHED();
+      NOTREACHED();
       return ERR_INVALID_HANDLE;
     case SEC_E_INVALID_TOKEN:
       return ERR_INVALID_RESPONSE;
@@ -331,7 +327,7 @@ SECURITY_STATUS SSPILibraryDefault::QueryContextAttributesEx(
     ULONG ulAttribute,
     PVOID pBuffer,
     ULONG cbBuffer) {
-  // TODO(crbug.com/41475489): QueryContextAttributesExW is not included
+  // TODO(https://crbug.com/992779): QueryContextAttributesExW is not included
   // in Secur32.Lib in 10.0.18362.0 SDK. This symbol requires switching to using
   // Windows SDK API sets in mincore.lib or OneCore.Lib. Switch to using
   // QueryContextAttributesEx when the switch is made.
@@ -403,11 +399,11 @@ void HttpAuthSSPI::ResetSecurityContext() {
 HttpAuth::AuthorizationResult HttpAuthSSPI::ParseChallenge(
     HttpAuthChallengeTokenizer* tok) {
   if (!SecIsValidHandle(&ctxt_)) {
-    return ParseFirstRoundChallenge(scheme_, tok);
+    return net::ParseFirstRoundChallenge(scheme_, tok);
   }
   std::string encoded_auth_token;
-  return ParseLaterRoundChallenge(scheme_, tok, &encoded_auth_token,
-                                  &decoded_server_auth_token_);
+  return net::ParseLaterRoundChallenge(scheme_, tok, &encoded_auth_token,
+                                       &decoded_server_auth_token_);
 }
 
 int HttpAuthSSPI::GenerateAuthToken(const AuthCredentials* credentials,
@@ -438,7 +434,8 @@ int HttpAuthSSPI::GenerateAuthToken(const AuthCredentials* credentials,
 
   // Base64 encode data in output buffer and prepend the scheme.
   std::string encode_input(static_cast<char*>(out_buf), out_buf_len);
-  std::string encode_output = base::Base64Encode(encode_input);
+  std::string encode_output;
+  base::Base64Encode(encode_input, &encode_output);
   // OK, we are done with |out_buf|
   free(out_buf);
   if (scheme_ == HttpAuth::AUTH_SCHEME_NEGOTIATE) {
@@ -503,6 +500,7 @@ int HttpAuthSSPI::GetNextSecurityToken(const std::string& spn,
     // sequence.  If we have already initialized our security context, then
     // we're incorrectly reusing the auth handler for a new sequence.
     if (SecIsValidHandle(&ctxt_)) {
+      NOTREACHED();
       return ERR_UNEXPECTED;
     }
   }
@@ -550,9 +548,9 @@ int HttpAuthSSPI::GetNextSecurityToken(const std::string& spn,
     context_flags |= (ISC_REQ_DELEGATE | ISC_REQ_MUTUAL_AUTH);
 
   net_log.BeginEvent(NetLogEventType::AUTH_LIBRARY_INIT_SEC_CTX, [&] {
-    base::Value::Dict params;
-    params.Set("spn", spn);
-    params.Set("flags", ContextFlagsToValue(context_flags));
+    base::Value params{base::Value::Type::DICTIONARY};
+    params.SetStringKey("spn", spn);
+    params.SetKey("flags", ContextFlagsToValue(context_flags));
     return params;
   });
 

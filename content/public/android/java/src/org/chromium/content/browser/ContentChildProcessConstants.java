@@ -1,13 +1,19 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.content.browser;
 
+<<<<<<< HEAD
 import org.chromium.build.annotations.NullMarked;
 
 /** Constants to be used by child processes. */
 @NullMarked
+=======
+/**
+ * Constants to be used by child processes.
+ */
+>>>>>>> chromium
 public interface ContentChildProcessConstants {
     // Below are the names for the items placed in the bind or start command intent.
     // Note that because that intent maybe reused if a service is restarted, none should be process

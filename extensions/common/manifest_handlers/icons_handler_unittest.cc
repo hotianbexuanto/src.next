@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,11 +14,8 @@ class ProductIconManifestTest : public ManifestTest {
  public:
   ProductIconManifestTest() = default;
 
-  ProductIconManifestTest(const ProductIconManifestTest&) = delete;
-  ProductIconManifestTest& operator=(const ProductIconManifestTest&) = delete;
-
  protected:
-  base::Value::Dict CreateManifest(const std::string& extra_icons) {
+  base::Value CreateManifest(const std::string& extra_icons) {
     constexpr const char kManifest[] = R"({
       "name": "test",
       "version": "0.1",
@@ -32,29 +29,32 @@ class ProductIconManifestTest : public ManifestTest {
     base::Value manifest = base::test::ParseJson(
         base::StringPrintf(kManifest, extra_icons.c_str()));
     EXPECT_TRUE(manifest.is_dict());
-    return std::move(manifest).TakeDict();
+    return manifest;
   }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ProductIconManifestTest);
 };
 
 TEST_F(ProductIconManifestTest, Sizes) {
   // Too big.
   {
-    ManifestData manifest(CreateManifest(R"("100000": "icon3.png",)"));
+    ManifestData manifest(CreateManifest(R"("100000": "icon3.png",)"), "test");
     LoadAndExpectError(manifest, "Invalid key in icons: \"100000\".");
   }
   // Too small.
   {
-    ManifestData manifest(CreateManifest(R"("0": "icon3.png",)"));
+    ManifestData manifest(CreateManifest(R"("0": "icon3.png",)"), "test");
     LoadAndExpectError(manifest, "Invalid key in icons: \"0\".");
   }
   // NaN.
   {
-    ManifestData manifest(CreateManifest(R"("sixteen": "icon3.png",)"));
+    ManifestData manifest(CreateManifest(R"("sixteen": "icon3.png",)"), "test");
     LoadAndExpectError(manifest, "Invalid key in icons: \"sixteen\".");
   }
   // Just right.
   {
-    ManifestData manifest(CreateManifest(R"("512": "icon3.png",)"));
+    ManifestData manifest(CreateManifest(R"("512": "icon3.png",)"), "test");
     scoped_refptr<extensions::Extension> extension =
         LoadAndExpectSuccess(manifest);
   }

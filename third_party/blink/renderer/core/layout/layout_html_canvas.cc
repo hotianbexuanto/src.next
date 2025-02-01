@@ -29,7 +29,6 @@
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
-#include "third_party/blink/renderer/core/layout/layout_replaced.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/html_canvas_painter.h"
@@ -37,16 +36,22 @@
 namespace blink {
 
 LayoutHTMLCanvas::LayoutHTMLCanvas(HTMLCanvasElement* element)
+<<<<<<< HEAD
     : LayoutReplaced(element), natural_size_(PhysicalSize(element->Size())) {
+=======
+    : LayoutReplaced(element, LayoutSize(element->Size())) {
+>>>>>>> chromium
   View()->GetFrameView()->SetIsVisuallyNonEmpty();
+}
+
+PaintLayerType LayoutHTMLCanvas::LayerTypeRequired() const {
+  NOT_DESTROYED();
+  return kNormalPaintLayer;
 }
 
 void LayoutHTMLCanvas::PaintReplaced(const PaintInfo& paint_info,
                                      const PhysicalOffset& paint_offset) const {
   NOT_DESTROYED();
-  if (ChildPaintBlockedByDisplayLock()) {
-    return;
-  }
   HTMLCanvasPainter(*this).PaintReplaced(paint_info, paint_offset);
 }
 
@@ -63,9 +68,9 @@ void LayoutHTMLCanvas::DidInvalidatePaintForPlacedElement(
 
 void LayoutHTMLCanvas::CanvasSizeChanged() {
   NOT_DESTROYED();
-  gfx::Size canvas_size = To<HTMLCanvasElement>(GetNode())->Size();
-  PhysicalSize zoomed_size = PhysicalSize(canvas_size);
-  zoomed_size.Scale(StyleRef().EffectiveZoom());
+  IntSize canvas_size = To<HTMLCanvasElement>(GetNode())->Size();
+  LayoutSize zoomed_size(canvas_size.Width() * StyleRef().EffectiveZoom(),
+                         canvas_size.Height() * StyleRef().EffectiveZoom());
 
   if (zoomed_size == natural_size_) {
     return;
@@ -99,7 +104,7 @@ bool LayoutHTMLCanvas::DrawsBackgroundOntoContentLayer() const {
     return true;
   // Simple background that is contained within the contents rect.
   return ReplacedContentRect().Contains(
-      PhysicalBackgroundRect(kBackgroundPaintedExtent));
+      PhysicalBackgroundRect(kBackgroundClipRect));
 }
 
 void LayoutHTMLCanvas::InvalidatePaint(
@@ -110,6 +115,13 @@ void LayoutHTMLCanvas::InvalidatePaint(
     element->DoDeferredPaintInvalidation();
 
   LayoutReplaced::InvalidatePaint(context);
+}
+
+CompositingReasons LayoutHTMLCanvas::AdditionalCompositingReasons() const {
+  NOT_DESTROYED();
+  if (To<HTMLCanvasElement>(GetNode())->ShouldBeDirectComposited())
+    return CompositingReason::kCanvas;
+  return CompositingReason::kNone;
 }
 
 void LayoutHTMLCanvas::StyleDidChange(StyleDifference diff,
@@ -123,19 +135,6 @@ void LayoutHTMLCanvas::WillBeDestroyed() {
   NOT_DESTROYED();
   LayoutReplaced::WillBeDestroyed();
   To<HTMLCanvasElement>(GetNode())->LayoutObjectDestroyed();
-}
-
-void LayoutHTMLCanvas::Trace(Visitor* visitor) const {
-  visitor->Trace(children_);
-  LayoutReplaced::Trace(visitor);
-}
-
-bool LayoutHTMLCanvas::IsChildAllowed(LayoutObject* child,
-                                      const ComputedStyle& style) const {
-  NOT_DESTROYED();
-  return IsA<Element>(GetNode()) && !child->IsText() &&
-         To<HTMLCanvasElement>(GetNode())->HasPlacedElements() &&
-         RuntimeEnabledFeatures::CanvasPlaceElementEnabled();
 }
 
 }  // namespace blink

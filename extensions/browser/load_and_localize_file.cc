@@ -1,23 +1,27 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/load_and_localize_file.h"
 
+<<<<<<< HEAD
 #include <algorithm>
 
 #include "base/task/single_thread_task_runner.h"
+=======
+>>>>>>> chromium
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "base/threading/scoped_blocking_call.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "extensions/browser/component_extension_resource_manager.h"
 #include "extensions/browser/extensions_browser_client.h"
 #include "extensions/browser/file_reader.h"
-#include "extensions/browser/l10n_file_util.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_id.h"
 #include "extensions/common/extension_l10n_util.h"
 #include "extensions/common/extension_resource.h"
+#include "extensions/common/file_util.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_constants.h"
 #include "extensions/common/message_bundle.h"
@@ -35,16 +39,15 @@ void MaybeLocalizeInBackground(
     std::string* data) {
   bool needs_message_substituion =
       data->find(extensions::MessageBundle::kMessageBegin) != std::string::npos;
-  if (!needs_message_substituion) {
+  if (!needs_message_substituion)
     return;
-  }
 
   base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
                                                 base::BlockingType::MAY_BLOCK);
-  std::unique_ptr<MessageBundle::SubstitutionMap> localization_messages =
-      l10n_file_util::LoadMessageBundleSubstitutionMap(
-          extension_path, extension_id, extension_default_locale,
-          gzip_permission);
+  std::unique_ptr<MessageBundle::SubstitutionMap> localization_messages(
+      file_util::LoadMessageBundleSubstitutionMap(extension_path, extension_id,
+                                                  extension_default_locale,
+                                                  gzip_permission));
 
   std::string error;
   MessageBundle::ReplaceMessagesWithExternalDictionary(*localization_messages,
@@ -96,7 +99,6 @@ std::vector<std::unique_ptr<std::string>> LoadComponentResources(
 void LoadAndLocalizeResources(const Extension& extension,
                               std::vector<ExtensionResource> resources,
                               bool localize_file,
-                              size_t max_script_length,
                               LoadAndLocalizeResourcesCallback callback) {
   DCHECK(!resources.empty());
   DCHECK(std::ranges::all_of(resources, [](const ExtensionResource& resource) {
@@ -105,10 +107,8 @@ void LoadAndLocalizeResources(const Extension& extension,
   }));
 
   std::string extension_default_locale;
-  if (const std::string* temp =
-          extension.manifest()->FindStringPath(manifest_keys::kDefaultLocale)) {
-    extension_default_locale = *temp;
-  }
+  extension.manifest()->GetString(manifest_keys::kDefaultLocale,
+                                  &extension_default_locale);
   auto gzip_permission =
       extension_l10n_util::GetGzippedMessagesPermissionForExtension(&extension);
 
@@ -133,14 +133,14 @@ void LoadAndLocalizeResources(const Extension& extension,
     // Even if no localization is necessary, we post the task asynchronously
     // so that |callback| is not run re-entrantly.
     if (!localize_file) {
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      base::ThreadTaskRunnerHandle::Get()->PostTask(
           FROM_HERE,
-          base::BindOnce(std::move(callback), std::move(data), std::nullopt));
+          base::BindOnce(std::move(callback), std::move(data), absl::nullopt));
     } else {
       auto callback_adapter =
           [](LoadAndLocalizeResourcesCallback callback,
              std::vector<std::unique_ptr<std::string>> data) {
-            std::move(callback).Run(std::move(data), std::nullopt);
+            std::move(callback).Run(std::move(data), absl::nullopt);
           };
       base::ThreadPool::PostTaskAndReplyWithResult(
           FROM_HERE,
@@ -165,8 +165,8 @@ void LoadAndLocalizeResources(const Extension& extension,
   }
 
   auto file_reader = base::MakeRefCounted<FileReader>(
-      std::move(resources), max_script_length,
-      std::move(get_file_and_l10n_callback), std::move(callback));
+      std::move(resources), std::move(get_file_and_l10n_callback),
+      std::move(callback));
   file_reader->Start();
 }
 

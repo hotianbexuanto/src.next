@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,16 +6,14 @@
 #define CHROME_BROWSER_DOWNLOAD_ANDROID_DOWNLOAD_MANAGER_SERVICE_H_
 
 #include <map>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include "base/android/scoped_java_ref.h"
-#include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
+#include "base/callback.h"
+#include "base/macros.h"
 #include "base/memory/singleton.h"
 #include "base/scoped_multi_source_observation.h"
-#include "chrome/browser/download/android/download_open_source.h"
 #include "chrome/browser/download/download_manager_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_observer.h"
@@ -51,10 +49,6 @@ class DownloadManagerService
       download::DownloadItem* item);
 
   DownloadManagerService();
-
-  DownloadManagerService(const DownloadManagerService&) = delete;
-  DownloadManagerService& operator=(const DownloadManagerService&) = delete;
-
   ~DownloadManagerService() override;
 
   // Called to Initialize this object. If |is_profile_added| is false,
@@ -64,7 +58,9 @@ class DownloadManagerService
 
   // Called when the profile is added to the ProfileManager and fully
   // initialized.
-  void OnProfileAdded(JNIEnv* env, jobject obj, Profile* profile);
+  void OnProfileAdded(JNIEnv* env,
+                      jobject obj,
+                      const JavaParamRef<jobject>& j_profile);
 
   void OnProfileAdded(Profile* profile);
 
@@ -74,48 +70,68 @@ class DownloadManagerService
                          int64_t system_download_id);
 
   // Called to open a given download item.
-  void OpenDownload(download::DownloadItem* download, int source);
+  void OpenDownload(download::DownloadItem* download,
+                    int source,
+                    const JavaParamRef<jobject>& j_context);
 
   // Called to open a download item whose GUID is equal to |jdownload_guid|.
   void OpenDownload(JNIEnv* env,
                     jobject obj,
-                    std::string& download_guid,
+                    const JavaParamRef<jstring>& jdownload_guid,
                     const JavaParamRef<jobject>& j_profile_key,
-                    jint source);
+                    jint source,
+                    const JavaParamRef<jobject>& j_context);
 
   // Called to resume downloading the item that has GUID equal to
   // |jdownload_guid|..
   void ResumeDownload(JNIEnv* env,
                       jobject obj,
-                      std::string& download_guid,
-                      const JavaParamRef<jobject>& j_profile_key);
+                      const JavaParamRef<jstring>& jdownload_guid,
+                      const JavaParamRef<jobject>& j_profile_key,
+                      bool has_user_gesture);
+
+  // Called to retry a download.
+  void RetryDownload(JNIEnv* env,
+                     jobject obj,
+                     const JavaParamRef<jstring>& jdownload_guid,
+                     const JavaParamRef<jobject>& j_profile_key,
+                     bool has_user_gesture);
 
   // Called to cancel a download item that has GUID equal to |jdownload_guid|.
   // If the DownloadItem is not yet created, retry after a while.
   void CancelDownload(JNIEnv* env,
                       jobject obj,
-                      std::string& download_guid,
+                      const JavaParamRef<jstring>& jdownload_guid,
                       const JavaParamRef<jobject>& j_profile_key);
 
   // Called to pause a download item that has GUID equal to |jdownload_guid|.
   // If the DownloadItem is not yet created, do nothing as it is already paused.
   void PauseDownload(JNIEnv* env,
                      jobject obj,
-                     std::string& download_guid,
+                     const JavaParamRef<jstring>& jdownload_guid,
                      const JavaParamRef<jobject>& j_profile_key);
 
   // Called to remove a download item that has GUID equal to |jdownload_guid|.
   void RemoveDownload(JNIEnv* env,
                       jobject obj,
-                      std::string& download_guid,
+                      const JavaParamRef<jstring>& jdownload_guid,
                       const JavaParamRef<jobject>& j_profile_key);
 
   // Called to rename a download item that has GUID equal to |id|.
   void RenameDownload(JNIEnv* env,
                       const JavaParamRef<jobject>& obj,
-                      std::string& id,
-                      std::string& name,
+                      const JavaParamRef<jstring>& id,
+                      const JavaParamRef<jstring>& name,
                       const JavaParamRef<jobject>& callback,
+                      const JavaParamRef<jobject>& j_profile_key);
+
+  // Called to change the download schedule of a download item that has GUID
+  // equal to |id|.
+  void ChangeSchedule(JNIEnv* env,
+                      const JavaParamRef<jobject>& obj,
+                      const JavaParamRef<jstring>& id,
+                      jboolean only_on_wifi,
+                      jlong start_time,
                       const JavaParamRef<jobject>& j_profile_key);
 
   // Returns whether or not the given download can be opened by the browser.
@@ -140,7 +156,7 @@ class DownloadManagerService
   // Called to update the last access time associated with a download.
   void UpdateLastAccessTime(JNIEnv* env,
                             const JavaParamRef<jobject>& obj,
-                            std::string& download_guid,
+                            const JavaParamRef<jstring>& jdownload_guid,
                             const JavaParamRef<jobject>& j_profile_key);
 
   // AllDownloadEventNotifier::Observer methods.
@@ -164,15 +180,16 @@ class DownloadManagerService
 
   // Called by the java code to create and insert an interrupted download to
   // |in_progress_manager_| for testing purpose.
-  void CreateInterruptedDownloadForTest(JNIEnv* env,
-                                        jobject obj,
-                                        std::string& url,
-                                        std::string& download_guid,
-                                        std::string& target_path);
+  void CreateInterruptedDownloadForTest(
+      JNIEnv* env,
+      jobject obj,
+      const JavaParamRef<jstring>& jurl,
+      const JavaParamRef<jstring>& jdownload_guid,
+      const JavaParamRef<jstring>& jtarget_path);
 
   // Retrives the in-progress manager and give up the ownership.
-  std::unique_ptr<download::InProgressDownloadManager>
-  RetrieveInProgressDownloadManager(content::BrowserContext* context);
+  download::InProgressDownloadManager* RetriveInProgressDownloadManager(
+      content::BrowserContext* context);
 
   // Gets a download item from DownloadManager or InProgressManager.
   download::DownloadItem* GetDownload(const std::string& download_guid,
@@ -180,31 +197,26 @@ class DownloadManagerService
 
   // Helper method to record the interrupt reason UMA for the first background
   // download.
-  void RecordFirstBackgroundInterruptReason(JNIEnv* env,
-                                            const JavaParamRef<jobject>& obj,
-                                            std::string& download_guid,
-                                            jboolean download_started);
-
-  // Open the download page the given profile, and the source of the opening
-  // action is |download_open_source|.
-  void OpenDownloadsPage(Profile* profile,
-                         DownloadOpenSource download_open_source);
+  void RecordFirstBackgroundInterruptReason(
+      JNIEnv* env,
+      const JavaParamRef<jobject>& obj,
+      const JavaParamRef<jstring>& jdownload_guid,
+      jboolean download_started);
 
  private:
   // For testing.
   friend class DownloadManagerServiceTest;
   friend struct base::DefaultSingletonTraits<DownloadManagerService>;
 
-  enum DownloadAction { RESUME, PAUSE, CANCEL, REMOVE, UNKNOWN };
-
-  using PendingDownloadActions = std::map<std::string, DownloadAction>;
-  using Coordinators = std::map<
-      ProfileKey*,
-      raw_ptr<download::SimpleDownloadManagerCoordinator, CtnExperimental>>;
-
   // Helper function to start the download resumption.
   void ResumeDownloadInternal(const std::string& download_guid,
-                              ProfileKey* profile_key);
+                              ProfileKey* profile_key,
+                              bool has_user_gesture);
+
+  // Helper function to retry the download.
+  void RetryDownloadInternal(const std::string& download_guid,
+                             ProfileKey* profile_key,
+                             bool has_user_gesture);
 
   // Helper function to cancel a download.
   void CancelDownloadInternal(const std::string& download_guid,
@@ -258,20 +270,37 @@ class DownloadManagerService
   bool is_manager_initialized_;
   bool is_pending_downloads_loaded_;
 
-  std::vector<raw_ptr<ProfileKey, VectorExperimental>>
-      profiles_with_pending_get_downloads_actions_;
+  std::vector<ProfileKey*> profiles_with_pending_get_downloads_actions_;
 
+  enum DownloadAction { RESUME, RETRY, PAUSE, CANCEL, REMOVE, UNKNOWN };
+
+  // Holds params provided to the download function calls.
+  struct DownloadActionParams {
+    explicit DownloadActionParams(DownloadAction download_action);
+    DownloadActionParams(DownloadAction download_action, bool user_gesture);
+    DownloadActionParams(const DownloadActionParams& other);
+
+    ~DownloadActionParams() = default;
+
+    DownloadAction action;
+    bool has_user_gesture;
+  };
+
+  using PendingDownloadActions = std::map<std::string, DownloadActionParams>;
   PendingDownloadActions pending_actions_;
 
   void EnqueueDownloadAction(const std::string& download_guid,
-                             DownloadAction download_action);
+                             const DownloadActionParams& params);
 
   ResumeCallback resume_callback_for_testing_;
 
   base::ScopedMultiSourceObservation<Profile, ProfileObserver>
       observed_profiles_{this};
 
-  Coordinators coordinators_;
+  std::map<ProfileKey*, download::SimpleDownloadManagerCoordinator*>
+      coordinators_;
+
+  DISALLOW_COPY_AND_ASSIGN(DownloadManagerService);
 };
 
 #endif  // CHROME_BROWSER_DOWNLOAD_ANDROID_DOWNLOAD_MANAGER_SERVICE_H_

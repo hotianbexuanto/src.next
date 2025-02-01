@@ -1,10 +1,11 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_SIGNIN_SIGNIN_UTIL_H_
 #define CHROME_BROWSER_SIGNIN_SIGNIN_UTIL_H_
 
+<<<<<<< HEAD
 #include <optional>
 #include <string>
 
@@ -21,38 +22,11 @@
 #include "net/cookies/canonical_cookie.h"
 
 class GaiaId;
+=======
+>>>>>>> chromium
 class Profile;
 
-namespace signin {
-class IdentityManager;
-}
-
 namespace signin_util {
-
-enum class ProfileSeparationPolicyState {
-  kEnforcedByExistingProfile,
-  kEnforcedByInterceptedAccount,
-  kEnforcedOnMachineLevel,
-  kKeepsBrowsingData,
-  kMaxValue = kKeepsBrowsingData
-};
-
-// Enum used to share the sign in state with the WebUI.
-enum class SignedInState {
-  kSignedOut = 0,
-  kSignedIn = 1,
-  kSyncing = 2,
-  kSignInPending = 3,
-  kWebOnlySignedIn = 4,
-  kSyncPaused = 5,
-};
-
-using ProfileSeparationPolicyStateSet =
-    base::EnumSet<ProfileSeparationPolicyState,
-                  ProfileSeparationPolicyState::kEnforcedByExistingProfile,
-                  ProfileSeparationPolicyState::kMaxValue>;
-
-using PrimaryAccountError = signin::PrimaryAccountMutator::PrimaryAccountError;
 
 // This class calls ResetForceSigninForTesting when destroyed, so that
 // ForcedSigning doesn't leak across tests.
@@ -60,45 +34,7 @@ class ScopedForceSigninSetterForTesting {
  public:
   explicit ScopedForceSigninSetterForTesting(bool enable);
   ~ScopedForceSigninSetterForTesting();
-  ScopedForceSigninSetterForTesting(const ScopedForceSigninSetterForTesting&) =
-      delete;
-  ScopedForceSigninSetterForTesting& operator=(
-      const ScopedForceSigninSetterForTesting&) = delete;
 };
-
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
-// Utility class that moves cookies linked to a URL from one profile to the
-// other. This will be mostly used when a new profile is created after a
-// signin interception of an account linked a SAML signin.
-class CookiesMover {
- public:
-  // Moves cookies related to `url` from `source_profile` to
-  // `destination_profile` and calls `callback` when it is done.
-  CookiesMover(base::WeakPtr<Profile> source_profile,
-               base::WeakPtr<Profile> destination_profile,
-               base::OnceCallback<void()> callback);
-
-  CookiesMover(const CookiesMover& copy) = delete;
-  CookiesMover& operator=(const CookiesMover&) = delete;
-  ~CookiesMover();
-
-  void StartMovingCookies();
-
- private:
-  void OnCookiesReceived(
-      const std::vector<net::CookieWithAccessResult>& included,
-      const std::vector<net::CookieWithAccessResult>& excluded);
-
-  // Called when all the cookies have been moved.
-  void OnCookiesMoved();
-
-  GURL url_;
-  base::WeakPtr<Profile> source_profile_;
-  base::WeakPtr<Profile> destination_profile_;
-  base::OnceCallback<void()> callback_;
-  base::WeakPtrFactory<CookiesMover> weak_pointer_factory_{this};
-};
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
 
 // Return whether the force sign in policy is enabled or not.
 // The state of this policy will not be changed without relaunch Chrome.
@@ -112,22 +48,22 @@ void SetForceSigninForTesting(bool enable);
 // Reset force sign in to uninitialized state for testing.
 void ResetForceSigninForTesting();
 
-// Returns true if profile deletion is allowed.
-bool IsProfileDeletionAllowed(Profile* profile);
+// Returns true if clearing the primary profile is allowed.
+bool IsUserSignoutAllowedForProfile(Profile* profile);
 
-#if !BUILDFLAG(IS_ANDROID)
-#if !BUILDFLAG(IS_CHROMEOS)
+// Sign-out is allowed by default, but some Chrome profiles (e.g. for cloud-
+// managed enterprise accounts) may wish to disallow user-initiated sign-out.
+// Note that this exempts sign-outs that are not user-initiated (e.g. sign-out
+// triggered when cloud policy no longer allows current email pattern). See
+// ChromeSigninClient::PreSignOut().
+void SetUserSignoutAllowedForProfile(Profile* profile, bool is_allowed);
 
-// Returns true if managed accounts signin are required to create a new profile
-// by policies set in `profile`. This will check the by default check the
-// ManagedAccountsSigninRestriction policy.
-// The optional `intercepted_account_email` will trigger a check to the
-// ProfileSeparationDomainExceptionList policy. Unless
-// `intercepted_account_email` is not available, it should always be passed.
-bool IsProfileSeparationEnforcedByProfile(
-    Profile* profile,
-    const std::string& intercepted_account_email);
+// Updates the user sign-out state to |true| if is was never initialized.
+// This should be called at the end of the flow to initialize a profile to
+// ensure that the signout allowed flag is updated.
+void EnsureUserSignoutAllowedIsInitializedForProfile(Profile* profile);
 
+<<<<<<< HEAD
 // Returns true if profile separation is enforced by
 // `intercepted_account_separation_policies`.
 bool IsProfileSeparationEnforcedByPolicies(
@@ -168,6 +104,15 @@ bool IsSigninPending(signin::IdentityManager* identity_manager);
 
 // Returns the current state of the primary account that is used in Chrome.
 SignedInState GetSignedInState(const signin::IdentityManager* identity_manager);
+=======
+// Ensures that the primary account for |profile| is allowed:
+// * If profile does not have any primary account, then this is a no-op.
+// * If |IsUserSignoutAllowedForProfile| is allowed and the primary account
+//   is no longer allowed, then this clears the primary account.
+// * If |IsUserSignoutAllowedForProfile| is not allowed and the primary account
+//   is not longer allowed, then this removes the profile.
+void EnsurePrimaryAccountAllowedForProfile(Profile* profile);
+>>>>>>> chromium
 
 }  // namespace signin_util
 

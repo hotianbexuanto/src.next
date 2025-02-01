@@ -1,10 +1,16 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/command_line.h"
+#include "base/macros.h"
 #include "base/run_loop.h"
 #include "base/test/scoped_feature_list.h"
+<<<<<<< HEAD
+=======
+#include "base/threading/thread_task_runner_handle.h"
+#include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "cc/base/switches.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -36,6 +42,7 @@ class RendererEventInjectionTest
     : public InProcessBrowserTest,
       public ::testing::WithParamInterface<const char*> {
  public:
+<<<<<<< HEAD
   RendererEventInjectionTest() = default;
 
   RendererEventInjectionTest(const RendererEventInjectionTest&) = delete;
@@ -43,6 +50,10 @@ class RendererEventInjectionTest
       delete;
 
   ~RendererEventInjectionTest() override = default;
+=======
+  RendererEventInjectionTest() {}
+  ~RendererEventInjectionTest() override {}
+>>>>>>> chromium
 
   // InProcessBrowserTest:
   void SetUp() override {
@@ -53,7 +64,7 @@ class RendererEventInjectionTest
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     command_line->AppendSwitch(switches::kDisableRendererBackgrounding);
-    command_line->AppendSwitch(switches::kEnableGpuBenchmarking);
+    command_line->AppendSwitch(cc::switches::kEnableGpuBenchmarking);
     // kHostWindowBounds is unique to ChromeOS.
 #if BUILDFLAG(IS_CHROMEOS)
     command_line->AppendSwitchASCII(switches::kHostWindowBounds, GetParam());
@@ -68,6 +79,8 @@ class RendererEventInjectionTest
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
+
+  DISALLOW_COPY_AND_ASSIGN(RendererEventInjectionTest);
 };
 
 // Detects when a touch press is received.
@@ -77,10 +90,6 @@ class TouchEventObserver
   TouchEventObserver(const gfx::Point& location,
                      base::RepeatingClosure quit_closure)
       : expected_location_(location), quit_closure_(std::move(quit_closure)) {}
-
-  TouchEventObserver(const TouchEventObserver&) = delete;
-  TouchEventObserver& operator=(const TouchEventObserver&) = delete;
-
   ~TouchEventObserver() override = default;
 
  private:
@@ -107,13 +116,15 @@ class TouchEventObserver
 
   const gfx::Point expected_location_;
   base::RepeatingClosure quit_closure_;
+
+  DISALLOW_COPY_AND_ASSIGN(TouchEventObserver);
 };
 
 IN_PROC_BROWSER_TEST_P(RendererEventInjectionTest, TestRootTransform) {
   content::WebContents* main_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   GURL url = embedded_test_server()->GetURL("/title1.html");
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  ui_test_utils::NavigateToURL(browser(), url);
   base::RunLoop run_loop;
   content::RenderWidgetHost* rwh =
       main_contents->GetRenderWidgetHostView()->GetRenderWidgetHost();

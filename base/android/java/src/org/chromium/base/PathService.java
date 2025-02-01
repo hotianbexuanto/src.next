@@ -1,17 +1,22 @@
-// Copyright 2012 The Chromium Authors
+// Copyright 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
-import org.jni_zero.JNINamespace;
-import org.jni_zero.JniType;
-import org.jni_zero.NativeMethods;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 
+<<<<<<< HEAD
 import org.chromium.build.annotations.NullMarked;
 
 /** This class provides java side access to the native PathService. */
 @NullMarked
+=======
+/**
+ * This class provides java side access to the native PathService.
+ */
+>>>>>>> chromium
 @JNINamespace("base::android")
 public abstract class PathService {
 
@@ -27,6 +32,6 @@ public abstract class PathService {
 
     @NativeMethods
     interface Natives {
-        void override(int what, @JniType("std::string") String path);
+        void override(int what, String path);
     }
 }

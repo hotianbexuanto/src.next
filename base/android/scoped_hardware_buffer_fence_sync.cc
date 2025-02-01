@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,10 +12,12 @@ namespace android {
 ScopedHardwareBufferFenceSync::ScopedHardwareBufferFenceSync(
     ScopedHardwareBufferHandle handle,
     ScopedFD fence_fd,
-    ScopedFD available_fence_fd)
+    ScopedFD available_fence_fd,
+    bool is_video)
     : handle_(std::move(handle)),
       fence_fd_(std::move(fence_fd)),
-      available_fence_fd_(std::move(available_fence_fd)) {}
+      available_fence_fd_(std::move(available_fence_fd)),
+      is_video_(is_video) {}
 
 ScopedHardwareBufferFenceSync::~ScopedHardwareBufferFenceSync() = default;
 

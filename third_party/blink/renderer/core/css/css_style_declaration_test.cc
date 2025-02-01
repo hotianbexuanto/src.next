@@ -1,17 +1,13 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/css_style_declaration.h"
 
-#include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_value.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
-#include "third_party/blink/renderer/core/css/css_computed_style_declaration.h"
-#include "third_party/blink/renderer/core/css/css_property_value_set.h"
 #include "third_party/blink/renderer/core/css/css_rule_list.h"
 #include "third_party/blink/renderer/core/css/css_style_rule.h"
 #include "third_party/blink/renderer/core/css/css_test_helpers.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/css/property_set_css_style_declaration.h"
 #include "third_party/blink/renderer/core/css/style_sheet_list.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -22,11 +18,15 @@
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/task_environment.h"
+=======
+#include "third_party/blink/renderer/core/dom/document.h"
+
+#include "testing/gtest/include/gtest/gtest.h"
+>>>>>>> chromium
 
 namespace blink {
 
 TEST(CSSStyleDeclarationTest, getPropertyShorthand) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("div { padding: var(--p); }");
@@ -40,7 +40,6 @@ TEST(CSSStyleDeclarationTest, getPropertyShorthand) {
 }
 
 TEST(CSSStyleDeclarationTest, ParsingRevertWithFeatureEnabled) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
   sheet.AddCSSRules("div { top: revert; --x: revert; }");
   ASSERT_TRUE(sheet.CssRules());
@@ -67,6 +66,7 @@ TEST(CSSStyleDeclarationTest, ParsingRevertWithFeatureEnabled) {
   EXPECT_FALSE(exception_state.HadException());
 }
 
+<<<<<<< HEAD
 // CSSStyleDeclaration has a cache which maps e.g. backgroundPositionY to
 // its associated CSSPropertyID.
 //
@@ -135,4 +135,6 @@ TEST(CSSStyleDeclarationTest, QuietlyRemoveProperty) {
   EXPECT_FALSE(document.NeedsLayoutTreeUpdate());
 }
 
+=======
+>>>>>>> chromium
 }  // namespace blink

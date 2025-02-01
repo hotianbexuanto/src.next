@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -43,8 +43,13 @@ class ChildProcessSecurityPolicyInProcessBrowserTest
   }
 };
 
+<<<<<<< HEAD
 #if !defined(NDEBUG) && BUILDFLAG(IS_MAC)
 #define MAYBE_NoLeak DISABLED_NoLeak
+=======
+#if !defined(NDEBUG) && defined(OS_MAC)
+IN_PROC_BROWSER_TEST_F(ChildProcessSecurityPolicyInProcessBrowserTest, DISABLED_NoLeak) {
+>>>>>>> chromium
 #else
 #define MAYBE_NoLeak NoLeak
 #endif
@@ -52,28 +57,41 @@ IN_PROC_BROWSER_TEST_F(ChildProcessSecurityPolicyInProcessBrowserTest,
                        MAYBE_NoLeak) {
   GURL url = GetTestUrl("", "simple_page.html");
   auto* policy = ChildProcessSecurityPolicyImpl::GetInstance();
+<<<<<<< HEAD
   EXPECT_TRUE(NavigateToURL(shell(), url));
   {
     base::AutoLock lock(policy->lock_);
     size_t spare_count =
         content::SpareRenderProcessHostManager::Get().GetSpares().size();
     EXPECT_EQ(1u + spare_count, policy->security_state_.size());
+=======
+
+  EXPECT_TRUE(NavigateToURL(shell(), url));
+  {
+    base::AutoLock lock(policy->lock_);
+    EXPECT_EQ(RenderProcessHostImpl::IsSpareProcessKeptAtAllTimes() ? 2u : 1u,
+              policy->security_state_.size());
+>>>>>>> chromium
   }
 
   WebContents* web_contents = shell()->web_contents();
   content::RenderProcessHostWatcher exit_observer(
-      web_contents->GetPrimaryMainFrame()->GetProcess(),
+      web_contents->GetMainFrame()->GetProcess(),
       content::RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
-  web_contents->GetPrimaryMainFrame()->GetProcess()->Shutdown(
-      RESULT_CODE_KILLED);
+  web_contents->GetMainFrame()->GetProcess()->Shutdown(RESULT_CODE_KILLED);
   exit_observer.Wait();
 
   web_contents->GetController().Reload(ReloadType::NORMAL, true);
   {
     base::AutoLock lock(policy->lock_);
+<<<<<<< HEAD
     size_t spare_count =
         content::SpareRenderProcessHostManager::Get().GetSpares().size();
     EXPECT_EQ(1u + spare_count, policy->security_state_.size());
+=======
+    EXPECT_EQ(RenderProcessHostImpl::IsSpareProcessKeptAtAllTimes() ? 2u : 1u,
+              policy->security_state_.size());
+>>>>>>> chromium
   }
 }
 

@@ -21,16 +21,9 @@
  *
  */
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_MATCH_REQUEST_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_MATCH_REQUEST_H_
 
-#include "base/check_op.h"
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_style_sheet.h"
 #include "third_party/blink/renderer/core/css/rule_set.h"
 #include "third_party/blink/renderer/core/dom/container_node.h"
@@ -41,6 +34,7 @@ namespace blink {
 class ContainerNode;
 class ElementRuleCollector;
 
+<<<<<<< HEAD
 // Encapsulates the context for matching against a group of style sheets
 // by ElementRuleCollector. Carries the RuleSets and some precomputed
 // information. This is fairly expensive to compute, so except for one-offs,
@@ -299,6 +293,38 @@ class CORE_EXPORT MatchRequest {
   // Always set for every RuleSet added, except those currently disabled by the
   // single-scope optimization.
   RuleSetGroup::RuleSetBitmap enabled_;
+=======
+// Encapsulates the context for matching against a single style sheet by
+// ElementRuleCollector. Carries the RuleSet, scope (a ContainerNode) and
+// CSSStyleSheet.
+class CORE_EXPORT MatchRequest {
+  STACK_ALLOCATED();
+
+ public:
+  MatchRequest(RuleSet* rule_set,
+               const ContainerNode* scope = nullptr,
+               const CSSStyleSheet* css_sheet = nullptr,
+               unsigned style_sheet_index = 0,
+               Element* vtt_originating_element = nullptr)
+      : rule_set(rule_set),
+        scope(scope),
+        style_sheet(css_sheet),
+        style_sheet_index(style_sheet_index),
+        vtt_originating_element(vtt_originating_element) {
+    // Now that we're about to read from the RuleSet, we're done adding more
+    // rules to the set and we should make sure it's compacted.
+    rule_set->CompactRulesIfNeeded();
+  }
+
+  const RuleSet* rule_set;
+  const ContainerNode* scope;
+  const CSSStyleSheet* style_sheet;
+  const unsigned style_sheet_index;
+  // For WebVTT STYLE blocks, this is set to the featureless-like Element
+  // described by the spec:
+  // https://w3c.github.io/webvtt/#obtaining-css-boxes
+  Element* vtt_originating_element;
+>>>>>>> chromium
 };
 
 void AddRuleSetToRuleSetGroupList(RuleSet* rule_set,

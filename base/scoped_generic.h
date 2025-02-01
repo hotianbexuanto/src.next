@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,14 +6,15 @@
 #define BASE_SCOPED_GENERIC_H_
 
 #include <stdlib.h>
+#include <ostream>
 
-#include <concepts>
-#include <type_traits>
+#include <algorithm>
 #include <utility>
 
 #include "base/check.h"
-#include "base/compiler_specific.h"
-#include "base/memory/raw_ptr.h"
+// TODO(crbug.com/1010217) Remove once no #includers are getting base/macros.h
+// by including this header.
+#include "base/macros.h"
 
 namespace base {
 
@@ -124,7 +125,7 @@ class ScopedGeneric {
   ScopedGeneric& operator=(const ScopedGeneric&) = delete;
 
   virtual ~ScopedGeneric() {
-    CHECK(!receiving_);  // ScopedGeneric destroyed with active receiver.
+    CHECK(!receiving_) << "ScopedGeneric destroyed with active receiver";
     FreeIfNecessary();
   }
 
@@ -147,12 +148,31 @@ class ScopedGeneric {
     TrackAcquire(value);
   }
 
+  void swap(ScopedGeneric& other) {
+    if (&other == this) {
+      return;
+    }
+
+    TrackRelease(data_.generic);
+    other.TrackRelease(other.data_.generic);
+
+    // Standard swap idiom: 'using std::swap' ensures that std::swap is
+    // present in the overload set, but we call swap unqualified so that
+    // any more-specific overloads can be used, if available.
+    using std::swap;
+    swap(static_cast<Traits&>(data_), static_cast<Traits&>(other.data_));
+    swap(data_.generic, other.data_.generic);
+
+    TrackAcquire(data_.generic);
+    other.TrackAcquire(other.data_.generic);
+  }
+
   // Release the object. The return value is the current object held by this
   // object. After this operation, this object will hold a null value, and
   // will not own the object any more.
-  [[nodiscard]] element_type release() {
-    element_type old_generic =
-        std::exchange(data_.generic, traits_type::InvalidValue());
+  element_type release() WARN_UNUSED_RESULT {
+    element_type old_generic = data_.generic;
+    data_.generic = traits_type::InvalidValue();
     TrackRelease(old_generic);
     return old_generic;
   }
@@ -196,23 +216,23 @@ class ScopedGeneric {
   class Receiver {
    public:
     explicit Receiver(ScopedGeneric& parent) : scoped_generic_(&parent) {
-      // Check if we attempted to construct a Receiver for ScopedGeneric with an
-      // existing Receiver.
-      CHECK(!scoped_generic_->receiving_);
+      CHECK(!scoped_generic_->receiving_)
+          << "attempted to construct Receiver for ScopedGeneric with existing "
+             "Receiver";
       scoped_generic_->receiving_ = true;
     }
     Receiver(const Receiver&) = delete;
     Receiver& operator=(const Receiver&) = delete;
     Receiver(Receiver&& move) {
-      CHECK(!used_);       // Moving into already-used Receiver.
-      CHECK(!move.used_);  // Moving from already-used Receiver.
+      CHECK(!used_) << "moving into already-used Receiver";
+      CHECK(!move.used_) << "moving from already-used Receiver";
       scoped_generic_ = move.scoped_generic_;
       move.scoped_generic_ = nullptr;
     }
 
     Receiver& operator=(Receiver&& move) {
-      CHECK(!used_);       // Moving into already-used Receiver.
-      CHECK(!move.used_);  // Moving from already-used Receiver.
+      CHECK(!used_) << "moving into already-used Receiver";
+      CHECK(!move.used_) << "moving from already-used Receiver";
       scoped_generic_ = move.scoped_generic_;
       move.scoped_generic_ = nullptr;
     }
@@ -236,7 +256,7 @@ class ScopedGeneric {
 
    private:
     T value_ = Traits::InvalidValue();
-    raw_ptr<ScopedGeneric<T, Traits>> scoped_generic_;
+    ScopedGeneric* scoped_generic_;
     bool used_ = false;
   };
 
@@ -253,8 +273,8 @@ class ScopedGeneric {
     return data_.generic != value;
   }
 
-  Traits& get_traits() LIFETIME_BOUND { return data_; }
-  const Traits& get_traits() const LIFETIME_BOUND { return data_; }
+  Traits& get_traits() { return data_; }
+  const Traits& get_traits() const { return data_; }
 
  private:
   void FreeIfNecessary() {
@@ -265,21 +285,37 @@ class ScopedGeneric {
     }
   }
 
-  void TrackAcquire(const T& value) {
-    if constexpr (std::derived_from<Traits, ScopedGenericOwnershipTracking>) {
-      if (value != traits_type::InvalidValue()) {
-        data_.Acquire(static_cast<const ScopedGeneric&>(*this), value);
-      }
+  template <typename Void = void>
+  typename std::enable_if_t<
+      std::is_base_of<ScopedGenericOwnershipTracking, Traits>::value,
+      Void>
+  TrackAcquire(const T& value) {
+    if (value != traits_type::InvalidValue()) {
+      data_.Acquire(static_cast<const ScopedGeneric&>(*this), value);
     }
   }
 
-  void TrackRelease(const T& value) {
-    if constexpr (std::derived_from<Traits, ScopedGenericOwnershipTracking>) {
-      if (value != traits_type::InvalidValue()) {
-        data_.Release(static_cast<const ScopedGeneric&>(*this), value);
-      }
+  template <typename Void = void>
+  typename std::enable_if_t<
+      !std::is_base_of<ScopedGenericOwnershipTracking, Traits>::value,
+      Void>
+  TrackAcquire(const T& value) {}
+
+  template <typename Void = void>
+  typename std::enable_if_t<
+      std::is_base_of<ScopedGenericOwnershipTracking, Traits>::value,
+      Void>
+  TrackRelease(const T& value) {
+    if (value != traits_type::InvalidValue()) {
+      data_.Release(static_cast<const ScopedGeneric&>(*this), value);
     }
   }
+
+  template <typename Void = void>
+  typename std::enable_if_t<
+      !std::is_base_of<ScopedGenericOwnershipTracking, Traits>::value,
+      Void>
+  TrackRelease(const T& value) {}
 
   // Forbid comparison. If U != T, it totally doesn't make sense, and if U ==
   // T, it still doesn't make sense because you should never have the same

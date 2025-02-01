@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,8 @@
 
 #include <utility>
 
+#include "base/bind.h"
 #include "base/check_op.h"
-#include "base/functional/bind.h"
 #include "net/base/io_buffer.h"
 #include "net/base/net_errors.h"
 #include "net/base/upload_bytes_element_reader.h"
@@ -19,16 +19,19 @@ ElementsUploadDataStream::ElementsUploadDataStream(
     std::vector<std::unique_ptr<UploadElementReader>> element_readers,
     int64_t identifier)
     : UploadDataStream(false, identifier),
-      element_readers_(std::move(element_readers)) {}
+      element_readers_(std::move(element_readers)),
+      element_index_(0),
+      read_error_(OK) {}
 
 ElementsUploadDataStream::~ElementsUploadDataStream() = default;
 
 std::unique_ptr<UploadDataStream> ElementsUploadDataStream::CreateWithReader(
-    std::unique_ptr<UploadElementReader> reader) {
+    std::unique_ptr<UploadElementReader> reader,
+    int64_t identifier) {
   std::vector<std::unique_ptr<UploadElementReader>> readers;
   readers.push_back(std::move(reader));
-  return std::make_unique<ElementsUploadDataStream>(std::move(readers),
-                                                    /*identifier=*/0);
+  return std::unique_ptr<UploadDataStream>(
+      new ElementsUploadDataStream(std::move(readers), identifier));
 }
 
 int ElementsUploadDataStream::InitInternal(const NetLogWithSource& net_log) {
@@ -130,12 +133,8 @@ void ElementsUploadDataStream::OnReadElementCompleted(
   ProcessReadResult(buf, result);
 
   result = ReadElements(buf);
-  if (result != ERR_IO_PENDING) {
-    if (result < ERR_IO_PENDING) {
-      LOG(ERROR) << "OnReadElementCompleted failed with Error: " << result;
-    }
+  if (result != ERR_IO_PENDING)
     OnReadCompleted(result);
-  }
 }
 
 void ElementsUploadDataStream::ProcessReadResult(

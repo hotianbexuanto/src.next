@@ -1,21 +1,6 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-// IMPORTANT NOTE: deprecated. Use std::atomic instead.
-//
-// Rationale:
-// - Uniformity: most of the code uses std::atomic, and the underlying
-//   implementation is the same. Use the STL one.
-// - Clearer code: return values from some operations (e.g. CompareAndSwap)
-//   differ from the equivalent ones in std::atomic, leading to confusion.
-// - Richer semantics: can use actual types, rather than e.g. Atomic32 for a
-//   boolean flag, or AtomicWord for T*. Bitwise operations (e.g. fetch_or())
-//   are only in std::atomic.
-// - Harder to misuse: base::subtle::Atomic32 is just an int, making it possible
-//   to accidentally manipulate, not realizing that there are no atomic
-//   semantics attached to it. For instance, "Atomic32 a; a++;" is almost
-//   certainly incorrect.
 
 // For atomic operations on reference counts, see atomic_refcount.h.
 // For atomic operations on sequence numbers, see atomic_sequence_num.h.
@@ -52,8 +37,11 @@
 #include <cstddef>
 
 #include "base/base_export.h"
+<<<<<<< HEAD
 #include "base/compiler_specific.h"
 #include "base/containers/span.h"
+=======
+>>>>>>> chromium
 #include "build/build_config.h"
 
 namespace base {
@@ -63,7 +51,7 @@ typedef int32_t Atomic32;
 #ifdef ARCH_CPU_64_BITS
 // We need to be able to go between Atomic64 and AtomicWord implicitly.  This
 // means Atomic64 and AtomicWord should be the same type on 64-bit.
-#if defined(__ILP32__) || BUILDFLAG(IS_NACL)
+#if defined(__ILP32__) || defined(OS_NACL)
 // NaCl's intptr_t is not actually 64-bits on 64-bit!
 // http://code.google.com/p/nativeclient/issues/detail?id=1162
 typedef int64_t Atomic64;
@@ -136,6 +124,7 @@ Atomic64 Acquire_CompareAndSwap(volatile Atomic64* ptr,
 Atomic64 Release_CompareAndSwap(volatile Atomic64* ptr,
                                 Atomic64 old_value,
                                 Atomic64 new_value);
+void NoBarrier_Store(volatile Atomic64* ptr, Atomic64 value);
 void Release_Store(volatile Atomic64* ptr, Atomic64 value);
 Atomic64 NoBarrier_Load(volatile const Atomic64* ptr);
 Atomic64 Acquire_Load(volatile const Atomic64* ptr);
@@ -170,7 +159,7 @@ BASE_EXPORT void RelaxedAtomicWriteMemcpy(base::span<uint8_t> dst,
 
 // On some platforms we need additional declarations to make
 // AtomicWord compatible with our other Atomic* types.
-#if BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_OPENBSD)
+#if defined(OS_APPLE) || defined(OS_OPENBSD)
 #include "base/atomicops_internals_atomicword_compat.h"
 #endif
 

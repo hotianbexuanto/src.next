@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,9 @@
 #include <set>
 #include <string>
 
-#include "base/functional/callback.h"
-#include "base/memory/scoped_refptr.h"
+#include "base/callback.h"
+#include "base/macros.h"
+#include "base/memory/ref_counted.h"
 
 namespace extensions {
 
@@ -21,21 +22,19 @@ class PreloadCheck {
  public:
   // These enumerators should only be referred to by name, so it is safe to
   // insert or remove values as necessary.
-  enum class Error {
-    kBlocklistedId,
-    kBlocklistedUnknown,
-    kDisallowedByPolicy,
-    kWebglNotSupported,
+  enum Error {
+    NONE,
+    BLOCKLISTED_ID,
+    BLOCKLISTED_UNKNOWN,
+    DISALLOWED_BY_POLICY,
+    WEBGL_NOT_SUPPORTED,
+    WINDOW_SHAPE_NOT_SUPPORTED,
   };
 
   using Errors = std::set<Error>;
   using ResultCallback = base::OnceCallback<void(const Errors&)>;
 
   explicit PreloadCheck(scoped_refptr<const Extension> extension);
-
-  PreloadCheck(const PreloadCheck&) = delete;
-  PreloadCheck& operator=(const PreloadCheck&) = delete;
-
   virtual ~PreloadCheck();
 
   // This function must be called on the UI thread. The callback also occurs on
@@ -50,6 +49,8 @@ class PreloadCheck {
  private:
   // The extension to check.
   scoped_refptr<const Extension> extension_;
+
+  DISALLOW_COPY_AND_ASSIGN(PreloadCheck);
 };
 
 }  // namespace extensions

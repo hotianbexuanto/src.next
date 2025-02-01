@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,7 +11,6 @@ import org.chromium.base.Callback;
 import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.layouts.CompositorModelChangeProcessor;
 import org.chromium.chrome.browser.layouts.EventFilter;
 import org.chromium.chrome.browser.layouts.LayoutManager;
@@ -41,53 +40,37 @@ public class TopToolbarOverlayCoordinator implements SceneOverlay {
     /** Business logic for this overlay. */
     private final TopToolbarOverlayMediator mMediator;
 
-    private final Context mContext;
-
-    public TopToolbarOverlayCoordinator(
-            Context context,
-            LayoutManager layoutManager,
+    public TopToolbarOverlayCoordinator(Context context, LayoutManager layoutManager,
             Callback<ClipDrawableProgressBar.DrawingInfo> progressInfoCallback,
             ObservableSupplier<Tab> tabSupplier,
             BrowserControlsStateProvider browserControlsStateProvider,
             Supplier<ResourceManager> resourceManagerSupplier,
+<<<<<<< HEAD
             TopUiThemeColorProvider topUiThemeColorProvider,
             ObservableSupplier<Integer> bottomToolbarControlsOffsetSupplier,
             int layoutsToShowOn,
+=======
+            TopUiThemeColorProvider topUiThemeColorProvider, int layoutsToShowOn,
+>>>>>>> chromium
             boolean isVisibilityManuallyControlled) {
-        // If BCIV is enabled, we always show the hairline on the composited
-        // toolbar, and let renderer+viz control the visibility during scrolls.
-        mContext = context;
-        boolean showHairline = ChromeFeatureList.sBrowserControlsInViz.isEnabled();
-        mModel =
-                new PropertyModel.Builder(TopToolbarOverlayProperties.ALL_KEYS)
-                        .with(TopToolbarOverlayProperties.RESOURCE_ID, R.id.control_container)
-                        .with(
-                                TopToolbarOverlayProperties.URL_BAR_RESOURCE_ID,
-                                R.drawable.modern_location_bar)
-                        .with(TopToolbarOverlayProperties.VISIBLE, true)
-                        .with(TopToolbarOverlayProperties.X_OFFSET, 0)
-                        .with(
-                                TopToolbarOverlayProperties.CONTENT_OFFSET,
-                                browserControlsStateProvider.getContentOffset())
-                        .with(TopToolbarOverlayProperties.ANONYMIZE, false)
-                        .with(TopToolbarOverlayProperties.SHOW_SHADOW, showHairline)
-                        .build();
+        mModel = new PropertyModel.Builder(TopToolbarOverlayProperties.ALL_KEYS)
+                         .with(TopToolbarOverlayProperties.RESOURCE_ID, R.id.control_container)
+                         .with(TopToolbarOverlayProperties.URL_BAR_RESOURCE_ID,
+                                 R.drawable.modern_location_bar)
+                         .with(TopToolbarOverlayProperties.VISIBLE, true)
+                         .with(TopToolbarOverlayProperties.X_OFFSET, 0)
+                         .with(TopToolbarOverlayProperties.Y_OFFSET,
+                                 browserControlsStateProvider.getTopControlOffset()
+                                         + browserControlsStateProvider.getTopControlsMinHeight())
+                         .with(TopToolbarOverlayProperties.ANONYMIZE, false)
+                         .build();
         mSceneLayer = new TopToolbarSceneLayer(resourceManagerSupplier);
         mChangeProcessor =
                 layoutManager.createCompositorMCP(mModel, mSceneLayer, TopToolbarSceneLayer::bind);
 
-        mMediator =
-                new TopToolbarOverlayMediator(
-                        mModel,
-                        context,
-                        layoutManager,
-                        progressInfoCallback,
-                        tabSupplier,
-                        browserControlsStateProvider,
-                        topUiThemeColorProvider,
-                        bottomToolbarControlsOffsetSupplier,
-                        layoutsToShowOn,
-                        isVisibilityManuallyControlled);
+        mMediator = new TopToolbarOverlayMediator(mModel, context, layoutManager,
+                progressInfoCallback, tabSupplier, browserControlsStateProvider,
+                topUiThemeColorProvider, layoutsToShowOn, isVisibilityManuallyControlled);
     }
 
     /**
@@ -143,9 +126,7 @@ public class TopToolbarOverlayCoordinator implements SceneOverlay {
 
     @Override
     public void onSizeChanged(
-            float width, float height, float visibleViewportOffsetY, int orientation) {
-        mMediator.setViewportHeight(height * mContext.getResources().getDisplayMetrics().density);
-    }
+            float width, float height, float visibleViewportOffsetY, int orientation) {}
 
     @Override
     public void getVirtualViews(List<VirtualView> views) {}

@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,19 +6,19 @@
 #define CHROME_BROWSER_EXTENSIONS_UNPACKED_INSTALLER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "base/bind.h"
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
-#include "base/values.h"
+#include "extensions/browser/api/declarative_net_request/ruleset_install_pref.h"
 #include "extensions/browser/preload_check.h"
 #include "extensions/common/manifest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -39,9 +39,6 @@ class UnpackedInstaller
   using CompletionCallback = base::OnceCallback<void(const Extension* extension,
                                                      const base::FilePath&,
                                                      const std::string&)>;
-
-  UnpackedInstaller(const UnpackedInstaller&) = delete;
-  UnpackedInstaller& operator=(const UnpackedInstaller&) = delete;
 
   static scoped_refptr<UnpackedInstaller> Create(
       ExtensionService* extension_service);
@@ -142,17 +139,13 @@ class UnpackedInstaller
   // file IO is allowed.
   bool IndexAndPersistRulesIfNeeded(std::string* error);
 
-  // Records command-line extension metrics organized by developer mode, emitted
-  // when a command line extension is loaded.
-  void RecordCommandLineDeveloperModeMetrics();
-
   const Extension* extension() { return extension_.get(); }
 
   // The service we will report results back to.
   base::WeakPtr<ExtensionService> service_weak_;
 
   // The Profile the extension is being installed in.
-  raw_ptr<Profile, DanglingUntriaged> profile_;
+  Profile* profile_;
 
   // The pathname of the directory to load from, which is an absolute path
   // after GetAbsolutePath has been called.
@@ -176,18 +169,20 @@ class UnpackedInstaller
   std::unique_ptr<PreloadCheckGroup> check_group_;
 
   // Install prefs needed for the Declarative Net Request API.
-  base::Value::Dict ruleset_install_prefs_;
+  declarative_net_request::RulesetInstallPrefs ruleset_install_prefs_;
 
   CompletionCallback callback_;
 
   // Override default file access.
-  std::optional<bool> allow_file_access_;
+  absl::optional<bool> allow_file_access_;
 
   // Override default incognito access.
-  std::optional<bool> allow_incognito_access_;
+  absl::optional<bool> allow_incognito_access_;
 
   // Specify an install param.
-  std::optional<std::string> install_param_;
+  absl::optional<std::string> install_param_;
+
+  DISALLOW_COPY_AND_ASSIGN(UnpackedInstaller);
 };
 
 }  // namespace extensions

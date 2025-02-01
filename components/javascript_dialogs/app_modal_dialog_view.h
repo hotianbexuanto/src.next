@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,7 +9,7 @@ namespace javascript_dialogs {
 
 class AppModalDialogView {
  public:
-  virtual ~AppModalDialogView() = default;
+  virtual ~AppModalDialogView() {}
 
   // Shows the dialog.
   virtual void ShowAppModalDialog() = 0;

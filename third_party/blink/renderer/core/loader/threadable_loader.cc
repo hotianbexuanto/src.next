@@ -33,21 +33,16 @@
 
 #include <memory>
 
-#include "base/metrics/histogram_functions.h"
-#include "base/numerics/safe_conversions.h"
-#include "base/task/single_thread_task_runner.h"
-#include "base/time/time.h"
 #include "services/network/public/cpp/cors/cors_error_status.h"
 #include "services/network/public/mojom/cors.mojom-blink.h"
 #include "services/network/public/mojom/fetch_api.mojom-blink.h"
-#include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/core/frame/frame_console.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/loader/threadable_loader_client.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/heap.h"
 #include "third_party/blink/renderer/platform/heap/self_keep_alive.h"
 #include "third_party/blink/renderer/platform/loader/cors/cors.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_client_settings_object.h"
@@ -72,19 +67,16 @@ class DetachedClient final : public GarbageCollected<DetachedClient>,
                              public ThreadableLoaderClient {
  public:
   explicit DetachedClient(ThreadableLoader* loader)
-      : loader_(loader), detached_time_(base::TimeTicks::Now()) {}
-  ~DetachedClient() override = default;
+      : self_keep_alive_(PERSISTENT_FROM_HERE, this), loader_(loader) {}
+  ~DetachedClient() override {}
 
   void DidFinishLoading(uint64_t identifier) override {
-    LogKeepAliveDuration();
     self_keep_alive_.Clear();
   }
   void DidFail(uint64_t identifier, const ResourceError&) override {
-    LogKeepAliveDuration();
     self_keep_alive_.Clear();
   }
   void DidFailRedirectCheck(uint64_t identifier) override {
-    LogKeepAliveDuration();
     self_keep_alive_.Clear();
   }
   void Trace(Visitor* visitor) const override {
@@ -93,18 +85,9 @@ class DetachedClient final : public GarbageCollected<DetachedClient>,
   }
 
  private:
-  void LogKeepAliveDuration() {
-    base::TimeDelta duration_after_detached =
-        base::TimeTicks::Now() - detached_time_;
-    // kKeepaliveLoadersTimeout > 10 sec, so UmaHistogramTimes can't be used.
-    base::UmaHistogramMediumTimes("FetchKeepAlive.RequestOutliveDuration",
-                                  duration_after_detached);
-  }
-
-  SelfKeepAlive<DetachedClient> self_keep_alive_{this};
+  SelfKeepAlive<DetachedClient> self_keep_alive_;
   // Keep it alive.
   const Member<ThreadableLoader> loader_;
-  base::TimeTicks detached_time_;
 };
 
 }  // namespace
@@ -114,10 +97,10 @@ ThreadableLoader::ThreadableLoader(
     ThreadableLoaderClient* client,
     const ResourceLoaderOptions& resource_loader_options,
     ResourceFetcher* resource_fetcher)
-    : resource_loader_options_(resource_loader_options),
-      client_(client),
+    : client_(client),
       execution_context_(execution_context),
       resource_fetcher_(resource_fetcher),
+      resource_loader_options_(resource_loader_options),
       request_mode_(network::mojom::RequestMode::kSameOrigin),
       timeout_timer_(execution_context_->GetTaskRunner(TaskType::kNetworking),
                      this,
@@ -183,7 +166,7 @@ void ThreadableLoader::Start(ResourceRequest request) {
   }
 }
 
-ThreadableLoader::~ThreadableLoader() = default;
+ThreadableLoader::~ThreadableLoader() {}
 
 void ThreadableLoader::SetTimeout(const base::TimeDelta& timeout) {
   timeout_ = timeout;
@@ -308,16 +291,17 @@ void ThreadableLoader::ResponseReceived(Resource* resource,
 
   checker_.ResponseReceived();
 
-  // If "Cache-Control: no-store" header exists in the XHR response,
-  // Back/Forward cache will be disabled for the page if the main resource has
-  // "Cache-Control: no-store" as well.
-  if (response.CacheControlContainsNoStore()) {
-    execution_context_->GetScheduler()->RegisterStickyFeature(
-        SchedulingPolicy::Feature::
-            kJsNetworkRequestReceivedCacheControlNoStoreResource,
-        {SchedulingPolicy::DisableBackForwardCache()});
+  // Now the following check is not needed as the service worker added their own
+  // checks and today memory cache and preload matching rules are more strict.
+  // TODO(crbug.com/1053866): Remove the check.
+  if (response.WasFetchedViaServiceWorker() &&
+      request_mode_ != network::mojom::RequestMode::kNoCors &&
+      response.GetType() == network::mojom::FetchResponseType::kOpaque) {
+    DispatchDidFail(ResourceError(
+        response.CurrentRequestUrl(),
+        network::CorsErrorStatus(network::mojom::CorsError::kInvalidResponse)));
+    return;
   }
-
   client_->DidReceiveResponse(resource->InspectorId(), response);
 }
 
@@ -342,13 +326,16 @@ void ThreadableLoader::CachedMetadataReceived(
 }
 
 void ThreadableLoader::DataReceived(Resource* resource,
-                                    base::span<const char> data) {
+                                    const char* data,
+                                    size_t data_length) {
   DCHECK(client_);
   DCHECK_EQ(resource, GetResource());
 
   checker_.DataReceived();
 
-  client_->DidReceiveData(data);
+  // TODO(junov): Fix the ThreadableLoader ecosystem to use size_t. Until then,
+  // we use safeCast to trap potential overflows.
+  client_->DidReceiveData(data, SafeCast<unsigned>(data_length));
 }
 
 void ThreadableLoader::NotifyFinished(Resource* resource) {
@@ -400,12 +387,7 @@ void ThreadableLoader::Trace(Visitor* visitor) const {
   visitor->Trace(client_);
   visitor->Trace(resource_fetcher_);
   visitor->Trace(timeout_timer_);
-  visitor->Trace(resource_loader_options_);
   RawResourceClient::Trace(visitor);
-}
-
-scoped_refptr<base::SingleThreadTaskRunner> ThreadableLoader::GetTaskRunner() {
-  return execution_context_->GetTaskRunner(TaskType::kNetworking);
 }
 
 }  // namespace blink

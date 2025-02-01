@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,12 +6,8 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_LAYOUT_FUNCTION_VALUE_H_
 
 #include "third_party/blink/renderer/core/css/css_value.h"
-#include "third_party/blink/renderer/platform/heap/member.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
-
-namespace WTF {
-class String;
-}  // namespace WTF
 
 namespace blink {
 
@@ -23,7 +19,7 @@ class CSSLayoutFunctionValue : public CSSValue {
  public:
   CSSLayoutFunctionValue(CSSCustomIdentValue* name, bool is_inline);
 
-  WTF::String CustomCSSText() const;
+  String CustomCSSText() const;
   AtomicString GetName() const;
   bool IsInline() const { return is_inline_; }
 

@@ -1,11 +1,10 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/cxx17_backports.h"
 #include "base/version.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
-#include "extensions/common/manifest_constants.h"
 #include "extensions/common/manifest_handlers/shared_module_info.h"
 #include "extensions/common/manifest_test.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -65,22 +64,6 @@ TEST_F(SharedModuleManifestTest, ExportAllowlistAll) {
       << manifest.name();
 }
 
-TEST_F(SharedModuleManifestTest, ExportAllowlistEmpty) {
-  scoped_refptr<Extension> extension =
-      LoadAndExpectWarning("shared_module_export_allowlist_empty.json",
-                           manifest_errors::kInvalidExportAllowlistEmpty);
-
-  EXPECT_TRUE(
-      SharedModuleInfo::IsExportAllowedByAllowlist(extension.get(), kImportId1))
-      << extension.get()->name();
-  EXPECT_TRUE(
-      SharedModuleInfo::IsExportAllowedByAllowlist(extension.get(), kImportId2))
-      << extension.get()->name();
-  EXPECT_TRUE(
-      SharedModuleInfo::IsExportAllowedByAllowlist(extension.get(), kNoImport))
-      << extension.get()->name();
-}
-
 TEST_F(SharedModuleManifestTest, ExportParseErrors) {
   const Testcase testcases[] = {
       Testcase("shared_module_export_and_import.json",
@@ -97,14 +80,18 @@ TEST_F(SharedModuleManifestTest, ExportParseErrors) {
                "Error at key 'export.allowlist'. Type is invalid. Expected "
                "list, found string."),
   };
+<<<<<<< HEAD
   RunTestcases(testcases, EXPECT_TYPE_ERROR);
+=======
+  RunTestcases(testcases, base::size(testcases), EXPECT_TYPE_ERROR);
+>>>>>>> chromium
 }
 
 TEST_F(SharedModuleManifestTest, SharedModuleStaticFunctions) {
   EXPECT_TRUE(SharedModuleInfo::IsImportedPath(kValidImportPath));
   EXPECT_FALSE(SharedModuleInfo::IsImportedPath(kInvalidImportPath));
 
-  ExtensionId id;
+  std::string id;
   std::string relative;
   SharedModuleInfo::ParseImportedPath(kValidImportPath, &id, &relative);
   EXPECT_EQ(id, kValidImportPathID);
@@ -135,36 +122,6 @@ TEST_F(SharedModuleManifestTest, Import) {
       SharedModuleInfo::ImportsExtensionById(extension.get(), kNoImport));
 }
 
-TEST_F(SharedModuleManifestTest, ImportRepeats) {
-  scoped_refptr<Extension> extension =
-      LoadAndExpectWarning("shared_module_import_repeats.json",
-                           manifest_errors::kInvalidImportRepeatedImport);
-
-  EXPECT_FALSE(SharedModuleInfo::IsSharedModule(extension.get()))
-      << extension.get()->name();
-  EXPECT_TRUE(SharedModuleInfo::ImportsModules(extension.get()))
-      << extension.get()->name();
-  const std::vector<SharedModuleInfo::ImportInfo>& imports =
-      SharedModuleInfo::GetImports(extension.get());
-  ASSERT_EQ(4u, imports.size());
-  EXPECT_EQ(imports[0].extension_id, kImportId1);
-  EXPECT_EQ(imports[0].minimum_version, "");
-  EXPECT_EQ(imports[1].extension_id, kImportId2);
-  EXPECT_EQ(imports[1].minimum_version, "");
-  EXPECT_EQ(imports[2].extension_id, kImportId1);
-  EXPECT_EQ(imports[2].minimum_version, "1.0");
-  EXPECT_EQ(imports[3].extension_id, kImportId1);
-  EXPECT_EQ(imports[3].minimum_version, "1.1");
-  EXPECT_TRUE(base::Version(imports[2].minimum_version).IsValid());
-  EXPECT_TRUE(base::Version(imports[3].minimum_version).IsValid());
-  EXPECT_TRUE(
-      SharedModuleInfo::ImportsExtensionById(extension.get(), kImportId1));
-  EXPECT_TRUE(
-      SharedModuleInfo::ImportsExtensionById(extension.get(), kImportId2));
-  EXPECT_FALSE(
-      SharedModuleInfo::ImportsExtensionById(extension.get(), kNoImport));
-}
-
 TEST_F(SharedModuleManifestTest, ImportParseErrors) {
   const Testcase testcases[] = {
       Testcase("shared_module_import_not_list.json",
@@ -175,7 +132,11 @@ TEST_F(SharedModuleManifestTest, ImportParseErrors) {
       Testcase("shared_module_import_invalid_version.json",
                "Invalid value for 'import[0].minimum_version'."),
   };
+<<<<<<< HEAD
   RunTestcases(testcases, EXPECT_TYPE_ERROR);
+=======
+  RunTestcases(testcases, base::size(testcases), EXPECT_TYPE_ERROR);
+>>>>>>> chromium
 }
 
 }  // namespace extensions

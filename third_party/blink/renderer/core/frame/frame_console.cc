@@ -30,7 +30,7 @@
 
 #include <memory>
 
-#include "third_party/blink/public/common/features.h"
+#include "third_party/blink/renderer/bindings/core/v8/source_location.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
@@ -39,8 +39,7 @@
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
-#include "third_party/blink/renderer/platform/bindings/source_location.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/heap.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_error.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -51,11 +50,10 @@ FrameConsole::FrameConsole(LocalFrame& frame) : frame_(&frame) {}
 
 void FrameConsole::AddMessage(ConsoleMessage* console_message,
                               bool discard_duplicates) {
-  if (AddMessageToStorage(console_message, discard_duplicates)) {
-    ReportMessageToClient(
-        console_message->GetSource(), console_message->GetLevel(),
-        console_message->Message(), console_message->Location());
-  }
+  if (AddMessageToStorage(console_message, discard_duplicates))
+    ReportMessageToClient(console_message->Source(), console_message->Level(),
+                          console_message->Message(),
+                          console_message->Location());
 }
 
 bool FrameConsole::AddMessageToStorage(ConsoleMessage* console_message,
@@ -66,17 +64,16 @@ bool FrameConsole::AddMessageToStorage(ConsoleMessage* console_message,
       frame_->DomWindow(), console_message, discard_duplicates);
 }
 
-void FrameConsole::ReportMessageToClient(
-    mojom::blink::ConsoleMessageSource source,
-    mojom::blink::ConsoleMessageLevel level,
-    const String& message,
-    SourceLocation* location) {
-  if (source == mojom::blink::ConsoleMessageSource::kNetwork)
+void FrameConsole::ReportMessageToClient(mojom::ConsoleMessageSource source,
+                                         mojom::ConsoleMessageLevel level,
+                                         const String& message,
+                                         SourceLocation* location) {
+  if (source == mojom::ConsoleMessageSource::kNetwork)
     return;
 
   String url = location->Url();
   String stack_trace;
-  if (source == mojom::blink::ConsoleMessageSource::kConsoleApi) {
+  if (source == mojom::ConsoleMessageSource::kConsoleApi) {
     if (!frame_->GetPage())
       return;
     if (frame_->GetChromeClient()
@@ -112,9 +109,9 @@ void FrameConsole::ReportResourceResponseReceived(
       String::Number(response.HttpStatusCode()) + " (" +
       response.HttpStatusText() + ')';
   auto* console_message = MakeGarbageCollected<ConsoleMessage>(
-      mojom::blink::ConsoleMessageSource::kNetwork,
-      mojom::blink::ConsoleMessageLevel::kError, message,
-      response.CurrentRequestUrl().GetString(), loader, request_identifier);
+      mojom::ConsoleMessageSource::kNetwork, mojom::ConsoleMessageLevel::kError,
+      message, response.CurrentRequestUrl().GetString(), loader,
+      request_identifier);
   AddMessage(console_message);
 }
 
@@ -125,33 +122,15 @@ void FrameConsole::DidFailLoading(DocumentLoader* loader,
   if (error.IsCancellation() || error.IsUnactionableTrustTokensStatus())
     return;
 
-  if (error.WasBlockedByORB()) {
-    // ORB loading errors are reported from the network service directly to
-    // DevTools (CorsURLLoader::ReportOrbErrorToDevTools).
-    return;
-  }
-
-  // Reduce noise in the DevTools console due to CORS policy errors.
-  // See http://crbug.com/375357425.
-  if (error.CorsErrorStatus() &&
-      base::FeatureList::IsEnabled(features::kDevToolsImprovedNetworkError)) {
-    return;
-  }
-
   StringBuilder message;
   message.Append("Failed to load resource");
-  if (!error.LocalizedDescription().empty()) {
+  if (!error.LocalizedDescription().IsEmpty()) {
     message.Append(": ");
     message.Append(error.LocalizedDescription());
   }
-  auto* console_message = MakeGarbageCollected<ConsoleMessage>(
-      mojom::blink::ConsoleMessageSource::kNetwork,
-      mojom::blink::ConsoleMessageLevel::kError, message.ToString(),
-      error.FailingURL(), loader, request_identifier);
-  if (error.CorsErrorStatus()) {
-    console_message->SetCategory(mojom::blink::ConsoleMessageCategory::Cors);
-  }
-  AddMessageToStorage(console_message);
+  AddMessageToStorage(MakeGarbageCollected<ConsoleMessage>(
+      mojom::ConsoleMessageSource::kNetwork, mojom::ConsoleMessageLevel::kError,
+      message.ToString(), error.FailingURL(), loader, request_identifier));
 }
 
 void FrameConsole::Trace(Visitor* visitor) const {

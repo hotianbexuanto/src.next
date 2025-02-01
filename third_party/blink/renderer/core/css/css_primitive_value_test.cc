@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,43 +8,17 @@
 #include "third_party/blink/renderer/core/css/css_math_expression_node.h"
 #include "third_party/blink/renderer/core/css/css_math_function_value.h"
 #include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
-#include "third_party/blink/renderer/core/css/css_test_helpers.h"
 #include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
-#include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 
 namespace blink {
 namespace {
 
-class CSSPrimitiveValueTest : public PageTestBase {
+class CSSPrimitiveValueTest : public PageTestBase,
+                              private ScopedCSSCalcInfinityAndNaNForTest {
  public:
-  const CSSPrimitiveValue* ParseValue(const char* text) {
-    const CSSPrimitiveValue* value = To<CSSPrimitiveValue>(
-        css_test_helpers::ParseValue(GetDocument(), "<length>", text));
-    DCHECK(value);
-    return value;
-  }
-
-  bool HasContainerRelativeUnits(const char* text) {
-    return ParseValue(text)->HasContainerRelativeUnits();
-  }
-
-  bool HasStaticViewportUnits(const char* text) {
-    const CSSPrimitiveValue* value = ParseValue(text);
-    CSSPrimitiveValue::LengthTypeFlags length_type_flags;
-    value->AccumulateLengthUnitTypes(length_type_flags);
-    return CSSPrimitiveValue::HasStaticViewportUnits(length_type_flags);
-  }
-
-  bool HasDynamicViewportUnits(const char* text) {
-    const CSSPrimitiveValue* value = ParseValue(text);
-    CSSPrimitiveValue::LengthTypeFlags length_type_flags;
-    value->AccumulateLengthUnitTypes(length_type_flags);
-    return CSSPrimitiveValue::HasDynamicViewportUnits(length_type_flags);
-  }
-
-  CSSPrimitiveValueTest() = default;
+  CSSPrimitiveValueTest() : ScopedCSSCalcInfinityAndNaNForTest(true) {}
 };
 
 using UnitType = CSSPrimitiveValue::UnitType;
@@ -59,25 +33,19 @@ CSSNumericLiteralValue* Create(UnitValue v) {
 }
 
 CSSPrimitiveValue* CreateAddition(UnitValue a, UnitValue b) {
-  return CSSMathFunctionValue::Create(
-      CSSMathExpressionOperation::CreateArithmeticOperation(
-          CSSMathExpressionNumericLiteral::Create(Create(a)),
-          CSSMathExpressionNumericLiteral::Create(Create(b)),
-          CSSMathOperator::kAdd));
+  return CSSMathFunctionValue::Create(CSSMathExpressionBinaryOperation::Create(
+      CSSMathExpressionNumericLiteral::Create(Create(a)),
+      CSSMathExpressionNumericLiteral::Create(Create(b)),
+      CSSMathOperator::kAdd));
 }
 
 CSSPrimitiveValue* CreateNonNegativeSubtraction(UnitValue a, UnitValue b) {
   return CSSMathFunctionValue::Create(
-      CSSMathExpressionOperation::CreateArithmeticOperation(
+      CSSMathExpressionBinaryOperation::Create(
           CSSMathExpressionNumericLiteral::Create(Create(a)),
           CSSMathExpressionNumericLiteral::Create(Create(b)),
           CSSMathOperator::kSubtract),
-      CSSPrimitiveValue::ValueRange::kNonNegative);
-}
-
-UnitType ToCanonicalUnit(CSSPrimitiveValue::UnitType unit) {
-  return CSSPrimitiveValue::CanonicalUnitTypeForCategory(
-      CSSPrimitiveValue::UnitTypeToUnitCategory(unit));
+      kValueRangeNonNegative);
 }
 
 TEST_F(CSSPrimitiveValueTest, IsTime) {
@@ -109,16 +77,18 @@ TEST_F(CSSPrimitiveValueTest, ClampTimeToNonNegative) {
 TEST_F(CSSPrimitiveValueTest, ClampAngleToNonNegative) {
   UnitValue a = {89, UnitType::kDegrees};
   UnitValue b = {0.25, UnitType::kTurns};
+<<<<<<< HEAD
   EXPECT_EQ(0.0, CreateNonNegativeSubtraction(a, b)->ComputeDegrees(
                      CSSToLengthConversionData(/*element=*/nullptr)));
+=======
+  EXPECT_EQ(0.0, CreateNonNegativeSubtraction(a, b)->ComputeDegrees());
+>>>>>>> chromium
 }
 
 TEST_F(CSSPrimitiveValueTest, IsResolution) {
   EXPECT_FALSE(Create({5.0, UnitType::kNumber})->IsResolution());
   EXPECT_FALSE(Create({5.0, UnitType::kDegrees})->IsResolution());
   EXPECT_TRUE(Create({5.0, UnitType::kDotsPerPixel})->IsResolution());
-  EXPECT_TRUE(Create({5.0, UnitType::kX})->IsResolution());
-  EXPECT_TRUE(Create({5.0, UnitType::kDotsPerInch})->IsResolution());
   EXPECT_TRUE(Create({5.0, UnitType::kDotsPerCentimeter})->IsResolution());
 }
 
@@ -167,8 +137,14 @@ TEST_F(CSSPrimitiveValueTest, NaNLengthClamp) {
   UnitValue a = {-std::numeric_limits<double>::quiet_NaN(), UnitType::kPixels};
   UnitValue b = {1, UnitType::kPixels};
   CSSPrimitiveValue* value = CreateAddition(a, b);
+<<<<<<< HEAD
   CSSToLengthConversionData conversion_data(/*element=*/nullptr);
   EXPECT_EQ(0.0, value->ComputeLength<double>(conversion_data));
+=======
+  CSSToLengthConversionData conversion_data;
+  EXPECT_EQ(std::numeric_limits<double>::max(),
+            value->ComputeLength<double>(conversion_data));
+>>>>>>> chromium
 }
 
 TEST_F(CSSPrimitiveValueTest, PositiveInfinityPercentLengthClamp) {
@@ -192,7 +168,7 @@ TEST_F(CSSPrimitiveValueTest, NaNPercentLengthClamp) {
       {-std::numeric_limits<double>::quiet_NaN(), UnitType::kPercentage});
   CSSToLengthConversionData conversion_data(/*element=*/nullptr);
   Length length = value->ConvertToLength(conversion_data);
-  EXPECT_EQ(0.0, length.Percent());
+  EXPECT_EQ(std::numeric_limits<float>::max(), length.Percent());
 }
 
 TEST_F(CSSPrimitiveValueTest, GetDoubleValueWithoutClampingAllowNaN) {
@@ -221,7 +197,7 @@ TEST_F(CSSPrimitiveValueTest,
 TEST_F(CSSPrimitiveValueTest, GetDoubleValueClampNaN) {
   CSSPrimitiveValue* value =
       Create({std::numeric_limits<double>::quiet_NaN(), UnitType::kPixels});
-  EXPECT_EQ(0.0, value->GetDoubleValue());
+  EXPECT_EQ(std::numeric_limits<double>::max(), value->GetDoubleValue());
 }
 
 TEST_F(CSSPrimitiveValueTest, GetDoubleValueClampPositiveInfinity) {
@@ -235,6 +211,7 @@ TEST_F(CSSPrimitiveValueTest, GetDoubleValueClampNegativeInfinity) {
       Create({-std::numeric_limits<double>::infinity(), UnitType::kPixels});
   EXPECT_EQ(std::numeric_limits<double>::lowest(), value->GetDoubleValue());
 }
+<<<<<<< HEAD
 
 TEST_F(CSSPrimitiveValueTest, TestCanonicalizingNumberUnitCategory) {
   UnitType canonicalized_from_num = ToCanonicalUnit(UnitType::kNumber);
@@ -435,5 +412,7 @@ TEST_F(CSSPrimitiveValueTest, ComputeValueToCanonicalUnit) {
             10);
 }
 
+=======
+>>>>>>> chromium
 }  // namespace
 }  // namespace blink

@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,11 +6,14 @@ package org.chromium.base;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.task.PostTask;
+import org.chromium.base.annotations.CheckDiscard;
 import org.chromium.build.BuildConfig;
+<<<<<<< HEAD
 import org.chromium.build.annotations.CheckDiscard;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+=======
+>>>>>>> chromium
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
@@ -41,14 +44,18 @@ public class LifetimeAssert {
         void onCleaned(WrappedReference ref, @Nullable String msg);
     }
 
-    /** Thrown for failed assertions. */
+    /**
+     * Thrown for failed assertions.
+     */
     static class LifetimeAssertException extends RuntimeException {
         LifetimeAssertException(String msg, Throwable causedBy) {
             super(msg, causedBy);
         }
     }
 
-    /** For capturing where objects were created. */
+    /**
+     * For capturing where objects were created.
+     */
     private static class CreationException extends RuntimeException {
         CreationException() {
             super("vvv This is where object was created. vvv");
@@ -58,7 +65,8 @@ public class LifetimeAssert {
     // Used only for unit test.
     static @Nullable TestHook sTestHook;
 
-    @VisibleForTesting final WrappedReference mWrapper;
+    @VisibleForTesting
+    final WrappedReference mWrapper;
 
     private final Object mTarget;
 
@@ -71,7 +79,7 @@ public class LifetimeAssert {
         public WrappedReference(
                 Object target, CreationException creationException, boolean safeToGc) {
             super(target, sReferenceQueue);
-            mCreationException = PostTask.maybeAddTaskOrigin(creationException);
+            mCreationException = creationException;
             mSafeToGc = safeToGc;
             mTargetClass = target.getClass();
             sActiveWrappers.add(this);
@@ -100,12 +108,10 @@ public class LifetimeAssert {
                                 continue;
                             }
                             if (!wrapper.mSafeToGc) {
-                                String msg =
-                                        String.format(
-                                                "Object of type %s was GC'ed without cleanup. Refer"
-                                                        + " to \"Caused by\" for where object was"
-                                                        + " created.",
-                                                wrapper.mTargetClass.getName());
+                                String msg = String.format(
+                                        "Object of type %s was GC'ed without cleanup. Refer to "
+                                                + "\"Caused by\" for where object was created.",
+                                        wrapper.mTargetClass.getName());
                                 if (sTestHook != null) {
                                     sTestHook.onCleaned(wrapper, msg);
                                 } else {
@@ -175,12 +181,10 @@ public class LifetimeAssert {
             try {
                 for (WrappedReference ref : WrappedReference.sActiveWrappers) {
                     if (!ref.mSafeToGc) {
-                        String msg =
-                                String.format(
-                                        "Object of type %s was not destroyed after test completed."
-                                                + " Refer to \"Caused by\" for where object was"
-                                                + " created.",
-                                        ref.mTargetClass.getName());
+                        String msg = String.format(
+                                "Object of type %s was not destroyed after test completed. "
+                                        + "Refer to \"Caused by\" for where object was created.",
+                                ref.mTargetClass.getName());
                         throw new LifetimeAssertException(msg, ref.mCreationException);
                     }
                 }

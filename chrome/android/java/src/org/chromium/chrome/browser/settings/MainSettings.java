@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,10 @@ package org.chromium.chrome.browser.settings;
 
 import android.content.Context;
 import android.content.Intent;
+<<<<<<< HEAD
 import android.content.pm.PackageManager;
+=======
+>>>>>>> chromium
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -14,43 +17,32 @@ import android.provider.Settings;
 import android.view.View;
 
 import androidx.annotation.Nullable;
-import androidx.lifecycle.Lifecycle;
+import androidx.annotation.VisibleForTesting;
 import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
 
-import org.chromium.base.BuildInfo;
 import org.chromium.base.ContextUtils;
-import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplierImpl;
-import org.chromium.base.task.PostTask;
-import org.chromium.base.task.TaskTraits;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment;
-import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment.AutofillOptionsReferrer;
-import org.chromium.chrome.browser.autofill.settings.SettingsNavigationHelper;
-import org.chromium.chrome.browser.customtabs.CustomTabActivity;
-import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.datareduction.settings.DataReductionPreferenceFragment;
 import org.chromium.chrome.browser.homepage.HomepageManager;
-import org.chromium.chrome.browser.magic_stack.HomeModulesConfigManager;
-import org.chromium.chrome.browser.night_mode.NightModeMetrics.ThemeSettingsEntry;
+import org.chromium.chrome.browser.net.spdyproxy.DataReductionProxySettings;
 import org.chromium.chrome.browser.night_mode.NightModeUtils;
-import org.chromium.chrome.browser.night_mode.settings.ThemeSettingsFragment;
 import org.chromium.chrome.browser.password_check.PasswordCheck;
 import org.chromium.chrome.browser.password_check.PasswordCheckFactory;
 import org.chromium.chrome.browser.password_manager.ManagePasswordsReferrer;
-import org.chromium.chrome.browser.password_manager.PasswordAccessLossDialogHelper;
-import org.chromium.chrome.browser.password_manager.PasswordExportLauncher;
 import org.chromium.chrome.browser.password_manager.PasswordManagerLauncher;
-import org.chromium.chrome.browser.password_manager.settings.PasswordsPreference;
-import org.chromium.chrome.browser.preferences.Pref;
-import org.chromium.chrome.browser.safety_hub.SafetyHubMetricUtils;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
+<<<<<<< HEAD
+=======
+import org.chromium.chrome.browser.signin.SyncConsentActivityLauncherImpl;
+>>>>>>> chromium
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
-import org.chromium.chrome.browser.signin.services.ProfileDataCache;
 import org.chromium.chrome.browser.signin.services.SigninManager;
-import org.chromium.chrome.browser.sync.SyncServiceFactory;
+import org.chromium.chrome.browser.sync.SyncService;
 import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
 import org.chromium.chrome.browser.sync.settings.SignInPreference;
+<<<<<<< HEAD
 import org.chromium.chrome.browser.sync.settings.SyncSettingsUtils;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncFeatures;
 import org.chromium.chrome.browser.toolbar.ToolbarPositionController;
@@ -60,68 +52,83 @@ import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.settings_promo_card.SettingsPromoCardPreference;
 import org.chromium.chrome.browser.ui.signin.SignOutCoordinator;
 import org.chromium.components.autofill.AutofillFeatures;
+=======
+import org.chromium.chrome.browser.sync.settings.SyncPromoPreference;
+import org.chromium.chrome.browser.sync.settings.SyncPromoPreference.State;
+import org.chromium.chrome.browser.sync.settings.SyncSettingsUtils;
+import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarFeatures;
+import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarStatePredictor;
+import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
+>>>>>>> chromium
 import org.chromium.components.browser_ui.settings.ChromeBasePreference;
 import org.chromium.components.browser_ui.settings.ManagedPreferenceDelegate;
-import org.chromium.components.browser_ui.settings.SettingsNavigation;
+import org.chromium.components.browser_ui.settings.SettingsLauncher;
 import org.chromium.components.browser_ui.settings.SettingsUtils;
 import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.components.search_engines.TemplateUrlService;
+<<<<<<< HEAD
 import org.chromium.components.signin.AccountManagerFacade;
 import org.chromium.components.signin.AccountManagerFacadeProvider;
 import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.sync.SyncService;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.ui.modaldialog.ModalDialogManager;
+=======
+import org.chromium.components.signin.base.CoreAccountInfo;
+import org.chromium.components.signin.identitymanager.ConsentLevel;
+import org.chromium.components.signin.metrics.SigninAccessPoint;
+>>>>>>> chromium
 
 import java.util.HashMap;
 import java.util.Map;
 
+<<<<<<< HEAD
 /** The main settings screen, shown when the user first opens Settings. */
 public class MainSettings extends ChromeBaseSettingsFragment
         implements TemplateUrlService.LoadListener,
                 SyncService.SyncStateChangedListener,
                 SigninManager.SignInStateObserver {
     public static final String PREF_SETTINGS_PROMO_CARD = "settings_promo_card";
+=======
+/**
+ * The main settings screen, shown when the user first opens Settings.
+ */
+public class MainSettings extends PreferenceFragmentCompat
+        implements TemplateUrlService.LoadListener, SyncService.SyncStateChangedListener,
+                   SigninManager.SignInStateObserver {
+    public static final String PREF_SYNC_PROMO = "sync_promo";
+>>>>>>> chromium
     public static final String PREF_ACCOUNT_AND_GOOGLE_SERVICES_SECTION =
             "account_and_google_services_section";
     public static final String PREF_SIGN_IN = "sign_in";
     public static final String PREF_MANAGE_SYNC = "manage_sync";
     public static final String PREF_GOOGLE_SERVICES = "google_services";
-    public static final String PREF_BASICS_SECTION = "basics_section";
     public static final String PREF_SEARCH_ENGINE = "search_engine";
     public static final String PREF_PASSWORDS = "passwords";
-    public static final String PREF_TABS = "tabs";
     public static final String PREF_HOMEPAGE = "homepage";
-    public static final String PREF_HOME_MODULES_CONFIG = "home_modules_config";
     public static final String PREF_TOOLBAR_SHORTCUT = "toolbar_shortcut";
     public static final String PREF_UI_THEME = "ui_theme";
-    public static final String PREF_AUTOFILL_SECTION = "autofill_section";
     public static final String PREF_PRIVACY = "privacy";
     public static final String PREF_SAFETY_CHECK = "safety_check";
+    public static final String PREF_DATA_REDUCTION = "data_reduction";
     public static final String PREF_NOTIFICATIONS = "notifications";
     public static final String PREF_DOWNLOADS = "downloads";
     public static final String PREF_DEVELOPER = "developer";
-    public static final String PREF_AUTOFILL_OPTIONS = "autofill_options";
-    public static final String PREF_AUTOFILL_ADDRESSES = "autofill_addresses";
-    public static final String PREF_AUTOFILL_PAYMENTS = "autofill_payment_methods";
-    public static final String PREF_PLUS_ADDRESSES = "plus_addresses";
-    public static final String PREF_SAFETY_HUB = "safety_hub";
-    public static final String PREF_ADDRESS_BAR = "address_bar";
 
+    // Used for elevating the privacy section behind the flag (see crbug.com/1099233).
+    public static final int PRIVACY_ORDER_DEFAULT = 18;
+    public static final int PRIVACY_ORDER_ELEVATED = 12;
+
+    private final ManagedPreferenceDelegate mManagedPreferenceDelegate;
     private final Map<String, Preference> mAllPreferences = new HashMap<>();
-
-    private ManagedPreferenceDelegate mManagedPreferenceDelegate;
+    private SyncPromoPreference mSyncPromoPreference;
+    private SignInPreference mSignInPreference;
     private ChromeBasePreference mManageSync;
     private @Nullable PasswordCheck mPasswordCheck;
-    private ObservableSupplier<ModalDialogManager> mModalDialogManagerSupplier;
-    // TODO(crbug.com/343933167): This should be removed when the snackbar issue is addressed.
-    // Will be true if `onSignedOut()` was called when the current activity state is not
-    // `Lifecycle.State.STARTED`.
-    private boolean mShouldShowSnackbar;
-    private final ObservableSupplierImpl<String> mPageTitle = new ObservableSupplierImpl<>();
 
     public MainSettings() {
         setHasOptionsMenu(true);
+        mManagedPreferenceDelegate = createManagedPreferenceDelegate();
     }
 
     @Override
@@ -132,17 +139,8 @@ public class MainSettings extends ChromeBaseSettingsFragment
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mPageTitle.set(getString(R.string.settings));
-        mPasswordCheck = PasswordCheckFactory.getOrCreate();
-        SigninManager signinManager = IdentityServicesProvider.get().getSigninManager(getProfile());
-        if (signinManager.isSigninSupported(/* requireUpdatedPlayServices= */ false)) {
-            signinManager.addSignInStateObserver(this);
-        }
-    }
-
-    @Override
-    public ObservableSupplier<String> getPageTitle() {
-        return mPageTitle;
+        getActivity().setTitle(R.string.settings);
+        mPasswordCheck = PasswordCheckFactory.getOrCreate(new SettingsLauncherImpl());
     }
 
     @Override
@@ -156,10 +154,7 @@ public class MainSettings extends ChromeBaseSettingsFragment
     @Override
     public void onDestroy() {
         super.onDestroy();
-        SigninManager signinManager = IdentityServicesProvider.get().getSigninManager(getProfile());
-        if (signinManager.isSigninSupported(/* requireUpdatedPlayServices= */ false)) {
-            signinManager.removeSignInStateObserver(this);
-        }
+        mSyncPromoPreference.onPreferenceFragmentDestroyed();
         // The component should only be destroyed when the activity has been closed by the user
         // (e.g. by pressing on the back button) and not when the activity is temporarily destroyed
         // by the system.
@@ -169,20 +164,26 @@ public class MainSettings extends ChromeBaseSettingsFragment
     @Override
     public void onStart() {
         super.onStart();
-        SyncService syncService = SyncServiceFactory.getForProfile(getProfile());
+        SigninManager signinManager = IdentityServicesProvider.get().getSigninManager(
+                Profile.getLastUsedRegularProfile());
+        if (signinManager.isSigninSupported()) {
+            signinManager.addSignInStateObserver(this);
+        }
+        SyncService syncService = SyncService.get();
         if (syncService != null) {
             syncService.addSyncStateChangedListener(this);
-        }
-        if (mShouldShowSnackbar) {
-            mShouldShowSnackbar = false;
-            PostTask.postTask(TaskTraits.UI_DEFAULT, this::showSignoutSnackbar);
         }
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        SyncService syncService = SyncServiceFactory.getForProfile(getProfile());
+        SigninManager signinManager = IdentityServicesProvider.get().getSigninManager(
+                Profile.getLastUsedRegularProfile());
+        if (signinManager.isSigninSupported()) {
+            signinManager.removeSignInStateObserver(this);
+        }
+        SyncService syncService = SyncService.get();
         if (syncService != null) {
             syncService.removeSyncStateChangedListener(this);
         }
@@ -195,8 +196,9 @@ public class MainSettings extends ChromeBaseSettingsFragment
     }
 
     private void createPreferences() {
-        mManagedPreferenceDelegate = createManagedPreferenceDelegate();
+        SettingsUtils.addPreferencesFromResource(this, R.xml.main_preferences);
 
+<<<<<<< HEAD
         SettingsUtils.addPreferencesFromResource(
                 this,
                 useLegacySettingsOrder() ? R.xml.main_preferences_legacy : R.xml.main_preferences);
@@ -222,74 +224,48 @@ public class MainSettings extends ChromeBaseSettingsFragment
         ChromeBasePreference googleServicePreference = findPreference(PREF_GOOGLE_SERVICES);
         googleServicePreference.setViewId(R.id.account_management_google_services_row);
 
+=======
+>>>>>>> chromium
         cachePreferences();
-        updateAutofillPreferences();
-        updatePlusAddressesPreference();
 
-        // TODO(crbug.com/40242060): Remove the passwords managed subtitle for local and UPM
-        // unenrolled users who can see it directly in the context of the setting.
-        setManagedPreferenceDelegateForPreference(PREF_PASSWORDS);
+        mSyncPromoPreference.setOnStateChangedCallback(this::onSyncPromoPreferenceStateChanged);
+
+        updatePasswordsPreference();
+
         setManagedPreferenceDelegateForPreference(PREF_SEARCH_ENGINE);
+        setManagedPreferenceDelegateForPreference(PREF_DATA_REDUCTION);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // If we are on Android O+ the Notifications preference should lead to the Android
             // Settings notifications page.
-            Intent intent = new Intent();
-            intent.setAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
-            intent.putExtra(
-                    Settings.EXTRA_APP_PACKAGE,
-                    ContextUtils.getApplicationContext().getPackageName());
-            PackageManager pm = getActivity().getPackageManager();
-            if (intent.resolveActivity(pm) != null) {
-                Preference notifications = findPreference(PREF_NOTIFICATIONS);
-                notifications.setOnPreferenceClickListener(
-                        preference -> {
-                            startActivity(intent);
-                            // We handle the click so the default action isn't triggered.
-                            return true;
-                        });
-            } else {
-                removePreferenceIfPresent(PREF_NOTIFICATIONS);
-            }
+            Preference notifications = findPreference(PREF_NOTIFICATIONS);
+            notifications.setOnPreferenceClickListener(preference -> {
+                Intent intent = new Intent();
+                intent.setAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE,
+                        ContextUtils.getApplicationContext().getPackageName());
+                startActivity(intent);
+                // We handle the click so the default action isn't triggered.
+                return true;
+            });
         } else {
             // The per-website notification settings page can be accessed from Site
             // Settings, so we don't need to show this here.
             getPreferenceScreen().removePreference(findPreference(PREF_NOTIFICATIONS));
         }
 
-        TemplateUrlService templateUrlService =
-                TemplateUrlServiceFactory.getForProfile(getProfile());
-        if (!templateUrlService.isLoaded()) {
-            templateUrlService.registerLoadListener(this);
-            templateUrlService.load();
+        if (!TemplateUrlServiceFactory.get().isLoaded()) {
+            TemplateUrlServiceFactory.get().registerLoadListener(this);
+            TemplateUrlServiceFactory.get().load();
         }
 
-        new AdaptiveToolbarStatePredictor(getContext(), getProfile(), null)
-                .recomputeUiState(
-                        uiState -> {
-                            // We don't show the toolbar shortcut settings page if disabled from
-                            // finch.
-                            if (uiState.canShowUi) return;
-                            getPreferenceScreen()
-                                    .removePreference(findPreference(PREF_TOOLBAR_SHORTCUT));
-                        });
-
-        if (BuildInfo.getInstance().isAutomotive) {
-            getPreferenceScreen().removePreference(findPreference(PREF_SAFETY_CHECK));
-            getPreferenceScreen().removePreference(findPreference(PREF_SAFETY_HUB));
-        } else if (!ChromeFeatureList.sSafetyHub.isEnabled()) {
-            getPreferenceScreen().removePreference(findPreference(PREF_SAFETY_HUB));
-        } else {
-            getPreferenceScreen().removePreference(findPreference(PREF_SAFETY_CHECK));
-            findPreference(PREF_SAFETY_HUB)
-                    .setOnPreferenceClickListener(
-                            preference -> {
-                                SafetyHubMetricUtils.recordExternalInteractions(
-                                        SafetyHubMetricUtils.ExternalInteractions
-                                                .OPEN_FROM_SETTINGS_PAGE);
-                                return false;
-                            });
-        }
+        new AdaptiveToolbarStatePredictor().recomputeUiState(uiState -> {
+            // We don't show the toolbar shortcut settings page if disabled from finch.
+            // Note, we can still have the old data collection experiment running for which
+            // |canShowUi| might be true. In that case, just hide the settings page.
+            if (uiState.canShowUi && !AdaptiveToolbarFeatures.isSingleVariantModeEnabled()) return;
+            getPreferenceScreen().removePreference(findPreference(PREF_TOOLBAR_SHORTCUT));
+        });
     }
 
     /**
@@ -302,6 +278,8 @@ public class MainSettings extends ChromeBaseSettingsFragment
             Preference preference = getPreferenceScreen().getPreference(index);
             mAllPreferences.put(preference.getKey(), preference);
         }
+        mSyncPromoPreference = (SyncPromoPreference) mAllPreferences.get(PREF_SYNC_PROMO);
+        mSignInPreference = (SignInPreference) mAllPreferences.get(PREF_SIGN_IN);
         mManageSync = (ChromeBasePreference) findPreference(PREF_MANAGE_SYNC);
     }
 
@@ -311,15 +289,18 @@ public class MainSettings extends ChromeBaseSettingsFragment
     }
 
     private void updatePreferences() {
+<<<<<<< HEAD
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.DEFAULT_BROWSER_PROMO_ANDROID2)) {
             SettingsPromoCardPreference promoCardPreference =
                     (SettingsPromoCardPreference) addPreferenceIfAbsent(PREF_SETTINGS_PROMO_CARD);
             promoCardPreference.updatePreferences();
         }
 
+=======
+>>>>>>> chromium
         if (IdentityServicesProvider.get()
-                .getSigninManager(getProfile())
-                .isSigninSupported(/* requireUpdatedPlayServices= */ false)) {
+                        .getSigninManager(Profile.getLastUsedRegularProfile())
+                        .isSigninSupported()) {
             addPreferenceIfAbsent(PREF_SIGN_IN);
         } else {
             removePreferenceIfPresent(PREF_SIGN_IN);
@@ -327,6 +308,7 @@ public class MainSettings extends ChromeBaseSettingsFragment
 
         updateManageSyncPreference();
         updateSearchEnginePreference();
+<<<<<<< HEAD
         updateAutofillPreferences();
         updatePlusAddressesPreference();
         updateAddressBarPreference();
@@ -341,23 +323,14 @@ public class MainSettings extends ChromeBaseSettingsFragment
         } else {
             removePreferenceIfPresent(PREF_TABS);
         }
+=======
+>>>>>>> chromium
 
         Preference homepagePref = addPreferenceIfAbsent(PREF_HOMEPAGE);
-        setOnOffSummary(homepagePref, HomepageManager.getInstance().isHomepageEnabled());
-
-        if (HomeModulesConfigManager.getInstance().hasModuleShownInSettings()) {
-            addPreferenceIfAbsent(PREF_HOME_MODULES_CONFIG);
-        } else {
-            removePreferenceIfPresent(PREF_HOME_MODULES_CONFIG);
-        }
+        setOnOffSummary(homepagePref, HomepageManager.isHomepageEnabled());
 
         if (NightModeUtils.isNightModeSupported()) {
-            Preference themePref = addPreferenceIfAbsent(PREF_UI_THEME);
-            themePref
-                    .getExtras()
-                    .putInt(
-                            ThemeSettingsFragment.KEY_THEME_SETTINGS_ENTRY,
-                            ThemeSettingsEntry.SETTINGS);
+            addPreferenceIfAbsent(PREF_UI_THEME);
         } else {
             removePreferenceIfPresent(PREF_UI_THEME);
         }
@@ -367,6 +340,10 @@ public class MainSettings extends ChromeBaseSettingsFragment
         } else {
             removePreferenceIfPresent(PREF_DEVELOPER);
         }
+
+        ChromeBasePreference dataReduction =
+                (ChromeBasePreference) findPreference(PREF_DATA_REDUCTION);
+        dataReduction.setSummary(DataReductionPreferenceFragment.generateSummary(getResources()));
     }
 
     private Preference addPreferenceIfAbsent(String key) {
@@ -381,6 +358,7 @@ public class MainSettings extends ChromeBaseSettingsFragment
     }
 
     private void updateManageSyncPreference() {
+<<<<<<< HEAD
         // TODO(crbug.com/40067770): Remove usage of ConsentLevel.SYNC after kSync users are
         // migrated to kSignin in phase 3. See ConsentLevel::kSync documentation for details.
         boolean isSyncConsentAvailable =
@@ -407,12 +385,40 @@ public class MainSettings extends ChromeBaseSettingsFragment
                     }
                     return true;
                 });
+=======
+        String primaryAccountName = CoreAccountInfo.getEmailFrom(
+                IdentityServicesProvider.get()
+                        .getIdentityManager(Profile.getLastUsedRegularProfile())
+                        .getPrimaryAccountInfo(ConsentLevel.SIGNIN));
+        boolean showManageSync = primaryAccountName != null;
+        mManageSync.setVisible(showManageSync);
+        if (!showManageSync) return;
+
+        boolean isSyncConsentAvailable =
+                IdentityServicesProvider.get()
+                        .getIdentityManager(Profile.getLastUsedRegularProfile())
+                        .getPrimaryAccountInfo(ConsentLevel.SYNC)
+                != null;
+        mManageSync.setIcon(SyncSettingsUtils.getSyncStatusIcon(getActivity()));
+        mManageSync.setSummary(SyncSettingsUtils.getSyncStatusSummary(getActivity()));
+        mManageSync.setOnPreferenceClickListener(pref -> {
+            Context context = getContext();
+            if (SyncService.get().isSyncDisabledByEnterprisePolicy()) {
+                SyncSettingsUtils.showSyncDisabledByAdministratorToast(context);
+            } else if (isSyncConsentAvailable) {
+                SettingsLauncher settingsLauncher = new SettingsLauncherImpl();
+                settingsLauncher.launchSettingsActivity(context, ManageSyncSettings.class);
+            } else {
+                SyncConsentActivityLauncherImpl.get().launchActivityForPromoDefaultFlow(
+                        context, SigninAccessPoint.SETTINGS, primaryAccountName);
+            }
+            return true;
+        });
+>>>>>>> chromium
     }
 
     private void updateSearchEnginePreference() {
-        TemplateUrlService templateUrlService =
-                TemplateUrlServiceFactory.getForProfile(getProfile());
-        if (!templateUrlService.isLoaded()) {
+        if (!TemplateUrlServiceFactory.get().isLoaded()) {
             ChromeBasePreference searchEnginePref =
                     (ChromeBasePreference) findPreference(PREF_SEARCH_ENGINE);
             searchEnginePref.setEnabled(false);
@@ -420,7 +426,8 @@ public class MainSettings extends ChromeBaseSettingsFragment
         }
 
         String defaultSearchEngineName = null;
-        TemplateUrl dseTemplateUrl = templateUrlService.getDefaultSearchEngineTemplateUrl();
+        TemplateUrl dseTemplateUrl =
+                TemplateUrlServiceFactory.get().getDefaultSearchEngineTemplateUrl();
         if (dseTemplateUrl != null) defaultSearchEngineName = dseTemplateUrl.getShortName();
 
         Preference searchEnginePreference = findPreference(PREF_SEARCH_ENGINE);
@@ -428,113 +435,17 @@ public class MainSettings extends ChromeBaseSettingsFragment
         searchEnginePreference.setSummary(defaultSearchEngineName);
     }
 
-    private void updateAutofillPreferences() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                && ChromeFeatureList.isEnabled(
-                        AutofillFeatures.AUTOFILL_VIRTUAL_VIEW_STRUCTURE_ANDROID)) {
-            addPreferenceIfAbsent(PREF_AUTOFILL_SECTION);
-            addPreferenceIfAbsent(PREF_AUTOFILL_OPTIONS);
-            Preference preference = findPreference(PREF_AUTOFILL_OPTIONS);
-            preference.setFragment(null);
-            preference.setOnPreferenceClickListener(
-                    unused -> {
-                        SettingsNavigationFactory.createSettingsNavigation()
-                                .startSettings(
-                                        getContext(),
-                                        AutofillOptionsFragment.class,
-                                        AutofillOptionsFragment.createRequiredArgs(
-                                                AutofillOptionsReferrer.SETTINGS));
-                        return true; // Means event is consumed.
-                    });
-        } else {
-            removePreferenceIfPresent(PREF_AUTOFILL_SECTION);
-            removePreferenceIfPresent(PREF_AUTOFILL_OPTIONS);
-        }
-        findPreference(PREF_AUTOFILL_PAYMENTS)
-                .setOnPreferenceClickListener(
-                        preference ->
-                                SettingsNavigationHelper.showAutofillCreditCardSettings(
-                                        getActivity()));
-        findPreference(PREF_AUTOFILL_ADDRESSES)
-                .setOnPreferenceClickListener(
-                        preference ->
-                                SettingsNavigationHelper.showAutofillProfileSettings(
-                                        getActivity()));
-        PasswordsPreference passwordsPreference = findPreference(PREF_PASSWORDS);
-        passwordsPreference.setProfile(getProfile());
-        passwordsPreference.setOnPreferenceClickListener(
-                preference -> {
-                    PasswordManagerLauncher.showPasswordSettings(
-                            getActivity(),
-                            getProfile(),
-                            ManagePasswordsReferrer.CHROME_SETTINGS,
-                            mModalDialogManagerSupplier,
-                            /* managePasskeys= */ false);
-                    return true;
-                });
-
-        if (ChromeFeatureList.isEnabled(
-                ChromeFeatureList
-                        .UNIFIED_PASSWORD_MANAGER_LOCAL_PASSWORDS_ANDROID_ACCESS_LOSS_WARNING)) {
-            // This is temporary code needed for migrating people to UPM. With UPM there is no
-            // longer passwords setting page in Chrome, so we need to ask users to export their
-            // passwords here, in main settings.
-            boolean startPasswordsExportFlow =
-                    getArguments() != null
-                            && getArguments()
-                                    .containsKey(PasswordExportLauncher.START_PASSWORDS_EXPORT)
-                            && getArguments()
-                                    .getBoolean(PasswordExportLauncher.START_PASSWORDS_EXPORT);
-            if (startPasswordsExportFlow) {
-                PasswordAccessLossDialogHelper.launchExportFlow(
-                        getContext(), getProfile(), mModalDialogManagerSupplier);
-                getArguments().putBoolean(PasswordExportLauncher.START_PASSWORDS_EXPORT, false);
-            }
-        }
-    }
-
-    private void updatePlusAddressesPreference() {
-        // TODO(crbug.com/40276862): Replace with a static string once name is finalized.
-        String title =
-                ChromeFeatureList.getFieldTrialParamByFeature(
-                        ChromeFeatureList.PLUS_ADDRESSES_ENABLED, "settings-label");
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.PLUS_ADDRESSES_ENABLED)
-                && !title.isEmpty()) {
-            addPreferenceIfAbsent(PREF_PLUS_ADDRESSES);
-            Preference preference = findPreference(PREF_PLUS_ADDRESSES);
-            preference.setTitle(title);
-            preference.setOnPreferenceClickListener(
-                    unused -> {
-                        String url =
-                                ChromeFeatureList.getFieldTrialParamByFeature(
-                                        ChromeFeatureList.PLUS_ADDRESSES_ENABLED, "manage-url");
-                        CustomTabActivity.showInfoPage(getContext(), url);
-                        return true;
-                    });
-        } else {
-            removePreferenceIfPresent(PREF_PLUS_ADDRESSES);
-        }
-    }
-
-    private void updateAddressBarPreference() {
-        if (ToolbarPositionController.isToolbarPositionCustomizationEnabled(getContext(), false)) {
-            Preference addressBarPreference = addPreferenceIfAbsent(PREF_ADDRESS_BAR);
-            addressBarPreference.setSummary(ToolbarPositionController.getToolbarPositionResId());
-        } else {
-            removePreferenceIfPresent(PREF_ADDRESS_BAR);
-        }
+    private void updatePasswordsPreference() {
+        Preference passwordsPreference = findPreference(PREF_PASSWORDS);
+        passwordsPreference.setOnPreferenceClickListener(preference -> {
+            PasswordManagerLauncher.showPasswordSettings(
+                    getActivity(), ManagePasswordsReferrer.CHROME_SETTINGS);
+            return true;
+        });
     }
 
     private void setOnOffSummary(Preference pref, boolean isOn) {
         pref.setSummary(isOn ? R.string.text_on : R.string.text_off);
-    }
-
-    private void showSignoutSnackbar() {
-        assert getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED);
-        SignOutCoordinator.showSnackbar(
-                getContext(),
-                ((SnackbarManager.SnackbarManageable) getActivity()).getSnackbarManager(),
-                SyncServiceFactory.getForProfile(getProfile()));
     }
 
     // SigninManager.SignInStateObserver implementation.
@@ -547,6 +458,7 @@ public class MainSettings extends ChromeBaseSettingsFragment
 
     @Override
     public void onSignedOut() {
+<<<<<<< HEAD
         // TODO(crbug.com/343933167): The snackbar should be shown from
         // SignOutCoordinator.startSignOutFlow(), in other words SignOutCoordinator.showSnackbar()
         // should be private method.
@@ -563,63 +475,63 @@ public class MainSettings extends ChromeBaseSettingsFragment
             }
         }
 
+=======
+>>>>>>> chromium
         updatePreferences();
+    }
+
+    private void onSyncPromoPreferenceStateChanged() {
+        // Remove "Account" section header if the personalized sign-in promo is shown.
+        boolean isShowingPersonalizedSigninPromo =
+                mSyncPromoPreference.getState() == State.PERSONALIZED_SIGNIN_PROMO;
+        findPreference(PREF_ACCOUNT_AND_GOOGLE_SERVICES_SECTION)
+                .setVisible(!isShowingPersonalizedSigninPromo);
+        mSignInPreference.setVisible(!isShowingPersonalizedSigninPromo);
     }
 
     // TemplateUrlService.LoadListener implementation.
     @Override
     public void onTemplateUrlServiceLoaded() {
-        TemplateUrlServiceFactory.getForProfile(getProfile()).unregisterLoadListener(this);
+        TemplateUrlServiceFactory.get().unregisterLoadListener(this);
         updateSearchEnginePreference();
     }
 
     @Override
     public void syncStateChanged() {
         updateManageSyncPreference();
-        updateAutofillPreferences();
     }
 
+    @VisibleForTesting
     public ManagedPreferenceDelegate getManagedPreferenceDelegateForTest() {
         return mManagedPreferenceDelegate;
     }
 
     private ManagedPreferenceDelegate createManagedPreferenceDelegate() {
-        return new ChromeManagedPreferenceDelegate(getProfile()) {
+        return new ChromeManagedPreferenceDelegate() {
             @Override
             public boolean isPreferenceControlledByPolicy(Preference preference) {
-                if (PREF_SEARCH_ENGINE.equals(preference.getKey())) {
-                    return TemplateUrlServiceFactory.getForProfile(getProfile())
-                            .isDefaultSearchManaged();
+                if (PREF_DATA_REDUCTION.equals(preference.getKey())) {
+                    return DataReductionProxySettings.getInstance().isDataReductionProxyManaged();
                 }
-                if (PREF_PASSWORDS.equals(preference.getKey())) {
-                    return UserPrefs.get(getProfile())
-                            .isManagedPreference(Pref.CREDENTIALS_ENABLE_SERVICE);
+                if (PREF_SEARCH_ENGINE.equals(preference.getKey())) {
+                    return TemplateUrlServiceFactory.get().isDefaultSearchManaged();
                 }
                 return false;
             }
 
             @Override
-            public boolean isPreferenceClickDisabled(Preference preference) {
-                if (PREF_SEARCH_ENGINE.equals(preference.getKey())) {
-                    return TemplateUrlServiceFactory.getForProfile(getProfile())
-                            .isDefaultSearchManaged();
+            public boolean isPreferenceClickDisabledByPolicy(Preference preference) {
+                if (PREF_DATA_REDUCTION.equals(preference.getKey())) {
+                    DataReductionProxySettings settings = DataReductionProxySettings.getInstance();
+                    return settings.isDataReductionProxyManaged()
+                            && !settings.isDataReductionProxyEnabled();
                 }
-                if (PREF_PASSWORDS.equals(preference.getKey())) {
-                    return false;
+                if (PREF_SEARCH_ENGINE.equals(preference.getKey())) {
+                    return TemplateUrlServiceFactory.get().isDefaultSearchManaged();
                 }
                 return isPreferenceControlledByPolicy(preference)
                         || isPreferenceControlledByCustodian(preference);
             }
         };
-    }
-
-    public void setModalDialogManagerSupplier(
-            ObservableSupplier<ModalDialogManager> modalDialogManagerSupplier) {
-        mModalDialogManagerSupplier = modalDialogManagerSupplier;
-    }
-
-    private boolean useLegacySettingsOrder() {
-        return !ChromeFeatureList.isEnabled(
-                AutofillFeatures.AUTOFILL_VIRTUAL_VIEW_STRUCTURE_ANDROID);
     }
 }

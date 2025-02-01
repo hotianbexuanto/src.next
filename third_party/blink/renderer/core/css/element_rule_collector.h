@@ -23,17 +23,17 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_ELEMENT_RULE_COLLECTOR_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_ELEMENT_RULE_COLLECTOR_H_
 
+<<<<<<< HEAD
 #include "base/gtest_prod_util.h"
+=======
+>>>>>>> chromium
 #include "base/memory/scoped_refptr.h"
-#include "base/memory/stack_allocated.h"
-#include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/css/container_selector.h"
 #include "third_party/blink/renderer/core/css/css_rule_list.h"
-#include "third_party/blink/renderer/core/css/part_names.h"
+#include "third_party/blink/renderer/core/css/resolver/element_resolve_context.h"
 #include "third_party/blink/renderer/core/css/resolver/match_request.h"
 #include "third_party/blink/renderer/core/css/resolver/match_result.h"
 #include "third_party/blink/renderer/core/css/selector_checker.h"
-#include "third_party/blink/renderer/core/css/style_recalc_context.h"
+#include "third_party/blink/renderer/core/css/style_recalc.h"
 #include "third_party/blink/renderer/core/css/style_request.h"
 #include "third_party/blink/renderer/core/style/computed_style_base_constants.h"
 #include "third_party/blink/renderer/platform/wtf/gc_plugin.h"
@@ -42,9 +42,14 @@
 
 namespace blink {
 
+<<<<<<< HEAD
 class Element;
 class ElementResolveContext;
 class ElementRuleCollector;
+=======
+class CSSStyleSheet;
+class PartNames;
+>>>>>>> chromium
 class RuleData;
 class SelectorFilter;
 class StyleRuleUsageTracker;
@@ -52,22 +57,9 @@ class StyleRuleUsageTracker;
 class MatchedRule {
   DISALLOW_NEW();
 
-  // Everything in this class is private to ElementRuleCollector, since it
-  // contains non-owned references to RuleData (see the constructor), but we
-  // cannot make the class itself private, since
-  // WTF_ALLOW_MOVE_AND_INIT_WITH_MEM_FUNCTIONS() and Vector::emplace_back()
-  // need it to be visible from the outside.
-  static const unsigned kBitsForPositionInRuleData = 18;
-
  public:
-  // Does not take overship of rule_data (it is owned by the appropriate
-  // bucket in RuleSet), so the RuleData must live for at least as long as
-  // the MatchedRule, ie., those buckets must not be modified (which would
-  // invalidate the RuleData pointers). This is fine, because MatchedRule
-  // is only used during matching (in ElementRuleCollector), and the
-  // RuleData itself never escapes SortAndTransferMatchedRules() -- only
-  // the other elements that it points to.
   MatchedRule(const RuleData* rule_data,
+<<<<<<< HEAD
               uint16_t layer_order,
               unsigned proximity,
               unsigned style_sheet_index)
@@ -122,6 +114,32 @@ class MatchedRule {
   FRIEND_TEST_ALL_PREFIXES(ElementRuleCollectorTest,
                            RuleNotStartingWithAmpersand);
   FRIEND_TEST_ALL_PREFIXES(ElementRuleCollectorTest, NestedRulesInMediaQuery);
+=======
+              unsigned style_sheet_index,
+              const CSSStyleSheet* parent_style_sheet)
+      : rule_data_(rule_data),
+        parent_style_sheet_(parent_style_sheet) {
+    DCHECK(rule_data_);
+    static const unsigned kBitsForPositionInRuleData = 18;
+    position_ = (static_cast<uint64_t>(style_sheet_index)
+                 << kBitsForPositionInRuleData) +
+                rule_data_->GetPosition();
+  }
+
+  const RuleData* GetRuleData() const { return rule_data_; }
+  uint64_t GetPosition() const { return position_; }
+  unsigned Specificity() const { return GetRuleData()->Specificity(); }
+  const CSSStyleSheet* ParentStyleSheet() const { return parent_style_sheet_; }
+  void Trace(Visitor* visitor) const {
+    visitor->Trace(parent_style_sheet_);
+    visitor->Trace(rule_data_);
+  }
+
+ private:
+  Member<const RuleData> rule_data_;
+  uint64_t position_;
+  Member<const CSSStyleSheet> parent_style_sheet_;
+>>>>>>> chromium
 };
 
 }  // namespace blink
@@ -138,11 +156,7 @@ using StyleRuleList = HeapVector<Member<StyleRule>>;
 //
 // ElementRuleCollector is designed to be used as a stack object.
 // Create one, ask what rules the ElementResolveContext matches
-// and then let it go out of scope. In particular, do not change
-// values in the RuleSet buckets (which would invalidate the RuleData
-// pointers) before you have extracted the results, typically with
-// SortAndTransferMatchedRules().
-//
+// and then let it go out of scope.
 // FIXME: Currently it modifies the ComputedStyle but should not!
 class CORE_EXPORT ElementRuleCollector {
   STACK_ALLOCATED();
@@ -152,6 +166,7 @@ class CORE_EXPORT ElementRuleCollector {
                        const StyleRecalcContext&,
                        const SelectorFilter&,
                        MatchResult&,
+                       ComputedStyle*,
                        EInsideLink);
   ElementRuleCollector(const ElementRuleCollector&) = delete;
   ElementRuleCollector& operator=(const ElementRuleCollector&) = delete;
@@ -161,25 +176,20 @@ class CORE_EXPORT ElementRuleCollector {
   void SetPseudoElementStyleRequest(const StyleRequest& request) {
     pseudo_style_request_ = request;
   }
+  void SetSameOriginOnly(bool f) { same_origin_only_ = f; }
 
   void SetMatchingUARules(bool matching_ua_rules) {
     matching_ua_rules_ = matching_ua_rules;
-  }
-  void SetMatchingRulesFromNoStyleSheet(
-      bool matching_rules_from_no_style_sheet) {
-    matching_rules_from_no_style_sheet_ = matching_rules_from_no_style_sheet;
-  }
-  // If true, :visited will never match. Has no effect otherwise.
-  void SetSuppressVisited(bool suppress_visited) {
-    suppress_visited_ = suppress_visited;
   }
 
   const MatchResult& MatchedResult() const;
   StyleRuleList* MatchedStyleRuleList();
   RuleIndexList* MatchedCSSRuleList();
 
-  void CollectMatchingRules(const MatchRequest&, PartNames* part_names);
+  void CollectMatchingRules(const MatchRequest&,
+                            bool matching_tree_boundary_rules = false);
   void CollectMatchingShadowHostRules(const MatchRequest&);
+<<<<<<< HEAD
   void CollectMatchingSlottedRules(const MatchRequest&);
   void CollectMatchingPartPseudoRules(const MatchRequest&, PartNames*);
   void SortAndTransferMatchedRules(CascadeOrigin origin,
@@ -202,26 +212,31 @@ class CORE_EXPORT ElementRuleCollector {
   // [1] https://drafts.csswg.org/css-cascade-6/#in-scope
   bool CanRejectScope(const StyleScope&) const;
 
+=======
+  void CollectMatchingPartPseudoRules(const MatchRequest&,
+                                      PartNames&,
+                                      bool for_shadow_pseudo);
+  void SortAndTransferMatchedRules();
+  void ClearMatchedRules();
+>>>>>>> chromium
   void AddElementStyleProperties(const CSSPropertyValueSet*,
-                                 CascadeOrigin,
-                                 bool is_cacheable = true,
-                                 bool is_inline_style = false);
-  void AddTryStyleProperties();
-  void AddTryTacticsStyleProperties();
-  void BeginAddingAuthorRulesForTreeScope(const TreeScope& tree_scope) {
-    current_matching_tree_scope_ = &tree_scope;
-    result_.BeginAddingAuthorRulesForTreeScope(tree_scope);
+                                 bool is_cacheable = true);
+  void FinishAddingUARules() { result_.FinishAddingUARules(); }
+  void FinishAddingUserRules() {
+    result_.FinishAddingUserRules();
   }
-
-  // Return the pseudo id if the style request is for rules associated with a
-  // pseudo element, or kPseudoNone if not.
-  PseudoId GetPseudoId() const { return pseudo_style_request_.pseudo_id; }
-  const AtomicString& GetPseudoArgument() const {
-    return pseudo_style_request_.pseudo_argument;
+  void FinishAddingAuthorRulesForTreeScope(const TreeScope& tree_scope) {
+    result_.FinishAddingAuthorRulesForTreeScope(tree_scope);
+  }
+  void SetIncludeEmptyRules(bool include) { include_empty_rules_ = include; }
+  bool IncludeEmptyRules() const { return include_empty_rules_; }
+  bool IsCollectingForPseudoElement() const {
+    return pseudo_style_request_.pseudo_id != kPseudoIdNone;
   }
 
   void AddMatchedRulesToTracker(StyleRuleUsageTracker*) const;
 
+<<<<<<< HEAD
   // Writes out the collected selector statistics and clears the values.
   // These values are gathered during rule matching and require higher-level
   // control of when they are output - the statistics are designed to be
@@ -259,25 +274,42 @@ class CORE_EXPORT ElementRuleCollector {
 
   template <bool stop_at_first_match>
   bool CollectMatchingRulesForList(base::span<const RuleData>,
+=======
+ private:
+  struct PartRequest {
+    PartNames& part_names;
+    // If this is true, we're matching for a pseudo-element of the part, such as
+    // ::placeholder.
+    bool for_shadow_pseudo = false;
+  };
+
+  template <typename RuleDataListType>
+  void CollectMatchingRulesForList(const RuleDataListType*,
+>>>>>>> chromium
                                    const MatchRequest&,
-                                   const RuleSet*,
-                                   int,
                                    const SelectorChecker&,
+<<<<<<< HEAD
                                    SelectorChecker::SelectorCheckingContext&);
+=======
+                                   PartRequest* = nullptr);
+>>>>>>> chromium
 
   bool Match(SelectorChecker&,
              const SelectorChecker::SelectorCheckingContext&,
              MatchResult&);
   void DidMatchRule(const RuleData*,
-                    uint16_t layer_order,
-                    const ContainerQuery*,
-                    unsigned proximity,
                     const SelectorChecker::MatchResult&,
-                    int style_sheet_index);
+                    const MatchRequest&);
 
+<<<<<<< HEAD
   void AppendCSSOMWrapperForRule(const TreeScope* tree_scope_containing_rule,
                                  const MatchedRule& matched_rule,
                                  wtf_size_t position);
+=======
+  template <class CSSRuleCollection>
+  CSSRule* FindStyleRule(CSSRuleCollection*, StyleRule*);
+  void AppendCSSOMWrapperForRule(CSSStyleSheet*, const RuleData*);
+>>>>>>> chromium
 
   void SortMatchedRules();
 
@@ -285,24 +317,21 @@ class CORE_EXPORT ElementRuleCollector {
   StyleRuleList* EnsureStyleRuleList();
 
  private:
-  struct CompareRules;
-
   const ElementResolveContext& context_;
   StyleRecalcContext style_recalc_context_;
   const SelectorFilter& selector_filter_;
+  scoped_refptr<ComputedStyle>
+      style_;  // FIXME: This can be mutated during matching!
 
   StyleRequest pseudo_style_request_;
   SelectorChecker::Mode mode_;
   bool can_use_fast_reject_;
+  bool same_origin_only_;
   bool matching_ua_rules_;
-  bool matching_rules_from_no_style_sheet_ =
-      false;  // Document rules and watched selectors.
-  bool suppress_visited_;
+  bool include_empty_rules_;
   EInsideLink inside_link_;
-  const TreeScope* current_matching_tree_scope_ = nullptr;
 
   HeapVector<MatchedRule, 32> matched_rules_;
-  ContainerSelectorCache container_selector_cache_;
 
   // Output.
   Member<RuleIndexList> css_rule_list_;

@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,6 @@ package org.chromium.chrome.browser.omnibox.suggestions;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.components.omnibox.AutocompleteMatch;
-import org.chromium.components.omnibox.action.OmniboxAction;
 import org.chromium.url.GURL;
 
 /** A mechanism for creating {@link SuggestionViewDelegate}s. */
@@ -29,11 +28,12 @@ public interface SuggestionHost {
     void onSuggestionClicked(AutocompleteMatch suggestion, int position, GURL url);
 
     /**
-     * Triggered when the user touches down on a suggestion. Only called for search suggestions.
+     * Triggered when the user long presses the omnibox suggestion.
      *
-     * @param suggestion Touch-downed Suggestion.
+     * @param suggestion Long-pressed Suggestion.
      * @param position The position of the suggestion on the list.
      */
+<<<<<<< HEAD
     void onSuggestionTouchDown(AutocompleteMatch suggestion, int position);
 
     /**
@@ -63,6 +63,9 @@ public interface SuggestionHost {
      * @param element Element of the suggestion to be deleted.
      */
     void onDeleteMatchElement(AutocompleteMatch suggestion, String titleText, int element);
+=======
+    void onSuggestionLongClicked(@NonNull AutocompleteMatch suggestion, int position);
+>>>>>>> chromium
 
     /**
      * Triggered when the user selects a switch to tab action.
@@ -73,12 +76,24 @@ public interface SuggestionHost {
     void onSwitchToTab(AutocompleteMatch suggestion, int position);
 
     /**
+     * Toggle expanded state of suggestion items belonging to specific group.
+     *
+     * @param groupId ID of Suggestion Group whose visibility changed.
+     * @param isCollapsed True if group should appear collapsed, otherwise false.
+     */
+    void setGroupCollapsedState(int groupId, boolean isCollapsed);
+
+    /**
      * Update the content of the Omnibox without triggering the Navigation.
      *
      * @param text The text to be displayed in the Omnibox.
      */
+<<<<<<< HEAD
     void setOmniboxEditingText(String text);
 
     /** Clear focus, close the suggestions list and complete the interaction with the Omnibox. */
     void finishInteraction();
+=======
+    void setOmniboxEditingText(@NonNull String text);
+>>>>>>> chromium
 }

@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,21 +16,17 @@ import org.chromium.build.annotations.Nullable;
 import java.util.Collections;
 import java.util.List;
 
+<<<<<<< HEAD
 /** This class provides Android PackageManager related utility methods. */
 @NullMarked
+=======
+/**
+ * This class provides Android PackageManager related utility methods.
+ */
+>>>>>>> chromium
 public class PackageManagerUtils {
-    public static final String XR_IMMERSIVE_FEATURE_NAME = "android.software.xr.immersive";
-
     private static final String TAG = "PackageManagerUtils";
-
-    // This is the intent Android uses internally to detect browser apps.
-    // See
-    // https://cs.android.com/android/_/android/platform/packages/modules/Permission/+/android12-release:PermissionController/src/com/android/permissioncontroller/role/model/BrowserRoleBehavior.java;drc=86fa7d5dfa43f66b170f93ade4f59b9a770be32f;l=50
-    public static final Intent BROWSER_INTENT =
-            new Intent()
-                    .setAction(Intent.ACTION_VIEW)
-                    .addCategory(Intent.CATEGORY_BROWSABLE)
-                    .setData(Uri.fromParts("http", "", null));
+    private static final String SAMPLE_URL = "http://";
 
     /**
      * Retrieve information about the Activity that will handle the given Intent.
@@ -73,27 +69,11 @@ public class PackageManagerUtils {
     }
 
     /**
-     * Check if the given Intent can be resolved by any Activities on the system.
-     *
-     * See {@link PackageManagerUtils#queryIntentActivities(Intent, int)}
+     * @return Intent to query a list of installed web browsers.
      */
-    public static boolean canResolveActivity(Intent intent, int flags) {
-        return !queryIntentActivities(intent, flags).isEmpty();
-    }
-
-    /**
-     * Check if the given Intent can be resolved by any Activities on the system.
-     *
-     * See {@link PackageManagerUtils#canResolveActivity(Intent, int)}
-     */
-    public static boolean canResolveActivity(Intent intent) {
-        return canResolveActivity(intent, 0);
-    }
-
-    /** Check if the system has the given system feature available. */
-    public static boolean hasSystemFeature(String feature) {
-        PackageManager pm = ContextUtils.getApplicationContext().getPackageManager();
-        return pm.hasSystemFeature(feature);
+    public static Intent getQueryInstalledBrowsersIntent() {
+        return new Intent(Intent.ACTION_VIEW, Uri.parse(SAMPLE_URL))
+                .addCategory(Intent.CATEGORY_BROWSABLE);
     }
 
     /**
@@ -106,8 +86,13 @@ public class PackageManagerUtils {
     /**
      * @return Default ResolveInfo to handle a VIEW intent for a url.
      */
+<<<<<<< HEAD
     public static @Nullable ResolveInfo resolveDefaultWebBrowserActivity() {
         return resolveActivity(BROWSER_INTENT, PackageManager.MATCH_DEFAULT_ONLY);
+=======
+    public static ResolveInfo resolveDefaultWebBrowserActivity() {
+        return resolveActivity(getQueryInstalledBrowsersIntent(), 0);
+>>>>>>> chromium
     }
 
     /**
@@ -115,16 +100,7 @@ public class PackageManagerUtils {
      *         may appear twice if it has multiple intent handlers.
      */
     public static List<ResolveInfo> queryAllWebBrowsersInfo() {
-        // Copying these flags from Android source for detecting the list of installed browsers.
-        // Apparently MATCH_ALL doesn't include MATCH_DIRECT_BOOT_*.
-        // See
-        // https://cs.android.com/android/_/android/platform/packages/modules/Permission/+/android12-release:PermissionController/src/com/android/permissioncontroller/role/model/BrowserRoleBehavior.java;drc=86fa7d5dfa43f66b170f93ade4f59b9a770be32f;l=114
-        int flags =
-                PackageManager.MATCH_ALL
-                        | PackageManager.MATCH_DIRECT_BOOT_AWARE
-                        | PackageManager.MATCH_DIRECT_BOOT_UNAWARE
-                        | PackageManager.MATCH_DEFAULT_ONLY;
-        return queryIntentActivities(BROWSER_INTENT, flags);
+        return queryIntentActivities(getQueryInstalledBrowsersIntent(), PackageManager.MATCH_ALL);
     }
 
     /**

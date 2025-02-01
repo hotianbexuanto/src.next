@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors
+// Copyright 2021 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,17 +10,17 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 
 /**
- * This class wraps two given ClassLoader objects and delegates findClass() and findLibrary() calls
+ * This class wraps two given BaseDexClassLoader's and delegates findClass() and findLibrary() calls
  * to the first one that returns a match.
  */
 @NullMarked
 public class WrappedClassLoader extends ClassLoader {
-    private final ClassLoader mPrimaryClassLoader;
-    private final ClassLoader mSecondaryClassLoader;
+    private BaseDexClassLoader mPrimaryClassLoader;
+    private BaseDexClassLoader mSecondaryClassLoader;
 
-    public WrappedClassLoader(ClassLoader primary, ClassLoader secondary) {
-        mPrimaryClassLoader = primary;
-        mSecondaryClassLoader = secondary;
+    public WrappedClassLoader(BaseDexClassLoader primary, BaseDexClassLoader secondary) {
+        this.mPrimaryClassLoader = primary;
+        this.mSecondaryClassLoader = secondary;
     }
 
     @Override
@@ -28,16 +28,12 @@ public class WrappedClassLoader extends ClassLoader {
         try {
             return mPrimaryClassLoader.loadClass(name);
         } catch (ClassNotFoundException e) {
-            try {
-                return mSecondaryClassLoader.loadClass(name);
-            } catch (ClassNotFoundException e2) {
-                e.addSuppressed(e2);
-                throw e;
-            }
+            return mSecondaryClassLoader.loadClass(name);
         }
     }
 
     @Override
+<<<<<<< HEAD
     public @Nullable String findLibrary(String name) {
         String path = null;
         // BaseDexClassLoader has a public findLibrary method, but ClassLoader's is protected
@@ -51,5 +47,12 @@ public class WrappedClassLoader extends ClassLoader {
             path = ((BaseDexClassLoader) mSecondaryClassLoader).findLibrary(name);
         }
         return path;
+=======
+    public String findLibrary(String name) {
+        String path = mPrimaryClassLoader.findLibrary(name);
+        if (path != null) return path;
+
+        return mSecondaryClassLoader.findLibrary(name);
+>>>>>>> chromium
     }
 }

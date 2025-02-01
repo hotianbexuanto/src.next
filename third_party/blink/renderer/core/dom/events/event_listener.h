@@ -22,8 +22,12 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_EVENTS_EVENT_LISTENER_H_
 
 #include "third_party/blink/renderer/core/core_export.h"
+<<<<<<< HEAD
+=======
+#include "third_party/blink/renderer/core/probe/async_task_id.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/bindings/name_client.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
@@ -84,8 +88,16 @@ class CORE_EXPORT EventListener : public GarbageCollected<EventListener>,
   virtual bool IsJSBasedEventListener() const { return false; }
   virtual bool IsNativeEventListener() const { return false; }
 
+<<<<<<< HEAD
  private:
   EventListener() = default;
+=======
+  probe::AsyncTaskId* async_task_id() { return &async_task_id_; }
+
+ private:
+  EventListener() = default;
+  probe::AsyncTaskId async_task_id_;
+>>>>>>> chromium
 
   // Only these two classes are direct subclasses of EventListener.  Other
   // subclasses must inherit from either of them.

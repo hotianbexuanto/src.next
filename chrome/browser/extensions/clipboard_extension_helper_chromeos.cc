@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 #include <memory>
 #include <utility>
 
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -28,31 +28,29 @@ class ClipboardExtensionHelper::ClipboardImageDataDecoder
   explicit ClipboardImageDataDecoder(ClipboardExtensionHelper* owner)
       : owner_(owner) {}
 
-  ClipboardImageDataDecoder(const ClipboardImageDataDecoder&) = delete;
-  ClipboardImageDataDecoder& operator=(const ClipboardImageDataDecoder&) =
-      delete;
-
   ~ClipboardImageDataDecoder() override { ImageDecoder::Cancel(this); }
 
   bool has_request_pending() const { return has_request_pending_; }
 
-  void Start(std::vector<uint8_t> image_data, clipboard::ImageType type) {
+  void Start(const std::vector<char>& image_data, clipboard::ImageType type) {
     DCHECK_CURRENTLY_ON(BrowserThread::UI);
+    std::string image_data_str(image_data.begin(), image_data.end());
 
     ImageDecoder::ImageCodec codec = ImageDecoder::DEFAULT_CODEC;
     switch (type) {
-      case clipboard::ImageType::kPng:
+      case clipboard::IMAGE_TYPE_PNG:
         codec = ImageDecoder::PNG_CODEC;
         break;
-      case clipboard::ImageType::kJpeg:
+      case clipboard::IMAGE_TYPE_JPEG:
         codec = ImageDecoder::DEFAULT_CODEC;
         break;
-      case clipboard::ImageType::kNone:
+      case clipboard::IMAGE_TYPE_NONE:
         NOTREACHED();
+        break;
     }
 
     has_request_pending_ = true;
-    ImageDecoder::StartWithOptions(this, std::move(image_data), codec, true);
+    ImageDecoder::StartWithOptions(this, image_data_str, codec, true);
   }
 
   void Cancel() {
@@ -72,8 +70,10 @@ class ClipboardExtensionHelper::ClipboardImageDataDecoder
   }
 
  private:
-  raw_ptr<ClipboardExtensionHelper> owner_;  // Not owned.
+  ClipboardExtensionHelper* owner_;  // Not owned.
   bool has_request_pending_ = false;
+
+  DISALLOW_COPY_AND_ASSIGN(ClipboardImageDataDecoder);
 };
 
 ClipboardExtensionHelper::ClipboardExtensionHelper() {
@@ -84,7 +84,7 @@ ClipboardExtensionHelper::ClipboardExtensionHelper() {
 ClipboardExtensionHelper::~ClipboardExtensionHelper() = default;
 
 void ClipboardExtensionHelper::DecodeAndSaveImageData(
-    std::vector<uint8_t> data,
+    const std::vector<char>& data,
     clipboard::ImageType type,
     AdditionalDataItemList additional_items,
     base::OnceClosure success_callback,
@@ -103,7 +103,7 @@ void ClipboardExtensionHelper::DecodeAndSaveImageData(
 
   image_save_success_callback_ = std::move(success_callback);
   image_save_error_callback_ = std::move(error_callback);
-  clipboard_image_data_decoder_->Start(std::move(data), type);
+  clipboard_image_data_decoder_->Start(data, type);
 }
 
 void ClipboardExtensionHelper::OnImageDecodeFailure() {
@@ -118,11 +118,10 @@ void ClipboardExtensionHelper::OnImageDecoded(const SkBitmap& bitmap) {
       scw.WriteImage(bitmap);
 
     for (const clipboard::AdditionalDataItem& item : additonal_items_) {
-      if (item.type == clipboard::DataItemType::kTextPlain) {
+      if (item.type == clipboard::DATA_ITEM_TYPE_TEXTPLAIN)
         scw.WriteText(base::UTF8ToUTF16(item.data));
-      } else if (item.type == clipboard::DataItemType::kTextHtml) {
+      else if (item.type == clipboard::DATA_ITEM_TYPE_TEXTHTML)
         scw.WriteHTML(base::UTF8ToUTF16(item.data), std::string());
-      }
     }
   }
   std::move(image_save_success_callback_).Run();

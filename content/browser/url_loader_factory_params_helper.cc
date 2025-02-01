@@ -1,35 +1,31 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "content/browser/url_loader_factory_params_helper.h"
 
-#include <optional>
-#include <string_view>
-
 #include "base/command_line.h"
+#include "base/strings/string_piece.h"
 #include "content/browser/devtools/network_service_devtools_observer.h"
-#include "content/browser/renderer_host/frame_tree_node.h"
-#include "content/browser/renderer_host/navigation_request.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/storage_partition_impl.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
-#include "content/public/browser/runtime_feature_state/runtime_feature_state_document_data.h"
 #include "content/public/common/content_client.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/url_constants.h"
 #include "ipc/ipc_message.h"
 #include "net/base/isolation_info.h"
-#include "net/cookies/cookie_setting_override.h"
-#include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "services/network/public/mojom/cross_origin_embedder_policy.mojom.h"
+<<<<<<< HEAD
 #include "services/network/public/mojom/device_bound_sessions.mojom.h"
 #include "services/network/public/mojom/early_hints.mojom.h"
+=======
+>>>>>>> chromium
 #include "services/network/public/mojom/network_context.mojom.h"
-#include "services/network/public/mojom/shared_dictionary_access_observer.mojom.h"
 #include "services/network/public/mojom/url_loader.mojom-shared.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/common/web_preferences/web_preferences.h"
 
@@ -49,7 +45,7 @@ network::mojom::URLLoaderFactoryParamsPtr CreateParams(
     const url::Origin& origin,
     const url::Origin& request_initiator_origin_lock,
     bool is_trusted,
-    const std::optional<blink::LocalFrameToken>& top_frame_token,
+    const absl::optional<blink::LocalFrameToken>& top_frame_token,
     const net::IsolationInfo& isolation_info,
     network::mojom::ClientSecurityStatePtr client_security_state,
     mojo::PendingRemote<network::mojom::CrossOriginEmbedderPolicyReporter>
@@ -59,13 +55,10 @@ network::mojom::URLLoaderFactoryParamsPtr CreateParams(
     bool allow_universal_access_from_file_urls,
     bool is_for_isolated_world,
     mojo::PendingRemote<network::mojom::CookieAccessObserver> cookie_observer,
-    mojo::PendingRemote<network::mojom::TrustTokenAccessObserver>
-        trust_token_observer,
-    mojo::PendingRemote<network::mojom::SharedDictionaryAccessObserver>
-        shared_dictionary_observer,
     mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
         url_loader_network_observer,
     mojo::PendingRemote<network::mojom::DevToolsObserver> devtools_observer,
+<<<<<<< HEAD
     mojo::PendingRemote<network::mojom::DeviceBoundSessionAccessObserver>
         device_bound_session_observer,
     network::mojom::TrustTokenOperationPolicyVerdict
@@ -75,7 +68,15 @@ network::mojom::URLLoaderFactoryParamsPtr CreateParams(
     net::CookieSettingOverrides cookie_setting_overrides,
     std::string_view debug_tag,
     bool require_cross_site_request_for_cookies) {
+=======
+    network::mojom::TrustTokenRedemptionPolicy trust_token_redemption_policy,
+    base::StringPiece debug_tag) {
+>>>>>>> chromium
   DCHECK(process);
+
+  // "chrome-guest://..." is never used as a main or isolated world origin.
+  DCHECK_NE(kGuestScheme, origin.scheme());
+  DCHECK_NE(kGuestScheme, request_initiator_origin_lock.scheme());
 
   network::mojom::URLLoaderFactoryParamsPtr params =
       network::mojom::URLLoaderFactoryParams::New();
@@ -96,40 +97,37 @@ network::mojom::URLLoaderFactoryParamsPtr CreateParams(
   params->dip_reporter = std::move(dip_reporter);
 
   if (params->disable_web_security) {
-    // --disable-web-security also disables Opaque Response Blocking (ORB).
-    params->is_orb_enabled = false;
+    // --disable-web-security also disables Cross-Origin Read Blocking (CORB).
+    params->is_corb_enabled = false;
   } else if (allow_universal_access_from_file_urls &&
              origin.scheme() == url::kFileScheme) {
-    // allow_universal_access_from_file_urls disables ORB (via
-    // `is_orb_enabled`) and CORS (via `disable_web_security`) for requests
+    // allow_universal_access_from_file_urls disables CORB (via
+    // |is_corb_enabled|) and CORS (via |disable_web_security|) for requests
     // made from a file: |origin|.
-    params->is_orb_enabled = false;
+    params->is_corb_enabled = false;
     params->disable_web_security = true;
   } else {
-    params->is_orb_enabled = true;
+    params->is_corb_enabled = true;
   }
 
-  params->trust_token_issuance_policy = trust_token_issuance_policy;
   params->trust_token_redemption_policy = trust_token_redemption_policy;
 
   GetContentClient()->browser()->OverrideURLLoaderFactoryParams(
       process->GetBrowserContext(), origin, is_for_isolated_world,
       params.get());
 
+  // If we have a URLLoaderNetworkObserver, request loading state updates.
+  if (url_loader_network_observer) {
+    params->provide_loading_state_updates = true;
+  }
+
   params->cookie_observer = std::move(cookie_observer);
-  params->trust_token_observer = std::move(trust_token_observer);
-  params->shared_dictionary_observer = std::move(shared_dictionary_observer);
   params->url_loader_network_observer = std::move(url_loader_network_observer);
   params->devtools_observer = std::move(devtools_observer);
   params->device_bound_session_observer =
       std::move(device_bound_session_observer);
 
-  params->cookie_setting_overrides = cookie_setting_overrides;
-
   params->debug_tag = std::string(debug_tag);
-
-  params->require_cross_site_request_for_cookies =
-      require_cross_site_request_for_cookies;
 
   return params;
 }
@@ -148,12 +146,8 @@ URLLoaderFactoryParamsHelper::CreateForFrame(
     mojo::PendingRemote<network::mojom::DocumentIsolationPolicyReporter>
         dip_reporter,
     RenderProcessHost* process,
-    network::mojom::TrustTokenOperationPolicyVerdict
-        trust_token_issuance_policy,
-    network::mojom::TrustTokenOperationPolicyVerdict
-        trust_token_redemption_policy,
-    net::CookieSettingOverrides cookie_setting_overrides,
-    std::string_view debug_tag) {
+    network::mojom::TrustTokenRedemptionPolicy trust_token_redemption_policy,
+    base::StringPiece debug_tag) {
   return CreateParams(
       process,
       frame_origin,  // origin
@@ -165,13 +159,15 @@ URLLoaderFactoryParamsHelper::CreateForFrame(
       frame->GetOrCreateWebPreferences().allow_universal_access_from_file_urls,
       false,  // is_for_isolated_world
       frame->CreateCookieAccessObserver(),
-      frame->CreateTrustTokenAccessObserver(),
-      frame->CreateSharedDictionaryAccessObserver(),
       frame->CreateURLLoaderNetworkObserver(),
       NetworkServiceDevToolsObserver::MakeSelfOwned(frame->frame_tree_node()),
+<<<<<<< HEAD
       frame->CreateDeviceBoundSessionObserver(), trust_token_issuance_policy,
       trust_token_redemption_policy, cookie_setting_overrides, debug_tag,
       /*require_cross_site_request_for_cookies=*/false);
+=======
+      trust_token_redemption_policy, debug_tag);
+>>>>>>> chromium
 }
 
 // static
@@ -182,11 +178,7 @@ URLLoaderFactoryParamsHelper::CreateForIsolatedWorld(
     const url::Origin& main_world_origin,
     const net::IsolationInfo& isolation_info,
     network::mojom::ClientSecurityStatePtr client_security_state,
-    network::mojom::TrustTokenOperationPolicyVerdict
-        trust_token_issuance_policy,
-    network::mojom::TrustTokenOperationPolicyVerdict
-        trust_token_redemption_policy,
-    net::CookieSettingOverrides cookie_setting_overrides) {
+    network::mojom::TrustTokenRedemptionPolicy trust_token_redemption_policy) {
   return CreateParams(
       frame->GetProcess(),
       isolated_world_origin,  // origin
@@ -199,21 +191,22 @@ URLLoaderFactoryParamsHelper::CreateForIsolatedWorld(
       frame->GetOrCreateWebPreferences().allow_universal_access_from_file_urls,
       true,  // is_for_isolated_world
       frame->CreateCookieAccessObserver(),
-      frame->CreateTrustTokenAccessObserver(),
-      frame->CreateSharedDictionaryAccessObserver(),
       frame->CreateURLLoaderNetworkObserver(),
       NetworkServiceDevToolsObserver::MakeSelfOwned(frame->frame_tree_node()),
+<<<<<<< HEAD
       frame->CreateDeviceBoundSessionObserver(), trust_token_issuance_policy,
       trust_token_redemption_policy, cookie_setting_overrides,
       "ParamHelper::CreateForIsolatedWorld",
       /*require_cross_site_request_for_cookies=*/false);
+=======
+      trust_token_redemption_policy, "ParamHelper::CreateForIsolatedWorld");
+>>>>>>> chromium
 }
 
 network::mojom::URLLoaderFactoryParamsPtr
 URLLoaderFactoryParamsHelper::CreateForPrefetch(
     RenderFrameHostImpl* frame,
-    network::mojom::ClientSecurityStatePtr client_security_state,
-    net::CookieSettingOverrides cookie_setting_overrides) {
+    network::mojom::ClientSecurityStatePtr client_security_state) {
   // The factory client |is_trusted| to control the |network_isolation_key| in
   // each separate request (rather than forcing the client to use the key
   // specified in URLLoaderFactoryParams).
@@ -231,22 +224,21 @@ URLLoaderFactoryParamsHelper::CreateForPrefetch(
       frame->GetOrCreateWebPreferences().allow_universal_access_from_file_urls,
       false,  // is_for_isolated_world
       frame->CreateCookieAccessObserver(),
-      frame->CreateTrustTokenAccessObserver(),
-      frame->CreateSharedDictionaryAccessObserver(),
       frame->CreateURLLoaderNetworkObserver(),
       NetworkServiceDevToolsObserver::MakeSelfOwned(frame->frame_tree_node()),
+<<<<<<< HEAD
       frame->CreateDeviceBoundSessionObserver(),
       network::mojom::TrustTokenOperationPolicyVerdict::kForbid,
       network::mojom::TrustTokenOperationPolicyVerdict::kForbid,
       cookie_setting_overrides, "ParamHelper::CreateForPrefetch",
       /*require_cross_site_request_for_cookies=*/false);
+=======
+      network::mojom::TrustTokenRedemptionPolicy::kForbid,
+      "ParamHelper::CreateForPrefetch");
+>>>>>>> chromium
 }
 
 // static
-// TODO(crbug.com/40190528): make sure client_security_state is no longer
-// nullptr anywhere.
-// TODO(crbug.com/40247160): Investigate whether to support cookie setting
-// overrides (hardcoded empty set used for now).
 network::mojom::URLLoaderFactoryParamsPtr
 URLLoaderFactoryParamsHelper::CreateForWorker(
     RenderProcessHost* process,
@@ -259,26 +251,28 @@ URLLoaderFactoryParamsHelper::CreateForWorker(
     mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
         url_loader_network_observer,
     mojo::PendingRemote<network::mojom::DevToolsObserver> devtools_observer,
-    network::mojom::ClientSecurityStatePtr client_security_state,
-    std::string_view debug_tag,
-    bool require_cross_site_request_for_cookies) {
+    base::StringPiece debug_tag) {
   return CreateParams(
       process,
       request_initiator,  // origin
       request_initiator,  // request_initiator_origin_lock
       false,              // is_trusted
+<<<<<<< HEAD
       std::nullopt,       // top_frame_token
       isolation_info, std::move(client_security_state),
       std::move(coep_reporter), std::move(dip_reporter),
+=======
+      absl::nullopt,      // top_frame_token
+      isolation_info,
+      nullptr,  // client_security_state
+      std::move(coep_reporter),
+>>>>>>> chromium
       false,  // allow_universal_access_from_file_urls
       false,  // is_for_isolated_world
       static_cast<StoragePartitionImpl*>(process->GetStoragePartition())
           ->CreateCookieAccessObserverForServiceWorker(),
-      static_cast<StoragePartitionImpl*>(process->GetStoragePartition())
-          ->CreateTrustTokenAccessObserverForServiceWorker(),
-      static_cast<StoragePartitionImpl*>(process->GetStoragePartition())
-          ->CreateSharedDictionaryAccessObserverForServiceWorker(),
       std::move(url_loader_network_observer), std::move(devtools_observer),
+<<<<<<< HEAD
       static_cast<StoragePartitionImpl*>(process->GetStoragePartition())
           ->CreateDeviceBoundSessionObserverForServiceWorker(),
       // Trust Token redemption and signing operations require the Permissions
@@ -352,6 +346,13 @@ URLLoaderFactoryParamsHelper::CreateForEarlyHintsPreload(
       network::mojom::TrustTokenOperationPolicyVerdict::kForbid,
       net::CookieSettingOverrides(), "ParamHelper::CreateForEarlyHintsPreload",
       /*require_cross_site_request_for_cookies=*/false);
+=======
+      // Since ExecutionContext::IsFeatureEnabled returns
+      // false in non-Document contexts, no worker should ever
+      // execute a trust token redemption or signing operation,
+      // as these operations require the Permissions Policy feature.
+      network::mojom::TrustTokenRedemptionPolicy::kForbid, debug_tag);
+>>>>>>> chromium
 }
 
 }  // namespace content

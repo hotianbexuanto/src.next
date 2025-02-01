@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,6 @@
 #include "base/json/json_writer.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
-#include "base/test/values_test_util.h"
 #include "base/values.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/extensions/extension_service.h"
@@ -16,7 +15,6 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "extensions/browser/extension_api_frame_id_map.h"
 #include "extensions/browser/extension_registry.h"
@@ -80,9 +78,7 @@ class ScriptExecutorBrowserTest : public ExtensionBrowserTest {
   const Extension* LoadExtensionWithHostPermission(
       const std::string& host_permission) {
     scoped_refptr<const Extension> extension =
-        ExtensionBuilder("extension")
-            .AddHostPermission(host_permission)
-            .Build();
+        ExtensionBuilder("extension").AddPermission(host_permission).Build();
     extension_service()->AddExtension(extension.get());
     EXPECT_TRUE(
         extension_registry()->enabled_extensions().GetByID(extension->id()));
@@ -99,11 +95,11 @@ class ScriptExecutorBrowserTest : public ExtensionBrowserTest {
   content::RenderFrameHost* GetFrameByName(content::WebContents* web_contents,
                                            const std::string& name) {
     return content::FrameMatchingPredicate(
-        web_contents->GetPrimaryPage(),
-        base::BindRepeating(&content::FrameMatchesName, name));
+        web_contents, base::BindRepeating(&content::FrameMatchesName, name));
   }
 };
 
+<<<<<<< HEAD
 IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, MainWorldExecution) {
   const Extension* extension =
       LoadExtensionWithHostPermission("http://example.com/*");
@@ -153,6 +149,8 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, MainWorldExecution) {
   EXPECT_EQ("", helper.results()[0].error);
 }
 
+=======
+>>>>>>> chromium
 IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, MainFrameExecution) {
   const Extension* extension =
       LoadExtensionWithHostPermission("http://example.com/*");
@@ -165,7 +163,7 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, MainFrameExecution) {
 
   {
     content::TestNavigationObserver nav_observer(web_contents);
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), example_com));
+    ui_test_utils::NavigateToURL(browser(), example_com);
     nav_observer.Wait();
     EXPECT_TRUE(nav_observer.last_navigation_succeeded());
   }
@@ -184,12 +182,9 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, MainFrameExecution) {
   sources.push_back(mojom::JSSource::New(kCode, GURL()));
   script_executor.ExecuteScript(
       mojom::HostID(mojom::HostID::HostType::kExtensions, extension->id()),
-      mojom::CodeInjection::NewJs(mojom::JSInjection::New(
-          std::move(sources), mojom::ExecutionWorld::kIsolated,
-          /*world_id=*/std::nullopt,
-          blink::mojom::WantResultOption::kWantResult,
-          blink::mojom::UserActivationOption::kDoNotActivate,
-          blink::mojom::PromiseResultOption::kAwait)),
+      mojom::CodeInjection::NewJs(
+          mojom::JSInjection::New(std::move(sources), true /* wants_result */,
+                                  false /* user_gesture */)),
       ScriptExecutor::SPECIFIED_FRAMES, {ExtensionApiFrameIdMap::kTopFrameId},
       mojom::MatchOriginAsFallbackBehavior::kNever,
       mojom::RunLocation::kDocumentIdle, ScriptExecutor::DEFAULT_PROCESS,
@@ -217,7 +212,7 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, MultipleSourceExecution) {
 
   {
     content::TestNavigationObserver nav_observer(web_contents);
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), example_com));
+    ui_test_utils::NavigateToURL(browser(), example_com);
     nav_observer.Wait();
     EXPECT_TRUE(nav_observer.last_navigation_succeeded());
   }
@@ -241,12 +236,9 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, MultipleSourceExecution) {
   sources.push_back(mojom::JSSource::New(kCode2, GURL()));
   script_executor.ExecuteScript(
       mojom::HostID(mojom::HostID::HostType::kExtensions, extension->id()),
-      mojom::CodeInjection::NewJs(mojom::JSInjection::New(
-          std::move(sources), mojom::ExecutionWorld::kIsolated,
-          /*world_id=*/std::nullopt,
-          blink::mojom::WantResultOption::kWantResult,
-          blink::mojom::UserActivationOption::kDoNotActivate,
-          blink::mojom::PromiseResultOption::kAwait)),
+      mojom::CodeInjection::NewJs(
+          mojom::JSInjection::New(std::move(sources), true /* wants_result */,
+                                  false /* user_gesture */)),
       ScriptExecutor::SPECIFIED_FRAMES, {ExtensionApiFrameIdMap::kTopFrameId},
       mojom::MatchOriginAsFallbackBehavior::kNever,
       mojom::RunLocation::kDocumentIdle, ScriptExecutor::DEFAULT_PROCESS,
@@ -261,6 +253,7 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, MultipleSourceExecution) {
   EXPECT_EQ("", helper.results()[0].error);
 }
 
+<<<<<<< HEAD
 // Tests that scripts that evaluate to promises can be properly waited upon.
 IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, PromisesResolve) {
   const Extension* extension =
@@ -359,6 +352,8 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, PromisesResolve) {
   }
 }
 
+=======
+>>>>>>> chromium
 // Tests script execution into a specified set of frames.
 IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, SpecifiedFrames) {
   const Extension* extension =
@@ -372,7 +367,7 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, SpecifiedFrames) {
 
   {
     content::TestNavigationObserver nav_observer(web_contents);
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), example_com));
+    ui_test_utils::NavigateToURL(browser(), example_com);
     nav_observer.Wait();
     EXPECT_TRUE(nav_observer.last_navigation_succeeded());
   }
@@ -426,12 +421,9 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, SpecifiedFrames) {
     sources.push_back(mojom::JSSource::New(kCode, GURL()));
     script_executor.ExecuteScript(
         mojom::HostID(mojom::HostID::HostType::kExtensions, extension->id()),
-        mojom::CodeInjection::NewJs(mojom::JSInjection::New(
-            std::move(sources), mojom::ExecutionWorld::kIsolated,
-            /*world_id=*/std::nullopt,
-            blink::mojom::WantResultOption::kWantResult,
-            blink::mojom::UserActivationOption::kDoNotActivate,
-            blink::mojom::PromiseResultOption::kAwait)),
+        mojom::CodeInjection::NewJs(
+            mojom::JSInjection::New(std::move(sources), true /* wants_result */,
+                                    false /* user_gesture */)),
         ScriptExecutor::SPECIFIED_FRAMES, {frame1_id, frame2_id},
         mojom::MatchOriginAsFallbackBehavior::kNever,
         mojom::RunLocation::kDocumentIdle, ScriptExecutor::DEFAULT_PROCESS,
@@ -452,12 +444,9 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, SpecifiedFrames) {
     sources.push_back(mojom::JSSource::New(kCode, GURL()));
     script_executor.ExecuteScript(
         mojom::HostID(mojom::HostID::HostType::kExtensions, extension->id()),
-        mojom::CodeInjection::NewJs(mojom::JSInjection::New(
-            std::move(sources), mojom::ExecutionWorld::kIsolated,
-            /*world_id=*/std::nullopt,
-            blink::mojom::WantResultOption::kWantResult,
-            blink::mojom::UserActivationOption::kDoNotActivate,
-            blink::mojom::PromiseResultOption::kAwait)),
+        mojom::CodeInjection::NewJs(
+            mojom::JSInjection::New(std::move(sources), true /* wants_result */,
+                                    false /* user_gesture */)),
         ScriptExecutor::INCLUDE_SUB_FRAMES, {frame1_id, frame2_id},
         mojom::MatchOriginAsFallbackBehavior::kNever,
         mojom::RunLocation::kDocumentIdle, ScriptExecutor::DEFAULT_PROCESS,
@@ -487,12 +476,9 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, SpecifiedFrames) {
     sources.push_back(mojom::JSSource::New(kCode, GURL()));
     script_executor.ExecuteScript(
         mojom::HostID(mojom::HostID::HostType::kExtensions, extension->id()),
-        mojom::CodeInjection::NewJs(mojom::JSInjection::New(
-            std::move(sources), mojom::ExecutionWorld::kIsolated,
-            /*world_id=*/std::nullopt,
-            blink::mojom::WantResultOption::kWantResult,
-            blink::mojom::UserActivationOption::kDoNotActivate,
-            blink::mojom::PromiseResultOption::kAwait)),
+        mojom::CodeInjection::NewJs(
+            mojom::JSInjection::New(std::move(sources), true /* wants_result */,
+                                    false /* user_gesture */)),
         ScriptExecutor::SPECIFIED_FRAMES,
         {frame1_id, frame2_id, kNonExistentFrameId},
         mojom::MatchOriginAsFallbackBehavior::kNever,
@@ -500,6 +486,8 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, SpecifiedFrames) {
         GURL() /* webview_src */, helper.GetCallback());
     helper.Wait();
 
+    base::Value frame1_result("Frame 1");
+    base::Value frame2_result("Frame 2");
     EXPECT_THAT(helper.results(),
                 testing::UnorderedElementsAre(
                     get_result_matcher(frame1_result, frame1_id, frame1_url),
@@ -515,12 +503,9 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, SpecifiedFrames) {
     sources.push_back(mojom::JSSource::New(kCode, GURL()));
     script_executor.ExecuteScript(
         mojom::HostID(mojom::HostID::HostType::kExtensions, extension->id()),
-        mojom::CodeInjection::NewJs(mojom::JSInjection::New(
-            std::move(sources), mojom::ExecutionWorld::kIsolated,
-            /*world_id=*/std::nullopt,
-            blink::mojom::WantResultOption::kWantResult,
-            blink::mojom::UserActivationOption::kDoNotActivate,
-            blink::mojom::PromiseResultOption::kAwait)),
+        mojom::CodeInjection::NewJs(
+            mojom::JSInjection::New(std::move(sources), true /* wants_result */,
+                                    false /* user_gesture */)),
         ScriptExecutor::SPECIFIED_FRAMES, {kNonExistentFrameId},
         mojom::MatchOriginAsFallbackBehavior::kNever,
         mojom::RunLocation::kDocumentIdle, ScriptExecutor::DEFAULT_PROCESS,

@@ -28,6 +28,7 @@
 #include "third_party/blink/renderer/core/css/css_style_sheet.h"
 #include "third_party/blink/renderer/core/css/media_list.h"
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
+#include "third_party/blink/renderer/core/dom/context_features.h"
 #include "third_party/blink/renderer/core/dom/document_init.h"
 #include "third_party/blink/renderer/core/dom/document_type.h"
 #include "third_party/blink/renderer/core/dom/element.h"
@@ -41,7 +42,7 @@
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/svg_names.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/heap.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 
@@ -73,9 +74,7 @@ XMLDocument* DOMImplementation::createDocument(
     ExceptionState& exception_state) {
   XMLDocument* doc = nullptr;
   ExecutionContext* context = document_->GetExecutionContext();
-  DocumentInit init =
-      DocumentInit::Create().WithExecutionContext(context).WithAgent(
-          document_->GetAgent());
+  DocumentInit init = DocumentInit::Create().WithExecutionContext(context);
   if (namespace_uri == svg_names::kNamespaceURI) {
     doc = XMLDocument::CreateSVG(init);
   } else if (namespace_uri == html_names::xhtmlNamespaceURI) {
@@ -84,8 +83,10 @@ XMLDocument* DOMImplementation::createDocument(
     doc = MakeGarbageCollected<XMLDocument>(init);
   }
 
+  doc->SetContextFeatures(document_->GetContextFeatures());
+
   Node* document_element = nullptr;
-  if (!qualified_name.empty()) {
+  if (!qualified_name.IsEmpty()) {
     document_element =
         doc->createElementNS(namespace_uri, qualified_name, exception_state);
     if (exception_state.HadException())
@@ -101,10 +102,8 @@ XMLDocument* DOMImplementation::createDocument(
 }
 
 Document* DOMImplementation::createHTMLDocument(const String& title) {
-  DocumentInit init =
-      DocumentInit::Create()
-          .WithExecutionContext(document_->GetExecutionContext())
-          .WithAgent(document_->GetAgent());
+  DocumentInit init = DocumentInit::Create().WithExecutionContext(
+      document_->GetExecutionContext());
   auto* d = MakeGarbageCollected<HTMLDocument>(init);
   d->setAllowDeclarativeShadowRoots(false);
   d->open();
@@ -116,6 +115,7 @@ Document* DOMImplementation::createHTMLDocument(const String& title) {
     head_element->AppendChild(title_element);
     title_element->AppendChild(d->createTextNode(title), ASSERT_NO_EXCEPTION);
   }
+  d->SetContextFeatures(document_->GetContextFeatures());
   return d;
 }
 

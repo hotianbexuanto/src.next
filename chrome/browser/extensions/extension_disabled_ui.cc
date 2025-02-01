@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,15 +7,15 @@
 #include <memory>
 #include <string>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/location.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
+#include "base/macros.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/scoped_observation.h"
+#include "base/single_thread_task_runner.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "chrome/browser/extensions/extension_install_error_menu_item_id_provider.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_uninstall_dialog.h"
@@ -29,13 +29,18 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/strings/grit/components_strings.h"
+#include "content/public/browser/notification_details.h"
+#include "content/public/browser/notification_observer.h"
+#include "content/public/browser/notification_registrar.h"
+#include "content/public/browser/notification_source.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_observer.h"
 #include "extensions/browser/extension_util.h"
 #include "extensions/browser/image_loader.h"
+#include "extensions/browser/notification_types.h"
 #include "extensions/browser/uninstall_reason.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/icons/extension_icon_set.h"
+#include "extensions/common/extension_icon_set.h"
 #include "extensions/common/permissions/permission_message.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -45,19 +50,14 @@
 
 namespace extensions {
 
-class ExtensionDisabledGlobalError final
-    : public GlobalErrorWithStandardBubble,
-      public ExtensionUninstallDialog::Delegate,
-      public ExtensionRegistryObserver {
+class ExtensionDisabledGlobalError : public GlobalErrorWithStandardBubble,
+                                     public content::NotificationObserver,
+                                     public ExtensionUninstallDialog::Delegate,
+                                     public ExtensionRegistryObserver {
  public:
   ExtensionDisabledGlobalError(ExtensionService* service,
                                const Extension* extension,
                                bool is_remote_install);
-
-  ExtensionDisabledGlobalError(const ExtensionDisabledGlobalError&) = delete;
-  ExtensionDisabledGlobalError& operator=(const ExtensionDisabledGlobalError&) =
-      delete;
-
   ~ExtensionDisabledGlobalError() override;
 
   // GlobalError:
@@ -70,10 +70,9 @@ class ExtensionDisabledGlobalError final
   std::vector<std::u16string> GetBubbleViewMessages() override;
   std::u16string GetBubbleViewAcceptButtonLabel() override;
   std::u16string GetBubbleViewCancelButtonLabel() override;
-  void OnBubbleViewDidClose(Browser* browser) override {}
+  void OnBubbleViewDidClose(Browser* browser) override;
   void BubbleViewAcceptButtonPressed(Browser* browser) override;
   void BubbleViewCancelButtonPressed(Browser* browser) override;
-  base::WeakPtr<GlobalErrorWithStandardBubble> AsWeakPtr() override;
   bool ShouldCloseOnDeactivate() const override;
   bool ShouldShowCloseButton() const override;
 
@@ -82,29 +81,42 @@ class ExtensionDisabledGlobalError final
                                         const std::u16string& error) override;
 
  private:
+  // content::NotificationObserver:
+  void Observe(int type,
+               const content::NotificationSource& source,
+               const content::NotificationDetails& details) override;
+
   // ExtensionRegistryObserver:
   void OnExtensionLoaded(content::BrowserContext* browser_context,
                          const Extension* extension) override;
-  void OnExtensionUninstalled(content::BrowserContext* browser_context,
-                              const Extension* extension,
-                              UninstallReason reason) override;
   void OnShutdown(ExtensionRegistry* registry) override;
 
   void RemoveGlobalError();
 
-  raw_ptr<ExtensionService, DanglingUntriaged> service_;
-  scoped_refptr<const Extension> extension_;
+  ExtensionService* service_;
+  const Extension* extension_;
   bool is_remote_install_;
+
+  // How the user responded to the error; used for metrics.
+  enum UserResponse {
+    IGNORED,
+    REENABLE,
+    UNINSTALL,
+    EXTENSION_DISABLED_UI_BUCKET_BOUNDARY
+  };
+  UserResponse user_response_;
 
   std::unique_ptr<ExtensionUninstallDialog> uninstall_dialog_;
 
   // Helper to get menu command ID assigned for this extension's error.
   ExtensionInstallErrorMenuItemIdProvider id_provider_;
 
+  content::NotificationRegistrar registrar_;
+
   base::ScopedObservation<ExtensionRegistry, ExtensionRegistryObserver>
       registry_observation_{this};
 
-  base::WeakPtrFactory<ExtensionDisabledGlobalError> weak_ptr_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(ExtensionDisabledGlobalError);
 };
 
 // TODO(yoz): create error at startup for disabled extensions.
@@ -114,8 +126,11 @@ ExtensionDisabledGlobalError::ExtensionDisabledGlobalError(
     bool is_remote_install)
     : service_(service),
       extension_(extension),
-      is_remote_install_(is_remote_install) {
+      is_remote_install_(is_remote_install),
+      user_response_(IGNORED) {
   registry_observation_.Observe(ExtensionRegistry::Get(service->profile()));
+  registrar_.Add(this, NOTIFICATION_EXTENSION_REMOVED,
+                 content::Source<Profile>(service->profile()));
 }
 
 ExtensionDisabledGlobalError::~ExtensionDisabledGlobalError() = default;
@@ -175,7 +190,7 @@ ExtensionDisabledGlobalError::GetBubbleViewMessages() {
       messages.push_back(
           l10n_util::GetStringUTF16(IDS_EXTENSION_PROMPT_WILL_HAVE_ACCESS_TO));
   } else {
-    // TODO(crbug.com/40406971): If NeedCustodianApprovalForPermissionIncrease,
+    // TODO(crbug.com/461261): If NeedCustodianApprovalForPermissionIncrease,
     // add an extra message for supervised users.
     messages.push_back(
         l10n_util::GetStringUTF16(IDS_EXTENSION_DISABLED_ERROR_LABEL));
@@ -202,33 +217,45 @@ std::u16string ExtensionDisabledGlobalError::GetBubbleViewCancelButtonLabel() {
   return l10n_util::GetStringUTF16(IDS_EXTENSION_PROMPT_UNINSTALL_BUTTON);
 }
 
+void ExtensionDisabledGlobalError::OnBubbleViewDidClose(Browser* browser) {
+  // If the user takes an action, |user_response_| is set in
+  // BubbleView[Cancel|Accept]Pressed(). Otherwise, the IGNORE value set in the
+  // constructor is correct.
+  UMA_HISTOGRAM_ENUMERATION("Extensions.DisabledUIUserResponseRemoteInstall2",
+                            user_response_,
+                            EXTENSION_DISABLED_UI_BUCKET_BOUNDARY);
+  UMA_HISTOGRAM_ENUMERATION("Extensions.DisabledUIUserResponse2",
+                            user_response_,
+                            EXTENSION_DISABLED_UI_BUCKET_BOUNDARY);
+  // Reset in case the user does not follow through on subsequent dialogs to
+  // confirm removal decision, in which case the bubble can be shown again
+  // when the user clicks on the global error in the menu.
+  user_response_ = IGNORED;
+}
+
 void ExtensionDisabledGlobalError::BubbleViewAcceptButtonPressed(
     Browser* browser) {
+  user_response_ = REENABLE;
   // Delay extension reenabling so this bubble closes properly.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&ExtensionService::GrantPermissionsAndEnableExtension,
-                     service_->AsExtensionServiceWeakPtr(),
-                     base::RetainedRef(extension_)));
+                     service_->AsWeakPtr(), base::RetainedRef(extension_)));
 }
 
 void ExtensionDisabledGlobalError::BubbleViewCancelButtonPressed(
     Browser* browser) {
   uninstall_dialog_ = ExtensionUninstallDialog::Create(
       service_->profile(), browser->window()->GetNativeWindow(), this);
+  user_response_ = UNINSTALL;
   // Delay showing the uninstall dialog, so that this function returns
   // immediately, to close the bubble properly. See crbug.com/121544.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, base::BindOnce(&ExtensionUninstallDialog::ConfirmUninstall,
                                 uninstall_dialog_->AsWeakPtr(),
                                 base::RetainedRef(extension_),
                                 UNINSTALL_REASON_EXTENSION_DISABLED,
                                 UNINSTALL_SOURCE_PERMISSIONS_INCREASE));
-}
-
-base::WeakPtr<GlobalErrorWithStandardBubble>
-ExtensionDisabledGlobalError::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 bool ExtensionDisabledGlobalError::ShouldCloseOnDeactivate() const {
@@ -252,18 +279,21 @@ void ExtensionDisabledGlobalError::OnExtensionUninstallDialogClosed(
   // No need to do anything.
 }
 
-void ExtensionDisabledGlobalError::OnExtensionLoaded(
-    content::BrowserContext* browser_context,
-    const Extension* extension) {
+void ExtensionDisabledGlobalError::Observe(
+    int type,
+    const content::NotificationSource& source,
+    const content::NotificationDetails& details) {
+  // The error is invalidated if the extension has been loaded or removed.
+  DCHECK_EQ(NOTIFICATION_EXTENSION_REMOVED, type);
+  const Extension* extension = content::Details<const Extension>(details).ptr();
   if (extension != extension_)
     return;
   RemoveGlobalError();
 }
 
-void ExtensionDisabledGlobalError::OnExtensionUninstalled(
+void ExtensionDisabledGlobalError::OnExtensionLoaded(
     content::BrowserContext* browser_context,
-    const Extension* extension,
-    UninstallReason reason) {
+    const Extension* extension) {
   if (extension != extension_)
     return;
   RemoveGlobalError();
@@ -278,11 +308,11 @@ void ExtensionDisabledGlobalError::RemoveGlobalError() {
   std::unique_ptr<GlobalError> ptr =
       GlobalErrorServiceFactory::GetForProfile(service_->profile())
           ->RemoveGlobalError(this);
+  registrar_.RemoveAll();
   registry_observation_.Reset();
   // Delete this object after any running tasks, so that the extension dialog
   // still has it as a delegate to finish the current tasks.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE,
-                                                                ptr.release());
+  base::ThreadTaskRunnerHandle::Get()->DeleteSoon(FROM_HERE, ptr.release());
 }
 
 // Globals --------------------------------------------------------------------

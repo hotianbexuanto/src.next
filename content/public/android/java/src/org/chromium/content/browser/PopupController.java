@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,12 +17,20 @@ import org.chromium.content_public.browser.WebContents;
 import java.util.ArrayList;
 import java.util.List;
 
+<<<<<<< HEAD
 /** Controls all the popup views on content view. */
 @NullMarked
+=======
+/**
+ * Controls all the popup views on content view.
+ */
+>>>>>>> chromium
 public class PopupController implements UserData {
     /** Interface for popup views that expose a method for hiding itself. */
     public interface HideablePopup {
-        /** Called when the popup needs to be hidden. */
+        /**
+         * Called when the popup needs to be hidden.
+         */
         void hide();
     }
 
@@ -55,9 +63,8 @@ public class PopupController implements UserData {
      */
     public static void hidePopupsAndClearSelection(@Nullable WebContents webContents) {
         if (webContents == null) return;
-
         SelectionPopupControllerImpl controller =
-                SelectionPopupControllerImpl.fromWebContentsNoCreate(webContents);
+                SelectionPopupControllerImpl.fromWebContents(webContents);
         if (controller != null) controller.destroyActionModeAndUnselect();
         PopupController.hideAll(webContents);
     }

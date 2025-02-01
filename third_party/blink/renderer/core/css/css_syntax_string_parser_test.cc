@@ -1,45 +1,43 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/css_syntax_string_parser.h"
-
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/core/css/css_syntax_component.h"
+#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 
 namespace blink {
 
 class CSSSyntaxStringParserTest : public testing::Test {
  public:
-  std::optional<CSSSyntaxComponent> ParseSingleComponent(const String& syntax) {
+  absl::optional<CSSSyntaxComponent> ParseSingleComponent(
+      const String& syntax) {
     auto definition = CSSSyntaxStringParser(syntax).Parse();
-    if (!definition) {
-      return std::nullopt;
-    }
-    if (definition->Components().size() != 1) {
-      return std::nullopt;
-    }
+    if (!definition)
+      return absl::nullopt;
+    if (definition->Components().size() != 1)
+      return absl::nullopt;
     return definition->Components()[0];
   }
 
-  std::optional<CSSSyntaxType> ParseSingleType(const String& syntax) {
+  absl::optional<CSSSyntaxType> ParseSingleType(const String& syntax) {
     auto component = ParseSingleComponent(syntax);
-    return component ? std::make_optional(component->GetType()) : std::nullopt;
+    return component ? absl::make_optional(component->GetType())
+                     : absl::nullopt;
   }
 
   String ParseSingleIdent(const String& syntax) {
     auto component = ParseSingleComponent(syntax);
-    if (!component || component->GetType() != CSSSyntaxType::kIdent) {
+    if (!component || component->GetType() != CSSSyntaxType::kIdent)
       return g_empty_string;
-    }
     return component->GetString();
   }
 
   size_t ParseNumberOfComponents(const String& syntax) {
     auto definition = CSSSyntaxStringParser(syntax).Parse();
-    if (!definition) {
+    if (!definition)
       return 0;
-    }
     return definition->Components().size();
   }
 

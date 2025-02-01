@@ -1,37 +1,39 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/paint/text_painter.h"
 
-#include "base/auto_reset.h"
-#include "base/types/optional_util.h"
-#include "cc/paint/paint_flags.h"
-#include "third_party/blink/renderer/core/css/properties/longhands.h"
-#include "third_party/blink/renderer/core/layout/layout_object_inlines.h"
-#include "third_party/blink/renderer/core/layout/svg/layout_svg_inline_text.h"
-#include "third_party/blink/renderer/core/layout/svg/svg_layout_support.h"
-#include "third_party/blink/renderer/core/layout/svg/svg_resources.h"
-#include "third_party/blink/renderer/core/paint/box_painter_base.h"
-#include "third_party/blink/renderer/core/paint/decoration_line_painter.h"
+#include "third_party/blink/renderer/core/css/css_property_names.h"
+#include "third_party/blink/renderer/core/frame/settings.h"
+#include "third_party/blink/renderer/core/layout/api/line_layout_api_shim.h"
+#include "third_party/blink/renderer/core/layout/api/line_layout_item.h"
+#include "third_party/blink/renderer/core/layout/layout_object.h"
+#include "third_party/blink/renderer/core/layout/layout_text_combine.h"
+#include "third_party/blink/renderer/core/layout/text_decoration_offset_base.h"
+#include "third_party/blink/renderer/core/paint/applied_decoration_painter.h"
+#include "third_party/blink/renderer/core/paint/box_painter.h"
+#include "third_party/blink/renderer/core/paint/highlight_painting_utils.h"
 #include "third_party/blink/renderer/core/paint/paint_info.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/paint/svg_object_painter.h"
 #include "third_party/blink/renderer/core/paint/text_paint_style.h"
 #include "third_party/blink/renderer/core/paint/text_shadow_painter.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/style/computed_style.h"
-#include "third_party/blink/renderer/core/style/paint_order_array.h"
 #include "third_party/blink/renderer/core/style/shadow_list.h"
 #include "third_party/blink/renderer/platform/fonts/font.h"
-#include "third_party/blink/renderer/platform/fonts/text_fragment_paint_info.h"
-#include "third_party/blink/renderer/platform/graphics/draw_looper_builder.h"
+#include "third_party/blink/renderer/platform/fonts/text_run_paint_info.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context_state_saver.h"
-#include "third_party/blink/renderer/platform/graphics/paint/paint_controller.h"
-#include "third_party/blink/renderer/platform/graphics/stroke_data.h"
+#include "third_party/blink/renderer/platform/text/text_run.h"
+#include "third_party/blink/renderer/platform/wtf/text/character_names.h"
 
 namespace blink {
 
+<<<<<<< HEAD
 namespace {
 
 // We usually use the text decoration thickness to determine how far
@@ -344,18 +346,48 @@ void TextPainter::Paint(const TextFragmentPaintInfo& fragment_paint_info,
 
   if (!font_.ShouldSkipDrawing()) {
     PaintTimingDetector::NotifyTextPaint(visual_rect_);
+=======
+void TextPainter::Paint(unsigned start_offset,
+                        unsigned end_offset,
+                        unsigned length,
+                        const TextPaintStyle& text_style,
+                        DOMNodeId node_id) {
+  GraphicsContextStateSaver state_saver(graphics_context_, false);
+  UpdateGraphicsContext(text_style, state_saver);
+  if (combined_text_) {
+    graphics_context_.Save();
+    combined_text_->TransformToInlineCoordinates(graphics_context_,
+                                                 text_frame_rect_);
+    PaintInternal<kPaintText>(start_offset, end_offset, length, node_id);
+    graphics_context_.Restore();
+  } else {
+    PaintInternal<kPaintText>(start_offset, end_offset, length, node_id);
+  }
+
+  if (!emphasis_mark_.IsEmpty()) {
+    if (combined_text_) {
+      graphics_context_.ConcatCTM(Rotation(text_frame_rect_, kClockwise));
+      PaintEmphasisMarkForCombinedText(text_style,
+                                       combined_text_->OriginalFont());
+      graphics_context_.ConcatCTM(
+          Rotation(text_frame_rect_, kCounterclockwise));
+    } else {
+      if (text_style.emphasis_mark_color != text_style.fill_color)
+        graphics_context_.SetFillColor(text_style.emphasis_mark_color);
+      PaintInternal<kPaintEmphasisMark>(start_offset, end_offset, length,
+                                        node_id);
+    }
+>>>>>>> chromium
   }
 }
 
-// This function paints text twice with different styles in order to:
-// 1. Paint glyphs inside of |selection_rect| using |selection_style|, and
-//    outside using |text_style|.
-// 2. Paint parts of a ligature glyph.
-void TextPainter::PaintSelectedText(
-    const TextFragmentPaintInfo& fragment_paint_info,
-    unsigned selection_start,
-    unsigned selection_end,
+void TextPainter::PaintDecorationsExceptLineThrough(
+    const TextDecorationOffsetBase& decoration_offset,
+    TextDecorationInfo& decoration_info,
+    const PaintInfo& paint_info,
+    const Vector<AppliedTextDecoration>& decorations,
     const TextPaintStyle& text_style,
+<<<<<<< HEAD
     const TextPaintStyle& selection_style,
     const LineRelativeRect& selection_rect,
     DOMNodeId node_id,
@@ -363,127 +395,184 @@ void TextPainter::PaintSelectedText(
   if (!fragment_paint_info.shape_result) {
     return;
   }
+=======
+    bool* has_line_through_decoration) {
+  GraphicsContext& context = paint_info.context;
+  GraphicsContextStateSaver state_saver(context);
+  UpdateGraphicsContext(context, text_style, horizontal_, state_saver);
+>>>>>>> chromium
 
-  // Use fast path if all glyphs fit in |selection_rect|. |visual_rect_| is the
-  // ink bounds of all glyphs of this text fragment, including characters before
-  // |start_offset| or after |end_offset|. Computing exact bounds is expensive
-  // that this code only checks bounds of all glyphs.
-  gfx::Rect snapped_selection_rect(ToPixelSnappedRect(selection_rect));
-  // Allowing 1px overflow is almost unnoticeable, while it can avoid two-pass
-  // painting in most small text.
-  snapped_selection_rect.Outset(1);
-  // For SVG text, comparing with visual_rect_ does not work well because
-  // selection_rect is in the scaled coordinate system and visual_rect_ is
-  // in the unscaled coordinate system. Checks text offsets too.
-  if (snapped_selection_rect.Contains(visual_rect_) ||
-      (selection_start == fragment_paint_info.from &&
-       selection_end == fragment_paint_info.to)) {
-    std::optional<base::AutoReset<bool>> is_painting_selection_reset;
-    if (TextPainter::SvgTextPaintState* state = GetSvgState()) {
-      is_painting_selection_reset.emplace(&state->is_painting_selection_, true);
-    }
-    Paint(fragment_paint_info.Slice(selection_start, selection_end),
-          selection_style, node_id, auto_dark_mode);
-    return;
+  if (combined_text_)
+    context.ConcatCTM(Rotation(text_frame_rect_, kClockwise));
+
+  // text-underline-position may flip underline and overline.
+  ResolvedUnderlinePosition underline_position =
+      decoration_info.UnderlinePosition();
+  bool flip_underline_and_overline = false;
+  if (underline_position == ResolvedUnderlinePosition::kOver) {
+    flip_underline_and_overline = true;
+    underline_position = ResolvedUnderlinePosition::kUnder;
   }
 
-  // Adjust start/end offset when they are in the middle of a ligature. e.g.,
-  // when |start_offset| is between a ligature of "fi", it needs to be adjusted
-  // to before "f".
-  fragment_paint_info.shape_result->ExpandRangeToIncludePartialGlyphs(
-      &selection_start, &selection_end);
+  for (size_t applied_decoration_index = 0;
+       applied_decoration_index < decorations.size();
+       ++applied_decoration_index) {
+    const AppliedTextDecoration& decoration =
+        decorations[applied_decoration_index];
+    TextDecoration lines = decoration.Lines();
+    bool has_underline = EnumHasFlags(lines, TextDecoration::kUnderline);
+    bool has_overline = EnumHasFlags(lines, TextDecoration::kOverline);
+    if (flip_underline_and_overline)
+      std::swap(has_underline, has_overline);
 
-  // Because only a part of the text glyph can be selected, we need to draw
-  // the selection twice. First, draw any shadow for the selection clipped.
-  gfx::RectF float_selection_rect(selection_rect);
-  if (selection_style.shadow) [[unlikely]] {
-    std::optional<base::AutoReset<bool>> is_painting_selection_reset;
-    if (TextPainter::SvgTextPaintState* state = GetSvgState()) {
-      is_painting_selection_reset.emplace(&state->is_painting_selection_, true);
+    decoration_info.SetDecorationIndex(applied_decoration_index);
+
+    float resolved_thickness = decoration_info.ResolvedThickness();
+    context.SetStrokeThickness(resolved_thickness);
+
+    if (has_underline && decoration_info.FontData()) {
+      // Don't apply text-underline-offset to overline.
+      Length line_offset =
+          flip_underline_and_overline ? Length() : decoration.UnderlineOffset();
+
+      const int paint_underline_offset =
+          decoration_offset.ComputeUnderlineOffset(
+              underline_position, decoration_info.Style().ComputedFontSize(),
+              decoration_info.FontData()->GetFontMetrics(), line_offset,
+              resolved_thickness);
+      decoration_info.SetPerLineData(
+          TextDecoration::kUnderline, paint_underline_offset,
+          TextDecorationInfo::DoubleOffsetFromThickness(resolved_thickness), 1);
+      PaintDecorationUnderOrOverLine(context, decoration_info,
+                                     TextDecoration::kUnderline);
     }
-    GraphicsContextStateSaver state_saver(graphics_context_);
-    gfx::RectF selection_shadow_rect = float_selection_rect;
-    selection_style.shadow->AdjustRectForShadow(selection_shadow_rect);
-    graphics_context_.Clip(selection_shadow_rect);
-    Paint(fragment_paint_info.Slice(selection_start, selection_end),
-          selection_style, node_id, auto_dark_mode, TextPainter::kShadowsOnly);
-  }
-  // Then draw the glyphs outside the selection area, with the original style.
-  {
-    GraphicsContextStateSaver state_saver(graphics_context_);
-    graphics_context_.ClipOut(float_selection_rect);
-    Paint(fragment_paint_info.Slice(selection_start, selection_end), text_style,
-          node_id, auto_dark_mode, TextPainter::kTextProperOnly);
-  }
-  // Then draw the glyphs inside the selection area, with the selection style.
-  {
-    std::optional<base::AutoReset<bool>> is_painting_selection_reset;
-    if (TextPainter::SvgTextPaintState* state = GetSvgState()) {
-      is_painting_selection_reset.emplace(&state->is_painting_selection_, true);
+
+    if (has_overline && decoration_info.FontData()) {
+      // Don't apply text-underline-offset to overline.
+      Length line_offset =
+          flip_underline_and_overline ? decoration.UnderlineOffset() : Length();
+
+      FontVerticalPositionType position =
+          flip_underline_and_overline ? FontVerticalPositionType::TopOfEmHeight
+                                      : FontVerticalPositionType::TextTop;
+      const int paint_overline_offset =
+          decoration_offset.ComputeUnderlineOffsetForUnder(
+              line_offset, decoration_info.Style().ComputedFontSize(),
+              resolved_thickness, position);
+      decoration_info.SetPerLineData(
+          TextDecoration::kOverline, paint_overline_offset,
+          -TextDecorationInfo::DoubleOffsetFromThickness(resolved_thickness),
+          1);
+      PaintDecorationUnderOrOverLine(context, decoration_info,
+                                     TextDecoration::kOverline);
     }
-    GraphicsContextStateSaver state_saver(graphics_context_);
-    graphics_context_.Clip(float_selection_rect);
-    Paint(fragment_paint_info.Slice(selection_start, selection_end),
-          selection_style, node_id, auto_dark_mode,
-          TextPainter::kTextProperOnly);
+
+    // We could instead build a vector of the TextDecoration instances needing
+    // line-through but this is a rare case so better to avoid vector overhead.
+    *has_line_through_decoration |=
+        EnumHasFlags(lines, TextDecoration::kLineThrough);
   }
+
+  // Restore rotation as needed.
+  if (combined_text_)
+    context.ConcatCTM(Rotation(text_frame_rect_, kCounterclockwise));
 }
 
-void TextPainter::SetEmphasisMark(const AtomicString& emphasis_mark,
-                                  TextEmphasisPosition position) {
-  emphasis_mark_ = emphasis_mark;
-  const SimpleFontData* font_data = font_.PrimaryFont();
-  DCHECK(font_data);
+void TextPainter::PaintDecorationsOnlyLineThrough(
+    TextDecorationInfo& decoration_info,
+    const PaintInfo& paint_info,
+    const Vector<AppliedTextDecoration>& decorations,
+    const TextPaintStyle& text_style) {
+  GraphicsContext& context = paint_info.context;
+  GraphicsContextStateSaver state_saver(context);
+  UpdateGraphicsContext(context, text_style, horizontal_, state_saver);
 
-  if (!font_data || emphasis_mark.IsNull()) {
-    emphasis_mark_offset_ = 0;
-  } else if ((horizontal_ && IsOver(position)) ||
-             (!horizontal_ && IsRight(position))) {
-    emphasis_mark_offset_ = -font_data->GetFontMetrics().Ascent() -
-                            font_.EmphasisMarkDescent(emphasis_mark);
+  if (combined_text_)
+    context.ConcatCTM(Rotation(text_frame_rect_, kClockwise));
+
+  for (size_t applied_decoration_index = 0;
+       applied_decoration_index < decorations.size();
+       ++applied_decoration_index) {
+    const AppliedTextDecoration& decoration =
+        decorations[applied_decoration_index];
+    TextDecoration lines = decoration.Lines();
+    if (EnumHasFlags(lines, TextDecoration::kLineThrough)) {
+      decoration_info.SetDecorationIndex(applied_decoration_index);
+
+      float resolved_thickness = decoration_info.ResolvedThickness();
+      context.SetStrokeThickness(resolved_thickness);
+
+      // For increased line thickness, the line-through decoration needs to grow
+      // in both directions from its origin, subtract half the thickness to keep
+      // it centered at the same origin.
+      const float line_through_offset =
+          2 * decoration_info.Baseline() / 3 - resolved_thickness / 2;
+      // Floor double_offset in order to avoid double-line gap to appear
+      // of different size depending on position where the double line
+      // is drawn because of rounding downstream in
+      // GraphicsContext::DrawLineForText.
+      decoration_info.SetPerLineData(
+          TextDecoration::kLineThrough, line_through_offset,
+          floorf(TextDecorationInfo::DoubleOffsetFromThickness(
+              resolved_thickness)),
+          0);
+      AppliedDecorationPainter decoration_painter(context, decoration_info,
+                                                  TextDecoration::kLineThrough);
+      // No skip: ink for line-through,
+      // compare https://github.com/w3c/csswg-drafts/issues/711
+      decoration_painter.Paint();
+    }
+  }
+
+  // Restore rotation as needed.
+  if (combined_text_)
+    context.ConcatCTM(Rotation(text_frame_rect_, kCounterclockwise));
+}
+
+template <TextPainter::PaintInternalStep step>
+void TextPainter::PaintInternalRun(TextRunPaintInfo& text_run_paint_info,
+                                   unsigned from,
+                                   unsigned to,
+                                   DOMNodeId node_id) {
+  DCHECK(from <= text_run_paint_info.run.length());
+  DCHECK(to <= text_run_paint_info.run.length());
+
+  text_run_paint_info.from = from;
+  text_run_paint_info.to = to;
+
+  if (step == kPaintEmphasisMark) {
+    graphics_context_.DrawEmphasisMarks(
+        font_, text_run_paint_info, emphasis_mark_,
+        FloatPoint(text_origin_) + IntSize(0, emphasis_mark_offset_));
   } else {
-    DCHECK(!IsOver(position) || position == TextEmphasisPosition::kOverLeft);
-    emphasis_mark_offset_ = font_data->GetFontMetrics().Descent() +
-                            font_.EmphasisMarkAscent(emphasis_mark);
+    DCHECK(step == kPaintText);
+    graphics_context_.DrawText(font_, text_run_paint_info,
+                               FloatPoint(text_origin_), node_id);
   }
 }
 
-void TextPainter::PaintDecorationLine(
-    const TextDecorationInfo& decoration_info,
-    const Color& line_color,
-    const TextFragmentPaintInfo* fragment_paint_info) {
-  DecorationLinePainter decoration_painter(graphics_context_, decoration_info);
-  if (fragment_paint_info &&
-      decoration_info.TargetStyle().TextDecorationSkipInk() ==
-          ETextDecorationSkipInk::kAuto) {
-    // In order to ignore intersects less than 0.5px, inflate by -0.5.
-    gfx::RectF decoration_bounds = decoration_info.Bounds();
-    decoration_bounds.Inset(gfx::InsetsF::VH(0.5, 0));
-    ClipDecorationsStripe(
-        *fragment_paint_info,
-        decoration_info.InkSkipClipUpper(decoration_bounds.y()),
-        decoration_bounds.height(),
-        std::min(decoration_info.ResolvedThickness(),
-                 kDecorationClipMaxDilation));
-  }
-
-  if (svg_text_paint_state_.has_value() &&
-      !decoration_info.HasDecorationOverride()) {
-    SvgPaints paints;
-    const SvgTextPaintState& state = svg_text_paint_state_.value();
-    PrepareSvgPaints(state, svg_context_paints_, SvgPaintMode::kTextDecoration,
-                     paints);
-
-    const OrderedPaints ordered_paints =
-        OrderPaints(paints, state.Style().PaintOrder());
-    DrawPaintOrderPasses(ordered_paints, [&](const cc::PaintFlags& flags) {
-      decoration_painter.Paint(line_color, &flags);
-    });
+template <TextPainter::PaintInternalStep Step>
+void TextPainter::PaintInternal(unsigned start_offset,
+                                unsigned end_offset,
+                                unsigned truncation_point,
+                                DOMNodeId node_id) {
+  TextRunPaintInfo text_run_paint_info(run_);
+  if (start_offset <= end_offset) {
+    PaintInternalRun<Step>(text_run_paint_info, start_offset, end_offset,
+                           node_id);
   } else {
-    decoration_painter.Paint(line_color, nullptr);
+    if (end_offset > 0) {
+      PaintInternalRun<Step>(text_run_paint_info, ellipsis_offset_, end_offset,
+                             node_id);
+    }
+    if (start_offset < truncation_point) {
+      PaintInternalRun<Step>(text_run_paint_info, start_offset,
+                             truncation_point, node_id);
+    }
   }
 }
 
+<<<<<<< HEAD
 void TextPainter::ClipDecorationsStripe(
     const TextFragmentPaintInfo& fragment_paint_info,
     float upper,
@@ -491,14 +580,23 @@ void TextPainter::ClipDecorationsStripe(
     float dilation) {
   if (fragment_paint_info.from >= fragment_paint_info.to ||
       !fragment_paint_info.shape_result) {
+=======
+void TextPainter::ClipDecorationsStripe(float upper,
+                                        float stripe_width,
+                                        float dilation) {
+  TextRunPaintInfo text_run_paint_info(run_);
+  if (!run_.length())
+>>>>>>> chromium
     return;
   }
 
   Vector<Font::TextIntercept> text_intercepts;
-  font_.GetTextIntercepts(fragment_paint_info, graphics_context_.FillFlags(),
-                          std::make_tuple(upper, upper + stripe_width),
-                          text_intercepts);
+  font_.GetTextIntercepts(
+      text_run_paint_info, graphics_context_.DeviceScaleFactor(),
+      graphics_context_.FillFlags(),
+      std::make_tuple(upper, upper + stripe_width), text_intercepts);
 
+<<<<<<< HEAD
   for (auto intercept : text_intercepts) {
     gfx::PointF clip_origin(text_origin_);
     gfx::RectF clip_rect(
@@ -691,6 +789,9 @@ AffineTransform& TextPainter::SvgTextPaintState::EnsureShaderTransform() {
 const AffineTransform* TextPainter::SvgTextPaintState::GetShaderTransform()
     const {
   return base::OptionalToPtr(shader_transform_);
+=======
+  DecorationsStripeIntercepts(upper, stripe_width, dilation, text_intercepts);
+>>>>>>> chromium
 }
 
 }  // namespace blink

@@ -24,12 +24,10 @@
 
 #include "third_party/blink/renderer/core/dom/attr.h"
 
-#include "third_party/blink/renderer/bindings/core/v8/v8_union_string_trustedscript.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/events/scoped_event_queue.h"
 #include "third_party/blink/renderer/core/dom/text.h"
-#include "third_party/blink/renderer/core/trustedtypes/trusted_script.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -37,14 +35,14 @@
 namespace blink {
 
 Attr::Attr(Element& element, const QualifiedName& name)
-    : Node(&element.GetDocument(), kCreateAttribute),
+    : Node(&element.GetDocument(), kCreateOther),
       element_(&element),
       name_(name) {}
 
 Attr::Attr(Document& document,
            const QualifiedName& name,
            const AtomicString& standalone_value)
-    : Node(&document, kCreateAttribute),
+    : Node(&document, kCreateOther),
       name_(name),
       standalone_value_or_attached_local_name_(standalone_value) {}
 
@@ -74,38 +72,23 @@ void Attr::setValue(const AtomicString& value,
                     ExceptionState& exception_state) {
   // Element::setAttribute will remove the attribute if value is null.
   DCHECK(!value.IsNull());
-  if (element_) {
-    element_->SetAttributeWithValidation(GetQualifiedName(), value,
-                                         exception_state);
-  } else {
+  if (element_)
+    element_->setAttribute(GetQualifiedName(), value, exception_state);
+  else
     standalone_value_or_attached_local_name_ = value;
-  }
 }
 
-void Attr::setNodeValue(const String& v, ExceptionState& exception_state) {
+void Attr::setNodeValue(const String& v) {
   // Attr uses AtomicString type for its value to save memory as there
   // is duplication among Elements' attributes values.
   const AtomicString value = v.IsNull() ? g_empty_atom : AtomicString(v);
-  setValue(value, exception_state);
+  if (element_)
+    element_->setAttribute(GetQualifiedName(), value);
+  else
+    standalone_value_or_attached_local_name_ = value;
 }
 
-void Attr::setTextContentForBinding(const V8UnionStringOrTrustedScript* value,
-                                    ExceptionState& exception_state) {
-  String string_value;
-  if (value) {
-    if (value->IsString())
-      string_value = value->GetAsString();
-    else if (value->IsTrustedScript())
-      string_value = value->GetAsTrustedScript()->toString();
-  }
-  setNodeValue(string_value, exception_state);
-}
-
-Node* Attr::Clone(Document& factory,
-                  NodeCloningData&,
-                  ContainerNode* append_to,
-                  ExceptionState& append_exception_state) const {
-  DCHECK_EQ(append_to, nullptr) << "Attr::Clone() doesn't support append_to";
+Node* Attr::Clone(Document& factory, CloneChildrenFlag) const {
   return MakeGarbageCollected<Attr>(factory, name_, value());
 }
 

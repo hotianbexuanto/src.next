@@ -32,10 +32,14 @@
 #pragma allow_unsafe_buffers
 #endif
 
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_selector_list.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/wtf/gc_plugin.h"
+=======
+#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/wtf/hash_map.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string_hash.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
@@ -56,6 +60,11 @@ class CORE_EXPORT SelectorQuery : public GarbageCollected<SelectorQuery> {
   SelectorQuery(const SelectorQuery&) = delete;
   SelectorQuery& operator=(const SelectorQuery&) = delete;
 
+<<<<<<< HEAD
+=======
+  static std::unique_ptr<SelectorQuery> Adopt(CSSSelectorList);
+
+>>>>>>> chromium
   // https://dom.spec.whatwg.org/#dom-element-matches
   bool Matches(Element&) const;
 
@@ -82,7 +91,12 @@ class CORE_EXPORT SelectorQuery : public GarbageCollected<SelectorQuery> {
   // non DCHECK builds to avoid the overhead on the query process.
   static QueryStats LastQueryStats();
 
+<<<<<<< HEAD
   void Trace(Visitor* visitor) const { visitor->Trace(selector_list_); }
+=======
+ private:
+  explicit SelectorQuery(CSSSelectorList);
+>>>>>>> chromium
 
  private:
   template <typename SelectorQueryTrait>
@@ -105,6 +119,7 @@ class CORE_EXPORT SelectorQuery : public GarbageCollected<SelectorQuery> {
 
   bool SelectorListMatches(ContainerNode& root_node, Element&) const;
 
+<<<<<<< HEAD
   const CSSSelector* StartOfComplexSelector(unsigned index) const {
     return selector_list_->First() + selector_start_offsets_[index];
   }
@@ -116,6 +131,14 @@ class CORE_EXPORT SelectorQuery : public GarbageCollected<SelectorQuery> {
   // This can be empty, while |selector_list_| will never be empty, as
   // SelectorQueryCache::add would have thrown an exception.
   Vector<unsigned, 4> selector_start_offsets_;
+=======
+  CSSSelectorList selector_list_;
+  // Contains the list of CSSSelector's to match, but without ones that could
+  // never match like pseudo elements, div::before. This can be empty, while
+  // |selector_list_| will never be empty as SelectorQueryCache::add would have
+  // thrown an exception.
+  Vector<const CSSSelector*> selectors_;
+>>>>>>> chromium
   AtomicString selector_id_;
   bool selector_id_is_rightmost_ : 1;
   bool selector_id_affected_by_sibling_combinator_ : 1;

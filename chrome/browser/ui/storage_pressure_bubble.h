@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,6 @@
 #include "url/origin.h"
 
 // Shows a BubbleView that alerts the user about storage pressure.
-void ShowStoragePressureBubble(const url::Origin& origin);
+void ShowStoragePressureBubble(const url::Origin origin);
 
 #endif  // CHROME_BROWSER_UI_STORAGE_PRESSURE_BUBBLE_H_

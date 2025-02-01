@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -35,26 +35,43 @@ void DocumentTiming::NotifyDocumentTimingChanged() {
 void DocumentTiming::MarkDomLoading() {
   document_timing_values_->dom_loading = base::TimeTicks::Now();
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing,rail", "domLoading",
+<<<<<<< HEAD
                                    document_timing_values_->dom_loading,
                                    "frame", GetFrameIdForTracing(GetFrame()));
+=======
+                                   dom_loading_, "frame",
+                                   ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 
 void DocumentTiming::MarkDomInteractive() {
   document_timing_values_->dom_interactive = base::TimeTicks::Now();
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing,rail", "domInteractive",
+<<<<<<< HEAD
                                    document_timing_values_->dom_interactive,
                                    "frame", GetFrameIdForTracing(GetFrame()));
+=======
+                                   dom_interactive_, "frame",
+                                   ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 
 void DocumentTiming::MarkDomContentLoadedEventStart() {
+<<<<<<< HEAD
   document_timing_values_->dom_content_loaded_event_start =
       base::TimeTicks::Now();
   TRACE_EVENT_MARK_WITH_TIMESTAMP1(
       "blink.user_timing,rail", "domContentLoadedEventStart",
       document_timing_values_->dom_content_loaded_event_start, "frame",
       GetFrameIdForTracing(GetFrame()));
+=======
+  dom_content_loaded_event_start_ = base::TimeTicks::Now();
+  TRACE_EVENT_MARK_WITH_TIMESTAMP1(
+      "blink.user_timing,rail", "domContentLoadedEventStart",
+      dom_content_loaded_event_start_, "frame", ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 
@@ -63,8 +80,12 @@ void DocumentTiming::MarkDomContentLoadedEventEnd() {
       base::TimeTicks::Now();
   TRACE_EVENT_MARK_WITH_TIMESTAMP1(
       "blink.user_timing,rail", "domContentLoadedEventEnd",
+<<<<<<< HEAD
       document_timing_values_->dom_content_loaded_event_end, "frame",
       GetFrameIdForTracing(GetFrame()));
+=======
+      dom_content_loaded_event_end_, "frame", ToTraceValue(GetFrame()));
+>>>>>>> chromium
   InteractiveDetector* interactive_detector(
       InteractiveDetector::From(*document_));
   if (interactive_detector) {
@@ -77,8 +98,13 @@ void DocumentTiming::MarkDomContentLoadedEventEnd() {
 void DocumentTiming::MarkDomComplete() {
   document_timing_values_->dom_complete = base::TimeTicks::Now();
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing,rail", "domComplete",
+<<<<<<< HEAD
                                    document_timing_values_->dom_complete,
                                    "frame", GetFrameIdForTracing(GetFrame()));
+=======
+                                   dom_complete_, "frame",
+                                   ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 

@@ -4,14 +4,14 @@
 # See https://www.chromium.org/blink#new-features for details.
 bratell.d@gmail.com
 chrishtr@chromium.org
-domenic@chromium.org
 foolip@chromium.org
-miketaylr@chromium.org
+jochen@chromium.org
+mkwst@chromium.org
 rbyers@chromium.org
 slightlyoff@chromium.org
 tkent@chromium.org
-vmpstr@chromium.org
 yoavweiss@chromium.org
+<<<<<<< HEAD
 
 # Emeritus:
 # darin@chromium.org
@@ -21,3 +21,5 @@ yoavweiss@chromium.org
 # pdr@chromium.org
 # mkwst@chromium.org
 # rego@igalia.com
+=======
+>>>>>>> chromium

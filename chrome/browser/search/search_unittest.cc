@@ -1,11 +1,6 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "chrome/browser/search/search.h"
 
@@ -16,25 +11,18 @@
 #include <string>
 #include <utility>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
+#include "base/cxx17_backports.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "chrome/browser/search/instant_service.h"
 #include "chrome/browser/search/instant_service_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
-#include "chrome/browser/signin/chrome_signin_client_factory.h"
-#include "chrome/browser/signin/chrome_signin_client_test_util.h"
-#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/search_test_utils.h"
-#include "chrome/test/base/testing_profile.h"
 #include "components/search_engines/template_url_service.h"
-#include "components/supervised_user/core/browser/supervised_user_preferences.h"
-#include "components/supervised_user/core/browser/supervised_user_service.h"
-#include "components/supervised_user/core/browser/supervised_user_url_filter.h"
-#include "components/supervised_user/core/common/buildflags.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
@@ -44,6 +32,12 @@
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/test_utils.h"
 #include "url/gurl.h"
+
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+#include "chrome/browser/supervised_user/supervised_user_service.h"
+#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
+#include "chrome/browser/supervised_user/supervised_user_url_filter.h"
+#endif
 
 namespace search {
 
@@ -102,15 +96,19 @@ class SearchTest : public BrowserWithTestWindowTest {
     InstantService* instant_service =
         InstantServiceFactory::GetForProfile(profile());
     return instant_service->IsInstantProcess(
+<<<<<<< HEAD
         contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID());
+=======
+        contents->GetMainFrame()->GetProcess()->GetID());
+>>>>>>> chromium
   }
 
   // Each test case represents a navigation to |start_url| followed by a
   // navigation to |end_url|. We will check whether each navigation lands in an
   // Instant process, and also whether the navigation from start to end re-uses
-  // the same SiteInstance, RenderViewHost, etc.
+  // the same SiteInstance (and hence the same RenderViewHost, etc.).
   // Note that we need to define this here because the flags needed to check
-  // content::CanSameSiteMainFrameNavigationsChangeSiteInstances() etc might not
+  // content::CanSameSiteMainFrameNavigationsChangeSiteInstances() might not
   // be set yet if we define this immediately (e.g. outside of the test class).
   const struct ProcessIsolationTestCase {
     const char* description;
@@ -119,33 +117,24 @@ class SearchTest : public BrowserWithTestWindowTest {
     const char* end_url;
     bool end_in_instant_process;
     bool same_site_instance;
-    bool same_rvh;
     bool same_process;
   } kProcessIsolationTestCases[5] = {
       {"Remote NTP -> SRP", "https://foo.com/newtab", true,
-       "https://foo.com/url", false, false, false, false},
+       "https://foo.com/url", false, false, false},
       {"Remote NTP -> Regular", "https://foo.com/newtab", true,
-       "https://foo.com/other", false, false, false, false},
+       "https://foo.com/other", false, false, false},
       {"SRP -> SRP", "https://foo.com/url", false, "https://foo.com/url", false,
-       true,
-       !content::WillSameSiteNavigationChangeRenderFrameHosts(
-           /*is_main_frame=*/true),
-       true},
+       true, true},
+      // Same-site (but not same URL) navigations might switch site instances
+      // but keep the same process when ProactivelySwapBrowsingInstance is
+      // enabled on same-site navigations.
       {"SRP -> Regular", "https://foo.com/url", false, "https://foo.com/other",
        false, !content::CanSameSiteMainFrameNavigationsChangeSiteInstances(),
-       !content::CanSameSiteMainFrameNavigationsChangeSiteInstances(), true},
+       true},
       {"Regular -> SRP", "https://foo.com/other", false, "https://foo.com/url",
        false, !content::CanSameSiteMainFrameNavigationsChangeSiteInstances(),
-       !content::CanSameSiteMainFrameNavigationsChangeSiteInstances(), true},
+       true},
   };
-
-  // BrowserWithTestWindowTest:
-  TestingProfile::TestingFactories GetTestingFactories() override {
-    return {TestingProfile::TestingFactory{
-        ChromeSigninClientFactory::GetInstance(),
-        base::BindRepeating(&BuildChromeSigninClientWithURLLoader,
-                            test_url_loader_factory())}};
-  }
 };
 
 struct SearchTestCase {
@@ -169,7 +158,7 @@ TEST_F(SearchTest, ShouldAssignURLToInstantRenderer) {
       {"https://foo.com/", false, "Instant support was removed"},
   });
 
-  for (size_t i = 0; i < std::size(kTestCases); ++i) {
+  for (size_t i = 0; i < base::size(kTestCases); ++i) {
     const SearchTestCase& test = kTestCases[i];
     EXPECT_EQ(test.expected_result,
               ShouldAssignURLToInstantRenderer(GURL(test.url), profile()))
@@ -192,7 +181,7 @@ TEST_F(SearchTest, ShouldUseProcessPerSiteForInstantSiteURL) {
       {"https://foo.com/", false, "Non-exact path"},
   });
 
-  for (size_t i = 0; i < std::size(kTestCases); ++i) {
+  for (size_t i = 0; i < base::size(kTestCases); ++i) {
     const SearchTestCase& test = kTestCases[i];
     EXPECT_EQ(test.expected_result, ShouldUseProcessPerSiteForInstantSiteURL(
                                         GURL(test.url), profile()))
@@ -201,7 +190,7 @@ TEST_F(SearchTest, ShouldUseProcessPerSiteForInstantSiteURL) {
 }
 
 TEST_F(SearchTest, ProcessIsolation) {
-  for (size_t i = 0; i < std::size(kProcessIsolationTestCases); ++i) {
+  for (size_t i = 0; i < base::size(kProcessIsolationTestCases); ++i) {
     const ProcessIsolationTestCase& test = kProcessIsolationTestCases[i];
     AddTab(browser(), GURL("chrome://blank"));
     content::WebContents* contents =
@@ -216,9 +205,9 @@ TEST_F(SearchTest, ProcessIsolation) {
     const scoped_refptr<content::SiteInstance> start_site_instance =
         contents->GetSiteInstance();
     const content::RenderProcessHost* start_rph =
-        contents->GetPrimaryMainFrame()->GetProcess();
+        contents->GetMainFrame()->GetProcess();
     const content::RenderViewHost* start_rvh =
-        contents->GetPrimaryMainFrame()->GetRenderViewHost();
+        contents->GetMainFrame()->GetRenderViewHost();
 
     // Navigate to end URL.
     NavigateAndCommitActiveTab(GURL(test.end_url));
@@ -228,17 +217,17 @@ TEST_F(SearchTest, ProcessIsolation) {
     EXPECT_EQ(test.same_site_instance,
               start_site_instance.get() == contents->GetSiteInstance())
         << test.description;
-    EXPECT_EQ(test.same_rvh,
-              start_rvh == contents->GetPrimaryMainFrame()->GetRenderViewHost())
+    EXPECT_EQ(test.same_site_instance,
+              start_rvh == contents->GetMainFrame()->GetRenderViewHost())
         << test.description;
     EXPECT_EQ(test.same_process,
-              start_rph == contents->GetPrimaryMainFrame()->GetProcess())
+              start_rph == contents->GetMainFrame()->GetProcess())
         << test.description;
   }
 }
 
 TEST_F(SearchTest, ProcessIsolation_RendererInitiated) {
-  for (size_t i = 0; i < std::size(kProcessIsolationTestCases); ++i) {
+  for (size_t i = 0; i < base::size(kProcessIsolationTestCases); ++i) {
     const ProcessIsolationTestCase& test = kProcessIsolationTestCases[i];
     AddTab(browser(), GURL("chrome://blank"));
     content::WebContents* contents =
@@ -253,13 +242,13 @@ TEST_F(SearchTest, ProcessIsolation_RendererInitiated) {
     const scoped_refptr<content::SiteInstance> start_site_instance =
         contents->GetSiteInstance();
     const content::RenderProcessHost* start_rph =
-        contents->GetPrimaryMainFrame()->GetProcess();
+        contents->GetMainFrame()->GetProcess();
     const content::RenderViewHost* start_rvh =
-        contents->GetPrimaryMainFrame()->GetRenderViewHost();
+        contents->GetMainFrame()->GetRenderViewHost();
 
     // Navigate to end URL via a renderer-initiated navigation.
     content::NavigationSimulator::NavigateAndCommitFromDocument(
-        GURL(test.end_url), contents->GetPrimaryMainFrame());
+        GURL(test.end_url), contents->GetMainFrame());
 
     EXPECT_EQ(test.end_in_instant_process, InInstantProcess(contents))
         << test.description;
@@ -267,11 +256,11 @@ TEST_F(SearchTest, ProcessIsolation_RendererInitiated) {
     EXPECT_EQ(test.same_site_instance,
               start_site_instance.get() == contents->GetSiteInstance())
         << test.description;
-    EXPECT_EQ(test.same_rvh,
-              start_rvh == contents->GetPrimaryMainFrame()->GetRenderViewHost())
+    EXPECT_EQ(test.same_site_instance,
+              start_rvh == contents->GetMainFrame()->GetRenderViewHost())
         << test.description;
     EXPECT_EQ(test.same_process,
-              start_rph == contents->GetPrimaryMainFrame()->GetProcess())
+              start_rph == contents->GetMainFrame()->GetProcess())
         << test.description;
   }
 }
@@ -363,14 +352,14 @@ TEST_F(SearchTest, UseLocalNTPIfNTPURLIsNotSet) {
   EXPECT_EQ(chrome::kChromeUINewTabPageThirdPartyURL, new_tab_url);
 }
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
 TEST_F(SearchTest, UseLocalNTPIfNTPURLIsBlockedForSupervisedUser) {
   // Mark the profile as supervised, otherwise the URL filter won't be checked.
-  profile()->SetIsSupervisedProfile();
+  profile()->SetSupervisedUserId("supervised");
   // Block access to foo.com in the URL filter.
-  supervised_user::SupervisedUserService* supervised_user_service =
+  SupervisedUserService* supervised_user_service =
       SupervisedUserServiceFactory::GetForProfile(profile());
-  supervised_user::SupervisedUserURLFilter* url_filter =
-      supervised_user_service->GetURLFilter();
+  SupervisedUserURLFilter* url_filter = supervised_user_service->GetURLFilter();
   std::map<std::string, bool> hosts;
   hosts["foo.com"] = false;
   url_filter->SetManualHosts(std::move(hosts));
@@ -381,6 +370,7 @@ TEST_F(SearchTest, UseLocalNTPIfNTPURLIsBlockedForSupervisedUser) {
   EXPECT_TRUE(HandleNewTabURLRewrite(&new_tab_url, profile()));
   EXPECT_EQ(chrome::kChromeUINewTabPageThirdPartyURL, new_tab_url);
 }
+#endif
 
 TEST_F(SearchTest, IsNTPOrRelatedURL) {
   GURL invalid_url;
@@ -399,11 +389,11 @@ TEST_F(SearchTest, IsNTPOrRelatedURL) {
   EXPECT_FALSE(IsNTPOrRelatedURL(search_url_with_search_terms, profile()));
   EXPECT_FALSE(IsNTPOrRelatedURL(search_url_without_search_terms, profile()));
 
-  EXPECT_FALSE(IsNTPOrRelatedURL(ntp_url, nullptr));
-  EXPECT_FALSE(IsNTPOrRelatedURL(remote_ntp_url, nullptr));
-  EXPECT_FALSE(IsNTPOrRelatedURL(remote_ntp_service_worker_url, nullptr));
-  EXPECT_FALSE(IsNTPOrRelatedURL(search_url_with_search_terms, nullptr));
-  EXPECT_FALSE(IsNTPOrRelatedURL(search_url_without_search_terms, nullptr));
+  EXPECT_FALSE(IsNTPOrRelatedURL(ntp_url, NULL));
+  EXPECT_FALSE(IsNTPOrRelatedURL(remote_ntp_url, NULL));
+  EXPECT_FALSE(IsNTPOrRelatedURL(remote_ntp_service_worker_url, NULL));
+  EXPECT_FALSE(IsNTPOrRelatedURL(search_url_with_search_terms, NULL));
+  EXPECT_FALSE(IsNTPOrRelatedURL(search_url_without_search_terms, NULL));
 }
 
 // Tests whether a |url| corresponds to a New Tab page.
@@ -419,7 +409,7 @@ TEST_F(SearchTest, IsNTPURL) {
       {"", false, "Invalid URL"},
   });
 
-  for (size_t i = 0; i < std::size(kTestCases); ++i) {
+  for (size_t i = 0; i < base::size(kTestCases); ++i) {
     const SearchTestCase& test = kTestCases[i];
     EXPECT_EQ(test.expected_result, IsNTPURL(GURL(test.url)))
         << test.url << " " << test.comment;

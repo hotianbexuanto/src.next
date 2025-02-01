@@ -1,23 +1,10 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "third_party/blink/renderer/core/dom/events/event_target.h"
-
-#include "third_party/blink/renderer/bindings/core/v8/js_event_listener.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_add_event_listener_options.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_observable_event_listener_options.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_observer.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_subscribe_options.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_union_observer_observercallback.h"
-#include "third_party/blink/renderer/core/dom/abort_controller.h"
-#include "third_party/blink/renderer/core/dom/events/add_event_listener_options_resolved.h"
-#include "third_party/blink/renderer/core/dom/observable.h"
-#include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/script/classic_script.h"
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
-#include "third_party/blink/renderer/platform/heap/thread_state.h"
+#include "third_party/blink/renderer/platform/testing/histogram_tester.h"
 
 namespace blink {
 
@@ -32,8 +19,8 @@ TEST_F(EventTargetTest, UseCountPassiveTouchEventListener) {
       GetDocument().IsUseCounted(WebFeature::kPassiveTouchEventListener));
   GetDocument().GetSettings()->SetScriptEnabled(true);
   ClassicScript::CreateUnspecifiedScript(
-      "window.addEventListener('touchstart', function() {}, "
-      "{passive: true});")
+      ScriptSourceCode("window.addEventListener('touchstart', function() {}, "
+                       "{passive: true});"))
       ->RunScript(GetDocument().domWindow());
   EXPECT_TRUE(
       GetDocument().IsUseCounted(WebFeature::kPassiveTouchEventListener));
@@ -46,8 +33,8 @@ TEST_F(EventTargetTest, UseCountNonPassiveTouchEventListener) {
       GetDocument().IsUseCounted(WebFeature::kNonPassiveTouchEventListener));
   GetDocument().GetSettings()->SetScriptEnabled(true);
   ClassicScript::CreateUnspecifiedScript(
-      "window.addEventListener('touchstart', function() {}, "
-      "{passive: false});")
+      ScriptSourceCode("window.addEventListener('touchstart', function() {}, "
+                       "{passive: false});"))
       ->RunScript(GetDocument().domWindow());
   EXPECT_TRUE(
       GetDocument().IsUseCounted(WebFeature::kNonPassiveTouchEventListener));
@@ -60,7 +47,7 @@ TEST_F(EventTargetTest, UseCountPassiveTouchEventListenerPassiveNotSpecified) {
       GetDocument().IsUseCounted(WebFeature::kPassiveTouchEventListener));
   GetDocument().GetSettings()->SetScriptEnabled(true);
   ClassicScript::CreateUnspecifiedScript(
-      "window.addEventListener('touchstart', function() {});")
+      ScriptSourceCode("window.addEventListener('touchstart', function() {});"))
       ->RunScript(GetDocument().domWindow());
   EXPECT_TRUE(
       GetDocument().IsUseCounted(WebFeature::kPassiveTouchEventListener));
@@ -72,11 +59,11 @@ TEST_F(EventTargetTest, UseCountBeforematch) {
   EXPECT_FALSE(
       GetDocument().IsUseCounted(WebFeature::kBeforematchHandlerRegistered));
   GetDocument().GetSettings()->SetScriptEnabled(true);
-  ClassicScript::CreateUnspecifiedScript(R"HTML(
+  ClassicScript::CreateUnspecifiedScript(ScriptSourceCode(R"HTML(
                        const element = document.createElement('div');
                        document.body.appendChild(element);
                        element.addEventListener('beforematch', () => {});
-                      )HTML")
+                      )HTML"))
       ->RunScript(GetDocument().domWindow());
   EXPECT_TRUE(
       GetDocument().IsUseCounted(WebFeature::kBeforematchHandlerRegistered));
@@ -86,17 +73,18 @@ TEST_F(EventTargetTest, UseCountAbortSignal) {
   EXPECT_FALSE(
       GetDocument().IsUseCounted(WebFeature::kAddEventListenerWithAbortSignal));
   GetDocument().GetSettings()->SetScriptEnabled(true);
-  ClassicScript::CreateUnspecifiedScript(R"HTML(
+  ClassicScript::CreateUnspecifiedScript(ScriptSourceCode(R"HTML(
                        const element = document.createElement('div');
                        const ac = new AbortController();
                        element.addEventListener(
                          'test', () => {}, {signal: ac.signal});
-                      )HTML")
+                      )HTML"))
       ->RunScript(GetDocument().domWindow());
   EXPECT_TRUE(
       GetDocument().IsUseCounted(WebFeature::kAddEventListenerWithAbortSignal));
 }
 
+<<<<<<< HEAD
 TEST_F(EventTargetTest, UseCountScrollend) {
   EXPECT_FALSE(GetDocument().IsUseCounted(WebFeature::kScrollend));
   GetDocument().GetSettings()->SetScriptEnabled(true);
@@ -211,4 +199,6 @@ TEST_F(EventTargetTest, UseCountOnMove) {
   EXPECT_TRUE(GetDocument().IsUseCounted(WebFeature::kMoveEvent));
 }
 
+=======
+>>>>>>> chromium
 }  // namespace blink

@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,15 +23,15 @@ bool CascadeResolver::IsLocked(const String& attribute) const {
 bool CascadeResolver::AllowSubstitution(CSSVariableData* data) const {
   if (data && data->IsAnimationTainted() && stack_.size()) {
     const CSSProperty* property = CurrentProperty();
-    if (IsA<CustomProperty>(*property)) {
+    if (IsA<CustomProperty>(*property))
       return true;
-    }
     return !CSSAnimations::IsAnimationAffectingProperty(*property);
   }
   return true;
 }
 
 bool CascadeResolver::DetectCycle(const CSSProperty& property) {
+<<<<<<< HEAD
   return DetectCycle(Find(property));
 }
 
@@ -41,8 +41,11 @@ bool CascadeResolver::DetectCycle(const String& attribute) {
 
 bool CascadeResolver::DetectCycle(wtf_size_t index) {
   if (index == kNotFound) {
+=======
+  wtf_size_t index = Find(property);
+  if (index == kNotFound)
+>>>>>>> chromium
     return false;
-  }
   cycle_start_ = std::min(cycle_start_, index);
   cycle_end_ = stack_.size();
   DCHECK(InCycle());
@@ -55,6 +58,7 @@ bool CascadeResolver::InCycle() const {
 
 wtf_size_t CascadeResolver::Find(const CSSProperty& property) const {
   wtf_size_t index = 0;
+<<<<<<< HEAD
   for (CycleElem elem : stack_) {
     if (absl::holds_alternative<const CSSProperty*>(elem) &&
         absl::get<const CSSProperty*>(elem)->HasEqualCSSPropertyName(
@@ -71,8 +75,11 @@ wtf_size_t CascadeResolver::Find(const String& attribute) const {
   for (CycleElem elem : stack_) {
     if (absl::holds_alternative<const String*>(elem) &&
         *(absl::get<const String*>(elem)) == attribute) {
+=======
+  for (const CSSProperty* p : stack_) {
+    if (p->GetCSSPropertyName() == property.GetCSSPropertyName())
+>>>>>>> chromium
       return index;
-    }
     ++index;
   }
   return kNotFound;

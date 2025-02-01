@@ -33,7 +33,12 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/static_node_list.h"
+<<<<<<< HEAD
+=======
+#include "third_party/blink/renderer/core/probe/async_task_id.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
@@ -75,6 +80,14 @@ class CORE_EXPORT MutationRecord : public ScriptWrappable {
   virtual const AtomicString& attributeNamespace() { return g_null_atom; }
 
   virtual String oldValue() { return String(); }
+<<<<<<< HEAD
+=======
+
+  probe::AsyncTaskId* async_task_id() { return &async_task_id_; }
+
+ private:
+  probe::AsyncTaskId async_task_id_;
+>>>>>>> chromium
 };
 
 }  // namespace blink

@@ -1,9 +1,10 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/style_color.h"
 
+<<<<<<< HEAD
 #include <memory>
 
 #include "third_party/blink/renderer/core/css/color_function.h"
@@ -17,12 +18,14 @@
 #include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
 #include "third_party/blink/renderer/core/css/properties/css_color_function_parser.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
-#include "third_party/blink/renderer/platform/geometry/calculation_expression_node.h"
-#include "third_party/blink/renderer/platform/geometry/calculation_value.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
 
+<<<<<<< HEAD
 namespace {
 
 using UnderlyingColorType = StyleColor::UnderlyingColorType;
@@ -326,75 +329,35 @@ void StyleColor::ColorOrUnresolvedColorFunction::Trace(Visitor* visitor) const {
 }
 
 Color StyleColor::Resolve(const Color& current_color,
+=======
+Color StyleColor::Resolve(Color current_color,
+>>>>>>> chromium
                           mojom::blink::ColorScheme color_scheme,
-                          bool* is_current_color) const {
-  if (IsUnresolvedColorFunction()) {
-    Color result =
-        color_or_unresolved_color_function_.unresolved_color_function->Resolve(
-            current_color);
-    if (Color::IsLegacyColorSpace(result.GetColorSpace())) {
-      result.ConvertToColorSpace(Color::ColorSpace::kSRGB);
-    }
-    return result;
-  }
-
-  if (is_current_color) {
-    *is_current_color = IsCurrentColor();
-  }
-  if (IsCurrentColor()) {
+                          bool is_forced_color) const {
+  if (IsCurrentColor())
     return current_color;
-  }
-  if (EffectiveColorKeyword() != CSSValueID::kInvalid) {
-    // It is okay to pass nullptr for color_provider here because system colors
-    // are now resolved before used value time.
-    CHECK(!IsSystemColorIncludingDeprecated());
-    return ColorFromKeyword(color_keyword_, color_scheme,
-                            /*color_provider=*/nullptr,
-                            /*is_in_web_app_scope=*/false);
-  }
-  return GetColor();
+  if (EffectiveColorKeyword() != CSSValueID::kInvalid ||
+      (is_forced_color && IsSystemColor()))
+    return ColorFromKeyword(color_keyword_, color_scheme);
+  return color_;
 }
 
 Color StyleColor::ResolveWithAlpha(Color current_color,
                                    mojom::blink::ColorScheme color_scheme,
                                    int alpha,
-                                   bool* is_current_color) const {
-  Color color = Resolve(current_color, color_scheme, is_current_color);
-  // TODO(crbug.com/1333988) This looks unfriendly to CSS Color 4.
+                                   bool is_forced_color) const {
+  Color color = Resolve(current_color, color_scheme, is_forced_color);
   return Color(color.Red(), color.Green(), color.Blue(), alpha);
 }
 
-StyleColor StyleColor::ResolveSystemColor(
-    mojom::blink::ColorScheme color_scheme,
-    const ui::ColorProvider* color_provider,
-    bool is_in_web_app_scope) const {
-  CHECK(IsSystemColor());
-  Color color = ColorFromKeyword(color_keyword_, color_scheme, color_provider,
-                                 is_in_web_app_scope);
-  return StyleColor(color, color_keyword_);
-}
-
-const CSSValue* StyleColor::ToCSSValue() const {
-  if (IsUnresolvedColorFunction()) {
-    return GetUnresolvedColorFunction().ToCSSValue();
-  }
-  if (IsCurrentColor()) {
-    return CSSIdentifierValue::Create(CSSValueID::kCurrentcolor);
-  }
-  return cssvalue::CSSColor::Create(GetColor());
-}
-
 Color StyleColor::ColorFromKeyword(CSSValueID keyword,
-                                   mojom::blink::ColorScheme color_scheme,
-                                   const ui::ColorProvider* color_provider,
-                                   bool is_in_web_app_scope) {
-  std::string_view value_name = GetCSSValueName(keyword);
-  if (const NamedColor* named_color = FindColor(value_name)) {
-    return Color::FromRGBA32(named_color->argb_value);
+                                   mojom::blink::ColorScheme color_scheme) {
+  if (const char* value_name = getValueName(keyword)) {
+    if (const NamedColor* named_color =
+            FindColor(value_name, static_cast<wtf_size_t>(strlen(value_name))))
+      return Color(named_color->argb_value);
   }
-
-  return LayoutTheme::GetTheme().SystemColor(
-      keyword, color_scheme, color_provider, is_in_web_app_scope);
+  return LayoutTheme::GetTheme().SystemColor(keyword, color_scheme);
 }
 
 bool StyleColor::IsColorKeyword(CSSValueID id) {
@@ -420,94 +383,22 @@ bool StyleColor::IsColorKeyword(CSSValueID id) {
   //   '-webkit-focus-ring-color'
   //   '-internal-quirk-inherit'
   //
-  // css-text-decor
-  // <https://github.com/w3c/csswg-drafts/issues/7522>
-  //   '-internal-spelling-error-color'
-  //   '-internal-grammar-error-color'
-  //
-  // ::search-text
-  // <https://github.com/w3c/csswg-drafts/issues/10329>
-  //   ‘-internal-search-color’
-  //   ‘-internal-search-text-color’
-  //   ‘-internal-current-search-color’
-  //   ‘-internal-current-search-text-color’
-  //
-  return (id >= CSSValueID::kAqua &&
-          id <= CSSValueID::kInternalCurrentSearchTextColor) ||
+  return (id >= CSSValueID::kAqua && id <= CSSValueID::kInternalQuirkInherit) ||
          (id >= CSSValueID::kAliceblue && id <= CSSValueID::kYellowgreen) ||
          id == CSSValueID::kMenu;
 }
 
-Color StyleColor::GetColor() const {
-  // System colors will fail the IsNumeric check, as they store a keyword, but
-  // they also have a stored color that may need to be accessed directly. For
-  // example in FilterEffectBuilder::BuildFilterEffect for shadow colors.
-  // Unresolved color functions do not yet have a stored color.
-  DCHECK(!IsUnresolvedColorFunction());
-  DCHECK(IsNumeric() || IsSystemColorIncludingDeprecated());
-  return color_or_unresolved_color_function_.color;
-}
-
-bool StyleColor::IsSystemColorIncludingDeprecated(CSSValueID id) {
+bool StyleColor::IsSystemColor(CSSValueID id) {
   return (id >= CSSValueID::kActiveborder && id <= CSSValueID::kWindowtext) ||
          id == CSSValueID::kMenu;
 }
 
-bool StyleColor::IsSystemColor(CSSValueID id) {
-  switch (id) {
-    case CSSValueID::kAccentcolor:
-    case CSSValueID::kAccentcolortext:
-    case CSSValueID::kActivetext:
-    case CSSValueID::kButtonborder:
-    case CSSValueID::kButtonface:
-    case CSSValueID::kButtontext:
-    case CSSValueID::kCanvas:
-    case CSSValueID::kCanvastext:
-    case CSSValueID::kField:
-    case CSSValueID::kFieldtext:
-    case CSSValueID::kGraytext:
-    case CSSValueID::kHighlight:
-    case CSSValueID::kHighlighttext:
-    case CSSValueID::kInternalGrammarErrorColor:
-    case CSSValueID::kInternalSpellingErrorColor:
-    case CSSValueID::kInternalSearchColor:
-    case CSSValueID::kInternalSearchTextColor:
-    case CSSValueID::kInternalCurrentSearchColor:
-    case CSSValueID::kInternalCurrentSearchTextColor:
-    case CSSValueID::kLinktext:
-    case CSSValueID::kMark:
-    case CSSValueID::kMarktext:
-    case CSSValueID::kSelecteditem:
-    case CSSValueID::kSelecteditemtext:
-    case CSSValueID::kVisitedtext:
-      return true;
-    default:
-      return false;
-  }
-}
-
 CSSValueID StyleColor::EffectiveColorKeyword() const {
-  return IsSystemColorIncludingDeprecated(color_keyword_) ? CSSValueID::kInvalid
-                                                          : color_keyword_;
-}
-
-CORE_EXPORT std::ostream& operator<<(std::ostream& stream,
-                                     const StyleColor& color) {
-  if (color.IsCurrentColor()) {
-    return stream << "currentcolor";
-  } else if (color.IsUnresolvedColorFunction()) {
-    return stream << color.GetUnresolvedColorFunction();
-  } else if (color.HasColorKeyword() && !color.IsNumeric()) {
-    return stream << GetCSSValueName(color.GetColorKeyword());
-  } else {
-    return stream << color.GetColor();
+  if (!RuntimeEnabledFeatures::CSSSystemColorComputeToSelfEnabled()) {
+    return IsSystemColor(color_keyword_) ? CSSValueID::kInvalid
+                                         : color_keyword_;
   }
-}
-
-CORE_EXPORT std::ostream& operator<<(
-    std::ostream& stream,
-    const StyleColor::UnresolvedColorFunction& unresolved_color_function) {
-  return stream << unresolved_color_function.ToCSSValue()->CssText();
+  return color_keyword_;
 }
 
 }  // namespace blink

@@ -1,10 +1,10 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/download/android/intercept_oma_download_navigation_throttle.h"
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/memory/ptr_util.h"
 #include "chrome/browser/download/android/download_controller_base.h"
 #include "components/embedder_support/user_agent_utils.h"
@@ -56,23 +56,6 @@ InterceptOMADownloadNavigationThrottle::WillProcessResponse() {
     return content::NavigationThrottle::PROCEED;
   }
 
-  // Make the throttle prerender-aware. Prerender must not have any observable
-  // side effects so avoid calling InterceptDownload. The prerender should also
-  // be cancelled in this case but that requires a reference to the
-  // RenderFrameHost which isn't easily available for a download. Instead,
-  // proceed in this throttle; it will be cancelled from
-  // PrerenderNavigationThrottle eventually.
-  // TODO(robertlin): Find a way to port PrerenderHost status checks to Java,
-  // and add a test on Android to verify the cancellation of an OMA download.
-  content::RenderFrameHost* parent_render_frame_host =
-      navigation_handle()->GetParentFrame();
-  if ((parent_render_frame_host &&
-       content::RenderFrameHost::LifecycleState::kPrerendering ==
-           parent_render_frame_host->GetLifecycleState()) ||
-      navigation_handle()->IsInPrerenderedMainFrame()) {
-    return content::NavigationThrottle::PROCEED;
-  }
-
   InterceptDownload();
   return content::NavigationThrottle::CANCEL;
 }
@@ -91,13 +74,12 @@ void InterceptOMADownloadNavigationThrottle::InterceptDownload() {
   if (!url_chain.empty())
     original_url = url_chain.front();
 
+  std::string content_disposition;
   std::string mime_type;
   const net::HttpResponseHeaders* headers =
       navigation_handle()->GetResponseHeaders();
   headers->GetMimeType(&mime_type);
-  std::string content_disposition =
-      headers->GetNormalizedHeader("content-disposition")
-          .value_or(std::string());
+  headers->GetNormalizedHeader("content-disposition", &content_disposition);
   content::WebContents* web_contents = navigation_handle()->GetWebContents();
   int process_id =
       web_contents
@@ -108,9 +90,9 @@ void InterceptOMADownloadNavigationThrottle::InterceptDownload() {
 
   DownloadControllerBase::Get()->CreateAndroidDownload(
       base::BindRepeating(&GetWebContents, process_id, routing_id),
-      DownloadInfo(navigation_handle()->GetURL(), original_url,
-                   content_disposition, mime_type,
-                   embedder_support::GetUserAgent(),
-                   // TODO(qinmin): Get the cookie from cookie store.
-                   std::string(), navigation_handle()->GetReferrer().url));
+      DownloadInfo(
+          navigation_handle()->GetURL(), original_url, content_disposition,
+          mime_type, embedder_support::GetUserAgent(),
+          // TODO(qinmin): Get the cookie from cookie store.
+          std::string(), navigation_handle()->GetReferrer().url.spec()));
 }

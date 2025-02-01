@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,22 +7,25 @@
 
 #include <memory>
 #include <utility>
-#include <vector>
 
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
+#include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "net/base/completion_repeating_callback.h"
 #include "net/base/net_export.h"
+#include "net/base/proxy_server.h"
 #include "net/base/request_priority.h"
 #include "net/dns/public/resolve_error_info.h"
 #include "net/dns/public/secure_dns_policy.h"
 #include "net/http/bidirectional_stream_impl.h"
 #include "net/http/http_auth.h"
 #include "net/http/http_auth_controller.h"
+#include "net/http/http_request_info.h"
 #include "net/http/http_stream_factory.h"
 #include "net/http/http_stream_request.h"
-#include "net/quic/quic_session_pool.h"
+#include "net/proxy_resolution/proxy_resolution_service.h"
+#include "net/quic/quic_stream_factory.h"
 #include "net/socket/client_socket_handle.h"
 #include "net/socket/client_socket_pool.h"
 #include "net/socket/client_socket_pool_manager.h"
@@ -30,8 +33,7 @@
 #include "net/socket/ssl_client_socket.h"
 #include "net/spdy/spdy_session_key.h"
 #include "net/spdy/spdy_session_pool.h"
-#include "net/ssl/ssl_config.h"
-#include "url/gurl.h"
+#include "net/ssl/ssl_config_service.h"
 #include "url/scheme_host_port.h"
 
 namespace net {
@@ -63,30 +65,28 @@ class HttpStreamFactory::Job
   // Delegate to report Job's status to HttpStreamRequest and HttpStreamFactory.
   class NET_EXPORT_PRIVATE Delegate {
    public:
-    virtual ~Delegate() = default;
+    virtual ~Delegate() {}
 
     // Invoked when |job| has an HttpStream ready.
-    virtual void OnStreamReady(Job* job) = 0;
+    virtual void OnStreamReady(Job* job, const SSLConfig& used_ssl_config) = 0;
 
     // Invoked when |job| has a BidirectionalStream ready.
     virtual void OnBidirectionalStreamImplReady(
         Job* job,
+        const SSLConfig& used_ssl_config,
         const ProxyInfo& used_proxy_info) = 0;
 
     // Invoked when |job| has a WebSocketHandshakeStream ready.
     virtual void OnWebSocketHandshakeStreamReady(
         Job* job,
+        const SSLConfig& used_ssl_config,
         const ProxyInfo& used_proxy_info,
         std::unique_ptr<WebSocketHandshakeStreamBase> stream) = 0;
 
-    // Invoked when a QUIC job finished a DNS resolution.
-    virtual void OnQuicHostResolution(
-        const url::SchemeHostPort& destination,
-        base::TimeTicks dns_resolution_start_time,
-        base::TimeTicks dns_resolution_end_time) = 0;
-
     // Invoked when |job| fails to create a stream.
-    virtual void OnStreamFailed(Job* job, int status) = 0;
+    virtual void OnStreamFailed(Job* job,
+                                int status,
+                                const SSLConfig& used_ssl_config) = 0;
 
     // Invoked when |job| fails on the default network.
     virtual void OnFailedOnDefaultNetwork(Job* job) = 0;
@@ -94,19 +94,23 @@ class HttpStreamFactory::Job
     // Invoked when |job| has a certificate error for the HttpStreamRequest.
     virtual void OnCertificateError(Job* job,
                                     int status,
+                                    const SSLConfig& used_ssl_config,
                                     const SSLInfo& ssl_info) = 0;
 
     // Invoked when |job| raises failure for SSL Client Auth.
-    virtual void OnNeedsClientAuth(Job* job, SSLCertRequestInfo* cert_info) = 0;
+    virtual void OnNeedsClientAuth(Job* job,
+                                   const SSLConfig& used_ssl_config,
+                                   SSLCertRequestInfo* cert_info) = 0;
 
     // Invoked when |job| needs proxy authentication.
     virtual void OnNeedsProxyAuth(Job* job,
                                   const HttpResponseInfo& proxy_response,
+                                  const SSLConfig& used_ssl_config,
                                   const ProxyInfo& used_proxy_info,
                                   HttpAuthController* auth_controller) = 0;
 
     // Invoked when the |job| finishes pre-connecting sockets.
-    virtual void OnPreconnectsComplete(Job* job, int result) = 0;
+    virtual void OnPreconnectsComplete(Job* job) = 0;
 
     // Invoked to record connection attempts made by the socket layer to
     // HttpStreamRequest if |job| is associated with HttpStreamRequest.
@@ -114,9 +118,7 @@ class HttpStreamFactory::Job
         Job* job,
         const ConnectionAttempts& attempts) = 0;
 
-    // Invoked when |job| finishes initiating a connection. This may occur
-    // before the handshake is complete, and provides the delegate an
-    // early chance to handle any errors.
+    // Invoked when |job| finishes initiating a connection.
     virtual void OnConnectionInitialized(Job* job, int rv) = 0;
 
     // Return false if |job| can advance to the next state. Otherwise, |job|
@@ -150,10 +152,11 @@ class HttpStreamFactory::Job
   Job(Delegate* delegate,
       JobType job_type,
       HttpNetworkSession* session,
-      const StreamRequestInfo& request_info,
+      const HttpRequestInfo& request_info,
       RequestPriority priority,
       const ProxyInfo& proxy_info,
-      const std::vector<SSLConfig::CertAndStatus>& allowed_bad_certs,
+      const SSLConfig& server_ssl_config,
+      const SSLConfig& proxy_ssl_config,
       url::SchemeHostPort destination,
       GURL origin_url,
       NextProto alternative_protocol,
@@ -161,10 +164,6 @@ class HttpStreamFactory::Job
       bool is_websocket,
       bool enable_ip_based_pooling,
       NetLog* net_log);
-
-  Job(const Job&) = delete;
-  Job& operator=(const Job&) = delete;
-
   ~Job() override;
 
   // Start initiates the process of creating a new HttpStream.
@@ -183,26 +182,16 @@ class HttpStreamFactory::Job
   virtual void Resume();
 
   // Called when |this| is orphaned by Delegate. This is valid for
-  // ALTERNATIVE job and DNS_ALPN_H3 job.
+  // ALTERNATIVE job only.
   void Orphan();
 
   void SetPriority(RequestPriority priority);
 
-  // Returns true if the current request can be immediately sent on a existing
-  // spdy session.
-  bool HasAvailableSpdySession() const;
-
-  // Returns true if the current request can be immediately sent on a existing
-  // QUIC session.
-  bool HasAvailableQuicSession() const;
-
-  // Returns true if a connected (idle or handed out) or connecting socket
-  // exists for the job. This method is not supported for WebSocket and QUIC.
-  bool TargettedSocketGroupHasActiveSocket() const;
-
   const GURL& origin_url() const { return origin_url_; }
   RequestPriority priority() const { return priority_; }
+  bool was_alpn_negotiated() const;
   NextProto negotiated_protocol() const;
+  bool using_spdy() const;
   const NetLogWithSource& net_log() const { return net_log_; }
   HttpStreamRequest::StreamType stream_type() const { return stream_type_; }
 
@@ -212,7 +201,12 @@ class HttpStreamFactory::Job
     return std::move(bidirectional_stream_impl_);
   }
 
+  // Returns the estimated memory usage in bytes.
+  size_t EstimateMemoryUsage() const;
+
   bool is_waiting() const { return next_state_ == STATE_WAIT_COMPLETE; }
+  const SSLConfig& server_ssl_config() const;
+  const SSLConfig& proxy_ssl_config() const;
   const ProxyInfo& proxy_info() const;
   ResolveErrorInfo resolve_error_info() const;
 
@@ -220,14 +214,6 @@ class HttpStreamFactory::Job
 
   bool using_existing_quic_session() const {
     return using_existing_quic_session_;
-  }
-
-  bool expect_on_quic_session_created() const {
-    return expect_on_quic_session_created_;
-  }
-
-  bool expect_on_quic_host_resolution_for_tests() const {
-    return expect_on_quic_host_resolution_;
   }
 
   bool using_quic() const { return using_quic_; }
@@ -261,8 +247,12 @@ class HttpStreamFactory::Job
     STATE_WAITING_USER_ACTION,
     STATE_CREATE_STREAM,
     STATE_CREATE_STREAM_COMPLETE,
+    STATE_DRAIN_BODY_FOR_AUTH_RESTART,
+    STATE_DRAIN_BODY_FOR_AUTH_RESTART_COMPLETE,
     STATE_DONE,
     STATE_NONE,
+    // Used for UMA.
+    STATE_MAX,
   };
 
   void OnStreamReadyCallback();
@@ -276,7 +266,7 @@ class HttpStreamFactory::Job
                                 HttpAuthController* auth_controller,
                                 base::OnceClosure restart_with_auth_callback);
   void OnNeedsClientAuthCallback(SSLCertRequestInfo* cert_info);
-  void OnPreconnectsComplete(int result);
+  void OnPreconnectsComplete();
 
   void OnIOComplete(int result);
   // RunLoop() finishes asynchronously and invokes one of the On* methods (see
@@ -285,20 +275,12 @@ class HttpStreamFactory::Job
   int DoLoop(int result);
   int StartInternal();
   int DoInitConnectionImpl();
-  // `server_cert_verifier_flags` are the cert verifier flags if connecting to a
-  // QUIC server. If making non-tunnelled requests to a QUIC proxy, they will be
-  // ignored.
-  int DoInitConnectionImplQuic(int server_cert_verifier_flags);
+  int DoInitConnectionImplQuic();
 
   // If this is a QUIC alt job, then this function is called when host
   // resolution completes. It's called with the next result after host
   // resolution, not the result of host resolution itself.
   void OnQuicHostResolution(int result);
-
-  // If this is a QUIC alt job, this function is called when the QUIC session is
-  // created. It's called with the result of either failed session creation or
-  // an attempted crypto connection.
-  void OnQuicSessionCreated(int result);
 
   // Invoked when the underlying connection fails on the default network.
   void OnFailedOnDefaultNetwork(int result);
@@ -331,9 +313,21 @@ class HttpStreamFactory::Job
   // This must only be called when we are using an SSLSocket.
   void GetSSLInfo(SSLInfo* ssl_info);
 
-  // Returns true if the resulting stream will use an HTTP GET to the final
-  // proxy in the chain, instead of a CONNECT to the endpoint.
-  bool UsingHttpProxyWithoutTunnel() const;
+  // Called in Job constructor: should Job be forced to use QUIC.
+  static bool ShouldForceQuic(HttpNetworkSession* session,
+                              const url::SchemeHostPort& destination,
+                              const ProxyInfo& proxy_info,
+                              bool using_ssl);
+
+  // Called in Job constructor. Use |spdy_session_key_| after construction.
+  static SpdySessionKey GetSpdySessionKey(
+      bool spdy_session_direct,
+      const ProxyServer& proxy_server,
+      const GURL& origin_url,
+      PrivacyMode privacy_mode,
+      const SocketTag& socket_tag,
+      const NetworkIsolationKey& network_isolation_key,
+      SecureDnsPolicy secure_dns_policy);
 
   // Returns true if the current request can use an existing spdy session.
   bool CanUseExistingSpdySession() const;
@@ -346,12 +340,13 @@ class HttpStreamFactory::Job
   // code is simply returned.
   int ReconsiderProxyAfterError(int error);
 
-  void MaybeCopyConnectionAttemptsFromHandle();
+  void MaybeCopyConnectionAttemptsFromSocketOrHandle();
 
   // Returns true if the request should be throttled to allow for only one
   // connection attempt to be made to an H2 server at a time.
   bool ShouldThrottleConnectForSpdy() const;
 
+<<<<<<< HEAD
   // True if Job actually uses HTTP/2. Note this describes both using HTTP/2
   // with an HTTPS origin, and proxying a cleartext HTTP request over an HTTP/2
   // proxy. This differs from `using_ssl_`, which only describes the origin.
@@ -365,29 +360,27 @@ class HttpStreamFactory::Job
   void RecordCompletionHistograms(int result);
 
   const StreamRequestInfo request_info_;
+=======
+  const HttpRequestInfo request_info_;
+>>>>>>> chromium
   RequestPriority priority_;
   const ProxyInfo proxy_info_;
-  const std::vector<SSLConfig::CertAndStatus> allowed_bad_certs_;
+  SSLConfig server_ssl_config_;
+  SSLConfig proxy_ssl_config_;
   const NetLogWithSource net_log_;
 
   const CompletionRepeatingCallback io_callback_;
   std::unique_ptr<ClientSocketHandle> connection_;
-  const raw_ptr<HttpNetworkSession> session_;
+  HttpNetworkSession* const session_;
 
-  State next_state_ = STATE_NONE;
-
-  bool started_ = false;
+  State next_state_;
 
   // The server we are trying to reach, could be that of the origin or of the
-  // alternative service (after applying host mapping rules). The scheme of this
-  // is always HTTP or HTTPS, even for websockets requests.
+  // alternative service (after applying host mapping rules).
   const url::SchemeHostPort destination_;
 
   // The origin url we're trying to reach. This url may be different from the
-  // original request when host mapping rules are set-up. It has the original
-  // scheme, so may be HTTP, HTTPS, WS, or WSS. It does not change when there's
-  // an alternate service, but it does take into account host mapping rules,
-  // unlike `request_info_.url`.
+  // original request when host mapping rules are set-up.
   const GURL origin_url_;
 
   // True if request is for Websocket.
@@ -403,19 +396,14 @@ class HttpStreamFactory::Job
   const bool enable_ip_based_pooling_;
 
   // Unowned. |this| job is owned by |delegate_|.
-  const raw_ptr<Delegate> delegate_;
+  Delegate* const delegate_;
 
   const JobType job_type_;
 
-  // True if handling a HTTPS request. Note this only describes the origin URL.
-  // If false (an HTTP request), the request may still be sent over an HTTPS
-  // proxy. This differs from `using_quic_` and `using_spdy()`, which also
-  // describe some proxy cases.
+  // True if handling a HTTPS request.
   const bool using_ssl_;
 
-  // True if Job actually uses QUIC. Note this describes both using QUIC
-  // with an HTTPS origin, and proxying a cleartext HTTP request over an QUIC
-  // proxy. This differs from `using_ssl_`, which only describes the origin.
+  // True if Job uses QUIC.
   const bool using_quic_;
 
   // quic::ParsedQuicVersion that should be used to connect to the QUIC
@@ -427,51 +415,62 @@ class HttpStreamFactory::Job
   // the server does not negotiate HTTP/2 on a new socket.
   const bool expect_spdy_;
 
-  // True if this job might succeed with a different proxy config.
-  bool should_reconsider_proxy_ = false;
+  // True if Job actually uses HTTP/2.
+  bool using_spdy_;
 
-  QuicSessionRequest quic_request_;
+  // True if this job might succeed with a different proxy config.
+  bool should_reconsider_proxy_;
+
+  QuicStreamRequest quic_request_;
 
   // Only valid for a QUIC job. Set when a QUIC connection is started. If true,
   // then OnQuicHostResolution() is expected to be called in the future.
-  bool expect_on_quic_host_resolution_ = false;
-
-  // Only valid for a QUIC job. Set when a QUIC connection is started. If true,
-  // OnQuicSessionCreated() is expected to be called in the future.
-  bool expect_on_quic_session_created_ = false;
+  bool expect_on_quic_host_resolution_;
 
   // True if this job used an existing QUIC session.
-  bool using_existing_quic_session_ = false;
+  bool using_existing_quic_session_;
 
   // True when the tunnel is in the process of being established - we can't
   // read from the socket until the tunnel is done.
-  bool establishing_tunnel_ = false;
+  bool establishing_tunnel_;
 
   std::unique_ptr<HttpStream> stream_;
   std::unique_ptr<WebSocketHandshakeStreamBase> websocket_stream_;
   std::unique_ptr<BidirectionalStreamImpl> bidirectional_stream_impl_;
 
+  // True if we negotiated ALPN.
+  bool was_alpn_negotiated_;
+
   // Protocol negotiated with the server.
+<<<<<<< HEAD
   NextProto negotiated_protocol_ = NextProto::kProtoUnknown;
+=======
+  NextProto negotiated_protocol_;
+>>>>>>> chromium
 
   // 0 if we're not preconnecting. Otherwise, the number of streams to
   // preconnect.
-  int num_streams_ = 0;
+  int num_streams_;
 
   // Initialized when we have an existing SpdySession.
   base::WeakPtr<SpdySession> existing_spdy_session_;
 
-  // Which SpdySessions in the pool to use. Note that, if requesting an HTTP URL
-  // through an HTTPS proxy, this key corresponds to the last proxy in the proxy
-  // chain and not the origin server.
+  // Once Job claims a pushed stream on a SpdySession, |pushed_stream_id_| is
+  // the ID of the claimed stream, and |existing_spdy_session_| points to that
+  // SpdySession.  Otherwise |pushed_stream_id_| is set to kNoPushedStreamFound
+  // (but |existing_spdy_session_| can still be non-null).
+  spdy::SpdyStreamId pushed_stream_id_;
+
+  // True if not connecting to an Https proxy for an Http url.
+  const bool spdy_session_direct_;
+
   const SpdySessionKey spdy_session_key_;
 
   // Type of stream that is requested.
-  HttpStreamRequest::StreamType stream_type_ =
-      HttpStreamRequest::BIDIRECTIONAL_STREAM;
+  HttpStreamRequest::StreamType stream_type_;
 
   // Whether Job has continued to DoInitConnection().
-  bool init_connection_already_resumed_ = false;
+  bool init_connection_already_resumed_;
 
   base::OnceClosure restart_with_auth_callback_;
 
@@ -482,6 +481,8 @@ class HttpStreamFactory::Job
   std::unique_ptr<SpdySessionPool::SpdySessionRequest> spdy_session_request_;
 
   base::WeakPtrFactory<Job> ptr_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(Job);
 };
 
 // Factory for creating Jobs.
@@ -491,21 +492,37 @@ class HttpStreamFactory::JobFactory {
 
   virtual ~JobFactory();
 
-  virtual std::unique_ptr<HttpStreamFactory::Job> CreateJob(
+  virtual std::unique_ptr<HttpStreamFactory::Job> CreateMainJob(
       HttpStreamFactory::Job::Delegate* delegate,
       HttpStreamFactory::JobType job_type,
       HttpNetworkSession* session,
-      const StreamRequestInfo& request_info,
+      const HttpRequestInfo& request_info,
       RequestPriority priority,
       const ProxyInfo& proxy_info,
-      const std::vector<SSLConfig::CertAndStatus>& allowed_bad_certs,
+      const SSLConfig& server_ssl_config,
+      const SSLConfig& proxy_ssl_config,
       url::SchemeHostPort destination,
       GURL origin_url,
       bool is_websocket,
       bool enable_ip_based_pooling,
-      NetLog* net_log,
+      NetLog* net_log);
+
+  virtual std::unique_ptr<HttpStreamFactory::Job> CreateAltSvcJob(
+      HttpStreamFactory::Job::Delegate* delegate,
+      HttpStreamFactory::JobType job_type,
+      HttpNetworkSession* session,
+      const HttpRequestInfo& request_info,
+      RequestPriority priority,
+      const ProxyInfo& proxy_info,
+      const SSLConfig& server_ssl_config,
+      const SSLConfig& proxy_ssl_config,
+      url::SchemeHostPort destination,
+      GURL origin_url,
       NextProto alternative_protocol,
-      quic::ParsedQuicVersion quic_version);
+      quic::ParsedQuicVersion quic_version,
+      bool is_websocket,
+      bool enable_ip_based_pooling,
+      NetLog* net_log);
 };
 
 }  // namespace net

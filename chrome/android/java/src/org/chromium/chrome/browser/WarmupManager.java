@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,67 +6,32 @@ package org.chromium.chrome.browser;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.Intent;
-import android.content.res.Configuration;
-import android.content.res.Resources.Theme;
-import android.graphics.Rect;
 import android.net.Uri;
-import android.os.Build;
-import android.os.Build.VERSION_CODES;
-import android.os.Bundle;
-import android.util.ArraySet;
-import android.util.DisplayMetrics;
+import android.os.SystemClock;
 import android.view.ContextThemeWrapper;
 import android.view.InflateException;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.widget.FrameLayout;
 
 import androidx.annotation.IntDef;
-import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import androidx.asynclayoutinflater.appcompat.AsyncAppCompatFactory;
-import androidx.core.content.res.ResourcesCompat;
 
-import org.jni_zero.JniType;
-import org.jni_zero.NativeMethods;
-
-import org.chromium.base.BuildInfo;
-import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
-import org.chromium.base.ResettersForTesting;
-import org.chromium.base.TerminationStatus;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TraceEvent;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.task.AsyncTask;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.app.tab_activity_glue.ReparentingTask;
-import org.chromium.chrome.browser.content.WebContentsFactory;
-import org.chromium.chrome.browser.crash.ChromePureJavaExceptionReporter;
-import org.chromium.chrome.browser.customtabs.CustomTabDelegateFactory;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.tab.EmptyTabObserver;
-import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.chrome.browser.tab.TabBuilder;
-import org.chromium.chrome.browser.tab.TabDelegateFactory;
-import org.chromium.chrome.browser.tab.TabLaunchType;
-import org.chromium.chrome.browser.tab.TabUtils;
 import org.chromium.chrome.browser.toolbar.ControlContainer;
 import org.chromium.components.embedder_support.util.UrlConstants;
-import org.chromium.content_public.browser.Visibility;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsObserver;
-import org.chromium.net.NetId;
 import org.chromium.ui.LayoutInflaterUtils;
-import org.chromium.ui.base.WindowAndroid;
-import org.chromium.ui.display.DisplayUtil;
-import org.chromium.url.GURL;
-import org.chromium.url.Origin;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -88,66 +53,40 @@ import java.util.Set;
 public class WarmupManager {
     private static final String TAG = "WarmupManager";
 
+    @VisibleForTesting
+    static final String WEBCONTENTS_STATUS_HISTOGRAM = "CustomTabs.SpareWebContents.Status2";
+
+    public static final boolean FOR_CCT = true;
+
+    // See CustomTabs.SpareWebContentsStatus histogram. Append-only.
+    @IntDef({WebContentsStatus.CREATED, WebContentsStatus.USED, WebContentsStatus.KILLED,
+            WebContentsStatus.DESTROYED, WebContentsStatus.STOLEN})
+    @Retention(RetentionPolicy.SOURCE)
+    @interface WebContentsStatus {
+        @VisibleForTesting
+        int CREATED = 0;
+        @VisibleForTesting
+        int USED = 1;
+        @VisibleForTesting
+        int KILLED = 2;
+        @VisibleForTesting
+        int DESTROYED = 3;
+        @VisibleForTesting
+        int STOLEN = 4;
+        int NUM_ENTRIES = 5;
+    }
+
     /**
      * Observes spare WebContents deaths. In case of death, records stats, and cleanup the objects.
      */
     private class RenderProcessGoneObserver extends WebContentsObserver {
         @Override
-        public void primaryMainFrameRenderProcessGone(@TerminationStatus int terminationStatus) {
+        public void renderProcessGone(boolean wasOomProtected) {
+            long elapsed = SystemClock.elapsedRealtime() - mWebContentsCreationTimeMs;
+            RecordHistogram.recordLongTimesHistogram(
+                    "CustomTabs.SpareWebContents.TimeBeforeDeath", elapsed);
+            recordWebContentsStatus(WebContentsStatus.KILLED);
             destroySpareWebContentsInternal();
-        }
-    }
-
-    /** Records stats, observes crashes, and cleans up spareTab object. */
-    private class HiddenTabObserver extends EmptyTabObserver {
-        // This WindowAndroid is "owned" by the Tab and should be destroyed when it is no longer
-        // needed by the Tab or when the Tab is destroyed.
-        private WindowAndroid mOwnedWindowAndroid;
-
-        public HiddenTabObserver(WindowAndroid ownedWindowAndroid) {
-            mOwnedWindowAndroid = ownedWindowAndroid;
-        }
-
-        @Override
-        // Invoked when tab crashes, or when the associated renderer process is killed.
-        public void onCrash(Tab tab) {
-            if (mSpareTab != tab) return;
-            mSpareTabFinalStatus = SpareTabFinalStatus.TAB_CRASHED;
-            destroySpareTabInternal(tab);
-        }
-
-        @Override
-        public void onDestroyed(Tab tab) {
-            destroyOwnedWindow(tab);
-        }
-
-        @Override
-        public void onActivityAttachmentChanged(Tab tab, WindowAndroid window) {
-            destroyOwnedWindow(tab);
-        }
-
-        private void destroyOwnedWindow(Tab tab) {
-            assert mOwnedWindowAndroid != null;
-            mOwnedWindowAndroid.destroy();
-            mOwnedWindowAndroid = null;
-            tab.removeObserver(this);
-        }
-    }
-
-    /** Context wrapper that routes APIs via Activity context once it's available. */
-    private static class CctContextWrapper extends ContextThemeWrapper {
-        Context mActivityContext;
-
-        public CctContextWrapper(Context base, int themeResId) {
-            super(base, themeResId);
-        }
-
-        @Override
-        public void startActivity(Intent intent, @Nullable Bundle options) {
-            // Starting activities generally requires an Activity context.
-            // https://crbug.com/334755104
-            Context target = mActivityContext != null ? mActivityContext : getBaseContext();
-            target.startActivity(intent, options);
         }
     }
 
@@ -159,8 +98,11 @@ public class WarmupManager {
 
     private int mToolbarContainerId;
     private ViewGroup mMainView;
-    @VisibleForTesting WebContents mSpareWebContents;
+    @VisibleForTesting
+    WebContents mSpareWebContents;
+    private long mWebContentsCreationTimeMs;
     private RenderProcessGoneObserver mObserver;
+<<<<<<< HEAD
     private boolean mIsCctPrewarmTabEnabled;
 
     // Stores a prebuilt tab. To load a URL, this can be used if available instead of creating one
@@ -383,6 +325,9 @@ public class WarmupManager {
         sWarmupManager = instance;
         ResettersForTesting.register(() -> sWarmupManager = oldValue);
     }
+=======
+    private boolean mWebContentsCreatedForCCT;
+>>>>>>> chromium
 
     /**
      * @return The singleton instance for the WarmupManager, creating one if necessary.
@@ -404,20 +349,15 @@ public class WarmupManager {
      * @param toolbarContainerId Id of the toolbar container.
      * @param toolbarId The toolbar's layout ID.
      */
-    public void initializeViewHierarchy(
-            Context baseContext, int toolbarContainerId, int toolbarId) {
+    public void initializeViewHierarchy(Context baseContext, int toolbarContainerId,
+            int toolbarId) {
         ThreadUtils.assertOnUiThread();
         if (mMainView != null && mToolbarContainerId == toolbarContainerId) return;
-
-        CctContextWrapper context =
-                new CctContextWrapper(
-                        applyContextOverrides(baseContext), ActivityUtils.getThemeId());
-        applyThemeOverlays(context);
-
-        mMainView = inflateViewHierarchy(context, toolbarContainerId, toolbarId);
+        mMainView = inflateViewHierarchy(baseContext, toolbarContainerId, toolbarId);
         mToolbarContainerId = toolbarContainerId;
     }
 
+<<<<<<< HEAD
     @VisibleForTesting
     static Context applyContextOverrides(Context baseContext) {
         // Scale up the UI for the base Context on automotive
@@ -448,48 +388,40 @@ public class WarmupManager {
         }
     }
 
+=======
+>>>>>>> chromium
     /**
-     * Inflates and constructs the view hierarchy that the app will use. Calls to this are not
-     * restricted to the UI thread.
-     *
-     * @param context The context to use for inflation.
+     * Inflates and constructs the view hierarchy that the app will use.
+     * Calls to this are not restricted to the UI thread.
+     * @param baseContext The base context to use for creating the ContextWrapper.
      * @param toolbarContainerId Id of the toolbar container.
      * @param toolbarId The toolbar's layout ID.
      */
-    private static ViewGroup inflateViewHierarchy(
-            CctContextWrapper context, int toolbarContainerId, int toolbarId) {
+    public static ViewGroup inflateViewHierarchy(
+            Context baseContext, int toolbarContainerId, int toolbarId) {
         try (TraceEvent e = TraceEvent.scoped("WarmupManager.inflateViewHierarchy")) {
+            ContextThemeWrapper context =
+                    new ContextThemeWrapper(baseContext, ActivityUtils.getThemeId());
             FrameLayout contentHolder = new FrameLayout(context);
-            var layoutInflater = LayoutInflater.from(context);
-            layoutInflater.setFactory2(new AsyncAppCompatFactory());
             ViewGroup mainView =
-                    (ViewGroup)
-                            LayoutInflaterUtils.inflate(
-                                    layoutInflater, R.layout.main, contentHolder);
+                    (ViewGroup) LayoutInflaterUtils.inflate(context, R.layout.main, contentHolder);
             if (toolbarContainerId != ActivityUtils.NO_RESOURCE_ID) {
-                ViewStub stub = mainView.findViewById(R.id.control_container_stub);
+                ViewStub stub = (ViewStub) mainView.findViewById(R.id.control_container_stub);
                 stub.setLayoutResource(toolbarContainerId);
                 stub.inflate();
             }
             // It cannot be assumed that the result of toolbarContainerStub.inflate() will be
             // the control container since it may be wrapped in another view.
-            ControlContainer controlContainer = mainView.findViewById(R.id.control_container);
+            ControlContainer controlContainer =
+                    (ControlContainer) mainView.findViewById(R.id.control_container);
 
             if (toolbarId != ActivityUtils.NO_RESOURCE_ID && controlContainer != null) {
                 controlContainer.initWithToolbar(toolbarId);
             }
             return mainView;
         } catch (InflateException e) {
-            // Warmup manager is only a performance improvement. If inflation failed, it will be
-            // redone when the CCT is actually launched using an activity context. So, swallow
-            // exceptions here to improve resilience. See https://crbug.com/606715.
+            // See https://crbug.com/606715.
             Log.e(TAG, "Inflation exception.", e);
-            // An exception caught here may indicate a real bug in production code. We report the
-            // exceptions to monitor any spikes or stacks that point to Chrome code.
-            Throwable throwable =
-                    new Throwable(
-                            "This is not a crash. See https://crbug.com/1259276 for details.", e);
-            ChromePureJavaExceptionReporter.reportJavaException(throwable);
             return null;
         }
     }
@@ -497,51 +429,40 @@ public class WarmupManager {
     /**
      * Transfers all the children in the local view hierarchy {@link #mMainView} to the given
      * ViewGroup {@param contentView} as child.
-     *
      * @param contentView The parent ViewGroup to use for the transfer.
      */
     public void transferViewHierarchyTo(ViewGroup contentView) {
         ThreadUtils.assertOnUiThread();
-        ViewGroup from = mMainView;
-        Set<Theme> rebasedThemes = new ArraySet<Theme>(from.getChildCount());
+        ViewGroup viewHierarchy = mMainView;
         mMainView = null;
-        if (from == null) return;
-        ((CctContextWrapper) from.getContext()).mActivityContext = contentView.getContext();
+        if (viewHierarchy == null) return;
+        transferViewHeirarchy(viewHierarchy, contentView);
+    }
+
+    /**
+     * Transfers all the children in one view hierarchy {@param from} to another {@param to}.
+     * @param from The parent ViewGroup to transfer children from.
+     * @param to The parent ViewGroup to transfer children to.
+     */
+    public static void transferViewHeirarchy(ViewGroup from, ViewGroup to) {
         while (from.getChildCount() > 0) {
             View currentChild = from.getChildAt(0);
             from.removeView(currentChild);
-            contentView.addView(currentChild);
-            // Purge any previously cached resources and ensure the Theme is rebased to match
-            // the Theme of the view hierarchy the reused views are attached to.
-            var theme = currentChild.getContext().getTheme();
-            if (!rebasedThemes.contains(theme)) {
-                ResourcesCompat.ThemeCompat.rebase(theme);
-                ResourcesCompat.clearCachesForTheme(theme);
-                rebasedThemes.add(theme);
-            }
+            to.addView(currentChild);
         }
     }
 
     /**
-     * @param toolbarContainerId Toolbare container ID.
-     * @param context Context in which the CustomTab is launched.
-     * @return Whether a pre-built view hierarchy of compatible metrics exists
-     *     for the given toolbarContainerId.
+     * @return Whether a pre-built view hierarchy exists for the given toolbarContainerId.
      */
-    public boolean hasViewHierarchyWithToolbar(int toolbarContainerId, Context context) {
+    public boolean hasViewHierarchyWithToolbar(int toolbarContainerId) {
         ThreadUtils.assertOnUiThread();
-        if (mMainView == null || mToolbarContainerId != toolbarContainerId) {
-            return false;
-        }
-        DisplayMetrics preDm = mMainView.getContext().getResources().getDisplayMetrics();
-        DisplayMetrics curDm = context.getResources().getDisplayMetrics();
-        // If following displayMetrics params don't match, toolbar is being shown on a display
-        // incompatible with the one it was built with, which may result in a view of a wrong
-        // height. Return false to have it re-inflated with the right context.
-        return preDm.xdpi == curDm.xdpi && preDm.ydpi == curDm.ydpi;
+        return mMainView != null && mToolbarContainerId == toolbarContainerId;
     }
 
-    /** Clears the inflated view hierarchy. */
+    /**
+     * Clears the inflated view hierarchy.
+     */
     public void clearViewHierarchy() {
         ThreadUtils.assertOnUiThread();
         mMainView = null;
@@ -558,7 +479,7 @@ public class WarmupManager {
             @Override
             protected Void doInBackground() {
                 try (TraceEvent e =
-                        TraceEvent.scoped("WarmupManager.prefetchDnsForUrlInBackground")) {
+                                TraceEvent.scoped("WarmupManager.prefetchDnsForUrlInBackground")) {
                     InetAddress.getByName(new URL(url).getHost());
                 } catch (MalformedURLException e) {
                     // We don't do anything with the result of the request, it
@@ -579,7 +500,8 @@ public class WarmupManager {
                     maybePreconnectUrlAndSubResources(profile, url);
                 }
             }
-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        }
+                .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     /** Launches a background DNS query for a given URL.
@@ -588,10 +510,8 @@ public class WarmupManager {
      * @param url URL from which the domain to query is extracted.
      */
     public void maybePrefetchDnsForUrlInBackground(Context context, String url) {
-        try (TraceEvent e = TraceEvent.scoped("WarmupManager.maybePrefetchDnsForUrlInBackground")) {
-            ThreadUtils.assertOnUiThread();
+        ThreadUtils.assertOnUiThread();
             prefetchDnsForUrlInBackground(url);
-        }
     }
 
     /**
@@ -603,11 +523,8 @@ public class WarmupManager {
      * @param profile The profile to use for the predictor.
      */
     public static void startPreconnectPredictorInitialization(Profile profile) {
-        try (TraceEvent e =
-                TraceEvent.scoped("WarmupManager.startPreconnectPredictorInitialization")) {
-            ThreadUtils.assertOnUiThread();
-            WarmupManagerJni.get().startPreconnectPredictorInitialization(profile);
-        }
+        ThreadUtils.assertOnUiThread();
+        WarmupManagerJni.get().startPreconnectPredictorInitialization(profile);
     }
 
     /** Asynchronously preconnects to a given URL if the data reduction proxy is not in use.
@@ -616,94 +533,45 @@ public class WarmupManager {
      * @param url The URL we want to preconnect to.
      */
     public void maybePreconnectUrlAndSubResources(Profile profile, String url) {
-        try (TraceEvent e = TraceEvent.scoped("WarmupManager.maybePreconnectUrlAndSubResources")) {
-            ThreadUtils.assertOnUiThread();
+        ThreadUtils.assertOnUiThread();
 
-            Uri uri = Uri.parse(url);
-            if (uri == null) return;
-            String scheme = uri.normalizeScheme().getScheme();
-            if (!UrlConstants.HTTP_SCHEME.equals(scheme)
-                    && !UrlConstants.HTTPS_SCHEME.equals(scheme)) {
-                return;
-            }
-
-            // If there is already a DNS request in flight for this URL, then the preconnection will
-            // start by issuing a DNS request for the same domain, as the result is not cached.
-            // However, such a DNS request has already been sent from this class, so it is better to
-            // wait for the answer to come back before preconnecting. Otherwise, the preconnection
-            // logic will wait for the result of the second DNS request, which should arrive after
-            // the result of the first one. Note that we however need to wait for the main thread to
-            // be available in this case, since the preconnection will be sent from
-            // AsyncTask.onPostExecute(), which may delay it.
-            if (mDnsRequestsInFlight.contains(url)) {
-                // Note that if two requests come for the same URL with two different profiles, the
-                // last one will win.
-                mPendingPreconnectWithProfile.put(url, profile);
-            } else {
-                WarmupManagerJni.get().preconnectUrlAndSubresources(profile, url);
-            }
+        Uri uri = Uri.parse(url);
+        if (uri == null) return;
+        String scheme = uri.normalizeScheme().getScheme();
+        if (!UrlConstants.HTTP_SCHEME.equals(scheme) && !UrlConstants.HTTPS_SCHEME.equals(scheme)) {
+            return;
         }
-    }
 
-    /**
-     * Request the browser to start navigational prefetch to the page that will be used for future
-     * navigations.
-     *
-     * @param url The url to be prefetched for future navigations.
-     * @param usePrefetchProxy The flag whether the private prefetch proxy is used in requested
-     *     prefetch.
-     * @param verifiedSourceOrigin The origin that prefetch is requested from. Currently, this is
-     *     always null.
-     */
-    public void startPrefetchFromCct(
-            String url, boolean usePrefetchProxy, @Nullable String verifiedSourceOrigin) {
-        try (TraceEvent e = TraceEvent.scoped("WarmupManager.startPrefetchFromCct")) {
-            ThreadUtils.assertOnUiThread();
-            if (!ChromeFeatureList.sPrefetchBrowserInitiatedTriggers.isEnabled()
-                    || !ChromeFeatureList.sCctNavigationalPrefetch.isEnabled()) {
-                Log.w(
-                        TAG,
-                        "Prefetch failed because PrefetchBrowserInitiatedTriggers and/or"
-                                + " CCTNavigationalPrefetch is not enabled.");
-                return;
-            }
-
-            WebContents webContents = null;
-            if (ChromeFeatureList.isEnabled(ChromeFeatureList.CCT_PREWARM_TAB)
-                    && mSpareTab != null) {
-                webContents = mSpareTab.getWebContents();
-            } else {
-                webContents = mSpareWebContents;
-            }
-
-            if (webContents == null) {
-                Log.e(
-                        TAG,
-                        "Prefetch failed because spare WebContents is null. warmup() is required"
-                                + " beforehand.");
-                return;
-            }
-            final GURL gurl = new GURL(url);
-            Origin origin = Origin.createOpaqueOrigin();
-            if (verifiedSourceOrigin != null) {
-                origin = Origin.create(new GURL(verifiedSourceOrigin));
-            }
-            WarmupManagerJni.get()
-                    .startPrefetchFromCct(webContents, gurl, usePrefetchProxy, origin);
+        // If there is already a DNS request in flight for this URL, then the preconnection will
+        // start by issuing a DNS request for the same domain, as the result is not cached. However,
+        // such a DNS request has already been sent from this class, so it is better to wait for the
+        // answer to come back before preconnecting. Otherwise, the preconnection logic will wait
+        // for the result of the second DNS request, which should arrive after the result of the
+        // first one. Note that we however need to wait for the main thread to be available in this
+        // case, since the preconnection will be sent from AsyncTask.onPostExecute(), which may
+        // delay it.
+        if (mDnsRequestsInFlight.contains(url)) {
+            // Note that if two requests come for the same URL with two different profiles, the last
+            // one will win.
+            mPendingPreconnectWithProfile.put(url, profile);
+        } else {
+            WarmupManagerJni.get().preconnectUrlAndSubresources(profile, url);
         }
     }
 
     /**
      * Creates and initializes a spare WebContents, to be used in a subsequent navigation.
      *
-     * <p>This creates a renderer that is suitable for any navigation. It can be picked up by any
-     * tab. Can be called multiple times, and must be called from the UI thread.
+     * This creates a renderer that is suitable for any navigation. It can be picked up by any tab.
+     * Can be called multiple times, and must be called from the UI thread.
+     *
+     * @param forCCT Whether this WebContents is being created for CCT.
      */
-    public void createSpareWebContents(Profile profile) {
-        try (TraceEvent e = TraceEvent.scoped("WarmupManager.createSpareWebContents")) {
-            ThreadUtils.assertOnUiThread();
-            if (!LibraryLoader.getInstance().isInitialized() || mSpareWebContents != null) return;
+    public void createSpareWebContents(boolean forCCT) {
+        ThreadUtils.assertOnUiThread();
+        if (!LibraryLoader.getInstance().isInitialized() || mSpareWebContents != null) return;
 
+<<<<<<< HEAD
             mSpareWebContents =
                     WebContentsFactory.createWebContentsWithWarmRenderer(
                             profile,
@@ -712,26 +580,37 @@ public class WarmupManager {
             mObserver = new RenderProcessGoneObserver();
             mObserver.observe(mSpareWebContents);
         }
+=======
+        mWebContentsCreatedForCCT = forCCT;
+        mSpareWebContents = new WebContentsFactory().createWebContentsWithWarmRenderer(
+                Profile.getLastUsedRegularProfile(), true /* initiallyHidden */);
+        mObserver = new RenderProcessGoneObserver();
+        mSpareWebContents.addObserver(mObserver);
+        mWebContentsCreationTimeMs = SystemClock.elapsedRealtime();
+        recordWebContentsStatus(WebContentsStatus.CREATED);
+>>>>>>> chromium
     }
 
-    /** Destroys the spare WebContents if there is one. */
+    /**
+     * Destroys the spare WebContents if there is one.
+     */
     public void destroySpareWebContents() {
-        try (TraceEvent e = TraceEvent.scoped("WarmupManager.destroySpareWebContents")) {
-            ThreadUtils.assertOnUiThread();
-            if (mSpareWebContents == null) return;
-            destroySpareWebContentsInternal();
-        }
+        ThreadUtils.assertOnUiThread();
+        if (mSpareWebContents == null) return;
+        recordWebContentsStatus(WebContentsStatus.DESTROYED);
+        destroySpareWebContentsInternal();
     }
 
     /**
      * Returns a spare WebContents or null, depending on the availability of one.
      *
-     * @param targetsNetwork whether the activity/tab associated with this WebContents targets a
-     *     network (supported only by multi-network CCT, see @{link
-     *     BrowserServicesIntentDataProvider#getTargetNetwork).
+     * The parameters are the same as for {@link WebContentsFactory#createWebContents()}.
+     * @param forCCT Whether this WebContents is being taken by CCT.
+     *
      * @return a WebContents, or null.
      */
     public WebContents takeSpareWebContents(
+<<<<<<< HEAD
             boolean incognito, boolean initiallyHidden, boolean targetsNetwork) {
         try (TraceEvent e = TraceEvent.scoped("WarmupManager.takeSpareWebContents")) {
             ThreadUtils.assertOnUiThread();
@@ -750,6 +629,20 @@ public class WarmupManager {
             if (!initiallyHidden) result.updateWebContentsVisibility(Visibility.VISIBLE);
             return result;
         }
+=======
+            boolean incognito, boolean initiallyHidden, boolean forCCT) {
+        ThreadUtils.assertOnUiThread();
+        if (incognito) return null;
+        WebContents result = mSpareWebContents;
+        if (result == null) return null;
+        mSpareWebContents = null;
+        result.removeObserver(mObserver);
+        mObserver = null;
+        if (!initiallyHidden) result.onShow();
+        recordWebContentsStatus(mWebContentsCreatedForCCT == forCCT ? WebContentsStatus.USED
+                                                                    : WebContentsStatus.STOLEN);
+        return result;
+>>>>>>> chromium
     }
 
     /**
@@ -766,29 +659,15 @@ public class WarmupManager {
         mObserver = null;
     }
 
-    // We do some cleanup on Activity teardown, so to avoid activating the experiment for all users
-    // regardless of whether they actually interact with the feature, cache the flag here.
-    // This only works if no non-test code calls
-    // ChromeFeatureList.isEnabled(ChromeFeatureList.CCT_PREWARM_TAB) directly.
-    public boolean isCctPrewarmTabFeatureEnabled(boolean activateExperiment) {
-        if (activateExperiment) {
-            mIsCctPrewarmTabEnabled =
-                    ChromeFeatureList.isEnabled(ChromeFeatureList.CCT_PREWARM_TAB);
-        }
-        return mIsCctPrewarmTabEnabled;
+    private void recordWebContentsStatus(@WebContentsStatus int status) {
+        if (!mWebContentsCreatedForCCT) return;
+        RecordHistogram.recordEnumeratedHistogram(
+                WEBCONTENTS_STATUS_HISTOGRAM, status, WebContentsStatus.NUM_ENTRIES);
     }
 
     @NativeMethods
     interface Natives {
-        void startPreconnectPredictorInitialization(@JniType("Profile*") Profile profile);
-
-        void preconnectUrlAndSubresources(
-                @JniType("Profile*") Profile profile, @JniType("std::string") String url);
-
-        void startPrefetchFromCct(
-                @JniType("content::WebContents*") WebContents webContents,
-                @JniType("GURL") GURL url,
-                boolean usePrefetchProxy,
-                @JniType("std::optional<url::Origin>") Origin verifiedSourceOrigin);
+        void startPreconnectPredictorInitialization(Profile profile);
+        void preconnectUrlAndSubresources(Profile profile, String url);
     }
 }

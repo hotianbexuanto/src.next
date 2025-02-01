@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright (c) 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -47,10 +47,12 @@ enum DisableReason {
   // Blocked due to management policy.
   DISABLE_BLOCKED_BY_POLICY = 1 << 16,
   // DISABLE_BLOCKED_MATURE = 1 << 17, // Deprecated.
-  // DISABLE_REMOTELY_FOR_MALWARE = 1 << 18, // Deprecated.
+  // Remotely disabled due to malware.
+  DISABLE_REMOTELY_FOR_MALWARE = 1 << 18,
   DISABLE_REINSTALL = 1 << 19,
   // Disabled by Safe Browsing extension allowlist enforcement.
   DISABLE_NOT_ALLOWLISTED = 1 << 20,
+<<<<<<< HEAD
   // Deprecated, do not use in new code.
   DEPRECATED_DISABLE_NOT_ASH_KEEPLISTED = 1 << 21,
   // Disabled by policy when the extension is unpublished from the web store.
@@ -67,6 +69,10 @@ enum DisableReason {
   DISABLE_UNKNOWN = 1 << 25,
   // This should always be the last value.
   DISABLE_REASON_LAST = 1LL << 26,
+=======
+  // This should always be the last value.
+  DISABLE_REASON_LAST = 1LL << 21,
+>>>>>>> chromium
 };
 
 static_assert(DISABLE_REASON_LAST - 1 <= std::numeric_limits<int>::max(),

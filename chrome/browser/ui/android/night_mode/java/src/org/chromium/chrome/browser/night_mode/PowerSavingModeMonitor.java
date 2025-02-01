@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,7 +22,9 @@ import org.chromium.base.task.TaskRunner;
 import org.chromium.base.task.TaskTraits;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 
-/** Observes and keeps a record of whether the system power saving mode is on. */
+/**
+ * Observes and keeps a record of whether the system power saving mode is on.
+ */
 public class PowerSavingModeMonitor {
     private static PowerSavingModeMonitor sInstance;
 
@@ -35,7 +37,14 @@ public class PowerSavingModeMonitor {
     }
 
     private final ObserverList<Runnable> mObservers = new ObserverList<>();
+<<<<<<< HEAD
     @Nullable private final PowerManager mPowerManager;
+=======
+    @Nullable
+    private final PowerManager mPowerManager;
+    @Nullable
+    private BroadcastReceiver mPowerModeReceiver;
+>>>>>>> chromium
 
     @Nullable private volatile BroadcastReceiver mPowerModeReceiver;
     private boolean mPowerSavingIsOn;
@@ -65,6 +74,7 @@ public class PowerSavingModeMonitor {
     }
 
     private PowerSavingModeMonitor() {
+<<<<<<< HEAD
         mPowerManager =
                 (PowerManager)
                         ContextUtils.getApplicationContext()
@@ -76,6 +86,11 @@ public class PowerSavingModeMonitor {
                         updatePowerSaveMode();
                     }
                 };
+=======
+        mPowerManager = (PowerManager) ContextUtils.getApplicationContext().getSystemService(
+                Context.POWER_SERVICE);
+
+>>>>>>> chromium
         updatePowerSaveMode();
         updateAccordingToAppState();
         ApplicationStatus.registerApplicationStateListener(state -> updateAccordingToAppState());
@@ -91,6 +106,7 @@ public class PowerSavingModeMonitor {
         }
     }
 
+<<<<<<< HEAD
     private void startAsync() {
         if (mRegisterTaskPosted) return;
 
@@ -109,6 +125,19 @@ public class PowerSavingModeMonitor {
                 };
 
         mRegisterTaskPosted = true;
+=======
+    private void start() {
+        if (mPowerModeReceiver == null) {
+            mPowerModeReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    updatePowerSaveMode();
+                }
+            };
+            ContextUtils.getApplicationContext().registerReceiver(mPowerModeReceiver,
+                    new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED));
+        }
+>>>>>>> chromium
         updatePowerSaveMode();
         mRegisterReceiverTask.executeOnTaskRunner(sSequencedTaskRunner);
     }

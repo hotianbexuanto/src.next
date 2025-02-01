@@ -1,48 +1,32 @@
-// Copyright 2010 The Chromium Authors
+// Copyright (c) 2010 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/loader/cookie_jar.h"
 
-#include <cstdint>
-
-#include "base/debug/dump_without_crashing.h"
 #include "base/metrics/histogram_functions.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/strings/strcat.h"
-#include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
+#include "third_party/blink/public/common/browser_interface_broker_proxy.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
-#include "third_party/blink/renderer/platform/weborigin/kurl_hash.h"
-#include "third_party/blink/renderer/platform/wtf/hash_functions.h"
-#include "third_party/blink/renderer/platform/wtf/text/string_hash.h"
-#include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
 namespace {
 
-enum class CookieCacheLookupResult {
-  kCacheMissFirstAccess = 0,
-  kCacheHitAfterGet = 1,
-  kCacheHitAfterSet = 2,
-  kCacheMissAfterGet = 3,
-  kCacheMissAfterSet = 4,
-  kMaxValue = kCacheMissAfterSet,
-};
-
-// Histogram for tracking first cookie requests.
-constexpr char kFirstCookieRequestHistogram[] =
-    "Blink.Experimental.Cookies.FirstCookieRequest";
-
-// TODO(crbug.com/1276520): Remove after truncating characters are fully
-// deprecated.
-bool ContainsTruncatingChar(UChar c) {
-  // equivalent to '\x00', '\x0D', or '\x0A'
-  return c == '\0' || c == '\r' || c == '\n';
+void LogCookieHistogram(const char* prefix,
+                        bool cookie_manager_requested,
+                        base::TimeDelta elapsed) {
+  base::UmaHistogramTimes(
+      base::StrCat({prefix, cookie_manager_requested ? "ManagerRequested"
+                                                     : "ManagerAvailable"}),
+      elapsed);
 }
 
 }  // namespace
@@ -63,6 +47,7 @@ void CookieJar::SetCookie(const String& value) {
     return;
 
   base::ElapsedTimer timer;
+<<<<<<< HEAD
   RequestRestrictedCookieManagerIfNeeded();
   backend_->SetCookieFromString(
       cookie_url, document_->SiteForCookies(), document_->TopFrameOrigin(),
@@ -84,6 +69,12 @@ void CookieJar::SetCookie(const String& value) {
 void CookieJar::OnBackendDisconnect() {
   shared_memory_version_client_.reset();
   InvalidateCache();
+=======
+  bool requested = RequestRestrictedCookieManagerIfNeeded();
+  backend_->SetCookieFromString(cookie_url, document_->SiteForCookies(),
+                                document_->TopFrameOrigin(), value);
+  LogCookieHistogram("Blink.SetCookieTime.", requested, timer.Elapsed());
+>>>>>>> chromium
 }
 
 String CookieJar::Cookies() {
@@ -92,6 +83,7 @@ String CookieJar::Cookies() {
     return String();
 
   base::ElapsedTimer timer;
+<<<<<<< HEAD
   RequestRestrictedCookieManagerIfNeeded();
 
   String value = g_empty_string;
@@ -137,6 +129,14 @@ String CookieJar::Cookies() {
     LogFirstCookieRequest(FirstCookieRequest::kFirstOperationWasGet);
   }
   return last_cookies_;
+=======
+  bool requested = RequestRestrictedCookieManagerIfNeeded();
+  String value;
+  backend_->GetCookiesString(cookie_url, document_->SiteForCookies(),
+                             document_->TopFrameOrigin(), &value);
+  LogCookieHistogram("Blink.CookiesTime.", requested, timer.Elapsed());
+  return value;
+>>>>>>> chromium
 }
 
 bool CookieJar::CookiesEnabled() {
@@ -145,8 +145,9 @@ bool CookieJar::CookiesEnabled() {
     return false;
 
   base::ElapsedTimer timer;
-  RequestRestrictedCookieManagerIfNeeded();
+  bool requested = RequestRestrictedCookieManagerIfNeeded();
   bool cookies_enabled = false;
+<<<<<<< HEAD
   backend_->CookiesEnabledFor(
       cookie_url, document_->SiteForCookies(), document_->TopFrameOrigin(),
       document_->GetExecutionContext()->GetStorageAccessApiStatus(),
@@ -202,62 +203,23 @@ bool CookieJar::IPCNeeded(bool should_apply_devtools_overrides) {
 }
 
 void CookieJar::RequestRestrictedCookieManagerIfNeeded() {
+=======
+  backend_->CookiesEnabledFor(cookie_url, document_->SiteForCookies(),
+                              document_->TopFrameOrigin(), &cookies_enabled);
+  LogCookieHistogram("Blink.CookiesEnabledTime.", requested, timer.Elapsed());
+  return cookies_enabled;
+}
+
+bool CookieJar::RequestRestrictedCookieManagerIfNeeded() {
+>>>>>>> chromium
   if (!backend_.is_bound() || !backend_.is_connected()) {
     backend_.reset();
-
-    // Either the backend was never bound or it became unbound. In case we're in
-    // the unbound case perform the appropriate cleanup.
-    OnBackendDisconnect();
-
     document_->GetFrame()->GetBrowserInterfaceBroker().GetInterface(
         backend_.BindNewPipeAndPassReceiver(
             document_->GetTaskRunner(TaskType::kInternalDefault)));
+    return true;
   }
-}
-
-void CookieJar::UpdateCacheAfterGetRequest(const KURL& cookie_url,
-                                           const String& cookie_string,
-                                           uint64_t new_version) {
-  std::optional<unsigned> new_hash =
-      WTF::HashInts(WTF::GetHash(cookie_url),
-                    cookie_string.IsNull() ? 0 : WTF::GetHash(cookie_string));
-
-  CookieCacheLookupResult result =
-      CookieCacheLookupResult::kCacheMissFirstAccess;
-
-  // An invalid version means no shared memory communication so assume changes
-  // happened.
-  const bool cookie_is_unchanged =
-      new_version != mojo::shared_memory_version::kInvalidVersion &&
-      last_version_ == new_version;
-
-  if (last_cookies_hash_.has_value() && cookie_is_unchanged) {
-    if (last_cookies_hash_ == new_hash) {
-      result = last_operation_was_set_
-                   ? CookieCacheLookupResult::kCacheHitAfterSet
-                   : CookieCacheLookupResult::kCacheHitAfterGet;
-    } else {
-      result = last_operation_was_set_
-                   ? CookieCacheLookupResult::kCacheMissAfterSet
-                   : CookieCacheLookupResult::kCacheMissAfterGet;
-    }
-  }
-
-  UMA_HISTOGRAM_ENUMERATION("Blink.Experimental.Cookies.CacheLookupResult2",
-                            result);
-
-  // Update the version to what it was before getting the string, ignoring any
-  // changes that could have happened since then. This ensures as "stale" a
-  // version as possible is used. This is the desired effect to avoid inhibiting
-  // IPCs when not desired.
-  last_version_ = new_version;
-  last_cookies_hash_ = new_hash;
-}
-
-void CookieJar::LogFirstCookieRequest(FirstCookieRequest first_cookie_request) {
-  is_first_operation_ = false;
-  base::UmaHistogramEnumeration(kFirstCookieRequestHistogram,
-                                first_cookie_request);
+  return false;
 }
 
 bool CookieJar::ShouldApplyDevtoolsOverrides() const {

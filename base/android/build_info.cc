@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,15 +8,12 @@
 
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
-#include "base/android/jni_string.h"
 #include "base/android/scoped_java_ref.h"
+#include "base/base_jni_headers/BuildInfo_jni.h"
 #include "base/check_op.h"
 #include "base/memory/singleton.h"
 #include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
-
-// Must come after all headers that specialize FromJniType() / ToJniType().
-#include "base/base_jni/BuildInfo_jni.h"
 
 namespace base {
 namespace android {
@@ -24,11 +21,11 @@ namespace android {
 namespace {
 
 // We are leaking these strings.
-const char* StrDupParam(const std::vector<std::string>& params, size_t index) {
+const char* StrDupParam(const std::vector<std::string>& params, int index) {
   return strdup(params[index].c_str());
 }
 
-int GetIntParam(const std::vector<std::string>& params, size_t index) {
+int GetIntParam(const std::vector<std::string>& params, int index) {
   int ret = 0;
   bool success = StringToInt(params[index], &ret);
   DCHECK(success);
@@ -76,6 +73,7 @@ BuildInfo::BuildInfo(const std::vector<std::string>& params)
       gms_version_code_(StrDupParam(params, 15)),
       installer_package_name_(StrDupParam(params, 16)),
       abi_name_(StrDupParam(params, 17)),
+<<<<<<< HEAD
       custom_themes_(StrDupParam(params, 18)),
       resources_version_(StrDupParam(params, 19)),
       target_sdk_version_(GetIntParam(params, 20)),
@@ -108,10 +106,25 @@ std::string BuildInfo::host_signing_cert_sha256() {
   JNIEnv* env = AttachCurrentThread();
   return Java_BuildInfo_lazyGetHostSigningCertSha256(env);
 }
+=======
+      firebase_app_id_(StrDupParam(params, 18)),
+      custom_themes_(StrDupParam(params, 19)),
+      resources_version_(StrDupParam(params, 20)),
+      target_sdk_version_(GetIntParam(params, 21)),
+      is_debug_android_(GetIntParam(params, 22)),
+      is_tv_(GetIntParam(params, 23)),
+      version_incremental_(StrDupParam(params, 24)) {}
+>>>>>>> chromium
 
 // static
 BuildInfo* BuildInfo::GetInstance() {
   return Singleton<BuildInfo, BuildInfoSingletonTraits>::get();
+}
+
+// static
+bool BuildInfo::IsAtLeastS() {
+  JNIEnv* env = AttachCurrentThread();
+  return Java_BuildInfo_isAtLeastS(env);
 }
 
 }  // namespace android

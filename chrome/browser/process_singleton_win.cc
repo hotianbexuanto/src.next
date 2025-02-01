@@ -1,33 +1,31 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/process_singleton.h"
 
 #include <windows.h>
-
 #include <shellapi.h>
 #include <stddef.h>
 
 #include "base/base_paths.h"
+#include "base/bind.h"
 #include "base/command_line.h"
+#include "base/debug/activity_tracker.h"
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
 #include "base/logging.h"
+#include "base/macros.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/process/process.h"
 #include "base/process/process_info.h"
-#include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include "base/trace_event/base_tracing.h"
 #include "base/win/registry.h"
 #include "base/win/scoped_handle.h"
 #include "base/win/windows_version.h"
 #include "base/win/wmi.h"
-#include "chrome/browser/process_singleton_internal.h"
 #include "chrome/browser/shell_integration.h"
 #include "chrome/browser/ui/simple_message_box.h"
 #include "chrome/browser/win/chrome_process_finder.h"
@@ -35,10 +33,10 @@
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_paths_internal.h"
 #include "chrome/common/chrome_switches.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "content/public/common/result_codes.h"
+#include "net/base/escape.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/resource/scoped_startup_resource_bundle.h"
 #include "ui/gfx/win/hwnd_util.h"
 
 namespace {
@@ -50,14 +48,9 @@ const char kLockfile[] = "lockfile";
 class AutoLockMutex {
  public:
   explicit AutoLockMutex(HANDLE mutex) : mutex_(mutex) {
-    TRACE_EVENT0("startup",
-                 "ProcessSingleton:AutoLockMutex:WaitForSingleObject");
     DWORD result = ::WaitForSingleObject(mutex_, INFINITE);
     DPCHECK(result == WAIT_OBJECT_0) << "Result = " << result;
   }
-
-  AutoLockMutex(const AutoLockMutex&) = delete;
-  AutoLockMutex& operator=(const AutoLockMutex&) = delete;
 
   ~AutoLockMutex() {
     BOOL released = ::ReleaseMutex(mutex_);
@@ -66,6 +59,26 @@ class AutoLockMutex {
 
  private:
   HANDLE mutex_;
+  DISALLOW_COPY_AND_ASSIGN(AutoLockMutex);
+};
+
+// A helper class that releases the given |mutex| while the AutoUnlockMutex is
+// in scope and immediately re-acquires it when going out of scope.
+class AutoUnlockMutex {
+ public:
+  explicit AutoUnlockMutex(HANDLE mutex) : mutex_(mutex) {
+    BOOL released = ::ReleaseMutex(mutex_);
+    DPCHECK(released);
+  }
+
+  ~AutoUnlockMutex() {
+    DWORD result = ::WaitForSingleObject(mutex_, INFINITE);
+    DPCHECK(result == WAIT_OBJECT_0) << "Result = " << result;
+  }
+
+ private:
+  HANDLE mutex_;
+  DISALLOW_COPY_AND_ASSIGN(AutoUnlockMutex);
 };
 
 // Checks the visibility of the enumerated window and signals once a visible
@@ -146,8 +159,6 @@ bool ProcessLaunchNotification(
   if (message != WM_COPYDATA)
     return false;
 
-  TRACE_EVENT0("startup", "ProcessSingleton:ProcessLaunchNotification");
-
   // Handle the WM_COPYDATA message from another process.
   const COPYDATASTRUCT* cds = reinterpret_cast<COPYDATASTRUCT*>(lparam);
 
@@ -164,22 +175,22 @@ bool ProcessLaunchNotification(
 }
 
 bool DisplayShouldKillMessageBox() {
-  TRACE_EVENT0("startup", "ProcessSingleton:DisplayShouldKillMessageBox");
-
-  // Ensure there is an instance of ResourceBundle that is initialized for
-  // localized string resource accesses.
-  ui::ScopedStartupResourceBundle startup_resource_bundle;
-
   return chrome::ShowQuestionMessageBoxSync(
              NULL, l10n_util::GetStringUTF16(IDS_PRODUCT_NAME),
              l10n_util::GetStringUTF16(IDS_BROWSER_HUNGBROWSER_MESSAGE)) !=
          chrome::MESSAGE_BOX_RESULT_NO;
 }
 
+void SendRemoteProcessInteractionResultHistogram(
+    ProcessSingleton::RemoteProcessInteractionResult result) {
+  UMA_HISTOGRAM_ENUMERATION(
+      "Chrome.ProcessSingleton.RemoteProcessInteractionResult", result,
+      ProcessSingleton::REMOTE_PROCESS_INTERACTION_RESULT_COUNT);
+}
+
 // Function was copied from Process::Terminate.
 void TerminateProcessWithHistograms(const base::Process& process,
                                     int exit_code) {
-  TRACE_EVENT0("startup", "ProcessSingleton:TerminateProcessWithHistograms");
   DCHECK(process.IsValid());
   base::TimeTicks start_time = base::TimeTicks::Now();
   bool result = (::TerminateProcess(process.Handle(), exit_code) != FALSE);
@@ -187,31 +198,26 @@ void TerminateProcessWithHistograms(const base::Process& process,
   if (result) {
     DWORD wait_error = 0;
     // The process may not end immediately due to pending I/O
-    DWORD wait_result;
-    {
-      TRACE_EVENT0("startup",
-                   "ProcessSingleton:TerminateProcessWithHistograms:"
-                   "WaitForSingleObject");
-      wait_result = ::WaitForSingleObject(process.Handle(), 60 * 1000);
-    }
-
+    DWORD wait_result = ::WaitForSingleObject(process.Handle(), 60 * 1000);
     if (wait_result != WAIT_OBJECT_0) {
       if (wait_result == WAIT_FAILED)
         wait_error = ::GetLastError();
-      internal::SendRemoteProcessInteractionResultHistogram(
+      SendRemoteProcessInteractionResultHistogram(
           ProcessSingleton::TERMINATE_WAIT_TIMEOUT);
       DPLOG(ERROR) << "Error waiting for process exit";
     } else {
-      internal::SendRemoteProcessInteractionResultHistogram(
+      SendRemoteProcessInteractionResultHistogram(
           ProcessSingleton::TERMINATE_SUCCEEDED);
     }
+    base::debug::GlobalActivityTracker::RecordProcessExitIfEnabled(
+        process.Pid(), exit_code);
     UMA_HISTOGRAM_TIMES("Chrome.ProcessSingleton.TerminateProcessTime",
                         base::TimeTicks::Now() - start_time);
     base::UmaHistogramSparse(
         "Chrome.ProcessSingleton.TerminationWaitErrorCode.Windows", wait_error);
   } else {
     terminate_error = ::GetLastError();
-    internal::SendRemoteProcessInteractionResultHistogram(
+    SendRemoteProcessInteractionResultHistogram(
         ProcessSingleton::TERMINATE_FAILED);
     DPLOG(ERROR) << "Unable to terminate process";
   }
@@ -228,8 +234,6 @@ void TerminateProcessWithHistograms(const base::Process& process,
 // http://code.google.com/p/chromium/issues/detail?id=43650
 bool ProcessSingleton::EscapeVirtualization(
     const base::FilePath& user_data_dir) {
-  TRACE_EVENT0("startup", "ProcessSingleton:EscapeVirtualization");
-
   if (::GetModuleHandle(L"sftldr_wow64.dll") ||
       ::GetModuleHandle(L"sftldr.dll")) {
     int process_id;
@@ -243,7 +247,7 @@ bool ProcessSingleton::EscapeVirtualization(
     HWND hwnd = 0;
     ::Sleep(90);
     for (int tries = 200; tries; --tries) {
-      hwnd = FindRunningChromeWindow(user_data_dir);
+      hwnd = chrome::FindRunningChromeWindow(user_data_dir);
       if (hwnd) {
         ::SetForegroundWindow(hwnd);
         break;
@@ -273,8 +277,6 @@ ProcessSingleton::~ProcessSingleton() {
 
 // Code roughly based on Mozilla.
 ProcessSingleton::NotifyResult ProcessSingleton::NotifyOtherProcess() {
-  TRACE_EVENT0("startup", "ProcessSingleton::NotifyOtherProcess");
-
   if (is_virtualized_)
     return PROCESS_NOTIFIED;  // We already spawned the process in this case.
   if (lock_file_ == INVALID_HANDLE_VALUE && !remote_window_) {
@@ -283,15 +285,14 @@ ProcessSingleton::NotifyResult ProcessSingleton::NotifyOtherProcess() {
     return PROCESS_NONE;
   }
 
-  switch (AttemptToNotifyRunningChrome(remote_window_)) {
-    case NotifyChromeResult::NOTIFY_SUCCESS:
+  switch (chrome::AttemptToNotifyRunningChrome(remote_window_)) {
+    case chrome::NOTIFY_SUCCESS:
       return PROCESS_NOTIFIED;
-    case NotifyChromeResult::NOTIFY_FAILED:
+    case chrome::NOTIFY_FAILED:
       remote_window_ = NULL;
-      internal::SendRemoteProcessInteractionResultHistogram(
-          RUNNING_PROCESS_NOTIFY_ERROR);
+      SendRemoteProcessInteractionResultHistogram(RUNNING_PROCESS_NOTIFY_ERROR);
       return PROCESS_NONE;
-    case NotifyChromeResult::NOTIFY_WINDOW_HUNG:
+    case chrome::NOTIFY_WINDOW_HUNG:
       // Fall through and potentially terminate the hung browser.
       break;
   }
@@ -300,12 +301,8 @@ ProcessSingleton::NotifyResult ProcessSingleton::NotifyOtherProcess() {
   DWORD process_id = 0;
   DWORD thread_id = ::GetWindowThreadProcessId(remote_window_, &process_id);
   if (!thread_id || !process_id) {
-    TRACE_EVENT_INSTANT(
-        "startup",
-        "ProcessSingleton::NotifyOtherProcess:GetWindowThreadProcessId failed");
     remote_window_ = NULL;
-    internal::SendRemoteProcessInteractionResultHistogram(
-        REMOTE_PROCESS_NOT_FOUND);
+    SendRemoteProcessInteractionResultHistogram(REMOTE_PROCESS_NOT_FOUND);
     return PROCESS_NONE;
   }
 
@@ -314,22 +311,20 @@ ProcessSingleton::NotifyResult ProcessSingleton::NotifyOtherProcess() {
 
   // Scan for every window to find a visible one.
   bool visible_window = false;
-  {
-    TRACE_EVENT0("startup",
-                 "ProcessSingleton::NotifyOtherProcess:EnumThreadWindows");
-    ::EnumThreadWindows(thread_id, &BrowserWindowEnumeration,
-                        reinterpret_cast<LPARAM>(&visible_window));
-  }
+  ::EnumThreadWindows(thread_id,
+                      &BrowserWindowEnumeration,
+                      reinterpret_cast<LPARAM>(&visible_window));
 
   // If there is a visible browser window, ask the user before killing it.
   if (visible_window && !should_kill_remote_process_callback_.Run()) {
-    internal::SendRemoteProcessInteractionResultHistogram(
-        USER_REFUSED_TERMINATION);
+    SendRemoteProcessInteractionResultHistogram(USER_REFUSED_TERMINATION);
     // The user denied. Quit silently.
     return PROCESS_NOTIFIED;
   }
-  internal::SendRemoteHungProcessTerminateReasonHistogram(
-      visible_window ? USER_ACCEPTED_TERMINATION : NO_VISIBLE_WINDOW_FOUND);
+  UMA_HISTOGRAM_ENUMERATION(
+      "Chrome.ProcessSingleton.RemoteHungProcessTerminateReason",
+      visible_window ? USER_ACCEPTED_TERMINATION : NO_VISIBLE_WINDOW_FOUND,
+      REMOTE_HUNG_PROCESS_TERMINATE_REASON_COUNT);
 
   // Time to take action. Kill the browser process.
   TerminateProcessWithHistograms(process, content::RESULT_CODE_HUNG);
@@ -340,25 +335,21 @@ ProcessSingleton::NotifyResult ProcessSingleton::NotifyOtherProcess() {
 
 ProcessSingleton::NotifyResult
 ProcessSingleton::NotifyOtherProcessOrCreate() {
-  TRACE_EVENT0("startup", "ProcessSingleton::NotifyOtherProcessOrCreate");
   const base::TimeTicks begin_ticks = base::TimeTicks::Now();
   for (int i = 0; i < 2; ++i) {
     if (Create()) {
-      DEPRECATED_UMA_HISTOGRAM_MEDIUM_TIMES(
-          "Chrome.ProcessSingleton.TimeToCreate",
-          base::TimeTicks::Now() - begin_ticks);
+      UMA_HISTOGRAM_MEDIUM_TIMES("Chrome.ProcessSingleton.TimeToCreate",
+                                 base::TimeTicks::Now() - begin_ticks);
       return PROCESS_NONE;  // This is the single browser process.
     }
     ProcessSingleton::NotifyResult result = NotifyOtherProcess();
     if (result == PROCESS_NOTIFIED || result == LOCK_ERROR) {
       if (result == PROCESS_NOTIFIED) {
-        DEPRECATED_UMA_HISTOGRAM_MEDIUM_TIMES(
-            "Chrome.ProcessSingleton.TimeToNotify",
-            base::TimeTicks::Now() - begin_ticks);
+        UMA_HISTOGRAM_MEDIUM_TIMES("Chrome.ProcessSingleton.TimeToNotify",
+                                   base::TimeTicks::Now() - begin_ticks);
       } else {
-        DEPRECATED_UMA_HISTOGRAM_MEDIUM_TIMES(
-            "Chrome.ProcessSingleton.TimeToFailure",
-            base::TimeTicks::Now() - begin_ticks);
+        UMA_HISTOGRAM_MEDIUM_TIMES("Chrome.ProcessSingleton.TimeToFailure",
+                                   base::TimeTicks::Now() - begin_ticks);
       }
       // The single browser process was notified, the user chose not to
       // terminate a hung browser, or the lock file could not be created.
@@ -370,8 +361,8 @@ ProcessSingleton::NotifyOtherProcessOrCreate() {
     // terminated. Retry once if this is the first time; otherwise, fall through
     // to report that the process must exit because the profile is in use.
   }
-  DEPRECATED_UMA_HISTOGRAM_MEDIUM_TIMES("Chrome.ProcessSingleton.TimeToFailure",
-                                        base::TimeTicks::Now() - begin_ticks);
+  UMA_HISTOGRAM_MEDIUM_TIMES("Chrome.ProcessSingleton.TimeToFailure",
+                             base::TimeTicks::Now() - begin_ticks);
   return PROFILE_IN_USE;
 }
 
@@ -379,11 +370,9 @@ ProcessSingleton::NotifyOtherProcessOrCreate() {
 // isn't one, create a message window with its title set to the profile
 // directory path.
 bool ProcessSingleton::Create() {
-  TRACE_EVENT0("startup", "ProcessSingleton::Create");
-
   static const wchar_t kMutexName[] = L"Local\\ChromeProcessSingletonStartup!";
 
-  remote_window_ = FindRunningChromeWindow(user_data_dir_);
+  remote_window_ = chrome::FindRunningChromeWindow(user_data_dir_);
   if (!remote_window_ && !EscapeVirtualization(user_data_dir_)) {
     // Make sure we will be the one and only process creating the window.
     // We use a named Mutex since we are protecting against multi-process
@@ -402,19 +391,20 @@ bool ProcessSingleton::Create() {
     // window at this time, but we must still check if someone created it
     // between the time where we looked for it above and the time the mutex
     // was given to us.
-    remote_window_ = FindRunningChromeWindow(user_data_dir_);
+    remote_window_ = chrome::FindRunningChromeWindow(user_data_dir_);
 
     if (!remote_window_) {
       // We have to make sure there is no Chrome instance running on another
       // machine that uses the same profile.
-      {
-        TRACE_EVENT0("startup", "ProcessSingleton::Create:CreateLockFile");
-        base::FilePath lock_file_path = user_data_dir_.AppendASCII(kLockfile);
-        lock_file_ = ::CreateFile(
-            lock_file_path.value().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
-            NULL, CREATE_ALWAYS,
-            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, NULL);
-      }
+      base::FilePath lock_file_path = user_data_dir_.AppendASCII(kLockfile);
+      lock_file_ = ::CreateFile(lock_file_path.value().c_str(),
+                                GENERIC_WRITE,
+                                FILE_SHARE_READ,
+                                NULL,
+                                CREATE_ALWAYS,
+                                FILE_ATTRIBUTE_NORMAL |
+                                FILE_FLAG_DELETE_ON_CLOSE,
+                                NULL);
       DWORD error = ::GetLastError();
       LOG_IF(WARNING, lock_file_ != INVALID_HANDLE_VALUE &&
           error == ERROR_ALREADY_EXISTS) << "Lock file exists but is writable.";
@@ -424,7 +414,6 @@ bool ProcessSingleton::Create() {
       if (lock_file_ != INVALID_HANDLE_VALUE) {
         // Set the window's title to the path of our user data directory so
         // other Chrome instances can decide if they should forward to us.
-        TRACE_EVENT0("startup", "ProcessSingleton::Create:CreateWindow");
         bool result =
             window_.CreateNamed(base::BindRepeating(&ProcessLaunchNotification,
                                                     notification_callback_),
@@ -436,8 +425,6 @@ bool ProcessSingleton::Create() {
 
   return window_.hwnd() != NULL;
 }
-
-void ProcessSingleton::StartWatching() {}
 
 void ProcessSingleton::Cleanup() {
 }

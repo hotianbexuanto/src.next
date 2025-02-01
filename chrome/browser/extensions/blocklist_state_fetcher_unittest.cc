@@ -1,12 +1,16 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/blocklist_state_fetcher.h"
 
+<<<<<<< HEAD
 #include <array>
 
 #include "base/functional/bind.h"
+=======
+#include "base/bind.h"
+>>>>>>> chromium
 #include "base/run_loop.h"
 #include "chrome/browser/extensions/test_blocklist_state_fetcher.h"
 #include "chrome/common/safe_browsing/crx_info.pb.h"

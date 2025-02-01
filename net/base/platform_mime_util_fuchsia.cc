@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,14 +18,14 @@ bool PlatformMimeUtil::GetPlatformMimeTypeFromExtension(
 }
 
 bool PlatformMimeUtil::GetPlatformPreferredExtensionForMimeType(
-    std::string_view mime_type,
+    const std::string& mime_type,
     base::FilePath::StringType* extension) const {
   // TODO(fuchsia): Integrate with MIME DB when Fuchsia provides an API.
   return false;
 }
 
 void PlatformMimeUtil::GetPlatformExtensionsForMimeType(
-    std::string_view mime_type,
+    const std::string& mime_type,
     std::unordered_set<base::FilePath::StringType>* extensions) const {
   // TODO(fuchsia): Integrate with MIME DB when Fuchsia provides an API.
 }

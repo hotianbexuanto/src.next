@@ -31,19 +31,16 @@
 #include "third_party/blink/renderer/core/page/drag_image.h"
 
 #include <memory>
-
 #include "base/memory/scoped_refptr.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/platform/font_family_names.h"
 #include "third_party/blink/renderer/platform/fonts/font_description.h"
+#include "third_party/blink/renderer/platform/geometry/int_size.h"
 #include "third_party/blink/renderer/platform/graphics/bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/skia/include/core/SkImage.h"
 #include "third_party/skia/include/core/SkSurface.h"
-#include "ui/gfx/geometry/size.h"
 
 namespace blink {
 
@@ -53,13 +50,13 @@ class TestImage : public Image {
     return base::AdoptRef(new TestImage(image));
   }
 
-  static scoped_refptr<TestImage> Create(const gfx::Size& size) {
+  static scoped_refptr<TestImage> Create(const IntSize& size) {
     return base::AdoptRef(new TestImage(size));
   }
 
-  gfx::Size SizeWithConfig(SizeConfig) const override {
+  IntSize SizeWithConfig(SizeConfig) const override {
     DCHECK(image_);
-    return gfx::Size(image_->width(), image_->height());
+    return IntSize(image_->width(), image_->height());
   }
 
   bool CurrentFrameKnownToBeOpaque() override { return false; }
@@ -70,9 +67,12 @@ class TestImage : public Image {
 
   void Draw(cc::PaintCanvas*,
             const cc::PaintFlags&,
-            const gfx::RectF& dest_rect,
-            const gfx::RectF& src_rect,
-            const ImageDrawOptions&) override {
+            const FloatRect&,
+            const FloatRect&,
+            const SkSamplingOptions&,
+            RespectImageOrientationEnum,
+            ImageClampingMode,
+            ImageDecodingMode) override {
     // Image pure virtual stub.
   }
 
@@ -87,7 +87,7 @@ class TestImage : public Image {
  private:
   explicit TestImage(sk_sp<SkImage> image) : image_(image) {}
 
-  explicit TestImage(gfx::Size size) : image_(nullptr) {
+  explicit TestImage(IntSize size) : image_(nullptr) {
     sk_sp<SkSurface> surface = CreateSkSurface(size);
     if (!surface)
       return;
@@ -96,56 +96,60 @@ class TestImage : public Image {
     image_ = surface->makeImageSnapshot();
   }
 
-  static sk_sp<SkSurface> CreateSkSurface(gfx::Size size) {
-    return SkSurfaces::Raster(
-        SkImageInfo::MakeN32(size.width(), size.height(), kPremul_SkAlphaType));
+  static sk_sp<SkSurface> CreateSkSurface(IntSize size) {
+    return SkSurface::MakeRaster(
+        SkImageInfo::MakeN32(size.Width(), size.Height(), kPremul_SkAlphaType));
   }
 
   sk_sp<SkImage> image_;
 };
 
 TEST(DragImageTest, NullHandling) {
-  test::TaskEnvironment task_environment;
   EXPECT_FALSE(DragImage::Create(nullptr));
 
-  scoped_refptr<TestImage> null_test_image(TestImage::Create(gfx::Size()));
+  scoped_refptr<TestImage> null_test_image(TestImage::Create(IntSize()));
   EXPECT_FALSE(DragImage::Create(null_test_image.get()));
 }
 
 TEST(DragImageTest, NonNullHandling) {
-  test::TaskEnvironment task_environment;
-  scoped_refptr<TestImage> test_image(TestImage::Create(gfx::Size(2, 2)));
+  scoped_refptr<TestImage> test_image(TestImage::Create(IntSize(2, 2)));
   std::unique_ptr<DragImage> drag_image = DragImage::Create(test_image.get());
   ASSERT_TRUE(drag_image);
 
   drag_image->Scale(0.5, 0.5);
-  gfx::Size size = drag_image->Size();
-  EXPECT_EQ(1, size.width());
-  EXPECT_EQ(1, size.height());
+  IntSize size = drag_image->Size();
+  EXPECT_EQ(1, size.Width());
+  EXPECT_EQ(1, size.Height());
 }
 
 TEST(DragImageTest, CreateDragImage) {
-  test::TaskEnvironment task_environment;
   // Tests that the DrageImage implementation doesn't choke on null values
   // of imageForCurrentFrame().
   // FIXME: how is this test any different from test NullHandling?
-  scoped_refptr<TestImage> test_image(TestImage::Create(gfx::Size()));
+  scoped_refptr<TestImage> test_image(TestImage::Create(IntSize()));
   EXPECT_FALSE(DragImage::Create(test_image.get()));
 }
 
 TEST(DragImageTest, TrimWhitespace) {
-  test::TaskEnvironment task_environment;
   KURL url("http://www.example.com/");
   String test_label = "          Example Example Example      \n    ";
   String expected_label = "Example Example Example";
   float device_scale_factor = 1.0f;
 
-  std::unique_ptr<DragImage> test_image =
-      DragImage::Create(url, test_label, device_scale_factor);
-  std::unique_ptr<DragImage> expected_image =
-      DragImage::Create(url, expected_label, device_scale_factor);
+  FontDescription font_description;
+  font_description.FirstFamily().SetFamily("Arial");
+  font_description.SetSpecifiedSize(16);
+  font_description.SetIsAbsoluteSize(true);
+  font_description.SetGenericFamily(FontDescription::kNoFamily);
+  font_description.SetWeight(NormalWeightValue());
+  font_description.SetStyle(NormalSlopeValue());
 
-  EXPECT_EQ(test_image->Size().width(), expected_image->Size().width());
+  std::unique_ptr<DragImage> test_image =
+      DragImage::Create(url, test_label, font_description, device_scale_factor);
+  std::unique_ptr<DragImage> expected_image = DragImage::Create(
+      url, expected_label, font_description, device_scale_factor);
+
+  EXPECT_EQ(test_image->Size().Width(), expected_image->Size().Width());
 }
 
 // crbug.com/393280409
@@ -167,7 +171,6 @@ TEST(DragImageTest, CreateWithClipping) {
 }
 
 TEST(DragImageTest, InterpolationNone) {
-  test::TaskEnvironment task_environment;
   SkBitmap expected_bitmap;
   expected_bitmap.allocN32Pixels(4, 4);
   expected_bitmap.eraseArea(SkIRect::MakeXYWH(0, 0, 2, 2), 0xFFFFFFFF);
@@ -183,9 +186,9 @@ TEST(DragImageTest, InterpolationNone) {
   test_bitmap.eraseArea(SkIRect::MakeXYWH(1, 1, 1, 1), 0xFFFFFFFF);
 
   scoped_refptr<TestImage> test_image =
-      TestImage::Create(SkImages::RasterFromBitmap(test_bitmap));
+      TestImage::Create(SkImage::MakeFromBitmap(test_bitmap));
   std::unique_ptr<DragImage> drag_image = DragImage::Create(
-      test_image.get(), kRespectImageOrientation, kInterpolationNone);
+      test_image.get(), kRespectImageOrientation, 1, kInterpolationNone);
   ASSERT_TRUE(drag_image);
   drag_image->Scale(2, 2);
   const SkBitmap& drag_bitmap = drag_image->Bitmap();

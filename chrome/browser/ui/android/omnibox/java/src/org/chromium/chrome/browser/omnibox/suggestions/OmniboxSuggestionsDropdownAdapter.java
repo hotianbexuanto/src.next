@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.omnibox.suggestions;
 import android.view.View;
 import android.view.ViewGroup;
 
+<<<<<<< HEAD
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.TraceEvent;
@@ -37,102 +38,106 @@ import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 public class OmniboxSuggestionsDropdownAdapter extends SimpleRecyclerViewAdapter {
     private int mNumSessionViewsCreated;
     private int mNumSessionViewsBound;
+=======
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.RecyclerView.LayoutManager;
+
+import org.chromium.base.TraceEvent;
+import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
+import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
+
+/** ModelListAdapter for OmniboxSuggestionsDropdown (RecyclerView version). */
+class OmniboxSuggestionsDropdownAdapter extends SimpleRecyclerViewAdapter {
+    private int mSelectedItem = RecyclerView.NO_POSITION;
+    private LayoutManager mLayoutManager;
+>>>>>>> chromium
 
     OmniboxSuggestionsDropdownAdapter(ModelList data) {
         super(data);
-
-        // Register a view type for a default omnibox suggestion.
-        registerType(
-                OmniboxSuggestionUiType.DEFAULT,
-                parent ->
-                        new BaseSuggestionView<View>(
-                                parent.getContext(), R.layout.omnibox_basic_suggestion),
-                new BaseSuggestionViewBinder<View>(SuggestionViewViewBinder::bind));
-
-        registerType(
-                OmniboxSuggestionUiType.EDIT_URL_SUGGESTION,
-                parent -> new EditUrlSuggestionView(parent.getContext()),
-                new EditUrlSuggestionViewBinder());
-
-        registerType(
-                OmniboxSuggestionUiType.ANSWER_SUGGESTION,
-                parent ->
-                        new BaseSuggestionView<View>(
-                                parent.getContext(), R.layout.omnibox_answer_suggestion),
-                new BaseSuggestionViewBinder<View>(AnswerSuggestionViewBinder::bind));
-
-        registerType(
-                OmniboxSuggestionUiType.ENTITY_SUGGESTION,
-                parent ->
-                        new BaseSuggestionView<View>(
-                                parent.getContext(), R.layout.omnibox_basic_suggestion),
-                new BaseSuggestionViewBinder<View>(EntitySuggestionViewBinder::bind));
-
-        registerType(
-                OmniboxSuggestionUiType.TAIL_SUGGESTION,
-                parent ->
-                        new BaseSuggestionView<TailSuggestionView>(
-                                new TailSuggestionView(parent.getContext())),
-                new BaseSuggestionViewBinder<TailSuggestionView>(TailSuggestionViewBinder::bind));
-
-        registerType(
-                OmniboxSuggestionUiType.CLIPBOARD_SUGGESTION,
-                parent ->
-                        new BaseSuggestionView<View>(
-                                parent.getContext(), R.layout.omnibox_basic_suggestion),
-                new BaseSuggestionViewBinder<View>(SuggestionViewViewBinder::bind));
-
-        registerType(
-                OmniboxSuggestionUiType.TILE_NAVSUGGEST,
-                BaseCarouselSuggestionItemViewBuilder::createView,
-                BaseCarouselSuggestionViewBinder::bind);
-
-        registerType(
-                OmniboxSuggestionUiType.HEADER,
-                parent -> new HeaderView(parent.getContext()),
-                HeaderViewBinder::bind);
-
-        registerType(
-                OmniboxSuggestionUiType.GROUP_SEPARATOR,
-                parent -> new GroupSeparatorView(parent.getContext()),
-                (m, v, p) -> {});
-
-        registerType(
-                OmniboxSuggestionUiType.QUERY_TILES,
-                BaseCarouselSuggestionItemViewBuilder::createView,
-                BaseCarouselSuggestionViewBinder::bind);
     }
 
-    /* package */ void recordSessionMetrics() {
-        if (mNumSessionViewsBound > 0) {
-            OmniboxMetrics.recordSuggestionViewReuseStats(
-                    mNumSessionViewsCreated,
-                    100
-                            * (mNumSessionViewsBound - mNumSessionViewsCreated)
-                            / mNumSessionViewsBound);
-        }
-        mNumSessionViewsCreated = 0;
-        mNumSessionViewsBound = 0;
+    @Override
+    public void onAttachedToRecyclerView(RecyclerView view) {
+        super.onAttachedToRecyclerView(view);
+
+        mLayoutManager = view.getLayoutManager();
+        mSelectedItem = RecyclerView.NO_POSITION;
     }
 
     @Override
     public void onViewRecycled(ViewHolder holder) {
         super.onViewRecycled(holder);
+        if (holder == null || holder.itemView == null) return;
         holder.itemView.setSelected(false);
     }
 
+    /**
+     * @return Index of the currently highlighted view.
+     */
+    int getSelectedViewIndex() {
+        return mSelectedItem;
+    }
+
+    /** @return Currently selected view. */
+    @Nullable
+    View getSelectedView() {
+        if (mLayoutManager == null) return null;
+        if (mSelectedItem < 0 || mSelectedItem >= getItemCount()) return null;
+
+        View currentSelectedView = mLayoutManager.findViewByPosition(mSelectedItem);
+        if (currentSelectedView != null) {
+            return currentSelectedView;
+        }
+
+        mSelectedItem = RecyclerView.NO_POSITION;
+        return null;
+    }
+
+    /** Ensures selection is reset to beginning of the list. */
+    void resetSelection() {
+        setSelectedViewIndex(RecyclerView.NO_POSITION);
+    }
+
+    /**
+     * Move focus to another view.
+     *
+     * @param index end index.
+     */
+    boolean setSelectedViewIndex(int index) {
+        if (mLayoutManager == null) return false;
+        if (index != RecyclerView.NO_POSITION && (index < 0 || index >= getItemCount())) {
+            return false;
+        }
+
+        View previousSelectedView = mLayoutManager.findViewByPosition(mSelectedItem);
+        if (previousSelectedView != null) {
+            previousSelectedView.setSelected(false);
+        }
+
+        mSelectedItem = index;
+        mLayoutManager.scrollToPosition(index);
+
+        View currentSelectedView = mLayoutManager.findViewByPosition(index);
+        if (currentSelectedView != null) {
+            currentSelectedView.setSelected(true);
+        }
+
+        return true;
+    }
+
     @Override
-    // extend this
     protected View createView(ViewGroup parent, int viewType) {
         // This skips measuring Adapter.CreateViewHolder, which is final, but it capture
         // the creation of a view holder.
         try (TraceEvent tracing =
                         TraceEvent.scoped("OmniboxSuggestionsList.CreateView", "type:" + viewType);
-                TimingMetric metric = OmniboxMetrics.recordSuggestionViewCreateTime();
-                TimingMetric metric2 = OmniboxMetrics.recordSuggestionViewCreateWallTime()) {
+                SuggestionsMetrics.TimingMetric metric =
+                        SuggestionsMetrics.recordSuggestionViewCreateTime()) {
             return super.createView(parent, viewType);
         }
     }
+<<<<<<< HEAD
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -145,4 +150,6 @@ public class OmniboxSuggestionsDropdownAdapter extends SimpleRecyclerViewAdapter
         mNumSessionViewsBound++;
         super.onBindViewHolder(holder, position);
     }
+=======
+>>>>>>> chromium
 }

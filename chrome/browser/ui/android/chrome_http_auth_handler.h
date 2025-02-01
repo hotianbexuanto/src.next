@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,8 +10,7 @@
 #include <string>
 
 #include "base/android/scoped_java_ref.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
+#include "base/macros.h"
 #include "chrome/browser/ui/login/login_handler.h"
 #include "components/password_manager/core/browser/http_auth_observer.h"
 
@@ -28,16 +27,15 @@ class ChromeHttpAuthHandler : public password_manager::HttpAuthObserver {
   ChromeHttpAuthHandler(const std::u16string& authority,
                         const std::u16string& explanation,
                         LoginHandler::LoginModelData* login_model_data);
-
-  ChromeHttpAuthHandler(const ChromeHttpAuthHandler&) = delete;
-  ChromeHttpAuthHandler& operator=(const ChromeHttpAuthHandler&) = delete;
-
   ~ChromeHttpAuthHandler() override;
 
   // This must be called before using the object.
   // Constructs a corresponding Java land ChromeHttpAuthHandler.
-  // `observer` is forwarded callbacks from SetAuth() and CancelAuth().
-  void Init(LoginHandler* observer);
+  void Init();
+
+  // Registers an observer to receive callbacks when SetAuth() and CancelAuth()
+  // are called. |observer| may be NULL in which case the callbacks are skipped.
+  void SetObserver(LoginHandler* observer);
 
   // Show the dialog prompting for login credentials.
   void ShowDialog(const base::android::JavaRef<jobject>& tab_android,
@@ -69,22 +67,16 @@ class ChromeHttpAuthHandler : public password_manager::HttpAuthObserver {
                                 const base::android::JavaParamRef<jobject>&);
 
  private:
-  void SetAuthSync(const std::u16string& username,
-                   const std::u16string& password);
-  void CancelAuthSync();
-
-  // Owns this class and is guaranteed to outlive it.
-  raw_ptr<LoginHandler> observer_;
-
+  LoginHandler* observer_;
   base::android::ScopedJavaGlobalRef<jobject> java_chrome_http_auth_handler_;
   std::u16string authority_;
   std::u16string explanation_;
 
   // If not null, points to a model we need to notify of our own destruction
   // so it doesn't try and access this when its too late.
-  raw_ptr<password_manager::HttpAuthManager> auth_manager_;
+  password_manager::HttpAuthManager* auth_manager_;
 
-  base::WeakPtrFactory<ChromeHttpAuthHandler> weak_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(ChromeHttpAuthHandler);
 };
 
 #endif  // CHROME_BROWSER_UI_ANDROID_CHROME_HTTP_AUTH_HANDLER_H_

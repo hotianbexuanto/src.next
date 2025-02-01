@@ -17,11 +17,10 @@
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PROPERTY_VALUE_SET_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PROPERTY_VALUE_SET_H_
 
-#include "base/bits.h"
-#include "base/types/pass_key.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
 #include "third_party/blink/renderer/core/css/css_property_name.h"
@@ -54,6 +53,43 @@ class CORE_EXPORT CSSPropertyValueSet
 
   void FinalizeGarbageCollectedObject();
 
+<<<<<<< HEAD
+=======
+  class PropertyReference {
+    STACK_ALLOCATED();
+
+   public:
+    PropertyReference(const CSSPropertyValueSet& property_set, unsigned index)
+        : property_set_(&property_set), index_(index) {}
+
+    CSSPropertyID Id() const {
+      return static_cast<CSSPropertyID>(PropertyMetadata().PropertyID());
+    }
+    CSSPropertyID ShorthandID() const {
+      return PropertyMetadata().ShorthandID();
+    }
+
+    CSSPropertyName Name() const { return PropertyMetadata().Name(); }
+
+    bool IsImportant() const { return PropertyMetadata().important_; }
+    bool IsImplicit() const { return PropertyMetadata().implicit_; }
+    bool IsAffectedByAll() const {
+      return Id() != CSSPropertyID::kVariable &&
+             CSSProperty::Get(Id()).IsAffectedByAll();
+    }
+
+    const CSSValue& Value() const { return PropertyValue(); }
+
+    const CSSPropertyValueMetadata& PropertyMetadata() const;
+
+   private:
+    const CSSValue& PropertyValue() const;
+
+    const CSSPropertyValueSet* property_set_;
+    unsigned index_;
+  };
+
+>>>>>>> chromium
   unsigned PropertyCount() const;
   bool IsEmpty() const;
 
@@ -61,33 +97,23 @@ class CORE_EXPORT CSSPropertyValueSet
   base::span<const CSSPropertyValue> Properties() const;
 
   template <typename T>  // CSSPropertyID or AtomicString
-  int FindPropertyIndex(const T& property) const;
+  int FindPropertyIndex(T property) const;
 
   bool HasProperty(CSSPropertyID property) const {
     return FindPropertyIndex(property) != -1;
   }
 
   template <typename T>  // CSSPropertyID or AtomicString
-  const CSSValue* GetPropertyCSSValue(const T& property) const;
+  const CSSValue* GetPropertyCSSValue(T property) const;
 
   template <typename T>  // CSSPropertyID or AtomicString
-  String GetPropertyValue(const T& property) const;
+  String GetPropertyValue(T property) const;
 
   template <typename T>  // CSSPropertyID or AtomicString
-  bool PropertyIsImportant(const T& property) const;
-
-  const CSSValue* GetPropertyCSSValueWithHint(const AtomicString& property_name,
-                                              unsigned index) const;
-  String GetPropertyValueWithHint(const AtomicString& property_name,
-                                  unsigned index) const;
-  bool PropertyIsImportantWithHint(const AtomicString& property_name,
-                                   unsigned index) const;
+  bool PropertyIsImportant(T property) const;
 
   bool ShorthandIsImportant(CSSPropertyID) const;
-  bool ShorthandIsImportant(const AtomicString& custom_property_name) const {
-    // Custom properties are never shorthands.
-    return false;
-  }
+  bool ShorthandIsImportant(AtomicString custom_property_name) const;
 
   CSSPropertyID GetPropertyShorthand(CSSPropertyID) const;
   bool IsPropertyImplicit(CSSPropertyID) const;
@@ -105,6 +131,7 @@ class CORE_EXPORT CSSPropertyValueSet
   String AsText() const;
 
   bool IsMutable() const { return is_mutable_; }
+<<<<<<< HEAD
   bool ContainsCursorHand() const { return contains_cursor_hand_; }
 
   // Computes a hash of the contents of this property value set
@@ -146,6 +173,8 @@ class CORE_EXPORT CSSPropertyValueSet
     }
     return Properties() == other.Properties();
   }
+=======
+>>>>>>> chromium
 
   bool HasFailedOrCanceledSubresources() const;
 
@@ -161,26 +190,26 @@ class CORE_EXPORT CSSPropertyValueSet
   void TraceAfterDispatch(blink::Visitor* visitor) const {}
 
  protected:
+<<<<<<< HEAD
   static constexpr unsigned kMaxArraySize = (1 << 25) - 1;
+=======
+  enum { kMaxArraySize = (1 << 28) - 1 };
+>>>>>>> chromium
 
   explicit CSSPropertyValueSet(CSSParserMode css_parser_mode)
-      : array_size_(0),
-        css_parser_mode_(css_parser_mode),
-        is_mutable_(true),
-        contains_cursor_hand_(false) {}
+      : array_size_(0), css_parser_mode_(css_parser_mode), is_mutable_(true) {}
 
   CSSPropertyValueSet(CSSParserMode css_parser_mode,
-                      unsigned immutable_array_size,
-                      bool contains_cursor_hand)
+                      unsigned immutable_array_size)
       // Avoid min()/max() from std here in the header, because that would
       // require inclusion of <algorithm>, which is slow to compile.
       : array_size_((immutable_array_size < unsigned(kMaxArraySize))
                         ? immutable_array_size
                         : unsigned(kMaxArraySize)),
         css_parser_mode_(css_parser_mode),
-        is_mutable_(false),
-        contains_cursor_hand_(contains_cursor_hand) {}
+        is_mutable_(false) {}
 
+<<<<<<< HEAD
   unsigned ComputeHash() const;
 
   const uint32_t array_size_ : 25;  // Only for immutable sets.
@@ -192,46 +221,71 @@ class CORE_EXPORT CSSPropertyValueSet
   // EmptyValue() means “not computed yet”. DeletedValue() means “invalid”
   // (see GetHash()).
   mutable unsigned hash_ = WTF::HashTraits<unsigned>::EmptyValue();
+=======
+  const uint32_t array_size_ : 28;
+  const uint32_t css_parser_mode_ : 3;
+  const uint32_t is_mutable_ : 1;
+>>>>>>> chromium
 
   friend class PropertySetCSSStyleDeclaration;
 };
 
+<<<<<<< HEAD
 class CORE_EXPORT alignas(CSSPropertyName) ImmutableCSSPropertyValueSet
+=======
+// Used for lazily parsing properties.
+class CSSLazyPropertyParser : public GarbageCollected<CSSLazyPropertyParser> {
+ public:
+  CSSLazyPropertyParser() = default;
+  CSSLazyPropertyParser(const CSSLazyPropertyParser&) = delete;
+  CSSLazyPropertyParser& operator=(const CSSLazyPropertyParser&) = delete;
+  virtual ~CSSLazyPropertyParser() = default;
+  virtual CSSPropertyValueSet* ParseProperties() = 0;
+  virtual void Trace(Visitor*) const;
+};
+
+class CORE_EXPORT ALIGNAS(alignof(Member<const CSSValue>))
+    ALIGNAS(alignof(CSSPropertyValueMetadata)) ImmutableCSSPropertyValueSet
+>>>>>>> chromium
     : public CSSPropertyValueSet {
  public:
-  // The value and metadata arrays are allocated in-line with the containing
-  // ImmutableCSSPropertyValueSet. In order to guarantee safety when accessing
-  // those arrays, we must ensure that ImmutableCSSPropertyValueSet can only
-  // be constructed via the Create() method, which allocates the correct amount
-  // of space.
-  using PassKey = base::PassKey<ImmutableCSSPropertyValueSet>;
-  ImmutableCSSPropertyValueSet(PassKey,
-                               base::span<const CSSPropertyValue>,
-                               CSSParserMode,
-                               bool contains_cursor_hand = false);
+  ImmutableCSSPropertyValueSet(const CSSPropertyValue*,
+                               unsigned count,
+                               CSSParserMode);
 
-  static ImmutableCSSPropertyValueSet* Create(
-      base::span<const CSSPropertyValue>,
-      CSSParserMode,
-      bool contains_cursor_hand = false);
+  static ImmutableCSSPropertyValueSet*
+  Create(const CSSPropertyValue* properties, unsigned count, CSSParserMode);
 
   unsigned PropertyCount() const { return array_size_; }
 
+<<<<<<< HEAD
   base::span<const CSSPropertyValue> Properties() const;
+=======
+  const Member<const CSSValue>* ValueArray() const;
+  const CSSPropertyValueMetadata* MetadataArray() const;
+>>>>>>> chromium
 
   template <typename T>  // CSSPropertyID or AtomicString
-  int FindPropertyIndex(const T& property) const;
+  int FindPropertyIndex(T property) const;
 
   void TraceAfterDispatch(blink::Visitor*) const;
+<<<<<<< HEAD
 
  private:
   const CSSPropertyValue* ArrayBase() const;
 };
 
 inline const CSSPropertyValue* ImmutableCSSPropertyValueSet::ArrayBase() const {
+=======
+};
+
+inline const Member<const CSSValue>* ImmutableCSSPropertyValueSet::ValueArray()
+    const {
+>>>>>>> chromium
   static_assert(
       sizeof(ImmutableCSSPropertyValueSet) % alignof(CSSPropertyName) == 0,
       "ValueArray may be improperly aligned");
+<<<<<<< HEAD
   // SAFETY: By funneling all allocation of ImmutableCSSPropertyValueSet through
   // Create(), we guarantee that the array will exist where we expect it.
   CHECK_GT(array_size_, 0u);
@@ -246,6 +300,21 @@ ImmutableCSSPropertyValueSet::Properties() const {
   // SAFETY: By funneling all allocation of ImmutableCSSPropertyValueSet through
   // Create(), we guarantee that the array will have the size we expect.
   return UNSAFE_BUFFERS(base::span(ArrayBase(), array_size_));
+=======
+  return reinterpret_cast<const Member<const CSSValue>*>(this + 1);
+}
+
+inline const CSSPropertyValueMetadata*
+ImmutableCSSPropertyValueSet::MetadataArray() const {
+  static_assert(
+      sizeof(ImmutableCSSPropertyValueSet) %
+                  alignof(CSSPropertyValueMetadata) ==
+              0 &&
+          sizeof(Member<CSSValue>) % alignof(CSSPropertyValueMetadata) == 0,
+      "MetadataArray may be improperly aligned");
+  return reinterpret_cast<const CSSPropertyValueMetadata*>(ValueArray() +
+                                                           array_size_);
+>>>>>>> chromium
 }
 
 template <>
@@ -259,8 +328,8 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
  public:
   explicit MutableCSSPropertyValueSet(CSSParserMode);
   explicit MutableCSSPropertyValueSet(const CSSPropertyValueSet&);
-  explicit MutableCSSPropertyValueSet(
-      base::span<const CSSPropertyValue> properties);
+  MutableCSSPropertyValueSet(const CSSPropertyValue* properties,
+                             unsigned count);
   ~MutableCSSPropertyValueSet() = default;
 
   unsigned PropertyCount() const { return property_vector_.size(); }
@@ -268,6 +337,7 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
     return property_vector_;
   }
 
+<<<<<<< HEAD
   enum SetResult {
     // The value failed to parse correctly, and thus, there was no change.
     kParseError = 0,
@@ -293,57 +363,45 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
   // Wrapper around SetLonghandProperty() that does nothing if the same property
   // already exists with an !important declaration.
   //
+=======
+>>>>>>> chromium
   // Returns whether this style set was changed.
+  bool AddParsedProperties(const HeapVector<CSSPropertyValue, 256>&);
   bool AddRespectingCascade(const CSSPropertyValue&);
 
-  // Expands shorthand properties into multiple properties.
+  struct SetResult {
+    bool did_parse;
+    bool did_change;
+  };
+  // These expand shorthand properties into multiple properties.
+  SetResult SetProperty(CSSPropertyID unresolved_property,
+                        const String& value,
+                        bool important,
+                        SecureContextMode,
+                        StyleSheetContents* context_style_sheet = nullptr);
+  SetResult SetProperty(const AtomicString& custom_property_name,
+                        const String& value,
+                        bool important,
+                        SecureContextMode,
+                        StyleSheetContents* context_style_sheet,
+                        bool is_animation_tainted);
   void SetProperty(CSSPropertyID, const CSSValue&, bool important = false);
 
-  // Convenience wrapper around the above that also supports custom properties.
-  void SetProperty(const CSSPropertyName&,
-                   const CSSValue&,
+  // These do not. FIXME: This is too messy, we can do better.
+  bool SetProperty(CSSPropertyID,
+                   CSSValueID identifier,
                    bool important = false);
-
-  // Also a convenience wrapper around SetProperty(), parsing the value from a
-  // string before setting it. If the value is empty, the property is removed.
-  // Only for non-custom properties.
-  SetResult ParseAndSetProperty(
-      CSSPropertyID unresolved_property,
-      StringView value,
-      bool important,
-      SecureContextMode,
-      StyleSheetContents* context_style_sheet = nullptr);
-
-  // Similar to ParseAndSetProperty(), but for custom properties instead.
-  // (By implementation quirk, it attempts shorthand expansion, even though
-  // custom properties can never be shorthands.) If the value is empty,
-  // the property is removed.
-  SetResult ParseAndSetCustomProperty(const AtomicString& custom_property_name,
-                                      StringView value,
-                                      bool important,
-                                      SecureContextMode,
-                                      StyleSheetContents* context_style_sheet,
-                                      bool is_animation_tainted);
-
-  // This one does not expand longhands, but is the second-most efficient form
-  // save for the CSSPropertyID variant below.
-  // All the other property setters eventually call down into this.
-  SetResult SetLonghandProperty(CSSPropertyValue);
-
-  // A streamlined version of the above, which can be used if you don't need
-  // custom properties and don't need the return value (which requires an extra
-  // comparison with the old property). This is the fastest form.
-  void SetLonghandProperty(CSSPropertyID, const CSSValue&);
-
-  // Convenience form of the CSSPropertyValue overload above.
-  SetResult SetLonghandProperty(CSSPropertyID,
-                                CSSValueID identifier,
-                                bool important = false);
+  bool SetProperty(const CSSPropertyValue&, CSSPropertyValue* slot = nullptr);
 
   template <typename T>  // CSSPropertyID or AtomicString
+<<<<<<< HEAD
   bool RemoveProperty(const T& property, String* return_text = nullptr);
   bool RemovePropertiesInSet(base::span<const CSSProperty* const> set);
   bool RemovePropertiesAffectedByAll();
+=======
+  bool RemoveProperty(T property, String* return_text = nullptr);
+  bool RemovePropertiesInSet(const CSSProperty* const set[], unsigned length);
+>>>>>>> chromium
   void RemoveEquivalentProperties(const CSSPropertyValueSet*);
   void RemoveEquivalentProperties(const CSSStyleDeclaration*);
 
@@ -358,22 +416,11 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
       ExecutionContext* execution_context);
 
   template <typename T>  // CSSPropertyID or AtomicString
-  int FindPropertyIndex(const T& property) const;
+  int FindPropertyIndex(T property) const;
 
   void TraceAfterDispatch(blink::Visitor*) const;
 
  private:
-  template <typename T>  // CSSPropertyID or AtomicString
-  const CSSPropertyValue* FindPropertyPointer(const T& property) const;
-
-  // Returns nullptr if there is no property to be overwritten.
-  //
-  // If property_id is a logical property we've already seen a different
-  // property matching, this will remove the existing property (and return
-  // nullptr).
-  ALWAYS_INLINE CSSPropertyValue* FindInsertionPointForID(
-      CSSPropertyID property_id);
-
   bool RemovePropertyAtIndex(int, String* return_text);
 
   bool RemoveShorthandProperty(CSSPropertyID);
@@ -381,13 +428,6 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
     return false;
   }
   CSSPropertyValue* FindCSSPropertyWithName(const CSSPropertyName&);
-
-  void InvalidateHashIfComputed() {
-    if (hash_ != WTF::HashTraits<unsigned>::EmptyValue()) {
-      hash_ = WTF::HashTraits<unsigned>::DeletedValue();
-    }
-  }
-
   Member<PropertySetCSSStyleDeclaration> cssom_wrapper_;
 
   friend class CSSPropertyValueSet;
@@ -421,10 +461,8 @@ inline base::span<const CSSPropertyValue> CSSPropertyValueSet::Properties()
 }
 
 inline unsigned CSSPropertyValueSet::PropertyCount() const {
-  if (auto* mutable_property_set =
-          DynamicTo<MutableCSSPropertyValueSet>(this)) {
+  if (auto* mutable_property_set = DynamicTo<MutableCSSPropertyValueSet>(this))
     return mutable_property_set->property_vector_.size();
-  }
   return array_size_;
 }
 
@@ -433,11 +471,9 @@ inline bool CSSPropertyValueSet::IsEmpty() const {
 }
 
 template <typename T>
-inline int CSSPropertyValueSet::FindPropertyIndex(const T& property) const {
-  if (auto* mutable_property_set =
-          DynamicTo<MutableCSSPropertyValueSet>(this)) {
+inline int CSSPropertyValueSet::FindPropertyIndex(T property) const {
+  if (auto* mutable_property_set = DynamicTo<MutableCSSPropertyValueSet>(this))
     return mutable_property_set->FindPropertyIndex(property);
-  }
   return To<ImmutableCSSPropertyValueSet>(this)->FindPropertyIndex(property);
 }
 

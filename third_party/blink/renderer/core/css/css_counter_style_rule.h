@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,6 @@
 
 #include "third_party/blink/renderer/core/css/css_rule.h"
 #include "third_party/blink/renderer/core/css/parser/at_rule_descriptors.h"
-#include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
 namespace blink {
@@ -15,7 +14,7 @@ namespace blink {
 class ExecutionContext;
 class StyleRuleCounterStyle;
 
-class CORE_EXPORT CSSCounterStyleRule final : public CSSRule {
+class CSSCounterStyleRule final : public CSSRule {
   DEFINE_WRAPPERTYPEINFO();
 
  public:

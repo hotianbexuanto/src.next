@@ -24,7 +24,6 @@
 
 #include "third_party/blink/renderer/core/dom/node_iterator_base.h"
 
-#include "base/auto_reset.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_node_filter.h"
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
@@ -72,9 +71,10 @@ unsigned NodeIteratorBase::AcceptNode(Node* node,
   // 6. Let result be the return value of call a user object’s operation with
   // filter, "acceptNode", and « node ». If this throws an exception, then unset
   // the active flag and rethrow the exception.
-  TryRethrowScope rethrow_scope(filter_->GetIsolate(), exception_state);
+  v8::TryCatch try_catch(filter_->GetIsolate());
   uint16_t result = 0;
   if (!filter_->acceptNode(nullptr, node).To(&result)) {
+    exception_state.RethrowV8Exception(try_catch.Exception());
     return 0;
   }
 

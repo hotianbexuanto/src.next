@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,6 @@
 #include "base/lazy_instance.h"
 #include "components/guest_view/buildflags/buildflags.h"
 #include "content/public/browser/web_contents.h"
-#include "extensions/browser/extension_web_contents_observer.h"
 #include "extensions/browser/extensions_browser_client.h"
 
 #if BUILDFLAG(ENABLE_GUEST_VIEW)
@@ -35,9 +34,8 @@ class ViewTypeUserData : public base::SupportsUserData::Data {
 }  // namespace
 
 mojom::ViewType GetViewType(WebContents* tab) {
-  if (!tab) {
+  if (!tab)
     return mojom::ViewType::kInvalid;
-  }
 
   ViewTypeUserData* user_data = static_cast<ViewTypeUserData*>(
       tab->GetUserData(&kViewTypeUserDataKey));
@@ -59,15 +57,6 @@ void SetViewType(WebContents* tab, mojom::ViewType type) {
                    std::make_unique<ViewTypeUserData>(type));
 
   ExtensionsBrowserClient::Get()->AttachExtensionTaskManagerTag(tab, type);
-
-  if (auto* ewco = ExtensionWebContentsObserver::GetForWebContents(tab)) {
-    tab->ForEachRenderFrameHost([ewco,
-                                 type](content::RenderFrameHost* frame_host) {
-      if (mojom::LocalFrame* local_frame = ewco->GetLocalFrame(frame_host)) {
-        local_frame->NotifyRenderViewType(type);
-      }
-    });
-  }
 }
 
 }  // namespace extensions

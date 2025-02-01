@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -49,20 +49,22 @@ class FileSelectionUser : public ui::SelectFileDialog::Listener {
 
     file_selection_initialisation_in_progress = true;
     select_file_dialog_->SelectFile(ui::SelectFileDialog::SELECT_OPEN_FILE,
-                                    title, file_path, nullptr, 0,
-                                    base::FilePath::StringType(), nullptr);
+                                    title, file_path, NULL, 0,
+                                    base::FilePath::StringType(), NULL, NULL);
     file_selection_initialisation_in_progress = false;
   }
 
   // ui::SelectFileDialog::Listener implementation.
-  void FileSelected(const ui::SelectedFileInfo& file, int index) override {
+  void FileSelected(const base::FilePath& path,
+                    int index,
+                    void* params) override {
     ASSERT_FALSE(file_selection_initialisation_in_progress);
   }
-  void MultiFilesSelected(
-      const std::vector<ui::SelectedFileInfo>& files) override {
+  void MultiFilesSelected(const std::vector<base::FilePath>& files,
+                          void* params) override {
     ASSERT_FALSE(file_selection_initialisation_in_progress);
   }
-  void FileSelectionCanceled() override {
+  void FileSelectionCanceled(void* params) override {
     ASSERT_FALSE(file_selection_initialisation_in_progress);
   }
 

@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,9 +29,7 @@ namespace content {
 class BrowserChildProcessHost;
 class BrowserContext;
 class BrowserURLHandler;
-class RenderFrameHost;
 class RenderProcessHost;
-struct ServiceWorkerVersionBaseInfo;
 class SiteInstance;
 class WebContents;
 }
@@ -39,6 +37,8 @@ class WebContents;
 namespace storage {
 class FileSystemBackend;
 }
+
+class Profile;
 
 // Implements a platform or feature specific part of ChromeContentBrowserClient.
 // All the public methods corresponds to the methods of the same name in
@@ -48,6 +48,7 @@ class ChromeContentBrowserClientParts {
   virtual ~ChromeContentBrowserClientParts() = default;
 
   virtual void RenderProcessWillLaunch(content::RenderProcessHost* host) {}
+<<<<<<< HEAD
   virtual void SiteInstanceGotProcessAndSite(
       content::SiteInstance* site_instance) {}
 
@@ -66,6 +67,13 @@ class ChromeContentBrowserClientParts {
       content::SiteInstance& main_frame_site,
       blink::web_pref::WebPreferences* web_prefs);
 
+=======
+  virtual void SiteInstanceGotProcess(content::SiteInstance* site_instance) {}
+  virtual void SiteInstanceDeleting(content::SiteInstance* site_instance) {}
+  virtual void OverrideWebkitPrefs(content::WebContents* web_contents,
+                                   blink::web_pref::WebPreferences* web_prefs) {
+  }
+>>>>>>> chromium
   virtual void BrowserURLHandlerCreated(content::BrowserURLHandler* handler) {}
   virtual void GetAdditionalAllowedSchemesForFileSystem(
       std::vector<std::string>* additional_allowed_schemes) {}
@@ -78,10 +86,12 @@ class ChromeContentBrowserClientParts {
       std::vector<std::unique_ptr<storage::FileSystemBackend>>*
           additional_backends) {}
 
-  // Append extra switches to |command_line| for |process|.
+  // Append extra switches to |command_line| for |process|. If |process| is not
+  // NULL, then neither is |profile|.
   virtual void AppendExtraRendererCommandLineSwitches(
       base::CommandLine* command_line,
-      content::RenderProcessHost& process) {}
+      content::RenderProcessHost* process,
+      Profile* profile) {}
 
   // Allows to register browser interfaces exposed through the
   // RenderProcessHost. Note that interface factory callbacks added to
@@ -91,6 +101,7 @@ class ChromeContentBrowserClientParts {
       service_manager::BinderRegistry* registry,
       blink::AssociatedInterfaceRegistry* associated_registry,
       content::RenderProcessHost* render_process_host) {}
+<<<<<<< HEAD
 
   // Allows to register browser interfaces exposed through the
   // BrowserChildProcessHost. Note that interface factory callbacks added to
@@ -108,6 +119,9 @@ class ChromeContentBrowserClientParts {
   virtual void ExposeInterfacesToRendererForRenderFrameHost(
       content::RenderFrameHost& frame_host,
       blink::AssociatedInterfaceRegistry& associated_registry) {}
+=======
+>>>>>>> chromium
 };
 
 #endif  // CHROME_BROWSER_CHROME_CONTENT_BROWSER_CLIENT_PARTS_H_
+

@@ -27,23 +27,26 @@
 #include "third_party/blink/renderer/core/css/css_font_selector.h"
 
 #include "build/build_config.h"
-#include "third_party/blink/renderer/core/animation/interpolable_color.h"
 #include "third_party/blink/renderer/core/css/css_segmented_font_face.h"
 #include "third_party/blink/renderer/core/css/css_value_list.h"
 #include "third_party/blink/renderer/core/css/font_face_set_document.h"
-#include "third_party/blink/renderer/core/css/font_size_functions.h"
-#include "third_party/blink/renderer/core/css/resolver/scoped_style_resolver.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
-#include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+#include "third_party/blink/renderer/core/frame/web_feature.h"
+#include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
+#include "third_party/blink/renderer/platform/fonts/font_fallback_map.h"
+#include "third_party/blink/renderer/platform/fonts/font_matching_metrics.h"
 #include "third_party/blink/renderer/platform/fonts/font_selector_client.h"
-#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#include "third_party/blink/renderer/platform/fonts/simple_font_data.h"
+#include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
+#include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 namespace blink {
 
+<<<<<<< HEAD
 namespace {
 
 scoped_refptr<FontPalette> RetrieveFontPaletteFromStyleEngine(
@@ -110,15 +113,16 @@ scoped_refptr<const FontPalette> ResolveInterpolableFontPalette(
 
 }  // namespace
 
+=======
+>>>>>>> chromium
 CSSFontSelector::CSSFontSelector(const TreeScope& tree_scope)
-    : tree_scope_(&tree_scope) {
-  DCHECK(tree_scope.GetDocument().GetExecutionContext()->IsContextThread());
+    : tree_scope_(&tree_scope),
+      generic_font_family_settings_(tree_scope.GetDocument()
+                                        .GetFrame()
+                                        ->GetSettings()
+                                        ->GetGenericFontFamilySettings()) {
   DCHECK(tree_scope.GetDocument().GetFrame());
-  generic_font_family_settings_ = tree_scope.GetDocument()
-                                      .GetFrame()
-                                      ->GetSettings()
-                                      ->GetGenericFontFamilySettings();
-  FontCache::Get().AddClient(this);
+  FontCache::GetFontCache()->AddClient(this);
   if (tree_scope.RootNode().IsDocumentNode()) {
     font_face_cache_ = MakeGarbageCollected<FontFaceCache>();
     FontFaceSetDocument::From(tree_scope.GetDocument())
@@ -127,11 +131,6 @@ CSSFontSelector::CSSFontSelector(const TreeScope& tree_scope)
 }
 
 CSSFontSelector::~CSSFontSelector() = default;
-
-UseCounter* CSSFontSelector::GetUseCounter() const {
-  auto* const context = GetExecutionContext();
-  return context && context->IsContextThread() ? context : nullptr;
-}
 
 void CSSFontSelector::RegisterForInvalidationCallbacks(
     FontSelectorClient* client) {
@@ -148,7 +147,8 @@ void CSSFontSelector::DispatchInvalidationCallbacks(
     FontInvalidationReason reason) {
   font_face_cache_->IncrementVersion();
 
-  HeapVector<Member<FontSelectorClient>> clients(clients_);
+  HeapVector<Member<FontSelectorClient>> clients;
+  CopyToVector(clients_, clients);
   for (auto& client : clients) {
     if (client) {
       client->FontsNeedUpdate(this, reason);
@@ -164,11 +164,11 @@ void CSSFontSelector::FontCacheInvalidated() {
   DispatchInvalidationCallbacks(FontInvalidationReason::kGeneralInvalidation);
 }
 
-const FontData* CSSFontSelector::GetFontData(
+scoped_refptr<FontData> CSSFontSelector::GetFontData(
     const FontDescription& font_description,
-    const FontFamily& font_family) {
-  const auto& family_name = font_family.FamilyName();
+    const AtomicString& family_name) {
   Document& document = GetTreeScope()->GetDocument();
+<<<<<<< HEAD
 
   FontDescription request_description(font_description);
   const FontPalette* request_palette = request_description.GetFontPalette();
@@ -243,60 +243,145 @@ const FontData* CSSFontSelector::GetFontData(
       return face->GetFontData(request_description);
     }
   }
+=======
+  if (CSSSegmentedFontFace* face =
+          font_face_cache_->Get(font_description, family_name)) {
+    document.GetFontMatchingMetrics()->ReportWebFontFamily(family_name);
+    return face->GetFontData(font_description);
+  }
+
+  document.GetFontMatchingMetrics()->ReportSystemFontFamily(family_name);
+>>>>>>> chromium
 
   // Try to return the correct font based off our settings, in case we were
   // handed the generic font family name.
-  AtomicString settings_family_name =
-      FamilyNameFromSettings(request_description, font_family);
-  if (settings_family_name.empty()) {
+  AtomicString settings_family_name = FamilyNameFromSettings(
+      generic_font_family_settings_, font_description, family_name);
+  if (settings_family_name.IsEmpty())
     return nullptr;
-  }
 
-  ReportFontFamilyLookupByGenericFamily(
-      family_name, request_description.GetScript(),
-      request_description.GenericFamily(), settings_family_name);
+  document.GetFontMatchingMetrics()->ReportFontFamilyLookupByGenericFamily(
+      family_name, font_description.GetScript(),
+      font_description.GenericFamily(), settings_family_name);
 
-  const SimpleFontData* font_data =
-      FontCache::Get().GetFontData(request_description, settings_family_name);
-  if (font_data && request_description.HasSizeAdjust()) {
-    DCHECK(RuntimeEnabledFeatures::CSSFontSizeAdjustEnabled());
-    if (auto adjusted_size =
-            FontSizeFunctions::MetricsMultiplierAdjustedFontSize(
-                font_data, request_description)) {
-      FontDescription size_adjusted_description(request_description);
-      size_adjusted_description.SetAdjustedSize(adjusted_size.value());
-      font_data = FontCache::Get().GetFontData(size_adjusted_description,
-                                               settings_family_name);
-    }
-  }
+  scoped_refptr<SimpleFontData> font_data =
+      FontCache::GetFontCache()->GetFontData(font_description,
+                                             settings_family_name);
 
-  ReportFontLookupByUniqueOrFamilyName(settings_family_name,
-                                       request_description, font_data);
+  document.GetFontMatchingMetrics()->ReportFontLookupByUniqueOrFamilyName(
+      settings_family_name, font_description, font_data.get());
 
   return font_data;
 }
 
+void CSSFontSelector::WillUseFontData(const FontDescription& font_description,
+                                      const AtomicString& family,
+                                      const String& text) {
+  CSSSegmentedFontFace* face = font_face_cache_->Get(font_description, family);
+  if (face)
+    face->WillUseFontData(font_description, text);
+}
+
+void CSSFontSelector::WillUseRange(const FontDescription& font_description,
+                                   const AtomicString& family,
+                                   const FontDataForRangeSet& range_set) {
+  CSSSegmentedFontFace* face = font_face_cache_->Get(font_description, family);
+  if (face)
+    face->WillUseRange(font_description, range_set);
+}
+
+bool CSSFontSelector::IsPlatformFamilyMatchAvailable(
+    const FontDescription& font_description,
+    const AtomicString& passed_family) {
+  AtomicString family = FamilyNameFromSettings(generic_font_family_settings_,
+                                               font_description, passed_family);
+  if (family.IsEmpty())
+    family = passed_family;
+  return FontCache::GetFontCache()->IsPlatformFamilyMatchAvailable(
+      font_description, family);
+}
+
 void CSSFontSelector::UpdateGenericFontFamilySettings(Document& document) {
-  if (!document.GetSettings()) {
+  if (!document.GetSettings())
     return;
-  }
   generic_font_family_settings_ =
       document.GetSettings()->GetGenericFontFamilySettings();
   FontCacheInvalidated();
 }
 
-FontMatchingMetrics* CSSFontSelector::GetFontMatchingMetrics() const {
-  return GetDocument().GetFontMatchingMetrics();
+void CSSFontSelector::ReportNotDefGlyph() const {
+  UseCounter::Count(GetDocument(), WebFeature::kFontShapingNotDefGlyphObserved);
 }
 
-bool CSSFontSelector::IsAlive() const {
-  return tree_scope_ != nullptr;
+void CSSFontSelector::ReportEmojiSegmentGlyphCoverage(
+    unsigned num_clusters,
+    unsigned num_broken_clusters) {
+  GetDocument().GetFontMatchingMetrics()->ReportEmojiSegmentGlyphCoverage(
+      num_clusters, num_broken_clusters);
+}
+
+void CSSFontSelector::ReportSuccessfulFontFamilyMatch(
+    const AtomicString& font_family_name) {
+  GetDocument().GetFontMatchingMetrics()->ReportSuccessfulFontFamilyMatch(
+      font_family_name);
+}
+
+void CSSFontSelector::ReportFailedFontFamilyMatch(
+    const AtomicString& font_family_name) {
+  GetDocument().GetFontMatchingMetrics()->ReportFailedFontFamilyMatch(
+      font_family_name);
+}
+
+void CSSFontSelector::ReportSuccessfulLocalFontMatch(
+    const AtomicString& font_name) {
+  GetDocument().GetFontMatchingMetrics()->ReportSuccessfulLocalFontMatch(
+      font_name);
+}
+
+void CSSFontSelector::ReportFailedLocalFontMatch(
+    const AtomicString& font_name) {
+  GetDocument().GetFontMatchingMetrics()->ReportFailedLocalFontMatch(font_name);
+}
+
+void CSSFontSelector::ReportFontLookupByUniqueOrFamilyName(
+    const AtomicString& name,
+    const FontDescription& font_description,
+    SimpleFontData* resulting_font_data) {
+  GetDocument().GetFontMatchingMetrics()->ReportFontLookupByUniqueOrFamilyName(
+      name, font_description, resulting_font_data);
+}
+
+void CSSFontSelector::ReportFontLookupByUniqueNameOnly(
+    const AtomicString& name,
+    const FontDescription& font_description,
+    SimpleFontData* resulting_font_data,
+    bool is_loading_fallback) {
+  GetDocument().GetFontMatchingMetrics()->ReportFontLookupByUniqueNameOnly(
+      name, font_description, resulting_font_data, is_loading_fallback);
+}
+
+void CSSFontSelector::ReportFontLookupByFallbackCharacter(
+    UChar32 fallback_character,
+    FontFallbackPriority fallback_priority,
+    const FontDescription& font_description,
+    SimpleFontData* resulting_font_data) {
+  GetDocument().GetFontMatchingMetrics()->ReportFontLookupByFallbackCharacter(
+      fallback_character, fallback_priority, font_description,
+      resulting_font_data);
+}
+
+void CSSFontSelector::ReportLastResortFallbackFontLookup(
+    const FontDescription& font_description,
+    SimpleFontData* resulting_font_data) {
+  GetDocument().GetFontMatchingMetrics()->ReportLastResortFallbackFontLookup(
+      font_description, resulting_font_data);
 }
 
 void CSSFontSelector::Trace(Visitor* visitor) const {
   visitor->Trace(tree_scope_);
+  visitor->Trace(font_face_cache_);
   visitor->Trace(clients_);
-  CSSFontSelectorBase::Trace(visitor);
+  FontSelector::Trace(visitor);
 }
 
 }  // namespace blink

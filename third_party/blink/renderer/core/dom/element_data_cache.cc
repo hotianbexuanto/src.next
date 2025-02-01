@@ -24,35 +24,35 @@
  *
  */
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "third_party/blink/renderer/core/dom/element_data_cache.h"
 
 #include "third_party/blink/renderer/core/dom/element_data.h"
 
 namespace blink {
 
-inline unsigned AttributeHash(
-    const Vector<Attribute, kAttributePrealloc>& attributes) {
-  return StringHasher::HashMemory(base::as_byte_span(attributes));
+inline unsigned AttributeHash(const Vector<Attribute>& attributes) {
+  return StringHasher::HashMemory(attributes.data(),
+                                  attributes.size() * sizeof(Attribute));
 }
 
-inline bool HasSameAttributes(
-    const Vector<Attribute, kAttributePrealloc>& attributes,
-    ShareableElementData& element_data) {
-  return std::equal(
-      attributes.begin(), attributes.end(), element_data.attribute_array_,
-      element_data.attribute_array_ + element_data.Attributes().size());
+inline bool HasSameAttributes(const Vector<Attribute>& attributes,
+                              ShareableElementData& element_data) {
+  if (attributes.size() != element_data.Attributes().size())
+    return false;
+  return !memcmp(attributes.data(), element_data.attribute_array_,
+                 attributes.size() * sizeof(Attribute));
 }
 
 ShareableElementData*
 ElementDataCache::CachedShareableElementDataWithAttributes(
+<<<<<<< HEAD
     const StringImpl* tag_name,
     const Vector<Attribute, kAttributePrealloc>& attributes) {
   DCHECK(!attributes.empty());
+=======
+    const Vector<Attribute>& attributes) {
+  DCHECK(!attributes.IsEmpty());
+>>>>>>> chromium
 
   unsigned hash = WTF::HashInts(tag_name->GetHash(), AttributeHash(attributes));
   ShareableElementDataCache::ValueType* it =

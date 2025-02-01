@@ -1,4 +1,4 @@
-# Copyright 2012 The Chromium Authors
+# Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,22 +8,8 @@ See http://dev.chromium.org/developers/how-tos/depottools/presubmit-scripts
 for more details on the presubmit API built into depot_tools.
 """
 
-def CheckChangeLintsClean(input_api, output_api):
-  """Makes sure that the code is cpplint clean."""
-  # lint_filters=[] stops the OFF_BY_DEFAULT_LINT_FILTERS from being disabled,
-  # finding many more issues. verbose_level=1 finds a small number of additional
-  # issues.
-  # The only valid extensions for cpplint are .cc, .h, .cpp, .cu, and .ch.
-  # Only process those extensions which are used in Chromium, in directories
-  # that currently lint clean.
-  CLEAN_CPP_FILES_ONLY = (r'base/win/.*\.(cc|h)$', )
-  source_file_filter = lambda x: input_api.FilterSourceFile(
-      x,
-      files_to_check=CLEAN_CPP_FILES_ONLY,
-      files_to_skip=input_api.DEFAULT_FILES_TO_SKIP)
-  return input_api.canned_checks.CheckChangeLintsClean(
-      input_api, output_api, source_file_filter=source_file_filter,
-      lint_filters=[], verbose_level=1)
+
+USE_PYTHON3 = True
 
 
 def _CheckNoInterfacesInBase(input_api, output_api):
@@ -36,7 +22,7 @@ def _CheckNoInterfacesInBase(input_api, output_api):
         not "/test/" in f.LocalPath() and
         not f.LocalPath().endswith('.java') and
         not f.LocalPath().endswith('_unittest.mm') and
-        not f.LocalPath().endswith('_spi.h')):
+        not f.LocalPath().endswith('mac/sdk_forward_declarations.h')):
       contents = input_api.ReadFile(f)
       if pattern.search(contents):
         files.append(f)
@@ -86,9 +72,9 @@ def _CheckNoTraceEventInclude(input_api, output_api):
     r".*\.(h|cc|mm)$",
   ]
   files_to_skip = [
-    r".*/test/.*",
-    r".*/trace_event/.*",
-    r".*/tracing/.*",
+    r".*[\\/]test[\\/].*",
+    r".*[\\/]trace_event[\\/].*",
+    r".*[\\/]tracing[\\/].*",
   ]
 
   locations = _FindLocations(input_api, discouraged_includes, files_to_check,
@@ -119,9 +105,9 @@ def _WarnPbzeroIncludes(input_api, output_api):
     r".*\.(h|cc|mm)$",
   ]
   files_to_skip = [
-    r".*/test/.*",
-    r".*/trace_event/.*",
-    r".*/tracing/.*",
+    r".*[\\/]test[\\/].*",
+    r".*[\\/]trace_event[\\/].*",
+    r".*[\\/]tracing[\\/].*",
   ]
 
   locations = _FindLocations(input_api, warn_includes, files_to_check,
@@ -143,7 +129,6 @@ def _CommonChecks(input_api, output_api):
   results.extend(_CheckNoInterfacesInBase(input_api, output_api))
   results.extend(_CheckNoTraceEventInclude(input_api, output_api))
   results.extend(_WarnPbzeroIncludes(input_api, output_api))
-  results.extend(CheckChangeLintsClean(input_api, output_api))
   return results
 
 

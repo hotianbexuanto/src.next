@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,34 +19,29 @@ import android.view.animation.Transformation;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.gesturenav.NavigationBubble.CloseTarget;
-import org.chromium.ui.animation.EmptyAnimationListener;
-import org.chromium.ui.base.BackGestureEventSwipeEdge;
-import org.chromium.ui.interpolators.Interpolators;
+import org.chromium.components.browser_ui.widget.animation.Interpolators;
 
 /**
- * The SideSlideLayout can be used whenever the user navigates the contents of a view using
- * horizontal gesture. Shows an arrow widget moving horizontally in reaction to the gesture which,
- * if goes over a threshold, triggers navigation. The caller that instantiates this view should add
- * an {@link #OnNavigateListener} to be notified whenever the gesture is completed. Based on {@link
- * org.chromium.third_party.android.swiperefresh.SwipeRefreshLayout} and modified accordingly to
- * support horizontal gesture.
+ * The SideSlideLayout can be used whenever the user navigates the contents
+ * of a view using horizontal gesture. Shows an arrow widget moving horizontally
+ * in reaction to the gesture which, if goes over a threshold, triggers navigation.
+ * The caller that instantiates this view should add an {@link #OnNavigateListener}
+ * to be notified whenever the gesture is completed.
+ * Based on {@link org.chromium.third_party.android.swiperefresh.SwipeRefreshLayout}
+ * and modified accordingly to support horizontal gesture.
  */
 public class SideSlideLayout extends ViewGroup {
     /**
-     * Classes that wish to be notified when the swipe gesture correctly triggers navigation should
-     * implement this interface.
+     * Classes that wish to be notified when the swipe gesture correctly
+     * triggers navigation should implement this interface.
      */
-    public interface OnNavigateListener {
-        void onNavigate(boolean isForward);
-    }
+    public interface OnNavigateListener { void onNavigate(boolean isForward); }
 
     /**
      * Classes that wish to be notified when a reset is triggered should
      * implement this interface.
      */
-    public interface OnResetListener {
-        void onReset();
-    }
+    public interface OnResetListener { void onReset(); }
 
     // Swipe offset in dips from the border of the view before applying physical tension
     // effect. The actual arrow bubble position is capped at a value three times as this
@@ -71,6 +66,7 @@ public class SideSlideLayout extends ViewGroup {
 
     private final DecelerateInterpolator mDecelerateInterpolator;
     private final float mTotalDragDistance;
+    private final int mMediumAnimationDuration;
     private final int mCircleWidth;
 
     // Metrics
@@ -107,70 +103,90 @@ public class SideSlideLayout extends ViewGroup {
     private boolean mIsForward;
     private @CloseTarget int mCloseIndicator;
 
-    private @BackGestureEventSwipeEdge int mInitiatingEdge;
-
     // True while swiped to a distance where, if released, the navigation would be triggered.
     private boolean mWillNavigate;
 
-    private final AnimationListener mNavigateListener =
-            new EmptyAnimationListener() {
-                @Override
-                public void onAnimationEnd(Animation animation) {
-                    mArrowView.setFaded(false, false);
-                    mArrowView.setVisibility(View.INVISIBLE);
-                    if (!mNavigating) reset();
-                    hideCloseIndicator();
-                }
-            };
+    private final AnimationListener mNavigateListener = new AnimationListener() {
+        @Override
+        public void onAnimationStart(Animation animation) {}
 
-    private final Animation mAnimateToStartPosition =
-            new Animation() {
-                @Override
-                public void applyTransformation(float interpolatedTime, Transformation t) {
-                    int targetTop = mFrom + (int) ((mOriginalOffset - mFrom) * interpolatedTime);
-                    int offset = targetTop - mArrowView.getLeft();
-                    mTotalMotion += offset;
-                    setTargetOffsetLeftAndRight(offset);
-                }
-            };
+        @Override
+        public void onAnimationRepeat(Animation animation) {}
+
+        @Override
+        public void onAnimationEnd(Animation animation) {
+            mArrowView.setFaded(false, false);
+            mArrowView.setVisibility(View.INVISIBLE);
+            if (!mNavigating) reset();
+            hideCloseIndicator();
+        }
+    };
+
+    private final Animation mAnimateToStartPosition = new Animation() {
+        @Override
+        public void applyTransformation(float interpolatedTime, Transformation t) {
+            int targetTop = mFrom + (int) ((mOriginalOffset - mFrom) * interpolatedTime);
+            int offset = targetTop - mArrowView.getLeft();
+            mTotalMotion += offset;
+
+            float progress = Math.min(1.f, getOverscroll() / mTotalDragDistance);
+            setTargetOffsetLeftAndRight(offset);
+        }
+    };
 
     public SideSlideLayout(Context context) {
         super(context);
 
+        mMediumAnimationDuration =
+                getResources().getInteger(android.R.integer.config_mediumAnimTime);
+
         setWillNotDraw(false);
         mDecelerateInterpolator = new DecelerateInterpolator(DECELERATE_INTERPOLATION_FACTOR);
 
-        mCircleWidth = getResources().getDimensionPixelSize(R.dimen.navigation_bubble_size);
+        mCircleWidth = (int) getResources().getDimensionPixelSize(R.dimen.navigation_bubble_size);
 
         LayoutInflater layoutInflater = LayoutInflater.from(getContext());
         mArrowView = (NavigationBubble) layoutInflater.inflate(R.layout.navigation_bubble, null);
-        mArrowView
-                .getTextView()
-                .setText(
-                        getResources()
-                                .getString(
-                                        R.string.overscroll_navigation_close_chrome,
-                                        getContext().getString(R.string.app_name)));
+        mArrowView.getTextView().setText(
+                getResources().getString(R.string.overscroll_navigation_close_chrome,
+                        getContext().getString(R.string.app_name)));
         mArrowViewWidth = mCircleWidth;
         addView(mArrowView);
 
         // The absolute offset has to take into account that the circle starts at an offset
         mTotalDragDistance = RAW_SWIPE_LIMIT_DP * getResources().getDisplayMetrics().density;
 
-        prepareAnimateToStartPosition();
+        mAnimateToStartPosition.setAnimationListener(new AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {}
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {}
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                reset();
+            }
+        });
     }
 
-    /** Set the listener to be notified when the navigation is triggered. */
+    /**
+     * Set the listener to be notified when the navigation is triggered.
+     */
     public void setOnNavigationListener(OnNavigateListener listener) {
         mListener = listener;
     }
 
-    /** Set the reset listener to be notified when a reset is triggered. */
+    /**
+     * Set the reset listener to be notified when a reset is triggered.
+     */
     public void setOnResetListener(OnResetListener listener) {
         mResetListener = listener;
     }
 
-    /** Stop navigation. */
+    /**
+     * Stop navigation.
+     */
     public void stopNavigating() {
         setNavigating(false);
     }
@@ -186,9 +202,7 @@ public class SideSlideLayout extends ViewGroup {
      * @return Absolute swipe distance from the starting edge.
      */
     float getOverscroll() {
-        return mInitiatingEdge == BackGestureEventSwipeEdge.RIGHT
-                ? -Math.min(0, mTotalMotion)
-                : Math.max(0, mTotalMotion);
+        return mIsForward ? -Math.min(0, mTotalMotion) : Math.max(0, mTotalMotion);
     }
 
     private void startHidingAnimation(AnimationListener listener) {
@@ -200,8 +214,7 @@ public class SideSlideLayout extends ViewGroup {
         if (mHidingAnimation == null || mAnimationViewWidth != mArrowViewWidth) {
             mAnimationViewWidth = mArrowViewWidth;
             ScaleAnimation scalingDown =
-                    new ScaleAnimation(
-                            1, 0, 1, 0, mArrowViewWidth / 2f, mArrowView.getHeight() / 2f);
+                    new ScaleAnimation(1, 0, 1, 0, mArrowViewWidth / 2, mArrowView.getHeight() / 2);
             scalingDown.setInterpolator(Interpolators.LINEAR_INTERPOLATOR);
             scalingDown.setDuration(SCALE_DOWN_DURATION_MS);
             Animation fadingOut = new AlphaAnimation(1, 0);
@@ -226,10 +239,6 @@ public class SideSlideLayout extends ViewGroup {
                 forward ? R.drawable.ic_arrow_forward_blue_24dp : R.drawable.ic_arrow_back_24dp);
     }
 
-    public void setInitiatingEdge(@BackGestureEventSwipeEdge int edge) {
-        mInitiatingEdge = edge;
-    }
-
     public void setCloseIndicator(@CloseTarget int target) {
         mCloseIndicator = target;
     }
@@ -241,60 +250,48 @@ public class SideSlideLayout extends ViewGroup {
         final int height = getMeasuredHeight();
         final int arrowWidth = mArrowView.getMeasuredWidth();
         final int arrowHeight = mArrowView.getMeasuredHeight();
-        mArrowView.layout(
-                mCurrentTargetOffset,
-                height / 2 - arrowHeight / 2,
-                mCurrentTargetOffset + arrowWidth,
-                height / 2 + arrowHeight / 2);
+        mArrowView.layout(mCurrentTargetOffset, height / 2 - arrowHeight / 2,
+                mCurrentTargetOffset + arrowWidth, height / 2 + arrowHeight / 2);
     }
 
     @Override
     public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        mArrowView.measure(
-                MeasureSpec.makeMeasureSpec(mArrowViewWidth, MeasureSpec.EXACTLY),
+        mArrowView.measure(MeasureSpec.makeMeasureSpec(mArrowViewWidth, MeasureSpec.EXACTLY),
                 MeasureSpec.makeMeasureSpec(mCircleWidth, MeasureSpec.EXACTLY));
     }
 
     private void initializeOffset() {
-        mOriginalOffset =
-                mInitiatingEdge == BackGestureEventSwipeEdge.RIGHT
-                        ? ((View) getParent()).getWidth()
-                        : -mArrowViewWidth;
-        mCurrentTargetOffset = mOriginalOffset;
+        int offset = mIsForward ? ((View) getParent()).getWidth() : -mArrowViewWidth;
+        mCurrentTargetOffset = mOriginalOffset = offset;
     }
 
     /**
-     * Start the pull effect. If the effect is disabled or a navigation animation is currently
-     * active, the request will be ignored.
-     *
+     * Start the pull effect. If the effect is disabled or a navigation animation
+     * is currently active, the request will be ignored.
      * @return whether a new pull sequence has started.
      */
     public boolean start() {
         if (!isEnabled() || mNavigating || mListener == null) return false;
-
-        // Stop animation triggered by previous slide.
-        if (mAnimateToStartPosition.hasStarted()) {
-            mAnimateToStartPosition.setAnimationListener(null);
-            mArrowView.clearAnimation();
-            mAnimateToStartPosition.cancel();
-            mAnimateToStartPosition.reset();
-        }
-
         mTotalMotion = 0;
         mMaxOverscroll = 0.f;
         mIsBeingDragged = true;
         mWillNavigate = false;
         initializeOffset();
-        prepareAnimateToStartPosition();
         mArrowView.setFaded(false, false);
         return true;
     }
 
     /**
-     * Apply a pull impulse to the effect. If the effect is disabled or has yet to start, the pull
-     * will be ignored.
-     *
+     * @param Total amount of pull offset.
+     */
+    float getPullOffset() {
+        return mTotalMotion;
+    }
+
+    /**
+     * Apply a pull impulse to the effect. If the effect is disabled or has yet
+     * to start, the pull will be ignored.
      * @param offset Updated total pull offset.
      */
     public void pull(float offset) {
@@ -313,7 +310,7 @@ public class SideSlideLayout extends ViewGroup {
                 Math.max(0, Math.min(extraOs, slingshotDist * 2) / slingshotDist);
         float tensionPercent =
                 (float) ((tensionSlingshotPercent / 4) - Math.pow((tensionSlingshotPercent / 4), 2))
-                        * 2f;
+                * 2f;
 
         if (mArrowView.getVisibility() != View.VISIBLE) mArrowView.setVisibility(View.VISIBLE);
 
@@ -339,11 +336,7 @@ public class SideSlideLayout extends ViewGroup {
 
         float extraMove = slingshotDist * tensionPercent * 2;
         int targetDiff = (int) (slingshotDist * dragPercent + extraMove);
-        int targetX =
-                mOriginalOffset
-                        + (mInitiatingEdge == BackGestureEventSwipeEdge.RIGHT
-                                ? -targetDiff
-                                : targetDiff);
+        int targetX = mOriginalOffset + (mIsForward ? -targetDiff : targetDiff);
         setTargetOffsetLeftAndRight(targetX - mCurrentTargetOffset);
     }
 
@@ -366,22 +359,11 @@ public class SideSlideLayout extends ViewGroup {
         mCurrentTargetOffset = mArrowView.getLeft();
     }
 
-    private void prepareAnimateToStartPosition() {
-        mAnimateToStartPosition.setAnimationListener(
-                new EmptyAnimationListener() {
-                    @Override
-                    public void onAnimationEnd(Animation animation) {
-                        reset();
-                    }
-                });
-    }
-
     /**
-     * Release the active pull. If no pull has started, the release will be ignored. If the pull was
-     * sufficiently large, the navigation sequence will be initiated.
-     *
-     * @param allowNav whether to allow a sufficiently large pull to trigger the navigation action
-     *     and animation sequence.
+     * Release the active pull. If no pull has started, the release will be ignored.
+     * If the pull was sufficiently large, the navigation sequence will be initiated.
+     * @param allowNav whether to allow a sufficiently large pull to trigger
+     *                     the navigation action and animation sequence.
      */
     public void release(boolean allowNav) {
         if (!mIsBeingDragged) return;
@@ -389,20 +371,17 @@ public class SideSlideLayout extends ViewGroup {
         // See ACTION_UP handling in {@link #onTouchEvent(...)}.
         mIsBeingDragged = false;
 
-        boolean activated = mMaxOverscroll >= mArrowViewWidth / 3f;
-        if (activated) {
-            GestureNavMetrics.recordHistogram("GestureNavigation.Activated2", mIsForward);
-        }
+        boolean activated = mMaxOverscroll >= mArrowViewWidth / 3;
+        if (activated) GestureNavMetrics.recordHistogram("GestureNavigation.Activated", mIsForward);
 
         if (isEnabled() && willNavigate()) {
             if (allowNav) {
                 setNavigating(true);
-                GestureNavMetrics.recordHistogram("GestureNavigation.Completed2", mIsForward);
+                GestureNavMetrics.recordHistogram("GestureNavigation.Completed", mIsForward);
                 long time = System.currentTimeMillis();
-                if (sLastCompletedTime > 0
-                        && time - sLastCompletedTime < NAVIGATION_REVERSAL_MS
+                if (sLastCompletedTime > 0 && time - sLastCompletedTime < NAVIGATION_REVERSAL_MS
                         && mIsForward != sLastCompletedForward) {
-                    GestureNavMetrics.recordHistogram("GestureNavigation.Reversed2", mIsForward);
+                    GestureNavMetrics.recordHistogram("GestureNavigation.Reversed", mIsForward);
                 }
                 sLastCompletedTime = time;
                 sLastCompletedForward = mIsForward;
@@ -422,12 +401,12 @@ public class SideSlideLayout extends ViewGroup {
         mAnimateToStartPosition.setInterpolator(mDecelerateInterpolator);
         mArrowView.clearAnimation();
         mArrowView.startAnimation(mAnimateToStartPosition);
-        if (activated) {
-            GestureNavMetrics.recordHistogram("GestureNavigation.Cancelled2", mIsForward);
-        }
+        if (activated) GestureNavMetrics.recordHistogram("GestureNavigation.Cancelled", mIsForward);
     }
 
-    /** Reset the effect, clearing any active animations. */
+    /**
+     * Reset the effect, clearing any active animations.
+     */
     public void reset() {
         mIsBeingDragged = false;
         setNavigating(false);

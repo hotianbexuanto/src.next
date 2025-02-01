@@ -1,30 +1,29 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_REMOTE_FRAME_VIEW_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_REMOTE_FRAME_VIEW_H_
 
-#include <optional>
-
-#include "base/check.h"
-#include "base/time/time.h"
+#include "cc/paint/paint_canvas.h"
 #include "third_party/blink/public/mojom/frame/lifecycle.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/frame/viewport_intersection_state.mojom-blink.h"
-#include "third_party/blink/renderer/core/frame/embedded_content_view.h"
+#include "third_party/blink/renderer/core/dom/document_lifecycle.h"
 #include "third_party/blink/renderer/core/frame/frame_view.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/layout/natural_sizing_info.h"
 #include "third_party/blink/renderer/core/paint/paint_flags.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "ui/gfx/geometry/rect.h"
+=======
+#include "third_party/blink/renderer/core/layout/intrinsic_sizing_info.h"
+#include "third_party/blink/renderer/platform/geometry/int_rect.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
+>>>>>>> chromium
 
 namespace cc {
 class PaintCanvas;
-}
-
-namespace gfx {
-class Vector2d;
 }
 
 namespace blink {
@@ -50,20 +49,19 @@ class RemoteFrameView final : public GarbageCollected<RemoteFrameView>,
   }
 
   void Dispose() override;
-  void SetFrameRect(const gfx::Rect&) override;
+  void SetFrameRect(const IntRect&) override;
   void PropagateFrameRects() override;
-  void ZoomFactorChanged(float zoom_factor) override;
   void Paint(GraphicsContext&,
-             PaintFlags,
+             const GlobalPaintFlags,
              const CullRect&,
-             const gfx::Vector2d& paint_offset) const override;
+             const IntSize& paint_offset = IntSize()) const override;
   void UpdateGeometry() override;
   void Hide() override;
   void Show() override;
 
   bool UpdateViewportIntersectionsForSubtree(
       unsigned parent_flags,
-      ComputeIntersectionsContext&) override;
+      absl::optional<base::TimeTicks>&) override;
   void SetNeedsOcclusionTracking(bool);
   bool NeedsOcclusionTracking() const { return needs_occlusion_tracking_; }
 
@@ -81,17 +79,15 @@ class RemoteFrameView final : public GarbageCollected<RemoteFrameView>,
   // and reduce the number of paint-ops generated. UpdateCompositingRect must be
   // called before the parent frame commits a compositor frame.
   void UpdateCompositingRect();
-  gfx::Rect GetCompositingRect() const { return compositing_rect_; }
+  IntRect GetCompositingRect() const { return compositing_rect_; }
 
   void UpdateCompositingScaleFactor();
   float GetCompositingScaleFactor() const { return compositing_scale_factor_; }
 
-  uint32_t Print(const gfx::Rect&, cc::PaintCanvas*) const;
-  uint32_t CapturePaintPreview(const gfx::Rect&, cc::PaintCanvas*) const;
+  uint32_t Print(const IntRect&, cc::PaintCanvas*) const;
+  uint32_t CapturePaintPreview(const IntRect&, cc::PaintCanvas*) const;
 
   void Trace(Visitor*) const override;
-
-  void ResetFrozenSize() { frozen_size_ = std::nullopt; }
 
  protected:
   bool NeedsViewportOffset() const override { return true; }
@@ -103,18 +99,9 @@ class RemoteFrameView final : public GarbageCollected<RemoteFrameView>,
  private:
   // This function returns the LocalFrameView associated with the parent frame's
   // local root, or nullptr if the parent frame is not a local frame. For
-  // fenced frames, this will return the local root associated with the fenced
-  // frame's owner.
+  // portals, this will return the local root associated with the portal's
+  // owner.
   LocalFrameView* ParentLocalRootFrameView() const;
-
-  // This provides the rectangle that the embedded compositor should raster
-  // based on its screen space rect. This takes into account the frame's
-  // viewport intersection and a buffer area to prevent checkerboarding during
-  // animations.
-  gfx::Rect ComputeCompositingRect() const;
-
-  // Fetch the frozen size, if any, from the associated LayoutObject.
-  void UpdateFrozenSize();
 
   // The properties and handling of the cycle between RemoteFrame
   // and its RemoteFrameView corresponds to that between LocalFrame
@@ -122,8 +109,7 @@ class RemoteFrameView final : public GarbageCollected<RemoteFrameView>,
   // details.
   Member<RemoteFrame> remote_frame_;
   mojom::blink::ViewportIntersectionState last_intersection_state_;
-  gfx::Rect compositing_rect_;
-  std::optional<gfx::Size> frozen_size_;
+  IntRect compositing_rect_;
   float compositing_scale_factor_ = 1.0f;
 
   NaturalSizingInfo intrinsic_sizing_info_;

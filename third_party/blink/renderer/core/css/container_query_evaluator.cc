@@ -1,11 +1,10 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/container_query_evaluator.h"
-
-#include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
 #include "third_party/blink/renderer/core/css/container_query.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/css/css_container_values.h"
 #include "third_party/blink/renderer/core/css/media_values_cached.h"
 #include "third_party/blink/renderer/core/css/resolver/match_result.h"
@@ -16,106 +15,50 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
+=======
+#include "third_party/blink/renderer/core/css/style_recalc.h"
+#include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/style/computed_style.h"
+
+#include "third_party/blink/renderer/core/css/media_values_cached.h"
 
 namespace blink {
 
+// static
+Element* ContainerQueryEvaluator::FindContainer(
+    const StyleRecalcContext& context,
+    const AtomicString& container_name) {
+  Element* container = context.container;
+  if (!container)
+    return nullptr;
+
+  if (container_name == g_null_atom)
+    return container;
+
+  // TODO(crbug.com/1213888): Cache results.
+  for (Element* element = container; element;
+       element = LayoutTreeBuilderTraversal::ParentElement(*element)) {
+    if (const ComputedStyle* style = element->GetComputedStyle()) {
+      if (style->IsContainerForContainerQueries() &&
+          style->ContainerName() == container_name)
+        return element;
+    }
+  }
+
+  return nullptr;
+}
+
 namespace {
 
-// Produce PhysicalAxes corresponding to the computed container-type.
-// Note that this may be different from the *actually* contained axes
-// provided to ContainerChanged, since there are multiple sources of
-// applied containment (e.g. the 'contain' property itself).
-PhysicalAxes ContainerTypeAxes(const ComputedStyle& style) {
-  LogicalAxes axes = kLogicalAxesNone;
-  if (style.ContainerType() & kContainerTypeInlineSize) {
-    axes |= kLogicalAxesInline;
-  }
-  if (style.ContainerType() & kContainerTypeBlockSize) {
-    axes |= kLogicalAxesBlock;
-  }
-  return ToPhysicalAxes(axes, style.GetWritingMode());
-}
-
-bool NameMatches(const ComputedStyle& style,
-                 const ContainerSelector& container_selector,
-                 const TreeScope* selector_tree_scope) {
-  const AtomicString& name = container_selector.Name();
-  if (name.IsNull()) {
-    return true;
-  }
-  if (const ScopedCSSNameList* container_name = style.ContainerName()) {
-    const HeapVector<Member<const ScopedCSSName>>& names =
-        container_name->GetNames();
-    for (auto scoped_name : names) {
-      if (scoped_name->GetName() == name) {
-        const TreeScope* name_tree_scope = scoped_name->GetTreeScope();
-        if (!name_tree_scope || !selector_tree_scope) {
-          // Either the container-name or @container have a UA or User origin.
-          // In that case always match the name regardless of the other one's
-          // origin.
-          return true;
-        }
-        // Match a tree-scoped container name if the container-name
-        // declaration's tree scope is an inclusive ancestor of the @container
-        // rule's tree scope.
-        for (const TreeScope* match_scope = selector_tree_scope; match_scope;
-             match_scope = match_scope->ParentTreeScope()) {
-          if (match_scope == name_tree_scope) {
-            return true;
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
-
-bool TypeMatches(const ComputedStyle& style,
-                 const ContainerSelector& container_selector) {
-  DCHECK(!container_selector.HasUnknownFeature());
-  unsigned type = container_selector.Type(style.GetWritingMode());
-  return !type || ((style.ContainerType() & type) == type);
-}
-
-bool Matches(const ComputedStyle& style,
-             const ContainerSelector& container_selector,
-             const TreeScope* selector_tree_scope) {
-  return TypeMatches(style, container_selector) &&
-         NameMatches(style, container_selector, selector_tree_scope);
-}
-
-Element* CachedContainer(Element* starting_element,
-                         const ContainerSelector& container_selector,
-                         const TreeScope* selector_tree_scope,
-                         ContainerSelectorCache& container_selector_cache) {
-  auto it =
-      container_selector_cache.Find<ScopedContainerSelectorHashTranslator>(
-          ScopedContainerSelector(container_selector, selector_tree_scope));
-  if (it != container_selector_cache.end()) {
-    return it->value.Get();
-  }
-  Element* container = ContainerQueryEvaluator::FindContainer(
-      starting_element, container_selector, selector_tree_scope);
-  container_selector_cache.insert(MakeGarbageCollected<ScopedContainerSelector>(
-                                      container_selector, selector_tree_scope),
-                                  container);
-  return container;
-}
-
-PaintLayerScrollableArea* FindScrollContainerScrollableArea(
-    const Element& container) {
-  if (const LayoutObject* layout_object = container.GetLayoutObject()) {
-    if (const LayoutBox* snap_container =
-            layout_object->ContainingScrollContainer()) {
-      return snap_container->GetScrollableArea();
-    }
-  }
-  return nullptr;
+bool IsSufficientlyContained(PhysicalAxes contained_axes,
+                             PhysicalAxes queried_axes) {
+  return (contained_axes & queried_axes) == queried_axes;
 }
 
 }  // namespace
 
+<<<<<<< HEAD
 ContainerQueryEvaluator::ContainerQueryEvaluator(Element& container) {
   if (PaintLayerScrollableArea* scrollable_area =
           FindScrollContainerScrollableArea(container)) {
@@ -213,26 +156,27 @@ std::optional<double> ContainerQueryEvaluator::Height() const {
 }
 
 ContainerQueryEvaluator::Result ContainerQueryEvaluator::Eval(
-    const ContainerQuery& container_query) const {
-  CHECK(media_query_evaluator_);
-
-  if (container_query.Selector().HasUnknownFeature()) {
-    Element* container = ContainerElement();
-    CHECK(container);
-    container->GetDocument().CountUse(WebFeature::kContainerQueryEvalUnknown);
-  }
-
-  MediaQueryResultFlags result_flags;
-  bool value =
-      (media_query_evaluator_->Eval(*container_query.query_, &result_flags) ==
-       KleeneValue::kTrue);
-
-  Result result;
-  result.value = value;
-  result.unit_flags = result_flags.unit_flags;
-  return result;
+=======
+double ContainerQueryEvaluator::Width() const {
+  return size_.width.ToDouble();
 }
 
+double ContainerQueryEvaluator::Height() const {
+  return size_.height.ToDouble();
+}
+
+bool ContainerQueryEvaluator::Eval(
+>>>>>>> chromium
+    const ContainerQuery& container_query) const {
+  if (container_query.QueriedAxes() == PhysicalAxes(kPhysicalAxisNone))
+    return false;
+  if (!IsSufficientlyContained(contained_axes_, container_query.QueriedAxes()))
+    return false;
+  DCHECK(media_query_evaluator_);
+  return media_query_evaluator_->Eval(*container_query.media_queries_);
+}
+
+<<<<<<< HEAD
 bool ContainerQueryEvaluator::EvalAndAdd(const ContainerQuery& query,
                                          Change change,
                                          MatchResult& match_result) {
@@ -319,22 +263,23 @@ bool ContainerQueryEvaluator::EvalAndAdd(const ContainerQuery& query,
   unit_flags_ |= result.unit_flags;
 
   return result.value;
+=======
+void ContainerQueryEvaluator::Add(const ContainerQuery& query, bool result) {
+  results_.Set(&query, result);
+>>>>>>> chromium
 }
 
-ContainerQueryEvaluator::Change ContainerQueryEvaluator::SizeContainerChanged(
+ContainerQueryEvaluator::Change ContainerQueryEvaluator::ContainerChanged(
     PhysicalSize size,
     PhysicalAxes contained_axes) {
-  if (size_ == size && contained_axes_ == contained_axes) {
+  if (size_ == size && contained_axes_ == contained_axes)
     return Change::kNone;
-  }
 
-  UpdateContainerSize(size, contained_axes);
+  SetData(size, contained_axes);
 
-  Change change = ComputeSizeChange();
-  if (change != Change::kNone) {
-    ClearResults(change, kSizeContainer);
-  }
+  Change change = ComputeChange();
 
+<<<<<<< HEAD
   return referenced_by_unit_ ? Change::kDescendantContainers : change;
 }
 
@@ -390,10 +335,19 @@ ContainerQueryEvaluator::Change ContainerQueryEvaluator::StickyContainerChanged(
   if (change != Change::kNone) {
     ClearResults(change, kStickyContainer);
   }
+=======
+  // We can clear the results here because we will always recaculate the style
+  // of all descendants which depend on this evaluator whenever we return
+  // something other than kNone from this function, so the results will always
+  // be repopulated.
+  if (change != Change::kNone)
+    ClearResults();
+>>>>>>> chromium
 
   return change;
 }
 
+<<<<<<< HEAD
 ContainerQueryEvaluator::Change ContainerQueryEvaluator::SnapContainerChanged(
     ContainerSnappedFlags snapped) {
   if (snapped_ == snapped) {
@@ -481,17 +435,19 @@ void ContainerQueryEvaluator::UpdateContainerValues() {
       MakeGarbageCollected<MediaQueryEvaluator>(query_values);
 }
 
+=======
+>>>>>>> chromium
 void ContainerQueryEvaluator::Trace(Visitor* visitor) const {
   visitor->Trace(media_query_evaluator_);
   visitor->Trace(results_);
-  visitor->Trace(scroll_state_snapshot_);
 }
 
-void ContainerQueryEvaluator::UpdateContainerSize(PhysicalSize size,
-                                                  PhysicalAxes contained_axes) {
+void ContainerQueryEvaluator::SetData(PhysicalSize size,
+                                      PhysicalAxes contained_axes) {
   size_ = size;
   contained_axes_ = contained_axes;
 
+<<<<<<< HEAD
   std::optional<double> width;
   std::optional<double> height;
 
@@ -520,10 +476,15 @@ void ContainerQueryEvaluator::UpdateContainerSize(PhysicalSize size,
       existing_values.StuckHorizontal(), existing_values.StuckVertical(),
       existing_values.SnappedFlags(), existing_values.ScrollableHorizontal(),
       existing_values.ScrollableVertical());
+=======
+  auto* cached_values = MakeGarbageCollected<MediaValuesCached>();
+  cached_values->OverrideViewportDimensions(size_.width, size_.height);
+>>>>>>> chromium
   media_query_evaluator_ =
-      MakeGarbageCollected<MediaQueryEvaluator>(query_values);
+      MakeGarbageCollected<MediaQueryEvaluator>(*cached_values);
 }
 
+<<<<<<< HEAD
 void ContainerQueryEvaluator::UpdateContainerStuck(
     ContainerStuckPhysical stuck_horizontal,
     ContainerStuckPhysical stuck_vertical) {
@@ -615,21 +576,31 @@ void ContainerQueryEvaluator::ClearResults(Change change,
 
 ContainerQueryEvaluator::Change ContainerQueryEvaluator::ComputeSizeChange()
     const {
+=======
+void ContainerQueryEvaluator::ClearResults() {
+  results_.clear();
+  referenced_by_unit_ = false;
+}
+
+ContainerQueryEvaluator::Change ContainerQueryEvaluator::ComputeChange() const {
+>>>>>>> chromium
   Change change = Change::kNone;
 
+  if (referenced_by_unit_)
+    return Change::kDescendantContainers;
+
   for (const auto& result : results_) {
-    const ContainerQuery& query = *result.key;
-    if (!query.Selector().SelectsSizeContainers()) {
-      continue;
-    }
-    if (Eval(query).value != result.value.value) {
-      change = std::max(result.value.change, change);
+    if (Eval(*result.key) != result.value) {
+      change = std::max(change, result.key->Name() == g_null_atom
+                                    ? Change::kNearestContainer
+                                    : Change::kDescendantContainers);
     }
   }
 
   return change;
 }
 
+<<<<<<< HEAD
 ContainerQueryEvaluator::Change ContainerQueryEvaluator::ComputeStyleChange()
     const {
   Change change = Change::kNone;
@@ -821,4 +792,6 @@ Element* ContainerQueryEvaluator::ContainerElement() const {
   return media_query_evaluator_->GetMediaValues().ContainerElement();
 }
 
+=======
+>>>>>>> chromium
 }  // namespace blink

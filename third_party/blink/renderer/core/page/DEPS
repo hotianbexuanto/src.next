@@ -6,8 +6,8 @@ include_rules = [
 specific_include_rules = {
   "chrome_client_impl_test\.cc": [
     "+base/run_loop.h",
-    "+components/autofill/core/common/autofill_features.h"
   ],
+<<<<<<< HEAD
   "context_menu_controller\.cc": [
     "+components/shared_highlighting/core/common/shared_highlighting_features.h",
   ],
@@ -15,5 +15,9 @@ specific_include_rules = {
     "+components/attribution_reporting",
     "+third_party/blink/renderer/core/exported/web_plugin_container_impl.h",
     "+ui/base/mojom/menu_source_type.mojom-blink.h",
+=======
+  "text_fragment_selector_generator_test\.cc": [
+    "+base/run_loop.h",
+>>>>>>> chromium
   ],
 }

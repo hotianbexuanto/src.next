@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,22 +9,20 @@
 
 #include "base/values.h"
 #include "build/chromeos_buildflags.h"
+#include "chrome/browser/extensions/active_tab_permission_granter.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
-#include "chrome/browser/extensions/permissions/active_tab_permission_granter.h"
 #include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/common/extensions/command.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/media_keys_listener_manager.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/browser/event_router.h"
-#include "extensions/common/command.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/extension_set.h"
 #include "extensions/common/manifest_constants.h"
-#include "extensions/common/mojom/context_type.mojom.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/ui/ash/media_client/media_client_impl.h"
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chrome/browser/ui/ash/media_client_impl.h"
 #endif
 
 namespace {
@@ -104,7 +102,7 @@ void ExtensionKeybindingRegistry::RemoveExtensionKeybinding(
 
       media_keys_listener_manager->EnableInternalMediaKeyHandling();
     } else {
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
       MediaClientImpl::Get()->DisableCustomMediaKeyHandler(browser_context_,
                                                            this);
 #endif
@@ -117,16 +115,17 @@ void ExtensionKeybindingRegistry::Init() {
   if (!registry)
     return;  // ExtensionRegistry can be null during testing.
 
-  for (const scoped_refptr<const Extension>& extension :
-       registry->enabled_extensions()) {
+  for (const scoped_refptr<const extensions::Extension>& extension :
+       registry->enabled_extensions())
     if (ExtensionMatchesFilter(extension.get()))
       AddExtensionKeybindings(extension.get(), std::string());
-  }
 }
 
 bool ExtensionKeybindingRegistry::ShouldIgnoreCommand(
     const std::string& command) const {
-  return Command::IsActionRelatedCommand(command);
+  return command == manifest_values::kPageActionCommandEvent ||
+         command == manifest_values::kBrowserActionCommandEvent ||
+         command == manifest_values::kActionCommandEvent;
 }
 
 bool ExtensionKeybindingRegistry::NotifyEventTargets(
@@ -135,18 +134,17 @@ bool ExtensionKeybindingRegistry::NotifyEventTargets(
 }
 
 void ExtensionKeybindingRegistry::CommandExecuted(
-    const ExtensionId& extension_id,
-    const std::string& command) {
+    const std::string& extension_id, const std::string& command) {
   const Extension* extension = ExtensionRegistry::Get(browser_context_)
                                    ->enabled_extensions()
                                    .GetByID(extension_id);
   if (!extension)
     return;
 
-  base::Value::List args;
-  args.Append(command);
+  std::unique_ptr<base::ListValue> args(new base::ListValue());
+  args->AppendString(command);
 
-  base::Value tab_value;
+  std::unique_ptr<base::Value> tab_value;
   if (delegate_) {
     content::WebContents* web_contents =
         delegate_->GetWebContentsForExtension();
@@ -155,7 +153,7 @@ void ExtensionKeybindingRegistry::CommandExecuted(
     // not set the delegate as it deals only with named commands (not
     // page/browser actions that are associated with the current page directly).
     ActiveTabPermissionGranter* granter =
-        web_contents ? TabHelper::FromWebContents(web_contents)
+        web_contents ? extensions::TabHelper::FromWebContents(web_contents)
                            ->active_tab_permission_granter()
                      : nullptr;
     if (granter) {
@@ -164,24 +162,28 @@ void ExtensionKeybindingRegistry::CommandExecuted(
 
     if (web_contents) {
       // The action APIs (browserAction, pageAction, action) are only available
-      // to privileged extension contexts. As such, we deterministically know
-      // that the right context type here is privileged.
-      constexpr mojom::ContextType context_type =
-          mojom::ContextType::kPrivilegedExtension;
+      // to blessed extension contexts. As such, we deterministically know that
+      // the right context type here is blessed.
+      constexpr Feature::Context context_type =
+          Feature::BLESSED_EXTENSION_CONTEXT;
       ExtensionTabUtil::ScrubTabBehavior scrub_tab_behavior =
           ExtensionTabUtil::GetScrubTabBehavior(extension, context_type,
                                                 web_contents);
-      tab_value = base::Value(ExtensionTabUtil::CreateTabObject(
-                                  web_contents, scrub_tab_behavior, extension)
-                                  .ToValue());
+      tab_value = ExtensionTabUtil::CreateTabObject(
+                      web_contents, scrub_tab_behavior, extension)
+                      ->ToValue();
     }
   }
 
-  args.Append(std::move(tab_value));
+  if (!tab_value) {
+    // No currently-active tab. Push a null value.
+    tab_value = std::make_unique<base::Value>();
+  }
+  args->Append(std::move(tab_value));
 
   auto event =
       std::make_unique<Event>(events::COMMANDS_ON_COMMAND, kOnCommandEventName,
-                              std::move(args), browser_context_);
+                              std::move(*args).TakeList(), browser_context_);
   event->user_gesture = EventRouter::USER_GESTURE_ENABLED;
   EventRouter::Get(browser_context_)
       ->DispatchEventToExtension(extension_id, std::move(event));
@@ -194,7 +196,7 @@ bool ExtensionKeybindingRegistry::IsAcceleratorRegistered(
 
 void ExtensionKeybindingRegistry::AddEventTarget(
     const ui::Accelerator& accelerator,
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const std::string& command_name) {
   event_targets_[accelerator].push_back(
       std::make_pair(extension_id, command_name));
@@ -216,7 +218,7 @@ void ExtensionKeybindingRegistry::AddEventTarget(
 
       media_keys_listener_manager->DisableInternalMediaKeyHandling();
     } else {
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
       MediaClientImpl::Get()->EnableCustomMediaKeyHandler(browser_context_,
                                                           this);
 #endif
@@ -226,7 +228,7 @@ void ExtensionKeybindingRegistry::AddEventTarget(
 
 bool ExtensionKeybindingRegistry::GetFirstTarget(
     const ui::Accelerator& accelerator,
-    ExtensionId* extension_id,
+    std::string* extension_id,
     std::string* command_name) const {
   auto targets = event_targets_.find(accelerator);
   if (targets == event_targets_.end())
@@ -259,7 +261,7 @@ void ExtensionKeybindingRegistry::OnExtensionUnloaded(
 }
 
 void ExtensionKeybindingRegistry::OnExtensionCommandAdded(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const Command& command) {
   const Extension* extension = ExtensionRegistry::Get(browser_context_)
                                    ->enabled_extensions()
@@ -280,7 +282,7 @@ void ExtensionKeybindingRegistry::OnExtensionCommandAdded(
 }
 
 void ExtensionKeybindingRegistry::OnExtensionCommandRemoved(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const Command& command) {
   const Extension* extension = ExtensionRegistry::Get(browser_context_)
                                    ->enabled_extensions()
@@ -304,7 +306,8 @@ void ExtensionKeybindingRegistry::OnMediaKeysAccelerator(
 }
 
 bool ExtensionKeybindingRegistry::ExtensionMatchesFilter(
-    const Extension* extension) {
+    const extensions::Extension* extension)
+{
   switch (extension_filter_) {
     case ALL_EXTENSIONS:
       return true;
@@ -313,11 +316,12 @@ bool ExtensionKeybindingRegistry::ExtensionMatchesFilter(
     default:
       NOTREACHED();
   }
+  return false;
 }
 
 bool ExtensionKeybindingRegistry::ExecuteCommands(
     const ui::Accelerator& accelerator,
-    const ExtensionId& extension_id) {
+    const std::string& extension_id) {
   auto targets = event_targets_.find(accelerator);
   if (targets == event_targets_.end() || targets->second.empty())
     return false;
@@ -325,10 +329,9 @@ bool ExtensionKeybindingRegistry::ExecuteCommands(
   bool executed = false;
   for (TargetList::const_iterator it = targets->second.begin();
        it != targets->second.end(); it++) {
-    if (!EventRouter::Get(browser_context_)
-             ->ExtensionHasEventListener(it->first, kOnCommandEventName)) {
+    if (!extensions::EventRouter::Get(browser_context_)
+        ->ExtensionHasEventListener(it->first, kOnCommandEventName))
       continue;
-    }
 
     if (extension_id.empty() || it->first == extension_id) {
       CommandExecuted(it->first, it->second);

@@ -1,38 +1,35 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser;
 
+import android.annotation.TargetApi;
 import android.content.Context;
+import android.os.Build;
 import android.view.KeyEvent;
 import android.view.KeyboardShortcutGroup;
 import android.view.KeyboardShortcutInfo;
 
-import androidx.annotation.IntDef;
-
-import org.chromium.base.metrics.RecordHistogram;
+import org.chromium.base.annotations.VerifiesOnN;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
-import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
-import org.chromium.chrome.browser.task_manager.TaskManager;
-import org.chromium.chrome.browser.task_manager.TaskManagerFactory;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.components.browser_ui.widget.MenuOrKeyboardActionController;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.device.gamepad.GamepadList;
-import org.chromium.ui.accessibility.AccessibilityState;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** Implements app-level keyboard shortcuts for ChromeTabbedActivity and DocumentActivity. */
+/**
+ * Implements app-level keyboard shortcuts for ChromeTabbedActivity and DocumentActivity.
+ */
 public class KeyboardShortcuts {
 
     private static final int CTRL = 1 << 31;
@@ -41,6 +38,7 @@ public class KeyboardShortcuts {
 
     private KeyboardShortcuts() {}
 
+<<<<<<< HEAD
     // KeyboardShortcutsSemanticMeaning defined in tools/metrics/histograms/enums.xml.
     // Add new values before MAX_VALUE. These values are persisted to logs. Entries should not be
     // renumbered and numeric values should never be reused.
@@ -293,6 +291,8 @@ public class KeyboardShortcuts {
         return KeyboardShortcutsSemanticMeaning.UNKNOWN;
     }
 
+=======
+>>>>>>> chromium
     private static int getMetaState(KeyEvent event) {
         return (event.isCtrlPressed() ? CTRL : 0)
                 | (event.isAltPressed() ? ALT : 0)
@@ -302,24 +302,20 @@ public class KeyboardShortcuts {
     /**
      * This should be called from the Activity's dispatchKeyEvent() to handle keyboard shortcuts.
      *
-     * <p>Note: dispatchKeyEvent() is called before the active view or web page gets a chance to
-     * handle the key event. So the keys handled here cannot be overridden by any view or web page.
+     * Note: dispatchKeyEvent() is called before the active view or web page gets a chance to handle
+     * the key event. So the keys handled here cannot be overridden by any view or web page.
      *
      * @param event The KeyEvent to handle.
      * @param uiInitialized Whether the UI has been initialized. If this is false, most keys will
-     *     not be handled.
+     *                      not be handled.
      * @param fullscreenManager Manages fullscreen state.
      * @param menuOrKeyboardActionController Controls keyboard actions.
-     * @param context The android context.
      * @return True if the event was handled. False if the event was ignored. Null if the event
-     *     should be handled by the activity's parent class.
+     *         should be handled by the activity's parent class.
      */
-    public static Boolean dispatchKeyEvent(
-            KeyEvent event,
-            boolean uiInitialized,
+    public static Boolean dispatchKeyEvent(KeyEvent event, boolean uiInitialized,
             FullscreenManager fullscreenManager,
-            MenuOrKeyboardActionController menuOrKeyboardActionController,
-            Context context) {
+            MenuOrKeyboardActionController menuOrKeyboardActionController) {
         int keyCode = event.getKeyCode();
         if (!uiInitialized) {
             if (keyCode == KeyEvent.KEYCODE_SEARCH || keyCode == KeyEvent.KEYCODE_MENU) return true;
@@ -344,12 +340,6 @@ public class KeyboardShortcuts {
                 if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                     if (fullscreenManager.getPersistentFullscreenMode()) {
                         fullscreenManager.exitPersistentFullscreenMode();
-                        return true;
-                    }
-                    if (getMetaState(event) == CTRL
-                            && ChromeFeatureList.isEnabled(ChromeFeatureList.TASK_MANAGER_CLANK)) {
-                        TaskManager taskManager = TaskManagerFactory.createTaskManager();
-                        taskManager.launch(context);
                         return true;
                     }
                 }
@@ -387,58 +377,30 @@ public class KeyboardShortcuts {
      *            resource.
      * @return a list of shortcuts organized into groups.
      */
+    @TargetApi(Build.VERSION_CODES.N)
+    @VerifiesOnN
     public static List<KeyboardShortcutGroup> createShortcutGroup(Context context) {
         final int ctrlShift = KeyEvent.META_CTRL_ON | KeyEvent.META_SHIFT_ON;
 
         List<KeyboardShortcutGroup> shortcutGroups = new ArrayList<>();
 
-        KeyboardShortcutGroup tabShortcutGroup =
-                new KeyboardShortcutGroup(
-                        context.getString(R.string.keyboard_shortcut_tab_group_header));
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_open_new_tab,
-                KeyEvent.KEYCODE_T,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_open_new_window,
-                KeyEvent.KEYCODE_N,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_reopen_new_tab,
-                KeyEvent.KEYCODE_T,
-                ctrlShift);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_new_incognito_tab,
-                KeyEvent.KEYCODE_N,
-                ctrlShift);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_next_tab,
-                KeyEvent.KEYCODE_TAB,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_prev_tab,
-                KeyEvent.KEYCODE_TAB,
-                ctrlShift);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_close_tab,
-                KeyEvent.KEYCODE_W,
-                KeyEvent.META_CTRL_ON);
+        KeyboardShortcutGroup tabShortcutGroup = new KeyboardShortcutGroup(
+                context.getString(R.string.keyboard_shortcut_tab_group_header));
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_open_new_tab,
+                KeyEvent.KEYCODE_N, KeyEvent.META_CTRL_ON);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_reopen_new_tab,
+                KeyEvent.KEYCODE_T, ctrlShift);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_new_incognito_tab,
+                KeyEvent.KEYCODE_N, ctrlShift);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_next_tab,
+                KeyEvent.KEYCODE_TAB, KeyEvent.META_CTRL_ON);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_prev_tab,
+                KeyEvent.KEYCODE_TAB, ctrlShift);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_close_tab,
+                KeyEvent.KEYCODE_W, KeyEvent.META_CTRL_ON);
         shortcutGroups.add(tabShortcutGroup);
 
+<<<<<<< HEAD
         KeyboardShortcutGroup chromeFeatureShortcutGroup =
                 new KeyboardShortcutGroup(
                         context.getString(R.string.keyboard_shortcut_chrome_feature_group_header));
@@ -472,72 +434,50 @@ public class KeyboardShortcuts {
                 R.string.keyboard_shortcut_address_bar,
                 KeyEvent.KEYCODE_L,
                 KeyEvent.META_CTRL_ON);
+=======
+        KeyboardShortcutGroup chromeFeatureShortcutGroup = new KeyboardShortcutGroup(
+                context.getString(R.string.keyboard_shortcut_chrome_feature_group_header));
+        addShortcut(context, chromeFeatureShortcutGroup, R.string.keyboard_shortcut_open_menu,
+                KeyEvent.KEYCODE_E, KeyEvent.META_ALT_ON);
+        addShortcut(context, chromeFeatureShortcutGroup,
+                R.string.keyboard_shortcut_bookmark_manager, KeyEvent.KEYCODE_B, ctrlShift);
+        addShortcut(context, chromeFeatureShortcutGroup, R.string.keyboard_shortcut_history_manager,
+                KeyEvent.KEYCODE_H, KeyEvent.META_CTRL_ON);
+        addShortcut(context, chromeFeatureShortcutGroup, R.string.keyboard_shortcut_find_bar,
+                KeyEvent.KEYCODE_F, KeyEvent.META_CTRL_ON);
+        addShortcut(context, chromeFeatureShortcutGroup, R.string.keyboard_shortcut_address_bar,
+                KeyEvent.KEYCODE_L, KeyEvent.META_CTRL_ON);
+>>>>>>> chromium
         shortcutGroups.add(chromeFeatureShortcutGroup);
 
-        KeyboardShortcutGroup webpageShortcutGroup =
-                new KeyboardShortcutGroup(
-                        context.getString(R.string.keyboard_shortcut_webpage_group_header));
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_print_page,
-                KeyEvent.KEYCODE_P,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_reload_page,
-                KeyEvent.KEYCODE_R,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_reload_no_cache,
-                KeyEvent.KEYCODE_R,
-                ctrlShift);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_bookmark_page,
-                KeyEvent.KEYCODE_D,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_zoom_in,
-                KeyEvent.KEYCODE_EQUALS,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_zoom_out,
-                KeyEvent.KEYCODE_MINUS,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_reset_zoom,
-                KeyEvent.KEYCODE_0,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_help_center,
-                KeyEvent.KEYCODE_SLASH,
-                ctrlShift);
+        KeyboardShortcutGroup webpageShortcutGroup = new KeyboardShortcutGroup(
+                context.getString(R.string.keyboard_shortcut_webpage_group_header));
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_print_page,
+                KeyEvent.KEYCODE_P, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_reload_page,
+                KeyEvent.KEYCODE_R, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_reload_no_cache,
+                KeyEvent.KEYCODE_R, ctrlShift);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_bookmark_page,
+                KeyEvent.KEYCODE_D, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_zoom_in,
+                KeyEvent.KEYCODE_EQUALS, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_zoom_out,
+                KeyEvent.KEYCODE_MINUS, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_reset_zoom,
+                KeyEvent.KEYCODE_0, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_help_center,
+                KeyEvent.KEYCODE_SLASH, ctrlShift);
         shortcutGroups.add(webpageShortcutGroup);
 
         return shortcutGroups;
     }
 
-    private static void addShortcut(
-            Context context,
-            KeyboardShortcutGroup shortcutGroup,
-            int resId,
-            int keyCode,
-            int keyModifier) {
-        shortcutGroup.addItem(
-                new KeyboardShortcutInfo(context.getString(resId), keyCode, keyModifier));
+    @TargetApi(Build.VERSION_CODES.N)
+    private static void addShortcut(Context context,
+            KeyboardShortcutGroup shortcutGroup, int resId, int keyCode, int keyModifier) {
+        shortcutGroup.addItem(new KeyboardShortcutInfo(context.getString(resId), keyCode,
+                keyModifier));
     }
 
     /**
@@ -556,24 +496,19 @@ public class KeyboardShortcuts {
      * @param toolbarManager Manages the toolbar.
      * @return Whether the key event was handled.
      */
-    public static boolean onKeyDown(
-            KeyEvent event,
-            boolean isCurrentTabVisible,
-            boolean tabSwitchingEnabled,
-            TabModelSelector tabModelSelector,
+    public static boolean onKeyDown(KeyEvent event, boolean isCurrentTabVisible,
+            boolean tabSwitchingEnabled, TabModelSelector tabModelSelector,
             MenuOrKeyboardActionController menuOrKeyboardActionController,
             ToolbarManager toolbarManager) {
         int keyCode = event.getKeyCode();
         if (event.getRepeatCount() != 0 || KeyEvent.isModifierKey(keyCode)) return false;
         if (KeyEvent.isGamepadButton(keyCode)) {
             if (GamepadList.isGamepadAPIActive()) return false;
-        } else if (!event.isCtrlPressed()
-                && !event.isAltPressed()
+        } else if (!event.isCtrlPressed() && !event.isAltPressed()
                 && keyCode != KeyEvent.KEYCODE_F3
                 && keyCode != KeyEvent.KEYCODE_F5
                 && keyCode != KeyEvent.KEYCODE_F10
-                && keyCode != KeyEvent.KEYCODE_FORWARD
-                && keyCode != KeyEvent.KEYCODE_REFRESH) {
+                && keyCode != KeyEvent.KEYCODE_FORWARD) {
             return false;
         }
 
@@ -584,9 +519,8 @@ public class KeyboardShortcuts {
         int tabCount = currentTabModel.getCount();
         int metaState = getMetaState(event);
         int keyCodeAndMeta = keyCode | metaState;
-        @KeyboardShortcutsSemanticMeaning
-        int semanticMeaning = getKeyboardSemanticMeaning(keyCodeAndMeta);
 
+<<<<<<< HEAD
         RecordHistogram.recordEnumeratedHistogram(
                 AccessibilityState.isScreenReaderEnabled()
                         ? "Accessibility.Android.KeyboardShortcut.ScreenReaderRunning2"
@@ -596,67 +530,69 @@ public class KeyboardShortcuts {
 
         switch (semanticMeaning) {
             case KeyboardShortcutsSemanticMeaning.OPEN_RECENTLY_CLOSED_TAB:
+=======
+        switch (keyCodeAndMeta) {
+            case CTRL | SHIFT | KeyEvent.KEYCODE_T:
+>>>>>>> chromium
                 menuOrKeyboardActionController.onMenuOrKeyboardAction(
                         R.id.open_recently_closed_tab, false);
                 return true;
-            case KeyboardShortcutsSemanticMeaning.OPEN_NEW_TAB:
-                menuOrKeyboardActionController.onMenuOrKeyboardAction(
-                        currentTabModel.isIncognito()
+            case CTRL | KeyEvent.KEYCODE_T:
+                menuOrKeyboardActionController.onMenuOrKeyboardAction(currentTabModel.isIncognito()
                                 ? R.id.new_incognito_tab_menu_id
                                 : R.id.new_tab_menu_id,
                         false);
                 return true;
-            case KeyboardShortcutsSemanticMeaning.OPEN_NEW_WINDOW:
-                if (MultiWindowUtils.isMultiInstanceApi31Enabled()) {
-                    menuOrKeyboardActionController.onMenuOrKeyboardAction(
-                            R.id.new_window_menu_id, false);
-                    return true;
-                } else {
-                    break;
-                }
-            case KeyboardShortcutsSemanticMeaning.SAVE_PAGE:
-                menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.offline_page_id, false);
+            case CTRL | KeyEvent.KEYCODE_N:
+                menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.new_tab_menu_id, false);
                 return true;
-            case KeyboardShortcutsSemanticMeaning.OPEN_NEW_TAB_INCOGNITO:
+            case CTRL | SHIFT | KeyEvent.KEYCODE_N:
                 menuOrKeyboardActionController.onMenuOrKeyboardAction(
                         R.id.new_incognito_tab_menu_id, false);
                 return true;
-                // Alt+E represents a special character ´ (latin code: &#180) in Android.
-                // If an EditText or ContentView has focus, Alt+E will be swallowed by
-                // the default dispatchKeyEvent and cannot open the menu.
-            case KeyboardShortcutsSemanticMeaning.OPEN_MENU:
+            // Alt+E represents a special character ´ (latin code: &#180) in Android.
+            // If an EditText or ContentView has focus, Alt+E will be swallowed by
+            // the default dispatchKeyEvent and cannot open the menu.
+            case ALT | KeyEvent.KEYCODE_E:
+            case ALT | KeyEvent.KEYCODE_F:
+            case KeyEvent.KEYCODE_F10:
+            case KeyEvent.KEYCODE_BUTTON_Y:
                 menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.show_menu, false);
                 return true;
         }
 
         if (isCurrentTabVisible) {
-            switch (semanticMeaning) {
-                case KeyboardShortcutsSemanticMeaning.MOVE_TO_SPECIFIC_TAB:
-                    if (tabSwitchingEnabled) {
-                        int numCode = keyCode - KeyEvent.KEYCODE_0;
-                        if (numCode > 0 && numCode <= Math.min(tabCount, 8)) {
-                            TabModelUtils.setIndex(currentTabModel, numCode - 1);
-                        }
-                    }
+            if (tabSwitchingEnabled && (metaState == CTRL || metaState == ALT)) {
+                int numCode = keyCode - KeyEvent.KEYCODE_0;
+                if (numCode > 0 && numCode <= Math.min(tabCount, 8)) {
+                    // Ctrl+1 to Ctrl+8: select tab by index
+                    TabModelUtils.setIndex(currentTabModel, numCode - 1);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.MOVE_TO_LAST_TAB:
-                    if (tabSwitchingEnabled && tabCount != 0) {
-                        TabModelUtils.setIndex(currentTabModel, tabCount - 1);
-                    }
+                } else if (numCode == 9 && tabCount != 0) {
+                    // Ctrl+9: select last tab
+                    TabModelUtils.setIndex(currentTabModel, tabCount - 1);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.MOVE_TO_TAB_RIGHT:
+                }
+            }
+
+            switch (keyCodeAndMeta) {
+                case CTRL | KeyEvent.KEYCODE_TAB:
+                case CTRL | KeyEvent.KEYCODE_PAGE_DOWN:
+                case KeyEvent.KEYCODE_BUTTON_R1:
                     if (tabSwitchingEnabled && tabCount > 1) {
                         TabModelUtils.setIndex(
                                 currentTabModel, (currentTabModel.index() + 1) % tabCount);
                     }
                     return true;
-                case KeyboardShortcutsSemanticMeaning.MOVE_TO_TAB_LEFT:
+                case CTRL | SHIFT | KeyEvent.KEYCODE_TAB:
+                case CTRL | KeyEvent.KEYCODE_PAGE_UP:
+                case KeyEvent.KEYCODE_BUTTON_L1:
                     if (tabSwitchingEnabled && tabCount > 1) {
-                        TabModelUtils.setIndex(
-                                currentTabModel,
+                        TabModelUtils.setIndex(currentTabModel,
                                 (currentTabModel.index() + tabCount - 1) % tabCount);
                     }
                     return true;
+<<<<<<< HEAD
                 case KeyboardShortcutsSemanticMeaning.CLOSE_TAB:
                     Tab tab = TabModelUtils.getCurrentTab(currentTabModel);
                     if (tab != null) {
@@ -666,40 +602,61 @@ public class KeyboardShortcuts {
                                         TabClosureParams.closeTab(tab).allowUndo(true).build(),
                                         /* allowDialog= */ true);
                     }
+=======
+                case CTRL | KeyEvent.KEYCODE_W:
+                case CTRL | KeyEvent.KEYCODE_F4:
+                case KeyEvent.KEYCODE_BUTTON_B:
+                    TabModelUtils.closeCurrentTab(currentTabModel);
+>>>>>>> chromium
                     return true;
-                case KeyboardShortcutsSemanticMeaning.FIND_IN_PAGE:
+                case CTRL | KeyEvent.KEYCODE_F:
+                case CTRL | KeyEvent.KEYCODE_G:
+                case CTRL | SHIFT | KeyEvent.KEYCODE_G:
+                case KeyEvent.KEYCODE_F3:
+                case SHIFT | KeyEvent.KEYCODE_F3:
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(
                             R.id.find_in_page_id, false);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.JUMP_TO_OMNIBOX:
+                case CTRL | KeyEvent.KEYCODE_L:
+                case ALT | KeyEvent.KEYCODE_D:
+                case KeyEvent.KEYCODE_BUTTON_X:
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(
                             R.id.focus_url_bar, false);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.OPEN_BOOKMARKS:
+                case CTRL | SHIFT | KeyEvent.KEYCODE_B:
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(
                             R.id.all_bookmarks_menu_id, false);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.BOOKMARK_PAGE:
+                case KeyEvent.KEYCODE_BOOKMARK:
+                case CTRL | KeyEvent.KEYCODE_D:
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(
                             R.id.bookmark_this_page_id, false);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.OPEN_HISTORY:
+                case CTRL | KeyEvent.KEYCODE_H:
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(
                             R.id.open_history_menu_id, false);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.PRINT:
+                case CTRL | KeyEvent.KEYCODE_P:
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.print_id, false);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.ZOOM_IN:
+                case CTRL | KeyEvent.KEYCODE_PLUS:
+                case CTRL | KeyEvent.KEYCODE_EQUALS:
+                case CTRL | SHIFT | KeyEvent.KEYCODE_PLUS:
+                case CTRL | SHIFT | KeyEvent.KEYCODE_EQUALS:
+                case KeyEvent.KEYCODE_ZOOM_IN:
                     ZoomController.zoomIn(currentWebContents);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.ZOOM_OUT:
+                case CTRL | KeyEvent.KEYCODE_MINUS:
+                case KeyEvent.KEYCODE_ZOOM_OUT:
                     ZoomController.zoomOut(currentWebContents);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.ZOOM_RESET:
+                case CTRL | KeyEvent.KEYCODE_0:
                     ZoomController.zoomReset(currentWebContents);
                     return true;
-                case KeyboardShortcutsSemanticMeaning.RELOAD_TAB:
+                case SHIFT | CTRL | KeyEvent.KEYCODE_R:
+                case CTRL | KeyEvent.KEYCODE_R:
+                case SHIFT | KeyEvent.KEYCODE_F5:
+                case KeyEvent.KEYCODE_F5:
                     if (currentTab != null) {
                         if ((keyCodeAndMeta & SHIFT) == SHIFT) {
                             currentTab.reloadIgnoringCache();
@@ -707,8 +664,7 @@ public class KeyboardShortcuts {
                             currentTab.reload();
                         }
 
-                        if (toolbarManager != null
-                                && currentWebContents != null
+                        if (toolbarManager != null && currentWebContents != null
                                 && currentWebContents.focusLocationBarByDefault()) {
                             toolbarManager.revertLocationBarChanges();
                         } else if (currentTab.getView() != null) {
@@ -716,13 +672,15 @@ public class KeyboardShortcuts {
                         }
                     }
                     return true;
-                case KeyboardShortcutsSemanticMeaning.GO_BACK:
+                case ALT | KeyEvent.KEYCODE_DPAD_LEFT:
                     if (currentTab != null && currentTab.canGoBack()) currentTab.goBack();
                     return true;
-                case KeyboardShortcutsSemanticMeaning.GO_FORWARD:
+                case ALT | KeyEvent.KEYCODE_DPAD_RIGHT:
+                case KeyEvent.KEYCODE_FORWARD:
+                case KeyEvent.KEYCODE_BUTTON_START:
                     if (currentTab != null && currentTab.canGoForward()) currentTab.goForward();
                     return true;
-                case KeyboardShortcutsSemanticMeaning.OPEN_HELP:
+                case CTRL | SHIFT | KeyEvent.KEYCODE_SLASH:  // i.e. Ctrl+?
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.help_id, false);
                     return true;
             }

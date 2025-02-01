@@ -4,7 +4,6 @@ include_rules = [
   "+base/test/android",
   "+build/android",
   "+chrome/browser/android/lifecycle",
-  "+chrome/browser/browser_controls/android",
   "+chrome/browser/flags",
   "+chrome/test/android",
   "+components/browser_ui/styles/android",

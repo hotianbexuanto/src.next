@@ -63,9 +63,8 @@ StyleAttributeMutationScope::StyleAttributeMutationScope(
   DCHECK(!current_decl_);
   current_decl_ = decl;
 
-  if (!current_decl_->ParentElement()) {
+  if (!current_decl_->ParentElement())
     return;
-  }
 
   mutation_recipients_ =
       MutationObserverInterestGroup::CreateForAttributesMutation(
@@ -91,37 +90,34 @@ StyleAttributeMutationScope::StyleAttributeMutationScope(
 DISABLE_CFI_PERF
 StyleAttributeMutationScope::~StyleAttributeMutationScope() {
   --scope_count_;
-  if (scope_count_) {
+  if (scope_count_)
     return;
-  }
 
   if (should_deliver_) {
-    if (mutation_) {
+    if (mutation_)
       mutation_recipients_->EnqueueMutationRecord(mutation_);
-    }
-    should_deliver_ = false;
-  }
 
-  Element* element = current_decl_->ParentElement();
-  if (CustomElementDefinition* definition =
-          DefinitionIfStyleChangedCallback(element)) {
-    definition->EnqueueAttributeChangedCallback(
-        *element, html_names::kStyleAttr, old_value_,
-        element->getAttribute(html_names::kStyleAttr));
+    Element* element = current_decl_->ParentElement();
+    if (CustomElementDefinition* definition =
+            DefinitionIfStyleChangedCallback(element)) {
+      definition->EnqueueAttributeChangedCallback(
+          *element, html_names::kStyleAttr, old_value_,
+          element->getAttribute(html_names::kStyleAttr));
+    }
+
+    should_deliver_ = false;
   }
 
   // We have to clear internal state before calling Inspector's code.
   AbstractPropertySetCSSStyleDeclaration* local_copy_style_decl = current_decl_;
   current_decl_ = nullptr;
 
-  if (!should_notify_inspector_) {
+  if (!should_notify_inspector_)
     return;
-  }
 
   should_notify_inspector_ = false;
-  if (local_copy_style_decl->ParentElement()) {
+  if (local_copy_style_decl->ParentElement())
     probe::DidInvalidateStyleAttr(local_copy_style_decl->ParentElement());
-  }
 }
 
 }  // namespace blink

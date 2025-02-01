@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,15 +8,12 @@
 
 #include <array>
 #include <memory>
-#include <string>
 #include <utility>
-#include <vector>
 
-#include "base/containers/flat_map.h"
-#include "base/feature_list.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
-#include "base/functional/callback_helpers.h"
+#include "base/bind.h"
+#include "base/callback.h"
+#include "base/callback_helpers.h"
+#include "base/cxx17_backports.h"
 #include "base/memory/ref_counted.h"
 #include "base/run_loop.h"
 #include "base/strings/string_split.h"
@@ -33,18 +30,12 @@
 #include "chrome/test/base/testing_profile.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/search_engines/keyword_web_data_service.h"
-#include "components/search_engines/search_engine_type.h"
 #include "components/search_engines/search_engines_pref_names.h"
-#include "components/search_engines/search_engines_switches.h"
 #include "components/search_engines/search_engines_test_util.h"
 #include "components/search_engines/search_host_to_urls_map.h"
 #include "components/search_engines/search_terms_data.h"
 #include "components/search_engines/template_url.h"
-#include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_prepopulate_data.h"
-#include "components/search_engines/template_url_starter_pack_data.h"
-#include "components/search_engines/util.h"
-#include "components/signin/public/base/signin_switches.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -52,7 +43,11 @@
 
 using base::ASCIIToUTF16;
 using base::Time;
+<<<<<<< HEAD
 using SearchPolicyConflictType = TemplateURLService::SearchPolicyConflictType;
+=======
+using base::TimeDelta;
+>>>>>>> chromium
 using testing::NotNull;
 
 namespace {
@@ -118,8 +113,8 @@ TemplateURL* AddKeywordWithDate(TemplateURLService* model,
 // Checks that the two TemplateURLs are similar. It does not check the id or
 // any time-related fields. Neither pointer should be NULL.
 void ExpectSimilar(const TemplateURL* expected, const TemplateURL* actual) {
-  ASSERT_TRUE(expected != nullptr);
-  ASSERT_TRUE(actual != nullptr);
+  ASSERT_TRUE(expected != NULL);
+  ASSERT_TRUE(actual != NULL);
   ExpectSimilar(&expected->data(), &actual->data());
 }
 
@@ -135,6 +130,7 @@ std::unique_ptr<TemplateURLData> CreateTestSearchEngine() {
   return result;
 }
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
 // Creates a `TemplateURLData` with some fake data generated from `keyword`
@@ -174,17 +170,15 @@ std::string ParamToTestSuffix(const ::testing::TestParamInfo<bool>& info) {
                     : "SearchEngineChoiceDisabled";
 }
 
+=======
+>>>>>>> chromium
 }  // namespace
 
 // TemplateURLServiceTest -----------------------------------------------------
 
-class TemplateURLServiceTestBase : public testing::Test {
+class TemplateURLServiceTest : public testing::Test {
  public:
-  explicit TemplateURLServiceTestBase(bool is_search_engine_choice_enabled);
-
-  TemplateURLServiceTestBase(const TemplateURLServiceTestBase&) = delete;
-  TemplateURLServiceTestBase& operator=(const TemplateURLServiceTestBase&) =
-      delete;
+  TemplateURLServiceTest();
 
   // testing::Test:
   void SetUp() override;
@@ -210,7 +204,6 @@ class TemplateURLServiceTestBase : public testing::Test {
 
   // Verifies the two TemplateURLs are equal.
   void AssertEquals(const TemplateURL& expected, const TemplateURL& actual);
-  void AssertEquals(const TemplateURL* expected, const TemplateURL* actual);
 
   // Verifies the two timestamps are equal, within the expected degree of
   // precision.
@@ -235,24 +228,12 @@ class TemplateURLServiceTestBase : public testing::Test {
     return model()->search_terms_data();
   }
 
- protected:
-  bool IsSearchEngineChoiceEnabled() const {
-    return is_search_engine_choice_enabled_;
-  }
-
  private:
-  const bool is_search_engine_choice_enabled_;
-
   content::BrowserTaskEnvironment
       task_environment_;  // To set up BrowserThreads.
   std::unique_ptr<TemplateURLServiceTestUtil> test_util_;
-  base::test::ScopedFeatureList feature_list_;
-};
 
-class TemplateURLServiceTest : public TemplateURLServiceTestBase,
-                               public testing::WithParamInterface<bool> {
- public:
-  TemplateURLServiceTest() : TemplateURLServiceTestBase(GetParam()) {}
+  DISALLOW_COPY_AND_ASSIGN(TemplateURLServiceTest);
 };
 
 class TemplateURLServiceWithoutFallbackTest : public TemplateURLServiceTest {
@@ -270,51 +251,18 @@ class TemplateURLServiceWithoutFallbackTest : public TemplateURLServiceTest {
   }
 };
 
-#if BUILDFLAG(IS_ANDROID)
-class TemplateURLServicePlayApiTest : public TemplateURLServiceTestBase,
-                                      public testing::WithParamInterface<bool> {
- public:
-  static std::string ParamToTestSuffix(
-      const ::testing::TestParamInfo<bool>& info) {
-    std::string suffix =
-        info.param ? "SearchEngineChoiceEnabled" : "SearchEngineChoiceDisabled";
-
-    return suffix;
-  }
-
-  TemplateURLServicePlayApiTest() : TemplateURLServiceTestBase(GetParam()) {
-    EXPECT_EQ(
-        IsSearchEngineChoiceEnabled(),
-        base::FeatureList::IsEnabled(switches::kSearchEngineChoiceTrigger));
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-#endif  // BUILDFLAG(IS_ANDROID)
-
-TemplateURLServiceTestBase::TemplateURLServiceTestBase(
-    bool is_search_engine_choice_enabled)
-    : is_search_engine_choice_enabled_(is_search_engine_choice_enabled) {
-  if (IsSearchEngineChoiceEnabled()) {
-    feature_list_.InitAndEnableFeature(switches::kSearchEngineChoiceTrigger);
-  } else {
-    feature_list_.InitAndDisableFeature(switches::kSearchEngineChoiceTrigger);
-  }
+TemplateURLServiceTest::TemplateURLServiceTest() {
 }
 
-void TemplateURLServiceTestBase::SetUp() {
-  test_util_ = std::make_unique<TemplateURLServiceTestUtil>(
-      TestingProfile::TestingFactories{TestingProfile::TestingFactory{
-          HistoryServiceFactory::GetInstance(),
-          HistoryServiceFactory::GetDefaultFactory()}});
+void TemplateURLServiceTest::SetUp() {
+  test_util_ = std::make_unique<TemplateURLServiceTestUtil>();
 }
 
-void TemplateURLServiceTestBase::TearDown() {
+void TemplateURLServiceTest::TearDown() {
   test_util_.reset();
 }
 
-TemplateURL* TemplateURLServiceTestBase::AddKeywordWithDate(
+TemplateURL* TemplateURLServiceTest::AddKeywordWithDate(
     const std::string& short_name,
     const std::string& keyword,
     const std::string& url,
@@ -332,7 +280,7 @@ TemplateURL* TemplateURLServiceTestBase::AddKeywordWithDate(
                               last_visited);
 }
 
-TemplateURL* TemplateURLServiceTestBase::AddExtensionSearchEngine(
+TemplateURL* TemplateURLServiceTest::AddExtensionSearchEngine(
     const std::string& keyword,
     const std::string& extension_name,
     bool wants_to_be_default_engine,
@@ -347,8 +295,8 @@ TemplateURL* TemplateURLServiceTestBase::AddExtensionSearchEngine(
   return test_util()->AddExtensionControlledTURL(std::move(ext_dse));
 }
 
-void TemplateURLServiceTestBase::AssertEquals(const TemplateURL& expected,
-                                              const TemplateURL& actual) {
+void TemplateURLServiceTest::AssertEquals(const TemplateURL& expected,
+                                          const TemplateURL& actual) {
   ASSERT_EQ(expected.short_name(), actual.short_name());
   ASSERT_EQ(expected.keyword(), actual.keyword());
   ASSERT_EQ(expected.url(), actual.url());
@@ -365,27 +313,15 @@ void TemplateURLServiceTestBase::AssertEquals(const TemplateURL& expected,
   ASSERT_EQ(expected.sync_guid(), actual.sync_guid());
 }
 
-void TemplateURLServiceTestBase::AssertEquals(const TemplateURL* expected,
-                                              const TemplateURL* actual) {
-  ASSERT_TRUE(expected);
-  ASSERT_TRUE(actual);
-  if (expected == actual) {
-    return;
-  }
-
-  AssertEquals(*expected, *actual);
-}
-
-void TemplateURLServiceTestBase::AssertTimesEqual(const Time& expected,
-                                                  const Time& actual) {
+void TemplateURLServiceTest::AssertTimesEqual(const Time& expected,
+                                              const Time& actual) {
   // Because times are stored with a granularity of one second, there is a loss
   // of precision when serializing and deserializing the timestamps. Hence, only
   // expect timestamps to be equal to within one second of one another.
-  ASSERT_LT((expected - actual).magnitude(), base::Seconds(1));
+  ASSERT_LT((expected - actual).magnitude(), TimeDelta::FromSeconds(1));
 }
 
-std::unique_ptr<TemplateURL>
-TemplateURLServiceTestBase::CreatePreloadedTemplateURL(
+std::unique_ptr<TemplateURL> TemplateURLServiceTest::CreatePreloadedTemplateURL(
     bool safe_for_autoreplace,
     int prepopulate_id) {
   TemplateURLData data;
@@ -402,44 +338,46 @@ TemplateURLServiceTestBase::CreatePreloadedTemplateURL(
   return std::make_unique<TemplateURL>(data);
 }
 
-void TemplateURLServiceTestBase::SetOverriddenEngines() {
+void TemplateURLServiceTest::SetOverriddenEngines() {
   // Set custom search engine as default fallback through overrides.
-  base::Value::Dict entry;
-  entry.Set("name", "override_name");
-  entry.Set("keyword", "override_keyword");
-  entry.Set("search_url", "http://override.com/s?q={searchTerms}");
-  entry.Set("favicon_url", "http://override.com/favicon.ico");
-  entry.Set("encoding", "UTF-8");
-  entry.Set("id", 1001);
-  entry.Set("suggest_url", "http://override.com/suggest?q={searchTerms}");
+  auto entry = std::make_unique<base::DictionaryValue>();
+  entry->SetString("name", "override_name");
+  entry->SetString("keyword", "override_keyword");
+  entry->SetString("search_url", "http://override.com/s?q={searchTerms}");
+  entry->SetString("favicon_url", "http://override.com/favicon.ico");
+  entry->SetString("encoding", "UTF-8");
+  entry->SetInteger("id", 1001);
+  entry->SetString("suggest_url",
+                   "http://override.com/suggest?q={searchTerms}");
 
-  base::Value::List overrides_list;
-  overrides_list.Append(std::move(entry));
+  auto overrides_list = std::make_unique<base::ListValue>();
+  overrides_list->Append(std::move(entry));
 
   auto* prefs = test_util()->profile()->GetTestingPrefService();
-  prefs->SetUserPref(prefs::kSearchProviderOverridesVersion, base::Value(1));
+  prefs->SetUserPref(prefs::kSearchProviderOverridesVersion,
+                     std::make_unique<base::Value>(1));
   prefs->SetUserPref(prefs::kSearchProviderOverrides,
-                     base::Value(std::move(overrides_list)));
+                     std::move(overrides_list));
 }
 
-void TemplateURLServiceTestBase::VerifyObserverCount(
-    int expected_changed_count) {
+void TemplateURLServiceTest::VerifyObserverCount(int expected_changed_count) {
   EXPECT_EQ(expected_changed_count, test_util_->GetObserverCount());
   test_util_->ResetObserverCount();
 }
 
-void TemplateURLServiceTestBase::VerifyObserverFired() {
+void TemplateURLServiceTest::VerifyObserverFired() {
   EXPECT_LE(1, test_util_->GetObserverCount());
   test_util_->ResetObserverCount();
 }
 
+
 // Actual tests ---------------------------------------------------------------
 
-TEST_P(TemplateURLServiceTest, Load) {
+TEST_F(TemplateURLServiceTest, Load) {
   test_util()->VerifyLoad();
 }
 
-TEST_P(TemplateURLServiceTest, AddUpdateRemove) {
+TEST_F(TemplateURLServiceTest, AddUpdateRemove) {
   // Add a new TemplateURL.
   test_util()->VerifyLoad();
   const size_t initial_count = model()->GetTemplateURLs().size();
@@ -470,7 +408,7 @@ TEST_P(TemplateURLServiceTest, AddUpdateRemove) {
   test_util()->ResetModel(true);
   ASSERT_EQ(initial_count + 1, model()->GetTemplateURLs().size());
   TemplateURL* loaded_url = model()->GetTemplateURLForKeyword(u"keyword");
-  ASSERT_TRUE(loaded_url != nullptr);
+  ASSERT_TRUE(loaded_url != NULL);
   AssertEquals(*cloned_url, *loaded_url);
   ASSERT_TRUE(model()->CanAddAutogeneratedKeyword(u"keyword", GURL()));
 
@@ -494,7 +432,7 @@ TEST_P(TemplateURLServiceTest, AddUpdateRemove) {
   test_util()->ResetModel(true);
   ASSERT_EQ(initial_count + 1, model()->GetTemplateURLs().size());
   loaded_url = model()->GetTemplateURLForKeyword(u"b");
-  ASSERT_TRUE(loaded_url != nullptr);
+  ASSERT_TRUE(loaded_url != NULL);
   AssertEquals(*cloned_url, *loaded_url);
   // We changed a TemplateURL in the service, so ensure that the time was
   // updated.
@@ -505,10 +443,10 @@ TEST_P(TemplateURLServiceTest, AddUpdateRemove) {
   VerifyObserverCount(1);
   test_util()->ResetModel(true);
   ASSERT_EQ(initial_count, model()->GetTemplateURLs().size());
-  EXPECT_TRUE(model()->GetTemplateURLForKeyword(u"b") == nullptr);
+  EXPECT_TRUE(model()->GetTemplateURLForKeyword(u"b") == NULL);
 }
 
-TEST_P(TemplateURLServiceTest, AddSameKeyword) {
+TEST_F(TemplateURLServiceTest, AddSameKeyword) {
   test_util()->VerifyLoad();
 
   AddKeywordWithDate("first", "keyword", "http://test1", std::string(),
@@ -562,16 +500,21 @@ TEST_P(TemplateURLServiceTest, AddSameKeyword) {
   EXPECT_EQ(u"keyword", t_url->keyword());
 }
 
-TEST_P(TemplateURLServiceTest, AddOmniboxExtensionKeyword) {
+TEST_F(TemplateURLServiceTest, AddOmniboxExtensionKeyword) {
   test_util()->VerifyLoad();
 
   AddKeywordWithDate("replaceable", "keyword1", "http://test1", std::string(),
                      std::string(), std::string(), true);
   AddKeywordWithDate("nonreplaceable", "keyword2", "http://test2",
                      std::string(), std::string(), std::string(), false);
+<<<<<<< HEAD
   model()->RegisterExtensionControlledTURL(
       "test3", "extension", "keyword3", "http://test3",
       Time::FromSecondsSinceUnixEpoch(1), false);
+=======
+  model()->RegisterOmniboxKeyword("test3", "extension", "keyword3",
+                                  "http://test3", Time::FromDoubleT(1));
+>>>>>>> chromium
   TemplateURL* original3 = model()->GetTemplateURLForKeyword(u"keyword3");
   ASSERT_TRUE(original3);
 
@@ -592,16 +535,21 @@ TEST_P(TemplateURLServiceTest, AddOmniboxExtensionKeyword) {
   EXPECT_EQ(extension2, model()->GetTemplateURLForKeyword(u"keyword2"));
 
   // They should override extension keywords added earlier.
+<<<<<<< HEAD
   model()->RegisterExtensionControlledTURL(
       "id3", "test", "keyword3", "http://test6",
       Time::FromSecondsSinceUnixEpoch(4), false);
+=======
+  model()->RegisterOmniboxKeyword("id3", "test", "keyword3", "http://test6",
+                                  Time::FromDoubleT(4));
+>>>>>>> chromium
   TemplateURL* extension3 = model()->FindTemplateURLForExtension(
       "id3", TemplateURL::OMNIBOX_API_EXTENSION);
   ASSERT_TRUE(extension3);
   EXPECT_EQ(extension3, model()->GetTemplateURLForKeyword(u"keyword3"));
 }
 
-TEST_P(TemplateURLServiceTest, AddSameKeywordWithOmniboxExtensionPresent) {
+TEST_F(TemplateURLServiceTest, AddSameKeywordWithOmniboxExtensionPresent) {
   test_util()->VerifyLoad();
 
   // Similar to the AddSameKeyword test, but with an extension keyword masking a
@@ -642,7 +590,7 @@ TEST_P(TemplateURLServiceTest, AddSameKeywordWithOmniboxExtensionPresent) {
   EXPECT_FALSE(model()->GetTemplateURLForHost("test3"));
 }
 
-TEST_P(TemplateURLServiceTest, NotPersistOmniboxExtensionKeyword) {
+TEST_F(TemplateURLServiceTest, NotPersistOmniboxExtensionKeyword) {
   test_util()->VerifyLoad();
 
   // Register an omnibox keyword.
@@ -657,10 +605,10 @@ TEST_P(TemplateURLServiceTest, NotPersistOmniboxExtensionKeyword) {
   ASSERT_FALSE(model()->GetTemplateURLForKeyword(u"keyword"));
 }
 
-TEST_P(TemplateURLServiceTest, ClearBrowsingData_Keywords) {
+TEST_F(TemplateURLServiceTest, ClearBrowsingData_Keywords) {
   Time now = Time::Now();
-  base::TimeDelta one_day = base::Days(1);
-  Time month_ago = now - base::Days(30);
+  TimeDelta one_day = TimeDelta::FromDays(1);
+  Time month_ago = now - TimeDelta::FromDays(30);
 
   // Nothing has been added.
   EXPECT_EQ(0U, model()->GetTemplateURLs().size());
@@ -691,30 +639,19 @@ TEST_P(TemplateURLServiceTest, ClearBrowsingData_Keywords) {
       month_ago, Time(), Time());
   ASSERT_THAT(replaceable_dse, NotNull());
   model()->SetUserSelectedDefaultSearchProvider(replaceable_dse);
-  // Prepopulated and starter pack engines should also not be removed.
-  std::unique_ptr<TemplateURLData> prepopulate_data =
-      GenerateDummyTemplateURLData("prepopulated_key");
-  prepopulate_data->prepopulate_id = 1;
-  prepopulate_data->date_created = month_ago;
-  model()->Add(std::make_unique<TemplateURL>(*prepopulate_data));
-  std::unique_ptr<TemplateURLData> starter_pack_data =
-      GenerateDummyTemplateURLData("starter_pack_key");
-  starter_pack_data->starter_pack_id = 1;
-  starter_pack_data->date_created = month_ago;
-  model()->Add(std::make_unique<TemplateURL>(*starter_pack_data));
 
   // We just added a few items, validate them.
-  EXPECT_EQ(8U, model()->GetTemplateURLs().size());
+  EXPECT_EQ(6U, model()->GetTemplateURLs().size());
 
   // Try removing from current timestamp. This should delete the one in the
   // future and one very recent one.
   model()->RemoveAutoGeneratedBetween(now, base::Time());
-  EXPECT_EQ(6U, model()->GetTemplateURLs().size());
+  EXPECT_EQ(4U, model()->GetTemplateURLs().size());
 
   // Try removing from two months ago. This should only delete items that are
   // auto-generated.
-  model()->RemoveAutoGeneratedBetween(now - base::Days(60), now);
-  EXPECT_EQ(5U, model()->GetTemplateURLs().size());
+  model()->RemoveAutoGeneratedBetween(now - TimeDelta::FromDays(60), now);
+  EXPECT_EQ(3U, model()->GetTemplateURLs().size());
 
   // Make sure the right values remain.
   EXPECT_EQ(u"key1", model()->GetTemplateURLs()[0]->keyword());
@@ -732,25 +669,15 @@ TEST_P(TemplateURLServiceTest, ClearBrowsingData_Keywords) {
   EXPECT_EQ(month_ago.ToInternalValue(),
             model()->GetTemplateURLs()[2]->date_created().ToInternalValue());
 
-  EXPECT_EQ(u"prepopulated_key", model()->GetTemplateURLs()[3]->keyword());
-  EXPECT_TRUE(model()->GetTemplateURLs()[3]->safe_for_autoreplace());
-  EXPECT_EQ(month_ago.ToInternalValue(),
-            model()->GetTemplateURLs()[3]->date_created().ToInternalValue());
-
-  EXPECT_EQ(u"starter_pack_key", model()->GetTemplateURLs()[4]->keyword());
-  EXPECT_TRUE(model()->GetTemplateURLs()[4]->safe_for_autoreplace());
-  EXPECT_EQ(month_ago.ToInternalValue(),
-            model()->GetTemplateURLs()[4]->date_created().ToInternalValue());
-
   // Try removing from Time=0 to Time=0. This should delete one more.
   model()->RemoveAutoGeneratedBetween(Time(), Time());
-  EXPECT_EQ(4U, model()->GetTemplateURLs().size());
+  EXPECT_EQ(2U, model()->GetTemplateURLs().size());
 }
 
-TEST_P(TemplateURLServiceTest, ClearBrowsingData_KeywordsForUrls) {
+TEST_F(TemplateURLServiceTest, ClearBrowsingData_KeywordsForUrls) {
   Time now = Time::Now();
-  base::TimeDelta one_day = base::Days(1);
-  Time month_ago = now - base::Days(30);
+  TimeDelta one_day = TimeDelta::FromDays(1);
+  Time month_ago = now - TimeDelta::FromDays(30);
 
   // Nothing has been added.
   EXPECT_EQ(0U, model()->GetTemplateURLs().size());
@@ -805,7 +732,7 @@ TEST_P(TemplateURLServiceTest, ClearBrowsingData_KeywordsForUrls) {
   EXPECT_TRUE(model()->GetTemplateURLs()[0]->safe_for_autoreplace());
 }
 
-TEST_P(TemplateURLServiceTest, Reset) {
+TEST_F(TemplateURLServiceTest, Reset) {
   // Add a new TemplateURL.
   test_util()->VerifyLoad();
   const size_t initial_count = model()->GetTemplateURLs().size();
@@ -852,6 +779,7 @@ TEST_P(TemplateURLServiceTest, Reset) {
   AssertTimesEqual(now, read_url->last_modified());
 }
 
+<<<<<<< HEAD
 TEST_P(TemplateURLServiceTest, AddAndRemoveExtensionIdWithUnscopedMode) {
   test_util()->VerifyLoad();
 
@@ -898,6 +826,9 @@ TEST_P(TemplateURLServiceTest, ExtensionWithUnscopedModeRegisteredCorrectly) {
 
 #if BUILDFLAG(IS_ANDROID)
 TEST_P(TemplateURLServicePlayApiTest, CreateFromPlayAPI) {
+=======
+TEST_F(TemplateURLServiceTest, CreateFromPlayAPI) {
+>>>>>>> chromium
   test_util()->VerifyLoad();
   const size_t initial_count = model()->GetTemplateURLs().size();
 
@@ -906,33 +837,14 @@ TEST_P(TemplateURLServicePlayApiTest, CreateFromPlayAPI) {
   const std::string search_url = "http://www.google.com/foo/bar";
   const std::string suggest_url = "http://www.google.com/suggest";
   const std::string favicon_url = "http://favicon.url";
-  const std::string new_tab_url = "https://site.com/newtab";
-  const std::string image_url = "https://site.com/img";
-  const std::string image_url_post_params = "param";
-  const std::string image_translate_url = "https://site.com/transl";
-  const std::string image_translate_source_language_param_key = "s";
-  const std::string image_translate_target_language_param_key = "t";
-  TemplateURL* t_url = model()->Add(std::make_unique<TemplateURL>(
-      TemplateURLService::CreatePlayAPITemplateURLData(
-          keyword, short_name, search_url, suggest_url, favicon_url,
-          new_tab_url, image_url, image_url_post_params, image_translate_url,
-          image_translate_source_language_param_key,
-          image_translate_target_language_param_key)));
+  TemplateURL* t_url = model()->CreatePlayAPISearchEngine(
+      short_name, keyword, search_url, suggest_url, favicon_url);
   ASSERT_TRUE(t_url);
   ASSERT_EQ(short_name, t_url->short_name());
   ASSERT_EQ(keyword, t_url->keyword());
   ASSERT_EQ(search_url, t_url->url());
   ASSERT_EQ(suggest_url, t_url->suggestions_url());
   ASSERT_EQ(GURL(favicon_url), t_url->favicon_url());
-  ASSERT_EQ(new_tab_url, t_url->new_tab_url());
-  ASSERT_EQ(image_url, t_url->image_url());
-  ASSERT_EQ(image_url_post_params, t_url->image_url_post_params());
-  ASSERT_EQ(image_translate_url, t_url->image_translate_url());
-  ASSERT_EQ(image_translate_source_language_param_key,
-            t_url->image_translate_source_language_param_key());
-  ASSERT_EQ(image_translate_target_language_param_key,
-            t_url->image_translate_target_language_param_key());
-
   ASSERT_TRUE(t_url->created_from_play_api());
   ASSERT_EQ(t_url, model()->GetTemplateURLForKeyword(keyword));
 
@@ -946,7 +858,7 @@ TEST_P(TemplateURLServicePlayApiTest, CreateFromPlayAPI) {
   AssertEquals(*cloned_url, *read_url);
 }
 
-TEST_P(TemplateURLServicePlayApiTest, UpdateFromPlayAPI) {
+TEST_F(TemplateURLServiceTest, UpdateFromPlayAPI) {
   std::u16string keyword = u"keyword";
 
   // Add a new TemplateURL.
@@ -976,27 +888,18 @@ TEST_P(TemplateURLServicePlayApiTest, UpdateFromPlayAPI) {
   const std::string new_search_url = "new_url";
   const std::string new_suggest_url = "new_suggest_url";
   const std::string new_favicon_url = "new_favicon_url";
-  const std::string new_other_data = "other_data";
 
   // The update creates a new Play API engine and deletes the old replaceable
   // one.
-  t_url = model()->Add(std::make_unique<TemplateURL>(
-      TemplateURLService::CreatePlayAPITemplateURLData(
-          keyword, new_short_name, new_search_url, new_suggest_url,
-          new_favicon_url, new_other_data, new_other_data, new_other_data,
-          new_other_data, new_other_data, new_other_data)));
+  t_url = model()->CreatePlayAPISearchEngine(new_short_name, keyword,
+                                             new_search_url, new_suggest_url,
+                                             new_favicon_url);
   ASSERT_TRUE(t_url);
   ASSERT_EQ(new_short_name, t_url->short_name());
   ASSERT_EQ(keyword, t_url->keyword());
   ASSERT_EQ(new_search_url, t_url->url());
   ASSERT_EQ(new_suggest_url, t_url->suggestions_url());
   ASSERT_EQ(GURL(new_favicon_url), t_url->favicon_url());
-  ASSERT_EQ(new_other_data, t_url->new_tab_url());
-  ASSERT_EQ(new_other_data, t_url->image_url());
-  ASSERT_EQ(new_other_data, t_url->image_url_post_params());
-  ASSERT_EQ(new_other_data, t_url->image_translate_url());
-  ASSERT_EQ(new_other_data, t_url->image_translate_source_language_param_key());
-  ASSERT_EQ(new_other_data, t_url->image_translate_target_language_param_key());
   ASSERT_TRUE(t_url->created_from_play_api());
 
   // Make sure the mappings in the model were updated.
@@ -1012,14 +915,7 @@ TEST_P(TemplateURLServicePlayApiTest, UpdateFromPlayAPI) {
   AssertEquals(*cloned_url, *read_url);
 }
 
-INSTANTIATE_TEST_SUITE_P(,
-                         TemplateURLServicePlayApiTest,
-                         testing::Values(true, false),
-                         &TemplateURLServicePlayApiTest::ParamToTestSuffix);
-
-#endif  // BUILDFLAG(IS_ANDROID)
-
-TEST_P(TemplateURLServiceTest, DefaultSearchProvider) {
+TEST_F(TemplateURLServiceTest, DefaultSearchProvider) {
   // Add a new TemplateURL.
   test_util()->VerifyLoad();
   const size_t initial_count = model()->GetTemplateURLs().size();
@@ -1047,7 +943,7 @@ TEST_P(TemplateURLServiceTest, DefaultSearchProvider) {
   AssertEquals(*cloned_url, *model()->GetDefaultSearchProvider());
 }
 
-TEST_P(TemplateURLServiceTest, CantReplaceWithSameKeyword) {
+TEST_F(TemplateURLServiceTest, CantReplaceWithSameKeyword) {
   test_util()->ChangeModelToLoadState();
   ASSERT_TRUE(model()->CanAddAutogeneratedKeyword(u"foo", GURL()));
   TemplateURL* t_url =
@@ -1066,7 +962,7 @@ TEST_P(TemplateURLServiceTest, CantReplaceWithSameKeyword) {
       model()->CanAddAutogeneratedKeyword(u"foo", GURL("http://foo2")));
 }
 
-TEST_P(TemplateURLServiceTest, CantReplaceWithSameHosts) {
+TEST_F(TemplateURLServiceTest, CantReplaceWithSameHosts) {
   test_util()->ChangeModelToLoadState();
   ASSERT_TRUE(
       model()->CanAddAutogeneratedKeyword(u"foo", GURL("http://foo.com")));
@@ -1087,7 +983,7 @@ TEST_P(TemplateURLServiceTest, CantReplaceWithSameHosts) {
       model()->CanAddAutogeneratedKeyword(u"bar", GURL("http://foo.com")));
 }
 
-TEST_P(TemplateURLServiceTest, HasDefaultSearchProvider) {
+TEST_F(TemplateURLServiceTest, HasDefaultSearchProvider) {
   // We should have a default search provider even if we haven't loaded.
   ASSERT_TRUE(model()->GetDefaultSearchProvider());
 
@@ -1097,7 +993,7 @@ TEST_P(TemplateURLServiceTest, HasDefaultSearchProvider) {
   ASSERT_TRUE(model()->GetDefaultSearchProvider());
 }
 
-TEST_P(TemplateURLServiceTest, DefaultSearchProviderLoadedFromPrefs) {
+TEST_F(TemplateURLServiceTest, DefaultSearchProviderLoadedFromPrefs) {
   test_util()->VerifyLoad();
 
   TemplateURLData data;
@@ -1136,7 +1032,7 @@ TEST_P(TemplateURLServiceTest, DefaultSearchProviderLoadedFromPrefs) {
   AssertEquals(*cloned_url, *model()->GetDefaultSearchProvider());
 }
 
-TEST_P(TemplateURLServiceTest,
+TEST_F(TemplateURLServiceTest,
        DefaultSearchProviderShouldBeProtectedFromKeywordConflictDuringLoad) {
   // Start with the model unloaded, with the DSE provided purely from prefs.
   ASSERT_FALSE(model()->loaded());
@@ -1168,7 +1064,7 @@ TEST_P(TemplateURLServiceTest,
                 initial_default_search_provider->sync_guid()));
 }
 
-TEST_P(TemplateURLServiceTest, RepairPrepopulatedSearchEngines) {
+TEST_F(TemplateURLServiceTest, RepairPrepopulatedSearchEngines) {
   test_util()->VerifyLoad();
 
   // Edit Google search engine.
@@ -1234,7 +1130,7 @@ TEST_P(TemplateURLServiceTest, RepairPrepopulatedSearchEngines) {
   EXPECT_EQ(u"google.com", user_dse->keyword());
 }
 
-TEST_P(TemplateURLServiceTest, RepairSearchEnginesWithManagedDefault) {
+TEST_F(TemplateURLServiceTest, RepairSearchEnginesWithManagedDefault) {
   // Set a managed preference that establishes a default search provider.
   std::unique_ptr<TemplateURLData> managed = CreateTestSearchEngine();
   SetManagedDefaultSearchPreferences(*managed, true, test_util()->profile());
@@ -1259,14 +1155,16 @@ TEST_P(TemplateURLServiceTest, RepairSearchEnginesWithManagedDefault) {
 // search. Repair is considered a user action and new DSE must be synced to
 // other devices as well. Otherwise previous user selected engine will arrive on
 // next sync attempt.
-TEST_P(TemplateURLServiceTest, RepairPrepopulatedEnginesUpdatesSyncGuid) {
+TEST_F(TemplateURLServiceTest, RepairPrepopulatedEnginesUpdatesSyncGuid) {
   test_util()->VerifyLoad();
 
   // The synced DSE GUID should be empty until the user selects something or
   // there is sync activity.
-  auto* prefs = test_util()->profile()->GetTestingPrefService();
-  ASSERT_TRUE(prefs);
-  EXPECT_TRUE(GetDefaultSearchProviderGuidFromPrefs(*prefs).empty());
+  EXPECT_TRUE(test_util()
+                  ->profile()
+                  ->GetTestingPrefService()
+                  ->GetString(prefs::kSyncedDefaultSearchProviderGUID)
+                  .empty());
 
   const TemplateURL* initial_dse = model()->GetDefaultSearchProvider();
   ASSERT_TRUE(initial_dse);
@@ -1282,14 +1180,17 @@ TEST_P(TemplateURLServiceTest, RepairPrepopulatedEnginesUpdatesSyncGuid) {
 
   // Check that user DSE guid is stored in kSyncedDefaultSearchProviderGUID.
   EXPECT_EQ(user_dse->sync_guid(),
-            GetDefaultSearchProviderGuidFromPrefs(*prefs));
+            test_util()->profile()->GetTestingPrefService()->GetString(
+                prefs::kSyncedDefaultSearchProviderGUID));
 
   model()->RepairPrepopulatedSearchEngines();
 
   // Check that initial search engine is returned as default after repair.
   ASSERT_EQ(initial_dse, model()->GetDefaultSearchProvider());
   // Check that initial_dse guid is stored in kSyncedDefaultSearchProviderGUID.
-  const std::string dse_guid = GetDefaultSearchProviderGuidFromPrefs(*prefs);
+  const std::string dse_guid =
+      test_util()->profile()->GetTestingPrefService()->GetString(
+          prefs::kSyncedDefaultSearchProviderGUID);
   EXPECT_EQ(initial_dse->sync_guid(), dse_guid);
   EXPECT_EQ(initial_dse->keyword(),
             model()->GetTemplateURLForGUID(dse_guid)->keyword());
@@ -1297,16 +1198,18 @@ TEST_P(TemplateURLServiceTest, RepairPrepopulatedEnginesUpdatesSyncGuid) {
 
 // Checks that RepairPrepopulatedEngines correctly updates sync guid for default
 // search when search engines are overridden using pref.
-TEST_P(TemplateURLServiceTest,
+TEST_F(TemplateURLServiceTest,
        RepairPrepopulatedEnginesWithOverridesUpdatesSyncGuid) {
   SetOverriddenEngines();
   test_util()->VerifyLoad();
 
   // The synced DSE GUID should be empty until the user selects something or
   // there is sync activity.
-  auto* prefs = test_util()->profile()->GetTestingPrefService();
-  ASSERT_TRUE(prefs);
-  EXPECT_TRUE(GetDefaultSearchProviderGuidFromPrefs(*prefs).empty());
+  EXPECT_TRUE(test_util()
+                  ->profile()
+                  ->GetTestingPrefService()
+                  ->GetString(prefs::kSyncedDefaultSearchProviderGUID)
+                  .empty());
 
   TemplateURL* overridden_engine =
       model()->GetTemplateURLForKeyword(u"override_keyword");
@@ -1323,7 +1226,8 @@ TEST_P(TemplateURLServiceTest,
 
   // Check that user DSE guid is stored in kSyncedDefaultSearchProviderGUID.
   EXPECT_EQ(user_dse->sync_guid(),
-            GetDefaultSearchProviderGuidFromPrefs(*prefs));
+            test_util()->profile()->GetTestingPrefService()->GetString(
+                prefs::kSyncedDefaultSearchProviderGUID));
 
   model()->RepairPrepopulatedSearchEngines();
 
@@ -1331,7 +1235,9 @@ TEST_P(TemplateURLServiceTest,
   ASSERT_EQ(overridden_engine, model()->GetDefaultSearchProvider());
   // Check that overridden_engine guid is stored in
   // kSyncedDefaultSearchProviderGUID.
-  const std::string dse_guid = GetDefaultSearchProviderGuidFromPrefs(*prefs);
+  const std::string dse_guid =
+      test_util()->profile()->GetTestingPrefService()->GetString(
+          prefs::kSyncedDefaultSearchProviderGUID);
   EXPECT_EQ(overridden_engine->sync_guid(), dse_guid);
   EXPECT_EQ(overridden_engine->keyword(),
             model()->GetTemplateURLForGUID(dse_guid)->keyword());
@@ -1339,15 +1245,17 @@ TEST_P(TemplateURLServiceTest,
 
 // Checks that RepairPrepopulatedEngines correctly updates sync guid for default
 // search when search engines is overridden by extension.
-TEST_P(TemplateURLServiceTest,
+TEST_F(TemplateURLServiceTest,
        RepairPrepopulatedEnginesWithExtensionUpdatesSyncGuid) {
   test_util()->VerifyLoad();
 
   // The synced DSE GUID should be empty until the user selects something or
   // there is sync activity.
-  auto* prefs = test_util()->profile()->GetTestingPrefService();
-  ASSERT_TRUE(prefs);
-  EXPECT_TRUE(GetDefaultSearchProviderGuidFromPrefs(*prefs).empty());
+  EXPECT_TRUE(test_util()
+                  ->profile()
+                  ->GetTestingPrefService()
+                  ->GetString(prefs::kSyncedDefaultSearchProviderGUID)
+                  .empty());
 
   // Get initial DSE to check its guid later.
   const TemplateURL* initial_dse = model()->GetDefaultSearchProvider();
@@ -1361,7 +1269,8 @@ TEST_P(TemplateURLServiceTest,
 
   // Check that user DSE guid is stored in kSyncedDefaultSearchProviderGUID.
   EXPECT_EQ(user_dse->sync_guid(),
-            GetDefaultSearchProviderGuidFromPrefs(*prefs));
+            test_util()->profile()->GetTestingPrefService()->GetString(
+                prefs::kSyncedDefaultSearchProviderGUID));
 
   // Add extension controlled default search engine.
   TemplateURL* extension_dse =
@@ -1370,16 +1279,19 @@ TEST_P(TemplateURLServiceTest,
   // Check that user DSE guid is still stored in
   // kSyncedDefaultSearchProviderGUID.
   EXPECT_EQ(user_dse->sync_guid(),
-            GetDefaultSearchProviderGuidFromPrefs(*prefs));
+            test_util()->profile()->GetTestingPrefService()->GetString(
+                prefs::kSyncedDefaultSearchProviderGUID));
 
   model()->RepairPrepopulatedSearchEngines();
   // Check that extension engine is still default but sync guid is updated to
   // initial dse guid.
   EXPECT_EQ(extension_dse, model()->GetDefaultSearchProvider());
   EXPECT_EQ(initial_dse->sync_guid(),
-            GetDefaultSearchProviderGuidFromPrefs(*prefs));
+            test_util()->profile()->GetTestingPrefService()->GetString(
+                prefs::kSyncedDefaultSearchProviderGUID));
 }
 
+<<<<<<< HEAD
 TEST_P(TemplateURLServiceTest, RepairStarterPackEngines) {
   test_util()->VerifyLoad();
 
@@ -1472,6 +1384,9 @@ TEST_P(TemplateURLServiceTest, GetDefaultSearchProviderPref) {
 }
 
 TEST_P(TemplateURLServiceTest, UpdateKeywordSearchTermsForURL) {
+=======
+TEST_F(TemplateURLServiceTest, UpdateKeywordSearchTermsForURL) {
+>>>>>>> chromium
   struct TestData {
     const std::string url;
     const std::u16string term;
@@ -1495,14 +1410,21 @@ TEST_P(TemplateURLServiceTest, UpdateKeywordSearchTermsForURL) {
                      "http://sugg1", "http://x/foo#query={searchTerms}",
                      "http://icon1", false, "UTF-8;UTF-16");
 
+<<<<<<< HEAD
   for (size_t i = 0; i < std::size(data); ++i) {
     TemplateURLService::URLVisitedDetails details = {GURL(data[i].url), false};
+=======
+  for (size_t i = 0; i < base::size(data); ++i) {
+    TemplateURLService::URLVisitedDetails details = {
+      GURL(data[i].url), false
+    };
+>>>>>>> chromium
     model()->UpdateKeywordSearchTermsForURL(details);
     EXPECT_EQ(data[i].term, test_util()->GetAndClearSearchTerm());
   }
 }
 
-TEST_P(TemplateURLServiceTest, DontUpdateKeywordSearchForNonReplaceable) {
+TEST_F(TemplateURLServiceTest, DontUpdateKeywordSearchForNonReplaceable) {
   struct TestData {
     const std::string url;
   };
@@ -1516,8 +1438,15 @@ TEST_P(TemplateURLServiceTest, DontUpdateKeywordSearchForNonReplaceable) {
   AddKeywordWithDate("name", "x", "http://x/foo", "http://sugg1", std::string(),
                      "http://icon1", false, "UTF-8;UTF-16");
 
+<<<<<<< HEAD
   for (size_t i = 0; i < std::size(data); ++i) {
     TemplateURLService::URLVisitedDetails details = {GURL(data[i].url), false};
+=======
+  for (size_t i = 0; i < base::size(data); ++i) {
+    TemplateURLService::URLVisitedDetails details = {
+      GURL(data[i].url), false
+    };
+>>>>>>> chromium
     model()->UpdateKeywordSearchTermsForURL(details);
     ASSERT_EQ(std::u16string(), test_util()->GetAndClearSearchTerm());
   }
@@ -1526,7 +1455,7 @@ TEST_P(TemplateURLServiceTest, DontUpdateKeywordSearchForNonReplaceable) {
 // Historically, {google:baseURL} keywords would change to different
 // country-specific Google URLs dynamically. That logic was removed, but test
 // that country-specific Google URLs can still be added manually.
-TEST_P(TemplateURLServiceWithoutFallbackTest, ManualCountrySpecificGoogleURL) {
+TEST_F(TemplateURLServiceWithoutFallbackTest, ManualCountrySpecificGoogleURL) {
   // NOTE: Do not load the prepopulate data, which also has a {google:baseURL}
   // keyword in it and would confuse this test.
   test_util()->ChangeModelToLoadState();
@@ -1552,14 +1481,10 @@ TEST_P(TemplateURLServiceWithoutFallbackTest, ManualCountrySpecificGoogleURL) {
   EXPECT_EQ(u"google.de", manual->keyword());
 }
 
-INSTANTIATE_TEST_SUITE_P(,
-                         TemplateURLServiceWithoutFallbackTest,
-                         ::testing::Bool(),
-                         &ParamToTestSuffix);
-
 // Make sure TemplateURLService generates a KEYWORD_GENERATED visit for
 // KEYWORD visits.
-TEST_P(TemplateURLServiceTest, GenerateVisitOnKeyword) {
+TEST_F(TemplateURLServiceTest, GenerateVisitOnKeyword) {
+  ASSERT_TRUE(test_util()->profile()->CreateHistoryService());
   test_util()->ResetModel(true);
 
   // Create a keyword.
@@ -1574,8 +1499,8 @@ TEST_P(TemplateURLServiceTest, GenerateVisitOnKeyword) {
   history->AddPage(
       GURL(t_url->url_ref().ReplaceSearchTerms(
           TemplateURLRef::SearchTermsArgs(u"blah"), search_terms_data())),
-      Time::Now(), 0, 0, GURL(), history::RedirectList(),
-      ui::PAGE_TRANSITION_KEYWORD, history::SOURCE_BROWSED, false);
+      Time::Now(), NULL, 0, GURL(), history::RedirectList(),
+      ui::PAGE_TRANSITION_KEYWORD, history::SOURCE_BROWSED, false, false);
 
   // Wait for history to finish processing the request.
   test_util()->profile()->BlockUntilHistoryProcessesPendingRequests();
@@ -1604,17 +1529,17 @@ TEST_P(TemplateURLServiceTest, GenerateVisitOnKeyword) {
 
 // Make sure that the load routine deletes prepopulated engines that no longer
 // exist in the prepopulate data.
-TEST_P(TemplateURLServiceTest, LoadDeletesUnusedProvider) {
+TEST_F(TemplateURLServiceTest, LoadDeletesUnusedProvider) {
   // Create a preloaded template url. Add it to a loaded model and wait for the
   // saves to finish.
   test_util()->ChangeModelToLoadState();
   model()->Add(CreatePreloadedTemplateURL(true, kPrepopulatedId));
-  ASSERT_TRUE(model()->GetTemplateURLForKeyword(u"unittest") != nullptr);
+  ASSERT_TRUE(model()->GetTemplateURLForKeyword(u"unittest") != NULL);
   base::RunLoop().RunUntilIdle();
 
   // Ensure that merging clears this engine.
   test_util()->ResetModel(true);
-  ASSERT_TRUE(model()->GetTemplateURLForKeyword(u"unittest") == nullptr);
+  ASSERT_TRUE(model()->GetTemplateURLForKeyword(u"unittest") == NULL);
 
   // Wait for any saves to finish.
   base::RunLoop().RunUntilIdle();
@@ -1622,12 +1547,12 @@ TEST_P(TemplateURLServiceTest, LoadDeletesUnusedProvider) {
   // Reload the model to verify that the database was updated as a result of the
   // merge.
   test_util()->ResetModel(true);
-  ASSERT_TRUE(model()->GetTemplateURLForKeyword(u"unittest") == nullptr);
+  ASSERT_TRUE(model()->GetTemplateURLForKeyword(u"unittest") == NULL);
 }
 
 // Make sure that load routine doesn't delete prepopulated engines that no
 // longer exist in the prepopulate data if it has been modified by the user.
-TEST_P(TemplateURLServiceTest, LoadRetainsModifiedProvider) {
+TEST_F(TemplateURLServiceTest, LoadRetainsModifiedProvider) {
   // Create a preloaded template url and add it to a loaded model.
   test_util()->ChangeModelToLoadState();
   TemplateURL* t_url =
@@ -1645,7 +1570,7 @@ TEST_P(TemplateURLServiceTest, LoadRetainsModifiedProvider) {
   test_util()->ResetModel(true);
   const TemplateURL* url_for_unittest =
       model()->GetTemplateURLForKeyword(u"unittest");
-  ASSERT_TRUE(url_for_unittest != nullptr);
+  ASSERT_TRUE(url_for_unittest != NULL);
   AssertEquals(*cloned_url, *url_for_unittest);
 
   // Wait for any saves to finish.
@@ -1653,17 +1578,17 @@ TEST_P(TemplateURLServiceTest, LoadRetainsModifiedProvider) {
 
   // Reload the model to verify that save/reload retains the item.
   test_util()->ResetModel(true);
-  ASSERT_TRUE(model()->GetTemplateURLForKeyword(u"unittest") != nullptr);
+  ASSERT_TRUE(model()->GetTemplateURLForKeyword(u"unittest") != NULL);
 }
 
 // Make sure that load routine doesn't delete
 // prepopulated engines that no longer exist in the prepopulate data if
 // it has been modified by the user.
-TEST_P(TemplateURLServiceTest, LoadSavesPrepopulatedDefaultSearchProvider) {
+TEST_F(TemplateURLServiceTest, LoadSavesPrepopulatedDefaultSearchProvider) {
   test_util()->VerifyLoad();
   // Verify that the default search provider is set to something.
   const TemplateURL* default_search = model()->GetDefaultSearchProvider();
-  ASSERT_TRUE(default_search != nullptr);
+  ASSERT_TRUE(default_search != NULL);
   std::unique_ptr<TemplateURL> cloned_url(
       new TemplateURL(default_search->data()));
 
@@ -1674,14 +1599,14 @@ TEST_P(TemplateURLServiceTest, LoadSavesPrepopulatedDefaultSearchProvider) {
   // was properly saved.
   test_util()->ResetModel(true);
   default_search = model()->GetDefaultSearchProvider();
-  ASSERT_TRUE(default_search != nullptr);
+  ASSERT_TRUE(default_search != NULL);
   AssertEquals(*cloned_url, *default_search);
 }
 
 // Make sure that the load routine doesn't delete
 // prepopulated engines that no longer exist in the prepopulate data if
 // it is the default search provider.
-TEST_P(TemplateURLServiceTest, LoadRetainsDefaultProvider) {
+TEST_F(TemplateURLServiceTest, LoadRetainsDefaultProvider) {
   // Set the default search provider to a preloaded template url which
   // is not in the current set of preloaded template urls and save
   // the result.
@@ -1704,7 +1629,7 @@ TEST_P(TemplateURLServiceTest, LoadRetainsDefaultProvider) {
   {
     const TemplateURL* keyword_url =
         model()->GetTemplateURLForKeyword(u"unittest");
-    ASSERT_TRUE(keyword_url != nullptr);
+    ASSERT_TRUE(keyword_url != NULL);
     AssertEquals(*cloned_url, *keyword_url);
     ASSERT_EQ(keyword_url, model()->GetDefaultSearchProvider());
   }
@@ -1717,7 +1642,7 @@ TEST_P(TemplateURLServiceTest, LoadRetainsDefaultProvider) {
   {
     const TemplateURL* keyword_url =
         model()->GetTemplateURLForKeyword(u"unittest");
-    ASSERT_TRUE(keyword_url != nullptr);
+    ASSERT_TRUE(keyword_url != NULL);
     AssertEquals(*cloned_url, *keyword_url);
     ASSERT_EQ(keyword_url, model()->GetDefaultSearchProvider());
   }
@@ -1725,7 +1650,7 @@ TEST_P(TemplateURLServiceTest, LoadRetainsDefaultProvider) {
 
 // Make sure that the load routine sets a default search provider if it was
 // missing and not managed.
-TEST_P(TemplateURLServiceTest, LoadEnsuresDefaultSearchProviderExists) {
+TEST_F(TemplateURLServiceTest, LoadEnsuresDefaultSearchProviderExists) {
   // Force the model to load and make sure we have a default search provider.
   test_util()->VerifyLoad();
   EXPECT_TRUE(model()->GetDefaultSearchProvider());
@@ -1754,56 +1679,9 @@ TEST_P(TemplateURLServiceTest, LoadEnsuresDefaultSearchProviderExists) {
       search_terms_data()));
 }
 
-// Make sure that the load routine does not update user modified starter pack
-// engines unless the current version is incompatible.
-TEST_P(TemplateURLServiceTest,
-       LoadUpdatesStarterPackOnlyIfIncompatibleVersion) {
-  test_util()->ResetModel(true);
-
-  // Modify a starter pack template URL. Verify load does NOT modify the title
-  // if current version is compatible (>= to first compatible version).
-  const int first_compatible_version =
-      TemplateURLStarterPackData::GetFirstCompatibleDataVersion();
-  test_util()->web_data_service()->SetStarterPackKeywordVersion(
-      first_compatible_version);
-
-  TemplateURL* t_url = model()->GetTemplateURLForKeyword(u"@history");
-  EXPECT_GT(t_url->starter_pack_id(), 0);
-  const std::u16string original_title = t_url->short_name();
-
-  model()->ResetTemplateURL(t_url, u"not history", u"@history", t_url->url());
-  base::RunLoop().RunUntilIdle();
-
-  // Reset the model and load it.
-  test_util()->ResetModel(true);
-
-  t_url = model()->GetTemplateURLForKeyword(u"@history");
-  EXPECT_EQ(t_url->short_name(), u"not history");
-
-  // Now test if current version is greater than last compatible version, we
-  // should still not modify the user edited data.
-  test_util()->web_data_service()->SetStarterPackKeywordVersion(
-      first_compatible_version + 1);
-  // Reset the model and load it.
-  test_util()->ResetModel(true);
-
-  t_url = model()->GetTemplateURLForKeyword(u"@history");
-  EXPECT_EQ(t_url->short_name(), u"not history");
-
-  // Now set the starter pack resource version to something less than the last
-  // compatible version number, and verify that the title gets overridden back
-  // to the default value.
-  test_util()->web_data_service()->SetStarterPackKeywordVersion(
-      first_compatible_version - 1);
-
-  test_util()->ResetModel(true);
-  t_url = model()->GetTemplateURLForKeyword(u"@history");
-  EXPECT_EQ(t_url->short_name(), original_title);
-}
-
 // Simulates failing to load the webdb and makes sure the default search
 // provider is valid.
-TEST_P(TemplateURLServiceTest, FailedInit) {
+TEST_F(TemplateURLServiceTest, FailedInit) {
   test_util()->VerifyLoad();
 
   test_util()->ClearModel();
@@ -1819,7 +1697,7 @@ TEST_P(TemplateURLServiceTest, FailedInit) {
 // Verifies that if the default search URL preference is managed, we report
 // the default search as managed.  Also check that we are getting the right
 // values.
-TEST_P(TemplateURLServiceTest, TestManagedDefaultSearch) {
+TEST_F(TemplateURLServiceTest, TestManagedDefaultSearch) {
   test_util()->VerifyLoad();
   const size_t initial_count = model()->GetTemplateURLs().size();
   test_util()->ResetObserverCount();
@@ -1883,7 +1761,7 @@ TEST_P(TemplateURLServiceTest, TestManagedDefaultSearch) {
   SetManagedDefaultSearchPreferences(managed2, false, test_util()->profile());
   VerifyObserverFired();
   EXPECT_TRUE(model()->is_default_search_managed());
-  EXPECT_TRUE(nullptr == model()->GetDefaultSearchProvider());
+  EXPECT_TRUE(NULL == model()->GetDefaultSearchProvider());
   EXPECT_EQ(initial_count + 1, model()->GetTemplateURLs().size());
 
   // Re-enable it.
@@ -1905,7 +1783,7 @@ TEST_P(TemplateURLServiceTest, TestManagedDefaultSearch) {
   RemoveManagedDefaultSearchPreferences(test_util()->profile());
   test_util()->ResetModel(true);
   TemplateURL* new_default = model()->GetTemplateURLForKeyword(u"key1");
-  ASSERT_FALSE(new_default == nullptr);
+  ASSERT_FALSE(new_default == NULL);
   model()->SetUserSelectedDefaultSearchProvider(new_default);
   EXPECT_EQ(new_default, model()->GetDefaultSearchProvider());
 
@@ -1914,12 +1792,12 @@ TEST_P(TemplateURLServiceTest, TestManagedDefaultSearch) {
   SetManagedDefaultSearchPreferences(*managed, false, test_util()->profile());
   test_util()->VerifyLoad();
   EXPECT_TRUE(model()->is_default_search_managed());
-  EXPECT_TRUE(model()->GetDefaultSearchProvider() == nullptr);
+  EXPECT_TRUE(model()->GetDefaultSearchProvider() == NULL);
 }
 
 // Test that if we load a TemplateURL with an empty GUID, the load process
 // assigns it a newly generated GUID.
-TEST_P(TemplateURLServiceTest, PatchEmptySyncGUID) {
+TEST_F(TemplateURLServiceTest, PatchEmptySyncGUID) {
   // Add a new TemplateURL.
   test_util()->VerifyLoad();
   const size_t initial_count = model()->GetTemplateURLs().size();
@@ -1940,13 +1818,13 @@ TEST_P(TemplateURLServiceTest, PatchEmptySyncGUID) {
   test_util()->ResetModel(true);
   ASSERT_EQ(initial_count + 1, model()->GetTemplateURLs().size());
   const TemplateURL* loaded_url = model()->GetTemplateURLForKeyword(u"keyword");
-  ASSERT_FALSE(loaded_url == nullptr);
+  ASSERT_FALSE(loaded_url == NULL);
   ASSERT_FALSE(loaded_url->sync_guid().empty());
 }
 
 // Test that if we load a TemplateURL with duplicate input encodings, the load
 // process de-dupes them.
-TEST_P(TemplateURLServiceTest, DuplicateInputEncodings) {
+TEST_F(TemplateURLServiceTest, DuplicateInputEncodings) {
   // Add a new TemplateURL.
   test_util()->VerifyLoad();
   const size_t initial_count = model()->GetTemplateURLs().size();
@@ -1970,7 +1848,7 @@ TEST_P(TemplateURLServiceTest, DuplicateInputEncodings) {
   base::RunLoop().RunUntilIdle();
   ASSERT_EQ(initial_count + 1, model()->GetTemplateURLs().size());
   const TemplateURL* loaded_url = model()->GetTemplateURLForKeyword(u"keyword");
-  ASSERT_TRUE(loaded_url != nullptr);
+  ASSERT_TRUE(loaded_url != NULL);
   EXPECT_EQ(8U, loaded_url->input_encodings().size());
 
   // Reload the model to verify it was actually saved to the database and the
@@ -1978,11 +1856,11 @@ TEST_P(TemplateURLServiceTest, DuplicateInputEncodings) {
   test_util()->ResetModel(true);
   ASSERT_EQ(initial_count + 1, model()->GetTemplateURLs().size());
   loaded_url = model()->GetTemplateURLForKeyword(u"keyword");
-  ASSERT_FALSE(loaded_url == nullptr);
+  ASSERT_FALSE(loaded_url == NULL);
   EXPECT_EQ(4U, loaded_url->input_encodings().size());
 }
 
-TEST_P(TemplateURLServiceTest, DefaultExtensionEngine) {
+TEST_F(TemplateURLServiceTest, DefaultExtensionEngine) {
   test_util()->VerifyLoad();
   // Add third-party default search engine.
   TemplateURL* user_dse =
@@ -1999,7 +1877,7 @@ TEST_P(TemplateURLServiceTest, DefaultExtensionEngine) {
   ExpectSimilar(user_dse, model()->GetDefaultSearchProvider());
 }
 
-TEST_P(TemplateURLServiceTest, SetDefaultExtensionEngineAndRemoveUserDSE) {
+TEST_F(TemplateURLServiceTest, SetDefaultExtensionEngineAndRemoveUserDSE) {
   test_util()->VerifyLoad();
   // Add third-party default search engine.
   TemplateURL* user_dse =
@@ -2012,8 +1890,8 @@ TEST_P(TemplateURLServiceTest, SetDefaultExtensionEngineAndRemoveUserDSE) {
       AddExtensionSearchEngine("extension_keyword", "extension_id", true);
   EXPECT_EQ(ext_dse_ptr, model()->GetDefaultSearchProvider());
   auto* prefs = test_util()->profile()->GetTestingPrefService();
-  ASSERT_TRUE(prefs);
-  std::string dse_guid = GetDefaultSearchProviderGuidFromPrefs(*prefs);
+  std::string dse_guid =
+      prefs->GetString(prefs::kSyncedDefaultSearchProviderGUID);
   EXPECT_EQ(user_dse->sync_guid(), dse_guid);
 
   model()->Remove(user_dse);
@@ -2022,10 +1900,11 @@ TEST_P(TemplateURLServiceTest, SetDefaultExtensionEngineAndRemoveUserDSE) {
   test_util()->RemoveExtensionControlledTURL("extension_id");
   // The DSE is set to the fallback search engine.
   EXPECT_TRUE(model()->GetDefaultSearchProvider());
-  EXPECT_NE(dse_guid, GetDefaultSearchProviderGuidFromPrefs(*prefs));
+  EXPECT_NE(dse_guid,
+            prefs->GetString(prefs::kSyncedDefaultSearchProviderGUID));
 }
 
-TEST_P(TemplateURLServiceTest, DefaultExtensionEnginePersist) {
+TEST_F(TemplateURLServiceTest, DefaultExtensionEnginePersist) {
   test_util()->VerifyLoad();
   // Add third-party default search engine.
   TemplateURL* user_dse =
@@ -2054,7 +1933,7 @@ TEST_P(TemplateURLServiceTest, DefaultExtensionEnginePersist) {
   EXPECT_FALSE(model()->GetTemplateURLForKeyword(u"extension1_keyword"));
 }
 
-TEST_P(TemplateURLServiceTest, DefaultExtensionEnginePersistsBeforeLoad) {
+TEST_F(TemplateURLServiceTest, DefaultExtensionEnginePersistsBeforeLoad) {
   // Chrome will load the extension system before the TemplateURLService, so
   // extensions controlling the default search engine may be registered before
   // the service has loaded.
@@ -2075,7 +1954,7 @@ TEST_P(TemplateURLServiceTest, DefaultExtensionEnginePersistsBeforeLoad) {
 // Checks that correct priority is applied when resolving conflicts between the
 // omnibox extension, search engine extension and user search engines with same
 // keyword.
-TEST_P(TemplateURLServiceTest, KeywordConflictNonReplaceableEngines) {
+TEST_F(TemplateURLServiceTest, KeywordConflictNonReplaceableEngines) {
   test_util()->VerifyLoad();
   // TemplateURLData used for user engines.
   std::unique_ptr<TemplateURLData> turl_data =
@@ -2088,9 +1967,8 @@ TEST_P(TemplateURLServiceTest, KeywordConflictNonReplaceableEngines) {
       model()->Add(std::make_unique<TemplateURL>(*turl_data));
 
   // Add default extension engine with same keyword as user engine.
-  const TemplateURL* extension =
-      AddExtensionSearchEngine("common_keyword", "extension_id", true,
-                               Time::FromSecondsSinceUnixEpoch(2));
+  const TemplateURL* extension = AddExtensionSearchEngine(
+      "common_keyword", "extension_id", true, Time::FromDoubleT(2));
 
   // Add another non replaceable user engine with same keyword as extension.
   // But make it slightly "better" than the other one via last-modified date.
@@ -2108,9 +1986,15 @@ TEST_P(TemplateURLServiceTest, KeywordConflictNonReplaceableEngines) {
   // Use |install_time| value less than in AddExtensionSearchEngine call above
   // to check that omnibox api keyword is ranked higher even if installed
   // earlier.
+<<<<<<< HEAD
   model()->RegisterExtensionControlledTURL(
       "omnibox_api_extension_id", "extension_name", "common_keyword",
       "http://test3", Time::FromSecondsSinceUnixEpoch(1), false);
+=======
+  model()->RegisterOmniboxKeyword("omnibox_api_extension_id", "extension_name",
+                                  "common_keyword", "http://test3",
+                                  Time::FromDoubleT(1));
+>>>>>>> chromium
   TemplateURL* omnibox_api = model()->FindTemplateURLForExtension(
       "omnibox_api_extension_id", TemplateURL::OMNIBOX_API_EXTENSION);
 
@@ -2145,7 +2029,7 @@ TEST_P(TemplateURLServiceTest, KeywordConflictNonReplaceableEngines) {
 
 // Verifies that we don't have reentrant behavior when resolving default search
 // provider keyword conflicts. crbug.com/1031506
-TEST_P(TemplateURLServiceTest, DefaultSearchProviderKeywordConflictReentrancy) {
+TEST_F(TemplateURLServiceTest, DefaultSearchProviderKeywordConflictReentrancy) {
   // Merely loading should increment the count once.
   test_util()->VerifyLoad();
   EXPECT_EQ(1, test_util()->dsp_set_to_google_callback_count());
@@ -2186,7 +2070,7 @@ TEST_P(TemplateURLServiceTest, DefaultSearchProviderKeywordConflictReentrancy) {
          "behavior on ApplyDefaultSearchChangeNoMetrics.";
 }
 
-TEST_P(TemplateURLServiceTest, ReplaceableEngineUpdateHandlesKeywordConflicts) {
+TEST_F(TemplateURLServiceTest, ReplaceableEngineUpdateHandlesKeywordConflicts) {
   test_util()->VerifyLoad();
   // Add 2 replaceable user engine with different keywords.
   TemplateURL* user1 =
@@ -2213,7 +2097,7 @@ TEST_P(TemplateURLServiceTest, ReplaceableEngineUpdateHandlesKeywordConflicts) {
 // Verifies that we favor prepopulated engines over other safe_for_autoreplace()
 // engines, even if they are newer. Also verifies that we never remove the
 // prepopulated engine, even if outranked. https://crbug.com/1164024
-TEST_P(TemplateURLServiceTest, KeywordConflictFavorsPrepopulatedEngines) {
+TEST_F(TemplateURLServiceTest, KeywordConflictFavorsPrepopulatedEngines) {
   test_util()->VerifyLoad();
 
   // Add prepopulated engine with prepopulate_id == 42, created at time == 10.
@@ -2264,7 +2148,7 @@ TEST_P(TemplateURLServiceTest, KeywordConflictFavorsPrepopulatedEngines) {
   ASSERT_THAT(worse_prepopulated, NotNull());
 }
 
-TEST_P(TemplateURLServiceTest, CheckNonreplaceableEnginesKeywordsConflicts) {
+TEST_F(TemplateURLServiceTest, CheckNonreplaceableEnginesKeywordsConflicts) {
   test_util()->VerifyLoad();
 
   const std::u16string kCommonKeyword = u"common_keyword";
@@ -2313,7 +2197,7 @@ TEST_P(TemplateURLServiceTest, CheckNonreplaceableEnginesKeywordsConflicts) {
             model()->GetTemplateURLForKeyword(u"embedded.%3chtml%3eweb"));
 }
 
-TEST_P(TemplateURLServiceTest, CheckReplaceableEnginesKeywordsConflicts) {
+TEST_F(TemplateURLServiceTest, CheckReplaceableEnginesKeywordsConflicts) {
   test_util()->VerifyLoad();
 
   const std::u16string kCommonKeyword = u"common_keyword";
@@ -2363,29 +2247,26 @@ TEST_P(TemplateURLServiceTest, CheckReplaceableEnginesKeywordsConflicts) {
 }
 
 // Check that two extensions with the same engine are handled correctly.
-TEST_P(TemplateURLServiceTest, ExtensionsWithSameKeywords) {
+TEST_F(TemplateURLServiceTest, ExtensionsWithSameKeywords) {
   test_util()->VerifyLoad();
   // Add non default extension engine.
-  const TemplateURL* extension1 =
-      AddExtensionSearchEngine("common_keyword", "extension_id1", false,
-                               Time::FromSecondsSinceUnixEpoch(1));
+  const TemplateURL* extension1 = AddExtensionSearchEngine(
+      "common_keyword", "extension_id1", false, Time::FromDoubleT(1));
 
   // Check that GetTemplateURLForKeyword returns last installed extension.
   EXPECT_EQ(extension1, model()->GetTemplateURLForKeyword(u"common_keyword"));
 
   // Add default extension engine with the same keyword.
-  const TemplateURL* extension2 =
-      AddExtensionSearchEngine("common_keyword", "extension_id2", true,
-                               Time::FromSecondsSinceUnixEpoch(2));
+  const TemplateURL* extension2 = AddExtensionSearchEngine(
+      "common_keyword", "extension_id2", true, Time::FromDoubleT(2));
   // Check that GetTemplateURLForKeyword now returns extension2 because it was
   // installed later.
   EXPECT_EQ(extension2, model()->GetTemplateURLForKeyword(u"common_keyword"));
 
   // Add another non default extension with same keyword. This action must not
   // change any keyword due to conflict.
-  const TemplateURL* extension3 =
-      AddExtensionSearchEngine("common_keyword", "extension_id3", false,
-                               Time::FromSecondsSinceUnixEpoch(3));
+  const TemplateURL* extension3 = AddExtensionSearchEngine(
+      "common_keyword", "extension_id3", false, Time::FromDoubleT(3));
   // Check that extension2 is set as default.
   EXPECT_EQ(extension2, model()->GetDefaultSearchProvider());
 
@@ -2397,7 +2278,7 @@ TEST_P(TemplateURLServiceTest, ExtensionsWithSameKeywords) {
   EXPECT_EQ(u"common_keyword", extension3->keyword());
 }
 
-TEST_P(TemplateURLServiceTest, ExtensionEngineVsPolicy) {
+TEST_F(TemplateURLServiceTest, ExtensionEngineVsPolicy) {
   // Set a managed preference that establishes a default search provider.
   std::unique_ptr<TemplateURLData> managed = CreateTestSearchEngine();
   SetManagedDefaultSearchPreferences(*managed, true, test_util()->profile());
@@ -2416,7 +2297,7 @@ TEST_P(TemplateURLServiceTest, ExtensionEngineVsPolicy) {
   ExpectSimilar(expected_managed_default.get(), actual_managed_default);
 }
 
-TEST_P(TemplateURLServiceTest, LastVisitedTimeUpdate) {
+TEST_F(TemplateURLServiceTest, LastVisitedTimeUpdate) {
   test_util()->VerifyLoad();
   TemplateURL* original_url =
       AddKeywordWithDate("name1", "key1", "http://foo1", "http://suggest1",
@@ -2431,7 +2312,7 @@ TEST_P(TemplateURLServiceTest, LastVisitedTimeUpdate) {
   AssertTimesEqual(modified_last_visited, reloaded_url->last_visited());
 }
 
-TEST_P(TemplateURLServiceTest, LastModifiedTimeUpdate) {
+TEST_F(TemplateURLServiceTest, LastModifiedTimeUpdate) {
   test_util()->VerifyLoad();
   TemplateURLData data;
   data.SetShortName(u"test_engine");
@@ -2453,7 +2334,26 @@ TEST_P(TemplateURLServiceTest, LastModifiedTimeUpdate) {
   EXPECT_EQ(update_last_modified, reloaded_last_modified);
 }
 
-TEST_P(TemplateURLServiceTest, GetDefaultSearchProviderIgnoringExtensions) {
+// Tests checks that Search.DefaultSearchChangeOrigin histogram is correctly
+// emitted when TemplateURLService is not yet loaded.
+TEST_F(TemplateURLServiceTest, ChangeDefaultEngineBeforeLoad) {
+  TemplateURL* search_engine1 = model()->Add(
+      std::make_unique<TemplateURL>(*GenerateDummyTemplateURLData("keyword1")));
+  DCHECK(search_engine1);
+  TemplateURL* search_engine2 = model()->Add(
+      std::make_unique<TemplateURL>(*GenerateDummyTemplateURLData("keyword2")));
+  DCHECK(search_engine2);
+
+  base::HistogramTester histogram_tester;
+  model()->SetUserSelectedDefaultSearchProvider(search_engine1);
+  histogram_tester.ExpectTotalCount("Search.DefaultSearchChangeOrigin", 1);
+  model()->SetUserSelectedDefaultSearchProvider(search_engine1);
+  histogram_tester.ExpectTotalCount("Search.DefaultSearchChangeOrigin", 1);
+  model()->SetUserSelectedDefaultSearchProvider(search_engine2);
+  histogram_tester.ExpectTotalCount("Search.DefaultSearchChangeOrigin", 2);
+}
+
+TEST_F(TemplateURLServiceTest, GetDefaultSearchProviderIgnoringExtensions) {
   test_util()->VerifyLoad();
 
   const TemplateURL* const initial_default =
@@ -2492,7 +2392,7 @@ TEST_P(TemplateURLServiceTest, GetDefaultSearchProviderIgnoringExtensions) {
   EXPECT_EQ(new_default, model()->GetDefaultSearchProviderIgnoringExtensions());
 }
 
-TEST_P(TemplateURLServiceTest,
+TEST_F(TemplateURLServiceTest,
        EngineReturnedByGetDefaultSearchProviderIgnoringExtensionsTakesOver) {
   test_util()->VerifyLoad();
 
@@ -2518,7 +2418,7 @@ TEST_P(TemplateURLServiceTest,
             model()->GetDefaultSearchProviderIgnoringExtensions());
 }
 
-TEST_P(
+TEST_F(
     TemplateURLServiceTest,
     GetDefaultSearchProviderIgnoringExtensionsWhenDefaultSearchDisabledByPolicy) {
   test_util()->VerifyLoad();
@@ -2543,6 +2443,7 @@ TEST_P(
   EXPECT_EQ(nullptr, model()->GetDefaultSearchProvider());
   EXPECT_EQ(nullptr, model()->GetDefaultSearchProviderIgnoringExtensions());
 }
+<<<<<<< HEAD
 
 // Tests that a TemplateURL's `is_active` field is correctly set and
 // Omnibox.KeywordModeUsageByEngineType histogram is correctly emitted when a
@@ -3538,3 +3439,5 @@ INSTANTIATE_TEST_SUITE_P(,
                          TemplateURLServiceTest,
                          ::testing::Bool(),
                          &ParamToTestSuffix);
+=======
+>>>>>>> chromium

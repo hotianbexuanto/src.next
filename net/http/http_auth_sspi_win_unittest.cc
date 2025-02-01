@@ -1,14 +1,13 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/http/http_auth_sspi_win.h"
 
-#include <string_view>
 #include <vector>
 
 #include "base/base64.h"
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/json/json_reader.h"
 #include "net/base/net_errors.h"
 #include "net/http/http_auth.h"
@@ -82,7 +81,9 @@ TEST(HttpAuthSSPITest, ParseChallenge_FirstRound) {
   // The first round should just consist of an unadorned "Negotiate" header.
   MockSSPILibrary mock_library{NEGOSSP_NAME};
   HttpAuthSSPI auth_sspi(&mock_library, HttpAuth::AUTH_SCHEME_NEGOTIATE);
-  HttpAuthChallengeTokenizer challenge("Negotiate");
+  std::string challenge_text = "Negotiate";
+  HttpAuthChallengeTokenizer challenge(challenge_text.begin(),
+                                       challenge_text.end());
   EXPECT_EQ(HttpAuth::AUTHORIZATION_RESULT_ACCEPT,
             auth_sspi.ParseChallenge(&challenge));
 }
@@ -92,7 +93,9 @@ TEST(HttpAuthSSPITest, ParseChallenge_TwoRounds) {
   // have a valid base64 token associated with it.
   MockSSPILibrary mock_library{NEGOSSP_NAME};
   HttpAuthSSPI auth_sspi(&mock_library, HttpAuth::AUTH_SCHEME_NEGOTIATE);
-  HttpAuthChallengeTokenizer first_challenge("Negotiate");
+  std::string first_challenge_text = "Negotiate";
+  HttpAuthChallengeTokenizer first_challenge(first_challenge_text.begin(),
+                                             first_challenge_text.end());
   EXPECT_EQ(HttpAuth::AUTHORIZATION_RESULT_ACCEPT,
             auth_sspi.ParseChallenge(&first_challenge));
 
@@ -103,7 +106,9 @@ TEST(HttpAuthSSPITest, ParseChallenge_TwoRounds) {
                 nullptr, "HTTP/intranet.google.com", std::string(), &auth_token,
                 NetLogWithSource(), base::BindOnce(&UnexpectedCallback)));
 
-  HttpAuthChallengeTokenizer second_challenge("Negotiate Zm9vYmFy");
+  std::string second_challenge_text = "Negotiate Zm9vYmFy";
+  HttpAuthChallengeTokenizer second_challenge(second_challenge_text.begin(),
+                                              second_challenge_text.end());
   EXPECT_EQ(HttpAuth::AUTHORIZATION_RESULT_ACCEPT,
             auth_sspi.ParseChallenge(&second_challenge));
 }
@@ -113,7 +118,9 @@ TEST(HttpAuthSSPITest, ParseChallenge_UnexpectedTokenFirstRound) {
   // should be treated as an invalid challenge from the server.
   MockSSPILibrary mock_library{NEGOSSP_NAME};
   HttpAuthSSPI auth_sspi(&mock_library, HttpAuth::AUTH_SCHEME_NEGOTIATE);
-  HttpAuthChallengeTokenizer challenge("Negotiate Zm9vYmFy");
+  std::string challenge_text = "Negotiate Zm9vYmFy";
+  HttpAuthChallengeTokenizer challenge(challenge_text.begin(),
+                                       challenge_text.end());
   EXPECT_EQ(HttpAuth::AUTHORIZATION_RESULT_INVALID,
             auth_sspi.ParseChallenge(&challenge));
 }
@@ -123,7 +130,9 @@ TEST(HttpAuthSSPITest, ParseChallenge_MissingTokenSecondRound) {
   // an authentication challenge rejection from the server or proxy.
   MockSSPILibrary mock_library{NEGOSSP_NAME};
   HttpAuthSSPI auth_sspi(&mock_library, HttpAuth::AUTH_SCHEME_NEGOTIATE);
-  HttpAuthChallengeTokenizer first_challenge("Negotiate");
+  std::string first_challenge_text = "Negotiate";
+  HttpAuthChallengeTokenizer first_challenge(first_challenge_text.begin(),
+                                             first_challenge_text.end());
   EXPECT_EQ(HttpAuth::AUTHORIZATION_RESULT_ACCEPT,
             auth_sspi.ParseChallenge(&first_challenge));
 
@@ -132,7 +141,9 @@ TEST(HttpAuthSSPITest, ParseChallenge_MissingTokenSecondRound) {
             auth_sspi.GenerateAuthToken(
                 nullptr, "HTTP/intranet.google.com", std::string(), &auth_token,
                 NetLogWithSource(), base::BindOnce(&UnexpectedCallback)));
-  HttpAuthChallengeTokenizer second_challenge("Negotiate");
+  std::string second_challenge_text = "Negotiate";
+  HttpAuthChallengeTokenizer second_challenge(second_challenge_text.begin(),
+                                              second_challenge_text.end());
   EXPECT_EQ(HttpAuth::AUTHORIZATION_RESULT_REJECT,
             auth_sspi.ParseChallenge(&second_challenge));
 }
@@ -143,7 +154,8 @@ TEST(HttpAuthSSPITest, ParseChallenge_NonBase64EncodedToken) {
   MockSSPILibrary mock_library{NEGOSSP_NAME};
   HttpAuthSSPI auth_sspi(&mock_library, HttpAuth::AUTH_SCHEME_NEGOTIATE);
   std::string first_challenge_text = "Negotiate";
-  HttpAuthChallengeTokenizer first_challenge("Negotiate");
+  HttpAuthChallengeTokenizer first_challenge(first_challenge_text.begin(),
+                                             first_challenge_text.end());
   EXPECT_EQ(HttpAuth::AUTHORIZATION_RESULT_ACCEPT,
             auth_sspi.ParseChallenge(&first_challenge));
 
@@ -152,7 +164,9 @@ TEST(HttpAuthSSPITest, ParseChallenge_NonBase64EncodedToken) {
             auth_sspi.GenerateAuthToken(
                 nullptr, "HTTP/intranet.google.com", std::string(), &auth_token,
                 NetLogWithSource(), base::BindOnce(&UnexpectedCallback)));
-  HttpAuthChallengeTokenizer second_challenge("Negotiate =happyjoy=");
+  std::string second_challenge_text = "Negotiate =happyjoy=";
+  HttpAuthChallengeTokenizer second_challenge(second_challenge_text.begin(),
+                                              second_challenge_text.end());
   EXPECT_EQ(HttpAuth::AUTHORIZATION_RESULT_INVALID,
             auth_sspi.ParseChallenge(&second_challenge));
 }
@@ -162,7 +176,8 @@ TEST(HttpAuthSSPITest, GenerateAuthToken_FullHandshake_AmbientCreds) {
   MockSSPILibrary mock_library{NEGOSSP_NAME};
   HttpAuthSSPI auth_sspi(&mock_library, HttpAuth::AUTH_SCHEME_NEGOTIATE);
   std::string first_challenge_text = "Negotiate";
-  HttpAuthChallengeTokenizer first_challenge("Negotiate");
+  HttpAuthChallengeTokenizer first_challenge(first_challenge_text.begin(),
+                                             first_challenge_text.end());
   ASSERT_EQ(HttpAuth::AUTHORIZATION_RESULT_ACCEPT,
             auth_sspi.ParseChallenge(&first_challenge));
 
@@ -181,7 +196,9 @@ TEST(HttpAuthSSPITest, GenerateAuthToken_FullHandshake_AmbientCreds) {
   EXPECT_EQ("<Default>'s token #1 for HTTP/intranet.google.com", decoded_token);
 
   // The server token is arbitrary.
-  HttpAuthChallengeTokenizer second_challenge("Negotiate UmVzcG9uc2U=");
+  std::string second_challenge_text = "Negotiate UmVzcG9uc2U=";
+  HttpAuthChallengeTokenizer second_challenge(second_challenge_text.begin(),
+                                              second_challenge_text.end());
   ASSERT_EQ(HttpAuth::AUTHORIZATION_RESULT_ACCEPT,
             auth_sspi.ParseChallenge(&second_challenge));
 
@@ -196,12 +213,12 @@ TEST(HttpAuthSSPITest, GenerateAuthToken_FullHandshake_AmbientCreds) {
 
 // Test NetLogs produced while going through a full Negotiate handshake.
 TEST(HttpAuthSSPITest, GenerateAuthToken_FullHandshake_AmbientCreds_Logging) {
-  RecordingNetLogObserver net_log_observer;
-  NetLogWithSource net_log_with_source =
-      NetLogWithSource::Make(NetLogSourceType::NONE);
+  RecordingBoundTestNetLog net_log;
   MockSSPILibrary mock_library{NEGOSSP_NAME};
   HttpAuthSSPI auth_sspi(&mock_library, HttpAuth::AUTH_SCHEME_NEGOTIATE);
-  HttpAuthChallengeTokenizer first_challenge("Negotiate");
+  std::string first_challenge_text = "Negotiate";
+  HttpAuthChallengeTokenizer first_challenge(first_challenge_text.begin(),
+                                             first_challenge_text.end());
   ASSERT_EQ(HttpAuth::AUTHORIZATION_RESULT_ACCEPT,
             auth_sspi.ParseChallenge(&first_challenge));
 
@@ -209,19 +226,21 @@ TEST(HttpAuthSSPITest, GenerateAuthToken_FullHandshake_AmbientCreds_Logging) {
   ASSERT_EQ(OK,
             auth_sspi.GenerateAuthToken(
                 nullptr, "HTTP/intranet.google.com", std::string(), &auth_token,
-                net_log_with_source, base::BindOnce(&UnexpectedCallback)));
+                net_log.bound(), base::BindOnce(&UnexpectedCallback)));
 
   // The token is the ASCII string "Response" in base64.
-  HttpAuthChallengeTokenizer second_challenge("Negotiate UmVzcG9uc2U=");
+  std::string second_challenge_text = "Negotiate UmVzcG9uc2U=";
+  HttpAuthChallengeTokenizer second_challenge(second_challenge_text.begin(),
+                                              second_challenge_text.end());
   ASSERT_EQ(HttpAuth::AUTHORIZATION_RESULT_ACCEPT,
             auth_sspi.ParseChallenge(&second_challenge));
   ASSERT_EQ(OK,
             auth_sspi.GenerateAuthToken(
                 nullptr, "HTTP/intranet.google.com", std::string(), &auth_token,
-                net_log_with_source, base::BindOnce(&UnexpectedCallback)));
+                net_log.bound(), base::BindOnce(&UnexpectedCallback)));
 
-  auto entries = net_log_observer.GetEntriesWithType(
-      NetLogEventType::AUTH_LIBRARY_ACQUIRE_CREDS);
+  auto entries =
+      net_log.GetEntriesWithType(NetLogEventType::AUTH_LIBRARY_ACQUIRE_CREDS);
   ASSERT_EQ(2u, entries.size());  // BEGIN and END.
   auto expected = base::JSONReader::Read(R"(
     {
@@ -233,8 +252,8 @@ TEST(HttpAuthSSPITest, GenerateAuthToken_FullHandshake_AmbientCreds_Logging) {
   )");
   EXPECT_EQ(expected, entries[1].params);
 
-  entries = net_log_observer.GetEntriesWithType(
-      NetLogEventType::AUTH_LIBRARY_INIT_SEC_CTX);
+  entries =
+      net_log.GetEntriesWithType(NetLogEventType::AUTH_LIBRARY_INIT_SEC_CTX);
   ASSERT_EQ(4u, entries.size());
 
   expected = base::JSONReader::Read(R"(

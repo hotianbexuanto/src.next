@@ -1,10 +1,10 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/blocklist_check.h"
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "chrome/browser/extensions/blocklist.h"
 #include "extensions/common/extension.h"
 
@@ -28,11 +28,10 @@ void BlocklistCheck::Start(ResultCallback callback) {
 void BlocklistCheck::OnBlocklistedStateRetrieved(
     BlocklistState blocklist_state) {
   Errors errors;
-  if (blocklist_state == BlocklistState::BLOCKLISTED_MALWARE) {
-    errors.insert(PreloadCheck::Error::kBlocklistedId);
-  } else if (blocklist_state == BlocklistState::BLOCKLISTED_UNKNOWN) {
-    errors.insert(PreloadCheck::Error::kBlocklistedUnknown);
-  }
+  if (blocklist_state == BlocklistState::BLOCKLISTED_MALWARE)
+    errors.insert(PreloadCheck::BLOCKLISTED_ID);
+  else if (blocklist_state == BlocklistState::BLOCKLISTED_UNKNOWN)
+    errors.insert(PreloadCheck::BLOCKLISTED_UNKNOWN);
   std::move(callback_).Run(errors);
 }
 

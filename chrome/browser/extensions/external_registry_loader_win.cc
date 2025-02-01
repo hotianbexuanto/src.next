@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,16 +7,16 @@
 #include <memory>
 #include <utility>
 
+#include "base/bind.h"
+#include "base/callback.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_file.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
 #include "base/metrics/histogram_macros.h"
+#include "base/sequenced_task_runner.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
 #include "base/time/time.h"
 #include "base/values.h"
@@ -77,8 +77,9 @@ void ExternalRegistryLoader::StartLoading() {
       base::BindOnce(&ExternalRegistryLoader::LoadOnBlockingThread, this));
 }
 
-base::Value::Dict ExternalRegistryLoader::LoadPrefsOnBlockingThread() {
-  base::Value::Dict prefs;
+std::unique_ptr<base::DictionaryValue>
+ExternalRegistryLoader::LoadPrefsOnBlockingThread() {
+  auto prefs = std::make_unique<base::DictionaryValue>();
 
   // A map of IDs, to weed out duplicates between HKCU and HKLM.
   std::set<std::wstring> keys;
@@ -121,9 +122,8 @@ base::Value::Dict ExternalRegistryLoader::LoadPrefsOnBlockingThread() {
     std::wstring extension_dist_id;
     if (key.ReadValue(kRegistryExtensionInstallParam, &extension_dist_id) ==
         ERROR_SUCCESS) {
-      prefs.SetByDottedPath(
-          MakePrefName(id, ExternalProviderImpl::kInstallParam),
-          base::WideToASCII(extension_dist_id));
+      prefs->SetString(MakePrefName(id, ExternalProviderImpl::kInstallParam),
+                       base::WideToASCII(extension_dist_id));
     }
 
     // If there is an update URL present, copy it to prefs and ignore
@@ -131,7 +131,7 @@ base::Value::Dict ExternalRegistryLoader::LoadPrefsOnBlockingThread() {
     std::wstring extension_update_url;
     if (key.ReadValue(kRegistryExtensionUpdateUrl, &extension_update_url)
         == ERROR_SUCCESS) {
-      prefs.SetByDottedPath(
+      prefs->SetString(
           MakePrefName(id, ExternalProviderImpl::kExternalUpdateUrl),
           base::WideToASCII(extension_update_url));
       continue;
@@ -185,13 +185,13 @@ base::Value::Dict ExternalRegistryLoader::LoadPrefsOnBlockingThread() {
       continue;
     }
 
-    prefs.SetByDottedPath(
-        MakePrefName(id, ExternalProviderImpl::kExternalVersion),
-        base::WideToASCII(extension_version));
-    prefs.SetByDottedPath(MakePrefName(id, ExternalProviderImpl::kExternalCrx),
-                          base::AsString16(extension_path_str));
-    prefs.SetByDottedPath(
-        MakePrefName(id, ExternalProviderImpl::kMayBeUntrusted), true);
+    prefs->SetString(MakePrefName(id, ExternalProviderImpl::kExternalVersion),
+                     base::WideToASCII(extension_version));
+    prefs->SetString(MakePrefName(id, ExternalProviderImpl::kExternalCrx),
+                     base::AsString16(extension_path_str));
+    prefs->SetBoolean(
+        MakePrefName(id, ExternalProviderImpl::kMayBeUntrusted),
+        true);
   }
 
   return prefs;
@@ -201,7 +201,7 @@ void ExternalRegistryLoader::LoadOnBlockingThread() {
   DCHECK(task_runner_);
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   base::TimeTicks start_time = base::TimeTicks::Now();
-  base::Value::Dict prefs = LoadPrefsOnBlockingThread();
+  std::unique_ptr<base::DictionaryValue> prefs = LoadPrefsOnBlockingThread();
   LOCAL_HISTOGRAM_TIMES("Extensions.ExternalRegistryLoaderWin",
                         base::TimeTicks::Now() - start_time);
   content::GetUIThreadTaskRunner({})->PostTask(
@@ -212,8 +212,9 @@ void ExternalRegistryLoader::LoadOnBlockingThread() {
 }
 
 void ExternalRegistryLoader::CompleteLoadAndStartWatchingRegistry(
-    base::Value::Dict prefs) {
+    std::unique_ptr<base::DictionaryValue> prefs) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  DCHECK(prefs);
   LoadFinished(std::move(prefs));
 
   // Attempt to watch registry if we haven't already.
@@ -276,7 +277,7 @@ void ExternalRegistryLoader::UpatePrefsOnBlockingThread() {
   DCHECK(task_runner_);
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   base::TimeTicks start_time = base::TimeTicks::Now();
-  base::Value::Dict prefs = LoadPrefsOnBlockingThread();
+  std::unique_ptr<base::DictionaryValue> prefs = LoadPrefsOnBlockingThread();
   LOCAL_HISTOGRAM_TIMES("Extensions.ExternalRegistryLoaderWinUpdate",
                         base::TimeTicks::Now() - start_time);
   content::GetUIThreadTaskRunner({})->PostTask(

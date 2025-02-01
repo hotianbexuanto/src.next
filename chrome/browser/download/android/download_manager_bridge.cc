@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,12 +11,9 @@
 #include "base/android/scoped_java_ref.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
-#include "components/download/public/common/download_features.h"
-#include "url/android/gurl_android.h"
-#include "url/gurl.h"
-
-// Must come after all headers that specialize FromJniType() / ToJniType().
 #include "chrome/browser/download/android/jni_headers/DownloadManagerBridge_jni.h"
+#include "components/download/public/common/download_features.h"
+#include "url/gurl.h"
 
 using base::android::ConvertUTF8ToJavaString;
 using base::android::JavaParamRef;
@@ -38,16 +35,28 @@ static void JNI_DownloadManagerBridge_OnAddCompletedDownloadDone(
 void DownloadManagerBridge::AddCompletedDownload(
     download::DownloadItem* download,
     AddCompletedDownloadCallback callback) {
+  DCHECK(base::FeatureList::IsEnabled(
+      download::features::kUseDownloadOfflineContentProvider));
+
   JNIEnv* env = base::android::AttachCurrentThread();
   std::string file_name = download->GetFileNameToReportUser().value();
   std::string mime_type = download->GetMimeType();
   std::string file_path = download->GetTargetFilePath().value();
   int64_t file_size = download->GetReceivedBytes();
+<<<<<<< HEAD
   ScopedJavaLocalRef<jobject> joriginal_url =
       url::GURLAndroid::FromNativeGURL(env, download->GetOriginalUrl());
   ScopedJavaLocalRef<jobject> jreferer =
       url::GURLAndroid::FromNativeGURL(env, download->GetReferrerUrl());
   std::string download_guid = download->GetGuid();
+=======
+  ScopedJavaLocalRef<jstring> joriginal_url =
+      ConvertUTF8ToJavaString(env, download->GetOriginalUrl().spec());
+  ScopedJavaLocalRef<jstring> jreferer = base::android::ConvertUTF8ToJavaString(
+      env, download->GetReferrerUrl().spec());
+  ScopedJavaLocalRef<jstring> jdownload_guid =
+      base::android::ConvertUTF8ToJavaString(env, download->GetGuid());
+>>>>>>> chromium
 
   // Make copy on the heap so we can pass the pointer through JNI.
   intptr_t callback_id = reinterpret_cast<intptr_t>(
@@ -60,6 +69,11 @@ void DownloadManagerBridge::AddCompletedDownload(
 
 void DownloadManagerBridge::RemoveCompletedDownload(
     download::DownloadItem* download) {
+  if (!base::FeatureList::IsEnabled(
+          download::features::kUseDownloadOfflineContentProvider)) {
+    return;
+  }
+
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_DownloadManagerBridge_removeCompletedDownload(
       env, download->GetGuid(), download->GetFileExternallyRemoved());

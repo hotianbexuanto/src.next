@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,16 +6,11 @@
 #define BASE_CHECK_H_
 
 #include <iosfwd>
-#include <memory>
 
 #include "base/base_export.h"
 #include "base/compiler_specific.h"
 #include "base/dcheck_is_on.h"
 #include "base/immediate_crash.h"
-#include "base/location.h"
-#include "base/macros/if.h"
-#include "base/macros/is_empty.h"
-#include "base/not_fatal_until.h"
 
 // This header defines the CHECK, DCHECK, and DPCHECK macros.
 //
@@ -39,15 +34,6 @@
 // DCHECK is disabled, the condition and any stream arguments are still
 // referenced to avoid warnings about unused variables and functions.
 //
-// An optional base::NotFatalUntil argument can be provided to make the
-// instance non-fatal (dumps without crashing) before a provided milestone. That
-// is: CHECK(false, base::NotFatalUntil::M120); starts crashing in M120. CHECKs
-// with a milestone argument preserve logging even in official builds, and
-// will upload the CHECK's log message in crash reports for remote diagnostics.
-// This is recommended for use in situations that are not flag guarded, or where
-// we have low pre-stable coverage. Using this lets us probe for would-be CHECK
-// failures for a milestone or two before rolling out a CHECK.
-//
 // For the (D)CHECK_EQ, etc. macros, see base/check_op.h. However, that header
 // is *significantly* larger than check.h, so try to avoid including it in
 // header files.
@@ -58,11 +44,16 @@ namespace logging {
 class VoidifyStream {
  public:
   VoidifyStream() = default;
-  explicit VoidifyStream(bool) {}
+  explicit VoidifyStream(bool ignored) {}
 
-  // Binary & has lower precedence than << but higher than ?:
+  // This operator has lower precedence than << but higher than ?:
   void operator&(std::ostream&) {}
 };
+
+// Helper macro which avoids evaluating the arguents to a stream if the
+// condition is false.
+#define LAZY_CHECK_STREAM(stream, condition) \
+  !(condition) ? (void)0 : ::logging::VoidifyStream() & (stream)
 
 // Macro which uses but does not evaluate expr and any stream parameters.
 #define EAT_CHECK_STREAM_PARAMS(expr) \
@@ -70,11 +61,13 @@ class VoidifyStream {
        : ::logging::VoidifyStream(expr) & (*::logging::g_swallow_stream)
 BASE_EXPORT extern std::ostream* g_swallow_stream;
 
+class CheckOpResult;
 class LogMessage;
 
 // Class used for raising a check error upon destruction.
 class BASE_EXPORT CheckError {
  public:
+<<<<<<< HEAD
   // All instances that take a base::Location should use
   // base::Location::CurrentWithoutFunctionName() by default since we
   // immediately pass file_name() and line_number() to LogMessage's constructor
@@ -123,14 +116,29 @@ class BASE_EXPORT CheckError {
       const char* function,
       const base::Location& location =
           base::Location::CurrentWithoutFunctionName());
+=======
+  static CheckError Check(const char* file, int line, const char* condition);
+  static CheckError CheckOp(const char* file, int line, CheckOpResult* result);
+
+  static CheckError DCheck(const char* file, int line, const char* condition);
+  static CheckError DCheckOp(const char* file, int line, CheckOpResult* result);
+
+  static CheckError PCheck(const char* file, int line, const char* condition);
+  static CheckError PCheck(const char* file, int line);
+
+  static CheckError DPCheck(const char* file, int line, const char* condition);
+
+  static CheckError NotImplemented(const char* file,
+                                   int line,
+                                   const char* function);
+>>>>>>> chromium
 
   // Stream for adding optional details to the error message.
   std::ostream& stream();
 
-  // Try really hard to get the call site and callee as separate stack frames in
-  // crash reports.
-  NOMERGE NOINLINE NOT_TAIL_CALLED ~CheckError();
+  NOMERGE ~CheckError();
 
+<<<<<<< HEAD
   CheckError(const CheckError&) = delete;
   CheckError& operator=(const CheckError&) = delete;
 
@@ -187,11 +195,20 @@ class BASE_EXPORT NotReachedError : public CheckError {
           base::Location::CurrentWithoutFunctionName());
 
   NOMERGE NOINLINE NOT_TAIL_CALLED ~NotReachedError();
+=======
+  CheckError(const CheckError& other) = delete;
+  CheckError& operator=(const CheckError& other) = delete;
+  CheckError(CheckError&& other) = default;
+  CheckError& operator=(CheckError&& other) = default;
+>>>>>>> chromium
 
  private:
-  using CheckError::CheckError;
+  explicit CheckError(LogMessage* log_message);
+
+  LogMessage* log_message_;
 };
 
+<<<<<<< HEAD
 // Used for NOTREACHED(), its destructor is importantly [[noreturn]].
 class BASE_EXPORT NotReachedNoreturnError : public CheckError {
  public:
@@ -266,6 +283,34 @@ class BASE_EXPORT NotReachedNoreturnError : public CheckError {
 
 #define CHECK_INTERNAL_IMPL(cond) \
   LOGGING_CHECK_FUNCTION_IMPL(::logging::CheckNoreturnError::Check(#cond), cond)
+=======
+#if defined(OFFICIAL_BUILD) && defined(NDEBUG)
+
+// Discard log strings to reduce code bloat.
+//
+// This is not calling BreakDebugger since this is called frequently, and
+// calling an out-of-line function instead of a noreturn inline macro prevents
+// compiler optimizations.
+#define CHECK(condition) \
+  UNLIKELY(!(condition)) ? IMMEDIATE_CRASH() : EAT_CHECK_STREAM_PARAMS()
+
+#define PCHECK(condition)                                         \
+  LAZY_CHECK_STREAM(                                              \
+      ::logging::CheckError::PCheck(__FILE__, __LINE__).stream(), \
+      UNLIKELY(!(condition)))
+
+#else
+
+#define CHECK(condition)                                                     \
+  LAZY_CHECK_STREAM(                                                         \
+      ::logging::CheckError::Check(__FILE__, __LINE__, #condition).stream(), \
+      !ANALYZER_ASSUME_TRUE(condition))
+
+#define PCHECK(condition)                                                     \
+  LAZY_CHECK_STREAM(                                                          \
+      ::logging::CheckError::PCheck(__FILE__, __LINE__, #condition).stream(), \
+      !ANALYZER_ASSUME_TRUE(condition))
+>>>>>>> chromium
 
 #endif
 
@@ -284,54 +329,29 @@ class BASE_EXPORT NotReachedNoreturnError : public CheckError {
 
 #if DCHECK_IS_ON()
 
-#define DCHECK(condition)                                                \
-  LOGGING_CHECK_FUNCTION_IMPL(::logging::CheckError::DCheck(#condition), \
-                              condition)
-#define DPCHECK(condition)                                                \
-  LOGGING_CHECK_FUNCTION_IMPL(::logging::CheckError::DPCheck(#condition), \
-                              condition)
+#define DCHECK(condition)                                                     \
+  LAZY_CHECK_STREAM(                                                          \
+      ::logging::CheckError::DCheck(__FILE__, __LINE__, #condition).stream(), \
+      !ANALYZER_ASSUME_TRUE(condition))
+
+#define DPCHECK(condition)                                                     \
+  LAZY_CHECK_STREAM(                                                           \
+      ::logging::CheckError::DPCheck(__FILE__, __LINE__, #condition).stream(), \
+      !ANALYZER_ASSUME_TRUE(condition))
 
 #else
 
 #define DCHECK(condition) EAT_CHECK_STREAM_PARAMS(!(condition))
 #define DPCHECK(condition) EAT_CHECK_STREAM_PARAMS(!(condition))
 
-#endif  // DCHECK_IS_ON()
-
-// The DUMP_WILL_BE_CHECK() macro provides a convenient way to non-fatally dump
-// in official builds if a condition is false. This is used to more cautiously
-// roll out a new CHECK() (or upgrade a DCHECK) where the caller isn't entirely
-// sure that something holds true in practice (but asserts that it should). This
-// is especially useful for platforms that have a low pre-stable population and
-// code areas that are rarely exercised.
-//
-// On DCHECK builds this macro matches DCHECK behavior.
-//
-// This macro isn't optimized (preserves filename, line number and log messages
-// in official builds), as they are expected to be in product temporarily. When
-// using this macro, leave a TODO(crbug.com/nnnn) entry referring to a bug
-// related to its rollout. Then put a NextAction on the bug to come back and
-// clean this up (replace with a CHECK). A DUMP_WILL_BE_CHECK() that's been left
-// untouched for a long time without bug updates suggests that issues that
-// would've prevented enabling this CHECK have either not been discovered or
-// have been resolved.
-//
-// Using this macro is preferred over direct base::debug::DumpWithoutCrashing()
-// invocations as it communicates intent to eventually end up as a CHECK. It
-// also preserves the log message so setting crash keys to get additional debug
-// info isn't required as often.
-#define DUMP_WILL_BE_CHECK(condition, ...)                                \
-  LOGGING_CHECK_FUNCTION_IMPL(::logging::CheckError::DumpWillBeCheck(     \
-                                  #condition __VA_OPT__(, ) __VA_ARGS__), \
-                              condition)
+#endif
 
 // Async signal safe checking mechanism.
-[[noreturn]] BASE_EXPORT void RawCheckFailure(const char* message);
-#define RAW_CHECK(condition)                                        \
-  do {                                                              \
-    if (!(condition)) [[unlikely]] {                                \
-      ::logging::RawCheckFailure("Check failed: " #condition "\n"); \
-    }                                                               \
+BASE_EXPORT void RawCheck(const char* message);
+#define RAW_CHECK(condition)                                 \
+  do {                                                       \
+    if (!(condition))                                        \
+      ::logging::RawCheck("Check failed: " #condition "\n"); \
   } while (0)
 
 }  // namespace logging

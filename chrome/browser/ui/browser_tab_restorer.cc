@@ -1,9 +1,9 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/macros.h"
 #include "base/memory/ptr_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
 #include "base/supports_user_data.h"
@@ -14,6 +14,8 @@
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_list_observer.h"
 #include "chrome/browser/ui/browser_live_tab_context.h"
+#include "chrome/browser/ui/user_education/reopen_tab_in_product_help.h"
+#include "chrome/browser/ui/user_education/reopen_tab_in_product_help_factory.h"
 #include "components/sessions/core/tab_restore_service.h"
 #include "components/sessions/core/tab_restore_service_observer.h"
 
@@ -32,9 +34,6 @@ class BrowserTabRestorer : public sessions::TabRestoreServiceObserver,
                            public BrowserListObserver,
                            public base::SupportsUserData::Data {
  public:
-  BrowserTabRestorer(const BrowserTabRestorer&) = delete;
-  BrowserTabRestorer& operator=(const BrowserTabRestorer&) = delete;
-
   ~BrowserTabRestorer() override;
 
   static void CreateIfNecessary(Browser* browser);
@@ -50,8 +49,10 @@ class BrowserTabRestorer : public sessions::TabRestoreServiceObserver,
   // BrowserListObserver:
   void OnBrowserRemoved(Browser* browser) override;
 
-  raw_ptr<Browser> browser_;
-  raw_ptr<sessions::TabRestoreService> tab_restore_service_;
+  Browser* browser_;
+  sessions::TabRestoreService* tab_restore_service_;
+
+  DISALLOW_COPY_AND_ASSIGN(BrowserTabRestorer);
 };
 
 BrowserTabRestorer::~BrowserTabRestorer() {
@@ -90,24 +91,26 @@ void BrowserTabRestorer::TabRestoreServiceLoaded(
     sessions::TabRestoreService* service) {
   RestoreTab(browser_);
   // This deletes us.
-  browser_->profile()->SetUserData(kBrowserTabRestorerKey, nullptr);
+  browser_->profile()->SetUserData(kBrowserTabRestorerKey, NULL);
 }
 
 void BrowserTabRestorer::OnBrowserRemoved(Browser* browser) {
   // This deletes us.
-  browser_->profile()->SetUserData(kBrowserTabRestorerKey, nullptr);
+  browser_->profile()->SetUserData(kBrowserTabRestorerKey, NULL);
 }
 
 }  // namespace
 
 void RestoreTab(Browser* browser) {
   base::RecordAction(base::UserMetricsAction("RestoreTab"));
+  auto* reopen_tab_iph =
+      ReopenTabInProductHelpFactory::GetForProfile(browser->profile());
+  reopen_tab_iph->TabReopened();
 
   sessions::TabRestoreService* service =
       TabRestoreServiceFactory::GetForProfile(browser->profile());
-  if (!service) {
+  if (!service)
     return;
-  }
 
   if (service->IsLoaded()) {
     service->RestoreMostRecentEntry(browser->live_tab_context());

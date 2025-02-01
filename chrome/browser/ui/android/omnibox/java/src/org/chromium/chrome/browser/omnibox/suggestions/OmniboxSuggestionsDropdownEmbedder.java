@@ -1,20 +1,28 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.omnibox.suggestions;
 
-import android.annotation.SuppressLint;
+import android.view.View;
 
+<<<<<<< HEAD
 import org.chromium.base.Callback;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 
 import java.util.Objects;
+=======
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import org.chromium.ui.base.WindowDelegate;
+>>>>>>> chromium
 
 /** Provider of capabilities required to embed the omnibox suggestion list into the UI. */
 @NullMarked
 public interface OmniboxSuggestionsDropdownEmbedder {
+<<<<<<< HEAD
 
     /**
      * POD type that encapsulates the "alignment" (position, width, padding) of the omnibox
@@ -117,23 +125,24 @@ public interface OmniboxSuggestionsDropdownEmbedder {
      * may return {@link OmniboxAlignment.UNSPECIFIED} if there is not a currently valid alignment.
      */
     OmniboxAlignment getCurrentAlignment();
+=======
+    /** Return the anchor view the suggestion list should be drawn below. */
+    @NonNull
+    View getAnchorView();
+
+    /**
+     * Return the view that the omnibox suggestions should be aligned horizontally to.  The
+     * view must be a descendant of {@link #getAnchorView()}. If null, the suggestions will
+     * be aligned to the start of {@link #getAnchorView()}.
+     */
+    @Nullable
+    View getAlignmentView();
+
+    /** Return the delegate used to interact with the Window. */
+    @NonNull
+    WindowDelegate getWindowDelegate();
+>>>>>>> chromium
 
     /** Return whether the suggestions are being rendered in the tablet UI. */
     boolean isTablet();
-
-    /**
-     * The dropdown must call this when it is attached to the window to start the process of
-     * alignment recalculation. Updates are skipped prior to this point to avoid repeated, unused
-     * calculation of alignment values.
-     */
-    void onAttachedToWindow();
-
-    /**
-     * The dropdown should call this when it is detached from the window to pause the process of
-     * alignment recalculation.
-     */
-    void onDetachedFromWindow();
-
-    /** The vertical translation that should be used during focus animations. */
-    float getVerticalTranslationForAnimation();
 }

@@ -1,25 +1,24 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "content/browser/gpu/gpu_memory_buffer_manager_singleton.h"
 
+#include "base/bind.h"
 #include "base/check_op.h"
-#include "base/functional/bind.h"
-#include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
 #include "components/viz/host/gpu_host_impl.h"
 #include "content/browser/gpu/gpu_data_manager_impl.h"
 #include "content/browser/gpu/gpu_process_host.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/common/content_features.h"
 #include "gpu/ipc/common/gpu_memory_buffer_support.h"
-#include "ui/base/ozone_buildflags.h"
 #include "ui/base/ui_base_features.h"
 
-#if BUILDFLAG(IS_OZONE)
+#if defined(USE_OZONE)
 #include "ui/ozone/public/ozone_platform.h"
-#elif BUILDFLAG(IS_MAC)
+#elif defined(OS_MAC)
 #include "ui/accelerated_widget_mac/window_resize_helper_mac.h"
 #endif
 
@@ -38,38 +37,29 @@ viz::mojom::GpuService* GetGpuService(
   return nullptr;
 }
 
-scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunner() {
-#if BUILDFLAG(IS_MAC)
-  return ui::WindowResizeHelperMac::Get()->task_runner();
-#else
-  return GetUIThreadTaskRunner({});
+#if defined(USE_X11) || defined(USE_OZONE_PLATFORM_X11)
+bool ShouldSetBufferFormatsFromGpuExtraInfo() {
+#if defined(USE_OZONE)
+  if (features::IsUsingOzonePlatform()) {
+    return ui::OzonePlatform::GetInstance()
+        ->GetPlatformProperties()
+        .fetch_buffer_formats_for_gmb_on_gpu;
+  }
 #endif
+  return true;
 }
+#endif
 
-#if BUILDFLAG(IS_LINUX)
-bool IsGpuMemoryBufferNV12Supported() {
-  static bool is_computed = false;
-  static bool supported = false;
-  if (is_computed) {
-    return supported;
-  }
+scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunner() {
+  if (!base::FeatureList::IsEnabled(features::kProcessHostOnUI))
+    return GetIOThreadTaskRunner({});
 
-  auto* gmb_mgr = GpuMemoryBufferManagerSingleton::GetInstance();
-  if (gmb_mgr) {
-    auto gmb = gmb_mgr->CreateGpuMemoryBuffer(
-        gfx::Size(2, 2), gfx::BufferFormat::YUV_420_BIPLANAR,
-        gfx::BufferUsage::GPU_READ_CPU_READ_WRITE, gpu::kNullSurfaceHandle,
-        nullptr);
-    if (gmb && gmb->GetType() == gfx::GpuMemoryBufferType::NATIVE_PIXMAP) {
-      supported = true;
-    }
-  }
+#if defined(OS_MAC)
+  return ui::WindowResizeHelperMac::Get()->task_runner();
+#endif
 
-  is_computed = true;
-
-  return supported;
+  return GetUIThreadTaskRunner({});
 }
-#endif  // BUILDFLAG(IS_LINUX)
 
 }  // namespace
 
@@ -87,7 +77,6 @@ GpuMemoryBufferManagerSingleton::GpuMemoryBufferManagerSingleton(int client_id)
 
 GpuMemoryBufferManagerSingleton::~GpuMemoryBufferManagerSingleton() {
   DCHECK_EQ(this, g_gpu_memory_buffer_manager);
-  NotifyObservers();
   g_gpu_memory_buffer_manager = nullptr;
   gpu_data_manager_impl_->RemoveObserver(this);
 }
@@ -98,26 +87,20 @@ GpuMemoryBufferManagerSingleton::GetInstance() {
   return g_gpu_memory_buffer_manager;
 }
 
-void GpuMemoryBufferManagerSingleton::AddObserver(
-    gpu::GpuMemoryBufferManagerObserver* observer) {
-  if (!observers_.HasObserver(observer)) {
-    observers_.AddObserver(observer);
-  }
-}
-
-void GpuMemoryBufferManagerSingleton::RemoveObserver(
-    gpu::GpuMemoryBufferManagerObserver* observer) {
-  observers_.RemoveObserver(observer);
-}
-
 void GpuMemoryBufferManagerSingleton::OnGpuExtraInfoUpdate() {
-#if BUILDFLAG(IS_LINUX)
-  // Dynamic check whether the NV12 format is supported as it may be
-  // inconsistent between the system GBM (Generic Buffer Management) and
-  // chromium miniGBM.
-  gpu_data_manager_impl_->SetGpuMemoryBufferNV12Supported(
-      IsGpuMemoryBufferNV12Supported());
-#endif  // BUILDFLAG(IS_LINUX)
+#if defined(USE_X11) || defined(USE_OZONE_PLATFORM_X11)
+  // X11 and non-Ozone/X11 fetch buffer formats on gpu and pass them via gpu
+  // extra info.
+  if (!ShouldSetBufferFormatsFromGpuExtraInfo())
+    return;
+
+  gpu::GpuMemoryBufferConfigurationSet configs;
+  for (const auto& config : gpu_data_manager_impl_->GetGpuExtraInfo()
+                                .gpu_memory_buffer_support_x11) {
+    configs.insert(config);
+  }
+  SetNativeConfigurations(std::move(configs));
+#endif
 }
 
 }  // namespace content

@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,17 +6,16 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/threading/thread_restrictions.h"
+<<<<<<< HEAD
 #include "build/build_config.h"
 #include "content/public/browser/web_contents.h"
+=======
+#include "chrome/browser/extensions/extension_apitest.h"
+>>>>>>> chromium
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/file_util.h"
-#include "extensions/test/result_catcher.h"
-#include "extensions/test/test_extension_dir.h"
-#include "net/dns/mock_host_resolver.h"
-#include "third_party/blink/public/common/features.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/extensions/extension_platform_apitest.h"
@@ -40,15 +39,21 @@ class SandboxedPagesTest
  public:
   SandboxedPagesTest() = default;
 
+<<<<<<< HEAD
   void SetUpOnMainThread() override {
     ExtensionApiTestBase::SetUpOnMainThread();
     host_resolver()->AddRule("*", "127.0.0.1");
   }
+=======
+  bool RunTest(const char* extension_name,
+               const char* manifest,
+               const RunOptions& run_options,
+               const LoadOptions& load_options) WARN_UNUSED_RESULT {
+    const char* kCustomArg =
+        GetParam() == ManifestVersion::TWO ? "manifest_v2" : "manifest_v3";
+    SetCustomArg(kCustomArg);
+>>>>>>> chromium
 
-  [[nodiscard]] bool RunTest(const char* extension_name,
-                             const char* manifest,
-                             const RunOptions& run_options,
-                             const LoadOptions& load_options) {
     base::ScopedAllowBlockingForTesting scoped_allow_blocking;
 
     //  Load the extension with the given `manifest`.
@@ -85,6 +90,7 @@ class SandboxedPagesTest
   base::ScopedTempDir temp_dir_;
 };
 
+<<<<<<< HEAD
 // A test class to verify operation of metrics to record use of extension API
 // functions in extensions pages that are sandboxed, but not listed as sandboxed
 // in the extension's manifest. This class is parameterized on
@@ -123,6 +129,8 @@ INSTANTIATE_TEST_SUITE_P(,
                                            ManifestVersion::THREE));
 #endif
 
+=======
+>>>>>>> chromium
 IN_PROC_BROWSER_TEST_P(SandboxedPagesTest, SandboxedPages) {
   const char* kManifestV2 = R"(
     {
@@ -147,18 +155,22 @@ IN_PROC_BROWSER_TEST_P(SandboxedPagesTest, SandboxedPages) {
   const char* kManifest =
       GetParam() == ManifestVersion::TWO ? kManifestV2 : kManifestV3;
   EXPECT_TRUE(
-      RunTest("sandboxed_pages", kManifest, {.extension_url = "main.html"}, {}))
+      RunTest("sandboxed_pages", kManifest, {.page_url = "main.html"}, {}))
       << message_;
 }
 
+<<<<<<< HEAD
 #if !BUILDFLAG(IS_ANDROID)
 // Verifies the behavior of sandboxed pages in Manifest V2. Remote frames
 // should be disallowed. Android only supports Manifest V3, so this test is
 // skipped on Android.
 IN_PROC_BROWSER_TEST_F(SandboxedPagesTest, ManifestV2DisallowsWebContent) {
+=======
+IN_PROC_BROWSER_TEST_P(SandboxedPagesTest, SandboxedPagesCSP) {
+>>>>>>> chromium
   ASSERT_TRUE(StartEmbeddedTestServer());
 
-  const char* kManifest = R"(
+  const char* kManifestV2 = R"(
     {
       "name": "Tests that loading web content fails inside sandboxed pages",
       "manifest_version": 2,
@@ -171,16 +183,36 @@ IN_PROC_BROWSER_TEST_F(SandboxedPagesTest, ManifestV2DisallowsWebContent) {
     }
   )";
 
+  const char* kManifestV3 = R"(
+    {
+      "name": "Tests that loading web content fails inside sandboxed pages",
+      "manifest_version": 3,
+      "version": "0.1",
+      "web_accessible_resources": [{
+        "resources" : ["local_frame.html", "remote_frame.html"],
+        "matches": ["<all_urls>"]
+      }],
+      "sandbox": {
+        "pages": ["sandboxed.html"]
+      },
+      "content_security_policy": {
+        "sandbox": "sandbox allow-scripts; child-src *;"
+      }
+    }
+  )";
+  const char* kManifest =
+      GetParam() == ManifestVersion::TWO ? kManifestV2 : kManifestV3;
   // This extension attempts to load remote web content inside a sandboxed page.
   // Loading web content will fail because of CSP. In addition to that we will
   // show manifest warnings, hence ignore_manifest_warnings is set to true.
   ASSERT_TRUE(RunTest("sandboxed_pages_csp", kManifest,
-                      {.extension_url = "main.html"},
+                      {.page_url = "main.html"},
                       {.ignore_manifest_warnings = true}))
       << message_;
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
+<<<<<<< HEAD
 // Verifies the behavior of sandboxed pages in Manifest V3. Remote frames
 // should be allowed.
 IN_PROC_BROWSER_TEST_F(SandboxedPagesTest, ManifestV3AllowsWebContent) {
@@ -489,5 +521,11 @@ IN_PROC_BROWSER_TEST_P(SandboxedPagesTest, WebAccessibleResourcesTest) {
   test_frame_with_fetch("sandboxed_page.html", "web_accessible_resource.html",
                         true, 1, "null");
 }
+=======
+INSTANTIATE_TEST_SUITE_P(,
+                         SandboxedPagesTest,
+                         ::testing::Values(ManifestVersion::TWO,
+                                           ManifestVersion::THREE));
+>>>>>>> chromium
 
 }  // namespace extensions

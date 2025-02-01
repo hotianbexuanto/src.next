@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium Authors
+# Copyright 2017 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Presubmit script for changes affecting Source/platform.
@@ -9,6 +9,7 @@ for more details about the presubmit API built into depot_tools.
 
 import difflib
 import os
+<<<<<<< HEAD
 import sys
 
 # pyright: reportMissingImports=false
@@ -27,22 +28,41 @@ def RuntimeEnabledFeatures(input_api, filename):
     finally:
         # Restore sys.path to what it was before.
         sys.path.remove(json5_path)
+=======
+import re
+
+USE_PYTHON3 = True
+RUNTIMEENABLED_NAME = re.compile(r'\s*name\s*:\s*"([^"]*)"')
 
 
-def _CheckRuntimeEnabledFeaturesSorted(features, output_api):
+def RuntimeEnabledFeatureNames(filename):
+    """Reads the 'name' of each feature in runtime_enabled_features.json5."""
+    # Note: We don't have a JSON5 parser available, so just use a regex.
+    with open(filename) as f:
+        for line in f:
+            match = RUNTIMEENABLED_NAME.match(line)
+            if match:
+                yield match.group(1)
+>>>>>>> chromium
+
+
+def _CheckRuntimeEnabledFeaturesSorted(input_api, output_api):
     """Check: runtime_enabled_features.json5 feature list sorted alphabetically.
     """
-    names = [feature['name'] for feature in features]
+    # Read runtime_enabled_features.json5 using the JSON5 parser.
+    filename = os.path.join(input_api.PresubmitLocalPath(),
+                            'runtime_enabled_features.json5')
+    features = list(RuntimeEnabledFeatureNames(filename))
 
     # Sort the 'data' section by name.
-    names_sorted = sorted(names, key=lambda s: s.lower())
+    features_sorted = sorted(features, key=lambda s: s.lower())
 
-    if names == names_sorted:
+    if features == features_sorted:
         return []
 
     # Diff the sorted/unsorted versions.
     differ = difflib.Differ()
-    diff = differ.compare(names, names_sorted)
+    diff = differ.compare(features, features_sorted)
     return [
         output_api.PresubmitError(
             'runtime_enabled_features.json5 features must be sorted alphabetically. '
@@ -53,20 +73,13 @@ def _CheckRuntimeEnabledFeaturesSorted(features, output_api):
 
 def _CommonChecks(input_api, output_api):
     """Checks common to both upload and commit."""
-    # Read runtime_enabled_features.json5 using the JSON5 parser.
-    features_filename = os.path.join(input_api.PresubmitLocalPath(),
-                                     'runtime_enabled_features.json5')
-    try:
-        features = RuntimeEnabledFeatures(input_api, features_filename)
-    except:
-        return [
-            output_api.PresubmitError(
-                'Failed to parse {} for checks'.format(features_filename))
-        ]
-
     results = []
+<<<<<<< HEAD
     results.extend(_CheckRuntimeEnabledFeaturesSorted(features, output_api))
 
+=======
+    results.extend(_CheckRuntimeEnabledFeaturesSorted(input_api, output_api))
+>>>>>>> chromium
     return results
 
 

@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,45 +6,26 @@
 #define EXTENSIONS_COMMON_EXTENSION_FEATURES_H_
 
 #include "base/feature_list.h"
-#include "base/metrics/field_trial_params.h"
 
 namespace extensions_features {
 
-///////////////////////////////////////////////////////////////////////////////
-// README!
-// * Please keep these features alphabetized. One exception: API features go
-//   at the top so that they are visibly grouped together.
-// * Adding a new feature for an extension API? Great!
-//   Please use the naming style `kApi<Namespace><Method>`, e.g.
-//   `kApiTabsCreate`.
-//   Note that if you are using the features.json files to restrict your
-//   API with the feature (which is usually best practice if you are introducing
-//   any new features), you will also have to add the feature entry to the list
-//   in extensions/common/features/feature_flags.cc so the features system can
-//   detect it.
-// * Naming Tips: Even though this file is unique to extensions, base::Features
-//   have to be globally unique. Thus, it's often best to give features very
-//   specific names (often including "Extension", unlike many C++ class names)
-//   since namespacing doesn't otherwise exist.
-// * Example: --enable-features=Feature1,Feature2. Info: //base/feature_list.h.
-///////////////////////////////////////////////////////////////////////////////
+extern const base::Feature kDisableMalwareExtensionsRemotely;
+extern const base::Feature kDisablePolicyViolationExtensionsRemotely;
+extern const base::Feature kDisablePotentiallyUwsExtensionsRemotely;
+extern const base::Feature kSafeBrowsingCrxAllowlistShowWarnings;
+extern const base::Feature kSafeBrowsingCrxAllowlistAutoDisable;
 
-///////////////////////////////////////////////////////////////////////////////
-// API Features
-///////////////////////////////////////////////////////////////////////////////
+extern const base::Feature kForceWebRequestProxyForTest;
 
-// NOTE(devlin): If there are consistently enough of these in flux, it might
-// make sense to have their own file.
+extern const base::Feature kAllowWithholdingExtensionPermissionsOnInstall;
 
-// Controls the availability of action.openPopup().
-BASE_DECLARE_FEATURE(kApiActionOpenPopup);
+extern const base::Feature kContentScriptsMatchOriginAsFallback;
 
-// Controls the availability of contentSettings.clipboard.
-BASE_DECLARE_FEATURE(kApiContentSettingsClipboard);
+extern const base::Feature kMv3ExtensionsSupported;
 
-// Controls the availability of the enterprise.kioskInput API.
-BASE_DECLARE_FEATURE(kApiEnterpriseKioskInput);
+extern const base::Feature kReportKeepaliveUkm;
 
+<<<<<<< HEAD
 // Controls the availability of the runtime.actionData API.
 // TODO(crbug.com/376354347): Remove this when the experiment is finished.
 BASE_DECLARE_FEATURE(kApiRuntimeActionData);
@@ -240,6 +221,10 @@ BASE_DECLARE_FEATURE(kRemoveCoreSiteInstance);
 // rather than the developer mode toggle on chrome://extensions.
 BASE_DECLARE_FEATURE(kUserScriptUserExtensionToggle);
 
+=======
+extern const base::Feature kStrictExtensionIsolation;
+
+>>>>>>> chromium
 }  // namespace extensions_features
 
 #endif  // EXTENSIONS_COMMON_EXTENSION_FEATURES_H_

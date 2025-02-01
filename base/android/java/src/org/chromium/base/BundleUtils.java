@@ -1,41 +1,48 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
+<<<<<<< HEAD
 import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.app.Activity;
+=======
+import android.app.Application;
+>>>>>>> chromium
 import android.content.Context;
 import android.content.ContextWrapper;
-import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.os.Bundle;
-import android.text.TextUtils;
-import android.util.ArrayMap;
-import android.view.LayoutInflater;
 
+<<<<<<< HEAD
 import androidx.annotation.RequiresApi;
+=======
+import androidx.annotation.Nullable;
+import androidx.collection.SimpleArrayMap;
+>>>>>>> chromium
 
 import dalvik.system.BaseDexClassLoader;
 import dalvik.system.PathClassLoader;
 
+<<<<<<< HEAD
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JniType;
 
+=======
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.compat.ApiHelperForO;
+>>>>>>> chromium
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
 
+<<<<<<< HEAD
 /** Utils for working with android app bundles. */
 @NullMarked
 public class BundleUtils {
@@ -62,8 +69,43 @@ public class BundleUtils {
         sSplitCompatClassLoaderInstance = null;
         sSplitsToRestore = null;
     }
+=======
+/**
+ * Utils for working with android app bundles.
+ *
+ * Important notes about bundle status as interpreted by this class:
+ *
+ * <ul>
+ *   <li>If {@link BuildConfig#BUNDLES_SUPPORTED} is false, then we are definitely not in a bundle,
+ *   and ProGuard is able to strip out the bundle support library.</li>
+ *   <li>If {@link BuildConfig#BUNDLES_SUPPORTED} is true, then we MIGHT be in a bundle.
+ *   {@link BundleUtils#sIsBundle} is the source of truth.</li>
+ * </ul>
+ *
+ * We need two fields to store one bit of information here to ensure that ProGuard can optimize out
+ * the bundle support library (since {@link BuildConfig#BUNDLES_SUPPORTED} is final) and so that
+ * we can dynamically set whether or not we're in a bundle for targets that use static shared
+ * library APKs.
+ */
+public final class BundleUtils {
+    private static Boolean sIsBundle;
+    private static final Object sSplitLock = new Object();
 
+    // This cache is needed to support the workaround for b/172602571, see
+    // createIsolatedSplitContext() for more info.
+    private static final SimpleArrayMap<String, ClassLoader> sCachedClassLoaders =
+            new SimpleArrayMap<>();
+>>>>>>> chromium
+
+    /**
+     * {@link BundleUtils#isBundle()}  is not called directly by native because
+     * {@link CalledByNative} prevents inlining, causing the bundle support lib to not be
+     * removed non-bundle builds.
+     *
+     * @return true if the current build is a bundle.
+     */
     @CalledByNative
+<<<<<<< HEAD
     public static boolean isBundle() {
         if (sIsBundle == null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -89,20 +131,54 @@ public class BundleUtils {
         String[] splitNames = appInfo.splitNames;
         if (splitNames == null) {
             return null;
+=======
+    public static boolean isBundleForNative() {
+        return isBundle();
+    }
+
+    /**
+     * @return true if the current build is a bundle.
+     */
+    public static boolean isBundle() {
+        if (!BuildConfig.BUNDLES_SUPPORTED) {
+            return false;
+>>>>>>> chromium
         }
-        int idx = Arrays.binarySearch(splitNames, splitName);
-        return idx < 0 ? null : appInfo.splitSourceDirs[idx];
+        assert sIsBundle != null;
+        return sIsBundle;
+    }
+
+    public static void setIsBundle(boolean isBundle) {
+        sIsBundle = isBundle;
+    }
+
+    public static boolean isolatedSplitsEnabled() {
+        return BuildConfig.ISOLATED_SPLITS_ENABLED;
     }
 
     /**
      * Returns whether splitName is installed. Note, this will return false on Android versions
      * below O, where isolated splits are not supported.
      */
+<<<<<<< HEAD
     public static boolean isIsolatedSplitInstalled(String splitName) {
         if (!isBundle() || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+=======
+    public static boolean isIsolatedSplitInstalled(Context context, String splitName) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+>>>>>>> chromium
             return false;
         }
-        return getSplitApkPath(splitName) != null;
+
+        String[] splitNames = ApiHelperForO.getSplitNames(context.getApplicationInfo());
+        return splitNames != null && Arrays.asList(splitNames).contains(splitName);
+    }
+
+    /**
+     * The lock to hold when calling {@link Context#createContextForSplit(String)}.
+     */
+    public static Object getSplitContextLock() {
+        return sSplitLock;
     }
 
     /**
@@ -112,6 +188,7 @@ public class BundleUtils {
      * returned. If isolated splits are not enabled for this APK/bundle, the underlying ContextImpl
      * from the base context will be returned.
      */
+<<<<<<< HEAD
     public static Context createIsolatedSplitContext(String splitName) {
         if (!isBundle()) {
             return ContextUtils.getApplicationContext();
@@ -161,13 +238,71 @@ public class BundleUtils {
                     shouldReplaceClassLoader = true;
                     replaceClassLoader(splitContext, cachedClassLoader);
                 }
-            } else {
-                sCachedClassLoaders.put(splitName, splitContext.getClassLoader());
-            }
+=======
+    public static Context createIsolatedSplitContext(Context base, String splitName) {
+        // Isolated splits are only supported in O+, so just return the base context on other
+        // versions, since this will have access to all splits.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return base;
         }
-        RecordHistogram.recordBooleanHistogram(
-                "Android.IsolatedSplits.ClassLoaderReplaced." + splitName,
-                shouldReplaceClassLoader);
+
+        try {
+            Context context;
+            // The Application class handles locking itself using the split context lock. This is
+            // necessary to prevent a possible deadlock, since the application waits for splits
+            // preloading on a background thread.
+            // TODO(crbug.com/1172950): Consider moving preloading logic into //base so we can lock
+            // here.
+            if (isApplicationContext(base)) {
+                context = ApiHelperForO.createContextForSplit(base, splitName);
+>>>>>>> chromium
+            } else {
+                synchronized (getSplitContextLock()) {
+                    context = ApiHelperForO.createContextForSplit(base, splitName);
+                }
+            }
+            ClassLoader parent = context.getClassLoader().getParent();
+            Context appContext = ContextUtils.getApplicationContext();
+            // If the ClassLoader from the newly created context does not equal either the
+            // BundleUtils ClassLoader (the base module ClassLoader) or the app context ClassLoader
+            // (the chrome module ClassLoader) there must be something messed up in the ClassLoader
+            // cache, see b/172602571. This should be solved for the chrome ClassLoader by
+            // SplitCompatAppComponentFactory, but modules which depend on the chrome module need
+            // special handling here to make sure they have the correct parent.
+            boolean shouldReplaceClassLoader = isolatedSplitsEnabled()
+                    && !parent.equals(BundleUtils.class.getClassLoader()) && appContext != null
+                    && !parent.equals(appContext.getClassLoader());
+            synchronized (sCachedClassLoaders) {
+                if (shouldReplaceClassLoader && !sCachedClassLoaders.containsKey(splitName)) {
+                    String[] splitNames = ApiHelperForO.getSplitNames(context.getApplicationInfo());
+                    int idx = Arrays.binarySearch(splitNames, splitName);
+                    assert idx >= 0;
+                    // The librarySearchPath argument to PathClassLoader is not needed here
+                    // because the framework doesn't pass it either, see b/171269960.
+                    sCachedClassLoaders.put(splitName,
+                            new PathClassLoader(context.getApplicationInfo().splitSourceDirs[idx],
+                                    appContext.getClassLoader()));
+                }
+                // Always replace the ClassLoader if we have a cached version to make sure all
+                // ClassLoaders are consistent.
+                ClassLoader cachedClassLoader = sCachedClassLoaders.get(splitName);
+                if (cachedClassLoader != null) {
+                    if (!cachedClassLoader.equals(context.getClassLoader())) {
+                        // Set this for recording the histogram below.
+                        shouldReplaceClassLoader = true;
+                        replaceClassLoader(context, cachedClassLoader);
+                    }
+                } else {
+                    sCachedClassLoaders.put(splitName, context.getClassLoader());
+                }
+            }
+            RecordHistogram.recordBooleanHistogram(
+                    "Android.IsolatedSplits.ClassLoaderReplaced." + splitName,
+                    shouldReplaceClassLoader);
+            return context;
+        } catch (PackageManager.NameNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /** Replaces the ClassLoader of the passed in Context. */
@@ -182,7 +317,7 @@ public class BundleUtils {
             classLoaderField.setAccessible(true);
             classLoaderField.set(baseContext, classLoader);
         } catch (ReflectiveOperationException e) {
-            throw JavaUtils.throwUnchecked(e);
+            throw new RuntimeException("Error setting ClassLoader.", e);
         }
     }
 
@@ -194,9 +329,8 @@ public class BundleUtils {
             // Due to b/171269960 isolated split class loaders have an empty library path, so check
             // the base module class loader first which loaded BundleUtils. If the library is not
             // found there, attempt to construct the correct library path from the split.
-            String path =
-                    ((BaseDexClassLoader) BundleUtils.class.getClassLoader())
-                            .findLibrary(libraryName);
+            String path = ((BaseDexClassLoader) BundleUtils.class.getClassLoader())
+                                  .findLibrary(libraryName);
             if (path != null) {
                 return path;
             }
@@ -218,6 +352,7 @@ public class BundleUtils {
         }
     }
 
+<<<<<<< HEAD
     public static void checkContextClassLoader(Context baseContext, Activity activity) {
         ClassLoader activityClassLoader = activity.getClass().getClassLoader();
         ClassLoader contextClassLoader = baseContext.getClassLoader();
@@ -400,6 +535,13 @@ public class BundleUtils {
             }
             sSplitsToRestore = null;
         }
+=======
+    // TODO(crbug.com/1150459): Remove this once //clank callers have been converted to the new
+    // version.
+    @Nullable
+    public static String getNativeLibraryPath(String libraryName) {
+        return getNativeLibraryPath(libraryName, "");
+>>>>>>> chromium
     }
 
     private static @Nullable String getSplitApkLibraryPath(String libraryName, String splitName) {
@@ -408,18 +550,32 @@ public class BundleUtils {
             return null;
         }
 
-        String apkPath = getSplitApkPath(splitName);
-        if (apkPath == null) {
+        ApplicationInfo info = ContextUtils.getApplicationContext().getApplicationInfo();
+        String[] splitNames = ApiHelperForO.getSplitNames(info);
+        if (splitNames == null) {
+            return null;
+        }
+
+        int idx = Arrays.binarySearch(splitNames, splitName);
+        if (idx < 0) {
             return null;
         }
 
         try {
-            ApplicationInfo info = ContextUtils.getApplicationContext().getApplicationInfo();
             String primaryCpuAbi = (String) info.getClass().getField("primaryCpuAbi").get(info);
             // This matches the logic LoadedApk.java uses to construct library paths.
-            return apkPath + "!/lib/" + primaryCpuAbi + "/" + System.mapLibraryName(libraryName);
+            return info.splitSourceDirs[idx] + "!/lib/" + primaryCpuAbi + "/"
+                    + System.mapLibraryName(libraryName);
         } catch (ReflectiveOperationException e) {
-            throw JavaUtils.throwUnchecked(e);
+            throw new RuntimeException(e);
         }
+    }
+
+    private static boolean isApplicationContext(Context context) {
+        while (context instanceof ContextWrapper) {
+            if (context instanceof Application) return true;
+            context = ((ContextWrapper) context).getBaseContext();
+        }
+        return false;
     }
 }

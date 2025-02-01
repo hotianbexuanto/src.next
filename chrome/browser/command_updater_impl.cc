@@ -1,21 +1,22 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/command_updater_impl.h"
 
 #include <algorithm>
-#include <optional>
 
 #include "base/check.h"
 #include "base/observer_list.h"
 #include "chrome/browser/command_observer.h"
 #include "chrome/browser/command_updater_delegate.h"
 
-struct CommandUpdaterImpl::Command {
-  // Empty optional means not specified yet and thus implicitly disabled.
-  std::optional<bool> enabled;
-  base::ObserverList<CommandObserver>::UncheckedAndDanglingUntriaged observers;
+class CommandUpdaterImpl::Command {
+ public:
+  bool enabled;
+  base::ObserverList<CommandObserver>::Unchecked observers;
+
+  Command() : enabled(true) {}
 };
 
 CommandUpdaterImpl::CommandUpdaterImpl(CommandUpdaterDelegate* delegate)
@@ -30,10 +31,9 @@ bool CommandUpdaterImpl::SupportsCommand(int id) const {
 
 bool CommandUpdaterImpl::IsCommandEnabled(int id) const {
   auto command = commands_.find(id);
-  if (command == commands_.end() || command->second->enabled == std::nullopt) {
+  if (command == commands_.end())
     return false;
-  }
-  return *command->second->enabled;
+  return command->second->enabled;
 }
 
 bool CommandUpdaterImpl::ExecuteCommand(int id, base::TimeTicks time_stamp) {
@@ -71,7 +71,7 @@ void CommandUpdaterImpl::RemoveCommandObserver(CommandObserver* observer) {
 
 bool CommandUpdaterImpl::UpdateCommandEnabled(int id, bool enabled) {
   Command* command = GetCommand(id, true);
-  if (command->enabled.has_value() && *command->enabled == enabled)
+  if (command->enabled == enabled)
     return true;  // Nothing to do.
   command->enabled = enabled;
   for (auto& observer : command->observers)

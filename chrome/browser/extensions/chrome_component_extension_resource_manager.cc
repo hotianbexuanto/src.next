@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,14 +21,12 @@
 #include "chrome/grit/theme_resources.h"
 #include "content/public/browser/browser_thread.h"
 #include "extensions/common/constants.h"
-#include "extensions/common/extension_id.h"
 #include "pdf/buildflags.h"
 #include "ppapi/buildflags/buildflags.h"
 #include "ui/base/resource/resource_bundle.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/keyboard/ui/resources/keyboard_resource_util.h"
-#include "ash/webui/file_manager/untrusted_resources/grit/file_manager_untrusted_resources_map.h"
 #include "base/command_line.h"
 #include "chrome/browser/ash/file_manager/file_manager_string_util.h"
 #include "chrome/browser/browser_process.h"
@@ -39,7 +37,7 @@
 #include "chromeos/grit/chromeos_media_app_bundle_resources.h"
 #endif  // BUILDFLAG(ENABLE_INK)
 
-#endif  // BUILDFLAG(IS_CHROMEOS)
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if BUILDFLAG(ENABLE_PDF)
 #include <utility>
@@ -56,7 +54,7 @@ namespace extensions {
 class ChromeComponentExtensionResourceManager::Data {
  public:
   using TemplateReplacementMap =
-      std::map<ExtensionId, ui::TemplateReplacements>;
+      std::map<std::string, ui::TemplateReplacements>;
 
   Data();
   Data(const Data&) = delete;
@@ -85,7 +83,7 @@ class ChromeComponentExtensionResourceManager::Data {
 
 ChromeComponentExtensionResourceManager::Data::Data() {
   static const webui::ResourcePath kExtraComponentExtensionResources[] = {
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
     {"web_store/webstore_icon_128.png", IDR_WEBSTORE_APP_ICON_128},
     {"web_store/webstore_icon_16.png", IDR_WEBSTORE_APP_ICON_16},
 #else
@@ -93,7 +91,11 @@ ChromeComponentExtensionResourceManager::Data::Data() {
     {"web_store/webstore_icon_16.png", IDR_WEBSTORE_ICON_16},
 #endif
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_CHROMEOS)
+=======
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
     {"chrome_app/chrome_app_icon_32.png", IDR_CHROME_APP_ICON_32},
     {"chrome_app/chrome_app_icon_192.png", IDR_CHROME_APP_ICON_192},
 #if BUILDFLAG(ENABLE_INK)
@@ -104,17 +106,25 @@ ChromeComponentExtensionResourceManager::Data::Data() {
     {"pdf/ink/ink_lib_binary.js", IDR_MEDIA_APP_EXPORT_CANVAS_BIN_JS},
     {"pdf/ink/ink_loader.js", IDR_MEDIA_APP_INK_JS},
 #endif  // BUILDFLAG(ENABLE_INK)
-#endif  // BUILDFLAG(IS_CHROMEOS)
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
   };
 
+<<<<<<< HEAD
   AddComponentResourceEntries(kComponentExtensionResources);
   AddComponentResourceEntries(kExtraComponentExtensionResources);
+=======
+  AddComponentResourceEntries(kComponentExtensionResources,
+                              kComponentExtensionResourcesSize);
+  AddComponentResourceEntries(kExtraComponentExtensionResources,
+                              base::size(kExtraComponentExtensionResources));
+>>>>>>> chromium
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   // Add Files app JS modules resources.
   AddComponentResourceEntries(kFileManagerResources);
   AddComponentResourceEntries(kFileManagerGenResources);
 
+<<<<<<< HEAD
   // Add Files app resources to display untrusted content in <webview> frames.
   // Files app extension's resource paths need to be prefixed by
   // "file_manager/".
@@ -127,6 +137,8 @@ ChromeComponentExtensionResourceManager::Data::Data() {
     path_to_resource_id_[resource_path] = resource.id;
   }
 
+=======
+>>>>>>> chromium
   // ResourceBundle and g_browser_process are not always initialized in unit
   // tests.
   if (ui::ResourceBundle::HasSharedInstance() && g_browser_process) {
@@ -145,12 +157,14 @@ ChromeComponentExtensionResourceManager::Data::Data() {
 
   // ResourceBundle is not always initialized in unit tests.
   if (ui::ResourceBundle::HasSharedInstance()) {
-    base::Value::Dict dict;
+    base::Value dict(base::Value::Type::DICTIONARY);
     pdf_extension_util::AddStrings(
         pdf_extension_util::PdfViewerContext::kPdfViewer, &dict);
+    pdf_extension_util::AddAdditionalData(/*enable_annotations=*/true, &dict);
 
     ui::TemplateReplacements pdf_viewer_replacements;
-    ui::TemplateReplacementsFromDictionaryValue(dict, &pdf_viewer_replacements);
+    ui::TemplateReplacementsFromDictionaryValue(
+        base::Value::AsDictionaryValue(dict), &pdf_viewer_replacements);
     template_replacements_[extension_misc::kPdfExtensionId] =
         std::move(pdf_viewer_replacements);
   }
@@ -205,12 +219,12 @@ bool ChromeComponentExtensionResourceManager::IsComponentExtensionResource(
 
 const ui::TemplateReplacements*
 ChromeComponentExtensionResourceManager::GetTemplateReplacementsForExtension(
-    const ExtensionId& extension_id) const {
+    const std::string& extension_id) const {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
   LazyInitData();
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   if (extension_id == extension_misc::kFilesManagerAppId) {
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
     // Disable $i18n{} template JS string replacement during JS code coverage.

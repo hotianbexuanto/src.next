@@ -36,8 +36,7 @@
 #include "third_party/blink/renderer/core/dom/attribute.h"
 #include "third_party/blink/renderer/core/dom/attribute_collection.h"
 #include "third_party/blink/renderer/core/dom/space_split_string.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/heap/member.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/wtf/bit_field.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
@@ -57,15 +56,8 @@ class ElementData : public GarbageCollected<ElementData> {
   void FinalizeGarbageCollectedObject();
 
   void ClearClass() const { class_names_.Clear(); }
-  void SetClass(const AtomicString& class_names) const {
-    DCHECK(!class_names.empty());
-    class_names_.Set(class_names);
-  }
-  void SetClassFoldingCase(const AtomicString& class_names) const {
-    if (class_names.IsLowerASCII()) {
-      return SetClass(class_names);
-    }
-    return SetClass(class_names.LowerASCII());
+  void SetClass(const AtomicString& class_name, bool should_fold_case) const {
+    class_names_.Set(should_fold_case ? class_name.LowerASCII() : class_name);
   }
   const SpaceSplitString& ClassNames() const { return class_names_; }
 
@@ -171,10 +163,9 @@ struct ThreadingTrait<T, std::enable_if_t<std::is_base_of_v<ElementData, T>>> {
 // duplicate sets of attributes (ex. the same classes).
 class ShareableElementData final : public ElementData {
  public:
-  static ShareableElementData* CreateWithAttributes(
-      const Vector<Attribute, kAttributePrealloc>&);
+  static ShareableElementData* CreateWithAttributes(const Vector<Attribute>&);
 
-  explicit ShareableElementData(const Vector<Attribute, kAttributePrealloc>&);
+  explicit ShareableElementData(const Vector<Attribute>&);
   explicit ShareableElementData(const UniqueElementData&);
   ~ShareableElementData();
 

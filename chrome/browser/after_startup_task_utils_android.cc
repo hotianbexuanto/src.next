@@ -1,13 +1,11 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chrome/android/chrome_jni_headers/AfterStartupTaskUtils_jni.h"
 #include "chrome/browser/after_startup_task_utils.h"
 
-// Must come after all headers that specialize FromJniType() / ToJniType().
-#include "chrome/browser/util/jni_headers/AfterStartupTaskUtils_jni.h"
-
-using jni_zero::JavaParamRef;
+using base::android::JavaParamRef;
 
 namespace android {
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include "base/memory/raw_ptr.h"
-#include "chrome/browser/profiles/profile.h"
 #include "extensions/browser/management_policy.h"
 
 namespace extensions {
@@ -20,8 +18,8 @@ class ExtensionManagement;
 // extension block/allowlists and admin block/allowlists.
 class StandardManagementPolicyProvider : public ManagementPolicy::Provider {
  public:
-  explicit StandardManagementPolicyProvider(ExtensionManagement* settings,
-                                            Profile* profile);
+  explicit StandardManagementPolicyProvider(
+      const ExtensionManagement* settings);
 
   ~StandardManagementPolicyProvider() override;
 
@@ -39,15 +37,15 @@ class StandardManagementPolicyProvider : public ManagementPolicy::Provider {
   bool MustRemainEnabled(const Extension* extension,
                          std::u16string* error) const override;
   bool MustRemainDisabled(const Extension* extension,
-                          disable_reason::DisableReason* reason) const override;
+                          disable_reason::DisableReason* reason,
+                          std::u16string* error) const override;
   bool MustRemainInstalled(const Extension* extension,
                            std::u16string* error) const override;
   bool ShouldForceUninstall(const Extension* extension,
                             std::u16string* error) const override;
 
  private:
-  raw_ptr<Profile> profile_;
-  raw_ptr<ExtensionManagement> settings_;
+  const ExtensionManagement* settings_;
   bool ReturnLoadError(const extensions::Extension* extension,
                        std::u16string* error) const;
 };

@@ -1,46 +1,38 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/extension_util.h"
 
 #include "base/barrier_closure.h"
-#include "base/command_line.h"
+#include "base/callback_helpers.h"
 #include "base/no_destructor.h"
 #include "build/chromeos_buildflags.h"
-#include "components/crx_file/id_util.h"
 #include "content/public/browser/browser_context.h"
-#include "content/public/browser/child_process_security_policy.h"
+#include "content/public/browser/cors_origin_pattern_setter.h"
 #include "content/public/browser/site_instance.h"
-#include "content/public/browser/storage_partition.h"
 #include "content/public/browser/storage_partition_config.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_registry.h"
+<<<<<<< HEAD
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/extension_util.h"
+=======
+>>>>>>> chromium
 #include "extensions/browser/extensions_browser_client.h"
-#include "extensions/browser/script_injection_tracker.h"
 #include "extensions/browser/ui_util.h"
+#include "extensions/common/cors_util.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
+#include "extensions/common/features/behavior_feature.h"
 #include "extensions/common/features/feature.h"
+#include "extensions/common/features/feature_provider.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_handlers/incognito_info.h"
 #include "extensions/common/manifest_handlers/shared_module_info.h"
 #include "extensions/common/permissions/permissions_data.h"
-#include "extensions/common/switches.h"
-#include "extensions/grit/extensions_browser_resources.h"
 #include "mojo/public/cpp/bindings/clone_traits.h"
-#include "ui/base/resource/resource_bundle.h"
-#include "url/gurl.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chromeos/constants/chromeos_features.h"
-#include "chromeos/constants/pref_names.h"
-#include "components/prefs/pref_service.h"
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "base/system/sys_info.h"
 #endif
 
@@ -49,7 +41,7 @@ namespace util {
 
 namespace {
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
 bool IsSigninProfileTestExtensionOnTestImage(const Extension* extension) {
   if (extension->id() != extension_misc::kSigninProfileTestExtensionId)
     return false;
@@ -57,6 +49,28 @@ bool IsSigninProfileTestExtensionOnTestImage(const Extension* extension) {
   return true;
 }
 #endif
+
+void SetCorsOriginAccessListForExtensionHelper(
+    const std::vector<content::BrowserContext*>& browser_contexts,
+    const Extension& extension,
+    std::vector<network::mojom::CorsOriginPatternPtr> allow_patterns,
+    std::vector<network::mojom::CorsOriginPatternPtr> block_patterns,
+    base::OnceClosure closure) {
+  auto barrier_closure =
+      BarrierClosure(browser_contexts.size(), std::move(closure));
+  for (content::BrowserContext* browser_context : browser_contexts) {
+    // SetCorsOriginAccessListForExtensionHelper should only affect an incognito
+    // profile if the extension is actually allowed to run in an incognito
+    // profile (not just by the extension manifest, but also by user
+    // preferences).
+    if (browser_context->IsOffTheRecord())
+      DCHECK(IsIncognitoEnabled(extension.id(), browser_context));
+
+    content::CorsOriginPatternSetter::Set(
+        browser_context, extension.origin(), mojo::Clone(allow_patterns),
+        mojo::Clone(block_patterns), barrier_closure);
+  }
+}
 
 }  // namespace
 
@@ -66,11 +80,11 @@ bool CanBeIncognitoEnabled(const Extension* extension) {
           extension->location() == mojom::ManifestLocation::kComponent);
 }
 
-bool IsIncognitoEnabled(const ExtensionId& extension_id,
+bool IsIncognitoEnabled(const std::string& extension_id,
                         content::BrowserContext* context) {
   const Extension* extension =
-      ExtensionRegistry::Get(context)->enabled_extensions().GetByID(
-          extension_id);
+      ExtensionRegistry::Get(context)->GetExtensionById(
+          extension_id, ExtensionRegistry::ENABLED);
   if (extension) {
     if (!CanBeIncognitoEnabled(extension))
       return false;
@@ -80,27 +94,11 @@ bool IsIncognitoEnabled(const ExtensionId& extension_id,
       return true;
     if (extension->is_login_screen_extension())
       return true;
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
     if (IsSigninProfileTestExtensionOnTestImage(extension))
       return true;
 #endif
   }
-#if BUILDFLAG(IS_CHROMEOS)
-  // An OTR Profile is used for captive portal signin to hide PII from
-  // captive portals (which require HTTP redirects to function).
-  // However, for captive portal signin we do not want want to disable
-  // extensions by default. (Proxies are explicitly disabled elsewhere).
-  // See b/261727502 for details.
-  PrefService* prefs =
-      ExtensionsBrowserClient::Get()->GetPrefServiceForContext(context);
-  if (prefs) {
-    const PrefService::Preference* captive_portal_pref =
-        prefs->FindPreference(chromeos::prefs::kCaptivePortalSignin);
-    if (captive_portal_pref && captive_portal_pref->GetValue()->GetBool()) {
-      return true;
-    }
-  }
-#endif
   return ExtensionPrefs::Get(context)->IsIncognitoEnabled(extension_id);
 }
 
@@ -114,6 +112,7 @@ bool CanCrossIncognito(const Extension* extension,
          !IncognitoInfo::IsSplitMode(extension);
 }
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_ANDROID)
 void InitExtensionSystemForIncognitoSplit(
     content::BrowserContext* incognito_context) {
@@ -131,13 +130,15 @@ bool AllowFileAccess(const ExtensionId& extension_id,
          ExtensionPrefs::Get(context)->AllowFileAccess(extension_id);
 }
 
+=======
+>>>>>>> chromium
 const std::string& GetPartitionDomainForExtension(const Extension* extension) {
   // Extensions use their own ID for a partition domain.
   return extension->id();
 }
 
 content::StoragePartitionConfig GetStoragePartitionConfigForExtensionId(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     content::BrowserContext* browser_context) {
   if (ExtensionsBrowserClient::Get()->HasIsolatedStorage(extension_id,
                                                          browser_context)) {
@@ -153,7 +154,7 @@ content::StoragePartitionConfig GetStoragePartitionConfigForExtensionId(
 }
 
 content::StoragePartition* GetStoragePartitionForExtensionId(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     content::BrowserContext* browser_context,
     bool can_create) {
   auto storage_partition_config =
@@ -162,13 +163,6 @@ content::StoragePartition* GetStoragePartitionForExtensionId(
       browser_context->GetStoragePartition(storage_partition_config,
                                            can_create);
   return storage_partition;
-}
-
-content::ServiceWorkerContext* GetServiceWorkerContextForExtensionId(
-    const ExtensionId& extension_id,
-    content::BrowserContext* browser_context) {
-  return GetStoragePartitionForExtensionId(extension_id, browser_context)
-      ->GetServiceWorkerContext();
 }
 
 // This function is security sensitive. Bugs could cause problems that break
@@ -187,7 +181,7 @@ bool MapUrlToLocalFilePath(const ExtensionSet* extensions,
   // (GetFilePath()), so that this can be called on the non blocking threads. It
   // only handles a subset of the urls.
   if (!use_blocking_api) {
-    if (file_url.SchemeIs(kExtensionScheme)) {
+    if (file_url.SchemeIs(extensions::kExtensionScheme)) {
       std::string path = file_url.path();
       base::TrimString(path, "/", &path);  // Remove first slash
       *file_path = extension->path().AppendASCII(path);
@@ -201,7 +195,7 @@ bool MapUrlToLocalFilePath(const ExtensionSet* extensions,
 
   if (SharedModuleInfo::IsImportedPath(path)) {
     // Check if this is a valid path that is imported for this extension.
-    ExtensionId new_extension_id;
+    std::string new_extension_id;
     std::string new_relative_path;
     SharedModuleInfo::ParseImportedPath(path, &new_extension_id,
                                         &new_relative_path);
@@ -241,7 +235,7 @@ bool CanWithholdPermissionsFromExtension(const ExtensionId& extension_id,
   // Some extensions must retain privilege to all requested host permissions.
   // Specifically, extensions that don't show up in chrome:extensions (where
   // withheld permissions couldn't be granted), extensions that are part of
-  // chrome or corporate policy, and extensions that are allowlisted to script
+  // chrome or corporate policy, and extensions that are whitelisted to script
   // everywhere must always have permission to run on a page.
   return ui_util::ShouldDisplayInExtensionSettings(type, location) &&
          !Manifest::IsPolicyLocation(location) &&
@@ -249,8 +243,10 @@ bool CanWithholdPermissionsFromExtension(const ExtensionId& extension_id,
          !PermissionsData::CanExecuteScriptEverywhere(extension_id, location);
 }
 
+// The below functionality maps a context to a unique id by increasing a static
+// counter.
 int GetBrowserContextId(content::BrowserContext* context) {
-  using ContextIdMap = std::map<std::string, int>;
+  using ContextIdMap = std::map<content::BrowserContext*, int>;
 
   static int next_id = 0;
   static base::NoDestructor<ContextIdMap> context_map;
@@ -258,15 +254,32 @@ int GetBrowserContextId(content::BrowserContext* context) {
   // we need to get the original context to make sure we take the right context.
   content::BrowserContext* original_context =
       ExtensionsBrowserClient::Get()->GetOriginalContext(context);
-  const std::string& context_id = original_context->UniqueId();
-  auto iter = context_map->find(context_id);
+  auto iter = context_map->find(original_context);
   if (iter == context_map->end()) {
-    iter = context_map->insert(std::make_pair(context_id, next_id++)).first;
+    iter =
+        context_map->insert(std::make_pair(original_context, next_id++)).first;
   }
-  DCHECK(iter->second != kUnspecifiedContextId);
   return iter->second;
 }
 
+void SetCorsOriginAccessListForExtension(
+    const std::vector<content::BrowserContext*>& browser_contexts,
+    const Extension& extension,
+    base::OnceClosure closure) {
+  SetCorsOriginAccessListForExtensionHelper(
+      browser_contexts, extension, CreateCorsOriginAccessAllowList(extension),
+      CreateCorsOriginAccessBlockList(extension), std::move(closure));
+}
+
+void ResetCorsOriginAccessListForExtension(
+    content::BrowserContext* browser_context,
+    const Extension& extension) {
+  SetCorsOriginAccessListForExtensionHelper({browser_context}, extension, {},
+                                            {}, base::DoNothing::Once());
+}
+
+// Returns whether the |extension| should be loaded in the given
+// |browser_context|.
 bool IsExtensionVisibleToContext(const Extension& extension,
                                  content::BrowserContext* browser_context) {
   // Renderers don't need to know about themes.
@@ -282,6 +295,7 @@ bool IsExtensionVisibleToContext(const Extension& extension,
          IsIncognitoEnabled(extension.id(), browser_context);
 }
 
+<<<<<<< HEAD
 void InitializeFileSchemeAccessForExtension(
     int render_process_id,
     const ExtensionId& extension_id,
@@ -467,5 +481,7 @@ bool IsAppLaunchableWithoutEnabling(const ExtensionId& extension_id,
       extension_id);
 }
 
+=======
+>>>>>>> chromium
 }  // namespace util
 }  // namespace extensions

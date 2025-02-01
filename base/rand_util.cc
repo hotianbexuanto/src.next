@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,36 +9,28 @@
 #include <stdint.h>
 
 #include <algorithm>
-#include <atomic>
 #include <limits>
 
 #include "base/check_op.h"
+<<<<<<< HEAD
 #include "base/containers/span.h"
 #include "base/time/time.h"
+=======
+#include "base/strings/string_util.h"
+>>>>>>> chromium
 
 namespace base {
 
-namespace {
-
-// A MetricSubsampler instance is not thread-safe. However, the global
-// sampling state may be read concurrently with writing it via testing
-// scopers, hence the need to use atomics. All operations use
-// memory_order_relaxed because there are no dependent memory accesses.
-std::atomic<bool> g_subsampling_always_sample = false;
-std::atomic<bool> g_subsampling_never_sample = false;
-
-}  // namespace
-
 uint64_t RandUint64() {
   uint64_t number;
-  RandBytes(base::byte_span_from_ref(number));
+  RandBytes(&number, sizeof(number));
   return number;
 }
 
 int RandInt(int min, int max) {
   DCHECK_LE(min, max);
 
-  uint64_t range = static_cast<uint64_t>(max) - static_cast<uint64_t>(min) + 1;
+  uint64_t range = static_cast<uint64_t>(max) - min + 1;
   // |range| is at most UINT_MAX + 1, so the result of RandGenerator(range)
   // is at most UINT_MAX.  Hence it's safe to cast it from uint64_t to int64_t.
   int result =
@@ -52,6 +44,7 @@ double RandDouble() {
   return BitsToOpenEndedUnitInterval(base::RandUint64());
 }
 
+<<<<<<< HEAD
 float RandFloat() {
   return BitsToOpenEndedUnitIntervalF(base::RandUint64());
 }
@@ -79,25 +72,22 @@ TimeDelta RandTimeDeltaUpTo(TimeDelta limit) {
   return RandTimeDelta(TimeDelta(), limit);
 }
 
+=======
+>>>>>>> chromium
 double BitsToOpenEndedUnitInterval(uint64_t bits) {
   // We try to get maximum precision by masking out as many bits as will fit
   // in the target type's mantissa, and raising it to an appropriate power to
   // produce output in the range [0, 1).  For IEEE 754 doubles, the mantissa
-  // is expected to accommodate 53 bits (including the implied bit).
+  // is expected to accommodate 53 bits.
+
   static_assert(std::numeric_limits<double>::radix == 2,
                 "otherwise use scalbn");
-  constexpr int kBits = std::numeric_limits<double>::digits;
-  return ldexp(bits & ((UINT64_C(1) << kBits) - 1u), -kBits);
-}
-
-float BitsToOpenEndedUnitIntervalF(uint64_t bits) {
-  // We try to get maximum precision by masking out as many bits as will fit
-  // in the target type's mantissa, and raising it to an appropriate power to
-  // produce output in the range [0, 1).  For IEEE 754 floats, the mantissa is
-  // expected to accommodate 12 bits (including the implied bit).
-  static_assert(std::numeric_limits<float>::radix == 2, "otherwise use scalbn");
-  constexpr int kBits = std::numeric_limits<float>::digits;
-  return ldexpf(bits & ((UINT64_C(1) << kBits) - 1u), -kBits);
+  static const int kBits = std::numeric_limits<double>::digits;
+  uint64_t random_bits = bits & ((UINT64_C(1) << kBits) - 1);
+  double result = ldexp(static_cast<double>(random_bits), -1 * kBits);
+  DCHECK_GE(result, 0.0);
+  DCHECK_LT(result, 1.0);
+  return result;
 }
 
 uint64_t RandGenerator(uint64_t range) {
@@ -118,28 +108,31 @@ uint64_t RandGenerator(uint64_t range) {
 }
 
 std::string RandBytesAsString(size_t length) {
-  std::string result(length, '\0');
-  RandBytes(as_writable_byte_span(result));
+  DCHECK_GT(length, 0u);
+  std::string result;
+  RandBytes(WriteInto(&result, length + 1), length);
   return result;
 }
 
-std::vector<uint8_t> RandBytesAsVector(size_t length) {
-  std::vector<uint8_t> result(length);
-  RandBytes(result);
-  return result;
-}
-
-InsecureRandomGenerator::InsecureRandomGenerator() {
+void InsecureRandomGenerator::Seed() {
   a_ = base::RandUint64();
   b_ = base::RandUint64();
+  seeded_ = true;
 }
 
-void InsecureRandomGenerator::ReseedForTesting(uint64_t seed) {
+void InsecureRandomGenerator::SeedForTesting(uint64_t seed) {
   a_ = seed;
   b_ = seed;
+  seeded_ = true;
 }
 
+<<<<<<< HEAD
 uint64_t InsecureRandomGenerator::RandUint64() const {
+=======
+uint64_t InsecureRandomGenerator::RandUint64() {
+  DCHECK(seeded_);
+
+>>>>>>> chromium
   // Using XorShift128+, which is simple and widely used. See
   // https://en.wikipedia.org/wiki/Xorshift#xorshift+ for details.
   uint64_t t = a_;
@@ -170,6 +163,7 @@ double InsecureRandomGenerator::RandDouble() const {
   return (x >> 11) * 0x1.0p-53;
 }
 
+<<<<<<< HEAD
 MetricsSubSampler::MetricsSubSampler() = default;
 bool MetricsSubSampler::ShouldSample(double probability) const {
   if (g_subsampling_always_sample.load(std::memory_order_relaxed)) {
@@ -208,4 +202,6 @@ MetricsSubSampler::ScopedNeverSampleForTesting::~ScopedNeverSampleForTesting() {
   g_subsampling_never_sample.store(false, std::memory_order_relaxed);
 }
 
+=======
+>>>>>>> chromium
 }  // namespace base

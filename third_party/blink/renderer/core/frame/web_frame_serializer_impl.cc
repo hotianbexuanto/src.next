@@ -88,14 +88,11 @@
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
 #include "third_party/blink/renderer/core/html/html_all_collection.h"
-#include "third_party/blink/renderer/core/html/html_base_element.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
-#include "third_party/blink/renderer/core/html/html_head_element.h"
 #include "third_party/blink/renderer/core/html/html_html_element.h"
-#include "third_party/blink/renderer/core/html/html_iframe_element.h"
 #include "third_party/blink/renderer/core/html/html_meta_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
@@ -109,7 +106,7 @@ namespace {
 // Generate the default base tag declaration.
 String GenerateBaseTagDeclaration(const String& base_target) {
   // TODO(yosin) We should call |FrameSerializer::baseTagDeclarationOf()|.
-  if (base_target.empty())
+  if (base_target.IsEmpty())
     return String("<base href=\".\">");
   String base_string = "<base href=\".\" target=\"" + base_target + "\">";
   return base_string;
@@ -176,9 +173,9 @@ String WebFrameSerializerImpl::PreActionBeforeSerializeOpenTag(
       param->have_added_xml_processing_directive = true;
       // Get encoding info.
       String xml_encoding = param->document->xmlEncoding();
-      if (xml_encoding.empty())
+      if (xml_encoding.IsEmpty())
         xml_encoding = param->document->EncodingName();
-      if (xml_encoding.empty())
+      if (xml_encoding.IsEmpty())
         xml_encoding = UTF8Encoding().GetName();
       result.Append("<?xml version=\"");
       result.Append(param->document->xmlVersion());
@@ -217,7 +214,7 @@ String WebFrameSerializerImpl::PostActionAfterSerializeOpenTag(
     // See http://bugs.webkit.org/show_bug.cgi?id=16621.
     // First we generate new content for writing correct META element.
     result.Append(WebFrameSerializer::GenerateMetaCharsetDeclaration(
-        param->text_encoding.GetName()));
+        String(param->text_encoding.GetName())));
 
     param->have_added_contents_before_end = true;
     // Will search each META which has charset declaration, and skip them all
@@ -375,10 +372,8 @@ void WebFrameSerializerImpl::OpenTagToString(Element* element,
   // Do post action for open tag.
   String added_contents = PostActionAfterSerializeOpenTag(element, param);
   // Complete the open tag for element when it has child/children.
-  if (element->HasChildren() || param->have_added_contents_before_end ||
-      element->AuthorShadowRoot()) {
+  if (element->HasChildren() || param->have_added_contents_before_end)
     result.Append('>');
-  }
   // Append the added contents generate in  post action of open tag.
   result.Append(added_contents);
   // Save the result to data buffer.
@@ -395,8 +390,7 @@ void WebFrameSerializerImpl::EndTagToString(Element* element,
   if (need_skip)
     return;
   // Write end tag when element has child/children.
-  if (element->HasChildren() || param->have_added_contents_before_end ||
-      element->AuthorShadowRoot()) {
+  if (element->HasChildren() || param->have_added_contents_before_end) {
     result.Append("</");
     result.Append(element->nodeName().DeprecatedLower());
     result.Append('>');
@@ -423,23 +417,6 @@ void WebFrameSerializerImpl::EndTagToString(Element* element,
   SaveHTMLContentToBuffer(result.ToString(), param);
 }
 
-void WebFrameSerializerImpl::ShadowRootTagToString(ShadowRoot* shadow_root,
-                                                   SerializeDomParam* param) {
-  CHECK(!shadow_root->IsUserAgent());
-
-  StringBuilder result;
-  result.Append("<template shadowrootmode=");
-  result.Append(shadow_root->IsOpen() ? "\"open\"" : "\"closed\"");
-
-  if (shadow_root->delegatesFocus()) {
-    result.Append(" shadowrootdelegatesfocus");
-  }
-
-  result.Append('>');
-
-  SaveHTMLContentToBuffer(result.ToString(), param);
-}
-
 void WebFrameSerializerImpl::BuildContentForNode(Node* node,
                                                  SerializeDomParam* param) {
   switch (node->getNodeType()) {
@@ -447,23 +424,11 @@ void WebFrameSerializerImpl::BuildContentForNode(Node* node,
       auto* element = To<Element>(node);
       // Process open tag of element.
       OpenTagToString(element, param);
-
-      // Process the ShadowRoot into a <template> if present.
-      if (auto* shadow_root = element->AuthorShadowRoot()) {
-        ShadowRootTagToString(shadow_root, param);
-        for (Node* child = shadow_root->firstChild(); child;
-             child = child->nextSibling()) {
-          BuildContentForNode(child, param);
-        }
-        SaveHTMLContentToBuffer("</template>", param);
-      }
-
       // Walk through the children nodes and process it.
       for (Node* child = element->firstChild(); child;
            child = child->nextSibling()) {
         BuildContentForNode(child, param);
       }
-
       // Process end tag of element.
       EndTagToString(element, param);
       break;
@@ -476,10 +441,11 @@ void WebFrameSerializerImpl::BuildContentForNode(Node* node,
     case Node::kDocumentFragmentNode:
       // Should not exist.
       NOTREACHED();
+      break;
     // Document type node can be in DOM?
     case Node::kDocumentTypeNode:
       param->have_seen_doc_type = true;
-      [[fallthrough]];
+      FALLTHROUGH;
     default:
       // For other type node, call default action.
       SaveHTMLContentToBuffer(CreateMarkup(node), param);
@@ -504,7 +470,7 @@ WebFrameSerializerImpl::WebFrameSerializerImpl(
   DCHECK(client);
   DCHECK(delegate);
 
-  DCHECK(data_buffer_.empty());
+  DCHECK(data_buffer_.IsEmpty());
 }
 
 bool WebFrameSerializerImpl::Serialize() {
@@ -539,7 +505,7 @@ bool WebFrameSerializerImpl::Serialize() {
         std::vector<char>(), WebFrameSerializerClient::kCurrentFrameIsFinished);
   }
 
-  DCHECK(data_buffer_.empty());
+  DCHECK(data_buffer_.IsEmpty());
   return did_serialization;
 }
 

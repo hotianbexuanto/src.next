@@ -1,14 +1,10 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/platform/graphics/color_space_gamut.h"
 
-#include <algorithm>
-#include <array>
-
-#include "third_party/skia/include/core/SkColorSpace.h"
-#include "third_party/skia/modules/skcms/skcms.h"
+#include "third_party/skia/include/third_party/skcms/skcms.h"
 #include "ui/display/screen_info.h"
 
 namespace blink {
@@ -21,10 +17,10 @@ ColorSpaceGamut GetColorSpaceGamut(const display::ScreenInfo& screen_info) {
   if (!color_space.IsValid())
     return ColorSpaceGamut::kUnknown;
 
-  // TODO(crbug.com/1385853): Perform a better computation, using the available
-  // SkColorSpacePrimaries.
+  // TODO(crbug.com/1049334): Change this function to operate on a
+  // gfx::DisplayColorSpaces structure.
   if (color_space.IsHDR())
-    return ColorSpaceGamut::P3;
+    return ColorSpaceGamut::BT2020;
 
   sk_sp<SkColorSpace> sk_color_space = color_space.ToSkColorSpace();
   if (!sk_color_space)
@@ -42,21 +38,17 @@ ColorSpaceGamut GetColorSpaceGamut(const skcms_ICCProfile* color_profile) {
   skcms_ICCProfile sc_rgb = *skcms_sRGB_profile();
   skcms_SetTransferFunction(&sc_rgb, skcms_Identity_TransferFunction());
 
-  std::array<std::array<uint8_t, 3>, 3> in;
-  std::ranges::fill(in[0], 0);
-  std::ranges::fill(in[1], 0);
-  std::ranges::fill(in[2], 0);
+  unsigned char in[3][3];
+  float out[3][3];
+  memset(in, 0, sizeof(in));
   in[0][0] = 255;
   in[1][1] = 255;
   in[2][2] = 255;
-
-  std::array<std::array<float, 3>, 3> out;
-  bool color_conversion_successful = skcms_Transform(
-      in.data(), skcms_PixelFormat_RGB_888, skcms_AlphaFormat_Unpremul,
-      color_profile, out.data(), skcms_PixelFormat_RGB_fff,
-      skcms_AlphaFormat_Unpremul, &sc_rgb, 3);
-  DCHECK(color_conversion_successful);
-  const float score = out[0][0] * out[1][1] * out[2][2];
+  bool color_converison_successful = skcms_Transform(
+      in, skcms_PixelFormat_RGB_888, skcms_AlphaFormat_Unpremul, color_profile,
+      out, skcms_PixelFormat_RGB_fff, skcms_AlphaFormat_Unpremul, &sc_rgb, 3);
+  DCHECK(color_converison_successful);
+  float score = out[0][0] * out[1][1] * out[2][2];
 
   if (score < 0.9)
     return ColorSpaceGamut::kLessThanNTSC;

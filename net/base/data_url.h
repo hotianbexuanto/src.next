@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,9 +6,10 @@
 #define NET_BASE_DATA_URL_H_
 
 #include <string>
-#include <string_view>
 
+#include "base/compiler_specific.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/strings/string_piece.h"
 #include "net/base/net_errors.h"
 #include "net/base/net_export.h"
 
@@ -17,12 +18,6 @@ class GURL;
 namespace net {
 
 class HttpResponseHeaders;
-
-// This command line switch provides a means to disable data URL whitespace
-// kKeepWhitespaceForDataUrls feature flag. This is set part of an enterprise
-// policy and is intended as a kill switch.
-inline constexpr std::string_view kRemoveWhitespaceForDataURLs =
-    "remove-keep-whitespace-for-data-urls";
 
 // See RFC 2397 for a complete description of the 'data' URL scheme.
 //
@@ -68,23 +63,23 @@ class NET_EXPORT DataURL {
   // If there's any other grammar violation in the URL, then this method will
   // return false, and all passed in pointers will be unmodified. On success,
   // true is returned.
-  [[nodiscard]] static bool Parse(const GURL& url,
-                                  std::string* mime_type,
-                                  std::string* charset,
-                                  std::string* data);
+  static bool Parse(const GURL& url,
+                    std::string* mime_type,
+                    std::string* charset,
+                    std::string* data) WARN_UNUSED_RESULT;
 
   // Similar to parse, except that it also generates a bogus set of response
   // headers, with Content-Type populated, and takes a method. Only the "HEAD"
   // method modifies the response, resulting in a 0-length body. All arguments
   // except must be non-null. All std::string pointers must point to empty
   // strings, and |*headers| must be nullptr. Returns net::OK on success.
-  [[nodiscard]] static Error BuildResponse(
-      const GURL& url,
-      std::string_view method,
-      std::string* mime_type,
-      std::string* charset,
-      std::string* data,
-      scoped_refptr<HttpResponseHeaders>* headers);
+  static Error BuildResponse(const GURL& url,
+                             base::StringPiece method,
+                             std::string* mime_type,
+                             std::string* charset,
+                             std::string* data,
+                             scoped_refptr<HttpResponseHeaders>* headers)
+      WARN_UNUSED_RESULT;
 };
 
 }  // namespace net

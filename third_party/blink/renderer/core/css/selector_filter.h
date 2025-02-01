@@ -31,7 +31,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_SELECTOR_FILTER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_SELECTOR_FILTER_H_
 
-#include "third_party/blink/renderer/core/core_export.h"
+#include <memory>
+
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/platform/wtf/bloom_filter.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -39,8 +40,8 @@
 namespace blink {
 
 class CSSSelector;
-class StyleScope;
 
+<<<<<<< HEAD
 // SelectorFilter is a bitset filter (essentially a Bloom filter with only
 // one hash function, for cheaper lookups) for rapidly discarding style rules
 // that have ancestor requirements. When we traverse the DOM, we call
@@ -75,14 +76,30 @@ class StyleScope;
 // For practical web pages as of 2022, we've seen SelectorFilter discard 60-70%
 // of rules in early processing, which makes the 1 kB of RAM/cache it uses
 // worthwhile.
+=======
+>>>>>>> chromium
 class CORE_EXPORT SelectorFilter {
   DISALLOW_NEW();
 
  public:
+  class ParentStackFrame {
+    DISALLOW_NEW();
+
+   public:
+    ParentStackFrame() : element(nullptr) {}
+    explicit ParentStackFrame(Element& element) : element(&element) {}
+
+    void Trace(Visitor*) const;
+
+    Member<Element> element;
+    Vector<unsigned, 4> identifier_hashes;
+  };
+
   SelectorFilter() = default;
   SelectorFilter(const SelectorFilter&) = delete;
   SelectorFilter& operator=(const SelectorFilter&) = delete;
 
+<<<<<<< HEAD
   // Call before the first PushParent(), if you are starting traversal at
   // some tree scope that is not at the root of the document.
   void PushAllParentsOf(TreeScope& tree_scope);
@@ -93,6 +110,8 @@ class CORE_EXPORT SelectorFilter {
   };
 
   Mark SetMark() const { return {parent_stack_.size(), set_bits_.size()}; }
+=======
+>>>>>>> chromium
   void PushParent(Element& parent);
 
   // Resets the state of the filter (both the parent stack and the
@@ -118,19 +137,24 @@ class CORE_EXPORT SelectorFilter {
     parent_stack_.pop_back();
   }
 
-  bool ParentStackIsConsistent(const Element* parent) const {
-    if (parent == nullptr) {
-      return parent_stack_.empty();
-    } else {
-      return !parent_stack_.empty() && parent_stack_.back() == parent;
-    }
+  bool ParentStackIsConsistent(const ContainerNode* parent_node) const {
+    return !parent_stack_.IsEmpty() &&
+           parent_stack_.back().element == parent_node;
   }
 
+<<<<<<< HEAD
   inline bool FastRejectSelector(
       const base::span<const uint16_t> identifier_hashes) const;
   static void CollectIdentifierHashes(const CSSSelector&,
                                       const StyleScope*,
                                       Vector<uint16_t>& bloom_hash_backing);
+=======
+  template <unsigned maximumIdentifierCount>
+  inline bool FastRejectSelector(const unsigned* identifier_hashes) const;
+  static void CollectIdentifierHashes(const CSSSelector&,
+                                      unsigned* identifier_hashes,
+                                      unsigned maximum_identifier_count);
+>>>>>>> chromium
 
   void Trace(Visitor*) const;
 
@@ -143,17 +167,27 @@ class CORE_EXPORT SelectorFilter {
   static constexpr unsigned kFilterMask = kFilterSize - 1;
 
  private:
-  void PushAncestors(const Node& node);
   void PushParentStackFrame(Element& parent);
   void PopParentStackFrame();
 
+<<<<<<< HEAD
   HeapVector<Member<Element>> parent_stack_;
   Vector<uint16_t> set_bits_;
 
   std::bitset<kFilterSize> ancestor_identifier_filter_;
+=======
+  HeapVector<ParentStackFrame> parent_stack_;
+
+  // With 100 unique strings in the filter, 2^12 slot table has false positive
+  // rate of ~0.2%.
+  using IdentifierFilter = BloomFilter<12>;
+  std::unique_ptr<IdentifierFilter> ancestor_identifier_filter_;
+>>>>>>> chromium
 };
 
+template <unsigned maximumIdentifierCount>
 inline bool SelectorFilter::FastRejectSelector(
+<<<<<<< HEAD
     const base::span<const uint16_t> identifier_hashes) const {
   for (unsigned hash : identifier_hashes) {
     // The masking here is actually cheaper than free; it gets
@@ -161,12 +195,20 @@ inline bool SelectorFilter::FastRejectSelector(
     // the compiler get rid of the bounds checking. Thus, there's
     // no point in pre-filtering the hashes in the vector.
     if (!ancestor_identifier_filter_.test(hash & kFilterMask)) {
+=======
+    const unsigned* identifier_hashes) const {
+  DCHECK(ancestor_identifier_filter_);
+  for (unsigned n = 0; n < maximumIdentifierCount && identifier_hashes[n];
+       ++n) {
+    if (!ancestor_identifier_filter_->MayContain(identifier_hashes[n]))
+>>>>>>> chromium
       return true;
-    }
   }
   return false;
 }
 
 }  // namespace blink
+
+WTF_ALLOW_INIT_WITH_MEM_FUNCTIONS(blink::SelectorFilter::ParentStackFrame)
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_SELECTOR_FILTER_H_

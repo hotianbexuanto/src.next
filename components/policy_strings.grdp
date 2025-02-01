@@ -49,12 +49,15 @@
   <message name="IDS_POLICY_DM_STATUS_UNKNOWN_ERROR" desc="Message indicating an unknown error from the enterprise server.">
     Unknown error
   </message>
+<<<<<<< HEAD
   <message name="IDS_POLICY_DM_STATUS_INVALID_PACKAGED_DEVICE_FOR_KIOSK" desc="Message to show when the user tries to enroll a device with a packaged license into Kiosk.">
     This is a bundled device and can not be enrolled with Kiosk and Signage Upgrade.
   </message>
   <message name="IDS_POLICY_DM_STATUS_ORG_UNIT_ENROLLMENT_LIMIT_EXCEEDED" desc="Error message to show when the user tries to enroll a device but the initial enrollment limit for the organization unit has been reached.">
     This device can't be enrolled right now because your organization unit has reached its initial enrollment limit. Contact your administrator for assistance.
   </message>
+=======
+>>>>>>> chromium
   <message name="IDS_POLICY_DM_STATUS_SERVICE_DOMAIN_MISMATCH" desc="Message indicating this client cannot be registered with the specified domain.">
     Domain mismatch
   </message>
@@ -66,9 +69,6 @@
   </message>
   <message name="IDS_POLICY_DM_STATUS_SERVICE_TOO_MANY_REQUESTS" desc="Message indicating the enterprise server receives too many requests in a short time period.">
     Too many requests
-  </message>
-  <message name="IDS_POLICY_DM_STATUS_SERVICE_DEVICE_NEEDS_RESET" desc="Message indicating that the device should be reset.">
-    Device reset required
   </message>
   <message name="IDS_POLICY_DM_STATUS_CONSUMER_ACCOUNT_WITH_PACKAGED_LICENSE" desc="Message to show when the user tries to enroll a device with a packaged license using a consumer account.">
     Can't enroll with consumer account (packaged license available).
@@ -172,61 +172,8 @@
   <message name="IDS_POLICY_VALUE_FORMAT_ERROR" desc="The text displayed in the status column when a policy value doesn't match the expected format.">
     Value doesn't match format.
   </message>
-  <message name="IDS_POLICY_INVALID_FILE_EXTENSION_ERROR" desc="The text displayed in the status column when the file extension is invalid.">
-    File extension is empty or malformed.
-  </message>
-  <message name="IDS_POLICY_INVALID_HASH_ERROR" desc="The text displayed in the status column when the hash string is not of type SHA-256.">
-    Hash must be of format SHA-256.
-  </message>
-  <message name="IDS_POLICY_INVALID_SELECTION_ERROR" desc="The text displayed in the status column when the policy value is not in a list of selectable modes.">
-    The inserted <ph name="VALUE_NAME">$1<ex>paper size</ex></ph> couldn't be found.
-  </message>
-  <message name="IDS_POLICY_PAPER_SIZE_CUSTOM_NO_SIZE_ERROR" desc="The text displayed in the status column when the paper size name is 'custom' but the property 'custom_size' is empty or invalid.">
-    Found paper size name "custom", but the "custom_size" property is empty or invalid.
-  </message>
-  <message name="IDS_POLICY_PAPER_SIZE_NOT_CUSTOM_ERROR" desc="The text displayed in the status column when the property 'custom_size' is set but property 'name' is not set to 'custom'.">
-    The property "custom_size" is set, expected name to be "custom".
-  </message>
-  <message name="IDS_POLICY_INVALID_ACCOUNT_PATTERN_FORMAT_ERROR" desc="The text displayed in the status column for the policy RestrictAccountsToPatterns when the inserted value is not a list of patterns.">
-    Invalid format: Expected a list of patterns.
-  </message>
-  <message name="IDS_POLICY_INVALID_PROTOCOL_ERROR" desc="The text displayed in the status column for the policy AutoLaunchProtocolsFromOrigins when the protocol format is invalid">
-    Invalid protocol format.
-  </message>
-  <message name="IDS_POLICY_INVALID_ORIGIN_ERROR" desc="The text displayed in the status column for the policy AutoLaunchProtocolsFromOrigins when the origin format is invalid">
-    Invalid origin format.
-  </message>
-  <message name="IDS_POLICY_EMPTY_ORIGIN_LIST_ERROR" desc="The text displayed in the status column for the policy AutoLaunchProtocolsFromOrigins when the origin list is empty">
-    Origin list is empty.
-  </message>
-  <if expr="chromeos_ash">
-    <message name="IDS_POLICY_DUPLICATE_FILE_EXTENSION_ERROR" desc="The text displayed in the status column for the policy DefaultHandlersForFileExtensions when a file extension is assigned to more than one handler.">
-      Duplicate handlers for file_extension "<ph name="FILE_EXTENSION">$1<ex>txt</ex></ph>" referenced by apps "<ph name="POLICY_IDS_LIST">$2<ex>https://google.com/maps, pnomlkjighijklmnopabcdefghijklff</ex></ph>".
-    </message>
-  </if>
-  <message name="IDS_POLICY_INVALID_EXTENSION_ID_ERROR" desc="The text displayed in the status column when the extension ID doesn't match the expected format.">
-    Invalid extension ID.
-  </message>
-  <message name="IDS_POLICY_INVALID_UPDATE_URL_ERROR" desc="The text displayed in the status column when the extension update url is invalid or uses an unsupported scheme.">
-    Update URL for extension with ID "<ph name="EXTENSION_ID">$1<ex>abcdefghijklmnopabcdefghijklmnop</ex></ph>" is invalid or uses an unsupported scheme. Supported schemes are: <ph name="HTTP_SCHEME">http</ph>, <ph name="HTTPS_SCHEME">https</ph> and <ph name="FILE_SCHEME">file</ph>.
-  </message>
-  <message name="IDS_POLICY_URL_PATH_SPECIFIED_ERROR" desc="The text displayed in the status column when a path is specified for an URL, which is not supported">
-    The URL pattern "<ph name="URL_PATTERN">$1<ex>*://example.com/</ex></ph>" has a path specified. Paths are not supported for this key, please remove the path and try again. e.g. *://example.com/ => *://example.com",
-  </message>
-  <message name="IDS_POLICY_MISSING_VENDOR_ID_ERROR" desc="The text displayed in the status column for the policy WebUsbAllowDevicesForUrls when an entry has specified a 'product_id' without a the 'vendor_id'">
-    The attribute "vendor_id" must also be specified.
-  </message>
-  <message name="IDS_POLICY_INVALID_NUMBER_OF_URLS_ERROR" desc="The text displayed in the status column for the policy WebUsbAllowDevicesForUrls when an entry has either 0 or more than 2 URLs">
-    Each urls string entry must contain between 1 to 2 URLs.
-  </message>
-  <message name="IDS_POLICY_BRUSCHETTA_UNINSTALLABLE_ERROR" desc="The text displayed in the status column when a VM config is marked as installable, but no image is available to install for this archetecture">
-    This configuration is marked as installable, but no image is provided for this archetecture, so it cannot be installed.
-  </message>
   <message name="IDS_POLICY_CLOUD_SOURCE_ONLY_ERROR" desc="The text displayed in the status column when a policy that should only be set in the cloud is set from another source.">
     Ignored because the policy is not set by a cloud source.
-  </message>
-  <message name="IDS_POLICY_CLOUD_USER_ONLY_ERROR" desc="The text displayed in the status column when a policy should only be set from cloud user is set from another source.">
-    Ignored because the policy can only be set as a cloud user policy.
   </message>
   <message name="IDS_POLICY_CLOUD_MANAGEMENT_ENROLLMENT_ONLY_ERROR" desc="The text displayed in the status column when a policy that is effective only when the machine is enrolled with the Chrome Browser Cloud Management.">
     Ignored because the machine is not enrolled with Chrome Browser Cloud Management.
@@ -243,20 +190,17 @@
   <message name="IDS_POLICY_URL_ALLOW_BLOCK_LIST_MAX_FILTERS_LIMIT_WARNING" desc="The text displayed in the status column of the URLAllowlist and URLBlocklist policies when the max number of filters is exceeded.">
     This field should not have more than <ph name="MAX_ITEMS_LIMIT">$1<ex>1000</ex></ph> entries. All further entries will be ignored.
   </message>
-  <message name="IDS_POLICY_ERROR_WITH_PATH" desc="The text displayed in the status column when a policy error message contains an error path.">
-    Error at <ph name="ERROR_PATH">$1<ex>AC.Delays.ScreenOff</ex></ph>: <ph name="ERROR_MESSAGE">$2<ex>Value is out of range.</ex></ph>
+  <message name="IDS_POLICY_SUBKEY_ERROR" desc="The text displayed in the status column for errors in a subkey of a policy.">
+    Key "<ph name="SUBKEY">$1<ex>ProxyMode</ex></ph>": <ph name="ERROR">$2<ex>Must be specified.</ex></ph>
+  </message>
+  <message name="IDS_POLICY_LIST_ENTRY_ERROR" desc="The text displayed in the status column for errors in list entry in a policy.">
+    List entry "<ph name="ENTRY_INDEX">$1<ex>3</ex></ph>": <ph name="ERROR">$2<ex>Value is out of range.</ex></ph>
   </message>
   <message name="IDS_POLICY_SCHEMA_VALIDATION_ERROR" desc="The text displayed in the status column when the policy value doesn't conform to the policy schema.">
-    Schema validation error: <ph name="ERROR">$1<ex>Value is out of range.</ex></ph>
+    Schema validation error at "<ph name="ERROR_PATH">$1<ex>AC.Delays.ScreenOff</ex></ph>": <ph name="ERROR">$2<ex>Value is out of range.</ex></ph>
   </message>
   <message name="IDS_POLICY_INVALID_JSON_ERROR" desc="The text displayed in the status column when the policy value should be a valid JSON string, but it cannot be parsed as JSON.">
     Error while parsing JSON value: <ph name="ERROR">$1<ex>Line 2, Column 3: Map keys must be quoted.</ex></ph>
-  </message>
-  <message name="IDS_POLICY_INVALID_URL_ERROR" desc="The text displayed in the status column when the URL given is invalid.">
-    Invalid URL.
-  </message>
-  <message name="IDS_POLICY_URL_NOT_HTTPS_ERROR" desc="The text displayed in the status column when the URL given isn't using the https scheme, but needs to be.">
-    URL must be https.
   </message>
   <message name="IDS_POLICY_INVALID_SEARCH_URL_ERROR" desc="The text displayed in the status column when a the URL given for DefaultSearchProviderSearchURL is invalid.">
     Invalid search URL.
@@ -266,12 +210,6 @@
   </message>
   <message name="IDS_POLICY_SECURE_DNS_TEMPLATES_INVALID_ERROR" desc="The text displayed in the status column when one or more of the DnsOverHttpsTemplates server template URIs is invalid.">
     One or more of the DnsOverHttpsTemplates server template URIs is invalid and will not be used.
-  </message>
-  <message name="IDS_POLICY_SECURE_DNS_SALT_INVALID_ERROR" desc="The text displayed in the status column when the value of DnsOverHttpsSalt is invalid.">
-    The <ph name="SECURE_DNS_SALT">DnsOverHttpsSalt</ph> value is invalid and will not be used.
-  </message>
-  <message name="IDS_POLICY_SECURE_DNS_SALT_INVALID_SIZE_ERROR" desc="The text displayed in the status column when the size of DnsOverHttpsSalt is invalid.">
-    The <ph name="SECURE_DNS_SALT">DnsOverHttpsSalt</ph> value does not meet the size requirements.
   </message>
   <message name="IDS_POLICY_SECURE_DNS_TEMPLATES_IRRELEVANT_MODE_ERROR" desc="The text displayed in the status column when the DnsOverHttpsTemplate policy is specified but DnsOverHttpsMode is not set to a value that makes the templates relevant.">
     The DnsOverHttpsTemplates value is not relevant, and will not be used, unless the DnsOverHttpsMode policy is set to either <ph name="SECURE_DNS_MODE_AUTOMATIC">'automatic'</ph> or <ph name="SECURE_DNS_MODE_SECURE">'secure'</ph>.
@@ -288,11 +226,9 @@
   <message name="IDS_POLICY_INVALID_PROXY_MODE_ERROR" desc="The text displayed in the status column when the value for ProxyMode is invalid.">
     Invalid proxy mode.
   </message>
-  <if expr="chromeos_ash">
-    <message name="IDS_POLICY_UNKNOWN_ARC_MANAGED_CONFIGURATION_VARIABLE" desc="The warning text displayed in the status column when the managed configuration of an ARC application contains an unknown variable.">
-      Unknown variable "<ph name="VARIABLE">$1<ex>${UNKNOWN_VARIABLE}</ex></ph>" in the managed configuration of "<ph name="APPLICATION_ID">$2<ex>com.dropbox.android</ex></ph>".
-    </message>
-  </if>
+  <message name="IDS_POLICY_INVALID_UPDATE_URL_ERROR" desc="The text displayed in the status column when the update URL for given extension is invalid.">
+    Invalid update URL for extension with ID "<ph name="EXTENSION_ID">$1<ex>abcdefghijklmnopabcdefghijklmnop</ex></ph>".
+  </message>
   <message name="IDS_POLICY_OFF_CWS_URL_ERROR" desc="The text displayed in the status column when the update URL points to a location other than the Chrome Webstore and the machine is not enterprise managed.">
     This computer is not detected as enterprise managed so policy can only automatically install extensions hosted on the Chrome Webstore. The Chrome Webstore update URL is "<ph name="CWS_UPDATE_URL">$1<ex>https://clients2.google.com/service/update2/crx</ex></ph>".
   </message>
@@ -320,9 +256,6 @@
   <message name="IDS_POLICY_PROXY_NEITHER_SPECIFIED_ERROR" desc="The text displayed in the status column when neither a fixed proxy servers or a .pac url are specified.">
     Neither fixed proxy servers nor a .pac script URL are specified.
   </message>
-  <message name="IDS_POLICY_DEVELOPER_TOOLS_EXTENSIONS_CONFLICT_MESSAGE" desc="The text displayed in the status column when the value of DeveloperToolsAvailability conflicts with ExtensionDeveloperModeSettings.">
-    <ph name="EXTENSION_DEVELOPER_MODE_SETTINGS_POLICY_NAME">$1<ex>ExtensionDeveloperModeSettings</ex></ph> policy is set. <ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME">$2<ex>DeveloperToolsAvailability</ex></ph> will not control the availability of developer mode on extensions page.
-  </message>
   <message name="IDS_POLICY_OVERRIDDEN" desc="The text displayed in the status column when the corresponding policy is being ignored because another policy is overriding it.">
     Ignored because it was overridden by <ph name="POLICY_NAME">$1<ex>ProxyMode</ex></ph>.
   </message>
@@ -332,16 +265,10 @@
   <message name="IDS_POLICY_DEPENDENCY_ERROR" desc="The text displayed in the status column when a policy is ignored as another policies is not set properly.">
     Ignored because <ph name="POLICY_NAME">$1<ex>CloudReportingEnabled</ex></ph> is not set to <ph name="VALUE">$2<ex>Enabled</ex></ph>.
   </message>
-  <message name="IDS_POLICY_DEPENDENCY_ERROR_ANY_VALUE" desc="The text displayed in the status column when a policy is ignored as another policies is not set at all.">
-    Ignored because <ph name="POLICY_NAME">$1<ex>CloudReportingEnabled</ex></ph> is not set.
-  </message>
-  <message name="IDS_POLICY_IDLE_TIMEOUT_ACTIONS_DEPENDENCY_ERROR" desc="The text displayed in the status column when the IdleTimeoutActions policy is ignored because it requires another policy .">
-    These actions require the <ph name="POLICY_NAME">$1<ex>SyncDisabled</ex></ph> policy to be set to <ph name="POLICY_VALUE">$2<ex>Enabled</ex></ph>: <ph name="ACTION_LIST">$3<ex>clear_browsing_history, clear_autofill</ex></ph>.
-  </message>
   <message name="IDS_POLICY_USER_IS_NOT_AFFILIATED_ERROR" desc="The text displayed in the status column when a user cloud policy is ignored due to user is not affiliated to the machine management.">
     Ignored because user is not affiliated to the machine management or the machine is not managed.
   </message>
-  <if expr="chromeos_ash">
+  <if expr="chromeos">
     <message name="IDS_POLICY_NETWORK_CONFIG_PARSE_FAILED" desc="The text displayed in the status column when the corresponding network configuration policy failed to parse.">
       Network configuration failed to be parsed (invalid JSON).
     </message>
@@ -355,8 +282,6 @@ Additional details:
 Additional details:
 <ph name="DEBUG_INFO">$1<ex>ERROR: Field name 'SomeRandomField' is unknown. (at toplevel)</ex></ph>
     </message>
-  </if>
-  <if expr="is_chromeos">
     <message name="IDS_POLICY_SCOPE_ERROR" desc="Text displayed in the status column when a policy is set in an unsupported scope.">
       Policy scope is not supported.
     </message>
@@ -376,6 +301,7 @@ Additional details:
   <message name="IDS_POLICY_PROTO_PARSING_ERROR" desc="Text displayed when error is encountered during policy parsing/decoding.">
     Policy parsing error: <ph name="ERROR">$1<ex>Invalid JSON string: Line: 1, column: 14</ex></ph>
   </message>
+<<<<<<< HEAD
   <message name="IDS_POLICY_HEX_COLOR_ERROR" desc="Error message in the policy summary page for the BrowserThemeColor policy when the policy value is an invalid hex color.">
     Value "<ph name="VALUE">$1<ex>#zzzzzz</ex></ph>" is an invalid hex color.
   </message>
@@ -433,6 +359,11 @@ Additional details:
   <message name="IDS_POLICY_DATA_CONTROLS_UNSUPPORTED_LEVEL" desc="The text displayed in the status column of the DataControlsRules policy when one of its rules contains an unsupported restriction level">
     "<ph name="DATA_CONTROLS_RESTRICTION">$1<ex>SCREENSHOT</ex></ph>" cannot be set to "<ph name="DATA_CONTROLS_LEVEL">$2<ex>WARN</ex></ph>"
   </message>
+=======
+    <message name="IDS_POLICY_HEX_COLOR_ERROR" desc="Error message in the policy summary page for the BrowserThemeColor policy when the policy value is an invalid hex color.">
+      Value "<ph name="VALUE">$1<ex>#zzzzzz</ex></ph>" is an invalid hex color.
+    </message>
+>>>>>>> chromium
 
   <!-- chrome://policy -->
   <message name="IDS_POLICY_TITLE" desc="Page title and the title of the section that lists policies.">
@@ -444,26 +375,14 @@ Additional details:
   <message name="IDS_POLICY_RELOAD_POLICIES" desc="Label for the button that reloads policies.">
     Reload policies
   </message>
-  <message name="IDS_POLICY_RELOADING_POLICIES" desc="Toast notification message indicating policies are being loaded.">
-    Reloading policies
+  <message name="IDS_POLICY_LOADING_POLICIES" desc="Screen reader message indicates policies are being loaded.">
+    Loading policies
   </message>
-  <message name="IDS_POLICY_RELOAD_POLICIES_DONE" desc="Toast notification message indicating policies have been reloaded.">
-    Policies reloaded
+  <message name="IDS_POLICY_LOAD_POLICIES_DONE" desc="Screen reader message indicates policies have been loaded.">
+    Policies is loaded
   </message>
   <message name="IDS_EXPORT_POLICIES_JSON" desc="Label for the button that exports policies in JSON format.">
     Export to JSON
-  </message>
-  <message name="IDS_EXPORT_POLICIES_JSON_DONE" desc="Toast notification message indicating policies are exported.">
-    Exported
-  </message>
-  <message name="IDS_UPLOAD_REPORT" desc="Label for the button that uplaod Chrome usage report">
-    Upload Report
-  </message>
-  <message name="IDS_REPORT_UPLOADING" desc="Toast notification message indicating data is being sent to admin console.">
-    Sending data to admin console
-  </message>
-  <message name="IDS_REPORT_UPLOADED" desc="Toast notification message indicating data has been sent to admin console.">
-    Data sent to admin console
   </message>
   <message name="IDS_POLICY_STATUS" desc="Title of the status section.">
     Status
@@ -482,12 +401,6 @@ Additional details:
     Google Update
   </message>
  </if>
-  <message name="IDS_POLICY_STATUS_ERROR_MANAGED_NO_POLICY" desc="Message to display when a managed device does not have a policy loaded.">
-    Managed user or device has no policy loaded.
-  </message>
-  <message name="IDS_POLICY_STATUS_FLEX_ORG_NO_POLICY" desc="Message to display when a managed account does not have a policy loaded because the account if from a flex org.">
-    No user policies applied. To add user policies, your organization must <ph name="LINK_BEGIN">&lt;a target="_blank" href="https://support.google.com/chrome/a/answer/9122284"&gt;</ph>verify your domain<ph name="LINK_END">&lt;/a&gt;</ph>.
-  </message>
   <message name="IDS_POLICY_LABEL_MACHINE_ENROLLMENT_DOMAIN" desc="Label for the enrollment domain in the machine policy status box.">
     Enrollment domain:
   </message>
@@ -509,9 +422,6 @@ Additional details:
   <message name="IDS_POLICY_LABEL_CLIENT_ID" desc="Label for the client IDs in the policy status boxes.">
     Client ID:
   </message>
-  <message name="IDS_POLICY_LABEL_PROFILE_ID" desc="Label for the user profile ID in the user policy status box.">
-    Profile ID:
-  </message>
   <message name="IDS_POLICY_LABEL_ASSET_ID" desc="Label for the asset ID in the device policy status box.">
     Asset ID:
   </message>
@@ -524,11 +434,8 @@ Additional details:
   <message name="IDS_POLICY_LABEL_MANAGED_BY" desc="Label for the manager in the policy status boxes. Manager can be a domain or an email address.">
     Managed by:
   </message>
-  <message name="IDS_POLICY_LABEL_TIME_SINCE_LAST_FETCH_ATTEMPT" desc="Label for the time since the last fetch attempt in the policy status boxes.">
-    Last fetch attempted:
-  </message>
   <message name="IDS_POLICY_LABEL_TIME_SINCE_LAST_REFRESH" desc="Label for the time since the last refresh in the policy status boxes.">
-    Last policy timestamp:
+    Last fetched:
   </message>
   <message name="IDS_POLICY_LABEL_LAST_CLOUD_REPORT_SENT_TIMESTAMP" desc="Label for the time when the last cloud report is sent successfully.">
     Report sent:
@@ -587,9 +494,6 @@ Additional details:
   <message name="IDS_POLICY_LABEL_INFO" desc="Label for the info row in the policy table.">
     Info
   </message>
-  <message name="IDS_POLICY_LABEL_PRECEDENCE" desc="Label for the precedence order row in the policy precedence table.">
-    Current precedence order
-  </message>
   <message name="IDS_POLICY_SHOW_UNSET" desc="Label for the checkbox that determines whether policies whose value has not been set are shown.">
     Show policies with no value set
   </message>
@@ -601,9 +505,6 @@ Additional details:
   </message>
   <message name="IDS_POLICY_HEADER_LEVEL" desc="Table header for the column in the policy table that details whether a policy is mandatory or recommended.">
     Level
-  </message>
-  <message name="IDS_POLICY_HEADER_NAMESPACE" desc="Table header for the column in the policy table that contains the policy namespace (either 'Chrome', or an extension ID).">
-    Namespace
   </message>
   <message name="IDS_POLICY_HEADER_NAME" desc="Table header for the column in the policy table that contains the policy name.">
     Policy name
@@ -632,15 +533,12 @@ Additional details:
   <message name="IDS_POLICY_SCOPE_USER" desc="Text displayed in the Applies to column when a policy applies to the current user only.">
     Current user
   </message>
-  <message name="IDS_POLICY_SCOPE_ALL_USERS" desc="Text displayed in the Applies to column when a policy applies to all the users in the current session.">
-    All users
-  </message>
-  <if expr="not is_android and not is_chromeos">
+  <if expr="not is_android and not chromeos">
     <message name="IDS_POLICY_SCOPE_DEVICE" desc="Text displayed in the Applies to column when a policy applies to everyone on the machine.">
       Machine
     </message>
   </if>
-  <if expr="is_chromeos or is_android">
+  <if expr="chromeos or is_android">
     <message name="IDS_POLICY_SCOPE_DEVICE" desc="Mobile: Text displayed in the Applies To column when a policy applies to everyone on the device.">
       Device
     </message>
@@ -651,7 +549,7 @@ Additional details:
   <message name="IDS_POLICY_LEVEL_MANDATORY" desc="Text displayed in the Level column when a policy is mandatory.">
     Mandatory
   </message>
-  <message name="IDS_POLICY_SOURCE_ENTERPRISE_DEFAULT" desc="Indicates that a policy is set by default in an enterprise environment and can be overridden (for ChromeOS only).">
+  <message name="IDS_POLICY_SOURCE_ENTERPRISE_DEFAULT" desc="Indicates that a policy is set by default in an enterprise environment and can be overridden (for Chrome OS only).">
     Enterprise default
   </message>
   <message name="IDS_POLICY_SOURCE_DEFAULT" desc="Indicates that a policy is set by default and can be overridden.">
@@ -667,7 +565,7 @@ Additional details:
     Merged
   </message>
   <message name="IDS_POLICY_SOURCE_CLOUD_FROM_ASH" desc="Indicates that the policy originates from the cloud in Ash and piped to Lacros.">
-    Cloud (Ash)
+    Cloud (system-wide)
   </message>
   <message name="IDS_POLICY_SOURCE_RESTRICTED_MANAGED_GUEST_SESSION_OVERRIDE" desc="Indicates that the policy originates from the restricted managed guest session override.">
     Restricted managed guest session override
@@ -678,7 +576,7 @@ Additional details:
   <message name="IDS_POLICY_SOURCE_PLATFORM" desc="Indicates that the policy is obtained from the local OS.">
     Platform
   </message>
-  <message name="IDS_POLICY_SOURCE_DEVICE_LOCAL_ACCOUNT_OVERRIDE" desc="Indicates that the policy is set programmatically because of an active device-local account session: managed session or Kiosk app (both for ChromeOS only). It could have overridden other sources that set this policy.">
+  <message name="IDS_POLICY_SOURCE_DEVICE_LOCAL_ACCOUNT_OVERRIDE" desc="Indicates that the policy is set programmatically because of an active device-local account session: managed session or Kiosk app (both for Chrome OS only). It could have overridden other sources that set this policy.">
     Device local account override
   </message>
   <message name="IDS_POLICY_RISK_TAG_FULL_ADMIN_ACCESS" desc="Title of a group/tag whose policies potentially allow the administrator to access all of a user's data.">
@@ -744,24 +642,6 @@ Additional details:
   <message name="IDS_POLICY_IGNORED_MANDATORY_REPORTING_POLICY" desc="Text explaining that the policy MetricsReportingEnabled can not be forced to enabled anymore">
     This policy cannot be set to "True" and be mandatory, therefore it was changed to recommended.
   </message>
-  <message name="IDS_POLICY_IGNORED_CHROME_PROFILE" desc="Text explaining that the policy cannot be set at the Chrome profile level and is therefore ignored.">
-    This policy cannot be set at the Chrome profile level and will be ignored.
-  </message>
-  <message name="IDS_POLICY_IGNORED_UNAFFILIATED" desc="Text describing that the policy value is not applied because the user is unaffiliated.">
-    This policy is ignored because the user is unaffiliated. For this policy to be applied, the Chrome browser and profile must be managed through the Admin console by the same organization.
-  </message>
-  <message name="IDS_POLICY_PRECEDENCE_PLATFORM_MACHINE" desc="Text describing the platform machine precedence value.">
-    Platform machine
-  </message>
-  <message name="IDS_POLICY_PRECEDENCE_PLATFORM_USER" desc="Text describing the platform user precedence value.">
-    Platform user
-  </message>
-  <message name="IDS_POLICY_PRECEDENCE_CLOUD_MACHINE" desc="Text describing the cloud machine precedence value.">
-    Cloud machine
-  </message>
-  <message name="IDS_POLICY_PRECEDENCE_CLOUD_USER" desc="Text describing the cloud user precedence value.">
-    Cloud user
-  </message>
   <if expr="not is_macosx">
     <message name="IDS_POLICY_SPELLCHECK_UNKNOWN_LANGUAGE" desc="Warning message in the policy summary page for the spellcheck policies when a language is unrecognized or unsupported.">
       List entry "<ph name="LANGUAGE_ID">$1<ex>xx-YY</ex></ph>": Unknown or unsupported language.
@@ -770,9 +650,6 @@ Additional details:
     List entry "<ph name="LANGUAGE_ID">$1<ex>en-GB</ex></ph>": Entry ignored because it is also included in the SpellcheckLanguage policy.
     </message>
   </if>
-  <message name="IDS_POLICY_DEFAULT_GEO_POLICY_ARC_CONFLICT" desc="Warning message for the DefaultGeolocationSetting policy, when the GoogleLocationServicesEnabled policy is set. The former will no longer affect the ARC, when the latter is set.">
-    Warning: This policy is conflicting with the <ph name="POLICY_NAME">$1<ex>GoogleLocationServicesEnabled</ex></ph> and will have no effect on Android apps. Otherwise, this policy is working as intended.
-  </message>
   <message name="IDS_POLICY_LABEL_IS_AFFILIATED" desc="Label to indicate if the user is affiliated or not.">
     Is affiliated:
   </message>
@@ -800,94 +677,6 @@ Additional details:
   <message name="IDS_COPY_POLICIES_JSON" desc="Label for the button that copies policies in JSON format.">
     Copy as JSON
   </message>
-  <message name="IDS_COPY_POLICIES_DONE" desc="Toast notification message indicating policies are copied to clipboard.">
-    Copied to clipboard
-  </message>
-  <message name="IDS_VIEW_POLICY_LOGS" desc="Label for the button that redirects from chrome://policy to chrome://policy/logs.">
-    View logs
-  </message>
-  <message name="IDS_POLICY_MORE_ACTIONS" desc="Label for the dropdown menu on the chrome://policy page that offers additional actions such as downloading policy data as a JSON file, uploading report or showing policy logs.">
-    More actions
-  </message>
-  <message name="IDS_POLICY_TABLE_COLUMN_SORT" desc="Part of the label for policy table sorting arrows.">
-    Sort
-  </message>
-  <message name="IDS_POLICY_TABLE_COLUMN_SORT_ASCENDING" desc="Part of the label for policy table sorting arrows denoting ascending sort order.">
-    in ascending order
-  </message>
-  <message name="IDS_POLICY_TABLE_COLUMN_SORT_DESCENDING" desc="Part of the label for policy table sorting arrows denoting descending sort order.">
-    in descending order
-  </message>
-  <message name="IDS_POLICY_BANNER_PROMOTION_TITLE" desc="Title for Chrome Enterprise Core (CEC) promotion banner">
-    Streamline how your organization manages policies
-  </message>
-  <message name="IDS_POLICY_BANNER_PROMOTION_DESC" desc="Description for Chrome Enterprise Core (CEC) promotion banner">
-    Chrome Enterprise Core gives you a centralized tool for configuring browser policies from the cloud
-  </message>
-  <message name="IDS_POLICY_BANNER_PROMOTION_BTN" desc="Button for Chrome Enterprise Core (CEC) promotion banner">
-    Try Chrome Enterprise Core
-  </message>
-
-  <!-- Strings for chrome://policy/logs -->
-  <message name="IDS_POLICY_LOGS_TITLE" desc="Title for the page.">
-    Policy Logs
-  </message>
-  <message name="IDS_VERSION_INFO" desc="Label for the section showing the version Information.">
-    Version Information
-  </message>
-  <message name="IDS_EXPORT_POLICY_LOGS_JSON" desc="Label for the button that exports the policy logs as a JSON file.">
-    Export Logs to JSON
-  </message>
-  <message name="IDS_REFRESH_POLICY_LOGS" desc="Label for the button that reloads the logs to add any new logs to the page.">
-    Refresh Logs
-  </message>
-
-<!-- Strings for chrome://policy/test -->
-  <message name="IDS_POLICY_TEST_TITLE" desc="Title for the page.">
-    Policy Tests
-  </message>
-  <message name="IDS_POLICY_TEST_RESTART_AND_APPLY" desc="Label for the restart-browser button">
-    Restart and apply policies
-  </message>
-  <message name="IDS_POLICY_TEST_APPLY" desc="Label for the apply-policies button.">
-    Apply policies
-  </message>
-  <message name="IDS_POLICY_TEST_IMPORT" desc="Label for the import-policies-json button.">
-    Import from JSON
-  </message>
-  <message name="IDS_POLICY_TEST_DESC" desc="Text for the page description.">
-    You cannot use this page from a managed acount on this unmanaged device. All managed accounts will be locked if you use this page, except accounts managed by the same entity as this device (affiliated accounts).
-  </message>
-  <message name="IDS_POLICY_TEST_REVERT" desc="Text for the Reset policies button.">
-    Revert applied policies
-  </message>
-  <message name="IDS_POLICY_TEST_TABLE_SCOPE" desc="Text for the column of the policy table for the policy scope.">
-    Scope
-  </message>
-  <message name="IDS_POLICY_TEST_ADD" desc="Label for the add-policy-btn button.">
-    Add policy
-  </message>
-  <message name="IDS_POLICY_SELECT_NAME" desc="Text for the default option in the policy name dropdown menu.">
-    Select policy name
-  </message>
-  <message name="IDS_POLICY_TEST_TABLE_PRESET" desc="Text for the preset column of the policy test table.">
-    Preset
-  </message>
-  <message name="IDS_LOCAL_TEST_POLICIES_ENABLED" desc="Text for banner warning user of test policies being applied">
-    Test policies have been applied. Review and reset them at chrome://policy/test. Admin policies will not be applied.
-  </message>
-  <message name="IDS_POLICY_TEST_PRESET_CUSTOM" desc="Text for the custom option of the preset dropdown in the policy test table.">
-    Custom
-  </message>
-  <message name="IDS_POLICY_TEST_PRESET_LOCAL_MACHINE" desc="Text for the local machine option of the preset dropdown in the policy test table.">
-    Local machine
-  </message>
-  <message name="IDS_POLICY_TEST_PRESET_CLOUD_ACCOUNT" desc="Text for the cloud account option of the preset dropdown in the policy test table.">
-    Cloud account
-  </message>
-  <message name="IDS_POLICY_TEST_USER_AFFILIATED" desc="Text for checkbox to select user affiliation in the policy test table.">
-  User affiliated
-  </message>
 
   <!-- Strings for Disabled chrome://.* screen -->
   <message name="IDS_CHROME_URLS_DISABLED_PAGE_HEADER" desc="A heading for the user when the application is blocked.">
@@ -907,9 +696,6 @@ Additional details:
   <message name="IDS_POLICY_DLP_CLIPBOARD_BLOCKED_ON_COPY_VM" desc="A toast informing the user that sharing clipboard data to VMs is blocked.">
     Sharing from <ph name="ORIGIN_NAME">$1<ex>corp.google.com</ex></ph> to <ph name="VM_NAME">$2<ex>Linux</ex></ph> has been blocked by administrator policy
   </message>
-  <message name="IDS_POLICY_DLP_CLIPBOARD_BLOCK_TOAST_BUTTON" desc="Dismiss toast button label for disabled paste notification.">
-    View details
-  </message>
   <message name="IDS_POLICY_DLP_ANDROID_APPS" desc="Name shown for ARC in data leak prevention toasts.">
     Android apps
   </message>
@@ -922,6 +708,9 @@ Additional details:
   <message name="IDS_POLICY_DLP_CLIPBOARD_WARN_PROCEED_BUTTON" desc="Proceed dialog button label for warning before paste.">
     Paste anyway
   </message>
+  <message name="IDS_POLICY_DLP_CLIPBOARD_WARN_DISMISS_BUTTON" desc="Dismiss dialog button label for warning before paste.">
+    Cancel
+  </message>
   <message name="IDS_POLICY_DLP_CLIPBOARD_WARN_ON_COPY_VM" desc="A toast informing the user that pasting the clipboard data to VMs is not recommended.">
     Copying and pasting this content to <ph name="VM_NAME">$1<ex>Linux</ex></ph> is not recommended by administrator policy
   </message>
@@ -931,33 +720,19 @@ Additional details:
   <message name="IDS_POLICY_DLP_PRINTING_BLOCKED_MESSAGE" desc="The message for notification informing the user that printing is blocked.">
     Printing this content is blocked by administrator policy
   </message>
-  <message name="IDS_POLICY_DLP_PRINTING_WARN_TITLE" desc="The title for notification informing the user that printing is not recommended.">
-    Print confidential file?
+  <message name="IDS_POLICY_DLP_SCREEN_CAPTURE_PAUSED_TITLE" desc="The title for notification informing the user that screen capture is paused.">
+    Screen capture paused
   </message>
-  <message name="IDS_POLICY_DLP_PRINTING_WARN_MESSAGE" desc="The message for notification informing the user that printing is not recommended.">
-    Administrator policy doesn’t recommend printing this content
-  </message>
-  <message name="IDS_POLICY_DLP_PRINTING_WARN_CONTINUE_BUTTON" desc="Continue dialog button label for warning before printing.">
-    Print anyway
-  </message>
-  <message name="IDS_POLICY_DLP_SCREEN_SHARE_BLOCKED_TITLE" desc="The title for notification informing the user that screen share is blocked.">
-    Can’t share confidential content
-  </message>
-  <message name="IDS_POLICY_DLP_SCREEN_SHARE_BLOCKED_MESSAGE" desc="The message for notification informing the user that screen share is blocked.">
+  <message name="IDS_POLICY_DLP_SCREEN_CAPTURE_PAUSED_MESSAGE" desc="The message for notification informing the user that screen capture is paused.">
     Administrator policy disables screen sharing with <ph name="APPLICATION_TITLE">$1<ex>example.com</ex></ph> when confidential content is visible
   </message>
-  <message name="IDS_POLICY_DLP_SCREEN_SHARE_PAUSED_TITLE" desc="The title for notification informing the user that screen share is paused.">
-    Screen share paused
+  <message name="IDS_POLICY_DLP_SCREEN_CAPTURE_RESUMED_TITLE" desc="The title for notification informing the user that screen capture is resumed.">
+    Screen capture resumed
   </message>
-  <message name="IDS_POLICY_DLP_SCREEN_SHARE_PAUSED_MESSAGE" desc="The message for notification informing the user that screen share is paused.">
-    Administrator policy disables screen sharing with <ph name="APPLICATION_TITLE">$1<ex>example.com</ex></ph> when confidential content is visible
-  </message>
-  <message name="IDS_POLICY_DLP_SCREEN_SHARE_RESUMED_TITLE" desc="The title for notification informing the user that screen share is resumed.">
-    Screen share resumed
-  </message>
-  <message name="IDS_POLICY_DLP_SCREEN_SHARE_RESUMED_MESSAGE" desc="The message for notification informing the user that screen share is resumed.">
+  <message name="IDS_POLICY_DLP_SCREEN_CAPTURE_RESUMED_MESSAGE" desc="The message for notification informing the user that screen capture is resumed.">
     Screen sharing with <ph name="APPLICATION_TITLE">$1<ex>example.com</ex></ph> was resumed
   </message>
+<<<<<<< HEAD
   <message name="IDS_POLICY_DLP_SCREEN_CAPTURE_DISABLED_TITLE" desc="The title of the notification when capture mode is disabled because of confidential content.">
     Can't capture confidential content
   </message>
@@ -1409,4 +1184,7 @@ Additional details:
   <message name="IDS_POLICY_SKYVAULT_MIGRATION_DIALOG_UPLOAD_IN_MINUTES_BUTTON" desc="Label for the dialog button to ackowledge that the file upload to cloud storage will start at the scheduled time, in some number of minutes.">
     Upload in <ph name="MINUTES">$1<ex>36</ex></ph> min
   </message>
+=======
+
+>>>>>>> chromium
 </grit-part>

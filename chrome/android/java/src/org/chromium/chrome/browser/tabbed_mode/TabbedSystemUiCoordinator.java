@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,10 +7,10 @@ package org.chromium.chrome.browser.tabbed_mode;
 import android.os.Build;
 import android.view.Window;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.chromium.base.supplier.ObservableSupplier;
+<<<<<<< HEAD
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
@@ -28,13 +28,18 @@ import org.chromium.components.browser_ui.edge_to_edge.EdgeToEdgeSystemBarColorH
 import org.chromium.ui.InsetObserver;
 
 import java.util.Optional;
+=======
+import org.chromium.base.supplier.OneshotSupplier;
+import org.chromium.chrome.browser.compositor.layouts.OverviewModeBehavior;
+import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+>>>>>>> chromium
 
 /**
  * A UI coordinator that manages the system status bar and bottom navigation bar for
  * ChromeTabbedActivity.
  *
- * <p>TODO(crbug.com/40618996): Create a base SystemUiCoordinator to own the
- * StatusBarColorController, and have this class extend that one.
+ * TODO(https://crbug.com/943371): Create a base SystemUiCoordinator to own the
+ *     StatusBarColorController, and have this class extend that one.
  */
 public class TabbedSystemUiCoordinator {
     private @Nullable TabbedNavigationBarColorController mNavigationBarColorController;
@@ -44,6 +49,7 @@ public class TabbedSystemUiCoordinator {
      *
      * @param window The {@link Window} associated with the containing activity.
      * @param tabModelSelector The {@link TabModelSelector} for the containing activity.
+<<<<<<< HEAD
      * @param layoutManagerSupplier {@link LayoutManager} associated with the containing activity.
      * @param fullscreenManager The {@link FullscreenManager} used for containing activity
      * @param edgeToEdgeControllerSupplier Supplies an {@link EdgeToEdgeController} to detect when
@@ -107,6 +113,17 @@ public class TabbedSystemUiCoordinator {
                             insetObserver,
                             edgeToEdgeSystemBarColorHelper,
                             tabObscuringHandler);
+=======
+     * @param overviewModeBehaviorSupplier An {@link ObservableSupplier} for the
+     *         {@link OverviewModeBehavior} associated with the containing activity.
+     */
+    public TabbedSystemUiCoordinator(Window window, TabModelSelector tabModelSelector,
+            @Nullable OneshotSupplier<OverviewModeBehavior> overviewModeBehaviorSupplier) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            assert overviewModeBehaviorSupplier != null;
+            mNavigationBarColorController = new TabbedNavigationBarColorController(
+                    window, tabModelSelector, overviewModeBehaviorSupplier);
+>>>>>>> chromium
         }
     }
 

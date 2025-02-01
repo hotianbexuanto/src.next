@@ -1,10 +1,10 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/chrome_extension_function_details.h"
 
-#include "chrome/browser/extensions/browser_extension_window_controller.h"
+#include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/extensions/window_controller.h"
 #include "chrome/browser/extensions/window_controller_list.h"
 #include "chrome/browser/profiles/profile.h"
@@ -26,17 +26,15 @@ ChromeExtensionFunctionDetails::ChromeExtensionFunctionDetails(
 
 ChromeExtensionFunctionDetails::~ChromeExtensionFunctionDetails() = default;
 
-extensions::WindowController*
-ChromeExtensionFunctionDetails::GetCurrentWindowController() const {
-  // If the delegate has an associated window controller, return it.
+Browser* ChromeExtensionFunctionDetails::GetCurrentBrowser() const {
+  // If the delegate has an associated browser, return it.
   if (function_->dispatcher()) {
-    if (extensions::WindowController* window_controller =
-            function_->dispatcher()->GetExtensionWindowController()) {
-      // Only return the found controller if it's not about to be deleted,
-      // otherwise fall through to finding another one.
-      if (!window_controller->IsDeleteScheduled()) {
-        return window_controller;
-      }
+    extensions::WindowController* window_controller =
+        function_->dispatcher()->GetExtensionWindowController();
+    if (window_controller) {
+      Browser* browser = window_controller->GetBrowser();
+      if (browser)
+        return browser;
     }
   }
 
@@ -54,7 +52,7 @@ ChromeExtensionFunctionDetails::GetCurrentWindowController() const {
   Browser* browser = chrome::FindAnyBrowser(
       profile, function_->include_incognito_information());
   if (browser)
-    return browser->extension_window_controller();
+    return browser;
 
   // NOTE(rafaelw): This can return NULL in some circumstances. In particular,
   // a background_page onload chrome.tabs api call can make it into here
@@ -63,7 +61,7 @@ ChromeExtensionFunctionDetails::GetCurrentWindowController() const {
   // A similar situation may arise during shutdown.
   // TODO(rafaelw): Delay creation of background_page until the browser
   // is available. http://code.google.com/p/chromium/issues/detail?id=13284
-  return nullptr;
+  return NULL;
 }
 
 gfx::NativeWindow ChromeExtensionFunctionDetails::GetNativeWindowForUI() {

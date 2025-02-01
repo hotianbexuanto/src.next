@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,8 +29,6 @@ const char* Activity::ToString(Type type) {
       return "LIFECYCLE_MANAGEMENT";
     case MEDIA:
       return "MEDIA";
-    case MESSAGE:
-      return "MESSAGE";
     case MESSAGE_PORT:
       return "MESSAGE_PORT";
     case MODAL_DIALOG:
@@ -43,10 +41,9 @@ const char* Activity::ToString(Type type) {
       return "PEPPER_API";
     case PROCESS_MANAGER:
       return "PROCESS_MANAGER";
-    case DEBUGGER:
-      return "DEBUGGER";
   }
   NOTREACHED();
+  return "";
 }
 
 }  // namespace extensions

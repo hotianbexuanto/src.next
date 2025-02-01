@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,25 +9,29 @@
 
 #include "net/base/ip_endpoint.h"
 
+#include <ostream>
+
+#include "build/build_config.h"
+
+#if defined(OS_WIN)
+#include <winsock2.h>
+#include <ws2bth.h>
+#elif defined(OS_POSIX)
+#include <netinet/in.h>
+#endif
+
 #include <string.h>
 
-#include <optional>
-#include <ostream>
 #include <tuple>
-#include <utility>
 
 #include "base/check.h"
-#include "base/check_op.h"
-#include "base/containers/span.h"
 #include "base/notreached.h"
-#include "base/numerics/safe_conversions.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/sys_byteorder.h"
-#include "base/values.h"
-#include "build/build_config.h"
 #include "net/base/ip_address.h"
 #include "net/base/sys_addrinfo.h"
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_WIN)
 #include <winsock2.h>
 #include <winternl.h>
@@ -39,12 +43,17 @@
 #include "net/base/winsock_util.h"  // For kBluetoothAddressSize
 #elif BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
 #include <net/if.h>
+=======
+#if defined(OS_WIN)
+#include "net/base/winsock_util.h"
+>>>>>>> chromium
 #endif
 
 namespace net {
 
 namespace {
 
+<<<<<<< HEAD
 // Value dictionary keys
 constexpr std::string_view kValueAddressKey = "address";
 constexpr std::string_view kValuePortKey = "port";
@@ -143,6 +152,61 @@ std::optional<IPEndPoint> IPEndPoint::FromValue(const base::Value& value) {
 }
 
 IPEndPoint::IPEndPoint() = default;
+=======
+// By definition, socklen_t is large enough to hold both sizes.
+const socklen_t kSockaddrInSize = sizeof(struct sockaddr_in);
+const socklen_t kSockaddrIn6Size = sizeof(struct sockaddr_in6);
+
+// Extracts the address and port portions of a sockaddr.
+bool GetIPAddressFromSockAddr(const struct sockaddr* sock_addr,
+                              socklen_t sock_addr_len,
+                              const uint8_t** address,
+                              size_t* address_len,
+                              uint16_t* port) {
+  if (sock_addr->sa_family == AF_INET) {
+    if (sock_addr_len < static_cast<socklen_t>(sizeof(struct sockaddr_in)))
+      return false;
+    const struct sockaddr_in* addr =
+        reinterpret_cast<const struct sockaddr_in*>(sock_addr);
+    *address = reinterpret_cast<const uint8_t*>(&addr->sin_addr);
+    *address_len = IPAddress::kIPv4AddressSize;
+    if (port)
+      *port = base::NetToHost16(addr->sin_port);
+    return true;
+  }
+
+  if (sock_addr->sa_family == AF_INET6) {
+    if (sock_addr_len < static_cast<socklen_t>(sizeof(struct sockaddr_in6)))
+      return false;
+    const struct sockaddr_in6* addr =
+        reinterpret_cast<const struct sockaddr_in6*>(sock_addr);
+    *address = reinterpret_cast<const uint8_t*>(&addr->sin6_addr);
+    *address_len = IPAddress::kIPv6AddressSize;
+    if (port)
+      *port = base::NetToHost16(addr->sin6_port);
+    return true;
+  }
+
+#if defined(OS_WIN)
+  if (sock_addr->sa_family == AF_BTH) {
+    if (sock_addr_len < static_cast<socklen_t>(sizeof(SOCKADDR_BTH)))
+      return false;
+    const SOCKADDR_BTH* addr = reinterpret_cast<const SOCKADDR_BTH*>(sock_addr);
+    *address = reinterpret_cast<const uint8_t*>(&addr->btAddr);
+    *address_len = kBluetoothAddressSize;
+    if (port)
+      *port = static_cast<uint16_t>(addr->port);
+    return true;
+  }
+#endif
+
+  return false;  // Unrecognized |sa_family|.
+}
+
+}  // namespace
+
+IPEndPoint::IPEndPoint() : port_(0) {}
+>>>>>>> chromium
 
 IPEndPoint::~IPEndPoint() = default;
 
@@ -151,13 +215,9 @@ IPEndPoint::IPEndPoint(const IPAddress& address,
                        std::optional<uint32_t> scope_id)
     : address_(address), port_(port), scope_id_(scope_id) {}
 
-IPEndPoint::IPEndPoint(const IPEndPoint& endpoint) = default;
-
-uint16_t IPEndPoint::port() const {
-#if BUILDFLAG(IS_WIN)
-  DCHECK_NE(address_.size(), kBluetoothAddressSize);
-#endif
-  return port_;
+IPEndPoint::IPEndPoint(const IPEndPoint& endpoint) {
+  address_ = endpoint.address_;
+  port_ = endpoint.port_;
 }
 
 AddressFamily IPEndPoint::GetFamily() const {
@@ -170,28 +230,16 @@ int IPEndPoint::GetSockAddrFamily() const {
       return AF_INET;
     case IPAddress::kIPv6AddressSize:
       return AF_INET6;
-#if BUILDFLAG(IS_WIN)
-    case kBluetoothAddressSize:
-      return AF_BTH;
-#endif
     default:
       NOTREACHED() << "Bad IP address";
+      return AF_UNSPEC;
   }
 }
 
 bool IPEndPoint::ToSockAddr(struct sockaddr* address,
                             socklen_t* address_length) const {
-  // By definition, socklen_t is large enough to hold both sizes.
-  constexpr socklen_t kSockaddrInSize =
-      static_cast<socklen_t>(sizeof(struct sockaddr_in));
-  constexpr socklen_t kSockaddrIn6Size =
-      static_cast<socklen_t>(sizeof(struct sockaddr_in6));
-
   DCHECK(address);
   DCHECK(address_length);
-#if BUILDFLAG(IS_WIN)
-  DCHECK_NE(address_.size(), kBluetoothAddressSize);
-#endif
   switch (address_.size()) {
     case IPAddress::kIPv4AddressSize: {
       if (*address_length < kSockaddrInSize)
@@ -230,6 +278,7 @@ bool IPEndPoint::ToSockAddr(struct sockaddr* address,
 bool IPEndPoint::FromSockAddr(const struct sockaddr* sock_addr,
                               socklen_t sock_addr_len) {
   DCHECK(sock_addr);
+<<<<<<< HEAD
   switch (sock_addr->sa_family) {
     case AF_INET: {
       if (sock_addr_len < static_cast<socklen_t>(sizeof(struct sockaddr_in)))
@@ -270,21 +319,27 @@ bool IPEndPoint::FromSockAddr(const struct sockaddr* sock_addr,
       return true;
     }
 #endif
+=======
+
+  const uint8_t* address;
+  size_t address_len;
+  uint16_t port;
+  if (!GetIPAddressFromSockAddr(sock_addr, sock_addr_len, &address,
+                                &address_len, &port)) {
+    return false;
+>>>>>>> chromium
   }
-  return false;  // Unrecognized |sa_family|.
+
+  address_ = net::IPAddress(address, address_len);
+  port_ = port;
+  return true;
 }
 
 std::string IPEndPoint::ToString() const {
-#if BUILDFLAG(IS_WIN)
-  DCHECK_NE(address_.size(), kBluetoothAddressSize);
-#endif
   return IPAddressToStringWithPort(address_, port_);
 }
 
 std::string IPEndPoint::ToStringWithoutPort() const {
-#if BUILDFLAG(IS_WIN)
-  DCHECK_NE(address_.size(), kBluetoothAddressSize);
-#endif
   return address_.ToString();
 }
 
@@ -306,6 +361,7 @@ bool IPEndPoint::operator!=(const IPEndPoint& that) const {
   return !(*this == that);
 }
 
+<<<<<<< HEAD
 base::Value IPEndPoint::ToValue() const {
   base::Value::Dict dict;
 
@@ -331,4 +387,6 @@ std::ostream& operator<<(std::ostream& os, const IPEndPoint& ip_endpoint) {
   return os << ip_endpoint.ToString();
 }
 
+=======
+>>>>>>> chromium
 }  // namespace net

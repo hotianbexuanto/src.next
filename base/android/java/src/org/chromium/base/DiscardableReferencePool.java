@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -42,7 +42,12 @@ public class DiscardableReferencePool {
      * @param <T> The type of the object.
      */
     public static class DiscardableReference<T> {
+<<<<<<< HEAD
         private @Nullable T mPayload;
+=======
+        @Nullable
+        private T mPayload;
+>>>>>>> chromium
 
         private DiscardableReference(T payload) {
             assert payload != null;
@@ -56,7 +61,9 @@ public class DiscardableReferencePool {
             return mPayload;
         }
 
-        /** Clear the referent. */
+        /**
+         * Clear the referent.
+         */
         private void discard() {
             assert mPayload != null;
             mPayload = null;

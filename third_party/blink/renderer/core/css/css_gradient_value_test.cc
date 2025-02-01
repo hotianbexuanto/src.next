@@ -1,13 +1,12 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/css/css_gradient_value.h"
 
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
-#include "third_party/blink/renderer/core/css/css_value_list.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -15,37 +14,24 @@
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/platform/graphics/gradient.h"
 #include "third_party/blink/renderer/platform/testing/task_environment.h"
+=======
+>>>>>>> chromium
 
 namespace blink {
 
 namespace {
 
-using CSSGradientValue = cssvalue::CSSGradientValue;
-
-const CSSGradientValue* ParseSingleGradient(const char* text) {
-  const CSSValue* value = CSSParser::ParseSingleValue(
-      CSSPropertyID::kBackgroundImage, text,
-      StrictCSSParserContext(SecureContextMode::kInsecureContext));
-  if (const auto* list = DynamicTo<CSSValueList>(value)) {
-    DCHECK_EQ(list->length(), 1u);
-    return &To<CSSGradientValue>(list->Item(0));
-  }
-  NOTREACHED();
-}
-
 bool CompareGradients(const char* gradient1, const char* gradient2) {
-  const CSSValue* value1 = ParseSingleGradient(gradient1);
-  const CSSValue* value2 = ParseSingleGradient(gradient2);
+  const CSSValue* value1 = CSSParser::ParseSingleValue(
+      CSSPropertyID::kBackgroundImage, gradient1,
+      StrictCSSParserContext(SecureContextMode::kInsecureContext));
+  const CSSValue* value2 = CSSParser::ParseSingleValue(
+      CSSPropertyID::kBackgroundImage, gradient2,
+      StrictCSSParserContext(SecureContextMode::kInsecureContext));
   return *value1 == *value2;
 }
 
-bool IsUsingContainerRelativeUnits(const char* text) {
-  const CSSGradientValue* gradient = ParseSingleGradient(text);
-  return gradient->IsUsingContainerRelativeUnits();
-}
-
 TEST(CSSGradientValueTest, RadialGradient_Equals) {
-  test::TaskEnvironment task_environment;
   // Trivially identical.
   EXPECT_TRUE(CompareGradients(
       "radial-gradient(circle closest-corner at 100px 60px, blue, red)",
@@ -83,6 +69,7 @@ TEST(CSSGradientValueTest, RadialGradient_Equals) {
                        "radial-gradient(100px at 100px 60px, blue, red)"));
 }
 
+<<<<<<< HEAD
 TEST(CSSGradientValueTest, RepeatingRadialGradientNan) {
   test::TaskEnvironment task_environment;
   std::unique_ptr<DummyPageHolder> dummy_page_holder =
@@ -148,6 +135,8 @@ TEST(CSSGradientValueTest, IsUsingContainerRelativeUnits) {
       "conic-gradient(from 180deg at 10px 20px, green, blue)"));
 }
 
+=======
+>>>>>>> chromium
 }  // namespace
 
 }  // namespace blink

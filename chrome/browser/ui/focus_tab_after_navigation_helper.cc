@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,8 +17,7 @@
 
 FocusTabAfterNavigationHelper::FocusTabAfterNavigationHelper(
     content::WebContents* contents)
-    : content::WebContentsObserver(contents),
-      content::WebContentsUserData<FocusTabAfterNavigationHelper>(*contents) {}
+    : content::WebContentsObserver(contents) {}
 
 FocusTabAfterNavigationHelper::~FocusTabAfterNavigationHelper() = default;
 
@@ -40,8 +39,13 @@ void FocusTabAfterNavigationHelper::ReadyToCommitNavigation(
 bool FocusTabAfterNavigationHelper::ShouldFocusTabContents(
     content::NavigationHandle* navigation) {
   // Don't focus content in an inactive window or tab.
+<<<<<<< HEAD
   Browser* browser = chrome::FindBrowserWithTab(web_contents());
   if (!browser) {
+=======
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents());
+  if (!browser)
+>>>>>>> chromium
     return false;
   }
   if (!browser->window()->IsActive()) {
@@ -52,7 +56,14 @@ bool FocusTabAfterNavigationHelper::ShouldFocusTabContents(
   }
 
   // Don't focus content after subframe navigations.
+<<<<<<< HEAD
   if (!navigation->IsInPrimaryMainFrame()) {
+=======
+  // TODO(https://crbug.com/1218946): With MPArch there may be multiple main
+  // frames. This caller was converted automatically to the primary main frame
+  // to preserve its semantics. Follow up to confirm correctness.
+  if (!navigation->IsInPrimaryMainFrame())
+>>>>>>> chromium
     return false;
   }
 
@@ -100,4 +111,4 @@ bool FocusTabAfterNavigationHelper::IsNtpURL(const GURL& url) {
   return search::IsNTPOrRelatedURL(url, profile);
 }
 
-WEB_CONTENTS_USER_DATA_KEY_IMPL(FocusTabAfterNavigationHelper);
+WEB_CONTENTS_USER_DATA_KEY_IMPL(FocusTabAfterNavigationHelper)

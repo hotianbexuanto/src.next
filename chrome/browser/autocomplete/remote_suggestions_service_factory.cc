@@ -1,13 +1,18 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/autocomplete/remote_suggestions_service_factory.h"
 
+<<<<<<< HEAD
 #include "base/no_destructor.h"
 #include "chrome/browser/autocomplete/document_suggestions_service_factory.h"
 #include "chrome/browser/autocomplete/enterprise_search_aggregator_suggestions_service_factory.h"
+=======
+#include "base/memory/singleton.h"
+>>>>>>> chromium
 #include "chrome/browser/profiles/profile.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/omnibox/browser/remote_suggestions_service.h"
 #include "content/public/browser/storage_partition.h"
 
@@ -22,26 +27,29 @@ RemoteSuggestionsService* RemoteSuggestionsServiceFactory::GetForProfile(
 // static
 RemoteSuggestionsServiceFactory*
 RemoteSuggestionsServiceFactory::GetInstance() {
-  static base::NoDestructor<RemoteSuggestionsServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<RemoteSuggestionsServiceFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-RemoteSuggestionsServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* RemoteSuggestionsServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
+<<<<<<< HEAD
   return std::make_unique<RemoteSuggestionsService>(
       DocumentSuggestionsServiceFactory::GetForProfile(
           profile, /*create_if_necessary=*/true),
       EnterpriseSearchAggregatorSuggestionsServiceFactory::GetForProfile(
           profile, /*create_if_necessary=*/true),
+=======
+  return new RemoteSuggestionsService(
+>>>>>>> chromium
       profile->GetDefaultStoragePartition()
           ->GetURLLoaderFactoryForBrowserProcess());
 }
 
 RemoteSuggestionsServiceFactory::RemoteSuggestionsServiceFactory()
-    : ProfileKeyedServiceFactory(
+    : BrowserContextKeyedServiceFactory(
           "RemoteSuggestionsService",
+<<<<<<< HEAD
           ProfileSelections::Builder()
               // Service is needed in OTR profiles (Incognito and Guest).
               .WithRegular(ProfileSelection::kOwnInstance)
@@ -52,6 +60,9 @@ RemoteSuggestionsServiceFactory::RemoteSuggestionsServiceFactory()
               .Build()) {
   DependsOn(DocumentSuggestionsServiceFactory::GetInstance());
   DependsOn(EnterpriseSearchAggregatorSuggestionsServiceFactory::GetInstance());
+=======
+          BrowserContextDependencyManager::GetInstance()) {
+>>>>>>> chromium
 }
 
-RemoteSuggestionsServiceFactory::~RemoteSuggestionsServiceFactory() = default;
+RemoteSuggestionsServiceFactory::~RemoteSuggestionsServiceFactory() {}

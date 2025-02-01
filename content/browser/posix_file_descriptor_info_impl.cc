@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -71,11 +71,18 @@ bool PosixFileDescriptorInfoImpl::OwnsFD(base::PlatformFile file) {
 }
 
 base::ScopedFD PosixFileDescriptorInfoImpl::ReleaseFD(base::PlatformFile file) {
+<<<<<<< HEAD
   auto found =
       std::ranges::find(owned_descriptors_, file, &base::ScopedFD::get);
   CHECK(found != owned_descriptors_.end(), base::NotFatalUntil::M131);
+=======
+  DCHECK(OwnsFD(file));
+>>>>>>> chromium
 
   base::ScopedFD fd;
+  auto found =
+      std::find(owned_descriptors_.begin(), owned_descriptors_.end(), file);
+
   std::swap(*found, fd);
   owned_descriptors_.erase(found);
 

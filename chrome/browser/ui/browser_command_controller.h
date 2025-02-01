@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,25 +6,27 @@
 #define CHROME_BROWSER_UI_BROWSER_COMMAND_CONTROLLER_H_
 
 #include "base/gtest_prod_util.h"
+<<<<<<< HEAD
 #include "base/memory/raw_ptr.h"
 #include "build/build_config.h"
+=======
+#include "base/macros.h"
+#include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "chrome/browser/command_updater.h"
 #include "chrome/browser/command_updater_delegate.h"
 #include "chrome/browser/command_updater_impl.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
-#include "chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome_section.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_member.h"
 #include "components/sessions/core/tab_restore_service_observer.h"
-#include "content/public/browser/web_contents_observer.h"
-#include "ui/actions/actions.h"
 #include "ui/base/window_open_disposition.h"
 
 class Browser;
 class BrowserWindow;
 class Profile;
 
-namespace input {
+namespace content {
 struct NativeWebKeyboardEvent;
 }
 
@@ -38,17 +40,13 @@ class BrowserCommandController : public CommandUpdater,
                                  public sessions::TabRestoreServiceObserver {
  public:
   explicit BrowserCommandController(Browser* browser);
-
-  BrowserCommandController(const BrowserCommandController&) = delete;
-  BrowserCommandController& operator=(const BrowserCommandController&) = delete;
-
   ~BrowserCommandController() override;
 
   // Returns true if |command_id| is a reserved command whose keyboard shortcuts
   // should not be sent to the renderer or |event| was triggered by a key that
   // we never want to send to the renderer.
   bool IsReservedCommandOrKey(int command_id,
-                              const input::NativeWebKeyboardEvent& event);
+                              const content::NativeWebKeyboardEvent& event);
 
   // Notifies the controller that state has changed in one of the following
   // areas and it should update command states.
@@ -56,7 +54,7 @@ class BrowserCommandController : public CommandUpdater,
   void ZoomStateChanged();
   void ContentRestrictionsChanged();
   void FullscreenStateChanged();
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   // Called when the browser goes in or out of the special locked fullscreen
   // mode. In this mode the user is basically locked into the current browser
   // window and tab hence we disable most keyboard shortcuts and we also
@@ -68,7 +66,7 @@ class BrowserCommandController : public CommandUpdater,
   void LoadingStateChanged(bool is_loading, bool force);
   void FindBarVisibilityChanged();
   void ExtensionStateChanged();
-  void TabKeyboardFocusChangedTo(std::optional<int> index);
+  void TabKeyboardFocusChangedTo(absl::optional<int> index);
   void WebContentsFocusChanged();
 
   // Overriden from CommandUpdater:
@@ -88,6 +86,9 @@ class BrowserCommandController : public CommandUpdater,
   // Shared state updating: these functions are static and public to share with
   // outside code.
 
+  // Updates the open-file state.
+  static void UpdateOpenFileState(CommandUpdater* command_updater);
+
   // Update commands whose state depends on incognito mode availability and that
   // only depend on the profile.
   static void UpdateSharedCommandsForIncognitoAvailability(
@@ -95,9 +96,14 @@ class BrowserCommandController : public CommandUpdater,
       Profile* profile);
 
  private:
+<<<<<<< HEAD
 #if BUILDFLAG(IS_CHROMEOS)
   friend class BrowserCommandControllerBrowserTestLockedFullscreen;
 #endif
+=======
+  FRIEND_TEST_ALL_PREFIXES(BrowserCommandControllerBrowserTest,
+                           LockedFullscreen);
+>>>>>>> chromium
 
   // Overridden from TabStripModelObserver:
   void OnTabStripModelChanged(
@@ -159,10 +165,7 @@ class BrowserCommandController : public CommandUpdater,
   // app windows.
   void UpdateCommandsForHostedAppAvailability();
 
-  // Update commands that are used in the Extensions menu in the app menu.
-  void UpdateCommandsForExtensionsMenu();
-
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   // Update commands whose state depends on whether the window is in locked
   // fullscreen mode or not.
   void UpdateCommandsForLockedFullscreenMode();
@@ -176,6 +179,9 @@ class BrowserCommandController : public CommandUpdater,
 
   // Updates the save-page-as command state.
   void UpdateSaveAsState();
+
+  // Updates the show-sync command state.
+  void UpdateShowSyncState(bool show_main_ui);
 
   // Ask the Reload/Stop button to change its icon, and update the Stop command
   // state.  |is_loading| is true if the current WebContents is loading.
@@ -196,47 +202,27 @@ class BrowserCommandController : public CommandUpdater,
   // Updates commands for tab keyboard focus state. If |target_index| is
   // populated, it is the index of the tab with focus; if it is not populated,
   // no tab has keyboard focus.
-  void UpdateCommandsForTabKeyboardFocus(std::optional<int> target_index);
+  void UpdateCommandsForTabKeyboardFocus(absl::optional<int> target_index);
 
   // Updates commands that depend on whether web contents is focused or not.
   void UpdateCommandsForWebContentsFocus();
 
-  // Updates commands that depend on the state of the tab strip model.
-  void UpdateCommandsForTabStripStateChanged();
-
-  // Returns the relevant action for the current browser for a given
-  // `action_id`.
-  actions::ActionItem* FindAction(actions::ActionId action_id);
-
-  // Updates the enabled status for both `command_id` and `action_id`, given
-  // that it exists.
-  void UpdateCommandAndActionEnabled(int command_id,
-                                     actions::ActionId action_id,
-                                     bool enabled);
-
-  // Helper method to show the customize chrome sidepanel and optionally scroll
-  // to a specific section.
-  void ShowCustomizeChromeSidePanel(
-      std::optional<CustomizeChromeSection> section = std::nullopt);
-
   inline BrowserWindow* window();
   inline Profile* profile();
 
-  const raw_ptr<Browser> browser_;
+  Browser* const browser_;
 
   // The CommandUpdaterImpl that manages the browser window commands.
   CommandUpdaterImpl command_updater_;
 
   PrefChangeRegistrar profile_pref_registrar_;
   PrefChangeRegistrar local_pref_registrar_;
+  BooleanPrefMember pref_signin_allowed_;
 
   // In locked fullscreen mode disallow enabling/disabling commands.
   bool is_locked_fullscreen_ = false;
 
-  // If the Customize Chrome side panel is shown, determines which section to
-  // display.
-  CustomizeChromeSection customize_chrome_section_ =
-      CustomizeChromeSection::kUnspecified;
+  DISALLOW_COPY_AND_ASSIGN(BrowserCommandController);
 };
 
 }  // namespace chrome

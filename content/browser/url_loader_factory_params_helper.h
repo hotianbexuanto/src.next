@@ -1,16 +1,14 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CONTENT_BROWSER_URL_LOADER_FACTORY_PARAMS_HELPER_H_
 #define CONTENT_BROWSER_URL_LOADER_FACTORY_PARAMS_HELPER_H_
 
-#include <string_view>
-
+#include "base/strings/string_piece.h"
 #include "content/common/content_export.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/network/public/mojom/cross_origin_embedder_policy.mojom-forward.h"
-#include "services/network/public/mojom/early_hints.mojom-forward.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "services/network/public/mojom/url_loader.mojom-shared.h"
 #include "url/origin.h"
@@ -19,15 +17,8 @@ namespace net {
 class IsolationInfo;
 }  // namespace net
 
-namespace network {
-namespace mojom {
-class SharedDictionaryAccessObserver;
-}  // namespace mojom
-}  // namespace network
-
 namespace content {
 
-class NavigationRequest;
 class RenderFrameHostImpl;
 class RenderProcessHost;
 
@@ -63,17 +54,13 @@ class URLLoaderFactoryParamsHelper {
       mojo::PendingRemote<network::mojom::DocumentIsolationPolicyReporter>
           dip_reporter,
       RenderProcessHost* process,
-      network::mojom::TrustTokenOperationPolicyVerdict
-          trust_token_issuance_policy,
-      network::mojom::TrustTokenOperationPolicyVerdict
-          trust_token_redemption_policy,
-      net::CookieSettingOverrides cookie_setting_overrides,
-      std::string_view debug_tag);
+      network::mojom::TrustTokenRedemptionPolicy trust_token_redemption_policy,
+      base::StringPiece debug_tag);
 
   // Creates URLLoaderFactoryParams to be used by |isolated_world_origin| hosted
   // within the |frame|.
   //
-  // TODO(crbug.com/40137011): Remove the CreateForIsolatedWorld method
+  // TODO(https://crbug.com/1098410): Remove the CreateForIsolatedWorld method
   // once Chrome Platform Apps are gone.
   static network::mojom::URLLoaderFactoryParamsPtr CreateForIsolatedWorld(
       RenderFrameHostImpl* frame,
@@ -81,16 +68,11 @@ class URLLoaderFactoryParamsHelper {
       const url::Origin& main_world_origin,
       const net::IsolationInfo& isolation_info,
       network::mojom::ClientSecurityStatePtr client_security_state,
-      network::mojom::TrustTokenOperationPolicyVerdict
-          trust_token_issuance_policy,
-      network::mojom::TrustTokenOperationPolicyVerdict
-          trust_token_redemption_policy,
-      net::CookieSettingOverrides cookie_setting_overrides);
+      network::mojom::TrustTokenRedemptionPolicy trust_token_redemption_policy);
 
   static network::mojom::URLLoaderFactoryParamsPtr CreateForPrefetch(
       RenderFrameHostImpl* frame,
-      network::mojom::ClientSecurityStatePtr client_security_state,
-      net::CookieSettingOverrides cookie_setting_overrides);
+      network::mojom::ClientSecurityStatePtr client_security_state);
 
   // Creates URLLoaderFactoryParams for either fetching the worker script or for
   // fetches initiated from a worker.
@@ -105,6 +87,7 @@ class URLLoaderFactoryParamsHelper {
       mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
           url_loader_network_observer,
       mojo::PendingRemote<network::mojom::DevToolsObserver> devtools_observer,
+<<<<<<< HEAD
       network::mojom::ClientSecurityStatePtr client_security_state,
       std::string_view debug_tag,
       bool require_cross_site_request_for_cookies);
@@ -125,6 +108,9 @@ class URLLoaderFactoryParamsHelper {
           shared_dictionary_observer,
       mojo::PendingRemote<network::mojom::DeviceBoundSessionAccessObserver>
           device_bound_session_observer);
+=======
+      base::StringPiece debug_tag);
+>>>>>>> chromium
 
  private:
   // Only static methods.

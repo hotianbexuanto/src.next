@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,12 +10,12 @@
 #include <memory>
 #include <string>
 
-#include "base/memory/raw_ptr.h"
+#include "base/compiler_specific.h"
+#include "base/macros.h"
 #include "base/scoped_observation.h"
-#include "chrome/browser/extensions/commands/command_service.h"
+#include "chrome/browser/extensions/api/commands/command_service.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_observer.h"
-#include "extensions/common/extension_id.h"
 #include "ui/base/accelerators/media_keys_listener.h"
 
 namespace content {
@@ -54,10 +54,6 @@ class ExtensionKeybindingRegistry : public CommandService::Observer,
   ExtensionKeybindingRegistry(content::BrowserContext* context,
                               ExtensionFilter extension_filter,
                               Delegate* delegate);
-
-  ExtensionKeybindingRegistry(const ExtensionKeybindingRegistry&) = delete;
-  ExtensionKeybindingRegistry& operator=(const ExtensionKeybindingRegistry&) =
-      delete;
 
   ~ExtensionKeybindingRegistry() override;
 
@@ -103,14 +99,14 @@ class ExtensionKeybindingRegistry : public CommandService::Observer,
   bool NotifyEventTargets(const ui::Accelerator& accelerator);
 
   // Notifies appropriate parties that a command has been executed.
-  void CommandExecuted(const ExtensionId& extension_id,
+  void CommandExecuted(const std::string& extension_id,
                        const std::string& command);
 
   // Add event target (extension_id, command name) to the target list of
   // |accelerator|. Note that only media keys can have more than one event
   // target.
   void AddEventTarget(const ui::Accelerator& accelerator,
-                      const ExtensionId& extension_id,
+                      const std::string& extension_id,
                       const std::string& command_name);
 
   // Get the first event target by the given |accelerator|. For a valid
@@ -119,7 +115,7 @@ class ExtensionKeybindingRegistry : public CommandService::Observer,
   // set to the right target; otherwise, false is returned and |extension_id|,
   // |command_name| are unchanged.
   bool GetFirstTarget(const ui::Accelerator& accelerator,
-                      ExtensionId* extension_id,
+                      std::string* extension_id,
                       std::string* command_name) const;
 
   // Returns true if the |event_targets_| is empty; otherwise returns false.
@@ -130,9 +126,9 @@ class ExtensionKeybindingRegistry : public CommandService::Observer,
 
  private:
   // extensions::CommandService::Observer:
-  void OnExtensionCommandAdded(const ExtensionId& extension_id,
+  void OnExtensionCommandAdded(const std::string& extension_id,
                                const Command& command) override;
-  void OnExtensionCommandRemoved(const ExtensionId& extension_id,
+  void OnExtensionCommandRemoved(const std::string& extension_id,
                                  const Command& command) override;
   void OnCommandServiceDestroying() override;
 
@@ -154,18 +150,18 @@ class ExtensionKeybindingRegistry : public CommandService::Observer,
   // the corresponding extension. Returns true if at least one command was
   // executed.
   bool ExecuteCommands(const ui::Accelerator& accelerator,
-                       const ExtensionId& extension_id);
+                       const std::string& extension_id);
 
   // Returns true if any media keys are registered.
   bool IsListeningToAnyMediaKeys() const;
 
-  raw_ptr<content::BrowserContext> browser_context_;
+  content::BrowserContext* browser_context_;
 
   // What extensions to register keybindings for.
   ExtensionFilter extension_filter_;
 
   // Weak pointer to our delegate. Not owned by us. Must outlive this class.
-  raw_ptr<Delegate> delegate_;
+  Delegate* delegate_;
 
   // Maps an accelerator to a list of string pairs (extension id, command name)
   // for commands that have been registered. This keeps track of the targets for
@@ -174,7 +170,7 @@ class ExtensionKeybindingRegistry : public CommandService::Observer,
   // commands, whereas on other platforms it does not. Note that normal
   // accelerator (which isn't media keys) has only one target, while the media
   // keys can have more than one.
-  typedef std::list<std::pair<ExtensionId, std::string>> TargetList;
+  typedef std::list<std::pair<std::string, std::string> > TargetList;
   typedef std::map<ui::Accelerator, TargetList> EventTargets;
   EventTargets event_targets_;
 
@@ -194,6 +190,8 @@ class ExtensionKeybindingRegistry : public CommandService::Observer,
 
   // Listen for Media keys events.
   std::unique_ptr<ui::MediaKeysListener> media_keys_listener_;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionKeybindingRegistry);
 };
 
 }  // namespace extensions

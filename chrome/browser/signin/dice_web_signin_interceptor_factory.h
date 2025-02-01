@@ -1,17 +1,18 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_SIGNIN_DICE_WEB_SIGNIN_INTERCEPTOR_FACTORY_H_
 #define CHROME_BROWSER_SIGNIN_DICE_WEB_SIGNIN_INTERCEPTOR_FACTORY_H_
 
-#include "base/no_destructor.h"
-#include "chrome/browser/profiles/profile_keyed_service_factory.h"
+#include "base/memory/singleton.h"
+#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 
 class DiceWebSigninInterceptor;
 class Profile;
 
-class DiceWebSigninInterceptorFactory : public ProfileKeyedServiceFactory {
+class DiceWebSigninInterceptorFactory
+    : public BrowserContextKeyedServiceFactory {
  public:
   static DiceWebSigninInterceptor* GetForProfile(Profile* profile);
   static DiceWebSigninInterceptorFactory* GetInstance();
@@ -22,14 +23,14 @@ class DiceWebSigninInterceptorFactory : public ProfileKeyedServiceFactory {
       const DiceWebSigninInterceptorFactory&) = delete;
 
  private:
-  friend base::NoDestructor<DiceWebSigninInterceptorFactory>;
+  friend struct base::DefaultSingletonTraits<DiceWebSigninInterceptorFactory>;
   DiceWebSigninInterceptorFactory();
   ~DiceWebSigninInterceptorFactory() override;
 
   // BrowserContextKeyedServiceFactory:
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

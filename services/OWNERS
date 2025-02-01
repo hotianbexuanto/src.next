@@ -1,8 +1,17 @@
 set noparent
 blundell@chromium.org
+<<<<<<< HEAD
 
 # For adding or removing languages.
 per-file *.grd=claudiomagni@chromium.org
 
 # Translation artifacts:
 per-file ....xtb=file://tools/translation/TRANSLATION_OWNERS
+=======
+jam@chromium.org
+rockot@google.com
+sky@chromium.org
+
+# For adding or removing languages.
+per-file *.grd=claudiomagni@chromium.org
+>>>>>>> chromium

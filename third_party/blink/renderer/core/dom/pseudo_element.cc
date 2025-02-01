@@ -28,36 +28,34 @@
 
 #include <utility>
 
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/css/post_style_update_scope.h"
 #include "third_party/blink/renderer/core/css/resolver/style_adjuster.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
-#include "third_party/blink/renderer/core/css/style_containment_scope_tree.h"
-#include "third_party/blink/renderer/core/dom/element_rare_data_vector.h"
+#include "third_party/blink/renderer/core/dom/element_rare_data.h"
 #include "third_party/blink/renderer/core/dom/first_letter_pseudo_element.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/dom/scroll_button_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/scroll_marker_group_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/scroll_marker_pseudo_element.h"
+=======
+#include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/frame/web_feature.h"
-#include "third_party/blink/renderer/core/html/forms/html_input_element.h"
-#include "third_party/blink/renderer/core/html/forms/html_option_element.h"
-#include "third_party/blink/renderer/core/html/html_quote_element.h"
-#include "third_party/blink/renderer/core/input_type_names.h"
 #include "third_party/blink/renderer/core/layout/generated_children.h"
-#include "third_party/blink/renderer/core/layout/layout_counter.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_quote.h"
-#include "third_party/blink/renderer/core/layout/list/list_marker.h"
+#include "third_party/blink/renderer/core/layout/list_marker.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
-#include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/style/content_data.h"
-#include "third_party/blink/renderer/core/view_transition/view_transition.h"
-#include "third_party/blink/renderer/core/view_transition/view_transition_pseudo_element_base.h"
-#include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 
 namespace blink {
 
+<<<<<<< HEAD
 using mojom::blink::FormControlType;
 
 namespace {
@@ -127,18 +125,29 @@ PseudoElement* PseudoElement::Create(Element* parent,
          pseudo_id == kPseudoIdColumn);
   return MakeGarbageCollected<PseudoElement>(parent, pseudo_id,
                                              view_transition_name);
+=======
+PseudoElement* PseudoElement::Create(Element* parent, PseudoId pseudo_id) {
+  if (pseudo_id == kPseudoIdFirstLetter)
+    return MakeGarbageCollected<FirstLetterPseudoElement>(parent);
+  DCHECK(pseudo_id == kPseudoIdAfter || pseudo_id == kPseudoIdBefore ||
+         pseudo_id == kPseudoIdBackdrop || pseudo_id == kPseudoIdMarker);
+  return MakeGarbageCollected<PseudoElement>(parent, pseudo_id);
+>>>>>>> chromium
 }
 
 const QualifiedName& PseudoElementTagName(PseudoId pseudo_id) {
   switch (pseudo_id) {
     case kPseudoIdAfter: {
-      DEFINE_STATIC_LOCAL(QualifiedName, after, (AtomicString("::after")));
+      DEFINE_STATIC_LOCAL(QualifiedName, after,
+                          (g_null_atom, "::after", g_null_atom));
       return after;
     }
     case kPseudoIdBefore: {
-      DEFINE_STATIC_LOCAL(QualifiedName, before, (AtomicString("::before")));
+      DEFINE_STATIC_LOCAL(QualifiedName, before,
+                          (g_null_atom, "::before", g_null_atom));
       return before;
     }
+<<<<<<< HEAD
     case kPseudoIdCheckMark: {
       DEFINE_STATIC_LOCAL(QualifiedName, check, (AtomicString("::checkmark")));
       return check;
@@ -148,25 +157,24 @@ const QualifiedName& PseudoElementTagName(PseudoId pseudo_id) {
                           (AtomicString("::picker-icon")));
       return picker_icon;
     }
+=======
+>>>>>>> chromium
     case kPseudoIdBackdrop: {
       DEFINE_STATIC_LOCAL(QualifiedName, backdrop,
-                          (AtomicString("::backdrop")));
+                          (g_null_atom, "::backdrop", g_null_atom));
       return backdrop;
-    }
-    case kPseudoIdColumn: {
-      DEFINE_STATIC_LOCAL(QualifiedName, first_letter,
-                          (AtomicString("::column")));
-      return first_letter;
     }
     case kPseudoIdFirstLetter: {
       DEFINE_STATIC_LOCAL(QualifiedName, first_letter,
-                          (AtomicString("::first-letter")));
+                          (g_null_atom, "::first-letter", g_null_atom));
       return first_letter;
     }
     case kPseudoIdMarker: {
-      DEFINE_STATIC_LOCAL(QualifiedName, marker, (AtomicString("::marker")));
+      DEFINE_STATIC_LOCAL(QualifiedName, marker,
+                          (g_null_atom, "::marker", g_null_atom));
       return marker;
     }
+<<<<<<< HEAD
     case kPseudoIdScrollMarkerGroup: {
       DEFINE_STATIC_LOCAL(QualifiedName, scroll_marker_group,
                           (AtomicString("::scroll-marker-group")));
@@ -224,13 +232,17 @@ const QualifiedName& PseudoElementTagName(PseudoId pseudo_id) {
                           (AtomicString("::view-transition-old")));
       return transition_outgoing_image;
     }
+=======
+>>>>>>> chromium
     default:
       NOTREACHED();
   }
-  DEFINE_STATIC_LOCAL(QualifiedName, name, (AtomicString("::unknown")));
+  DEFINE_STATIC_LOCAL(QualifiedName, name,
+                      (g_null_atom, "::unknown", g_null_atom));
   return name;
 }
 
+<<<<<<< HEAD
 AtomicString PseudoElement::PseudoElementNameForEvents(Element* element) {
   DCHECK(element);
   auto pseudo_id = element->GetPseudoIdForStyling();
@@ -263,6 +275,14 @@ AtomicString PseudoElement::PseudoElementNameForEvents(Element* element) {
 
 PseudoId PseudoElement::GetPseudoIdForStyling() const {
   return ResolvePseudoIdAlias(pseudo_id_);
+=======
+const AtomicString& PseudoElement::PseudoElementNameForEvents(
+    PseudoId pseudo_id) {
+  if (pseudo_id == kPseudoIdNone)
+    return g_null_atom;
+  else
+    return PseudoElementTagName(pseudo_id).LocalName();
+>>>>>>> chromium
 }
 
 bool PseudoElement::IsWebExposed(PseudoId pseudo_id, const Node* parent) {
@@ -276,14 +296,11 @@ bool PseudoElement::IsWebExposed(PseudoId pseudo_id, const Node* parent) {
   }
 }
 
-PseudoElement::PseudoElement(Element* parent,
-                             PseudoId pseudo_id,
-                             const AtomicString& view_transition_name)
-    : Element(PseudoElementTagName(ResolvePseudoIdAlias(pseudo_id)),
+PseudoElement::PseudoElement(Element* parent, PseudoId pseudo_id)
+    : Element(PseudoElementTagName(pseudo_id),
               &parent->GetDocument(),
               kCreateElement),
-      pseudo_id_(pseudo_id),
-      view_transition_name_(view_transition_name) {
+      pseudo_id_(pseudo_id) {
   DCHECK_NE(pseudo_id, kPseudoIdNone);
   parent->GetTreeScope().AdoptIfNeeded(*this);
   SetParentOrShadowHostNode(parent);
@@ -292,26 +309,13 @@ PseudoElement::PseudoElement(Element* parent,
       parent->HasTagName(html_names::kInputTag)) {
     UseCounter::Count(parent->GetDocument(),
                       WebFeature::kPseudoBeforeAfterForInputElement);
-    if (HTMLInputElement* input = DynamicTo<HTMLInputElement>(parent)) {
-      if (input->FormControlType() == FormControlType::kInputDate ||
-          input->FormControlType() == FormControlType::kInputDatetimeLocal ||
-          input->FormControlType() == FormControlType::kInputMonth ||
-          input->FormControlType() == FormControlType::kInputWeek ||
-          input->FormControlType() == FormControlType::kInputTime) {
-        UseCounter::Count(
-            parent->GetDocument(),
-            WebFeature::kPseudoBeforeAfterForDateTimeInputElement);
-      }
-    }
   }
 }
 
-const ComputedStyle* PseudoElement::CustomStyleForLayoutObject(
+scoped_refptr<ComputedStyle> PseudoElement::CustomStyleForLayoutObject(
     const StyleRecalcContext& style_recalc_context) {
-  // This method is not used for highlight pseudos that require an
-  // originating element.
-  DCHECK(!IsHighlightPseudoElement(pseudo_id_));
   Element* parent = ParentOrShadowHostElement();
+<<<<<<< HEAD
   // second condition is to temporary fix nested ::marker
   // on ::before and ::after when they are declared as display: list-item,
   // so that we don't lose e.g. list-style-type property.
@@ -371,6 +375,25 @@ const ComputedStyle* PseudoElement::AdjustedLayoutStyle(
   }
 
   return nullptr;
+=======
+  return parent->StyleForPseudoElement(
+      style_recalc_context,
+      StyleRequest(pseudo_id_, parent->GetComputedStyle()));
+}
+
+scoped_refptr<ComputedStyle> PseudoElement::LayoutStyleForDisplayContents(
+    const ComputedStyle& style) {
+  // For display:contents we should not generate a box, but we generate a non-
+  // observable inline box for pseudo elements to be able to locate the
+  // anonymous layout objects for generated content during DetachLayoutTree().
+  scoped_refptr<ComputedStyle> layout_style =
+      GetDocument().GetStyleResolver().CreateComputedStyle();
+  layout_style->InheritFrom(style);
+  layout_style->SetContent(style.GetContentData());
+  layout_style->SetDisplay(EDisplay::kInline);
+  layout_style->SetStyleType(pseudo_id_);
+  return layout_style;
+>>>>>>> chromium
 }
 
 void PseudoElement::Dispose() {
@@ -416,15 +439,8 @@ void PseudoElement::AttachLayoutTree(AttachContext& context) {
   // Do not create a layout object for the ::marker in that case.
   if (pseudo_id_ == kPseudoIdMarker) {
     LayoutObject* originating_layout = parentNode()->GetLayoutObject();
-    if (!originating_layout || !originating_layout->IsListItem()) {
-      const LayoutObject* layout_object = GetLayoutObject();
-      if (layout_object) {
-        context.counters_context.EnterObject(*layout_object);
-      }
+    if (!originating_layout || !originating_layout->IsListItemIncludingNG()) {
       Node::AttachLayoutTree(context);
-      if (layout_object) {
-        context.counters_context.LeaveObject(*layout_object);
-      }
       return;
     }
   }
@@ -437,8 +453,6 @@ void PseudoElement::AttachLayoutTree(AttachContext& context) {
   if (!layout_object)
     return;
 
-  context.counters_context.EnterObject(*layout_object);
-
   // This is to ensure that bypassing the CanHaveGeneratedChildren() check in
   // LayoutTreeBuilderForElement::CreateLayoutObject() does not result in
   // the backdrop pseudo element's layout object becoming the child of a layout
@@ -447,16 +461,15 @@ void PseudoElement::AttachLayoutTree(AttachContext& context) {
   DCHECK(CanHaveGeneratedChildren(*layout_object->Parent()));
 
   const ComputedStyle& style = layout_object->StyleRef();
-  switch (GetPseudoId()) {
+  switch (pseudo_id_) {
     case kPseudoIdMarker: {
       if (ListMarker* marker = ListMarker::Get(layout_object))
         marker->UpdateMarkerContentIfNeeded(*layout_object);
-      if (style.ContentBehavesAsNormal()) {
-        context.counters_context.LeaveObject(*layout_object);
+      if (style.ContentBehavesAsNormal())
         return;
-      }
       break;
     }
+<<<<<<< HEAD
     case kPseudoIdScrollButtonBlockStart:
     case kPseudoIdScrollButtonInlineStart:
     case kPseudoIdScrollButtonInlineEnd:
@@ -474,45 +487,35 @@ void PseudoElement::AttachLayoutTree(AttachContext& context) {
       break;
     default: {
       context.counters_context.LeaveObject(*layout_object);
+=======
+    case kPseudoIdBefore:
+    case kPseudoIdAfter:
+      break;
+    default:
+>>>>>>> chromium
       return;
-    }
   }
 
   DCHECK(!style.ContentBehavesAsNormal());
   DCHECK(!style.ContentPreventsBoxGeneration());
   for (const ContentData* content = style.GetContentData(); content;
        content = content->Next()) {
+    LegacyLayout legacy = context.force_legacy_layout ? LegacyLayout::kForce
+                                                      : LegacyLayout::kAuto;
     if (!content->IsAltText()) {
-      LayoutObject* child = content->CreateLayoutObject(*layout_object);
+      LayoutObject* child = content->CreateLayoutObject(*this, style, legacy);
       if (layout_object->IsChildAllowed(child, style)) {
         layout_object->AddChild(child);
-        if (child->IsQuote()) {
-          StyleContainmentScopeTree& tree =
-              GetDocument().GetStyleEngine().EnsureStyleContainmentScopeTree();
-          StyleContainmentScope* scope =
-              tree.FindOrCreateEnclosingScopeForElement(*this);
-          scope->AttachQuote(*To<LayoutQuote>(child));
-          tree.UpdateOutermostQuotesDirtyScope(scope);
-        }
-        if (auto* layout_counter = DynamicTo<LayoutCounter>(child)) {
-          if (context.counters_context.AttachmentRootIsDocumentElement()) {
-            Vector<int> counter_values =
-                context.counters_context.GetCounterValues(
-                    *layout_object, layout_counter->Identifier(),
-                    layout_counter->Separator().IsNull());
-            layout_counter->UpdateCounter(std::move(counter_values));
-          } else {
-            GetDocument().GetStyleEngine().MarkCountersDirty();
-          }
-        }
+        if (child->IsQuote())
+          To<LayoutQuote>(child)->AttachQuote();
       } else {
         child->Destroy();
       }
     }
   }
-  context.counters_context.LeaveObject(*layout_object);
 }
 
+<<<<<<< HEAD
 bool PseudoElement::CanGenerateContent() const {
   switch (GetPseudoIdForStyling()) {
     case kPseudoIdMarker:
@@ -552,15 +555,18 @@ bool PseudoElement::CanHaveNestedPseudoElement() const {
 // Keep in sync with CanHaveNestedPseudoElement.
 bool PseudoElement::CanGeneratePseudoElement(PseudoId pseudo_id) const {
   switch (GetPseudoId()) {
+=======
+bool PseudoElement::LayoutObjectIsNeeded(const ComputedStyle& style) const {
+  return PseudoElementLayoutObjectIsNeeded(&style, parentElement());
+}
+
+bool PseudoElement::CanGeneratePseudoElement(PseudoId pseudo_id) const {
+  switch (pseudo_id_) {
+>>>>>>> chromium
     case kPseudoIdBefore:
     case kPseudoIdAfter:
       if (pseudo_id != kPseudoIdMarker)
         return false;
-      break;
-    case kPseudoIdColumn:
-      if (pseudo_id != kPseudoIdScrollMarker) {
-        return false;
-      }
       break;
     default:
       return false;
@@ -568,59 +574,24 @@ bool PseudoElement::CanGeneratePseudoElement(PseudoId pseudo_id) const {
   return Element::CanGeneratePseudoElement(pseudo_id);
 }
 
-Node* PseudoElement::InnerNodeForHitTesting() {
+Node* PseudoElement::InnerNodeForHitTesting() const {
   Node* parent = ParentOrShadowHostNode();
   if (parent && parent->IsPseudoElement())
     return To<PseudoElement>(parent)->InnerNodeForHitTesting();
   return parent;
 }
 
-void PseudoElement::AccessKeyAction(
-    SimulatedClickCreationScope creation_scope) {
-  // Even though pseudo elements can't use the accesskey attribute, assistive
-  // tech can still attempt to interact with pseudo elements if they are in
-  // the AX tree (usually due to their text/image content).
-  // Just pass this request to the originating element.
-  DCHECK(UltimateOriginatingElement());
-  UltimateOriginatingElement()->AccessKeyAction(creation_scope);
-}
-
-Element* PseudoElement::UltimateOriginatingElement() const {
-  auto* parent = parentElement();
-
-  while (parent && parent->IsPseudoElement())
-    parent = parent->parentElement();
-
-  return parent;
-}
-
-bool PseudoElementLayoutObjectIsNeeded(PseudoId pseudo_id,
-                                       const ComputedStyle* pseudo_style,
+bool PseudoElementLayoutObjectIsNeeded(const ComputedStyle* pseudo_style,
                                        const Element* originating_element) {
   if (!pseudo_style)
     return false;
-  return PseudoElementLayoutObjectIsNeeded(
-      pseudo_id, pseudo_style->GetDisplayStyle(), originating_element);
-}
-
-bool PseudoElementLayoutObjectIsNeeded(PseudoId pseudo_id,
-                                       const DisplayStyle& pseudo_style,
-                                       const Element* originating_element) {
-  if (pseudo_style.Display() == EDisplay::kNone) {
+  if (pseudo_style->Display() == EDisplay::kNone)
     return false;
-  }
-  switch (pseudo_id) {
+  switch (pseudo_style->StyleType()) {
     case kPseudoIdFirstLetter:
-    case kPseudoIdScrollMarkerGroupBefore:
-    case kPseudoIdScrollMarkerGroupAfter:
     case kPseudoIdBackdrop:
-    case kPseudoIdViewTransition:
-    case kPseudoIdViewTransitionGroup:
-    case kPseudoIdViewTransitionImagePair:
-    case kPseudoIdViewTransitionNew:
-    case kPseudoIdViewTransitionOld:
-    case kPseudoIdColumn:
       return true;
+<<<<<<< HEAD
     case kPseudoIdCheckMark:
     case kPseudoIdBefore:
     case kPseudoIdAfter:
@@ -632,10 +603,14 @@ bool PseudoElementLayoutObjectIsNeeded(PseudoId pseudo_id,
     case kPseudoIdScrollButtonInlineEnd:
     case kPseudoIdScrollButtonBlockEnd:
       return !pseudo_style.ContentBehavesAsNormal();
+=======
+    case kPseudoIdBefore:
+    case kPseudoIdAfter:
+      return !pseudo_style->ContentPreventsBoxGeneration();
+>>>>>>> chromium
     case kPseudoIdMarker: {
-      if (!pseudo_style.ContentBehavesAsNormal()) {
-        return !pseudo_style.ContentPreventsBoxGeneration();
-      }
+      if (!pseudo_style->ContentBehavesAsNormal())
+        return !pseudo_style->ContentPreventsBoxGeneration();
       const ComputedStyle* parent_style =
           originating_element->GetComputedStyle();
       return parent_style && (parent_style->ListStyleType() ||
@@ -643,6 +618,7 @@ bool PseudoElementLayoutObjectIsNeeded(PseudoId pseudo_id,
     }
     default:
       NOTREACHED();
+      return false;
   }
 }
 

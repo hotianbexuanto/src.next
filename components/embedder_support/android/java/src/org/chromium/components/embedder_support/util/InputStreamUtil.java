@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,15 +6,17 @@ package org.chromium.components.embedder_support.util;
 
 import android.util.Log;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
 
 import org.chromium.build.annotations.NullMarked;
 
 import java.io.IOException;
 import java.io.InputStream;
 
-/** Utility methods for calling InputStream methods. These take care of exception handling. */
+/**
+ * Utility methods for calling InputStream methods. These take care of exception handling.
+ */
 @JNINamespace("embedder_support")
 @NullMarked
 class InputStreamUtil {
@@ -26,9 +28,7 @@ class InputStreamUtil {
     private static final int EXCEPTION_THROWN_STATUS = -2;
 
     private static String logMessage(String method) {
-        return "Got exception when calling "
-                + method
-                + "() on an InputStream returned from "
+        return "Got exception when calling " + method + "() on an InputStream returned from "
                 + "shouldInterceptRequest. This will cause the related request to fail.";
     }
 

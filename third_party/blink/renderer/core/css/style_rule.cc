@@ -19,61 +19,38 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "third_party/blink/renderer/core/css/style_rule.h"
 
-#include "third_party/blink/renderer/core/css/cascade_layer.h"
 #include "third_party/blink/renderer/core/css/css_container_rule.h"
 #include "third_party/blink/renderer/core/css/css_counter_style_rule.h"
 #include "third_party/blink/renderer/core/css/css_font_face_rule.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/css/css_font_feature_values_rule.h"
 #include "third_party/blink/renderer/core/css/css_font_palette_values_rule.h"
 #include "third_party/blink/renderer/core/css/css_function_declarations_rule.h"
 #include "third_party/blink/renderer/core/css/css_function_rule.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/css_identifier_value.h"
 #include "third_party/blink/renderer/core/css/css_import_rule.h"
 #include "third_party/blink/renderer/core/css/css_keyframes_rule.h"
-#include "third_party/blink/renderer/core/css/css_layer_block_rule.h"
-#include "third_party/blink/renderer/core/css/css_layer_statement_rule.h"
-#include "third_party/blink/renderer/core/css/css_margin_rule.h"
-#include "third_party/blink/renderer/core/css/css_markup.h"
 #include "third_party/blink/renderer/core/css/css_media_rule.h"
 #include "third_party/blink/renderer/core/css/css_namespace_rule.h"
-#include "third_party/blink/renderer/core/css/css_nested_declarations_rule.h"
 #include "third_party/blink/renderer/core/css/css_page_rule.h"
-#include "third_party/blink/renderer/core/css/css_position_try_rule.h"
 #include "third_party/blink/renderer/core/css/css_property_rule.h"
-#include "third_party/blink/renderer/core/css/css_scope_rule.h"
-#include "third_party/blink/renderer/core/css/css_starting_style_rule.h"
+#include "third_party/blink/renderer/core/css/css_scroll_timeline_rule.h"
 #include "third_party/blink/renderer/core/css/css_style_rule.h"
-#include "third_party/blink/renderer/core/css/css_style_sheet.h"
 #include "third_party/blink/renderer/core/css/css_supports_rule.h"
-#include "third_party/blink/renderer/core/css/css_view_transition_rule.h"
-#include "third_party/blink/renderer/core/css/parser/container_query_parser.h"
-#include "third_party/blink/renderer/core/css/parser/css_parser.h"
-#include "third_party/blink/renderer/core/css/parser/css_parser_context.h"
-#include "third_party/blink/renderer/core/css/parser/css_parser_impl.h"
-#include "third_party/blink/renderer/core/css/parser/css_parser_token.h"
-#include "third_party/blink/renderer/core/css/parser/css_parser_token_stream.h"
-#include "third_party/blink/renderer/core/css/parser/css_supports_parser.h"
-#include "third_party/blink/renderer/core/css/parser/css_tokenizer.h"
 #include "third_party/blink/renderer/core/css/style_rule_counter_style.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/core/css/style_rule_font_feature_values.h"
 #include "third_party/blink/renderer/core/css/style_rule_font_palette_values.h"
 #include "third_party/blink/renderer/core/css/style_rule_function_declarations.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/style_rule_import.h"
 #include "third_party/blink/renderer/core/css/style_rule_keyframe.h"
 #include "third_party/blink/renderer/core/css/style_rule_namespace.h"
-#include "third_party/blink/renderer/core/css/style_rule_nested_declarations.h"
-#include "third_party/blink/renderer/core/css/style_rule_view_transition.h"
-#include "third_party/blink/renderer/core/css/style_sheet_contents.h"
-#include "third_party/blink/renderer/core/dom/document.h"
-#include "third_party/blink/renderer/core/frame/web_feature.h"
-#include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/wtf/size_assertions.h"
 
 namespace blink {
@@ -85,18 +62,12 @@ struct SameSizeAsStyleRuleBase final
 
 ASSERT_SIZE(StyleRuleBase, SameSizeAsStyleRuleBase);
 
-CSSRule* StyleRuleBase::CreateCSSOMWrapper(wtf_size_t position_hint,
-                                           CSSStyleSheet* parent_sheet,
-                                           bool trigger_use_counters) const {
-  return CreateCSSOMWrapper(position_hint, parent_sheet, nullptr,
-                            trigger_use_counters);
+CSSRule* StyleRuleBase::CreateCSSOMWrapper(CSSStyleSheet* parent_sheet) const {
+  return CreateCSSOMWrapper(parent_sheet, nullptr);
 }
 
-CSSRule* StyleRuleBase::CreateCSSOMWrapper(wtf_size_t position_hint,
-                                           CSSRule* parent_rule,
-                                           bool trigger_use_counters) const {
-  return CreateCSSOMWrapper(position_hint, nullptr, parent_rule,
-                            trigger_use_counters);
+CSSRule* StyleRuleBase::CreateCSSOMWrapper(CSSRule* parent_rule) const {
+  return CreateCSSOMWrapper(nullptr, parent_rule);
 }
 
 void StyleRuleBase::Trace(Visitor* visitor) const {
@@ -110,27 +81,16 @@ void StyleRuleBase::Trace(Visitor* visitor) const {
     case kPage:
       To<StyleRulePage>(this)->TraceAfterDispatch(visitor);
       return;
-    case kPageMargin:
-      To<StyleRulePageMargin>(this)->TraceAfterDispatch(visitor);
-      return;
     case kProperty:
       To<StyleRuleProperty>(this)->TraceAfterDispatch(visitor);
       return;
     case kFontFace:
       To<StyleRuleFontFace>(this)->TraceAfterDispatch(visitor);
       return;
-    case kFontPaletteValues:
-      To<StyleRuleFontPaletteValues>(this)->TraceAfterDispatch(visitor);
-      return;
-    case kFontFeatureValues:
-      To<StyleRuleFontFeatureValues>(this)->TraceAfterDispatch(visitor);
-      return;
-    case kFontFeature:
-      To<StyleRuleFontFeature>(this)->TraceAfterDispatch(visitor);
-      return;
     case kMedia:
       To<StyleRuleMedia>(this)->TraceAfterDispatch(visitor);
       return;
+<<<<<<< HEAD
     case kNestedDeclarations:
       To<StyleRuleNestedDeclarations>(this)->TraceAfterDispatch(visitor);
       return;
@@ -139,6 +99,10 @@ void StyleRuleBase::Trace(Visitor* visitor) const {
       return;
     case kScope:
       To<StyleRuleScope>(this)->TraceAfterDispatch(visitor);
+=======
+    case kScrollTimeline:
+      To<StyleRuleScrollTimeline>(this)->TraceAfterDispatch(visitor);
+>>>>>>> chromium
       return;
     case kSupports:
       To<StyleRuleSupports>(this)->TraceAfterDispatch(visitor);
@@ -152,14 +116,11 @@ void StyleRuleBase::Trace(Visitor* visitor) const {
     case kKeyframe:
       To<StyleRuleKeyframe>(this)->TraceAfterDispatch(visitor);
       return;
-    case kLayerBlock:
-      To<StyleRuleLayerBlock>(this)->TraceAfterDispatch(visitor);
-      return;
-    case kLayerStatement:
-      To<StyleRuleLayerStatement>(this)->TraceAfterDispatch(visitor);
-      return;
     case kNamespace:
       To<StyleRuleNamespace>(this)->TraceAfterDispatch(visitor);
+      return;
+    case kViewport:
+      To<StyleRuleViewport>(this)->TraceAfterDispatch(visitor);
       return;
     case kContainer:
       To<StyleRuleContainer>(this)->TraceAfterDispatch(visitor);
@@ -167,26 +128,8 @@ void StyleRuleBase::Trace(Visitor* visitor) const {
     case kCounterStyle:
       To<StyleRuleCounterStyle>(this)->TraceAfterDispatch(visitor);
       return;
-    case kStartingStyle:
-      To<StyleRuleStartingStyle>(this)->TraceAfterDispatch(visitor);
-      return;
-    case kViewTransition:
-      To<StyleRuleViewTransition>(this)->TraceAfterDispatch(visitor);
-      return;
-    case kFunction:
-      To<StyleRuleFunction>(this)->TraceAfterDispatch(visitor);
-      return;
-    case kMixin:
-      To<StyleRuleMixin>(this)->TraceAfterDispatch(visitor);
-      return;
-    case kApplyMixin:
-      To<StyleRuleApplyMixin>(this)->TraceAfterDispatch(visitor);
-      return;
-    case kPositionTry:
-      To<StyleRulePositionTry>(this)->TraceAfterDispatch(visitor);
-      return;
   }
-  DUMP_WILL_BE_NOTREACHED();
+  NOTREACHED();
 }
 
 void StyleRuleBase::FinalizeGarbageCollectedObject() {
@@ -200,27 +143,16 @@ void StyleRuleBase::FinalizeGarbageCollectedObject() {
     case kPage:
       To<StyleRulePage>(this)->~StyleRulePage();
       return;
-    case kPageMargin:
-      To<StyleRulePageMargin>(this)->~StyleRulePageMargin();
-      return;
     case kProperty:
       To<StyleRuleProperty>(this)->~StyleRuleProperty();
       return;
     case kFontFace:
       To<StyleRuleFontFace>(this)->~StyleRuleFontFace();
       return;
-    case kFontPaletteValues:
-      To<StyleRuleFontPaletteValues>(this)->~StyleRuleFontPaletteValues();
-      return;
-    case kFontFeatureValues:
-      To<StyleRuleFontFeatureValues>(this)->~StyleRuleFontFeatureValues();
-      return;
-    case kFontFeature:
-      To<StyleRuleFontFeature>(this)->~StyleRuleFontFeature();
-      return;
     case kMedia:
       To<StyleRuleMedia>(this)->~StyleRuleMedia();
       return;
+<<<<<<< HEAD
     case kNestedDeclarations:
       To<StyleRuleNestedDeclarations>(this)->~StyleRuleNestedDeclarations();
       return;
@@ -229,6 +161,10 @@ void StyleRuleBase::FinalizeGarbageCollectedObject() {
       return;
     case kScope:
       To<StyleRuleScope>(this)->~StyleRuleScope();
+=======
+    case kScrollTimeline:
+      To<StyleRuleScrollTimeline>(this)->~StyleRuleScrollTimeline();
+>>>>>>> chromium
       return;
     case kSupports:
       To<StyleRuleSupports>(this)->~StyleRuleSupports();
@@ -242,38 +178,17 @@ void StyleRuleBase::FinalizeGarbageCollectedObject() {
     case kKeyframe:
       To<StyleRuleKeyframe>(this)->~StyleRuleKeyframe();
       return;
-    case kLayerBlock:
-      To<StyleRuleLayerBlock>(this)->~StyleRuleLayerBlock();
-      return;
-    case kLayerStatement:
-      To<StyleRuleLayerStatement>(this)->~StyleRuleLayerStatement();
-      return;
     case kNamespace:
       To<StyleRuleNamespace>(this)->~StyleRuleNamespace();
+      return;
+    case kViewport:
+      To<StyleRuleViewport>(this)->~StyleRuleViewport();
       return;
     case kContainer:
       To<StyleRuleContainer>(this)->~StyleRuleContainer();
       return;
     case kCounterStyle:
       To<StyleRuleCounterStyle>(this)->~StyleRuleCounterStyle();
-      return;
-    case kStartingStyle:
-      To<StyleRuleStartingStyle>(this)->~StyleRuleStartingStyle();
-      return;
-    case kViewTransition:
-      To<StyleRuleViewTransition>(this)->~StyleRuleViewTransition();
-      return;
-    case kFunction:
-      To<StyleRuleFunction>(this)->~StyleRuleFunction();
-      return;
-    case kMixin:
-      To<StyleRuleMixin>(this)->~StyleRuleMixin();
-      return;
-    case kApplyMixin:
-      To<StyleRuleApplyMixin>(this)->~StyleRuleApplyMixin();
-      return;
-    case kPositionTry:
-      To<StyleRulePositionTry>(this)->~StyleRulePositionTry();
       return;
   }
   NOTREACHED();
@@ -285,81 +200,60 @@ StyleRuleBase* StyleRuleBase::Copy() const {
       return To<StyleRule>(this)->Copy();
     case kPage:
       return To<StyleRulePage>(this)->Copy();
-    case kPageMargin:
-      return To<StyleRulePageMargin>(this)->Copy();
     case kProperty:
       return To<StyleRuleProperty>(this)->Copy();
     case kFontFace:
       return To<StyleRuleFontFace>(this)->Copy();
-    case kFontPaletteValues:
-      return To<StyleRuleFontPaletteValues>(this)->Copy();
-    case kFontFeatureValues:
-      return To<StyleRuleFontFeatureValues>(this)->Copy();
-    case kFontFeature:
-      return To<StyleRuleFontFeature>(this)->Copy();
     case kMedia:
       return To<StyleRuleMedia>(this)->Copy();
+<<<<<<< HEAD
     case kNestedDeclarations:
       return To<StyleRuleNestedDeclarations>(this)->Copy();
     case kFunctionDeclarations:
       return To<StyleRuleFunctionDeclarations>(this)->Copy();
     case kScope:
       return To<StyleRuleScope>(this)->Copy();
+=======
+    case kScrollTimeline:
+      return To<StyleRuleScrollTimeline>(this)->Copy();
+>>>>>>> chromium
     case kSupports:
       return To<StyleRuleSupports>(this)->Copy();
     case kImport:
       // FIXME: Copy import rules.
       NOTREACHED();
+      return nullptr;
     case kKeyframes:
       return To<StyleRuleKeyframes>(this)->Copy();
-    case kLayerBlock:
-      return To<StyleRuleLayerBlock>(this)->Copy();
-    case kLayerStatement:
-      return To<StyleRuleLayerStatement>(this)->Copy();
+    case kViewport:
+      return To<StyleRuleViewport>(this)->Copy();
     case kNamespace:
       return To<StyleRuleNamespace>(this)->Copy();
     case kCharset:
     case kKeyframe:
-    case kFunction:
-    case kMixin:
-    case kApplyMixin:
       NOTREACHED();
+      return nullptr;
     case kContainer:
       return To<StyleRuleContainer>(this)->Copy();
     case kCounterStyle:
       return To<StyleRuleCounterStyle>(this)->Copy();
-    case kStartingStyle:
-      return To<StyleRuleStartingStyle>(this)->Copy();
-    case kViewTransition:
-      return To<StyleRuleViewTransition>(this)->Copy();
-    case kPositionTry:
-      return To<StyleRulePositionTry>(this)->Copy();
   }
   NOTREACHED();
+  return nullptr;
 }
 
-CSSRule* StyleRuleBase::CreateCSSOMWrapper(wtf_size_t position_hint,
-                                           CSSStyleSheet* parent_sheet,
-                                           CSSRule* parent_rule,
-                                           bool trigger_use_counters) const {
+CSSRule* StyleRuleBase::CreateCSSOMWrapper(CSSStyleSheet* parent_sheet,
+                                           CSSRule* parent_rule) const {
   CSSRule* rule = nullptr;
   StyleRuleBase* self = const_cast<StyleRuleBase*>(this);
   switch (GetType()) {
     case kStyle:
-      rule = MakeGarbageCollected<CSSStyleRule>(To<StyleRule>(self),
-                                                parent_sheet, position_hint);
+      rule =
+          MakeGarbageCollected<CSSStyleRule>(To<StyleRule>(self), parent_sheet);
       break;
     case kPage:
-      if (trigger_use_counters && parent_sheet) {
-        UseCounter::Count(parent_sheet->OwnerDocument(),
-                          WebFeature::kCSSPageRule);
-      }
       rule = MakeGarbageCollected<CSSPageRule>(To<StyleRulePage>(self),
                                                parent_sheet);
-      break;
-    case kPageMargin:
-      rule = MakeGarbageCollected<CSSMarginRule>(To<StyleRulePageMargin>(self),
-                                                 parent_sheet);
       break;
     case kProperty:
       rule = MakeGarbageCollected<CSSPropertyRule>(To<StyleRuleProperty>(self),
@@ -369,18 +263,11 @@ CSSRule* StyleRuleBase::CreateCSSOMWrapper(wtf_size_t position_hint,
       rule = MakeGarbageCollected<CSSFontFaceRule>(To<StyleRuleFontFace>(self),
                                                    parent_sheet);
       break;
-    case kFontPaletteValues:
-      rule = MakeGarbageCollected<CSSFontPaletteValuesRule>(
-          To<StyleRuleFontPaletteValues>(self), parent_sheet);
-      break;
-    case kFontFeatureValues:
-      rule = MakeGarbageCollected<CSSFontFeatureValuesRule>(
-          To<StyleRuleFontFeatureValues>(self), parent_sheet);
-      break;
     case kMedia:
       rule = MakeGarbageCollected<CSSMediaRule>(To<StyleRuleMedia>(self),
                                                 parent_sheet);
       break;
+<<<<<<< HEAD
     case kNestedDeclarations:
       rule = MakeGarbageCollected<CSSNestedDeclarationsRule>(
           To<StyleRuleNestedDeclarations>(self), parent_sheet);
@@ -396,6 +283,11 @@ CSSRule* StyleRuleBase::CreateCSSOMWrapper(wtf_size_t position_hint,
     case kScope:
       rule = MakeGarbageCollected<CSSScopeRule>(To<StyleRuleScope>(self),
                                                 parent_sheet);
+=======
+    case kScrollTimeline:
+      rule = MakeGarbageCollected<CSSScrollTimelineRule>(
+          To<StyleRuleScrollTimeline>(self), parent_sheet);
+>>>>>>> chromium
       break;
     case kSupports:
       rule = MakeGarbageCollected<CSSSupportsRule>(To<StyleRuleSupports>(self),
@@ -409,14 +301,6 @@ CSSRule* StyleRuleBase::CreateCSSOMWrapper(wtf_size_t position_hint,
       rule = MakeGarbageCollected<CSSKeyframesRule>(
           To<StyleRuleKeyframes>(self), parent_sheet);
       break;
-    case kLayerBlock:
-      rule = MakeGarbageCollected<CSSLayerBlockRule>(
-          To<StyleRuleLayerBlock>(self), parent_sheet);
-      break;
-    case kLayerStatement:
-      rule = MakeGarbageCollected<CSSLayerStatementRule>(
-          To<StyleRuleLayerStatement>(self), parent_sheet);
-      break;
     case kNamespace:
       rule = MakeGarbageCollected<CSSNamespaceRule>(
           To<StyleRuleNamespace>(self), parent_sheet);
@@ -429,28 +313,19 @@ CSSRule* StyleRuleBase::CreateCSSOMWrapper(wtf_size_t position_hint,
       rule = MakeGarbageCollected<CSSCounterStyleRule>(
           To<StyleRuleCounterStyle>(self), parent_sheet);
       break;
-    case kStartingStyle:
-      rule = MakeGarbageCollected<CSSStartingStyleRule>(
-          To<StyleRuleStartingStyle>(self), parent_sheet);
-      break;
-    case kViewTransition:
-      rule = MakeGarbageCollected<CSSViewTransitionRule>(
-          To<StyleRuleViewTransition>(self), parent_sheet);
-      break;
-    case kPositionTry:
-      rule = MakeGarbageCollected<CSSPositionTryRule>(
-          To<StyleRulePositionTry>(self), parent_sheet);
-      break;
-    case kFontFeature:
     case kKeyframe:
     case kCharset:
+<<<<<<< HEAD
     case kMixin:
     case kApplyMixin:
+=======
+    case kViewport:
+>>>>>>> chromium
       NOTREACHED();
+      return nullptr;
   }
-  if (parent_rule) {
+  if (parent_rule)
     rule->SetParentRule(parent_rule);
-  }
   return rule;
 }
 
@@ -459,35 +334,19 @@ unsigned StyleRule::AverageSizeInBytes() {
          CSSPropertyValueSet::AverageSizeInBytes();
 }
 
-StyleRule::StyleRule(base::PassKey<StyleRule>,
-                     base::span<CSSSelector> selector_vector,
+StyleRule::StyleRule(CSSSelectorList selector_list,
                      CSSPropertyValueSet* properties)
-    : StyleRuleBase(kStyle), properties_(properties) {
-  CSSSelectorList::AdoptSelectorVector(selector_vector, SelectorArray());
-}
-
-StyleRule::StyleRule(base::PassKey<StyleRule>,
-                     base::span<CSSSelector> selector_vector,
-                     CSSLazyPropertyParser* lazy_property_parser)
-    : StyleRuleBase(kStyle), lazy_property_parser_(lazy_property_parser) {
-  CSSSelectorList::AdoptSelectorVector(selector_vector, SelectorArray());
-}
-
-StyleRule::StyleRule(base::PassKey<StyleRule>,
-                     base::span<CSSSelector> selector_vector)
-    : StyleRuleBase(kStyle) {
-  CSSSelectorList::AdoptSelectorVector(selector_vector, SelectorArray());
-}
-
-StyleRule::StyleRule(base::PassKey<StyleRule>,
-                     base::span<CSSSelector> selector_vector,
-                     StyleRule&& other)
     : StyleRuleBase(kStyle),
-      properties_(other.properties_),
-      lazy_property_parser_(other.lazy_property_parser_),
-      child_rules_(std::move(other.child_rules_)) {
-  CSSSelectorList::AdoptSelectorVector(selector_vector, SelectorArray());
-}
+      should_consider_for_matching_rules_(kConsiderIfNonEmpty),
+      selector_list_(std::move(selector_list)),
+      properties_(properties) {}
+
+StyleRule::StyleRule(CSSSelectorList selector_list,
+                     CSSLazyPropertyParser* lazy_property_parser)
+    : StyleRuleBase(kStyle),
+      should_consider_for_matching_rules_(kAlwaysConsider),
+      selector_list_(std::move(selector_list)),
+      lazy_property_parser_(lazy_property_parser) {}
 
 const CSSPropertyValueSet& StyleRule::Properties() const {
   if (!properties_) {
@@ -497,48 +356,30 @@ const CSSPropertyValueSet& StyleRule::Properties() const {
   return *properties_;
 }
 
-StyleRule::StyleRule(const StyleRule& other, size_t flattened_size)
-    : StyleRuleBase(kStyle), properties_(other.Properties().MutableCopy()) {
-  for (unsigned i = 0; i < flattened_size; ++i) {
-    new (&SelectorArray()[i]) CSSSelector(other.SelectorArray()[i]);
-  }
-  if (other.child_rules_ != nullptr) {
-    // Since we are getting copied, we also need to copy any child rules
-    // so that both old and new can be freely mutated. This also
-    // parses them eagerly (see comment in StyleSheetContents'
-    // copy constructor).
-    child_rules_ = MakeGarbageCollected<HeapVector<Member<StyleRuleBase>>>();
-    child_rules_->ReserveInitialCapacity(other.child_rules_->size());
-    for (const StyleRuleBase* child_rule : *other.child_rules_) {
-      child_rules_->push_back(child_rule->Copy());
-    }
-  }
-}
+StyleRule::StyleRule(const StyleRule& o)
+    : StyleRuleBase(o),
+      should_consider_for_matching_rules_(kConsiderIfNonEmpty),
+      selector_list_(o.selector_list_.Copy()),
+      properties_(o.Properties().MutableCopy()) {}
 
-StyleRule::~StyleRule() {
-  // Clean up any RareData that the selectors may be owning.
-  CSSSelector* selector = SelectorArray();
-  for (;;) {
-    bool is_last = selector->IsLastInSelectorList();
-    selector->~CSSSelector();
-    if (is_last) {
-      break;
-    } else {
-      ++selector;
-    }
-  }
-}
+StyleRule::~StyleRule() = default;
 
 MutableCSSPropertyValueSet& StyleRule::MutableProperties() {
   // Ensure properties_ is initialized.
-  if (!Properties().IsMutable()) {
+  if (!Properties().IsMutable())
     properties_ = properties_->MutableCopy();
-  }
   return *To<MutableCSSPropertyValueSet>(properties_.Get());
 }
 
 bool StyleRule::PropertiesHaveFailedOrCanceledSubresources() const {
   return properties_ && properties_->HasFailedOrCanceledSubresources();
+}
+
+bool StyleRule::ShouldConsiderForMatchingRules(bool include_empty_rules) const {
+  DCHECK(should_consider_for_matching_rules_ == kAlwaysConsider || properties_);
+  return include_empty_rules ||
+         should_consider_for_matching_rules_ == kAlwaysConsider ||
+         !properties_->IsEmpty();
 }
 
 bool StyleRule::HasParsedProperties() const {
@@ -551,16 +392,10 @@ bool StyleRule::HasParsedProperties() const {
 void StyleRule::TraceAfterDispatch(blink::Visitor* visitor) const {
   visitor->Trace(properties_);
   visitor->Trace(lazy_property_parser_);
-  visitor->Trace(child_rules_);
-
-  const CSSSelector* current = SelectorArray();
-  do {
-    visitor->Trace(*current);
-  } while (!(current++)->IsLastInSelectorList());
-
   StyleRuleBase::TraceAfterDispatch(visitor);
 }
 
+<<<<<<< HEAD
 namespace {
 
 bool RenestRules(const HeapVector<Member<StyleRuleBase>>& old_rules,
@@ -688,6 +523,30 @@ StyleRuleBase* StyleRuleBase::Renest(StyleRule* new_parent) {
       // Cannot have any child rules.
       return this;
   }
+=======
+StyleRulePage::StyleRulePage(CSSSelectorList selector_list,
+                             CSSPropertyValueSet* properties)
+    : StyleRuleBase(kPage),
+      properties_(properties),
+      selector_list_(std::move(selector_list)) {}
+
+StyleRulePage::StyleRulePage(const StyleRulePage& page_rule)
+    : StyleRuleBase(page_rule),
+      properties_(page_rule.properties_->MutableCopy()),
+      selector_list_(page_rule.selector_list_.Copy()) {}
+
+StyleRulePage::~StyleRulePage() = default;
+
+MutableCSSPropertyValueSet& StyleRulePage::MutableProperties() {
+  if (!properties_->IsMutable())
+    properties_ = properties_->MutableCopy();
+  return *To<MutableCSSPropertyValueSet>(properties_.Get());
+}
+
+void StyleRulePage::TraceAfterDispatch(blink::Visitor* visitor) const {
+  visitor->Trace(properties_);
+  StyleRuleBase::TraceAfterDispatch(visitor);
+>>>>>>> chromium
 }
 
 StyleRuleProperty::StyleRuleProperty(const String& name,
@@ -699,10 +558,11 @@ StyleRuleProperty::StyleRuleProperty(const StyleRuleProperty& property_rule)
       name_(property_rule.name_),
       properties_(property_rule.properties_->MutableCopy()) {}
 
+StyleRuleProperty::~StyleRuleProperty() = default;
+
 MutableCSSPropertyValueSet& StyleRuleProperty::MutableProperties() {
-  if (!properties_->IsMutable()) {
+  if (!properties_->IsMutable())
     properties_ = properties_->MutableCopy();
-  }
   return *To<MutableCSSPropertyValueSet>(properties_.Get());
 }
 
@@ -718,20 +578,8 @@ const CSSValue* StyleRuleProperty::GetInitialValue() const {
   return properties_->GetPropertyCSSValue(CSSPropertyID::kInitialValue);
 }
 
-bool StyleRuleProperty::SetNameText(const ExecutionContext* execution_context,
-                                    const String& name_text) {
-  DCHECK(!name_text.IsNull());
-  String name = CSSParser::ParseCustomPropertyName(name_text);
-  if (!name)
-    return false;
-
-  name_ = name;
-  return true;
-}
-
 void StyleRuleProperty::TraceAfterDispatch(blink::Visitor* visitor) const {
   visitor->Trace(properties_);
-  visitor->Trace(layer_);
   StyleRuleBase::TraceAfterDispatch(visitor);
 }
 
@@ -743,56 +591,61 @@ StyleRuleFontFace::StyleRuleFontFace(const StyleRuleFontFace& font_face_rule)
       properties_(font_face_rule.properties_->MutableCopy()) {}
 
 MutableCSSPropertyValueSet& StyleRuleFontFace::MutableProperties() {
-  if (!properties_->IsMutable()) {
+  if (!properties_->IsMutable())
     properties_ = properties_->MutableCopy();
-  }
   return *To<MutableCSSPropertyValueSet>(properties_.Get());
 }
 
 void StyleRuleFontFace::TraceAfterDispatch(blink::Visitor* visitor) const {
   visitor->Trace(properties_);
-  visitor->Trace(layer_);
   StyleRuleBase::TraceAfterDispatch(visitor);
 }
 
-StyleRuleScope::StyleRuleScope(const StyleScope& style_scope,
-                               HeapVector<Member<StyleRuleBase>> rules)
-    : StyleRuleGroup(kScope, std::move(rules)), style_scope_(&style_scope) {}
+StyleRuleScrollTimeline::StyleRuleScrollTimeline(
+    const String& name,
+    const CSSPropertyValueSet* properties)
+    : StyleRuleBase(kScrollTimeline),
+      name_(name),
+      source_(properties->GetPropertyCSSValue(CSSPropertyID::kSource)),
+      orientation_(
+          properties->GetPropertyCSSValue(CSSPropertyID::kOrientation)),
+      start_(properties->GetPropertyCSSValue(CSSPropertyID::kStart)),
+      end_(properties->GetPropertyCSSValue(CSSPropertyID::kEnd)),
+      time_range_(properties->GetPropertyCSSValue(CSSPropertyID::kTimeRange)) {}
 
-StyleRuleScope::StyleRuleScope(const StyleRuleScope& other)
-    : StyleRuleGroup(other),
-      style_scope_(MakeGarbageCollected<StyleScope>(*other.style_scope_)) {}
+StyleRuleScrollTimeline::~StyleRuleScrollTimeline() = default;
 
-void StyleRuleScope::TraceAfterDispatch(blink::Visitor* visitor) const {
-  visitor->Trace(style_scope_);
-  StyleRuleGroup::TraceAfterDispatch(visitor);
+void StyleRuleScrollTimeline::TraceAfterDispatch(
+    blink::Visitor* visitor) const {
+  visitor->Trace(source_);
+  visitor->Trace(orientation_);
+  visitor->Trace(start_);
+  visitor->Trace(end_);
+  visitor->Trace(time_range_);
+
+<<<<<<< HEAD
+=======
+  StyleRuleBase::TraceAfterDispatch(visitor);
 }
 
+>>>>>>> chromium
 StyleRuleGroup::StyleRuleGroup(RuleType type,
-                               HeapVector<Member<StyleRuleBase>> rules)
-    : StyleRuleBase(type), child_rules_(std::move(rules)) {}
+                               HeapVector<Member<StyleRuleBase>>& adopt_rule)
+    : StyleRuleBase(type) {
+  child_rules_.swap(adopt_rule);
+}
 
 StyleRuleGroup::StyleRuleGroup(const StyleRuleGroup& group_rule)
     : StyleRuleBase(group_rule), child_rules_(group_rule.child_rules_.size()) {
-  for (unsigned i = 0; i < child_rules_.size(); ++i) {
+  for (unsigned i = 0; i < child_rules_.size(); ++i)
     child_rules_[i] = group_rule.child_rules_[i]->Copy();
-  }
 }
 
-void StyleRuleGroup::WrapperInsertRule(CSSStyleSheet* parent_sheet,
-                                       unsigned index,
-                                       StyleRuleBase* rule) {
+void StyleRuleGroup::WrapperInsertRule(unsigned index, StyleRuleBase* rule) {
   child_rules_.insert(index, rule);
-  if (parent_sheet) {
-    parent_sheet->Contents()->NotifyRuleChanged(rule);
-  }
 }
 
-void StyleRuleGroup::WrapperRemoveRule(CSSStyleSheet* parent_sheet,
-                                       unsigned index) {
-  if (parent_sheet) {
-    parent_sheet->Contents()->NotifyRuleChanged(child_rules_[index]);
-  }
+void StyleRuleGroup::WrapperRemoveRule(unsigned index) {
   child_rules_.EraseAt(index);
 }
 
@@ -801,19 +654,12 @@ void StyleRuleGroup::TraceAfterDispatch(blink::Visitor* visitor) const {
   StyleRuleBase::TraceAfterDispatch(visitor);
 }
 
-// static
-String StyleRuleBase::LayerNameAsString(
-    const StyleRuleBase::LayerName& name_parts) {
-  StringBuilder result;
-  for (const auto& part : name_parts) {
-    if (result.length()) {
-      result.Append(".");
-    }
-    SerializeIdentifier(part, result);
-  }
-  return result.ReleaseString();
-}
+StyleRuleCondition::StyleRuleCondition(
+    RuleType type,
+    HeapVector<Member<StyleRuleBase>>& adopt_rules)
+    : StyleRuleGroup(type, adopt_rules) {}
 
+<<<<<<< HEAD
 StyleRuleLayerBlock::StyleRuleLayerBlock(
     LayerName name,
     HeapVector<Member<StyleRuleBase>> rules)
@@ -909,13 +755,33 @@ StyleRuleCondition::StyleRuleCondition(RuleType type,
                                        const String& condition_text,
                                        HeapVector<Member<StyleRuleBase>> rules)
     : StyleRuleGroup(type, std::move(rules)), condition_text_(condition_text) {}
+=======
+StyleRuleCondition::StyleRuleCondition(
+    RuleType type,
+    const String& condition_text,
+    HeapVector<Member<StyleRuleBase>>& adopt_rules)
+    : StyleRuleGroup(type, adopt_rules), condition_text_(condition_text) {}
+>>>>>>> chromium
 
 StyleRuleCondition::StyleRuleCondition(
     const StyleRuleCondition& condition_rule) = default;
 
-StyleRuleMedia::StyleRuleMedia(const MediaQuerySet* media,
-                               HeapVector<Member<StyleRuleBase>> rules)
-    : StyleRuleCondition(kMedia, std::move(rules)), media_queries_(media) {}
+StyleRuleMedia::StyleRuleMedia(scoped_refptr<MediaQuerySet> media,
+                               HeapVector<Member<StyleRuleBase>>& adopt_rules)
+    : StyleRuleCondition(kMedia, adopt_rules), media_queries_(media) {}
+
+StyleRuleMedia::StyleRuleMedia(const StyleRuleMedia& media_rule)
+    : StyleRuleCondition(media_rule) {
+  if (media_rule.media_queries_)
+    media_queries_ = media_rule.media_queries_->Copy();
+}
+
+StyleRuleSupports::StyleRuleSupports(
+    const String& condition_text,
+    bool condition_is_supported,
+    HeapVector<Member<StyleRuleBase>>& adopt_rules)
+    : StyleRuleCondition(kSupports, condition_text, adopt_rules),
+      condition_is_supported_(condition_is_supported) {}
 
 StyleRuleMedia::StyleRuleMedia(const StyleRuleMedia& other,
                                HeapVector<Member<StyleRuleBase>> rules)
@@ -923,19 +789,13 @@ StyleRuleMedia::StyleRuleMedia(const StyleRuleMedia& other,
 
 void StyleRuleMedia::TraceAfterDispatch(blink::Visitor* visitor) const {
   StyleRuleCondition::TraceAfterDispatch(visitor);
-  visitor->Trace(media_queries_);
 }
-
-StyleRuleSupports::StyleRuleSupports(const String& condition_text,
-                                     bool condition_is_supported,
-                                     HeapVector<Member<StyleRuleBase>> rules)
-    : StyleRuleCondition(kSupports, condition_text, std::move(rules)),
-      condition_is_supported_(condition_is_supported) {}
 
 StyleRuleSupports::StyleRuleSupports(const StyleRuleSupports& supports_rule)
     : StyleRuleCondition(supports_rule),
       condition_is_supported_(supports_rule.condition_is_supported_) {}
 
+<<<<<<< HEAD
 StyleRuleSupports::StyleRuleSupports(const StyleRuleSupports& other,
                                      HeapVector<Member<StyleRuleBase>> rules)
     : StyleRuleSupports(other.condition_text_,
@@ -960,6 +820,12 @@ StyleRuleContainer::StyleRuleContainer(ContainerQuery& container_query,
     : StyleRuleCondition(kContainer,
                          container_query.ToString(),
                          std::move(rules)),
+=======
+StyleRuleContainer::StyleRuleContainer(
+    ContainerQuery& container_query,
+    HeapVector<Member<StyleRuleBase>>& adopt_rules)
+    : StyleRuleCondition(kContainer, adopt_rules),
+>>>>>>> chromium
       container_query_(&container_query) {}
 
 StyleRuleContainer::StyleRuleContainer(const StyleRuleContainer& container_rule)
@@ -969,6 +835,7 @@ StyleRuleContainer::StyleRuleContainer(const StyleRuleContainer& container_rule)
       MakeGarbageCollected<ContainerQuery>(*container_rule.container_query_);
 }
 
+<<<<<<< HEAD
 StyleRuleContainer::StyleRuleContainer(const StyleRuleContainer& other,
                                        HeapVector<Member<StyleRuleBase>> rules)
     : StyleRuleContainer(*other.container_query_, std::move(rules)) {}
@@ -988,15 +855,17 @@ void StyleRuleContainer::SetConditionText(
   }
 }
 
+=======
+>>>>>>> chromium
 void StyleRuleContainer::TraceAfterDispatch(blink::Visitor* visitor) const {
   visitor->Trace(container_query_);
   StyleRuleCondition::TraceAfterDispatch(visitor);
 }
 
-StyleRuleStartingStyle::StyleRuleStartingStyle(
-    HeapVector<Member<StyleRuleBase>> rules)
-    : StyleRuleGroup(kStartingStyle, std::move(rules)) {}
+StyleRuleViewport::StyleRuleViewport(CSSPropertyValueSet* properties)
+    : StyleRuleBase(kViewport), properties_(properties) {}
 
+<<<<<<< HEAD
 void StyleRuleFunction::Parameter::Trace(blink::Visitor* visitor) const {
   visitor->Trace(default_value);
 }
@@ -1014,22 +883,20 @@ StyleRuleFunction::StyleRuleFunction(
 void StyleRuleFunction::TraceAfterDispatch(blink::Visitor* visitor) const {
   StyleRuleGroup::TraceAfterDispatch(visitor);
   visitor->Trace(parameters_);
+=======
+StyleRuleViewport::StyleRuleViewport(const StyleRuleViewport& viewport_rule)
+    : StyleRuleBase(viewport_rule),
+      properties_(viewport_rule.properties_->MutableCopy()) {}
+
+MutableCSSPropertyValueSet& StyleRuleViewport::MutableProperties() {
+  if (!properties_->IsMutable())
+    properties_ = properties_->MutableCopy();
+  return *To<MutableCSSPropertyValueSet>(properties_.Get());
+>>>>>>> chromium
 }
 
-StyleRuleMixin::StyleRuleMixin(AtomicString name, StyleRule* fake_parent_rule)
-    : StyleRuleBase(kMixin),
-      name_(std::move(name)),
-      fake_parent_rule_(fake_parent_rule) {}
-
-void StyleRuleMixin::TraceAfterDispatch(blink::Visitor* visitor) const {
-  StyleRuleBase::TraceAfterDispatch(visitor);
-  visitor->Trace(fake_parent_rule_);
-}
-
-StyleRuleApplyMixin::StyleRuleApplyMixin(AtomicString name)
-    : StyleRuleBase(kApplyMixin), name_(std::move(name)) {}
-
-void StyleRuleApplyMixin::TraceAfterDispatch(blink::Visitor* visitor) const {
+void StyleRuleViewport::TraceAfterDispatch(blink::Visitor* visitor) const {
+  visitor->Trace(properties_);
   StyleRuleBase::TraceAfterDispatch(visitor);
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+<<<<<<< HEAD
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/signin/chrome_signin_client_factory.h"
 #include "chrome/browser/signin/chrome_signin_client_test_util.h"
@@ -34,6 +35,9 @@
 #include "content/public/test/browser_task_environment.h"
 #include "google_apis/gaia/gaia_id.h"
 #include "services/network/test/test_url_loader_factory.h"
+=======
+#include "chrome/common/webui_url_constants.h"
+>>>>>>> chromium
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace signin {
@@ -70,25 +74,15 @@ TEST(SigninPromoTest, TestReauthURL) {
 TEST(SigninPromoTest, SigninURLForDice) {
   EXPECT_EQ(
       "https://accounts.google.com/signin/chrome/sync?ssp=1&"
-      "color_scheme=dark&flow=promo",
-      GetChromeSyncURLForDice(
-          {.request_dark_scheme = true, .flow = Flow::PROMO}));
-  EXPECT_EQ(
-      "https://accounts.google.com/signin/chrome/sync?ssp=1&"
       "email_hint=email%40gmail.com&continue=https%3A%2F%2Fcontinue_url%2F",
-      GetChromeSyncURLForDice(
-          {"email@gmail.com", GURL("https://continue_url/")}));
-  EXPECT_EQ(
-      "https://accounts.google.com/signin/chrome/"
-      "sync?ssp=1&flow=embedded_promo",
-      GetChromeSyncURLForDice({.flow = Flow::EMBEDDED_PROMO}));
+      GetChromeSyncURLForDice("email@gmail.com", "https://continue_url/"));
   EXPECT_EQ(
       "https://accounts.google.com/AddSession?"
       "Email=email%40gmail.com&continue=https%3A%2F%2Fcontinue_url%2F",
-      GetAddAccountURLForDice("email@gmail.com",
-                              GURL("https://continue_url/")));
+      GetAddAccountURLForDice("email@gmail.com", "https://continue_url/"));
 }
 
+<<<<<<< HEAD
 class ShowPromoTest : public testing::Test {
  public:
   ShowPromoTest() {
@@ -430,4 +424,6 @@ TEST_F(ShowSigninPromoTestExplicitBrowserSignin,
 
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
+=======
+>>>>>>> chromium
 }  // namespace signin

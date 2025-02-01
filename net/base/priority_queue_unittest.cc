@@ -1,18 +1,13 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "net/base/priority_queue.h"
 
 #include <array>
 #include <cstddef>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace net {

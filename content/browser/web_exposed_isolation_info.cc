@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,13 +6,11 @@
 
 #include <ostream>
 
-#include "base/notreached.h"
-
 namespace content {
 
 // static
 WebExposedIsolationInfo WebExposedIsolationInfo::CreateNonIsolated() {
-  return WebExposedIsolationInfo(std::nullopt /* origin */,
+  return WebExposedIsolationInfo(absl::nullopt /* origin */,
                                  false /* isolated_application */);
 }
 
@@ -26,35 +24,8 @@ WebExposedIsolationInfo WebExposedIsolationInfo::CreateIsolatedApplication(
   return WebExposedIsolationInfo(origin, true /* isolated_application */);
 }
 
-bool WebExposedIsolationInfo::AreCompatible(const WebExposedIsolationInfo& a,
-                                            const WebExposedIsolationInfo& b) {
-  return a == b;
-}
-
-bool WebExposedIsolationInfo::AreCompatible(
-    const std::optional<WebExposedIsolationInfo>& a,
-    const WebExposedIsolationInfo& b) {
-  if (!a.has_value())
-    return true;
-  return AreCompatible(a.value(), b);
-}
-
-bool WebExposedIsolationInfo::AreCompatible(
-    const WebExposedIsolationInfo& a,
-    const std::optional<WebExposedIsolationInfo>& b) {
-  return AreCompatible(b, a);
-}
-
-bool WebExposedIsolationInfo::AreCompatible(
-    const std::optional<WebExposedIsolationInfo>& a,
-    const std::optional<WebExposedIsolationInfo>& b) {
-  if (!a.has_value() || !b.has_value())
-    return true;
-  return AreCompatible(a.value(), b.value());
-}
-
 WebExposedIsolationInfo::WebExposedIsolationInfo(
-    const std::optional<url::Origin>& origin,
+    const absl::optional<url::Origin>& origin,
     bool isolated_application)
     : origin_(origin), isolated_application_(isolated_application) {}
 
@@ -129,5 +100,4 @@ std::ostream& operator<<(std::ostream& out,
   out << "}";
   return out;
 }
-
 }  // namespace content

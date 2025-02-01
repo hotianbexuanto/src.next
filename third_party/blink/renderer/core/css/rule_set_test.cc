@@ -29,23 +29,13 @@
 
 #include "third_party/blink/renderer/core/css/rule_set.h"
 
-#include "base/test/scoped_feature_list.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/css/css_default_style_sheets.h"
 #include "third_party/blink/renderer/core/css/css_keyframes_rule.h"
 #include "third_party/blink/renderer/core/css/css_rule_list.h"
 #include "third_party/blink/renderer/core/css/css_test_helpers.h"
-#include "third_party/blink/renderer/core/css/style_sheet_contents.h"
-#include "third_party/blink/renderer/core/html/html_style_element.h"
-#include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
-#include "third_party/blink/renderer/core/testing/sim/sim_request.h"
-#include "third_party/blink/renderer/core/testing/sim/sim_test.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
-
-using ::testing::ElementsAreArray;
 
 namespace blink {
 
@@ -55,222 +45,176 @@ StyleRule* CreateDummyStyleRule() {
   css_test_helpers::TestStyleSheet sheet;
   sheet.AddCSSRules("#id { color: tomato; }");
   const RuleSet& rule_set = sheet.GetRuleSet();
-  base::span<const RuleData> rules = rule_set.IdRules(AtomicString("id"));
-  DCHECK_EQ(1u, rules.size());
-  return rules.front().Rule();
+  const HeapVector<Member<const RuleData>>* rules = rule_set.IdRules("id");
+  DCHECK_EQ(1u, rules->size());
+  return rules->at(0)->Rule();
 }
 
 }  // namespace
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_CustomPseudoElements) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("summary::-webkit-details-marker { }");
   RuleSet& rule_set = sheet.GetRuleSet();
   AtomicString str("-webkit-details-marker");
-  base::span<const RuleData> rules = rule_set.UAShadowPseudoElementRules(str);
-  ASSERT_EQ(1u, rules.size());
-  ASSERT_EQ(str, rules.front().Selector().Value());
+  const HeapVector<Member<const RuleData>>* rules =
+      rule_set.UAShadowPseudoElementRules(str);
+  ASSERT_EQ(1u, rules->size());
+  ASSERT_EQ(str, rules->at(0)->Selector().Value());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_Id) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("#id { }");
   RuleSet& rule_set = sheet.GetRuleSet();
   AtomicString str("id");
-  base::span<const RuleData> rules = rule_set.IdRules(str);
-  ASSERT_EQ(1u, rules.size());
-  ASSERT_EQ(str, rules.front().Selector().Value());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.IdRules(str);
+  ASSERT_EQ(1u, rules->size());
+  ASSERT_EQ(str, rules->at(0)->Selector().Value());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_NthChild) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("div:nth-child(2) { }");
   RuleSet& rule_set = sheet.GetRuleSet();
   AtomicString str("div");
-  base::span<const RuleData> rules = rule_set.TagRules(str);
-  ASSERT_EQ(1u, rules.size());
-  ASSERT_EQ(str, rules.front().Selector().TagQName().LocalName());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.TagRules(str);
+  ASSERT_EQ(1u, rules->size());
+  ASSERT_EQ(str, rules->at(0)->Selector().TagQName().LocalName());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_ClassThenId) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(".class#id { }");
   RuleSet& rule_set = sheet.GetRuleSet();
   AtomicString str("id");
   // id is prefered over class even if class preceeds it in the selector.
-  base::span<const RuleData> rules = rule_set.IdRules(str);
-  ASSERT_EQ(1u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.IdRules(str);
+  ASSERT_EQ(1u, rules->size());
   AtomicString class_str("class");
-  ASSERT_EQ(class_str, rules.front().Selector().Value());
+  ASSERT_EQ(class_str, rules->at(0)->Selector().Value());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_IdThenClass) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("#id.class { }");
   RuleSet& rule_set = sheet.GetRuleSet();
   AtomicString str("id");
-  base::span<const RuleData> rules = rule_set.IdRules(str);
-  ASSERT_EQ(1u, rules.size());
-  ASSERT_EQ(str, rules.front().Selector().Value());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.IdRules(str);
+  ASSERT_EQ(1u, rules->size());
+  ASSERT_EQ(str, rules->at(0)->Selector().Value());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_AttrThenId) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("[attr]#id { }");
   RuleSet& rule_set = sheet.GetRuleSet();
   AtomicString str("id");
-  base::span<const RuleData> rules = rule_set.IdRules(str);
-  ASSERT_EQ(1u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.IdRules(str);
+  ASSERT_EQ(1u, rules->size());
   AtomicString attr_str("attr");
-  ASSERT_EQ(attr_str, rules.front().Selector().Attribute().LocalName());
+  ASSERT_EQ(attr_str, rules->at(0)->Selector().Attribute().LocalName());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_TagThenAttrThenId) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("div[attr]#id { }");
   RuleSet& rule_set = sheet.GetRuleSet();
   AtomicString str("id");
-  base::span<const RuleData> rules = rule_set.IdRules(str);
-  ASSERT_EQ(1u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.IdRules(str);
+  ASSERT_EQ(1u, rules->size());
   AtomicString tag_str("div");
-  ASSERT_EQ(tag_str, rules.front().Selector().TagQName().LocalName());
-}
-
-TEST(RuleSetTest, findBestRuleSetAndAdd_TagThenAttr) {
-  test::TaskEnvironment task_environment;
-  css_test_helpers::TestStyleSheet sheet;
-
-  sheet.AddCSSRules("div[attr] { }");
-  RuleSet& rule_set = sheet.GetRuleSet();
-  ASSERT_EQ(1u, rule_set.AttrRules(AtomicString("attr")).size());
-  ASSERT_TRUE(rule_set.TagRules(AtomicString("div")).empty());
-}
-
-// It's arbitrary which of these we choose, but it needs to match
-// the behavior in IsCoveredByBucketing().
-TEST(RuleSetTest, findBestRuleSetAndAdd_ThreeClasses) {
-  test::TaskEnvironment task_environment;
-  css_test_helpers::TestStyleSheet sheet;
-
-  sheet.AddCSSRules(".a.b.c { }");
-  RuleSet& rule_set = sheet.GetRuleSet();
-  EXPECT_EQ(0u, rule_set.ClassRules(AtomicString("a")).size());
-  EXPECT_EQ(0u, rule_set.ClassRules(AtomicString("b")).size());
-  EXPECT_EQ(1u, rule_set.ClassRules(AtomicString("c")).size());
-}
-
-TEST(RuleSetTest, findBestRuleSetAndAdd_AttrThenClass) {
-  test::TaskEnvironment task_environment;
-  css_test_helpers::TestStyleSheet sheet;
-
-  sheet.AddCSSRules("[attr].class { }");
-  RuleSet& rule_set = sheet.GetRuleSet();
-  ASSERT_TRUE(rule_set.AttrRules(AtomicString("attr")).empty());
-  ASSERT_EQ(1u, rule_set.ClassRules(AtomicString("class")).size());
+  ASSERT_EQ(tag_str, rules->at(0)->Selector().TagQName().LocalName());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_Host) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(":host { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  const base::span<const RuleData> rules = rule_set.ShadowHostRules();
-  ASSERT_EQ(1u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.ShadowHostRules();
+  ASSERT_EQ(1u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_HostWithId) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(":host(#x) { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  const base::span<const RuleData> rules = rule_set.ShadowHostRules();
-  ASSERT_EQ(1u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.ShadowHostRules();
+  ASSERT_EQ(1u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_HostContext) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(":host-context(*) { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  const base::span<const RuleData> rules = rule_set.ShadowHostRules();
-  ASSERT_EQ(1u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.ShadowHostRules();
+  ASSERT_EQ(1u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_HostContextWithId) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(":host-context(#x) { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  const base::span<const RuleData> rules = rule_set.ShadowHostRules();
-  ASSERT_EQ(1u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.ShadowHostRules();
+  ASSERT_EQ(1u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_HostAndHostContextNotInRightmost) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(":host-context(#x) .y, :host(.a) > #b  { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  const base::span<const RuleData> shadow_rules = rule_set.ShadowHostRules();
-  base::span<const RuleData> id_rules = rule_set.IdRules(AtomicString("b"));
-  base::span<const RuleData> class_rules =
-      rule_set.ClassRules(AtomicString("y"));
-  ASSERT_EQ(0u, shadow_rules.size());
-  ASSERT_EQ(1u, id_rules.size());
-  ASSERT_EQ(1u, class_rules.size());
+  const HeapVector<Member<const RuleData>>* shadow_rules =
+      rule_set.ShadowHostRules();
+  const HeapVector<Member<const RuleData>>* id_rules = rule_set.IdRules("b");
+  const HeapVector<Member<const RuleData>>* class_rules =
+      rule_set.ClassRules("y");
+  ASSERT_EQ(0u, shadow_rules->size());
+  ASSERT_EQ(1u, id_rules->size());
+  ASSERT_EQ(1u, class_rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_HostAndClass) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(".foo:host { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  const base::span<const RuleData> rules = rule_set.ShadowHostRules();
-  ASSERT_EQ(0u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.ShadowHostRules();
+  ASSERT_EQ(0u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_HostContextAndClass) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(".foo:host-context(*) { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  const base::span<const RuleData> rules = rule_set.ShadowHostRules();
-  ASSERT_EQ(0u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.ShadowHostRules();
+  ASSERT_EQ(0u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_Focus) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(":focus { }");
   sheet.AddCSSRules("[attr]:focus { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  ASSERT_EQ(1u, rule_set.FocusPseudoClassRules().size());
-  ASSERT_EQ(1u, rule_set.AttrRules(AtomicString("attr")).size());
+  const HeapVector<Member<const RuleData>>* rules =
+      rule_set.FocusPseudoClassRules();
+  ASSERT_EQ(2u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_LinkVisited) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules(":link { }");
@@ -280,45 +224,42 @@ TEST(RuleSetTest, findBestRuleSetAndAdd_LinkVisited) {
   sheet.AddCSSRules(":-webkit-any-link { }");
   sheet.AddCSSRules("[attr]:-webkit-any-link { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  // Visited-dependent rules (which include selectors that contain :link)
-  // are added twice.
-  ASSERT_EQ(5u, rule_set.LinkPseudoClassRules().size());
-  ASSERT_EQ(5u, rule_set.AttrRules(AtomicString("attr")).size());
+  const HeapVector<Member<const RuleData>>* rules =
+      rule_set.LinkPseudoClassRules();
+  ASSERT_EQ(6u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_Cue) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("::cue(b) { }");
   sheet.AddCSSRules("video::cue(u) { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  const base::span<const RuleData> rules = rule_set.CuePseudoRules();
-  ASSERT_EQ(2u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.CuePseudoRules();
+  ASSERT_EQ(2u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_PlaceholderPseudo) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("::placeholder { }");
   sheet.AddCSSRules("input::placeholder { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  base::span<const RuleData> rules = rule_set.UAShadowPseudoElementRules(
-      AtomicString("-webkit-input-placeholder"));
-  ASSERT_EQ(2u, rules.size());
+  auto* rules =
+      rule_set.UAShadowPseudoElementRules("-webkit-input-placeholder");
+  ASSERT_EQ(2u, rules->size());
 }
 
 TEST(RuleSetTest, findBestRuleSetAndAdd_PartPseudoElements) {
-  test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
 
   sheet.AddCSSRules("::part(dummy):focus, #id::part(dummy) { }");
   RuleSet& rule_set = sheet.GetRuleSet();
-  const base::span<const RuleData> rules = rule_set.PartPseudoRules();
-  ASSERT_EQ(2u, rules.size());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.PartPseudoRules();
+  ASSERT_EQ(2u, rules->size());
 }
 
+<<<<<<< HEAD
 TEST(RuleSetTest, findBestRuleSetAndAdd_ShadowPseudoAfterPart) {
   test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
@@ -587,8 +528,9 @@ TEST(RuleSetTest, VisitedDependentRuleCount) {
 
 #endif  // DCHECK_IS_ON()
 
+=======
+>>>>>>> chromium
 TEST(RuleSetTest, SelectorIndexLimit) {
-  test::TaskEnvironment task_environment;
   // It's not feasible to run this test for a large number of bits. If the
   // number of bits have increased to a large number, consider removing this
   // test and making do with RuleSetTest.RuleDataSelectorIndexLimit.
@@ -601,40 +543,49 @@ TEST(RuleSetTest, SelectorIndexLimit) {
   // We use 13 bits to storing the selector start index in RuleData. This is a
   // test to check that we don't regress. We WONTFIX issues asking for more
   // since 2^13 simple selectors in a style rule is already excessive.
-  for (unsigned i = 0; i < 8191; i++) {
+  for (unsigned i = 0; i < 8191; i++)
     builder.Append("div,");
-  }
 
   builder.Append("b,span {}");
 
   css_test_helpers::TestStyleSheet sheet;
   sheet.AddCSSRules(builder.ToString());
   const RuleSet& rule_set = sheet.GetRuleSet();
-  base::span<const RuleData> rules = rule_set.TagRules(AtomicString("b"));
-  ASSERT_EQ(1u, rules.size());
-  EXPECT_EQ("b", rules.front().Selector().TagQName().LocalName());
-  EXPECT_TRUE(rule_set.TagRules(AtomicString("span")).empty());
+  const HeapVector<Member<const RuleData>>* rules = rule_set.TagRules("b");
+  ASSERT_EQ(1u, rules->size());
+  EXPECT_EQ("b", rules->at(0)->Selector().TagQName().LocalName());
+  EXPECT_FALSE(rule_set.TagRules("span"));
+}
+
+TEST(RuleSetTest, RuleDataSelectorIndexLimit) {
+  StyleRule* rule = CreateDummyStyleRule();
+  AddRuleFlags flags = kRuleHasNoSpecialState;
+  const unsigned position = 0;
+  EXPECT_TRUE(RuleData::MaybeCreate(rule, 0, position, flags,
+                                    nullptr /* container_query */));
+  EXPECT_FALSE(RuleData::MaybeCreate(rule, (1 << RuleData::kSelectorIndexBits),
+                                     position, flags,
+                                     nullptr /* container_query */));
+  EXPECT_FALSE(
+      RuleData::MaybeCreate(rule, (1 << RuleData::kSelectorIndexBits) + 1,
+                            position, flags, nullptr /* container_query */));
 }
 
 TEST(RuleSetTest, RuleDataPositionLimit) {
-  test::TaskEnvironment task_environment;
   StyleRule* rule = CreateDummyStyleRule();
   AddRuleFlags flags = kRuleHasNoSpecialState;
   const unsigned selector_index = 0;
-  const ContainerQuery* container_query = nullptr;
-  const CascadeLayer* cascade_layer = nullptr;
-  const StyleScope* style_scope = nullptr;
-
-  auto* rule_set = MakeGarbageCollected<RuleSet>();
-  for (int i = 0; i < (1 << RuleData::kPositionBits) + 1; ++i) {
-    rule_set->AddRule(rule, selector_index, flags, container_query,
-                      cascade_layer, style_scope);
-  }
-  EXPECT_EQ(1u << RuleData::kPositionBits, rule_set->RuleCount());
+  EXPECT_TRUE(RuleData::MaybeCreate(rule, selector_index, 0, flags,
+                                    nullptr /* container_query */));
+  EXPECT_FALSE(RuleData::MaybeCreate(rule, selector_index,
+                                     (1 << RuleData::kPositionBits), flags,
+                                     nullptr /* container_query */));
+  EXPECT_FALSE(RuleData::MaybeCreate(rule, selector_index,
+                                     (1 << RuleData::kPositionBits) + 1, flags,
+                                     nullptr /* container_query */));
 }
 
 TEST(RuleSetTest, RuleCountNotIncreasedByInvalidRuleData) {
-  test::TaskEnvironment task_environment;
   auto* rule_set = MakeGarbageCollected<RuleSet>();
   EXPECT_EQ(0u, rule_set->RuleCount());
 
@@ -642,17 +593,16 @@ TEST(RuleSetTest, RuleCountNotIncreasedByInvalidRuleData) {
   StyleRule* rule = CreateDummyStyleRule();
 
   // Add with valid selector_index=0.
-  rule_set->AddRule(rule, 0, flags, nullptr /* container_query */,
-                    nullptr /* cascade_layer */, nullptr /* scope */);
+  rule_set->AddRule(rule, 0, flags, nullptr /* container_query */);
   EXPECT_EQ(1u, rule_set->RuleCount());
 
   // Adding with invalid selector_index should not lead to a change in count.
   rule_set->AddRule(rule, 1 << RuleData::kSelectorIndexBits, flags,
-                    nullptr /* container_query */, nullptr /* cascade_layer */,
-                    nullptr /* scope */);
+                    nullptr /* container_query */);
   EXPECT_EQ(1u, rule_set->RuleCount());
 }
 
+<<<<<<< HEAD
 TEST(RuleSetTest, NoStyleScope) {
   test::TaskEnvironment task_environment;
   css_test_helpers::TestStyleSheet sheet;
@@ -1159,4 +1109,6 @@ TEST_F(RuleSetCascadeLayerTest, LayerStatementsBeforeAndAfterImport) {
             GetLayerByIdRule("four"));
 }
 
+=======
+>>>>>>> chromium
 }  // namespace blink

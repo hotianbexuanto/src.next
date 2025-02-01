@@ -1,14 +1,19 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/sequence_token.h"
 
 #include "base/atomic_sequence_num.h"
+<<<<<<< HEAD
 #include "base/check.h"
+=======
+#include "base/check_op.h"
+#include "base/no_destructor.h"
+#include "base/threading/thread_local.h"
+>>>>>>> chromium
 
 namespace base {
-namespace internal {
 
 namespace {
 
@@ -16,10 +21,15 @@ base::AtomicSequenceNumber g_sequence_token_generator;
 
 base::AtomicSequenceNumber g_task_token_generator;
 
-constinit thread_local SequenceToken current_sequence_token;
-constinit thread_local TaskToken current_task_token;
-constinit thread_local bool current_task_is_thread_bound = true;
-constinit thread_local bool current_task_is_running_synchronously = false;
+ThreadLocalPointer<const SequenceToken>& GetTlsCurrentSequenceToken() {
+  static base::NoDestructor<ThreadLocalPointer<const SequenceToken>> instance;
+  return *instance;
+}
+
+ThreadLocalPointer<const TaskToken>& GetTlsCurrentTaskToken() {
+  static base::NoDestructor<ThreadLocalPointer<const TaskToken>> instance;
+  return *instance;
+}
 
 }  // namespace
 
@@ -44,11 +54,9 @@ SequenceToken SequenceToken::Create() {
 }
 
 SequenceToken SequenceToken::GetForCurrentThread() {
-  if (!current_sequence_token.IsValid()) {
-    current_sequence_token = SequenceToken::Create();
-    DCHECK(current_task_is_thread_bound);
-  }
-  return current_sequence_token;
+  const SequenceToken* current_sequence_token =
+      GetTlsCurrentSequenceToken().Get();
+  return current_sequence_token ? *current_sequence_token : SequenceToken();
 }
 
 bool TaskToken::operator==(const TaskToken& other) const {
@@ -68,39 +76,25 @@ TaskToken TaskToken::Create() {
 }
 
 TaskToken TaskToken::GetForCurrentThread() {
-  return current_task_token;
+  const TaskToken* current_task_token = GetTlsCurrentTaskToken().Get();
+  return current_task_token ? *current_task_token : TaskToken();
 }
 
-bool CurrentTaskIsThreadBound() {
-  return current_task_is_thread_bound;
+ScopedSetSequenceTokenForCurrentThread::ScopedSetSequenceTokenForCurrentThread(
+    const SequenceToken& sequence_token)
+    : sequence_token_(sequence_token), task_token_(TaskToken::Create()) {
+  DCHECK(!GetTlsCurrentSequenceToken().Get());
+  DCHECK(!GetTlsCurrentTaskToken().Get());
+  GetTlsCurrentSequenceToken().Set(&sequence_token_);
+  GetTlsCurrentTaskToken().Set(&task_token_);
 }
 
-TaskScope::TaskScope(SequenceToken sequence_token,
-                     bool is_single_threaded,
-                     bool is_running_synchronously)
-    : previous_task_token_(TaskToken::GetForCurrentThread()),
-      previous_sequence_token_(SequenceToken::GetForCurrentThread()),
-      previous_task_is_thread_bound_(current_task_is_thread_bound),
-      previous_task_is_running_synchronously_(
-          current_task_is_running_synchronously) {
-  current_task_token = TaskToken::Create();
-  current_sequence_token = sequence_token;
-  current_task_is_thread_bound = is_single_threaded;
-  current_task_is_running_synchronously = is_running_synchronously;
-}
-
-TaskScope::~TaskScope() {
-  current_task_token = previous_task_token_;
-  current_sequence_token = previous_sequence_token_;
-  current_task_is_thread_bound = previous_task_is_thread_bound_;
-  current_task_is_running_synchronously =
-      previous_task_is_running_synchronously_;
-}
-
-}  // namespace internal
-
-bool CurrentTaskIsRunningSynchronously() {
-  return internal::current_task_is_running_synchronously;
+ScopedSetSequenceTokenForCurrentThread::
+    ~ScopedSetSequenceTokenForCurrentThread() {
+  DCHECK_EQ(GetTlsCurrentSequenceToken().Get(), &sequence_token_);
+  DCHECK_EQ(GetTlsCurrentTaskToken().Get(), &task_token_);
+  GetTlsCurrentSequenceToken().Set(nullptr);
+  GetTlsCurrentTaskToken().Set(nullptr);
 }
 
 }  // namespace base

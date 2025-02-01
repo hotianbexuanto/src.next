@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium Authors
+# Copyright 2014 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,11 +8,11 @@ See http://dev.chromium.org/developers/how-tos/depottools/presubmit-scripts
 for more details about the presubmit API built into depot_tools.
 """
 
+USE_PYTHON3 = True
 ACTION_XML_PATH = '../../../tools/metrics/actions/actions.xml'
-PRESUBMIT_VERSION = '2.0.0'
 
 
-def InternalCheckUserActionUpdate(input_api, output_api, action_xml_path):
+def CheckUserActionUpdate(input_api, output_api, action_xml_path):
   """Checks if any new user action has been added."""
   if any('actions.xml' == input_api.os_path.basename(f) for f in
          input_api.change.LocalPaths()):
@@ -30,7 +30,7 @@ def InternalCheckUserActionUpdate(input_api, output_api, action_xml_path):
         # Loads contents in tools/metrics/actions/actions.xml to memory. It's
         # loaded only once.
         if not current_actions:
-          with open(action_xml_path, encoding='utf-8') as actions_f:
+          with open(action_xml_path) as actions_f:
             current_actions = actions_f.read()
 
         metric_name = match.group(2)
@@ -44,10 +44,6 @@ def InternalCheckUserActionUpdate(input_api, output_api, action_xml_path):
             'tools/metrics/actions/extract_actions.py to update.'
             % (f.LocalPath(), line_num, metric_name), [])]
   return []
-
-
-def CheckUserActionUpdate(input_api, output_api):
-  return InternalCheckUserActionUpdate(input_api, output_api, ACTION_XML_PATH)
 
 
 def IsActionPresent(current_actions, metric_name, is_boolean):
@@ -98,7 +94,7 @@ def CheckHtml(input_api, output_api):
       input_api, output_api, 80, lambda x: x.LocalPath().endswith('.html'))
 
 
-def CheckSvgsOptimized(input_api, output_api):
+def _CheckSvgsOptimized(input_api, output_api):
   results = []
   try:
     import sys
@@ -112,18 +108,23 @@ def CheckSvgsOptimized(input_api, output_api):
   return results
 
 
-def _ImportWebDevStyle(input_api):
+def _CheckWebDevStyle(input_api, output_api):
+  results = []
+
   try:
     import sys
     old_sys_path = sys.path[:]
     cwd = input_api.PresubmitLocalPath()
     sys.path += [input_api.os_path.join(cwd, '..', '..', '..', 'tools')]
     from web_dev_style import presubmit_support
+    results += presubmit_support.CheckStyle(input_api, output_api)
   finally:
     sys.path = old_sys_path
-  return presubmit_support
+
+  return results
 
 
+<<<<<<< HEAD
 def CheckWebDevStyle(input_api, output_api):
   presubmit_support = _ImportWebDevStyle(input_api)
   return presubmit_support.CheckStyle(input_api, output_api)
@@ -183,5 +184,23 @@ def CheckNoNewPolymer(input_api, output_api):
 
 def CheckPatchFormatted(input_api, output_api):
   results = input_api.canned_checks.CheckPatchFormatted(input_api, output_api,
+=======
+def _CheckChangeOnUploadOrCommit(input_api, output_api):
+  results = CheckUserActionUpdate(input_api, output_api, ACTION_XML_PATH)
+  affected = input_api.AffectedFiles()
+  if any(f for f in affected if f.LocalPath().endswith('.html')):
+    results += CheckHtml(input_api, output_api)
+  results += _CheckSvgsOptimized(input_api, output_api)
+  results += _CheckWebDevStyle(input_api, output_api)
+  results += input_api.canned_checks.CheckPatchFormatted(input_api, output_api,
+>>>>>>> chromium
                                                          check_js=True)
   return results
+
+
+def CheckChangeOnUpload(input_api, output_api):
+  return _CheckChangeOnUploadOrCommit(input_api, output_api)
+
+
+def CheckChangeOnCommit(input_api, output_api):
+  return _CheckChangeOnUploadOrCommit(input_api, output_api)

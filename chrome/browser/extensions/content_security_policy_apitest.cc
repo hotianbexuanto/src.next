@@ -1,16 +1,16 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
 #include "base/strings/stringprintf.h"
 #include "chrome/browser/extensions/chrome_test_extension_loader.h"
 #include "chrome/browser/profiles/profile.h"
+=======
+#include "chrome/browser/extensions/extension_apitest.h"
+>>>>>>> chromium
 #include "chrome/common/chrome_switches.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
-#include "extensions/common/extension.h"
-#include "extensions/test/result_catcher.h"
-#include "extensions/test/test_extension_dir.h"
 #include "net/dns/mock_host_resolver.h"
 
 #if BUILDFLAG(IS_ANDROID)
@@ -23,6 +23,7 @@
 
 namespace extensions {
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_ANDROID)
 using ExtensionCspApiTest = ExtensionPlatformApiTest;
 #else
@@ -30,16 +31,20 @@ using ExtensionCspApiTest = ExtensionApiTest;
 #endif
 
 IN_PROC_BROWSER_TEST_F(ExtensionCspApiTest, ContentSecurityPolicy) {
+=======
+IN_PROC_BROWSER_TEST_F(ExtensionApiTest, ContentSecurityPolicy) {
+>>>>>>> chromium
   ASSERT_TRUE(StartEmbeddedTestServer());
   ASSERT_TRUE(RunExtensionTest("content_security_policy")) << message_;
 }
 
-IN_PROC_BROWSER_TEST_F(ExtensionCspApiTest, DefaultContentSecurityPolicy) {
+IN_PROC_BROWSER_TEST_F(ExtensionApiTest, DefaultContentSecurityPolicy) {
   ASSERT_TRUE(StartEmbeddedTestServer());
   ASSERT_TRUE(RunExtensionTest("default_content_security_policy")) <<
       message_;
 }
 
+<<<<<<< HEAD
 // Tests that the Manifest V3 extension CSP allows localhost sources to be
 // embedded in extension pages.
 IN_PROC_BROWSER_TEST_F(ExtensionCspApiTest,
@@ -264,4 +269,6 @@ IN_PROC_BROWSER_TEST_F(ExtensionCspApiTestWithPageNavigation,
       << message_;
 }
 
+=======
+>>>>>>> chromium
 }  // namespace extensions

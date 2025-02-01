@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,30 +6,60 @@ package org.chromium.chrome.browser.tasks.tab_management;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.TypedArray;
+import android.graphics.Color;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.ColorRes;
+import androidx.annotation.StyleRes;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.elevation.ElevationOverlayProvider;
 
-import org.chromium.chrome.R;
-import org.chromium.components.browser_ui.styles.ChromeColors;
-import org.chromium.components.browser_ui.styles.SemanticColorUtils;
+import org.chromium.base.ApiCompatibilityUtils;
+import org.chromium.chrome.browser.flags.CachedFeatureFlags;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.tab_ui.R;
 
-/** Utility class that provides theme related attributes for Tab UI. */
+/**
+ * Utility class that provides theme related attributes for Tab UI.
+ */
 public class TabUiThemeProvider {
     private static final String TAG = "TabUiThemeProvider";
-
     /**
-     * Returns the semantic color value that corresponds to colorPrimaryContainer.
+     * Returns the {@link ColorStateList} to use for the tab grid card view background based on
+     * incognito mode.
      *
      * @param context {@link Context} used to retrieve color.
+     * @param isIncognito Whether the color is used for incognito mode.
+     * @param isSelected Whether the tab is currently selected.
+     * @return The {@link ColorStateList} for tab grid card view background.
      */
-    public static @ColorInt int getDefaultNtbContainerColor(Context context) {
-        return MaterialColors.getColor(context, R.attr.colorPrimaryContainer, TAG);
+    public static ColorStateList getCardViewTintList(
+            Context context, boolean isIncognito, boolean isSelected) {
+        if (!themeRefactorEnabled()) {
+            return AppCompatResources.getColorStateList(context,
+                    isIncognito ? R.color.tab_grid_card_view_tint_color_incognito
+                                : R.color.tab_grid_card_view_tint_color);
+        }
+
+        if (isIncognito) {
+            // Incognito does not use dynamic colors, so it can use colors from resources.
+            @ColorRes
+            int colorRes = isSelected ? R.color.incognito_tab_bg_selected_color
+                                      : R.color.incognito_tab_bg_color;
+            return AppCompatResources.getColorStateList(context, colorRes);
+        } else {
+            float tabElevation = context.getResources().getDimension(R.dimen.tab_bg_elevation);
+            @ColorInt
+            int colorInt = isSelected
+                    ? MaterialColors.getColor(context, R.attr.colorPrimary, TAG)
+                    : new ElevationOverlayProvider(context)
+                              .compositeOverlayWithThemeSurfaceColorIfNeeded(tabElevation);
+            return ColorStateList.valueOf(colorInt);
+        }
     }
 
     /**
@@ -41,19 +71,49 @@ public class TabUiThemeProvider {
      * @param isSelected Whether the tab is currently selected.
      * @return The text color for the number used on the tab group cards.
      */
-    public static @ColorInt int getTabGroupNumberTextColor(
+    @ColorInt
+    public static int getTabGroupNumberTextColor(
             Context context, boolean isIncognito, boolean isSelected) {
+        if (!themeRefactorEnabled()) {
+            return ApiCompatibilityUtils.getColor(context.getResources(),
+                    isIncognito ? R.color.tab_group_number_text_color_incognito
+                                : R.color.tab_group_number_text_color);
+        }
         if (isIncognito) {
             @ColorRes
-            int colorRes =
-                    isSelected
-                            ? R.color.incognito_tab_tile_number_selected_color
-                            : R.color.incognito_tab_tile_number_color;
-            return context.getColor(colorRes);
+            int colorRes = isSelected ? R.color.incognito_tab_tile_number_selected_color
+                                      : R.color.incognito_tab_tile_number_color;
+            return ApiCompatibilityUtils.getColor(context.getResources(), colorRes);
         } else {
             return isSelected
-                    ? MaterialColors.getColor(context, R.attr.colorOnPrimary, TAG)
+                    ? MaterialColors.getColor(context, R.attr.colorOnPrimaryContainer, TAG)
                     : MaterialColors.getColor(context, R.attr.colorOnSurface, TAG);
+        }
+    }
+
+    /**
+     * Returns the title text appearance for the tab grid card based on the incognito mode.
+     *
+     * @param isIncognito Whether the text appearance is used for incognito mode.
+     * @param isSelected Whether the tab is currently selected.
+     * @return The text appearance for the tab grid card title.
+     */
+    @ColorInt
+    public static int getTitleTextColor(Context context, boolean isIncognito, boolean isSelected) {
+        if (!themeRefactorEnabled()) {
+            return ApiCompatibilityUtils.getColor(context.getResources(),
+                    isIncognito ? R.color.tab_grid_card_title_text_color_incognito
+                                : R.color.tab_grid_card_title_text_color);
+        }
+
+        if (isIncognito) {
+            @ColorRes
+            int colorRes = isSelected ? R.color.incognito_tab_title_selected_color
+                                      : R.color.incognito_tab_title_color;
+            return ApiCompatibilityUtils.getColor(context.getResources(), colorRes);
+        } else {
+            return isSelected ? MaterialColors.getColor(context, R.attr.colorOnPrimary, TAG)
+                              : MaterialColors.getColor(context, R.attr.colorOnSurface, TAG);
         }
     }
 
@@ -68,19 +128,22 @@ public class TabUiThemeProvider {
      */
     public static ColorStateList getActionButtonTintList(
             Context context, boolean isIncognito, boolean isSelected) {
+        if (!themeRefactorEnabled()) {
+            return AppCompatResources.getColorStateList(context,
+                    isIncognito ? R.color.tab_grid_card_action_button_tint_color_incognito
+                                : R.color.tab_grid_card_action_button_tint_color);
+        }
+
         if (isIncognito) {
             @ColorRes
-            int colorRes =
-                    isSelected
-                            ? R.color.incognito_tab_action_button_selected_color
-                            : R.color.incognito_tab_action_button_color;
+            int colorRes = isSelected ? R.color.incognito_tab_action_button_selected_color
+                                      : R.color.incognito_tab_action_button_color;
             return AppCompatResources.getColorStateList(context, colorRes);
         } else {
             @ColorInt
-            int colorInt =
-                    isSelected
-                            ? MaterialColors.getColor(context, R.attr.colorOnPrimary, TAG)
-                            : MaterialColors.getColor(context, R.attr.colorOnSurfaceVariant, TAG);
+            int colorInt = isSelected
+                    ? MaterialColors.getColor(context, R.attr.colorOnPrimary, TAG)
+                    : MaterialColors.getColor(context, R.attr.colorOnSurfaceVariant, TAG);
             return ColorStateList.valueOf(colorInt);
         }
     }
@@ -96,6 +159,18 @@ public class TabUiThemeProvider {
      */
     public static ColorStateList getToggleActionButtonBackgroundTintList(
             Context context, boolean isIncognito, boolean isSelected) {
+        if (!themeRefactorEnabled()) {
+            @ColorRes
+            int colorRes;
+            if (isSelected) {
+                colorRes = isIncognito ? R.color.tab_grid_card_selected_color_incognito
+                                       : R.color.tab_grid_card_selected_color;
+            } else {
+                colorRes =
+                        isIncognito ? R.color.default_icon_color_light : R.color.default_icon_color;
+            }
+            return AppCompatResources.getColorStateList(context, colorRes);
+        }
         return getActionButtonTintList(context, isIncognito, isSelected);
     }
 
@@ -109,12 +184,105 @@ public class TabUiThemeProvider {
      */
     public static ColorStateList getToggleActionButtonCheckedDrawableTintList(
             Context context, boolean isIncognito) {
+        if (!themeRefactorEnabled()) {
+            return AppCompatResources.getColorStateList(context,
+                    isIncognito ? R.color.default_icon_color_dark
+                                : R.color.default_icon_color_inverse);
+        }
         if (isIncognito) {
             return AppCompatResources.getColorStateList(
                     context, R.color.incognito_tab_bg_selected_color);
         }
-        return ColorStateList.valueOf(
-                MaterialColors.getColor(context, org.chromium.chrome.R.attr.colorPrimary, TAG));
+        return ColorStateList.valueOf(MaterialColors.getColor(context, R.attr.colorPrimary, TAG));
+    }
+
+    /**
+     * Returns the {@link ColorStateList} to use for the plus sign in new tab tile based on the
+     * incognito mode.
+     *
+     * @param context {@link Context} used to retrieve color.
+     * @param isIncognito Whether the color is used for incognito mode.
+     * @return The {@link ColorStateList} for new tab tile plus sign color.
+     */
+    public static ColorStateList getNewTabTilePlusTintList(Context context, boolean isIncognito) {
+        return AppCompatResources.getColorStateList(context,
+                isIncognito ? R.color.new_tab_tile_plus_color_incognito
+                            : R.color.new_tab_tile_plus_color);
+    }
+
+    /**
+     * Returns the divider color for tab grid card based on the incognito mode.
+     *
+     * @param context {@link Context} used to retrieve color.
+     * @param isIncognito Whether the color is used for incognito mode.
+     * @return The divider color for tab grid card.
+     */
+    @ColorInt
+    public static int getDividerColor(Context context, boolean isIncognito) {
+        return ApiCompatibilityUtils.getColor(context.getResources(),
+                isIncognito ? R.color.tab_grid_card_divider_tint_color_incognito
+                            : R.color.tab_grid_card_divider_tint_color);
+    }
+
+    /**
+     * Returns the thumbnail placeholder color resource id based on the incognito mode.
+     *
+     * @param isIncognito Whether the color is used for incognito mode.
+     * @return The thumbnail placeholder color resource id.
+     */
+    public static int getThumbnailPlaceHolderColorResource(boolean isIncognito) {
+        return isIncognito ? R.color.tab_grid_card_thumbnail_placeholder_color_incognito
+                           : R.color.tab_grid_card_thumbnail_placeholder_color;
+    }
+
+    /**
+     * Returns the mini-thumbnail placeholder color for the multi-thumbnail tab grid card based on
+     * the incognito mode.
+     *
+     * @param context {@link Context} used to retrieve color.
+     * @param isIncognito Whether the color is used for incognito mode.
+     * @param isSelected Whether the tab is currently selected.
+     * @return The mini-thumbnail placeholder color.
+     */
+    @ColorInt
+    public static int getMiniThumbnailPlaceHolderColor(
+            Context context, boolean isIncognito, boolean isSelected) {
+        if (!themeRefactorEnabled()) {
+            return ApiCompatibilityUtils.getColor(context.getResources(),
+                    isIncognito ? R.color.tab_list_mini_card_default_background_color_incognito
+                                : R.color.tab_list_mini_card_default_background_color);
+        }
+
+        if (isIncognito) {
+            @ColorRes
+            int colorRes = isSelected ? R.color.incognito_tab_thumbnail_placeholder_selected_color
+                                      : R.color.incognito_tab_thumbnail_placeholder_color;
+            return ApiCompatibilityUtils.getColor(context.getResources(), colorRes);
+        } else {
+            int alpha = context.getResources().getInteger(isSelected
+                            ? R.integer.tab_thumbnail_placeholder_selected_color_alpha
+                            : R.integer.tab_thumbnail_placeholder_color_alpha);
+
+            @StyleRes
+            int styleRes = isSelected ? R.style.TabThumbnailPlaceHolderStyle_Selected
+                                      : R.style.TabThumbnailPlaceHolderStyle;
+            TypedArray ta =
+                    context.obtainStyledAttributes(styleRes, R.styleable.TabThumbnailPlaceHolder);
+
+            @ColorInt
+            int baseColor = ta.getColor(
+                    R.styleable.TabThumbnailPlaceHolder_colorTileBase, Color.TRANSPARENT);
+            float tileSurfaceElevation =
+                    ta.getDimension(R.styleable.TabThumbnailPlaceHolder_elevationTileBase, 0);
+
+            ta.recycle();
+            if (tileSurfaceElevation != 0) {
+                ElevationOverlayProvider eop = new ElevationOverlayProvider(context);
+                baseColor = eop.compositeOverlay(baseColor, tileSurfaceElevation);
+            }
+
+            return MaterialColors.compositeARGBWithAlpha(baseColor, alpha);
+        }
     }
 
     /**
@@ -125,10 +293,11 @@ public class TabUiThemeProvider {
      * @param isIncognito Whether the color is used for incognito mode.
      * @return The mini-thumbnail frame color.
      */
-    public static @ColorInt int getMiniThumbnailFrameColor(Context context, boolean isIncognito) {
-        return isIncognito
-                ? context.getColor(R.color.tab_grid_card_divider_tint_color_incognito)
-                : SemanticColorUtils.getTabGridCardDividerTintColor(context);
+    @ColorInt
+    public static int getMiniThumbnailFrameColor(Context context, boolean isIncognito) {
+        return ApiCompatibilityUtils.getColor(context.getResources(),
+                isIncognito ? R.color.tab_grid_card_divider_tint_color_incognito
+                            : R.color.tab_grid_card_divider_tint_color);
     }
 
     /**
@@ -138,11 +307,11 @@ public class TabUiThemeProvider {
      * @param isIncognito Whether the color is used for incognito mode.
      * @return The favicon background color.
      */
-    public static @ColorInt int getFaviconBackgroundColor(Context context, boolean isIncognito) {
-        return context.getColor(
-                isIncognito
-                        ? R.color.favicon_background_color_incognito
-                        : R.color.favicon_background_color);
+    @ColorInt
+    public static int getFaviconBackgroundColor(Context context, boolean isIncognito) {
+        return ApiCompatibilityUtils.getColor(context.getResources(),
+                isIncognito ? R.color.favicon_background_color_incognito
+                            : R.color.favicon_background_color);
     }
 
     /**
@@ -156,24 +325,23 @@ public class TabUiThemeProvider {
      */
     public static ColorStateList getHoveredCardBackgroundTintList(
             Context context, boolean isIncognito, boolean isSelected) {
+        if (!themeRefactorEnabled()) {
+            return AppCompatResources.getColorStateList(context,
+                    isIncognito ? R.color.hovered_tab_grid_card_background_color_incognito
+                                : R.color.hovered_tab_grid_card_background_color);
+        }
+
         if (isIncognito) {
             @ColorRes
-            int colorRes =
-                    isSelected
-                            ? R.color.incognito_tab_group_hovered_bg_selected_color
-                            : R.color.incognito_tab_group_hovered_bg_color;
+            int colorRes = isSelected ? R.color.incognito_tab_group_hovered_bg_selected_color
+                                      : R.color.incognito_tab_group_hovered_bg_color;
             return AppCompatResources.getColorStateList(context, colorRes);
         } else {
             if (isSelected) {
                 @ColorInt
-                int baseColor =
-                        MaterialColors.getColor(
-                                context, org.chromium.chrome.R.attr.colorPrimary, TAG);
-                int alpha =
-                        context.getResources()
-                                .getInteger(
-                                        R.integer
-                                                .tab_grid_hovered_card_background_selected_color_alpha);
+                int baseColor = MaterialColors.getColor(context, R.attr.colorPrimary, TAG);
+                int alpha = context.getResources().getInteger(
+                        R.integer.tab_grid_hovered_card_background_selected_color_alpha);
                 return ColorStateList.valueOf(
                         MaterialColors.compositeARGBWithAlpha(baseColor, alpha));
             } else {
@@ -183,9 +351,8 @@ public class TabUiThemeProvider {
                 int baseColor =
                         new ElevationOverlayProvider(context)
                                 .compositeOverlayWithThemeSurfaceColorIfNeeded(backgroundElevation);
-                int alpha =
-                        context.getResources()
-                                .getInteger(R.integer.tab_grid_hovered_card_background_color_alpha);
+                int alpha = context.getResources().getInteger(
+                        R.integer.tab_grid_hovered_card_background_color_alpha);
                 return ColorStateList.valueOf(
                         MaterialColors.compositeARGBWithAlpha(baseColor, alpha));
             }
@@ -199,42 +366,70 @@ public class TabUiThemeProvider {
      * @param isIncognito Whether the color is used for incognito mode.
      * @return The background color for tab grid dialog.
      */
-    public static @ColorInt int getTabGridDialogBackgroundColor(
-            Context context, boolean isIncognito) {
+    @ColorInt
+    public static int getTabGridDialogBackgroundColor(Context context, boolean isIncognito) {
+        if (!themeRefactorEnabled()) {
+            return ContextCompat.getColor(context,
+                    isIncognito ? R.color.tab_grid_dialog_background_color_incognito
+                                : R.color.tab_grid_dialog_background_color);
+        }
+
         if (isIncognito) {
-            return context.getColor(R.color.incognito_tab_grid_dialog_background_color);
+            return ApiCompatibilityUtils.getColor(
+                    context.getResources(), R.color.incognito_tab_grid_dialog_background_color);
         } else {
             return MaterialColors.getColor(context, R.attr.colorSurface, TAG);
         }
     }
 
-    private static @ColorInt int getTabGridDialogUngroupBarBackgroundColor(
+    @ColorInt
+    private static int getTabGridDialogUngroupBarBackgroundColor(
             Context context, boolean isIncognito, boolean isTabHovered) {
+        if (!themeRefactorEnabled()) {
+            @ColorRes
+            int colorRes;
+            if (isTabHovered) {
+                colorRes = isIncognito ? R.color.tab_grid_card_selected_color_incognito
+                                       : R.color.tab_grid_card_selected_color;
+            } else {
+                colorRes = isIncognito ? R.color.tab_grid_dialog_background_color_incognito
+                                       : R.color.tab_grid_dialog_background_color;
+            }
+            return ApiCompatibilityUtils.getColor(context.getResources(), colorRes);
+        }
+
         if (isIncognito) {
-            return context.getColor(
-                    isTabHovered
-                            ? R.color.incognito_tab_grid_dialog_ungroup_bar_bg_hovered_color
-                            : R.color.incognito_tab_grid_dialog_background_color);
+            return ApiCompatibilityUtils.getColor(context.getResources(),
+                    isTabHovered ? R.color.incognito_tab_grid_dialog_ungroup_bar_bg_hovered_color
+                                 : R.color.incognito_tab_grid_dialog_background_color);
         } else {
             return MaterialColors.getColor(
-                    context,
-                    isTabHovered ? org.chromium.chrome.R.attr.colorPrimary : R.attr.colorSurface,
-                    TAG);
+                    context, isTabHovered ? R.attr.colorPrimary : R.attr.colorSurface, TAG);
         }
     }
 
-    private static @ColorInt int getTabGridDialogUngroupBarTextColor(
+    @ColorInt
+    private static int getTabGridDialogUngroupBarTextColor(
             Context context, boolean isIncognito, boolean isTabHovered) {
+        if (!themeRefactorEnabled()) {
+            @ColorRes
+            int colorRes;
+            if (isTabHovered) {
+                colorRes = R.color.tab_grid_dialog_ungroup_button_text_color_hovered;
+            } else {
+                colorRes = isIncognito ? R.color.tab_grid_dialog_ungroup_button_text_color_incognito
+                                       : R.color.tab_grid_dialog_ungroup_button_text_color;
+            }
+            return ApiCompatibilityUtils.getColor(context.getResources(), colorRes);
+        }
+
         if (isIncognito) {
-            return context.getColor(
-                    isTabHovered
-                            ? R.color.incognito_tab_grid_dialog_ungroup_bar_text_hovered_color
-                            : R.color.incognito_tab_grid_dialog_ungroup_bar_text_color);
+            return ApiCompatibilityUtils.getColor(context.getResources(),
+                    isTabHovered ? R.color.incognito_tab_grid_dialog_ungroup_bar_text_hovered_color
+                                 : R.color.incognito_tab_grid_dialog_ungroup_bar_text_color);
         } else {
             return MaterialColors.getColor(
-                    context,
-                    isTabHovered ? R.attr.colorOnPrimary : org.chromium.chrome.R.attr.colorPrimary,
-                    TAG);
+                    context, isTabHovered ? R.attr.colorOnPrimary : R.attr.colorPrimary, TAG);
         }
     }
 
@@ -245,8 +440,8 @@ public class TabUiThemeProvider {
      * @param isIncognito Whether the color is used for incognito mode.
      * @return The background color for the ungroup bar in tab grid dialog.
      */
-    public static @ColorInt int getTabGridDialogUngroupBarTextColor(
-            Context context, boolean isIncognito) {
+    @ColorInt
+    public static int getTabGridDialogUngroupBarTextColor(Context context, boolean isIncognito) {
         return getTabGridDialogUngroupBarTextColor(context, isIncognito, false);
     }
 
@@ -258,7 +453,8 @@ public class TabUiThemeProvider {
      * @param isIncognito Whether the color is used for incognito mode.
      * @return The background color for the ungroup bar in tab grid dialog.
      */
-    public static @ColorInt int getTabGridDialogUngroupBarHoveredTextColor(
+    @ColorInt
+    public static int getTabGridDialogUngroupBarHoveredTextColor(
             Context context, boolean isIncognito) {
         return getTabGridDialogUngroupBarTextColor(context, isIncognito, true);
     }
@@ -270,7 +466,8 @@ public class TabUiThemeProvider {
      * @param isIncognito Whether the color is used for incognito mode.
      * @return The color for the ungroup bar text in tab grid dialog.
      */
-    public static @ColorInt int getTabGridDialogUngroupBarBackgroundColor(
+    @ColorInt
+    public static int getTabGridDialogUngroupBarBackgroundColor(
             Context context, boolean isIncognito) {
         return getTabGridDialogUngroupBarBackgroundColor(context, isIncognito, false);
     }
@@ -282,89 +479,10 @@ public class TabUiThemeProvider {
      * @param isIncognito Whether the color is used for incognito mode.
      * @return The color for the ungroup bar text in tab grid dialog.
      */
-    public static @ColorInt int getTabGridDialogUngroupBarHoveredBackgroundColor(
+    @ColorInt
+    public static int getTabGridDialogUngroupBarHoveredBackgroundColor(
             Context context, boolean isIncognito) {
         return getTabGridDialogUngroupBarBackgroundColor(context, isIncognito, true);
-    }
-
-    /**
-     * Returns the {@link ColorStateList} to use for the strip tab hover card based on the incognito
-     * mode.
-     *
-     * @param context {@link Context} used to retrieve color.
-     * @param isIncognito Whether the color is used for incognito mode.
-     * @return The {@link ColorStateList} for the strip tab hover card.
-     */
-    public static ColorStateList getStripTabHoverCardBackgroundTintList(
-            Context context, boolean isIncognito) {
-        int backgroundTint =
-                isIncognito
-                        ? ContextCompat.getColor(
-                                context, R.color.default_bg_color_dark_elev_5_baseline)
-                        : ChromeColors.getSurfaceColor(
-                                context, R.dimen.tab_hover_card_bg_color_elev);
-        return ColorStateList.valueOf(backgroundTint);
-    }
-
-    /**
-     * Returns the text color for the strip tab hover card title based on the incognito mode.
-     *
-     * @param context {@link Context} used to retrieve color.
-     * @param isIncognito Whether the color is used for incognito mode.
-     * @return The text color for the strip tab hover card title.
-     */
-    public static @ColorInt int getStripTabHoverCardTextColorPrimary(
-            Context context, boolean isIncognito) {
-        return isIncognito
-                ? context.getColor(R.color.default_text_color_light)
-                : SemanticColorUtils.getDefaultTextColor(context);
-    }
-
-    /**
-     * Returns the text color for the strip tab hover card URL based on the incognito mode.
-     *
-     * @param context {@link Context} used to retrieve color.
-     * @param isIncognito Whether the color is used for incognito mode.
-     * @return The text color for the strip tab hover card URL.
-     */
-    public static @ColorInt int getStripTabHoverCardTextColorSecondary(
-            Context context, boolean isIncognito) {
-        return isIncognito
-                ? context.getColor(R.color.default_text_color_secondary_light)
-                : SemanticColorUtils.getDefaultTextColorSecondary(context);
-    }
-
-    /**
-     * Return the background color used for tab UI toolbar in selection edit mode.
-     *
-     * @param context {@link Context} used to retrieve color.
-     * @param isIncognito Whether the color is used for incognito mode.
-     * @return The background color for the toolbar when tab switcher is in selection edit mode.
-     */
-    public static @ColorInt int getTabSelectionToolbarBackground(
-            Context context, boolean isIncognito) {
-        if (isIncognito) {
-            return context.getColor(R.color.incognito_tab_list_editor_toolbar_bg_color);
-        } else {
-            return MaterialColors.getColor(context, R.attr.colorSurface, TAG);
-        }
-    }
-
-    /**
-     * Returns the {@link ColorStateList} for icons on the tab UI toolbar in selection edit mode.
-     *
-     * @param context {@link Context} used to retrieve color.
-     * @param isIncognito Whether the color is used for incognito mode.
-     * @return The {@link ColorStateList} for icons on the toolbar when tab switcher is in selection
-     *         edit mode.
-     */
-    public static ColorStateList getTabSelectionToolbarIconTintList(
-            Context context, boolean isIncognito) {
-        return AppCompatResources.getColorStateList(
-                context,
-                isIncognito
-                        ? R.color.default_text_color_light_list
-                        : R.color.default_text_color_list);
     }
 
     /**
@@ -374,31 +492,19 @@ public class TabUiThemeProvider {
      * @return The background resource id for message card view.
      */
     public static int getMessageCardBackgroundResourceId(boolean isIncognito) {
-        return isIncognito ? R.drawable.incognito_card_bg : R.drawable.card_with_corners_background;
+        return isIncognito ? R.drawable.message_card_background_with_inset_incognito
+                           : R.drawable.message_card_background_with_inset;
     }
 
     /**
-     * Returns the text appearance for the message card title based on the incognito mode.
-     *
-     * @param isIncognito Whether the text appearance is used for incognito mode.
-     * @return The text appearance for the message card title.
-     */
-    public static int getMessageCardTitleTextAppearance(boolean isIncognito) {
-        return isIncognito
-                ? R.style.TextAppearance_TextLarge_Primary_Baseline_Light
-                : R.style.TextAppearance_TextLarge_Primary;
-    }
-
-    /**
-     * Returns the text appearance for message card description based on the incognito mode.
+     * Returns the text appearance for the message card description based on the incognito mode.
      *
      * @param isIncognito Whether the text appearance is used for incognito mode.
      * @return The text appearance for the message card description.
      */
     public static int getMessageCardDescriptionTextAppearance(boolean isIncognito) {
-        return isIncognito
-                ? R.style.TextAppearance_TextMedium_Primary_Baseline_Light
-                : R.style.TextAppearance_TextMedium_Primary;
+        return isIncognito ? R.style.TextAppearance_TextMedium_Primary_Light
+                           : R.style.TextAppearance_TextMedium_Primary;
     }
 
     /**
@@ -408,78 +514,8 @@ public class TabUiThemeProvider {
      * @return The text appearance for the message card action button.
      */
     public static int getMessageCardActionButtonTextAppearance(boolean isIncognito) {
-        return isIncognito
-                ? R.style.TextAppearance_Button_Text_Blue_Dark
-                : R.style.TextAppearance_Button_Text_Blue;
-    }
-
-    /**
-     * Returns the text appearance for the message card title based on the incognito mode.
-     *
-     * @param isIncognito Whether the text appearance is used for incognito mode.
-     * @return The text appearance for the message card title.
-     */
-    public static int getLargeMessageCardTitleTextAppearance(boolean isIncognito) {
-        return isIncognito
-                ? R.style.TextAppearance_TextLarge_Primary_Baseline_Light
-                : R.style.TextAppearance_TextLarge_Primary;
-    }
-
-    /**
-     * Returns the text appearance for large message card description based on the incognito mode.
-     *
-     * @param isIncognito Whether the text appearance is used for incognito mode.
-     * @return The text appearance for the message card description.
-     */
-    public static int getLargeMessageCardDescriptionTextAppearance(boolean isIncognito) {
-        return isIncognito
-                ? R.style.TextAppearance_TextMedium_Secondary_Baseline_Light
-                : R.style.TextAppearance_TextMedium_Secondary;
-    }
-
-    /**
-     * Returns the text appearance for the large message card action button based on the incognito
-     * mode.
-     *
-     * @param isIncognito Whether the text appearance is used for incognito mode.
-     * @return The appearance for the message card action button text.
-     */
-    public static int getLargeMessageCardActionButtonTextAppearance(boolean isIncognito) {
-        return isIncognito
-                ? R.style.TextAppearance_Button_Text_Filled_Baseline_Dark
-                : R.style.TextAppearance_Button_Text_Filled;
-    }
-
-    /**
-     * Returns the color for the large message card action button based on the
-     * incognito mode.
-     *
-     * @param context The {@link Context} to use to fetch the resources.
-     * @param isIncognito Whether the color is used for incognito mode.
-     *
-     * @return The {@link ColorInt} to set for the large message card action button.
-     */
-    public static @ColorInt int getLargeMessageCardActionButtonColor(
-            Context context, boolean isIncognito) {
-        return isIncognito
-                ? context.getColor(R.color.filled_button_bg_color_light)
-                : context.getColor(R.color.filled_button_bg_color);
-    }
-
-    /**
-     * Returns the text color for the message card secondary action button based on the
-     * incognito mode.
-     *
-     * @param context The {@link Context} to use to fetch the resources.
-     * @param isIncognito Whether the text appearance is used for incognito mode.
-     *
-     * @return The {@link ColorInt} to set for the message card secondary action button.
-     */
-    public static @ColorInt int getMessageCardSecondaryActionButtonColor(
-            Context context, boolean isIncognito) {
-        return isIncognito
-                ? context.getColor(R.color.default_text_color_link_light)
-                : SemanticColorUtils.getDefaultTextColorLink(context);
+        return isIncognito ? R.style.TextAppearance_Button_Text_Blue_Dark
+                           : R.style.TextAppearance_Button_Text_Blue;
     }
 
     /**
@@ -492,50 +528,58 @@ public class TabUiThemeProvider {
      */
     public static ColorStateList getMessageCardCloseButtonTintList(
             Context context, boolean isIncognito) {
-        return AppCompatResources.getColorStateList(
-                context,
-                isIncognito
-                        ? R.color.default_icon_color_light
-                        : R.color.default_icon_color_tint_list);
+        return AppCompatResources.getColorStateList(context,
+                isIncognito ? R.color.default_icon_color_light : R.color.default_icon_color);
+    }
+
+    /**
+     * Return the padding around favicon if it is visible.
+     * @param context {@link Context} used to retrieve dimension.
+     * @return The padding space around favicon.
+     */
+    public static float getTabCardTopFaviconPadding(Context context) {
+        return context.getResources().getDimension(themeRefactorEnabled()
+                        ? R.dimen.tab_grid_card_favicon_padding
+                        : R.dimen.tab_list_card_padding);
     }
 
     /**
      * Return the size represented by dimension for padding between tab cards.
-     *
      * @param context {@link Context} to retrieve dimension.
      * @return The padding between tab cards in float number.
      */
     public static float getTabCardPaddingDimension(Context context) {
-        return context.getResources().getDimension(R.dimen.tab_grid_card_between_card_padding);
+        return context.getResources().getDimension(themeRefactorEnabled()
+                        ? R.dimen.tab_grid_card_thumbnail_margin
+                        : R.dimen.tab_list_card_padding);
     }
 
     /**
-     * Return the space represented by dimension for spaces between mini thumbnails in a group tab.
+     * Return the insect dimension around the selection button for tab grid card.
      * @param context {@link Context} to retrieve dimension.
-     * @return The padding between between mini thumbnails in float number.
-     */
-    public static float getTabMiniThumbnailPaddingDimension(Context context) {
-        return context.getResources().getDimension(R.dimen.tab_grid_card_thumbnail_margin);
-    }
-
-    /**
-     * Get the margin space from tab grid cards outline to its outbound represented by dimension.
-     * This space is used to calculate the starting point for the tab grid dialog.
      *
-     * @param context {@link Context} to retrieve dimension.
-     * @return The margin between tab cards in float number.
+     * @return The insect dimension around the selection button for tab grid card.
      */
-    public static float getTabGridCardMargin(Context context) {
-        return context.getResources().getDimension(R.dimen.tab_grid_card_margin);
+    public static float getTabGridCardSelectButtonInsectDimension(Context context) {
+        return context.getResources().getDimension(themeRefactorEnabled()
+                        ? R.dimen.tab_grid_card_toggle_button_background_inset
+                        : R.dimen.selection_tab_grid_toggle_button_inset);
     }
 
     /**
-     * Return the size represented by dimension for margin around message cards.
-     * @param context {@link Context} to retrieve dimension.
-     * @return The margin around message cards in float number.
+     * Returns the style resource Id that requires for Tab UI.
+     *
+     * @return The resource Id for the theme overlay used for tab UI.
      */
-    public static float getMessageCardMarginDimension(Context context) {
-        return context.getResources().getDimension(R.dimen.tab_list_selected_inset);
+    @StyleRes
+    public static int getThemeOverlayStyleResourceId() {
+        return themeRefactorEnabled() ? R.style.ThemeRefactorOverlay_Enabled_TabUi
+                                      : R.style.ThemeRefactorOverlay_Disabled_TabUi;
+    }
+
+    /** Return if theme refactor is enabled. **/
+    static boolean themeRefactorEnabled() {
+        return CachedFeatureFlags.isEnabled(ChromeFeatureList.THEME_REFACTOR_ANDROID);
     }
 
     /**

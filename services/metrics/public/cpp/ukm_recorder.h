@@ -1,47 +1,44 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef SERVICES_METRICS_PUBLIC_CPP_UKM_RECORDER_H_
 #define SERVICES_METRICS_PUBLIC_CPP_UKM_RECORDER_H_
 
-#include <set>
-
+#include "base/callback.h"
 #include "base/feature_list.h"
-#include "base/functional/callback.h"
-#include "base/observer_list.h"
-#include "base/observer_list_types.h"
+#include "base/macros.h"
 #include "base/threading/thread_checker.h"
-#include "base/types/pass_key.h"
 #include "services/metrics/public/cpp/metrics_export.h"
 #include "services/metrics/public/cpp/ukm_source.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/metrics/public/mojom/ukm_interface.mojom-forward.h"
 #include "url/gurl.h"
 
+<<<<<<< HEAD
 class ChromePermissionsClient;
+=======
+>>>>>>> chromium
 class PermissionUmaUtil;
-class PlatformNotificationServiceImpl;
-
-namespace apps {
-class WebsiteMetrics;
-}  // namespace apps
+class WebApkUkmRecorder;
 
 namespace metrics {
 class UkmRecorderInterface;
 }  // namespace metrics
 
 namespace content {
+<<<<<<< HEAD
 class BtmNavigationHandle;
 class BtmServiceImpl;
 class FedCmMetrics;
+=======
+>>>>>>> chromium
 class PaymentAppProviderUtil;
 class RenderFrameHostImpl;
 }  // namespace content
 
-namespace extensions {
-class ExtensionMessagePort;
-class ManifestV2ExperimentManager;
+namespace web_app {
+class DesktopWebAppUkmRecorder;
 }
 
 namespace weblayer {
@@ -59,8 +56,6 @@ enum class AppType {
   kPWA,
   kExtension,
   kChromeApp,
-  kCrostini,
-  kBorealis,
 };
 
 namespace internal {
@@ -68,45 +63,25 @@ class SourceUrlRecorderWebContentsObserver;
 }  // namespace internal
 
 // This feature controls whether UkmService should be created.
-METRICS_EXPORT BASE_DECLARE_FEATURE(kUkmFeature);
-
-// This feature controls whether MojoUkmRecorder gets to decide whether to send
-// an IPC for AddEntry.
-METRICS_EXPORT BASE_DECLARE_FEATURE(kUkmReduceAddEntryIPC);
+METRICS_EXPORT extern const base::Feature kUkmFeature;
 
 // Interface for recording UKM
 class METRICS_EXPORT UkmRecorder {
  public:
-  // Currently is used for AppKM on ChromeOS only.
-  class Observer : public base::CheckedObserver {
-   public:
-    // Can be used to save some metrics locally before shutting down. Do not
-    // call blocking methods as this might significantly increase the shutdown
-    // time. Do not use async methods as there is no guarantee the `UkmRecorder`
-    // will still be there.
-    virtual void OnStartingShutdown() = 0;
-
-   protected:
-    ~Observer() override = default;
-  };
-
   UkmRecorder();
-
-  UkmRecorder(const UkmRecorder&) = delete;
-  UkmRecorder& operator=(const UkmRecorder&) = delete;
-
   virtual ~UkmRecorder();
 
   // Provides access to a global UkmRecorder instance for recording metrics.
-  // This is typically passed to the Record() method of an entry object from
+  // This is typically passed to the Record() method of a entry object from
   // ukm_builders.h.
   // Use TestAutoSetUkmRecorder for capturing data written this way in tests.
   static UkmRecorder* Get();
 
-  // Get the new SourceId, which is unique for the duration of a browser
+  // Get the new source ID, which is unique for the duration of a browser
   // session.
   static SourceId GetNewSourceID();
 
+<<<<<<< HEAD
   // Gets new source Id for PAYMENT_APP_ID type and updates the source URL to
   // the scope of the app. This method should only be called by
   // PaymentAppProviderUtil class when the payment app window is opened.
@@ -171,23 +146,13 @@ class METRICS_EXPORT UkmRecorder {
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
 
+=======
+>>>>>>> chromium
   // Add an entry to the UkmEntry list.
   virtual void AddEntry(mojom::UkmEntryPtr entry) = 0;
 
-  // Associates web feature usage data with the UkmSource keyed by `source_id`.
-  // This function can be called more than once for a given `source_id`. The
-  // effects are additive. For example, after the following calls, where the
-  // value of each of {a, b, c} is <= 2:
-  //   RecordWebDXFeature(100, {a, b}, 2);
-  //   RecordWebDXFeature(100, {b, c}, 2);
-  // The UKM recorder understands that the source identified by `source_id` 100
-  // is using features {a, b, c}.
-  virtual void RecordWebDXFeatures(SourceId source_id,
-                                   const std::set<int32_t>& features,
-                                   const size_t max_feature_value) = 0;
-
-  // Controls sampling for testing purposes. Sampling is 1-in-N (N==rate).
-  virtual void SetSamplingForTesting(int rate) {}
+  // Disables sampling for testing purposes.
+  virtual void DisableSamplingForTesting() {}
 
  protected:
   // Type-safe wrappers for Update<X> functions.
@@ -196,9 +161,19 @@ class METRICS_EXPORT UkmRecorder {
                     const GURL& url,
                     const AppType app_type);
 
-  // Returns a new SourceId for the given GURL and SourceIDType.
-  static SourceId GetSourceIdFromScopeImpl(const GURL& scope_url,
-                                           SourceIdType type);
+  // Gets new source Id for WEBAPK_ID type and updates the manifest url. This
+  // method should only be called by WebApkUkmRecorder class.
+  static SourceId GetSourceIdForWebApkManifestUrl(const GURL& manifest_url);
+
+  // Gets new source ID for a desktop web app, using the start_url from the web
+  // app manifest. This method should only be called by DailyMetricsHelper.
+  static SourceId GetSourceIdForDesktopWebAppStartUrl(const GURL& start_url);
+
+  // Gets new source Id for PAYMENT_APP_ID type and updates the source url to
+  // the scope of the app. This method should only be called by
+  // PaymentAppProviderUtil class when the payment app window is opened.
+  static SourceId GetSourceIdForPaymentAppFromScope(
+      const GURL& service_worker_scope);
 
  private:
   friend weblayer::BackgroundSyncDelegateImpl;
@@ -207,12 +182,22 @@ class METRICS_EXPORT UkmRecorder {
   friend UkmBackgroundRecorderService;
   friend metrics::UkmRecorderInterface;
   friend PermissionUmaUtil;
+  friend content::PaymentAppProviderUtil;
   friend content::RenderFrameHostImpl;
+
+  // WebApkUkmRecorder and DesktopWebAppUkmRecorder record metrics about
+  // installed web apps. Instead of using
+  // the current main frame URL, we want to record the URL which identifies the
+  // current app: the web app manifest url or start url, respectively.
+  // Therefore, they need to be friends so that they can access the private
+  // GetSourceIdForWebApkManifestUrl() method.
+  friend WebApkUkmRecorder;
+  friend web_app::DesktopWebAppUkmRecorder;
 
   // Associates the SourceId with a URL. Most UKM recording code should prefer
   // to use a shared SourceId that is already associated with a URL, rather
   // than using this API directly. New uses of this API must be audited to
-  // maintain privacy constraints. See go/ukm-api.
+  // maintain privacy constraints.
   virtual void UpdateSourceURL(SourceId source_id, const GURL& url) = 0;
 
   // Associates the SourceId with an app URL for APP_ID sources. This method
@@ -228,15 +213,12 @@ class METRICS_EXPORT UkmRecorder {
       SourceId source_id,
       const UkmSource::NavigationData& navigation_data) = 0;
 
-  // Marks a source as no longer needed to keep alive in memory. Called by
-  // SourceUrlRecorderWebContentsObserver and AppSourceUrlRecorder (and possibly
-  // others in the future) when a browser tab, its WebContents, or a ChromeOS
-  // app is no longer alive, implying that no more metrics will be recorded for
-  // this source. This reduces UkmRecorder's memory usage. Not to be used
-  // through mojo interface.
+  // Marks a source as no longer needed to kept alive in memory. Called by
+  // SourceUrlRecorderWebContentsObserver when a browser tab or its WebContents
+  // are no longer alive. Not to be used through mojo interface.
   virtual void MarkSourceForDeletion(ukm::SourceId source_id) = 0;
 
-  base::ObserverList<Observer> observers_;
+  DISALLOW_COPY_AND_ASSIGN(UkmRecorder);
 };
 
 }  // namespace ukm

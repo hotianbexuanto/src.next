@@ -1,40 +1,33 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/signin/signin_ui_util.h"
 
-#include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
+#include "base/bind.h"
+#include "base/macros.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/task_environment.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/browser/profiles/profile_attributes_init_params.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
-#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/browser/signin/signin_promo.h"
-#include "chrome/browser/signin/signin_ui_delegate.h"
-#include "chrome/browser/signin/signin_util.h"
-#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile_manager.h"
 #include "components/account_id/account_id.h"
 #include "components/google/core/common/google_util.h"
-#include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/base/signin_buildflags.h"
-#include "components/signin/public/base/signin_metrics.h"
-#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/accounts_mutator.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
+<<<<<<< HEAD
 #include "components/signin/public/identity_manager/primary_account_mutator.h"
 #include "google_apis/gaia/gaia_id.h"
 #include "google_apis/gaia/gaia_urls.h"
@@ -45,18 +38,15 @@
 #include "chrome/browser/signin/signin_ui_delegate_impl_dice.h"
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
+=======
+#include "testing/gtest/include/gtest/gtest.h"
+
+>>>>>>> chromium
 namespace signin_ui_util {
 
-namespace {
-const char kMainEmail[] = "main_email@example.com";
-const char kMainGaiaID[] = "main_gaia_id";
-const char kSecondaryEmail[] = "secondary_email@example.com";
-const char kSecondaryGaiaID[] = "secondary_gaia_id";
-}  // namespace
+class GetAllowedDomainTest : public ::testing::Test {};
 
-using testing::_;
-
-TEST(GetAllowedDomainTest, WithInvalidPattern) {
+TEST_F(GetAllowedDomainTest, WithInvalidPattern) {
   EXPECT_EQ(std::string(), GetAllowedDomain("email"));
   EXPECT_EQ(std::string(), GetAllowedDomain("email@a@b"));
   EXPECT_EQ(std::string(), GetAllowedDomain("email@a[b"));
@@ -69,7 +59,7 @@ TEST(GetAllowedDomainTest, WithInvalidPattern) {
   EXPECT_EQ(std::string(), GetAllowedDomain(""));
 }
 
-TEST(GetAllowedDomainTest, WithValidPattern) {
+TEST_F(GetAllowedDomainTest, WithValidPattern) {
   EXPECT_EQ("example.com", GetAllowedDomain("email@example.com"));
   EXPECT_EQ("example.com", GetAllowedDomain("email@example.com\\E"));
   EXPECT_EQ("example.com", GetAllowedDomain("email@example.com$"));
@@ -83,6 +73,7 @@ TEST(GetAllowedDomainTest, WithValidPattern) {
 
 namespace {
 
+<<<<<<< HEAD
 // TODO(crbug.com/40834209): move out testing of SigninUiDelegateImplDice
 // in a separate file.
 class MockSigninUiDelegate : public SigninUiDelegateImplDice {
@@ -96,21 +87,99 @@ class MockSigninUiDelegate : public SigninUiDelegateImplDice {
                TurnSyncOnHelper::SigninAbortedMode signin_aborted_mode,
                bool is_sync_promo),
               ());
+=======
+const char kMainEmail[] = "main_email@example.com";
+const char kMainGaiaID[] = "main_gaia_id";
+const char kSecondaryEmail[] = "secondary_email@example.com";
+const char kSecondaryGaiaID[] = "secondary_gaia_id";
+
+class SigninUiUtilTestBrowserWindow : public TestBrowserWindow {
+ public:
+  SigninUiUtilTestBrowserWindow() = default;
+  ~SigninUiUtilTestBrowserWindow() override = default;
+  void set_browser(Browser* browser) { browser_ = browser; }
+
+  void ShowAvatarBubbleFromAvatarButton(
+      AvatarBubbleMode mode,
+      signin_metrics::AccessPoint access_point,
+      bool is_source_keyboard) override {
+    ASSERT_TRUE(browser_);
+    // Simulate what |BrowserView| does for a regular Chrome sign-in flow.
+    browser_->signin_view_controller()->ShowSignin(
+        profiles::BubbleViewMode::BUBBLE_VIEW_MODE_GAIA_SIGNIN, access_point);
+  }
+
+ private:
+  Browser* browser_ = nullptr;
+
+  DISALLOW_COPY_AND_ASSIGN(SigninUiUtilTestBrowserWindow);
+>>>>>>> chromium
 };
 
 }  // namespace
 
+<<<<<<< HEAD
 class SigninUiUtilTest : public BrowserWithTestWindowTest {
+=======
+class DiceSigninUiUtilTest : public BrowserWithTestWindowTest {
+>>>>>>> chromium
  public:
-  SigninUiUtilTest()
-      : delegate_auto_reset_(SetSigninUiDelegateForTesting(&mock_delegate_)) {}
-  ~SigninUiUtilTest() override = default;
+  DiceSigninUiUtilTest() : BrowserWithTestWindowTest() {}
+  ~DiceSigninUiUtilTest() override = default;
+
+  struct CreateDiceTurnSyncOnHelperParams {
+   public:
+    Profile* profile = nullptr;
+    Browser* browser = nullptr;
+    signin_metrics::AccessPoint signin_access_point =
+        signin_metrics::AccessPoint::ACCESS_POINT_MAX;
+    signin_metrics::PromoAction signin_promo_action =
+        signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO;
+    signin_metrics::Reason signin_reason =
+        signin_metrics::Reason::kUnknownReason;
+    CoreAccountId account_id;
+    DiceTurnSyncOnHelper::SigninAbortedMode signin_aborted_mode =
+        DiceTurnSyncOnHelper::SigninAbortedMode::REMOVE_ACCOUNT;
+  };
+
+  void CreateDiceTurnSyncOnHelper(
+      Profile* profile,
+      Browser* browser,
+      signin_metrics::AccessPoint signin_access_point,
+      signin_metrics::PromoAction signin_promo_action,
+      signin_metrics::Reason signin_reason,
+      const CoreAccountId& account_id,
+      DiceTurnSyncOnHelper::SigninAbortedMode signin_aborted_mode) {
+    create_dice_turn_sync_on_helper_called_ = true;
+    create_dice_turn_sync_on_helper_params_.profile = profile;
+    create_dice_turn_sync_on_helper_params_.browser = browser;
+    create_dice_turn_sync_on_helper_params_.signin_access_point =
+        signin_access_point;
+    create_dice_turn_sync_on_helper_params_.signin_promo_action =
+        signin_promo_action;
+    create_dice_turn_sync_on_helper_params_.signin_reason = signin_reason;
+    create_dice_turn_sync_on_helper_params_.account_id = account_id;
+    create_dice_turn_sync_on_helper_params_.signin_aborted_mode =
+        signin_aborted_mode;
+  }
 
  protected:
+  // BrowserWithTestWindowTest:
+  void SetUp() override {
+    BrowserWithTestWindowTest::SetUp();
+    static_cast<SigninUiUtilTestBrowserWindow*>(browser()->window())
+        ->set_browser(browser());
+  }
+
   // BrowserWithTestWindowTest:
   TestingProfile::TestingFactories GetTestingFactories() override {
     return IdentityTestEnvironmentProfileAdaptor::
         GetIdentityTestEnvironmentFactories();
+  }
+
+  // BrowserWithTestWindowTest:
+  std::unique_ptr<BrowserWindow> CreateBrowserWindow() override {
+    return std::make_unique<SigninUiUtilTestBrowserWindow>();
   }
 
   // Returns the identity manager.
@@ -118,25 +187,12 @@ class SigninUiUtilTest : public BrowserWithTestWindowTest {
     return IdentityManagerFactory::GetForProfile(profile());
   }
 
-  void EnableSync(const CoreAccountInfo& account_info,
+  void EnableSync(const AccountInfo& account_info,
                   bool is_default_promo_account) {
-    EnableSyncFromMultiAccountPromo(profile(), account_info, access_point_,
-                                    is_default_promo_account);
-  }
-
-  void SignIn(const CoreAccountInfo& account_info) {
-    SignInFromSingleAccountPromo(profile(), account_info, access_point_);
-  }
-
-  void ExpectTurnSyncOn(signin_metrics::AccessPoint access_point,
-                        signin_metrics::PromoAction promo_action,
-                        const CoreAccountId& account_id,
-                        TurnSyncOnHelper::SigninAbortedMode signin_aborted_mode,
-                        bool is_sync_promo) {
-    EXPECT_CALL(
-        mock_delegate_,
-        ShowTurnSyncOnUI(profile(), access_point, promo_action, account_id,
-                         signin_aborted_mode, is_sync_promo));
+    signin_ui_util::internal::EnableSyncFromPromo(
+        browser(), account_info, access_point_, is_default_promo_account,
+        base::BindOnce(&DiceSigninUiUtilTest::CreateDiceTurnSyncOnHelper,
+                       base::Unretained(this)));
   }
 
   void ExpectNoSigninStartedHistograms(
@@ -218,19 +274,24 @@ class SigninUiUtilTest : public BrowserWithTestWindowTest {
   signin_metrics::AccessPoint access_point_ =
       signin_metrics::AccessPoint::kBookmarkBubble;
 
-  testing::StrictMock<MockSigninUiDelegate> mock_delegate_;
-  base::AutoReset<SigninUiDelegate*> delegate_auto_reset_;
+  bool create_dice_turn_sync_on_helper_called_ = false;
+  CreateDiceTurnSyncOnHelperParams create_dice_turn_sync_on_helper_params_;
 };
 
-TEST_F(SigninUiUtilTest, EnableSyncWithExistingAccount) {
+TEST_F(DiceSigninUiUtilTest, EnableSyncWithExistingAccount) {
   CoreAccountId account_id =
       GetIdentityManager()->GetAccountsMutator()->AddOrUpdateAccount(
+<<<<<<< HEAD
           GaiaId(kMainGaiaID), kMainEmail, "refresh_token", false,
           signin_metrics::AccessPoint::kUnknown,
           signin_metrics::SourceForRefreshTokenOperation::kUnknown);
   GetIdentityManager()->GetPrimaryAccountMutator()->SetPrimaryAccount(
       account_id, signin::ConsentLevel::kSignin,
       signin_metrics::AccessPoint::kUnknown);
+=======
+          kMainGaiaID, kMainEmail, "refresh_token", false,
+          signin_metrics::SourceForRefreshTokenOperation::kUnknown);
+>>>>>>> chromium
 
   for (bool is_default_promo_account : {true, false}) {
     base::HistogramTester histogram_tester;
@@ -240,10 +301,14 @@ TEST_F(SigninUiUtilTest, EnableSyncWithExistingAccount) {
     EXPECT_EQ(0, user_action_tester.GetActionCount(
                      "Signin_Signin_FromBookmarkBubble"));
 
+    EnableSync(
+        GetIdentityManager()->FindExtendedAccountInfoByAccountId(account_id),
+        is_default_promo_account);
     signin_metrics::PromoAction expected_promo_action =
         is_default_promo_account
             ? signin_metrics::PromoAction::PROMO_ACTION_WITH_DEFAULT
             : signin_metrics::PromoAction::PROMO_ACTION_NOT_DEFAULT;
+<<<<<<< HEAD
     ExpectTurnSyncOn(signin_metrics::AccessPoint::kBookmarkBubble,
                      expected_promo_action, account_id,
                      TurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT,
@@ -252,18 +317,47 @@ TEST_F(SigninUiUtilTest, EnableSyncWithExistingAccount) {
         GetIdentityManager()->FindExtendedAccountInfoByAccountId(account_id),
         is_default_promo_account);
 
+=======
+    ASSERT_TRUE(create_dice_turn_sync_on_helper_called_);
+>>>>>>> chromium
     ExpectOneSigninStartedHistograms(histogram_tester, expected_promo_action);
+
     EXPECT_EQ(1, user_action_tester.GetActionCount(
                      "Signin_Signin_FromBookmarkBubble"));
+    if (is_default_promo_account) {
+      EXPECT_EQ(1, user_action_tester.GetActionCount(
+                       "Signin_SigninWithDefault_FromBookmarkBubble"));
+    } else {
+      EXPECT_EQ(1, user_action_tester.GetActionCount(
+                       "Signin_SigninNotDefault_FromBookmarkBubble"));
+    }
+
+    // Verify that the helper to enable sync is created with the expected
+    // params.
+    EXPECT_EQ(profile(), create_dice_turn_sync_on_helper_params_.profile);
+    EXPECT_EQ(browser(), create_dice_turn_sync_on_helper_params_.browser);
+    EXPECT_EQ(account_id, create_dice_turn_sync_on_helper_params_.account_id);
+    EXPECT_EQ(signin_metrics::AccessPoint::ACCESS_POINT_BOOKMARK_BUBBLE,
+              create_dice_turn_sync_on_helper_params_.signin_access_point);
+    EXPECT_EQ(expected_promo_action,
+              create_dice_turn_sync_on_helper_params_.signin_promo_action);
+    EXPECT_EQ(signin_metrics::Reason::kSigninPrimaryAccount,
+              create_dice_turn_sync_on_helper_params_.signin_reason);
+    EXPECT_EQ(DiceTurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT,
+              create_dice_turn_sync_on_helper_params_.signin_aborted_mode);
   }
 }
 
-TEST_F(SigninUiUtilTest, EnableSyncWithAccountThatNeedsReauth) {
+TEST_F(DiceSigninUiUtilTest, EnableSyncWithAccountThatNeedsReauth) {
   AddTab(browser(), GURL("http://example.com"));
   CoreAccountId account_id =
       GetIdentityManager()->GetAccountsMutator()->AddOrUpdateAccount(
+<<<<<<< HEAD
           GaiaId(kMainGaiaID), kMainEmail, "refresh_token", false,
           signin_metrics::AccessPoint::kUnknown,
+=======
+          kMainGaiaID, kMainEmail, "refresh_token", false,
+>>>>>>> chromium
           signin_metrics::SourceForRefreshTokenOperation::kUnknown);
 
   // Add an account and then put its refresh token into an error state to
@@ -283,6 +377,7 @@ TEST_F(SigninUiUtilTest, EnableSyncWithAccountThatNeedsReauth) {
     EnableSync(
         GetIdentityManager()->FindExtendedAccountInfoByAccountId(account_id),
         is_default_promo_account);
+    ASSERT_FALSE(create_dice_turn_sync_on_helper_called_);
 
     ExpectOneSigninStartedHistograms(
         histogram_tester,
@@ -292,20 +387,28 @@ TEST_F(SigninUiUtilTest, EnableSyncWithAccountThatNeedsReauth) {
     EXPECT_EQ(1, user_action_tester.GetActionCount(
                      "Signin_Signin_FromBookmarkBubble"));
 
+    if (is_default_promo_account) {
+      EXPECT_EQ(1, user_action_tester.GetActionCount(
+                       "Signin_SigninWithDefault_FromBookmarkBubble"));
+    } else {
+      EXPECT_EQ(1, user_action_tester.GetActionCount(
+                       "Signin_SigninNotDefault_FromBookmarkBubble"));
+    }
+
     // Verify that the active tab has the correct DICE sign-in URL.
     TabStripModel* tab_strip = browser()->tab_strip_model();
     content::WebContents* active_contents = tab_strip->GetActiveWebContents();
     ASSERT_TRUE(active_contents);
-    EXPECT_EQ(signin::GetChromeSyncURLForDice(
-                  {kMainEmail, GURL(google_util::kGoogleHomepageURL)}),
+    EXPECT_EQ(signin::GetChromeSyncURLForDice(kMainEmail,
+                                              google_util::kGoogleHomepageURL),
               active_contents->GetVisibleURL());
     tab_strip->CloseWebContentsAt(
         tab_strip->GetIndexOfWebContents(active_contents),
-        TabCloseTypes::CLOSE_USER_GESTURE);
+        TabStripModel::CLOSE_USER_GESTURE);
   }
 }
 
-TEST_F(SigninUiUtilTest, EnableSyncForNewAccountWithNoTab) {
+TEST_F(DiceSigninUiUtilTest, EnableSyncForNewAccountWithNoTab) {
   base::HistogramTester histogram_tester;
   base::UserActionTester user_action_tester;
 
@@ -313,46 +416,58 @@ TEST_F(SigninUiUtilTest, EnableSyncForNewAccountWithNoTab) {
   EXPECT_EQ(
       0, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
 
-  EnableSync(CoreAccountInfo(), false /* is_default_promo_account (not used)*/);
+  EnableSync(AccountInfo(), false /* is_default_promo_account (not used)*/);
+  ASSERT_FALSE(create_dice_turn_sync_on_helper_called_);
 
   ExpectOneSigninStartedHistograms(
       histogram_tester, signin_metrics::PromoAction::
                             PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT);
   EXPECT_EQ(
       1, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
+  EXPECT_EQ(1,
+            user_action_tester.GetActionCount(
+                "Signin_SigninNewAccountNoExistingAccount_FromBookmarkBubble"));
 
   // Verify that the active tab has the correct DICE sign-in URL.
   content::WebContents* active_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   ASSERT_TRUE(active_contents);
-  EXPECT_EQ(signin::GetChromeSyncURLForDice(
-                {.continue_url = GURL(google_util::kGoogleHomepageURL)}),
-            active_contents->GetVisibleURL());
+  EXPECT_EQ(
+      signin::GetChromeSyncURLForDice("", google_util::kGoogleHomepageURL),
+      active_contents->GetVisibleURL());
 }
 
-TEST_F(SigninUiUtilTest, EnableSyncForNewAccountWithNoTabWithExisting) {
+TEST_F(DiceSigninUiUtilTest, EnableSyncForNewAccountWithNoTabWithExisting) {
   base::HistogramTester histogram_tester;
   base::UserActionTester user_action_tester;
 
   GetIdentityManager()->GetAccountsMutator()->AddOrUpdateAccount(
+<<<<<<< HEAD
       GaiaId(kMainGaiaID), kMainEmail, "refresh_token", false,
       signin_metrics::AccessPoint::kUnknown,
+=======
+      kMainGaiaID, kMainEmail, "refresh_token", false,
+>>>>>>> chromium
       signin_metrics::SourceForRefreshTokenOperation::kUnknown);
 
   ExpectNoSigninStartedHistograms(histogram_tester);
   EXPECT_EQ(
       0, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
 
-  EnableSync(CoreAccountInfo(), false /* is_default_promo_account (not used)*/);
+  EnableSync(AccountInfo(), false /* is_default_promo_account (not used)*/);
+  ASSERT_FALSE(create_dice_turn_sync_on_helper_called_);
 
   ExpectOneSigninStartedHistograms(
       histogram_tester,
       signin_metrics::PromoAction::PROMO_ACTION_NEW_ACCOUNT_EXISTING_ACCOUNT);
   EXPECT_EQ(
       1, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
+  EXPECT_EQ(1,
+            user_action_tester.GetActionCount(
+                "Signin_SigninNewAccountExistingAccount_FromBookmarkBubble"));
 }
 
-TEST_F(SigninUiUtilTest, EnableSyncForNewAccountWithOneTab) {
+TEST_F(DiceSigninUiUtilTest, EnableSyncForNewAccountWithOneTab) {
   base::HistogramTester histogram_tester;
   base::UserActionTester user_action_tester;
   AddTab(browser(), GURL("http://foo/1"));
@@ -361,23 +476,28 @@ TEST_F(SigninUiUtilTest, EnableSyncForNewAccountWithOneTab) {
   EXPECT_EQ(
       0, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
 
-  EnableSync(CoreAccountInfo(), false /* is_default_promo_account (not used)*/);
+  EnableSync(AccountInfo(), false /* is_default_promo_account (not used)*/);
+  ASSERT_FALSE(create_dice_turn_sync_on_helper_called_);
 
   ExpectOneSigninStartedHistograms(
       histogram_tester, signin_metrics::PromoAction::
                             PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT);
   EXPECT_EQ(
       1, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
+  EXPECT_EQ(1,
+            user_action_tester.GetActionCount(
+                "Signin_SigninNewAccountNoExistingAccount_FromBookmarkBubble"));
 
   // Verify that the active tab has the correct DICE sign-in URL.
   content::WebContents* active_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   ASSERT_TRUE(active_contents);
-  EXPECT_EQ(signin::GetChromeSyncURLForDice(
-                {.continue_url = GURL(google_util::kGoogleHomepageURL)}),
-            active_contents->GetVisibleURL());
+  EXPECT_EQ(
+      signin::GetChromeSyncURLForDice("", google_util::kGoogleHomepageURL),
+      active_contents->GetVisibleURL());
 }
 
+<<<<<<< HEAD
 TEST_F(SigninUiUtilTest, SignInWithAlreadySignedInAccount) {
   AddTab(browser(), GURL("http://example.com"));
   CoreAccountId account_id =
@@ -388,23 +508,17 @@ TEST_F(SigninUiUtilTest, SignInWithAlreadySignedInAccount) {
   GetIdentityManager()->GetPrimaryAccountMutator()->SetPrimaryAccount(
       account_id, signin::ConsentLevel::kSignin,
       signin_metrics::AccessPoint::kUnknown);
+=======
+TEST_F(DiceSigninUiUtilTest, GetAccountsForDicePromos) {
+  // Should start off with no accounts.
+  std::vector<AccountInfo> accounts = GetAccountsForDicePromos(profile());
+  EXPECT_TRUE(accounts.empty());
+>>>>>>> chromium
 
-  SignIn(GetIdentityManager()->FindExtendedAccountInfoByAccountId(account_id));
-
-  // Verify that the primary account is still set.
-  EXPECT_TRUE(
-      GetIdentityManager()->HasPrimaryAccount(signin::ConsentLevel::kSignin));
-
-  // Verify that the active tab does not open the DICE sign-in URL.
-  TabStripModel* tab_strip = browser()->tab_strip_model();
-  content::WebContents* active_contents = tab_strip->GetActiveWebContents();
-  ASSERT_TRUE(active_contents);
-  EXPECT_EQ(GURL("http://example.com"), active_contents->GetVisibleURL());
-  tab_strip->CloseWebContentsAt(
-      tab_strip->GetIndexOfWebContents(active_contents),
-      TabCloseTypes::CLOSE_USER_GESTURE);
+  // TODO(tangltom): Flesh out this test.
 }
 
+<<<<<<< HEAD
 TEST_F(SigninUiUtilTest, SignInWithAccountThatNeedsReauth) {
   AddTab(browser(), GURL("http://example.com"));
   CoreAccountId account_id =
@@ -533,13 +647,16 @@ TEST_F(SigninUiUtilTest, GetOrderedAccountsForDisplay) {
 }
 
 TEST_F(SigninUiUtilTest, MergeDiceSigninTab) {
+=======
+TEST_F(DiceSigninUiUtilTest, MergeDiceSigninTab) {
+>>>>>>> chromium
   base::UserActionTester user_action_tester;
-  EnableSync(CoreAccountInfo(), false);
+  EnableSync(AccountInfo(), false);
   EXPECT_EQ(
       1, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
 
   // Signin tab is reused.
-  EnableSync(CoreAccountInfo(), false);
+  EnableSync(AccountInfo(), false);
   EXPECT_EQ(
       1, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
 
@@ -548,27 +665,37 @@ TEST_F(SigninUiUtilTest, MergeDiceSigninTab) {
   ASSERT_EQ(0, tab_strip->active_index());
   GURL other_url = GURL("http://example.com");
   AddTab(browser(), other_url);
-  tab_strip->ActivateTabAt(
-      0, TabStripUserGestureDetails(
-             TabStripUserGestureDetails::GestureType::kOther));
+  tab_strip->ActivateTabAt(0, {TabStripModel::GestureType::kOther});
   ASSERT_EQ(other_url, tab_strip->GetActiveWebContents()->GetVisibleURL());
   ASSERT_EQ(0, tab_strip->active_index());
 
   // Extensions re-use the tab but do not take focus.
+<<<<<<< HEAD
   access_point_ = signin_metrics::AccessPoint::kExtensions;
   EnableSync(CoreAccountInfo(), false);
+=======
+  access_point_ = signin_metrics::AccessPoint::ACCESS_POINT_EXTENSIONS;
+  EnableSync(AccountInfo(), false);
+>>>>>>> chromium
   EXPECT_EQ(
       1, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
   EXPECT_EQ(0, tab_strip->active_index());
 
   // Other access points re-use the tab and take focus.
+<<<<<<< HEAD
   access_point_ = signin_metrics::AccessPoint::kSettings;
   EnableSync(CoreAccountInfo(), false);
+=======
+  access_point_ = signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS;
+  EnableSync(AccountInfo(), false);
+>>>>>>> chromium
   EXPECT_EQ(
       1, user_action_tester.GetActionCount("Signin_Signin_FromBookmarkBubble"));
   EXPECT_EQ(1, tab_strip->active_index());
 }
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
+<<<<<<< HEAD
 TEST_F(SigninUiUtilTest, ShowReauthTab) {
   AddTab(browser(), GURL("http://example.com"));
   AccountInfo account_info = signin::MakePrimaryAccountAvailable(
@@ -593,6 +720,9 @@ TEST_F(SigninUiUtilTest, ShowReauthTab) {
 }
 
 TEST_F(SigninUiUtilTest,
+=======
+TEST_F(DiceSigninUiUtilTest,
+>>>>>>> chromium
        ShouldShowAnimatedIdentityOnOpeningWindow_ReturnsTrueForMultiProfiles) {
   const char kSecondProfile[] = "SecondProfile";
   const char16_t kSecondProfile16[] = u"SecondProfile";
@@ -608,15 +738,22 @@ TEST_F(SigninUiUtilTest,
       *profile_manager()->profile_attributes_storage(), profile()));
 }
 
-TEST_F(SigninUiUtilTest,
+TEST_F(DiceSigninUiUtilTest,
        ShouldShowAnimatedIdentityOnOpeningWindow_ReturnsTrueForMultiSignin) {
   GetIdentityManager()->GetAccountsMutator()->AddOrUpdateAccount(
+<<<<<<< HEAD
       GaiaId(kMainGaiaID), kMainEmail, "refresh_token", false,
       signin_metrics::AccessPoint::kUnknown,
       signin_metrics::SourceForRefreshTokenOperation::kUnknown);
   GetIdentityManager()->GetAccountsMutator()->AddOrUpdateAccount(
       GaiaId(kSecondaryGaiaID), kSecondaryEmail, "refresh_token", false,
       signin_metrics::AccessPoint::kUnknown,
+=======
+      kMainGaiaID, kMainEmail, "refresh_token", false,
+      signin_metrics::SourceForRefreshTokenOperation::kUnknown);
+  GetIdentityManager()->GetAccountsMutator()->AddOrUpdateAccount(
+      kSecondaryGaiaID, kSecondaryEmail, "refresh_token", false,
+>>>>>>> chromium
       signin_metrics::SourceForRefreshTokenOperation::kUnknown);
 
   EXPECT_TRUE(ShouldShowAnimatedIdentityOnOpeningWindow(
@@ -630,17 +767,22 @@ TEST_F(SigninUiUtilTest,
 }
 
 TEST_F(
-    SigninUiUtilTest,
+    DiceSigninUiUtilTest,
     ShouldShowAnimatedIdentityOnOpeningWindow_ReturnsFalseForSingleProfileSingleSignin) {
   GetIdentityManager()->GetAccountsMutator()->AddOrUpdateAccount(
+<<<<<<< HEAD
       GaiaId(kMainGaiaID), kMainEmail, "refresh_token", false,
       signin_metrics::AccessPoint::kUnknown,
+=======
+      kMainGaiaID, kMainEmail, "refresh_token", false,
+>>>>>>> chromium
       signin_metrics::SourceForRefreshTokenOperation::kUnknown);
 
   EXPECT_FALSE(ShouldShowAnimatedIdentityOnOpeningWindow(
       *profile_manager()->profile_attributes_storage(), profile()));
 }
 
+<<<<<<< HEAD
 TEST_F(SigninUiUtilTest, ShowExtensionSigninPrompt) {
   const GURL add_account_url = GaiaUrls::GetInstance()->add_account_url();
   const GURL sync_url = GaiaUrls::GetInstance()->signin_chrome_sync_dice();
@@ -898,6 +1040,9 @@ TEST_F(SigninUiUtilWithUnoDesktopTest, ShowExtensionSigninPromptReauth) {
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 // This test does not use the SigninUiUtilTest test fixture, because it
+=======
+// This test does not use the DiceSigninUiUtilTest test fixture, because it
+>>>>>>> chromium
 // needs a mock time environment, and BrowserWithTestWindowTest may be flaky
 // when used with mock time (see https://crbug.com/1014790).
 TEST(ShouldShowAnimatedIdentityOnOpeningWindow, ReturnsFalseForNewWindow) {
@@ -911,7 +1056,7 @@ TEST(ShouldShowAnimatedIdentityOnOpeningWindow, ReturnsFalseForNewWindow) {
   std::string name("testing_profile");
   TestingProfile* profile = profile_manager.CreateTestingProfile(
       name, std::unique_ptr<sync_preferences::PrefServiceSyncable>(),
-      base::UTF8ToUTF16(name), 0,
+      base::UTF8ToUTF16(name), 0, std::string(),
       IdentityTestEnvironmentProfileAdaptor::
           GetIdentityTestEnvironmentFactories());
 
@@ -919,12 +1064,19 @@ TEST(ShouldShowAnimatedIdentityOnOpeningWindow, ReturnsFalseForNewWindow) {
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(profile);
   identity_manager->GetAccountsMutator()->AddOrUpdateAccount(
+<<<<<<< HEAD
       GaiaId(kMainGaiaID), kMainEmail, "refresh_token", false,
       signin_metrics::AccessPoint::kUnknown,
       signin_metrics::SourceForRefreshTokenOperation::kUnknown);
   identity_manager->GetAccountsMutator()->AddOrUpdateAccount(
       GaiaId(kSecondaryGaiaID), kSecondaryEmail, "refresh_token", false,
       signin_metrics::AccessPoint::kUnknown,
+=======
+      kMainGaiaID, kMainEmail, "refresh_token", false,
+      signin_metrics::SourceForRefreshTokenOperation::kUnknown);
+  identity_manager->GetAccountsMutator()->AddOrUpdateAccount(
+      kSecondaryGaiaID, kSecondaryEmail, "refresh_token", false,
+>>>>>>> chromium
       signin_metrics::SourceForRefreshTokenOperation::kUnknown);
   EXPECT_TRUE(ShouldShowAnimatedIdentityOnOpeningWindow(
       *profile_manager.profile_attributes_storage(), profile));
@@ -933,7 +1085,7 @@ TEST(ShouldShowAnimatedIdentityOnOpeningWindow, ReturnsFalseForNewWindow) {
   RecordAnimatedIdentityTriggered(profile);
 
   // Wait a few seconds.
-  task_environment.FastForwardBy(base::Seconds(6));
+  task_environment.FastForwardBy(base::TimeDelta::FromSeconds(6));
 
   // Animation is not shown again in a new window.
   EXPECT_FALSE(ShouldShowAnimatedIdentityOnOpeningWindow(

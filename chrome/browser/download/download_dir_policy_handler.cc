@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,7 +13,6 @@
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "chrome/browser/ash/policy/skyvault/policy_utils.h"
 #include "chrome/browser/download/download_dir_util.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/policy/policy_path_parser.h"
@@ -36,14 +35,21 @@ DownloadDirPolicyHandler::~DownloadDirPolicyHandler() = default;
 bool DownloadDirPolicyHandler::CheckPolicySettings(
     const policy::PolicyMap& policies,
     policy::PolicyErrorMap* errors) {
+<<<<<<< HEAD
   const base::Value* value = nullptr;
   if (!CheckAndGetValue(policies, errors, &value)) {
+=======
+  const base::Value* value = NULL;
+  if (!CheckAndGetValue(policies, errors, &value))
+>>>>>>> chromium
     return false;
   }
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
   // Download directory can only be set as a user policy. If it is set through
   // platform policy for a chromeos=1 build, ignore it.
+  // TODO(https://crbug.com/1148846): Sort out download directory policy for
+  // lacros.
   if (value &&
       policies.Get(policy_name())->scope != policy::POLICY_SCOPE_USER) {
     errors->AddError(policy_name(), IDS_POLICY_SCOPE_ERROR);
@@ -58,14 +64,19 @@ void DownloadDirPolicyHandler::ApplyPolicySettingsWithParameters(
     const policy::PolicyMap& policies,
     const policy::PolicyHandlerParameters& parameters,
     PrefValueMap* prefs) {
+<<<<<<< HEAD
   const base::Value* value =
       policies.GetValue(policy_name(), base::Value::Type::STRING);
   if (!value) {
+=======
+  const base::Value* value = policies.GetValue(policy_name());
+  if (!value || !value->is_string())
+>>>>>>> chromium
     return;
   }
   std::string str_value = value->GetString();
   base::FilePath::StringType string_value =
-#if BUILDFLAG(IS_WIN)
+#if defined(OS_WIN)
       base::UTF8ToWide(str_value);
 #else
       str_value;
@@ -81,7 +92,7 @@ void DownloadDirPolicyHandler::ApplyPolicySettingsWithParameters(
     expanded_value = policy::path_parser::ExpandPathVariables(
         DownloadPrefs::GetDefaultDownloadDirectory().value());
   }
-#if BUILDFLAG(IS_WIN)
+#if defined(OS_WIN)
   prefs->SetValue(prefs::kDownloadDefaultDirectory,
                   base::Value(base::WideToUTF8(expanded_value)));
 #else
@@ -94,7 +105,11 @@ void DownloadDirPolicyHandler::ApplyPolicySettingsWithParameters(
 
   // If the policy is mandatory, prompt for download should be disabled.
   // Otherwise, it would enable a user to bypass the mandatory policy.
+<<<<<<< HEAD
   if (is_mandatory) {
+=======
+  if (policies.Get(policy_name())->level == policy::POLICY_LEVEL_MANDATORY) {
+>>>>>>> chromium
     prefs->SetBoolean(prefs::kPromptForDownload, false);
   }
 
@@ -111,6 +126,7 @@ void DownloadDirPolicyHandler::ApplyPolicySettingsWithParameters(
     // Drive availability status in Ash automatically.
     if (download_to_drive) {
       prefs->SetBoolean(drive::prefs::kDisableDrive, false);
+<<<<<<< HEAD
     } else if (download_to_one_drive) {
       prefs->SetBoolean(prefs::kAllowUserToRemoveODFS, false);
     }
@@ -125,6 +141,11 @@ void DownloadDirPolicyHandler::ApplyPolicySettingsWithParameters(
                      download_dir_util::kLocationOneDrive);
   }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+=======
+    }
+#endif
+  }
+>>>>>>> chromium
 }
 
 void DownloadDirPolicyHandler::ApplyPolicySettings(

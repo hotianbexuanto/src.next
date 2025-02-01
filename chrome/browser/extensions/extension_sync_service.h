@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,8 +11,7 @@
 #include <vector>
 
 #include "base/gtest_prod_util.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
+#include "base/macros.h"
 #include "base/scoped_observation.h"
 #include "base/version.h"
 #include "chrome/browser/extensions/sync_bundle.h"
@@ -42,10 +41,6 @@ class ExtensionSyncService : public syncer::SyncableService,
                              public extensions::ExtensionPrefsObserver {
  public:
   explicit ExtensionSyncService(Profile* profile);
-
-  ExtensionSyncService(const ExtensionSyncService&) = delete;
-  ExtensionSyncService& operator=(const ExtensionSyncService&) = delete;
-
   ~ExtensionSyncService() override;
 
   // Convenience function to get the ExtensionSyncService for a BrowserContext.
@@ -58,16 +53,16 @@ class ExtensionSyncService : public syncer::SyncableService,
 
   // syncer::SyncableService implementation.
   void WaitUntilReadyToSync(base::OnceClosure done) override;
-  std::optional<syncer::ModelError> MergeDataAndStartSyncing(
-      syncer::DataType type,
+  absl::optional<syncer::ModelError> MergeDataAndStartSyncing(
+      syncer::ModelType type,
       const syncer::SyncDataList& initial_sync_data,
-      std::unique_ptr<syncer::SyncChangeProcessor> sync_processor) override;
-  void StopSyncing(syncer::DataType type) override;
-  syncer::SyncDataList GetAllSyncDataForTesting(syncer::DataType type) const;
-  std::optional<syncer::ModelError> ProcessSyncChanges(
+      std::unique_ptr<syncer::SyncChangeProcessor> sync_processor,
+      std::unique_ptr<syncer::SyncErrorFactory> sync_error_factory) override;
+  void StopSyncing(syncer::ModelType type) override;
+  syncer::SyncDataList GetAllSyncDataForTesting(syncer::ModelType type) const;
+  absl::optional<syncer::ModelError> ProcessSyncChanges(
       const base::Location& from_here,
       const syncer::SyncChangeList& change_list) override;
-  base::WeakPtr<SyncableService> AsWeakPtr() override;
 
   void SetSyncStartFlareForTesting(
       const syncer::SyncableService::StartSyncFlare& flare);
@@ -75,8 +70,7 @@ class ExtensionSyncService : public syncer::SyncableService,
   // Special hack: There was a bug where themes incorrectly ended up in the
   // syncer::EXTENSIONS type. This is for cleaning up the data. crbug.com/558299
   // DO NOT USE FOR ANYTHING ELSE!
-  // TODO(crbug.com/41401013): This *should* be safe to remove now, but it's
-  // not.
+  // TODO(crbug.com/862665): This *should* be safe to remove now, but it's not.
   void DeleteThemeDoNotUse(const extensions::Extension& theme);
 
  private:
@@ -100,12 +94,10 @@ class ExtensionSyncService : public syncer::SyncableService,
                                bool state) override;
   void OnExtensionDisableReasonsChanged(const std::string& extension_id,
                                         int disabled_reasons) override;
-  void OnExtensionPrefsWillBeDestroyed(
-      extensions::ExtensionPrefs* prefs) override;
 
   // Gets the SyncBundle for the given |type|.
-  extensions::SyncBundle* GetSyncBundle(syncer::DataType type);
-  const extensions::SyncBundle* GetSyncBundle(syncer::DataType type) const;
+  extensions::SyncBundle* GetSyncBundle(syncer::ModelType type);
+  const extensions::SyncBundle* GetSyncBundle(syncer::ModelType type) const;
 
   // Creates the ExtensionSyncData for the given app/extension.
   extensions::ExtensionSyncData CreateSyncData(
@@ -116,14 +108,15 @@ class ExtensionSyncService : public syncer::SyncableService,
 
   // Collects the ExtensionSyncData for all installed apps or extensions.
   std::vector<extensions::ExtensionSyncData> GetLocalSyncDataList(
-      syncer::DataType type) const;
+      syncer::ModelType type) const;
 
   // Helper for GetLocalSyncDataList.
   void FillSyncDataList(
       const extensions::ExtensionSet& extensions,
-      syncer::DataType type,
+      syncer::ModelType type,
       std::vector<extensions::ExtensionSyncData>* sync_data_list) const;
 
+<<<<<<< HEAD
   // Returns if the extension corresponding to the given `extension_sync_data`
   // should be promoted to an account extension, or false if there is no
   // corresponding extension.
@@ -138,12 +131,17 @@ class ExtensionSyncService : public syncer::SyncableService,
 
   // Returns if the given `extension` should be synced by this class (i.e. it
   // can be uploaded to the sync server).
+=======
+  // Returns whether the given extension should be synced by this class.
+  // Filters out unsyncable extensions as well as themes (which are handled by
+  // ThemeSyncableService instead).
+>>>>>>> chromium
   bool ShouldSync(const extensions::Extension& extension) const;
 
   // The normal profile associated with this ExtensionSyncService.
-  raw_ptr<Profile> profile_;
+  Profile* profile_;
 
-  raw_ptr<extensions::ExtensionSystem> system_;
+  extensions::ExtensionSystem* system_;
 
   base::ScopedObservation<extensions::ExtensionRegistry,
                           extensions::ExtensionRegistryObserver>
@@ -171,9 +169,9 @@ class ExtensionSyncService : public syncer::SyncableService,
   // Run()ning tells sync to try and start soon, because syncable changes
   // have started happening. It will cause sync to call us back
   // asynchronously via MergeDataAndStartSyncing as soon as possible.
-  SyncableService::StartSyncFlare flare_;
+  syncer::SyncableService::StartSyncFlare flare_;
 
-  base::WeakPtrFactory<ExtensionSyncService> weak_ptr_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(ExtensionSyncService);
 };
 
 #endif  // CHROME_BROWSER_EXTENSIONS_EXTENSION_SYNC_SERVICE_H_

@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,21 +9,13 @@
 #include "build/chromeos_buildflags.h"
 #include "content/public/browser/browser_context.h"
 #include "extensions/browser/extension_host_delegate.h"
+#include "extensions/browser/test_runtime_api_delegate.h"
 #include "extensions/browser/updater/null_extension_cache.h"
-#include "extensions/buildflags/buildflags.h"
-#include "extensions/common/extension_id.h"
 #include "services/network/public/mojom/url_loader.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
 
-// TODO(https://crbug.com/356905053): The following files don't compile cleanly
-// with desktop-android. Either make them compile, or determine they should
-// not be included and place them under a more appropriate if-block.
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-#include "extensions/browser/test_runtime_api_delegate.h"
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chromeos/ash/components/login/login_state/login_state.h"
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chromeos/login/login_state/login_state.h"
 #endif
 
 using content::BrowserContext;
@@ -33,9 +25,8 @@ namespace extensions {
 TestExtensionsBrowserClient::TestExtensionsBrowserClient(
     BrowserContext* main_context)
     : extension_cache_(std::make_unique<NullExtensionCache>()) {
-  if (main_context) {
+  if (main_context)
     SetMainContext(main_context);
-  }
 }
 
 TestExtensionsBrowserClient::TestExtensionsBrowserClient()
@@ -70,7 +61,7 @@ bool TestExtensionsBrowserClient::AreExtensionsDisabled(
   return false;
 }
 
-bool TestExtensionsBrowserClient::IsValidContext(void* context) {
+bool TestExtensionsBrowserClient::IsValidContext(BrowserContext* context) {
   return context == main_context_ ||
          (incognito_context_ && context == incognito_context_);
 }
@@ -91,9 +82,8 @@ bool TestExtensionsBrowserClient::HasOffTheRecordContext(
 
 BrowserContext* TestExtensionsBrowserClient::GetOffTheRecordContext(
     BrowserContext* context) {
-  if (context == main_context_) {
+  if (context == main_context_)
     return incognito_context_;
-  }
   return nullptr;
 }
 
@@ -102,6 +92,7 @@ BrowserContext* TestExtensionsBrowserClient::GetOriginalContext(
   return main_context_;
 }
 
+<<<<<<< HEAD
 content::BrowserContext*
 TestExtensionsBrowserClient::GetContextRedirectedToOriginal(
     content::BrowserContext* context) {
@@ -131,12 +122,14 @@ bool TestExtensionsBrowserClient::IsActiveContext(
   return true;
 }
 
+=======
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 std::string TestExtensionsBrowserClient::GetUserIdHashFromContext(
     content::BrowserContext* context) {
-  if (context != main_context_ || !ash::LoginState::IsInitialized()) {
+  if (context != main_context_ || !chromeos::LoginState::IsInitialized())
     return "";
-  }
-  return ash::LoginState::Get()->primary_user_hash();
+  return chromeos::LoginState::Get()->primary_user_hash();
 }
 #endif
 
@@ -146,7 +139,7 @@ bool TestExtensionsBrowserClient::IsGuestSession(
 }
 
 bool TestExtensionsBrowserClient::IsExtensionIncognitoEnabled(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     content::BrowserContext* context) const {
   return false;
 }
@@ -184,15 +177,13 @@ bool TestExtensionsBrowserClient::AllowCrossRendererResourceLoad(
     bool is_incognito,
     const Extension* extension,
     const ExtensionSet& extensions,
-    const ProcessMap& process_map,
-    const GURL& upstream_url) {
+    const ProcessMap& process_map) {
   return false;
 }
 
 PrefService* TestExtensionsBrowserClient::GetPrefServiceForContext(
     BrowserContext* context) {
-  auto iter = set_pref_service_for_context_.find(context);
-  return iter != set_pref_service_for_context_.end() ? iter->second : nullptr;
+  return nullptr;
 }
 
 void TestExtensionsBrowserClient::GetEarlyExtensionPrefsObservers(
@@ -202,14 +193,6 @@ void TestExtensionsBrowserClient::GetEarlyExtensionPrefsObservers(
 ProcessManagerDelegate* TestExtensionsBrowserClient::GetProcessManagerDelegate()
     const {
   return process_manager_delegate_;
-}
-
-mojo::PendingRemote<network::mojom::URLLoaderFactory>
-TestExtensionsBrowserClient::GetControlledFrameEmbedderURLLoader(
-    const url::Origin& app_origin,
-    content::FrameTreeNodeId frame_tree_node_id,
-    content::BrowserContext* browser_context) {
-  return mojo::PendingRemote<network::mojom::URLLoaderFactory>();
 }
 
 std::unique_ptr<ExtensionHostDelegate>
@@ -258,11 +241,7 @@ void TestExtensionsBrowserClient::RegisterBrowserInterfaceBindersForFrame(
 std::unique_ptr<RuntimeAPIDelegate>
 TestExtensionsBrowserClient::CreateRuntimeAPIDelegate(
     content::BrowserContext* context) const {
-#if BUILDFLAG(ENABLE_EXTENSIONS)
   return std::unique_ptr<RuntimeAPIDelegate>(new TestRuntimeAPIDelegate());
-#else
-  return nullptr;
-#endif
 }
 
 const ComponentExtensionResourceManager*
@@ -273,7 +252,7 @@ TestExtensionsBrowserClient::GetComponentExtensionResourceManager() {
 void TestExtensionsBrowserClient::BroadcastEventToRenderers(
     events::HistogramValue histogram_value,
     const std::string& event_name,
-    base::Value::List args,
+    std::unique_ptr<base::ListValue> args,
     bool dispatch_to_off_the_record_profiles) {}
 
 ExtensionCache* TestExtensionsBrowserClient::GetExtensionCache() {
@@ -288,9 +267,6 @@ bool TestExtensionsBrowserClient::IsMinBrowserVersionSupported(
     const std::string& min_version) {
   return true;
 }
-
-void TestExtensionsBrowserClient::CreateExtensionWebContentsObserver(
-    content::WebContents* web_contents) {}
 
 ExtensionWebContentsObserver*
 TestExtensionsBrowserClient::GetExtensionWebContentsObserver(

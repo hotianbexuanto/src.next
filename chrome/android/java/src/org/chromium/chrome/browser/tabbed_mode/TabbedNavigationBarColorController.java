@@ -1,29 +1,29 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.tabbed_mode;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+<<<<<<< HEAD
 import android.content.Context;
+=======
+import android.annotation.TargetApi;
+import android.content.res.Resources;
+>>>>>>> chromium
 import android.os.Build;
 import android.view.Window;
 
 import androidx.annotation.ColorInt;
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.Callback;
+import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.CallbackController;
-import org.chromium.base.ObserverList;
+import org.chromium.base.MathUtils;
 import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.Supplier;
+import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.chrome.R;
+<<<<<<< HEAD
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchManager;
@@ -52,8 +52,22 @@ import org.chromium.components.browser_ui.edge_to_edge.EdgeToEdgeSystemBarColorH
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.ui.InsetObserver;
 import org.chromium.ui.interpolators.Interpolators;
+=======
+import org.chromium.chrome.browser.compositor.layouts.EmptyOverviewModeObserver;
+import org.chromium.chrome.browser.compositor.layouts.OverviewModeBehavior;
+import org.chromium.chrome.browser.compositor.layouts.OverviewModeBehavior.OverviewModeObserver;
+import org.chromium.chrome.browser.device.DeviceClassManager;
+import org.chromium.chrome.browser.tabmodel.TabModel;
+import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
+import org.chromium.chrome.browser.tasks.tab_management.TabUiFeatureUtilities;
+import org.chromium.chrome.browser.vr.VrModuleProvider;
+import org.chromium.ui.UiUtils;
+>>>>>>> chromium
 import org.chromium.ui.util.ColorUtils;
+import org.chromium.ui.vr.VrModeObserver;
 
+<<<<<<< HEAD
 import java.util.Optional;
 
 /** Controls the bottom system navigation bar color for the provided {@link Window}. */
@@ -65,10 +79,22 @@ class TabbedNavigationBarColorController
 
     private final Context mContext;
     private final FullscreenManager mFullScreenManager;
+=======
+/**
+ * Controls the bottom system navigation bar color for the provided {@link Window}.
+ */
+@TargetApi(Build.VERSION_CODES.O_MR1)
+class TabbedNavigationBarColorController implements VrModeObserver {
+    private final Window mWindow;
+    private final ViewGroup mRootView;
+    private final Resources mResources;
+    private final @ColorInt int mDefaultScrimColor;
+>>>>>>> chromium
 
     // May be null if we return from the constructor early. Otherwise will be set.
     private final @Nullable TabModelSelector mTabModelSelector;
     private final @Nullable TabModelSelectorObserver mTabModelSelectorObserver;
+<<<<<<< HEAD
     private final Callback<TabModel> mCurrentTabModelObserver;
     private final @Nullable FullscreenManager.Observer mFullscreenObserver;
     private final ObservableSupplier<EdgeToEdgeController> mEdgeToEdgeControllerSupplier;
@@ -200,49 +226,55 @@ class TabbedNavigationBarColorController
         mContext = context;
         mFullScreenManager = fullscreenManager;
         mEdgeToEdgeSystemBarColorHelper = edgeToEdgeSystemBarColorHelper;
+=======
+    private @Nullable OverviewModeBehavior mOverviewModeBehavior;
+    private @Nullable OverviewModeObserver mOverviewModeObserver;
+    private CallbackController mCallbackController = new CallbackController();
 
-        mBottomAttachedUiObserver = bottomAttachedUiObserver;
-        if (mBottomAttachedUiObserver != null) {
-            mBottomAttachedUiObserver.addObserver(this);
+    private boolean mForceDarkNavigationBarColor;
+    private boolean mOverviewModeHiding;
+    private float mNavigationBarScrimFraction;
+
+    /**
+     * Creates a new {@link TabbedNavigationBarColorController} instance.
+     * @param window The {@link Window} this controller should operate on.
+     * @param tabModelSelector The {@link TabModelSelector} used to determine which tab model is
+     *                         selected.
+     * @param overviewModeBehaviorSupplier An {@link ObservableSupplier} for the
+     *         {@link OverviewModeBehavior} associated with the containing activity.
+     */
+    TabbedNavigationBarColorController(Window window, TabModelSelector tabModelSelector,
+            OneshotSupplier<OverviewModeBehavior> overviewModeBehaviorSupplier) {
+        assert Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1;
+
+        mWindow = window;
+        mRootView = (ViewGroup) mWindow.getDecorView().getRootView();
+        mResources = mRootView.getResources();
+        mDefaultScrimColor =
+                ApiCompatibilityUtils.getColor(mResources, R.color.default_scrim_color);
+>>>>>>> chromium
+
+        // If we're not using a light navigation bar, it will always be the same dark color so
+        // there's no need to register observers and manipulate coloring.
+        if (!mResources.getBoolean(R.bool.window_light_navigation_bar)) {
+            mTabModelSelector = null;
+            mTabModelSelectorObserver = null;
+            return;
         }
 
         mTabModelSelector = tabModelSelector;
-        mTabModelSelectorObserver =
-                new TabModelSelectorObserver() {
-                    @Override
-                    public void onChange() {
-                        updateActiveTab();
-                    }
-                };
+        mTabModelSelectorObserver = new TabModelSelectorObserver() {
+            @Override
+            public void onTabModelSelected(TabModel newModel, TabModel oldModel) {
+                updateNavigationBarColor();
+            }
+        };
         mTabModelSelector.addObserver(mTabModelSelectorObserver);
-        mCurrentTabModelObserver = (tabModel) -> updateNavigationBarColor();
-        mTabModelSelector.getCurrentTabModelSupplier().addObserver(mCurrentTabModelObserver);
-        mTabObserver =
-                new EmptyTabObserver() {
-                    @Override
-                    public void onBackgroundColorChanged(Tab tab, int color) {
-                        updateNavigationBarColor(
-                                /* forceShowDivider= */ false, /* disableAnimation= */ false);
-                    }
-                };
-        mFullscreenObserver =
-                new FullscreenManager.Observer() {
-                    @Override
-                    public void onEnterFullscreen(Tab tab, FullscreenOptions options) {
-                        mIsInFullscreen = true;
-                        updateNavigationBarColor();
-                    }
 
-                    @Override
-                    public void onExitFullscreen(Tab tab) {
-                        mIsInFullscreen = false;
-                        updateNavigationBarColor();
-                    }
-                };
-        mFullScreenManager.addObserver(mFullscreenObserver);
-        layoutManagerSupplier.addObserver(
-                mCallbackController.makeCancelable(this::setLayoutManager));
+        overviewModeBehaviorSupplier.onAvailable(
+                mCallbackController.makeCancelable(this::setOverviewModeBehavior));
 
+<<<<<<< HEAD
         mEdgeToEdgeControllerSupplier = edgeToEdgeControllerSupplier;
         mEdgeToEdgeRegisterChangeObserverCallback =
                 (controller) -> {
@@ -265,13 +297,21 @@ class TabbedNavigationBarColorController
         mOverviewMode = false;
 
         // TODO(crbug.com/40560014): Observe tab loads to restrict black bottom nav to
+=======
+        // TODO(https://crbug.com/806054): Observe tab loads to restrict black bottom nav to
+>>>>>>> chromium
         // incognito NTP.
 
         updateNavigationBarColor();
+
+        VrModuleProvider.registerVrModeObserver(this);
     }
 
-    /** Destroy this {@link TabbedNavigationBarColorController} instance. */
+    /**
+     * Destroy this {@link TabbedNavigationBarColorController} instance.
+     */
     public void destroy() {
+<<<<<<< HEAD
         if (mTabModelSelector != null) {
             mTabModelSelector.removeObserver(mTabModelSelectorObserver);
             mTabModelSelector.getCurrentTabModelSupplier().removeObserver(mCurrentTabModelObserver);
@@ -280,31 +320,17 @@ class TabbedNavigationBarColorController
         if (mLayoutManager != null) {
             mLayoutManager.removeObserver(mLayoutStateObserver);
             mOverviewColorSupplier.removeObserver(mOnOverviewColorChanged);
+=======
+        if (mTabModelSelector != null) mTabModelSelector.removeObserver(mTabModelSelectorObserver);
+        if (mOverviewModeBehavior != null) {
+            mOverviewModeBehavior.removeOverviewModeObserver(mOverviewModeObserver);
+>>>>>>> chromium
         }
         if (mCallbackController != null) {
             mCallbackController.destroy();
             mCallbackController = null;
         }
-        mFullScreenManager.removeObserver(mFullscreenObserver);
-        if (mEdgeToEdgeControllerSupplier.get() != null && mEdgeToEdgeChangeObserver != null) {
-            mEdgeToEdgeControllerSupplier.get().unregisterObserver(mEdgeToEdgeChangeObserver);
-            mEdgeToEdgeChangeObserver = null;
-        }
-        mEdgeToEdgeControllerSupplier.removeObserver(mEdgeToEdgeRegisterChangeObserverCallback);
-        if (mBottomAttachedUiObserver != null) {
-            mBottomAttachedUiObserver.removeObserver(this);
-            mBottomAttachedUiObserver.destroy();
-        }
-        if (mNavbarColorTransitionAnimation != null) {
-            mNavbarColorTransitionAnimation.cancel();
-        }
-    }
-
-    @Override
-    public void onBottomAttachedColorChanged(
-            @Nullable @ColorInt Integer color, boolean forceShowDivider, boolean disableAnimation) {
-        mBottomAttachedUiColor = color;
-        updateNavigationBarColor(forceShowDivider, disableAnimation);
+        VrModuleProvider.unregisterVrModeObserver(this);
     }
 
     @Override
@@ -313,14 +339,15 @@ class TabbedNavigationBarColorController
     }
 
     /**
-     * @param layoutManager The {@link LayoutStateProvider} used to determine whether overview mode
-     *     is showing.
+     * @param overviewModeBehavior The {@link OverviewModeBehavior} used to determine whether
+     *                             overview mode is showing.
      */
-    private void setLayoutManager(LayoutManager layoutManager) {
-        if (mLayoutManager != null) {
-            mLayoutManager.removeObserver(mLayoutStateObserver);
+    private void setOverviewModeBehavior(OverviewModeBehavior overviewModeBehavior) {
+        if (mOverviewModeBehavior != null) {
+            mOverviewModeBehavior.removeOverviewModeObserver(mOverviewModeObserver);
         }
 
+<<<<<<< HEAD
         mLayoutManager = layoutManager;
         mLayoutStateObserver =
                 new LayoutStateObserver() {
@@ -337,31 +364,39 @@ class TabbedNavigationBarColorController
                         updateNavigationBarColor();
                         disableOverviewMode();
                     }
+=======
+        mOverviewModeBehavior = overviewModeBehavior;
+        mOverviewModeObserver = new EmptyOverviewModeObserver() {
+            @Override
+            public void onOverviewModeStartedShowing(boolean showToolbar) {
+                mOverviewModeHiding = false;
+                updateNavigationBarColor();
+            }
 
-                    @Override
-                    public void onFinishedShowing(@LayoutType int layoutType) {
-                        if (ChromeFeatureList.sNavBarColorMatchesTabBackground.isEnabled()
-                                && layoutType == LayoutType.BROWSING) {
-                            updateNavigationBarColor();
-                        }
-                    }
-                };
-        mLayoutManager.addObserver(mLayoutStateObserver);
+            @Override
+            public void onOverviewModeStartedHiding(boolean showToolbar, boolean delayAnimation) {
+                mOverviewModeHiding = true;
+                updateNavigationBarColor();
+            }
+>>>>>>> chromium
+
+            @Override
+            public void onOverviewModeFinishedHiding() {
+                mOverviewModeHiding = false;
+            }
+        };
+        mOverviewModeBehavior.addOverviewModeObserver(mOverviewModeObserver);
         updateNavigationBarColor();
     }
 
-    private void updateActiveTab() {
-        if (!ChromeFeatureList.sNavBarColorMatchesTabBackground.isEnabled()) return;
-
-        @Nullable Tab activeTab = mTabModelSelector.getCurrentTab();
-        if (activeTab == mActiveTab) return;
-
-        if (mActiveTab != null) mActiveTab.removeObserver(mTabObserver);
-        mActiveTab = activeTab;
-        if (mActiveTab != null) mActiveTab.addObserver(mTabObserver);
-        updateNavigationBarColor(/* forceShowDivider= */ false, /* disableAnimation= */ false);
+    @Override
+    public void onExitVr() {
+        // The platform ignores the light navigation bar system UI flag when launching an Activity
+        // in VR mode, so we need to restore it when VR is exited.
+        UiUtils.setNavigationBarIconColor(mRootView, !mForceDarkNavigationBarColor);
     }
 
+<<<<<<< HEAD
     @SuppressLint("NewApi")
     private void updateNavigationBarColor(boolean forceShowDivider, boolean disableAnimation) {
         mForceDarkNavigationBarColor = mTabModelSelector.isIncognitoSelected() || mIsInFullscreen;
@@ -438,12 +473,36 @@ class TabbedNavigationBarColorController
                 });
         mNavbarColorTransitionAnimation.start();
     }
+=======
+    @Override
+    public void onEnterVr() {}
+>>>>>>> chromium
 
     @SuppressLint("NewApi")
     private void updateNavigationBarColor() {
-        updateNavigationBarColor(/* forceShowDivider= */ false, /* disableAnimation= */ false);
+        boolean overviewVisible = mOverviewModeBehavior != null
+                && mOverviewModeBehavior.overviewVisible() && !mOverviewModeHiding;
+
+        boolean forceDarkNavigation;
+        if (DeviceClassManager.enableAccessibilityLayout()
+                || TabUiFeatureUtilities.isGridTabSwitcherEnabled(mRootView.getContext())) {
+            forceDarkNavigation = mTabModelSelector.isIncognitoSelected();
+        } else {
+            forceDarkNavigation = mTabModelSelector.isIncognitoSelected() && !overviewVisible;
+        }
+
+        forceDarkNavigation &= !UiUtils.isSystemUiThemingDisabled();
+
+        if (mForceDarkNavigationBarColor == forceDarkNavigation) return;
+
+        mForceDarkNavigationBarColor = forceDarkNavigation;
+
+        mWindow.setNavigationBarColor(getNavigationBarColor(mForceDarkNavigationBarColor));
+        setNavigationBarDividerColor();
+        UiUtils.setNavigationBarIconColor(mRootView, !mForceDarkNavigationBarColor);
     }
 
+<<<<<<< HEAD
     /**
      * Update the scrim color on the navigation bar.
      *
@@ -553,5 +612,54 @@ class TabbedNavigationBarColorController
     @Override
     public void removeObserver(Observer observer) {
         mObservers.removeObserver(observer);
+=======
+    @SuppressLint("NewApi")
+    private void setNavigationBarDividerColor() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            mWindow.setNavigationBarDividerColor(
+                    getNavigationBarDividerColor(mForceDarkNavigationBarColor));
+        }
+    }
+
+    /**
+     * Update the scrim amount on the navigation bar.
+     * @param fraction The scrim fraction in range [0, 1].
+     */
+    public void setNavigationBarScrimFraction(float fraction) {
+        mNavigationBarScrimFraction = fraction;
+        mWindow.setNavigationBarColor(
+                applyCurrentScrimToColor(getNavigationBarColor(mForceDarkNavigationBarColor)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            mWindow.setNavigationBarDividerColor(applyCurrentScrimToColor(
+                    getNavigationBarDividerColor(mForceDarkNavigationBarColor)));
+        }
+
+        // Adjust the color of navigation bar icons based on color state of the navigation bar.
+        if (MathUtils.areFloatsEqual(1f, fraction)) {
+            UiUtils.setNavigationBarIconColor(mRootView, false);
+        } else if (MathUtils.areFloatsEqual(0f, fraction)) {
+            UiUtils.setNavigationBarIconColor(mRootView, true);
+        }
+    }
+
+    private @ColorInt int getNavigationBarColor(boolean forceDarkNavigationBar) {
+        return ApiCompatibilityUtils.getColor(mResources,
+                forceDarkNavigationBar ? R.color.toolbar_background_primary_dark
+                                       : R.color.bottom_system_nav_color);
+    }
+
+    private @ColorInt int getNavigationBarDividerColor(boolean forceDarkNavigationBar) {
+        return ApiCompatibilityUtils.getColor(mResources,
+                forceDarkNavigationBar ? R.color.bottom_system_nav_divider_color_light
+                                       : R.color.bottom_system_nav_divider_color);
+    }
+
+    private @ColorInt int applyCurrentScrimToColor(@ColorInt int color) {
+        // Apply a color overlay.
+        float scrimColorAlpha = (mDefaultScrimColor >>> 24) / 255f;
+        int scrimColorOpaque = mDefaultScrimColor & 0xFF000000;
+        return ColorUtils.getColorWithOverlay(
+                color, scrimColorOpaque, mNavigationBarScrimFraction * scrimColorAlpha, true);
+>>>>>>> chromium
     }
 }

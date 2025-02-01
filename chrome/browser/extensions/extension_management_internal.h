@@ -1,20 +1,20 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef CHROME_BROWSER_EXTENSIONS_EXTENSION_MANAGEMENT_INTERNAL_H_
 #define CHROME_BROWSER_EXTENSIONS_EXTENSION_MANAGEMENT_INTERNAL_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "base/values.h"
+#include "base/macros.h"
 #include "chrome/browser/extensions/extension_management.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/permissions/api_permission_set.h"
 
 namespace base {
+class DictionaryValue;
 class Version;
 }  // namespace base
 
@@ -50,10 +50,6 @@ struct IndividualSettings {
 
   IndividualSettings();
   explicit IndividualSettings(const IndividualSettings* default_settings);
-
-  IndividualSettings(const IndividualSettings&) = delete;
-  IndividualSettings& operator=(const IndividualSettings&) = delete;
-
   ~IndividualSettings();
 
   void Reset();
@@ -64,7 +60,7 @@ struct IndividualSettings {
   // Note that in case of parsing errors, |this| will NOT be left untouched.
   // This method is required to be called for SCOPE_DEFAULT first, then
   // for SCOPE_INDIVIDUAL and SCOPE_UPDATE_URL.
-  bool Parse(const base::Value::Dict& dict, ParsingScope scope);
+  bool Parse(const base::DictionaryValue* dict, ParsingScope scope);
 
   // Extension installation mode. Setting this to INSTALLATION_FORCED or
   // INSTALLATION_RECOMMENDED will enable extension auto-loading (only
@@ -149,46 +145,29 @@ struct IndividualSettings {
   ExtensionManagement::ToolbarPinMode toolbar_pin =
       ExtensionManagement::ToolbarPinMode::kDefaultUnpinned;
 
-  // Boolean to indicate whether the extension can navigate to file URLs.
-  bool file_url_navigation_allowed{false};
+ private:
+  DISALLOW_COPY_AND_ASSIGN(IndividualSettings);
 };
 
 // Global extension management settings, applicable to all extensions.
 struct GlobalSettings {
-  enum class ManifestV2Setting {
-    kDefault = 0,
-    kDisabled,
-    kEnabled,
-    kEnabledForForceInstalled,
-  };
-
-  enum class UnpublishedAvailability {
-    kAllowUnpublished = 0,
-    kDisableUnpublished = 1,
-  };
-
   GlobalSettings();
-
-  GlobalSettings(const GlobalSettings&) = delete;
-  GlobalSettings& operator=(const GlobalSettings&) = delete;
-
   ~GlobalSettings();
 
   void Reset();
 
   // Settings specifying which URLs are allowed to install extensions, will be
   // enforced only if |has_restricted_install_sources| is set to true.
-  std::optional<URLPatternSet> install_sources;
+  URLPatternSet install_sources;
+  bool has_restricted_install_sources;
 
   // Settings specifying all allowed app/extension types, will be enforced
   // only of |has_restricted_allowed_types| is set to true.
-  std::optional<std::vector<Manifest::Type>> allowed_types;
+  std::vector<Manifest::Type> allowed_types;
+  bool has_restricted_allowed_types;
 
-  // An enum setting indicates if manifest v2 is allowed.
-  ManifestV2Setting manifest_v2_setting = ManifestV2Setting::kDefault;
-
-  UnpublishedAvailability unpublished_availability_setting =
-      UnpublishedAvailability::kAllowUnpublished;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GlobalSettings);
 };
 
 }  // namespace internal

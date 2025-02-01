@@ -1,12 +1,12 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/dom/abort_signal.h"
 
-#include <optional>
 #include <utility>
 
+<<<<<<< HEAD
 #include "base/check_deref.h"
 #include "base/functional/callback.h"
 #include "base/time/time.h"
@@ -15,42 +15,28 @@
 #include "third_party/blink/renderer/core/dom/abort_signal_composition_manager.h"
 #include "third_party/blink/renderer/core/dom/abort_signal_composition_type.h"
 #include "third_party/blink/renderer/core/dom/abort_signal_registry.h"
+=======
+#include "base/callback.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/event_target_names.h"
 #include "third_party/blink/renderer/core/event_type_names.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
-#include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
-#include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_linked_hash_set.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/heap/visitor.h"
+<<<<<<< HEAD
 #include "third_party/blink/renderer/platform/scheduler/public/post_cancellable_task.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 namespace blink {
 
-namespace {
-
-class OnceCallbackAlgorithm final : public AbortSignal::Algorithm {
- public:
-  explicit OnceCallbackAlgorithm(base::OnceClosure callback)
-      : callback_(std::move(callback)) {}
-  ~OnceCallbackAlgorithm() override = default;
-
-  void Run() override { std::move(callback_).Run(); }
-
- private:
-  base::OnceClosure callback_;
-};
-
-}  // namespace
-
 AbortSignal::AbortSignal(ExecutionContext* execution_context)
+<<<<<<< HEAD
     : ExecutionContextLifecycleObserver(execution_context),
       signal_type_(SignalType::kComposite) {
   InitializeCompositeSignal(HeapVector<Member<AbortSignal>>());
@@ -94,39 +80,15 @@ void AbortSignal::InitializeCompositeSignal(
   AbortSignalRegistry::From(CHECK_DEREF(GetExecutionContext()));
 }
 
+=======
+    : execution_context_(execution_context) {}
+>>>>>>> chromium
 AbortSignal::~AbortSignal() = default;
 
 // static
 AbortSignal* AbortSignal::abort(ScriptState* script_state) {
-  v8::Local<v8::Value> dom_exception = V8ThrowDOMException::CreateOrEmpty(
-      script_state->GetIsolate(), DOMExceptionCode::kAbortError,
-      "signal is aborted without reason");
-  CHECK(!dom_exception.IsEmpty());
-  ScriptValue reason(script_state->GetIsolate(), dom_exception);
-  return abort(script_state, reason);
-}
-
-// static
-AbortSignal* AbortSignal::abort(ScriptState* script_state, ScriptValue reason) {
-  DCHECK(!reason.IsEmpty());
-  AbortSignal* signal = MakeGarbageCollected<AbortSignal>(
-      ExecutionContext::From(script_state), SignalType::kAborted);
-  signal->abort_reason_ = reason;
-  signal->composition_manager_->Settle();
-  return signal;
-}
-
-// static
-AbortSignal* AbortSignal::any(ScriptState* script_state,
-                              HeapVector<Member<AbortSignal>> signals) {
-  return MakeGarbageCollected<AbortSignal>(script_state, signals);
-}
-
-// static
-AbortSignal* AbortSignal::timeout(ScriptState* script_state,
-                                  uint64_t milliseconds) {
-  ExecutionContext* context = ExecutionContext::From(script_state);
   AbortSignal* signal =
+<<<<<<< HEAD
       MakeGarbageCollected<AbortSignal>(context, SignalType::kTimeout);
   // The timeout task shouldn't run for non-fully active documents, so we can
   // bypass posting the task if the context is destroyed.
@@ -187,6 +149,13 @@ void AbortSignal::throwIfAborted(v8::Isolate* isolate) const {
   V8ThrowException::ThrowException(isolate, abort_reason_.V8Value());
 }
 
+=======
+      MakeGarbageCollected<AbortSignal>(ExecutionContext::From(script_state));
+  signal->aborted_flag_ = true;
+  return signal;
+}
+
+>>>>>>> chromium
 const AtomicString& AbortSignal::InterfaceName() const {
   return event_target_names::kAbortSignal;
 }
@@ -195,104 +164,53 @@ ExecutionContext* AbortSignal::GetExecutionContext() const {
   return ExecutionContextLifecycleObserver::GetExecutionContext();
 }
 
-AbortSignal::AlgorithmHandle* AbortSignal::AddAlgorithm(Algorithm* algorithm) {
-  if (aborted() || composition_manager_->IsSettled()) {
-    return nullptr;
-  }
-  auto* handle = MakeGarbageCollected<AlgorithmHandle>(algorithm, this);
-  CHECK(!abort_algorithms_.Contains(handle));
-  // This always appends since `handle` is not already in the collection.
-  abort_algorithms_.insert(handle);
-  return handle;
-}
-
-AbortSignal::AlgorithmHandle* AbortSignal::AddAlgorithm(
-    base::OnceClosure algorithm) {
-  if (aborted() || composition_manager_->IsSettled()) {
-    return nullptr;
-  }
-  auto* callback_algorithm =
-      MakeGarbageCollected<OnceCallbackAlgorithm>(std::move(algorithm));
-  auto* handle =
-      MakeGarbageCollected<AlgorithmHandle>(callback_algorithm, this);
-  CHECK(!abort_algorithms_.Contains(handle));
-  // This always appends since `handle` is not already in the collection.
-  abort_algorithms_.insert(handle);
-  return handle;
-}
-
-void AbortSignal::RemoveAlgorithm(AlgorithmHandle* handle) {
-  if (aborted() || composition_manager_->IsSettled()) {
+void AbortSignal::AddAlgorithm(base::OnceClosure algorithm) {
+  if (aborted_flag_)
     return;
-  }
-  abort_algorithms_.erase(handle);
+  abort_algorithms_.push_back(std::move(algorithm));
 }
 
-void AbortSignal::SignalAbort(ScriptState* script_state,
-                              ScriptValue reason,
-                              SignalAbortPassKey) {
-  DCHECK(!reason.IsEmpty());
-  if (aborted()) {
+void AbortSignal::AddSignalAbortAlgorithm(AbortSignal* dependent_signal) {
+  if (aborted_flag_)
     return;
-  }
 
-  CHECK(composition_manager_);
-  auto* source_signal_manager =
-      DynamicTo<SourceSignalCompositionManager>(composition_manager_.Get());
-  // `SignalAbort` can only be called on source signals.
-  CHECK(source_signal_manager);
-  HeapVector<Member<AbortSignal>> dependent_signals_to_abort;
-  dependent_signals_to_abort.ReserveInitialCapacity(
-      source_signal_manager->GetDependentSignals().size());
-
-  // Set the abort reason for this signal and any unaborted dependent signals so
-  // that all dependent signals are aborted before JS runs in abort algorithms
-  // or event dispatch.
-  SetAbortReason(script_state, reason);
-
-  for (auto& signal : source_signal_manager->GetDependentSignals()) {
-    CHECK(signal.Get());
-    if (!signal->aborted()) {
-      signal->SetAbortReason(script_state, abort_reason_);
-      dependent_signals_to_abort.push_back(signal);
-    }
-  }
-
-  RunAbortSteps();
-
-  for (auto& signal : dependent_signals_to_abort) {
-    signal->RunAbortSteps();
-    signal->composition_manager_->Settle();
-  }
-
-  composition_manager_->Settle();
+  // The signal should be kept alive as long as parentSignal is allow chained
+  // requests like the following:
+  // controller -owns-> signal1 -owns-> signal2 -owns-> signal3 <-owns- request
+  //
+  // Due to lack to traced closures we pass a weak persistent but also add
+  // |dependent_signal| as a dependency that is traced. We do not use
+  // WrapPersistent here as this would create a root for Oilpan and unified heap
+  // that leaks the |execution_context_| as there is no explicit event removing
+  // the root anymore.
+  abort_algorithms_.emplace_back(WTF::Bind(
+      &AbortSignal::SignalAbort, WrapWeakPersistent(dependent_signal)));
+  dependent_signals_.push_back(dependent_signal);
 }
 
-void AbortSignal::SetAbortReason(ScriptState* script_state,
-                                 ScriptValue reason) {
-  CHECK(!aborted());
-  if (reason.IsUndefined()) {
-    abort_reason_ = ScriptValue(
-        script_state->GetIsolate(),
-        V8ThrowDOMException::CreateOrEmpty(
-            script_state->GetIsolate(), DOMExceptionCode::kAbortError,
-            "signal is aborted with undefined reason"));
-  } else {
-    abort_reason_ = reason;
+void AbortSignal::SignalAbort() {
+  if (aborted_flag_)
+    return;
+  aborted_flag_ = true;
+  for (base::OnceClosure& closure : abort_algorithms_) {
+    std::move(closure).Run();
   }
-}
-
-void AbortSignal::RunAbortSteps() {
-  for (AbortSignal::AlgorithmHandle* handle : abort_algorithms_) {
-    CHECK(handle);
-    CHECK(handle->GetAlgorithm());
-    handle->GetAlgorithm()->Run();
-  }
-
+  abort_algorithms_.clear();
+  dependent_signals_.clear();
   DispatchEvent(*Event::Create(event_type_names::kAbort));
 }
 
+void AbortSignal::Follow(AbortSignal* parentSignal) {
+  if (aborted_flag_)
+    return;
+  if (parentSignal->aborted_flag_)
+    SignalAbort();
+
+  parentSignal->AddSignalAbortAlgorithm(this);
+}
+
 void AbortSignal::Trace(Visitor* visitor) const {
+<<<<<<< HEAD
   visitor->Trace(abort_reason_);
   visitor->Trace(abort_algorithms_);
   visitor->Trace(composition_manager_);
@@ -415,6 +333,11 @@ AbortSignal::AlgorithmHandle::~AlgorithmHandle() = default;
 void AbortSignal::AlgorithmHandle::Trace(Visitor* visitor) const {
   visitor->Trace(algorithm_);
   visitor->Trace(signal_);
+=======
+  visitor->Trace(execution_context_);
+  visitor->Trace(dependent_signals_);
+  EventTargetWithInlineData::Trace(visitor);
+>>>>>>> chromium
 }
 
 }  // namespace blink

@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,19 +7,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <string_view>
 #include <utility>
 
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/logging.h"
-#include "base/memory/raw_ptr.h"
+#include "base/stl_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
-#include "base/token.h"
-#include "base/types/optional_util.h"
 #include "chrome/common/search/search.mojom.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/renderer/searchbox/searchbox_extension.h"
@@ -27,11 +24,13 @@
 #include "components/favicon_base/favicon_url_parser.h"
 #include "components/url_formatter/url_fixer.h"
 #include "content/public/renderer/render_frame.h"
+#include "content/public/renderer/render_view.h"
 #include "mojo/public/cpp/bindings/pending_associated_remote.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
 #include "third_party/blink/public/web/web_frame.h"
 #include "third_party/blink/public/web/web_local_frame.h"
+#include "third_party/blink/public/web/web_performance.h"
 
 namespace {
 
@@ -48,7 +47,8 @@ bool AreMostVisitedItemsEqual(
 
   for (size_t i = 0; i < new_items.size(); ++i) {
     if (new_items[i].url != old_item_id_pairs[i].second.url ||
-        new_items[i].title != old_item_id_pairs[i].second.title) {
+        new_items[i].title != old_item_id_pairs[i].second.title ||
+        new_items[i].source != old_item_id_pairs[i].second.source) {
       return false;
     }
   }
@@ -60,12 +60,12 @@ class SearchBoxIconURLHelper: public SearchBox::IconURLHelper {
  public:
   explicit SearchBoxIconURLHelper(const SearchBox* search_box);
   ~SearchBoxIconURLHelper() override;
-  std::string GetMainFrameToken() const override;
+  int GetMainFrameID() const override;
   std::string GetURLStringFromRestrictedID(InstantRestrictedID rid) const
       override;
 
  private:
-  raw_ptr<const SearchBox> search_box_;
+  const SearchBox* search_box_;
 };
 
 SearchBoxIconURLHelper::SearchBoxIconURLHelper(const SearchBox* search_box)
@@ -74,11 +74,8 @@ SearchBoxIconURLHelper::SearchBoxIconURLHelper(const SearchBox* search_box)
 
 SearchBoxIconURLHelper::~SearchBoxIconURLHelper() = default;
 
-std::string SearchBoxIconURLHelper::GetMainFrameToken() const {
-  return search_box_->render_frame()
-      ->GetWebFrame()
-      ->GetLocalFrameToken()
-      .ToString();
+int SearchBoxIconURLHelper::GetMainFrameID() const {
+  return search_box_->render_frame()->GetRoutingID();
 }
 
 std::string SearchBoxIconURLHelper::GetURLStringFromRestrictedID(
@@ -94,43 +91,43 @@ std::string SearchBoxIconURLHelper::GetURLStringFromRestrictedID(
 
 namespace internal {  // for testing
 
-// Parses "<frame_token>/<restricted_id>". If successful, assigns
-// |*frame_token| := "<frame_token>", |*rid| := "<restricted_id>", and returns
-// true.
-bool ParseFrameTokenAndRestrictedId(const std::string& id_part,
-                                    std::string* frame_token_out,
-                                    InstantRestrictedID* rid_out) {
-  DCHECK(frame_token_out);
+// Parses "<frame_id>/<restricted_id>". If successful, assigns
+// |*frame_id| := "<frame_id>", |*rid| := "<restricted_id>", and returns true.
+bool ParseFrameIdAndRestrictedId(const std::string& id_part,
+                                 int* frame_id_out,
+                                 InstantRestrictedID* rid_out) {
+  DCHECK(frame_id_out);
   DCHECK(rid_out);
   // Check that the path is of Most visited item ID form.
-  std::vector<std::string_view> tokens = base::SplitStringPiece(
+  std::vector<base::StringPiece> tokens = base::SplitStringPiece(
       id_part, "/", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (tokens.size() != 2)
     return false;
 
+  int frame_id;
   InstantRestrictedID rid;
-  std::optional<base::Token> frame_token = base::Token::FromString(tokens[0]);
-  if (!frame_token || !base::StringToInt(tokens[1], &rid) || rid < 0) {
+  if (!base::StringToInt(tokens[0], &frame_id) || frame_id < 0 ||
+      !base::StringToInt(tokens[1], &rid) || rid < 0)
     return false;
-  }
-  *frame_token_out = tokens[0];
+
+  *frame_id_out = frame_id;
   *rid_out = rid;
   return true;
 }
 
 // Takes a favicon |url| that looks like:
 //
-//   chrome-search://favicon/<frame_token>/<restricted_id>
-//   chrome-search://favicon/<parameters>/<frame_token>/<restricted_id>
+//   chrome-search://favicon/<frame_id>/<restricted_id>
+//   chrome-search://favicon/<parameters>/<frame_id>/<restricted_id>
 //
 // If successful, assigns |*param_part| := "" or "<parameters>/" (note trailing
 // slash), |*frame_id| := "<frame_id>", |*rid| := "rid", and returns true.
 bool ParseIconRestrictedUrl(const GURL& url,
                             std::string* param_part,
-                            std::string* frame_token,
+                            int* frame_id,
                             InstantRestrictedID* rid) {
   DCHECK(param_part);
-  DCHECK(frame_token);
+  DCHECK(frame_id);
   DCHECK(rid);
   // Strip leading slash.
   std::string raw_path = url.path();
@@ -147,9 +144,8 @@ bool ParseIconRestrictedUrl(const GURL& url,
   int path_index = parsed.path_index;
 
   std::string id_part = raw_path.substr(path_index);
-  if (!ParseFrameTokenAndRestrictedId(id_part, frame_token, rid)) {
+  if (!ParseFrameIdAndRestrictedId(id_part, frame_id, rid))
     return false;
-  }
 
   *param_part = raw_path.substr(0, path_index);
   return true;
@@ -159,12 +155,12 @@ void TranslateIconRestrictedUrl(const GURL& transient_url,
                                 const SearchBox::IconURLHelper& helper,
                                 GURL* url) {
   std::string params;
-  std::string frame_token;
+  int frame_id = -1;
   InstantRestrictedID rid = -1;
 
-  if (!internal::ParseIconRestrictedUrl(transient_url, &params, &frame_token,
+  if (!internal::ParseIconRestrictedUrl(transient_url, &params, &frame_id,
                                         &rid) ||
-      frame_token != helper.GetMainFrameToken()) {
+      frame_id != helper.GetMainFrameID()) {
     *url = GURL(base::StringPrintf("chrome-search://%s/",
                                    chrome::kChromeUIFaviconHost));
   } else {
@@ -207,6 +203,35 @@ SearchBox::SearchBox(content::RenderFrame* render_frame)
 
 SearchBox::~SearchBox() = default;
 
+void SearchBox::LogEvent(NTPLoggingEventType event) {
+  base::Time navigation_start = base::Time::FromDoubleT(
+      render_frame()->GetWebFrame()->Performance().NavigationStart());
+  base::Time now = base::Time::Now();
+  base::TimeDelta delta = now - navigation_start;
+  embedded_search_service_->LogEvent(page_seq_no_, event, delta);
+}
+
+void SearchBox::LogSuggestionEventWithValue(
+    NTPSuggestionsLoggingEventType event,
+    int data) {
+  base::Time navigation_start = base::Time::FromDoubleT(
+      render_frame()->GetWebFrame()->Performance().NavigationStart());
+  base::Time now = base::Time::Now();
+  base::TimeDelta delta = now - navigation_start;
+  embedded_search_service_->LogSuggestionEventWithValue(page_seq_no_, event,
+                                                        data, delta);
+}
+
+void SearchBox::LogMostVisitedImpression(
+    const ntp_tiles::NTPTileImpression& impression) {
+  embedded_search_service_->LogMostVisitedImpression(page_seq_no_, impression);
+}
+
+void SearchBox::LogMostVisitedNavigation(
+    const ntp_tiles::NTPTileImpression& impression) {
+  embedded_search_service_->LogMostVisitedNavigation(page_seq_no_, impression);
+}
+
 void SearchBox::DeleteMostVisitedItem(
     InstantRestrictedID most_visited_item_id) {
   GURL url = GetURLForMostVisitedItem(most_visited_item_id);
@@ -238,7 +263,7 @@ bool SearchBox::GetMostVisitedItemWithID(
 }
 
 const NtpTheme* SearchBox::GetNtpTheme() const {
-  return base::OptionalToPtr(theme_);
+  return base::OptionalOrNullptr(theme_);
 }
 
 void SearchBox::StartCapturingKeyStrokes() {
@@ -259,6 +284,63 @@ void SearchBox::UndoMostVisitedDeletion(
   if (!url.is_valid())
     return;
   embedded_search_service_->UndoMostVisitedDeletion(page_seq_no_, url);
+}
+
+void SearchBox::SetCustomBackgroundInfo(const GURL& background_url,
+                                        const std::string& attribution_line_1,
+                                        const std::string& attribution_line_2,
+                                        const GURL& action_url,
+                                        const std::string& collection_id) {
+  embedded_search_service_->SetCustomBackgroundInfo(
+      background_url, attribution_line_1, attribution_line_2, action_url,
+      collection_id);
+}
+
+void SearchBox::SelectLocalBackgroundImage() {
+  embedded_search_service_->SelectLocalBackgroundImage();
+}
+
+void SearchBox::BlocklistSearchSuggestion(int task_version, long task_id) {
+  embedded_search_service_->BlocklistSearchSuggestion(task_version, task_id);
+}
+
+void SearchBox::BlocklistSearchSuggestionWithHash(
+    int task_version,
+    long task_id,
+    const std::vector<uint8_t>& hash) {
+  embedded_search_service_->BlocklistSearchSuggestionWithHash(task_version,
+                                                              task_id, hash);
+}
+
+void SearchBox::SearchSuggestionSelected(int task_version,
+                                         long task_id,
+                                         const std::vector<uint8_t>& hash) {
+  embedded_search_service_->SearchSuggestionSelected(task_version, task_id,
+                                                     hash);
+}
+
+void SearchBox::OptOutOfSearchSuggestions() {
+  embedded_search_service_->OptOutOfSearchSuggestions();
+}
+
+void SearchBox::ApplyDefaultTheme() {
+  embedded_search_service_->ApplyDefaultTheme();
+}
+
+void SearchBox::ApplyAutogeneratedTheme(SkColor color) {
+  embedded_search_service_->ApplyAutogeneratedTheme(color);
+}
+
+void SearchBox::RevertThemeChanges() {
+  embedded_search_service_->RevertThemeChanges();
+}
+
+void SearchBox::ConfirmThemeChanges() {
+  embedded_search_service_->ConfirmThemeChanges();
+}
+
+void SearchBox::BlocklistPromo(const std::string& promo_id) {
+  embedded_search_service_->BlocklistPromo(promo_id);
 }
 
 void SearchBox::SetPageSequenceNumber(int page_seq_no) {
@@ -335,6 +417,13 @@ void SearchBox::ThemeChanged(const NtpTheme& theme) {
   theme_ = theme;
   if (can_run_js_in_renderframe_)
     SearchBoxExtension::DispatchThemeChange(render_frame()->GetWebFrame());
+}
+
+void SearchBox::LocalBackgroundSelected() {
+  if (can_run_js_in_renderframe_) {
+    SearchBoxExtension::DispatchLocalBackgroundSelected(
+        render_frame()->GetWebFrame());
+  }
 }
 
 GURL SearchBox::GetURLForMostVisitedItem(InstantRestrictedID item_id) const {

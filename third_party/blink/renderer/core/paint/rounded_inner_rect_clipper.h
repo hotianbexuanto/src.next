@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,7 +14,7 @@ class GraphicsContext;
 struct PhysicalRect;
 
 class RoundedInnerRectClipper {
-  STACK_ALLOCATED();
+  DISALLOW_NEW();
 
  public:
   RoundedInnerRectClipper(GraphicsContext&,

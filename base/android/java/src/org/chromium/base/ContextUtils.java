@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,24 +6,31 @@ package org.chromium.base;
 
 import android.app.Activity;
 import android.app.Application;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.ContextWrapper;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.AssetManager;
 import android.os.Build;
-import android.os.Handler;
 import android.os.Process;
 import android.preference.PreferenceManager;
 
+<<<<<<< HEAD
 import org.jni_zero.JNINamespace;
 
+=======
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
+
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.compat.ApiHelperForM;
+>>>>>>> chromium
 import org.chromium.build.BuildConfig;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 
-/** This class provides Android application context related utility methods. */
+/**
+ * This class provides Android application context related utility methods.
+ */
 @JNINamespace("base::android")
 @NullMarked
 public class ContextUtils {
@@ -31,16 +38,15 @@ public class ContextUtils {
     private static @Nullable Context sApplicationContext;
 
     /**
+<<<<<<< HEAD
      * Flag for {@link Context#registerReceiver}: The receiver can receive broadcasts from other
      * Apps. Has the same behavior as marking a statically registered receiver with "exported=true".
      *
      * <p>TODO(mthiesse): Move to ApiHelperForT when we build against T SDK.
+=======
+     * Initialization-on-demand holder. This exists for thread-safe lazy initialization.
+>>>>>>> chromium
      */
-    public static final int RECEIVER_EXPORTED = 0x2;
-
-    public static final int RECEIVER_NOT_EXPORTED = 0x4;
-
-    /** Initialization-on-demand holder. This exists for thread-safe lazy initialization. */
     private static class Holder {
         // Not final for tests.
         private static SharedPreferences sSharedPreferences = fetchAppSharedPreferences();
@@ -75,8 +81,7 @@ public class ContextUtils {
     public static void initApplicationContext(Context appContext) {
         // Conceding that occasionally in tests, native is loaded before the browser process is
         // started, in which case the browser process re-sets the application context.
-        assert sApplicationContext == null
-                || sApplicationContext == appContext
+        assert sApplicationContext == null || sApplicationContext == appContext
                 || ((ContextWrapper) sApplicationContext).getBaseContext() == appContext;
         initJavaSideApplicationContext(appContext);
     }
@@ -113,20 +118,10 @@ public class ContextUtils {
      *
      * @param appContext The new application context.
      */
+    @VisibleForTesting
     public static void initApplicationContextForTests(Context appContext) {
-        Context prevValue = sApplicationContext;
         initJavaSideApplicationContext(appContext);
-
-        // initApplicationContext() lets <clinit> create sSharedPreferences, but that does not work
-        // when setting it multiple times.
-        SharedPreferences prevPrefs = Holder.sSharedPreferences;
         Holder.sSharedPreferences = fetchAppSharedPreferences();
-
-        ResettersForTesting.register(
-                () -> {
-                    sApplicationContext = prevValue;
-                    Holder.sSharedPreferences = prevPrefs;
-                });
     }
 
     private static void initJavaSideApplicationContext(Context appContext) {
@@ -139,6 +134,23 @@ public class ContextUtils {
     }
 
     /**
+     * In most cases, {@link Context#getAssets()} can be used directly. Modified resources are
+     * used downstream and are set up on application startup, and this method provides access to
+     * regular assets before that initialization is complete.
+     *
+     * This method should ONLY be used for accessing files within the assets folder.
+     *
+     * @return Application assets.
+     */
+    public static AssetManager getApplicationAssets() {
+        Context context = getApplicationContext();
+        while (context instanceof ContextWrapper) {
+            context = ((ContextWrapper) context).getBaseContext();
+        }
+        return context.getAssets();
+    }
+
+    /**
      * @return Whether the process is isolated.
      */
     @SuppressWarnings("NewApi")
@@ -147,39 +159,21 @@ public class ContextUtils {
         return Process.isIsolated();
     }
 
-    /**
-     * @return if current process is SdkSandbox process.
-     */
-    public static boolean isSdkSandboxProcess() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            return Process.isSdkSandbox();
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * @return The name of the current process. E.g. "org.chromium.chrome:privileged_process0".
-     */
+    /** @return The name of the current process. E.g. "org.chromium.chrome:privileged_process0". */
     public static String getProcessName() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            return Application.getProcessName();
-        }
-        try {
-            Class<?> activityThreadClazz = Class.forName("android.app.ActivityThread");
-            return (String) activityThreadClazz.getMethod("currentProcessName").invoke(null);
-        } catch (Exception e) {
-            // If fallback logic is ever needed, refer to:
-            // https://chromium-review.googlesource.com/c/chromium/src/+/905563/1
-            throw JavaUtils.throwUnchecked(e);
-        }
+        return ApiCompatibilityUtils.getProcessName();
     }
 
-    /**
-     * @return Whether the current process is 64-bit.
-     */
+    /** @return Whether the current process is 64-bit. */
     public static boolean isProcess64Bit() {
-        return Process.is64Bit();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return ApiHelperForM.isProcess64Bit();
+        } else {
+            // Android sets CPU_ABI to the first supported ABI for the current process bitness
+            // (for compat reasons), so we can use this to infer our bitness.
+            return Build.SUPPORTED_64_BIT_ABIS.length > 0
+                    && Build.SUPPORTED_64_BIT_ABIS[0].equals(Build.CPU_ABI);
+        }
     }
 
     /**
@@ -199,6 +193,7 @@ public class ContextUtils {
 
         return null;
     }
+<<<<<<< HEAD
 
     /**
      * Register a broadcast receiver that may only accept protected broadcasts.
@@ -325,4 +320,6 @@ public class ContextUtils {
             return context.registerReceiver(receiver, filter, permission, scheduler);
         }
     }
+=======
+>>>>>>> chromium
 }

@@ -1,71 +1,50 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/browser_command_controller.h"
 
-#include <string_view>
-
 #include "base/command_line.h"
 #include "base/containers/contains.h"
+#include "base/macros.h"
 #include "base/run_loop.h"
-#include "base/test/scoped_feature_list.h"
-#include "base/test/task_environment.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/sessions/tab_restore_service_factory.h"
 #include "chrome/browser/sessions/tab_restore_service_load_waiter.h"
-#include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/translate/translate_test_utils.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
-#include "chrome/browser/ui/profiles/profile_picker.h"
-#include "chrome/browser/ui/profiles/profile_ui_test_utils.h"
 #include "chrome/browser/ui/startup/startup_browser_creator.h"
 #include "chrome/browser/ui/tab_modal_confirm_dialog_browsertest.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/ui/views/side_panel/side_panel_ui.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/sessions/core/tab_restore_service.h"
 #include "components/sessions/core/tab_restore_service_observer.h"
-#include "components/signin/public/identity_manager/identity_manager.h"
-#include "components/signin/public/identity_manager/identity_test_environment.h"
-#include "components/signin/public/identity_manager/identity_test_utils.h"
-#include "components/translate/core/browser/language_state.h"
-#include "components/translate/core/browser/translate_manager.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
-#include "content/public/test/test_navigation_observer.h"
 #include "content/public/test/test_utils.h"
-#include "net/base/network_change_notifier.h"
-#include "ui/base/ui_base_features.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/constants/ash_switches.h"
-#include "ash/wm/window_pin_util.h"
+#include "chromeos/ui/base/window_pin_type.h"
+#include "chromeos/ui/base/window_properties.h"
 #include "ui/aura/window.h"
 #endif
-
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
-#include "chrome/common/chrome_features.h"
-#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
 
 namespace chrome {
 
 class BrowserCommandControllerBrowserTest : public InProcessBrowserTest {
  public:
+<<<<<<< HEAD
   BrowserCommandControllerBrowserTest() = default;
 
   BrowserCommandControllerBrowserTest(
@@ -74,68 +53,20 @@ class BrowserCommandControllerBrowserTest : public InProcessBrowserTest {
       const BrowserCommandControllerBrowserTest&) = delete;
 
   ~BrowserCommandControllerBrowserTest() override = default;
+=======
+  BrowserCommandControllerBrowserTest() {}
+  ~BrowserCommandControllerBrowserTest() override {}
+>>>>>>> chromium
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
 #if BUILDFLAG(IS_CHROMEOS)
     command_line->AppendSwitch(
-        ash::switches::kIgnoreUserProfileMappingForTests);
+        chromeos::switches::kIgnoreUserProfileMappingForTests);
 #endif
   }
-};
-
-// Test case for menus that only appear after Chrome Refresh.
-class BrowserCommandControllerBrowserTestRefreshOnly
-    : public BrowserCommandControllerBrowserTest {
- public:
-  BrowserCommandControllerBrowserTestRefreshOnly() = default;
-  BrowserCommandControllerBrowserTestRefreshOnly(
-      const BrowserCommandControllerBrowserTestRefreshOnly&) = delete;
-  BrowserCommandControllerBrowserTestRefreshOnly& operator=(
-      const BrowserCommandControllerBrowserTestRefreshOnly&) = delete;
-
-  ~BrowserCommandControllerBrowserTestRefreshOnly() override = default;
-
- protected:
-  void LoadAndWaitForLanguage(std::string_view relative_url) {
-    ASSERT_TRUE(embedded_test_server()->Start());
-
-    GURL url = embedded_test_server()->GetURL(relative_url);
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
-
-    ChromeTranslateClient* chrome_translate_client =
-        ChromeTranslateClient::FromWebContents(
-            browser()->tab_strip_model()->GetActiveWebContents());
-
-    std::unique_ptr<translate::TranslateWaiter> translate_waiter =
-        translate::CreateTranslateWaiter(
-            browser()->tab_strip_model()->GetActiveWebContents(),
-            translate::TranslateWaiter::WaitEvent::kLanguageDetermined);
-
-    while (
-        chrome_translate_client->GetLanguageState().source_language().empty()) {
-      translate_waiter->Wait();
-    }
-    translate::TranslateManager::SetIgnoreMissingKeyForTesting(true);
-    net::NetworkChangeNotifier::CreateMockIfNeeded();
-    browser()->command_controller()->TabStateChanged();
-  }
-};
-// Test case for actions behind Toolbar Pinning.
-class BrowserCommandControllerBrowserTestToolbarPinningOnly
-    : public BrowserCommandControllerBrowserTestRefreshOnly {
- public:
-  BrowserCommandControllerBrowserTestToolbarPinningOnly() {
-    scoped_feature_list_.InitWithFeatures({features::kToolbarPinning}, {});
-  }
-  BrowserCommandControllerBrowserTestToolbarPinningOnly(
-      const BrowserCommandControllerBrowserTestToolbarPinningOnly&) = delete;
-  BrowserCommandControllerBrowserTestToolbarPinningOnly& operator=(
-      const BrowserCommandControllerBrowserTestToolbarPinningOnly&) = delete;
-
-  ~BrowserCommandControllerBrowserTestToolbarPinningOnly() override = default;
 
  private:
-  base::test::ScopedFeatureList scoped_feature_list_;
+  DISALLOW_COPY_AND_ASSIGN(BrowserCommandControllerBrowserTest);
 };
 
 // Verify that showing a constrained window disables find.
@@ -165,6 +96,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest, DisableFind) {
   EXPECT_TRUE(chrome::IsCommandEnabled(browser(), IDC_FIND));
 }
 
+<<<<<<< HEAD
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        DisableCommandsInSingleTab) {
   EXPECT_FALSE(
@@ -200,6 +132,9 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
 }
 
 #if !BUILDFLAG(IS_CHROMEOS)
+=======
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        NewAvatarMenuEnabledInGuestMode) {
   EXPECT_EQ(1U, BrowserList::GetInstance()->size());
@@ -212,6 +147,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
 }
 #endif
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_CHROMEOS)
 class BrowserCommandControllerBrowserTestLockedFullscreen
     : public BrowserCommandControllerBrowserTest {
@@ -273,62 +209,51 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestLockedFullscreen,
   browser()->SetLockedForOnTask(false);
   CommandUpdaterImpl* const command_updater = GetCommandUpdater();
 
+=======
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest, LockedFullscreen) {
+  CommandUpdaterImpl* command_updater =
+      &browser()->command_controller()->command_updater_;
+>>>>>>> chromium
   // IDC_EXIT is always enabled in regular mode so it's a perfect candidate for
   // testing.
   EXPECT_TRUE(command_updater->IsCommandEnabled(IDC_EXIT));
-  EnterLockedFullscreen();
-
+  // Set locked fullscreen mode.
+  browser()->window()->GetNativeWindow()->SetProperty(
+      chromeos::kWindowPinTypeKey, chromeos::WindowPinType::kTrustedPinned);
+  // Update the corresponding command_controller state.
+  browser()->command_controller()->LockedFullscreenStateChanged();
+  // Update some more states just to make sure the wrong commands don't get
+  // enabled.
+  browser()->command_controller()->TabStateChanged();
+  browser()->command_controller()->FullscreenStateChanged();
+  browser()->command_controller()->PrintingStateChanged();
+  browser()->command_controller()->ExtensionStateChanged();
   // IDC_EXIT is not enabled in locked fullscreen.
   EXPECT_FALSE(command_updater->IsCommandEnabled(IDC_EXIT));
+
   constexpr int kAllowlistedIds[] = {IDC_CUT, IDC_COPY, IDC_PASTE};
 
-  // Go through all the command ids and ensure only allowlisted commands are
-  // enabled.
+  // Go through all the command ids and make sure all non-allowlisted commands
+  // are disabled.
   for (int id : command_updater->GetAllIds()) {
-    bool is_command_allowlisted = base::Contains(kAllowlistedIds, id);
-    EXPECT_EQ(command_updater->IsCommandEnabled(id), is_command_allowlisted)
-        << "Command " << id << " failed to meet enabled state expectation";
+    if (base::Contains(kAllowlistedIds, id)) {
+      continue;
+    }
+    EXPECT_FALSE(command_updater->IsCommandEnabled(id));
   }
 
-  // Exit locked fullscreen and verify IDC_EXIT is enabled again.
-  ExitLockedFullscreen();
-  EXPECT_TRUE(command_updater->IsCommandEnabled(IDC_EXIT));
-}
-
-IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestLockedFullscreen,
-                       WhenLockedForOnTask) {
-  browser()->SetLockedForOnTask(true);
-  CommandUpdaterImpl* const command_updater = GetCommandUpdater();
-
-  // IDC_EXIT is always enabled in regular mode so it's a perfect candidate for
-  // testing.
-  EXPECT_TRUE(command_updater->IsCommandEnabled(IDC_EXIT));
-  EnterLockedFullscreen();
-
-  // IDC_EXIT is not enabled in locked fullscreen.
-  EXPECT_FALSE(command_updater->IsCommandEnabled(IDC_EXIT));
-
-  // NOTE: If new commands are being added, please disable them by default and
-  // notify the ChromeOS team by filing a bug under this component --
-  // b/?q=componentid:1389107.
-  constexpr int kAllowlistedIds[] = {
-      IDC_CUT, IDC_COPY, IDC_PASTE,
-      // Page navigation commands.
-      IDC_BACK, IDC_FORWARD, IDC_RELOAD, IDC_RELOAD_BYPASSING_CACHE,
-      IDC_RELOAD_CLEARING_CACHE,
-      // Tab navigation commands.
-      IDC_SELECT_NEXT_TAB, IDC_SELECT_PREVIOUS_TAB};
-
-  // Go through all the command ids and ensure only allowlisted commands are
-  // enabled.
-  for (int id : command_updater->GetAllIds()) {
-    bool is_command_allowlisted = base::Contains(kAllowlistedIds, id);
-    EXPECT_EQ(command_updater->IsCommandEnabled(id), is_command_allowlisted)
-        << "Command " << id << " failed to meet enabled state expectation";
+  // Verify the set of allowlisted commands.
+  for (int id : kAllowlistedIds) {
+    EXPECT_TRUE(command_updater->IsCommandEnabled(id));
   }
 
-  // Exit locked fullscreen and verify IDC_EXIT is enabled again.
-  ExitLockedFullscreen();
+  // Exit locked fullscreen mode.
+  browser()->window()->GetNativeWindow()->SetProperty(
+      chromeos::kWindowPinTypeKey, chromeos::WindowPinType::kNone);
+  // Update the corresponding command_controller state.
+  browser()->command_controller()->LockedFullscreenStateChanged();
+  // IDC_EXIT is enabled again.
   EXPECT_TRUE(command_updater->IsCommandEnabled(IDC_EXIT));
 }
 #endif
@@ -385,6 +310,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
   ASSERT_EQ(true, commandController->IsCommandEnabled(IDC_RESTORE_TAB));
 }
 
+<<<<<<< HEAD
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
                        OpenDisabledForAppBrowser) {
   auto params = Browser::CreateParams::CreateForApp(
@@ -661,4 +587,6 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestCompare,
       IDC_ADD_TO_COMPARISON_TABLE_MENU));
 }
 
+=======
+>>>>>>> chromium
 }  // namespace chrome

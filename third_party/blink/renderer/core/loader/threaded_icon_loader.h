@@ -1,14 +1,13 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_THREADED_ICON_LOADER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_THREADED_ICON_LOADER_H_
 
-#include <optional>
-
 #include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/loader/threadable_loader.h"
 #include "third_party/blink/renderer/core/loader/threadable_loader_client.h"
@@ -19,11 +18,10 @@
 namespace blink {
 
 class ResourceRequestHead;
+class SegmentReader;
 
 // Utility class for loading, decoding, and potentially rescaling an icon on a
 // background thread. Note that icons are only downscaled and never upscaled.
-// Warning! If the response image type is "image/svg+xml", the process will
-// happen on the main thread.
 class CORE_EXPORT ThreadedIconLoader final
     : public GarbageCollected<ThreadedIconLoader>,
       public ThreadableLoaderClient {
@@ -38,7 +36,7 @@ class CORE_EXPORT ThreadedIconLoader final
   // those dimensions.
   void Start(ExecutionContext* execution_context,
              const ResourceRequestHead& resource_request,
-             const std::optional<gfx::Size>& resize_dimensions,
+             const absl::optional<gfx::Size>& resize_dimensions,
              IconCallback callback);
 
   // Stops the background task. The provided callback will not be run if
@@ -46,8 +44,7 @@ class CORE_EXPORT ThreadedIconLoader final
   void Stop();
 
   // ThreadableLoaderClient interface.
-  void DidReceiveResponse(uint64_t, const ResourceResponse& response) override;
-  void DidReceiveData(base::span<const char> data) override;
+  void DidReceiveData(const char* data, unsigned length) override;
   void DidFinishLoading(uint64_t resource_identifier) override;
   void DidFail(uint64_t, const ResourceError& error) override;
   void DidFailRedirectCheck(uint64_t) override;
@@ -55,7 +52,11 @@ class CORE_EXPORT ThreadedIconLoader final
   void Trace(Visitor* visitor) const override;
 
  private:
-  void OnBackgroundTaskComplete(SkBitmap icon, double resize_scale);
+  void DecodeAndResizeImageOnBackgroundThread(
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+      scoped_refptr<SegmentReader> data);
+
+  void OnBackgroundTaskComplete(double resize_scale);
 
   Member<ThreadableLoader> threadable_loader_;
 
@@ -63,11 +64,13 @@ class CORE_EXPORT ThreadedIconLoader final
   // of the image data starts.
   SegmentedBuffer data_;
 
-  String response_mime_type_;
-
-  std::optional<gfx::Size> resize_dimensions_;
+  // Accessed from main thread and background thread.
+  absl::optional<gfx::Size> resize_dimensions_;
+  SkBitmap decoded_icon_;
 
   IconCallback icon_callback_;
+
+  base::TimeTicks start_time_;
 
   bool stopped_ = false;
 };

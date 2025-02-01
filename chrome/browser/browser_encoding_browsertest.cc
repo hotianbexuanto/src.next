@@ -1,11 +1,15 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <stddef.h>
 
+<<<<<<< HEAD
 #include <array>
 
+=======
+#include "base/cxx17_backports.h"
+>>>>>>> chromium
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/path_service.h"
@@ -23,6 +27,9 @@
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_source.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/download_test_observer.h"
@@ -114,10 +121,15 @@ class BrowserEncodingTest
     }
 
     // Add "Mark of the Web" path with source URL.
+<<<<<<< HEAD
     expected_contents =
         base::StringPrintf("\n<!-- saved from url=(%04d)%s -->\n",
                            url.spec().size(), url.spec().c_str()) +
         expected_contents;
+=======
+    expected_contents = base::StringPrintf(
+        expected_contents.c_str(), url.spec().length(), url.spec().c_str());
+>>>>>>> chromium
 
     EXPECT_EQ(expected_contents, actual_contents);
   }
@@ -154,7 +166,7 @@ IN_PROC_BROWSER_TEST_P(BrowserEncodingTest, TestEncodingAliasMapping) {
 
   GURL url =
       embedded_test_server()->GetURL("/" + test_file_path.MaybeAsASCII());
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  ui_test_utils::NavigateToURL(browser(), url);
   EXPECT_EQ(GetParam().encoding_name,
             browser()->tab_strip_model()->GetActiveWebContents()->
                 GetEncoding());
@@ -236,13 +248,12 @@ IN_PROC_BROWSER_TEST_F(BrowserEncodingTest, TestEncodingAutoDetect) {
 
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
-  for (size_t i = 0; i < std::size(kTestDatas); ++i) {
-    SCOPED_TRACE(i);
+  for (size_t i = 0; i < base::size(kTestDatas); ++i) {
     base::FilePath test_file_path(test_dir_path);
     test_file_path = test_file_path.AppendASCII(kTestDatas[i].test_file_name);
     GURL url =
         embedded_test_server()->GetURL("/" + test_file_path.MaybeAsASCII());
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+    ui_test_utils::NavigateToURL(browser(), url);
 
     // Get the encoding of page. It should return the real encoding now.
     EXPECT_EQ(kTestDatas[i].expected_encoding, web_contents->GetEncoding());

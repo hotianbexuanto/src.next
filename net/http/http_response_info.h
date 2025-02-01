@@ -1,24 +1,21 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_HTTP_HTTP_RESPONSE_INFO_H_
 #define NET_HTTP_HTTP_RESPONSE_INFO_H_
 
-#include <optional>
-#include <set>
 #include <string>
 
 #include "base/time/time.h"
 #include "net/base/auth.h"
 #include "net/base/ip_endpoint.h"
 #include "net/base/net_export.h"
-#include "net/base/proxy_chain.h"
+#include "net/base/proxy_server.h"
 #include "net/dns/public/resolve_error_info.h"
-#include "net/http/alternate_protocol_usage.h"
-#include "net/http/http_connection_info.h"
 #include "net/http/http_vary_data.h"
 #include "net/ssl/ssl_info.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class Pickle;
@@ -31,6 +28,64 @@ class SSLCertRequestInfo;
 
 class NET_EXPORT HttpResponseInfo {
  public:
+  // Describes the kind of connection used to fetch this response.
+  //
+  // NOTE: Please keep in sync with ConnectionInfo enum in
+  // tools/metrics/histograms/enums.xml.
+  // Because of that, and also because these values are persisted to
+  // the cache, please make sure not to delete or reorder values.
+  enum ConnectionInfo {
+    CONNECTION_INFO_UNKNOWN = 0,
+    CONNECTION_INFO_HTTP1_1 = 1,
+    CONNECTION_INFO_DEPRECATED_SPDY2 = 2,
+    CONNECTION_INFO_DEPRECATED_SPDY3 = 3,
+    CONNECTION_INFO_HTTP2 = 4,  // HTTP/2.
+    CONNECTION_INFO_QUIC_UNKNOWN_VERSION = 5,
+    CONNECTION_INFO_DEPRECATED_HTTP2_14 = 6,  // HTTP/2 draft-14.
+    CONNECTION_INFO_DEPRECATED_HTTP2_15 = 7,  // HTTP/2 draft-15.
+    CONNECTION_INFO_HTTP0_9 = 8,
+    CONNECTION_INFO_HTTP1_0 = 9,
+    CONNECTION_INFO_QUIC_32 = 10,
+    CONNECTION_INFO_QUIC_33 = 11,
+    CONNECTION_INFO_QUIC_34 = 12,
+    CONNECTION_INFO_QUIC_35 = 13,
+    CONNECTION_INFO_QUIC_36 = 14,
+    CONNECTION_INFO_QUIC_37 = 15,
+    CONNECTION_INFO_QUIC_38 = 16,
+    CONNECTION_INFO_QUIC_39 = 17,
+    CONNECTION_INFO_QUIC_40 = 18,
+    CONNECTION_INFO_QUIC_41 = 19,
+    CONNECTION_INFO_QUIC_42 = 20,
+    CONNECTION_INFO_QUIC_43 = 21,
+    CONNECTION_INFO_QUIC_Q099 = 22,
+    CONNECTION_INFO_QUIC_44 = 23,
+    CONNECTION_INFO_QUIC_45 = 24,
+    CONNECTION_INFO_QUIC_46 = 25,
+    CONNECTION_INFO_QUIC_47 = 26,
+    CONNECTION_INFO_QUIC_999 = 27,
+    CONNECTION_INFO_QUIC_Q048 = 28,
+    CONNECTION_INFO_QUIC_Q049 = 29,
+    CONNECTION_INFO_QUIC_Q050 = 30,
+    CONNECTION_INFO_QUIC_T048 = 31,
+    CONNECTION_INFO_QUIC_T049 = 32,
+    CONNECTION_INFO_QUIC_T050 = 33,
+    CONNECTION_INFO_QUIC_T099 = 34,
+    CONNECTION_INFO_QUIC_DRAFT_25 = 35,
+    CONNECTION_INFO_QUIC_DRAFT_27 = 36,
+    CONNECTION_INFO_QUIC_DRAFT_28 = 37,
+    CONNECTION_INFO_QUIC_DRAFT_29 = 38,
+    CONNECTION_INFO_QUIC_T051 = 39,
+    CONNECTION_INFO_QUIC_RFC_V1 = 40,
+    NUM_OF_CONNECTION_INFOS,
+  };
+
+  enum ConnectionInfoCoarse {
+    CONNECTION_INFO_COARSE_HTTP1,  // HTTP/0.9, 1.0 and 1.1
+    CONNECTION_INFO_COARSE_HTTP2,
+    CONNECTION_INFO_COARSE_QUIC,
+    CONNECTION_INFO_COARSE_OTHER,
+  };
+
   // Used for categorizing transactions for reporting in histograms.
   // CacheEntryStatus covers relatively common use cases being measured and
   // considered for optimization. Many use cases that are more complex or
@@ -59,6 +114,10 @@ class NET_EXPORT HttpResponseInfo {
     ENTRY_MAX,
   };
 
+  // Returns a more coarse-grained description of the protocol used to fetch the
+  // response.
+  static ConnectionInfoCoarse ConnectionInfoToCoarse(ConnectionInfo info);
+
   HttpResponseInfo();
   HttpResponseInfo(const HttpResponseInfo& rhs);
   ~HttpResponseInfo();
@@ -86,51 +145,50 @@ class NET_EXPORT HttpResponseInfo {
   // when reloading previously visited pages (without going over the network).
   // Note also that under normal circumstances, was_cached is set to the correct
   // value even if the request fails.
-  bool was_cached = false;
+  bool was_cached;
 
   // How this response was handled by the HTTP cache.
-  CacheEntryStatus cache_entry_status = CacheEntryStatus::ENTRY_UNDEFINED;
+  CacheEntryStatus cache_entry_status;
+
+  // True if the request was fetched from cache rather than the network
+  // because of a LOAD_FROM_CACHE_IF_OFFLINE flag when the system
+  // was unable to contact the server.
+  bool server_data_unavailable;
 
   // True if the request accessed the network in the process of retrieving
   // data.
-  bool network_accessed = false;
+  bool network_accessed;
 
   // True if the request was fetched over a SPDY channel.
-  bool was_fetched_via_spdy = false;
+  bool was_fetched_via_spdy;
 
   // True if ALPN was negotiated for this request.
-  bool was_alpn_negotiated = false;
+  bool was_alpn_negotiated;
 
-  // True if the response was fetched via explicit proxying. Any type of
-  // proxying may have taken place, HTTP or SOCKS. Note, we do not know if a
-  // transparent proxy may have been involved.
-  bool WasFetchedViaProxy() const;
-
-  // Information about the proxy chain used to fetch this response, if any.
-  ProxyChain proxy_chain;
-
-  // Whether this request was eligible for IP Protection based on the request
-  // being a match to the masked domain list, if available.
-  // This field is not persisted by `Persist()` and not restored by
-  // `InitFromPickle()`.
-  bool was_mdl_match = false;
+  // True if the request was fetched via an explicit proxy.  The proxy could
+  // be any type of proxy, HTTP or SOCKS.  Note, we do not know if a
+  // transparent proxy may have been involved. If true, |proxy_server| contains
+  // the proxy server that was used.
+  // TODO(tbansal): crbug.com/653354. Remove |was_fetched_via_proxy|.
+  bool was_fetched_via_proxy;
+  ProxyServer proxy_server;
 
   // Whether the request use http proxy or server authentication.
-  bool did_use_http_auth = false;
+  bool did_use_http_auth;
 
   // True if the resource was originally fetched for a prefetch and has not been
   // used since.
-  bool unused_since_prefetch = false;
+  bool unused_since_prefetch;
 
   // True if the response is a prefetch whose reuse is "restricted". This means
   // it can only be reused from the cache by requests that are marked as able to
   // use restricted prefetches.
-  bool restricted_prefetch = false;
+  bool restricted_prefetch;
 
   // True if this resource is stale and needs async revalidation.
   // This value is not persisted by Persist(); it is only ever set when the
   // response is retrieved from the cache.
-  bool async_revalidation_requested = false;
+  bool async_revalidation_requested;
 
   // stale-while-revalidate, if any, will be honored until time given by
   // |stale_revalidate_timeout|. This value is latched the first time
@@ -149,13 +207,8 @@ class NET_EXPORT HttpResponseInfo {
   // Protocol negotiated with the server.
   std::string alpn_negotiated_protocol;
 
-  // The reason why Chrome uses a specific transport protocol for HTTP
-  // semantics.
-  AlternateProtocolUsage alternate_protocol_usage =
-      AlternateProtocolUsage::ALTERNATE_PROTOCOL_USAGE_UNSPECIFIED_REASON;
-
   // The type of connection used for this response.
-  HttpConnectionInfo connection_info = HttpConnectionInfo::kUNKNOWN;
+  ConnectionInfo connection_info;
 
   // The time at which the request was made that resulted in this response.
   // For cached responses, this is the last time the cache entry was validated.
@@ -165,15 +218,12 @@ class NET_EXPORT HttpResponseInfo {
   // this is the last time the cache entry was validated.
   base::Time response_time;
 
-  // Like response_time, but ignoring revalidations.
-  base::Time original_response_time;
-
   // Host resolution error info.
   ResolveErrorInfo resolve_error_info;
 
   // If the response headers indicate a 401 or 407 failure, then this structure
   // will contain additional information about the authentication challenge.
-  std::optional<AuthChallengeInfo> auth_challenge;
+  absl::optional<AuthChallengeInfo> auth_challenge;
 
   // The SSL client certificate request info.
   // TODO(wtc): does this really belong in HttpResponseInfo?  I put it here
@@ -190,21 +240,14 @@ class NET_EXPORT HttpResponseInfo {
   scoped_refptr<HttpResponseHeaders> headers;
 
   // The "Vary" header data for this response.
-  // Initialized and used by HttpCache::Transaction. May also be passed to an
-  // auxiliary in-memory cache in the network service.
   HttpVaryData vary_data;
 
-  // Any DNS aliases for the remote endpoint. Includes all known aliases, e.g.
-  // from A, AAAA, or HTTPS, not just from the address used for the connection,
-  // in no particular order.
-  std::set<std::string> dns_aliases;
+  // Any DNS aliases for the remote endpoint. The alias chain order is
+  // preserved in reverse, from canonical name (i.e. address record name)
+  // through to query name.
+  std::vector<std::string> dns_aliases;
 
-  // If not null, this indicates the response is stored during a certain browser
-  // session. Used for filtering cache access.
-  std::optional<int64_t> browser_run_id;
-
-  // True if the response used a shared dictionary for decoding its body.
-  bool did_use_shared_dictionary = false;
+  static std::string ConnectionInfoToString(ConnectionInfo connection_info);
 };
 
 }  // namespace net

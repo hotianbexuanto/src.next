@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -162,8 +162,15 @@ public final class UnownedUserDataHost {
      */
     private @Nullable Handler mHandler;
 
+<<<<<<< HEAD
     /** The core data structure within this host. */
     private @Nullable HashMap<UnownedUserDataKey<?>, WeakReference<? extends UnownedUserData>>
+=======
+    /**
+     * The core data structure within this host.
+     */
+    private HashMap<UnownedUserDataKey<?>, WeakReference<? extends UnownedUserData>>
+>>>>>>> chromium
             mUnownedUserDataMap = new HashMap<>();
 
     public UnownedUserDataHost() {
@@ -177,14 +184,19 @@ public final class UnownedUserDataHost {
 
     /**
      * Stores a {@link WeakReference} to {@code object} using the given {@code key}.
+     * <p>
+     * If the key is already attached to a different host, it is detached from that host.
      *
-     * <p>If the key is already attached to a different host, it is detached from that host.
-     *
-     * @param key the key to use for the object.
+     * @param key    the key to use for the object.
      * @param newValue the object to store.
-     * @param <T> the type of {@link UnownedUserData}.
+     * @param <T>    the type of {@link UnownedUserData}.
      */
+<<<<<<< HEAD
     /* package */ <T extends UnownedUserData> void set(UnownedUserDataKey<T> key, T newValue) {
+=======
+    /* package */<T extends UnownedUserData> void set(
+            @NonNull UnownedUserDataKey<T> key, @NonNull T newValue) {
+>>>>>>> chromium
         checkState();
 
         // If we already have data, we might want to detach that first.
@@ -204,8 +216,13 @@ public final class UnownedUserDataHost {
      * @param <T> the type of {@link UnownedUserData}.
      * @return the stored version or {@code null} if it is not stored or has been garbage collected.
      */
+<<<<<<< HEAD
 
     /* package */ <T extends UnownedUserData> @Nullable T get(UnownedUserDataKey<T> key) {
+=======
+    @Nullable
+    /* package */<T extends UnownedUserData> T get(@NonNull UnownedUserDataKey<T> key) {
+>>>>>>> chromium
         checkState();
 
         WeakReference<? extends UnownedUserData> valueWeakRef = mUnownedUserDataMap.get(key);
@@ -225,7 +242,11 @@ public final class UnownedUserDataHost {
      * @param key the key to use for the object.
      * @param <T> the type of {@link UnownedUserData}.
      */
+<<<<<<< HEAD
     /* package */ <T extends UnownedUserData> void remove(UnownedUserDataKey<T> key) {
+=======
+    /* package */<T extends UnownedUserData> void remove(@NonNull UnownedUserDataKey<T> key) {
+>>>>>>> chromium
         checkState();
 
         WeakReference<? extends UnownedUserData> valueWeakRef = mUnownedUserDataMap.remove(key);

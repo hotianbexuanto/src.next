@@ -1,11 +1,6 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "base/rand_util.h"
 
@@ -18,7 +13,6 @@
 #include <memory>
 #include <vector>
 
-#include "base/containers/span.h"
 #include "base/logging.h"
 #include "base/time/time.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -52,6 +46,7 @@ TEST(RandUtilTest, RandDouble) {
   EXPECT_GE(number, 0.0);
 }
 
+<<<<<<< HEAD
 TEST(RandUtilTest, RandFloat) {
   // Force 32-bit precision, making sure we're not in an 80-bit FPU register.
   volatile float number = RandFloat();
@@ -150,11 +145,17 @@ TEST(RandUtilTest, BitsToOpenEndedUnitIntervalF) {
   EXPECT_GT(1.f, all_ones);
 }
 
+=======
+>>>>>>> chromium
 TEST(RandUtilTest, RandBytes) {
   const size_t buffer_size = 50;
-  uint8_t buffer[buffer_size];
+  char buffer[buffer_size];
   memset(buffer, 0, buffer_size);
+<<<<<<< HEAD
   RandBytes(buffer);
+=======
+  base::RandBytes(buffer, buffer_size);
+>>>>>>> chromium
   std::sort(buffer, buffer + buffer_size);
   // Probability of occurrence of less than 25 unique bytes in 50 random bytes
   // is below 10^-25.
@@ -163,6 +164,7 @@ TEST(RandUtilTest, RandBytes) {
 
 // Verify that calling RandBytes with an empty buffer doesn't fail.
 TEST(RandUtilTest, RandBytes0) {
+<<<<<<< HEAD
   RandBytes(span<uint8_t>());
 }
 
@@ -180,6 +182,9 @@ TEST(RandUtilTest, RandBytesAsVector) {
   // In theory this test can fail, but it won't before the universe dies of
   // heat death.
   EXPECT_NE(0, accumulator);
+=======
+  base::RandBytes(nullptr, 0);
+>>>>>>> chromium
 }
 
 TEST(RandUtilTest, RandBytesAsString) {
@@ -286,12 +291,20 @@ TEST(RandUtilTest, DISABLED_RandBytesPerf) {
   const int kTestIterations = 10;
   const size_t kTestBufferSize = 1 * 1024 * 1024;
 
+<<<<<<< HEAD
   std::array<uint8_t, kTestBufferSize> buffer;
   const TimeTicks now = TimeTicks::Now();
   for (int i = 0; i < kTestIterations; ++i) {
     RandBytes(buffer);
   }
   const TimeTicks end = TimeTicks::Now();
+=======
+  std::unique_ptr<uint8_t[]> buffer(new uint8_t[kTestBufferSize]);
+  const base::TimeTicks now = base::TimeTicks::Now();
+  for (int i = 0; i < kTestIterations; ++i)
+    base::RandBytes(buffer.get(), kTestBufferSize);
+  const base::TimeTicks end = base::TimeTicks::Now();
+>>>>>>> chromium
 
   LOG(INFO) << "RandBytes(" << kTestBufferSize
             << ") took: " << (end - now).InMicroseconds() << "µs";
@@ -306,6 +319,7 @@ TEST(RandUtilTest, InsecureRandomGeneratorProducesBothValuesOfAllBits) {
   uint64_t found_zeros = kAllOnes;
 
   InsecureRandomGenerator generator;
+  generator.Seed();
 
   for (size_t i = 0; i < 1000; ++i) {
     uint64_t value = generator.RandUint64();
@@ -395,7 +409,7 @@ TEST(RandUtilTest, InsecureRandomGeneratorChiSquared) {
       size_t samples = 1 << 16;
       InsecureRandomGenerator gen;
       // Fix the seed to make the test non-flaky.
-      gen.ReseedForTesting(kIterations + 1);
+      gen.SeedForTesting(kIterations + 1);
       bool pass = ChiSquaredTest(gen, samples, start_bit, 8);
       pass_count += pass;
     }
@@ -410,6 +424,7 @@ TEST(RandUtilTest, InsecureRandomGeneratorChiSquared) {
 
 TEST(RandUtilTest, InsecureRandomGeneratorRandDouble) {
   InsecureRandomGenerator gen;
+  gen.Seed();
 
   for (int i = 0; i < 1000; i++) {
     volatile double x = gen.RandDouble();
@@ -417,53 +432,4 @@ TEST(RandUtilTest, InsecureRandomGeneratorRandDouble) {
     EXPECT_LT(x, 1.);
   }
 }
-
-TEST(RandUtilTest, MetricsSubSampler) {
-  MetricsSubSampler sub_sampler;
-  int true_count = 0;
-  int false_count = 0;
-  for (int i = 0; i < 1000; ++i) {
-    if (sub_sampler.ShouldSample(0.5)) {
-      ++true_count;
-    } else {
-      ++false_count;
-    }
-  }
-
-  // Validate that during normal operation MetricsSubSampler::ShouldSample()
-  // does not always give the same result. It's technically possible to fail
-  // this test during normal operation but if the sampling is realistic it
-  // should happen about once every 2^999 times (the likelihood of the [1,999]
-  // results being the same as [0], which can be either). This should not make
-  // this test flaky in the eyes of automated testing.
-  EXPECT_GT(true_count, 0);
-  EXPECT_GT(false_count, 0);
-}
-
-TEST(RandUtilTest, MetricsSubSamplerTestingSupport) {
-  MetricsSubSampler sub_sampler;
-
-  // ScopedAlwaysSampleForTesting makes ShouldSample() return true with
-  // any probability.
-  {
-    MetricsSubSampler::ScopedAlwaysSampleForTesting always_sample;
-    for (int i = 0; i < 100; ++i) {
-      EXPECT_TRUE(sub_sampler.ShouldSample(0));
-      EXPECT_TRUE(sub_sampler.ShouldSample(0.5));
-      EXPECT_TRUE(sub_sampler.ShouldSample(1));
-    }
-  }
-
-  // ScopedNeverSampleForTesting makes ShouldSample() return true with
-  // any probability.
-  {
-    MetricsSubSampler::ScopedNeverSampleForTesting always_sample;
-    for (int i = 0; i < 100; ++i) {
-      EXPECT_FALSE(sub_sampler.ShouldSample(0));
-      EXPECT_FALSE(sub_sampler.ShouldSample(0.5));
-      EXPECT_FALSE(sub_sampler.ShouldSample(1));
-    }
-  }
-}
-
 }  // namespace base

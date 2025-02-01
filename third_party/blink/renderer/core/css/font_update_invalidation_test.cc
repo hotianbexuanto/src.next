@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,7 @@
 #include "third_party/blink/renderer/core/svg/svg_text_element.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_request.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_test.h"
+#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -22,7 +23,8 @@ class FontUpdateInvalidationTest : public SimTest {
 
  protected:
   static Vector<char> ReadAhemWoff2() {
-    return *test::ReadFromFile(test::CoreTestDataPath("Ahem.woff2"));
+    return test::ReadFromFile(test::CoreTestDataPath("Ahem.woff2"))
+        ->CopyAs<Vector<char>>();
   }
 };
 
@@ -53,8 +55,8 @@ TEST_F(FontUpdateInvalidationTest, PartialLayoutInvalidationAfterFontLoading) {
   // First rendering the page with fallback
   Compositor().BeginFrame();
 
-  Element* target = GetDocument().getElementById(AtomicString("target"));
-  Element* reference = GetDocument().getElementById(AtomicString("reference"));
+  Element* target = GetDocument().getElementById("target");
+  Element* reference = GetDocument().getElementById("reference");
 
   EXPECT_GT(250, target->OffsetWidth());
   EXPECT_GT(250, reference->OffsetWidth());
@@ -99,25 +101,22 @@ TEST_F(FontUpdateInvalidationTest,
         font: 25px/1 monospace;
       }
     </style>
-    <svg><text id=target dx=0,10 transform="scale(3)">0123456789</text></svg>
+    <svg><text id=target dx=0,10>0123456789</text></svg>
     <svg><text id=reference dx=0,10>0123456789</text></svg>
   )HTML");
 
   // First rendering the page with fallback
   Compositor().BeginFrame();
 
-  auto* target =
-      To<SVGTextElement>(GetDocument().getElementById(AtomicString("target")));
-  auto* reference = To<SVGTextElement>(
-      GetDocument().getElementById(AtomicString("reference")));
+  auto* target = To<SVGTextElement>(GetDocument().getElementById("target"));
+  auto* reference =
+      To<SVGTextElement>(GetDocument().getElementById("reference"));
 
-  EXPECT_GT(250 + 10, target->GetBBox().width());
-  EXPECT_GT(250 + 10, reference->GetBBox().width());
+  EXPECT_GT(250 + 10, target->GetBBox().Width());
+  EXPECT_GT(250 + 10, reference->GetBBox().Width());
 
   // Finish font loading, and trigger invalidations.
   font_resource.Complete(ReadAhemWoff2());
-  // FontFallbackMap::FontsNeedUpdate() should make the fallback list invalid.
-  EXPECT_FALSE(target->firstChild()->GetLayoutObject()->IsFontFallbackValid());
   GetDocument().GetStyleEngine().InvalidateStyleAndLayoutForFontUpdates();
 
   // No element is marked for style recalc, since no computed style is changed.
@@ -129,8 +128,8 @@ TEST_F(FontUpdateInvalidationTest,
   EXPECT_FALSE(reference->GetLayoutObject()->NeedsLayout());
 
   Compositor().BeginFrame();
-  EXPECT_EQ(250 + 10, target->GetBBox().width());
-  EXPECT_GT(250 + 10, reference->GetBBox().width());
+  EXPECT_EQ(250 + 10, target->GetBBox().Width());
+  EXPECT_GT(250 + 10, reference->GetBBox().Width());
 
   main_resource.Finish();
 }
@@ -167,8 +166,8 @@ TEST_F(FontUpdateInvalidationTest,
   test::RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element* target = GetDocument().getElementById(AtomicString("target"));
-  Element* reference = GetDocument().getElementById(AtomicString("reference"));
+  Element* target = GetDocument().getElementById("target");
+  Element* reference = GetDocument().getElementById("reference");
 
   EXPECT_EQ(250, target->OffsetWidth());
   EXPECT_GT(250, reference->OffsetWidth());
@@ -217,7 +216,7 @@ TEST_F(FontUpdateInvalidationTest, LayoutInvalidationOnModalDialog) {
   // First render the page without the custom font
   Compositor().BeginFrame();
 
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   EXPECT_GT(250, target->OffsetWidth());
 
   // Then load the font and invalidate layout
@@ -235,6 +234,7 @@ TEST_F(FontUpdateInvalidationTest, LayoutInvalidationOnModalDialog) {
   main_resource.Finish();
 }
 
+// https://crbug.com/1101483
 TEST_F(FontUpdateInvalidationTest, FallbackBetweenPendingAndLoadedCustomFonts) {
   SimRequest main_resource("https://example.com", "text/html");
   SimSubresourceRequest slow_font_resource("https://example.com/nonexist.woff2",
@@ -268,7 +268,7 @@ TEST_F(FontUpdateInvalidationTest, FallbackBetweenPendingAndLoadedCustomFonts) {
   // While slow-font is pending and fast-font is already available, we should
   // use it to render the page.
   Compositor().BeginFrame();
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   DCHECK_EQ(250, target->OffsetWidth());
 
   slow_font_resource.Complete();
@@ -308,7 +308,7 @@ TEST_F(FontUpdateInvalidationTest, NoRedundantLoadingForSegmentedFont) {
 
   // Trigger frame to start font loading
   Compositor().BeginFrame();
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   DCHECK_GT(250, target->OffsetWidth());
 
   font_resource.Complete(ReadAhemWoff2());

@@ -1,17 +1,15 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import '/strings.m.js';
-import './shared_vars.css.js';
+import 'chrome://resources/cr_elements/hidden_style_css.m.js';
+import 'chrome://resources/cr_elements/shared_vars_css.m.js';
+import 'chrome://resources/polymer/v3_0/paper-styles/color.js';
+import './strings.m.js';
 
-import {I18nMixinLit} from 'chrome://resources/cr_elements/i18n_mixin_lit.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
-import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
-
-import {getCss} from './code_section.css.js';
-import {getHtml} from './code_section.html.js';
+import {I18nBehavior} from 'chrome://resources/js/i18n_behavior.m.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.m.js';
+import {html, mixinBehaviors, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 
 function visibleLineCount(totalCount: number, oppositeCount: number): number {
@@ -22,13 +20,9 @@ function visibleLineCount(totalCount: number, oppositeCount: number): number {
   return Math.min(max, totalCount);
 }
 
-export interface ExtensionsCodeSectionElement {
-  $: {
-    'scroll-container': HTMLElement,
-  };
-}
-
-const ExtensionsCodeSectionElementBase = I18nMixinLit(CrLitElement);
+const ExtensionsCodeSectionElementBase =
+    mixinBehaviors([I18nBehavior], PolymerElement) as
+    {new (): PolymerElement & I18nBehavior};
 
 export class ExtensionsCodeSectionElement extends
     ExtensionsCodeSectionElementBase {
@@ -36,63 +30,65 @@ export class ExtensionsCodeSectionElement extends
     return 'extensions-code-section';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return html`{__html_template__}`;
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      code: {type: Object},
-      isActive: {type: Boolean},
+      code: {
+        type: Object,
+        value: null,
+      },
+
+      isActive: Boolean,
 
       /** Highlighted code. */
-      highlighted_: {type: String},
+      highlighted_: String,
 
       /** Code before the highlighted section. */
-      before_: {type: String},
+      before_: String,
 
       /** Code after the highlighted section. */
-      after_: {type: String},
+      after_: String,
+
+      showNoCode_: {
+        type: Boolean,
+        computed: 'computeShowNoCode_(isActive, highlighted_)',
+      },
 
       /** Description for the highlighted section. */
-      highlightDescription_: {type: String},
+      highlightDescription_: String,
 
-      lineNumbers_: {type: String},
-      truncatedBefore_: {type: Number},
-      truncatedAfter_: {type: Number},
+      lineNumbers_: String,
+      truncatedBefore_: Number,
+      truncatedAfter_: Number,
 
       /**
        * The string to display if no |code| is set (e.g. because we couldn't
        * load the relevant source file).
        */
-      couldNotDisplayCode: {type: String},
+      couldNotDisplayCode: String,
     };
   }
 
-  code: chrome.developerPrivate.RequestFileSourceResponse|null = null;
-  isActive?: boolean;
-  couldNotDisplayCode: string = '';
-  protected highlighted_: string = '';
-  protected before_: string = '';
-  protected after_: string = '';
-  protected highlightDescription_: string = '';
-  protected lineNumbers_: string = '';
-  protected truncatedBefore_: number = 0;
-  protected truncatedAfter_: number = 0;
+  code: chrome.developerPrivate.RequestFileSourceResponse|null;
+  isActive: boolean;
+  couldNotDisplayCode: string;
+  private highlighted_: string;
+  private before_: string;
+  private after_: string;
+  private showNoCode_: boolean;
+  private highlightDescription_: string;
+  private lineNumbers_: string;
+  private truncatedBefore_: number;
+  private truncatedAfter_: number;
 
-  override willUpdate(changedProperties: PropertyValues<this>) {
-    super.willUpdate(changedProperties);
-
-    if (changedProperties.has('code')) {
-      this.onCodeChanged_();
-    }
+  static get observers() {
+    return ['onCodeChanged_(code.*)'];
   }
 
-  private async onCodeChanged_() {
+  private onCodeChanged_() {
     if (!this.code ||
         (!this.code.beforeHighlight && !this.code.highlight &&
          !this.code.afterHighlight)) {
@@ -137,17 +133,15 @@ export class ExtensionsCodeSectionElement extends
     this.setLineNumbers_(
         this.truncatedBefore_ + 1,
         this.truncatedBefore_ + visibleCode.split('\n').length);
-
-    // Happens asynchronously after the update completes
-    await this.updateComplete;
     this.scrollToHighlight_(visibleLineCountBefore);
   }
 
-  protected getLinesNotShownLabel_(lineCount: number): string {
+  private getLinesNotShownLabel_(
+      lineCount: number, stringSingular: string,
+      stringPluralTemplate: string): string {
     return lineCount === 1 ?
-        loadTimeData.getString('errorLinesNotShownSingular') :
-        loadTimeData.substituteString(
-            loadTimeData.getString('errorLinesNotShownPlural'), lineCount);
+        stringSingular :
+        loadTimeData.substituteString(stringPluralTemplate, lineCount);
   }
 
   private setLineNumbers_(start: number, end: number) {
@@ -182,17 +176,10 @@ export class ExtensionsCodeSectionElement extends
     }
   }
 
-  protected shouldShowNoCode_(): boolean {
-    return (this.isActive === undefined || this.isActive) && !this.highlighted_;
+  private computeShowNoCode_(): boolean {
+    return this.isActive && !this.highlighted_;
   }
 }
-
-declare global {
-  interface HTMLElementTagNameMap {
-    'extensions-code-section': ExtensionsCodeSectionElement;
-  }
-}
-
 
 customElements.define(
     ExtensionsCodeSectionElement.is, ExtensionsCodeSectionElement);

@@ -1,60 +1,45 @@
 include_rules = [
   "+chrome/browser/image_decoder",
-  "+chrome/browser/share",
+  "-chrome/browser/ui/views",
   "+chrome/updater",
   "+components/browser_ui/client_certificate",
-  "+components/browser_ui/device_lock/android",
-  "+components/browser_ui/edge_to_edge/android",
   "+components/browser_ui/util/android/url_constants.h",
+<<<<<<< HEAD
   "+components/webui/chrome_urls",
   "+components/collaboration/public",
+=======
+>>>>>>> chromium
   "+components/country_codes",
-  "+components/data_sharing/public",
-  "+components/endpoint_fetcher",
   "+components/enterprise",
-  "+components/fingerprinting_protection_filter/browser",
   "+components/infobars/android",
   "+components/language_detection/core",
   "+components/live_caption",
-  "+components/omnibox",
-  "+components/page_image_service",
   "+components/page_load_metrics/browser",
-  "+components/facilitated_payments/content/browser",
-  "+components/facilitated_payments/core/features",
-  "+components/power_bookmarks/core",
+  "+components/qr_code_generator",
   "+components/safety_check",
-  "+components/saved_tab_groups/public",
-  "+components/saved_tab_groups/internal/saved_tab_group_model.h",
-  "+components/saved_tab_groups/internal/saved_tab_group_model_observer.h",
-  "+components/saved_tab_groups/internal/tab_group_sync_service_impl.h",
-  "+components/saved_tab_groups/test_support",
-  "+components/segmentation_platform/content",
   "+components/soda",
-  "+components/supervised_user/core/common",
-  "+components/tab_groups",
-  "+components/tpcd/enterprise_reporting",
   "+components/translate/content/android",
+<<<<<<< HEAD
   "+components/user_education/common",
   "+components/user_education/test",
   "+components/user_education/webui",
   "+components/web_package",
+=======
+>>>>>>> chromium
   "+services/content/public",
   "+services/device/public/mojom",
-  "+services/screen_ai",
 ]
 
 specific_include_rules = {
   "application_launch_browsertest\.cc": [
     "+ash/shell.h",
   ],
-  "browser_command_controller_browsertest\.cc": [
-    "+ash/wm/window_pin_util.h",
-  ],
   "browser_finder_chromeos_browsertest\.cc": [
     "+ash/wm/desks/desk.h",
     "+ash/wm/desks/desks_controller.h",
     "+ash/wm/desks/desks_test_util.h",
   ],
+<<<<<<< HEAD
   "browser_navigator_browsertest\.cc": [
     "+ash/shell.h",
   ],
@@ -70,9 +55,10 @@ specific_include_rules = {
   "fullscreen_controller_browsertest\.cc": [
     "+ash/wm/window_pin_util.h",
   ],
+=======
+>>>>>>> chromium
   "fullscreen_controller_interactive_browsertest\.cc": [
     "+ash/shell.h",
-    "+ash/wm/window_pin_util.h",
   ],
   "popup_browsertest\.cc": [
     "+ash/shell.h",
@@ -80,10 +66,7 @@ specific_include_rules = {
   "sad_tab_helper.cc": [
     "+content/common/content_navigation_policy.h",
   ],
-  "settings_window_manager_chromeos\.cc": [
-    "+ash/wm/window_properties.h",
-  ],
-  "hid_chooser_controller_unittest\.cc": [
-    "+services/device/hid",
-  ],
+  "startup_browser_creator_browsertest.cc": [
+    "+chrome/browser/ui/views/web_apps/web_app_url_handler_intent_picker_dialog_view.h",
+  ]
 }

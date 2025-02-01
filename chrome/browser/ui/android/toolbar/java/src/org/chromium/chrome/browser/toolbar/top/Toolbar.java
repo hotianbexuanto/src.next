@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -52,7 +52,7 @@ public interface Toolbar {
     /**
      * @return Whether a dirty check for invalidation makes sense at this time.
      */
-    CaptureReadinessResult isReadyForTextureCapture();
+    boolean isReadyForTextureCapture();
 
     /**
      * Returns the height of the tab strip, iff the toolbar has one. Returns 0 for toolbars that do
@@ -77,22 +77,4 @@ public interface Toolbar {
      * @return The primary color to use for the background drawable.
      */
     int getPrimaryColor();
-
-    /**
-     * Updates the visibility of the reload button.
-     * @param isReloading Whether or not the page is loading.
-     */
-    void updateReloadButtonVisibility(boolean isReloading);
-
-    /**
-     * Updates the visibility of the toolbar hairline.
-     * @param isVisible whether or not the hairline should be visible.
-     * */
-    void setBrowsingModeHairlineVisibility(boolean isVisible);
-
-    /**
-     * Returns whether the ToolbarLayout is visible. The ToolbarLayout might be gone when the Start
-     * surface's toolbar is showing.
-     */
-    boolean isBrowsingModeToolbarVisible();
 }

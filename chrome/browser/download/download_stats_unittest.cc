@@ -1,23 +1,23 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/download/download_stats.h"
-
 #include "base/test/metrics/histogram_tester.h"
-#include "base/test/metrics/user_action_tester.h"
 #include "build/build_config.h"
 #include "chrome/browser/download/download_prompt_status.h"
-#include "components/download/public/common/download_content.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace {
 
 constexpr char kDownloadCancelReasonHistogram[] = "Download.CancelReason";
 
-#if BUILDFLAG(IS_ANDROID)
+#ifdef OS_ANDROID
 constexpr char kDownloadPromptStatusHistogram[] =
     "MobileDownload.DownloadPromptStatus";
+
+constexpr char kDownloadLaterPromptStatusHistogram[] =
+    "MobileDownload.DownloadLaterPromptStatus";
 
 TEST(DownloadStatsTest, RecordDownloadPromptStatus) {
   base::HistogramTester histogram_tester;
@@ -32,7 +32,16 @@ TEST(DownloadStatsTest, RecordDownloadPromptStatus) {
                                      DownloadPromptStatus::DONT_SHOW, 1);
   histogram_tester.ExpectTotalCount(kDownloadPromptStatusHistogram, 3);
 }
-#endif  // BUILDFLAG(IS_ANDROID)
+
+TEST(DownloadStatsTest, RecordDownloadLaterPromptStatus) {
+  base::HistogramTester histogram_tester;
+  RecordDownloadLaterPromptStatus(DownloadLaterPromptStatus::kDontShow);
+  histogram_tester.ExpectBucketCount(kDownloadLaterPromptStatusHistogram,
+                                     DownloadLaterPromptStatus::kDontShow, 1);
+  histogram_tester.ExpectTotalCount(kDownloadLaterPromptStatusHistogram, 1);
+}
+
+#endif  // OS_ANDROID
 
 TEST(DownloadStatsTest, RecordDownloadCancelReason) {
   base::HistogramTester histogram_tester;
@@ -43,6 +52,7 @@ TEST(DownloadStatsTest, RecordDownloadCancelReason) {
   histogram_tester.ExpectTotalCount(kDownloadCancelReasonHistogram, 1);
 }
 
+<<<<<<< HEAD
 TEST(DownloadStatsTest, RecordDownloadOpen) {
   base::HistogramTester histogram_tester;
   base::UserActionTester user_action_tester;
@@ -59,4 +69,6 @@ TEST(DownloadStatsTest, RecordDownloadOpen) {
       /*expected_bucket_count=*/1);
 }
 
+=======
+>>>>>>> chromium
 }  // namespace

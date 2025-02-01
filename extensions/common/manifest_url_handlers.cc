@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -34,9 +34,11 @@ const GURL& ManifestURL::Get(const Extension* extension,
 }
 
 // static
-GURL ManifestURL::GetHomepageURL(const Extension* extension) {
+const GURL ManifestURL::GetHomepageURL(const Extension* extension) {
   const GURL& homepage_url = Get(extension, keys::kHomepageURL);
-  return homepage_url.is_valid() ? homepage_url : GetWebStoreURL(extension);
+  if (homepage_url.is_valid())
+    return homepage_url;
+  return GetWebStoreURL(extension);
 }
 
 // static
@@ -45,19 +47,19 @@ bool ManifestURL::SpecifiedHomepageURL(const Extension* extension) {
 }
 
 // static
-const GURL& ManifestURL::GetManifestHomePageURL(const Extension* extension) {
+const GURL ManifestURL::GetManifestHomePageURL(const Extension* extension) {
   const GURL& homepage_url = Get(extension, keys::kHomepageURL);
   return homepage_url.is_valid() ? homepage_url : GURL::EmptyGURL();
 }
 
 // static
-GURL ManifestURL::GetWebStoreURL(const Extension* extension) {
+const GURL ManifestURL::GetWebStoreURL(const Extension* extension) {
   bool use_webstore_url = UpdatesFromGallery(extension) &&
                           !SharedModuleInfo::IsSharedModule(extension);
   return use_webstore_url
              ? GURL(extension_urls::GetWebstoreItemDetailURLPrefix() +
                     extension->id())
-             : GURL();
+             : GURL::EmptyGURL();
 }
 
 // static
@@ -71,16 +73,23 @@ bool ManifestURL::UpdatesFromGallery(const Extension* extension) {
 }
 
 // static
+bool  ManifestURL::UpdatesFromGallery(const base::DictionaryValue* manifest) {
+  std::string url;
+  if (!manifest->GetString(keys::kUpdateURL, &url))
+    return false;
+  return extension_urls::IsWebstoreUpdateUrl(GURL(url));
+}
+
+// static
 const GURL& ManifestURL::GetAboutPage(const Extension* extension) {
   return Get(extension, keys::kAboutPage);
 }
 
 // static
-GURL ManifestURL::GetDetailsURL(const Extension* extension) {
-  return extension->from_webstore()
-             ? GURL(extension_urls::GetWebstoreItemDetailURLPrefix() +
-                    extension->id())
-             : GURL();
+const GURL ManifestURL::GetDetailsURL(const Extension* extension) {
+  return extension->from_webstore() ?
+      GURL(extension_urls::GetWebstoreItemDetailURLPrefix() + extension->id()) :
+      GURL::EmptyGURL();
 }
 
 HomepageURLHandler::HomepageURLHandler() {
@@ -91,18 +100,18 @@ HomepageURLHandler::~HomepageURLHandler() {
 
 bool HomepageURLHandler::Parse(Extension* extension, std::u16string* error) {
   std::unique_ptr<ManifestURL> manifest_url(new ManifestURL);
-  const std::string* homepage_url_str =
-      extension->manifest()->FindStringPath(keys::kHomepageURL);
-  if (homepage_url_str == nullptr) {
+  std::string homepage_url_str;
+  if (!extension->manifest()->GetString(keys::kHomepageURL,
+                                        &homepage_url_str)) {
     *error = ErrorUtils::FormatErrorMessageUTF16(errors::kInvalidHomepageURL,
                                                  std::string());
     return false;
   }
-  manifest_url->url_ = GURL(*homepage_url_str);
+  manifest_url->url_ = GURL(homepage_url_str);
   if (!manifest_url->url_.is_valid() ||
       !manifest_url->url_.SchemeIsHTTPOrHTTPS()) {
-    *error = ErrorUtils::FormatErrorMessageUTF16(errors::kInvalidHomepageURL,
-                                                 *homepage_url_str);
+    *error = ErrorUtils::FormatErrorMessageUTF16(
+        errors::kInvalidHomepageURL, homepage_url_str);
     return false;
   }
   extension->SetManifestData(keys::kHomepageURL, std::move(manifest_url));
@@ -122,20 +131,19 @@ UpdateURLHandler::~UpdateURLHandler() {
 
 bool UpdateURLHandler::Parse(Extension* extension, std::u16string* error) {
   std::unique_ptr<ManifestURL> manifest_url(new ManifestURL);
+  std::string tmp_update_url;
 
-  const std::string* tmp_update_url =
-      extension->manifest()->FindStringPath(keys::kUpdateURL);
-  if (tmp_update_url == nullptr) {
+  if (!extension->manifest()->GetString(keys::kUpdateURL, &tmp_update_url)) {
     *error = ErrorUtils::FormatErrorMessageUTF16(errors::kInvalidUpdateURL,
                                                  std::string());
     return false;
   }
 
-  manifest_url->url_ = GURL(*tmp_update_url);
+  manifest_url->url_ = GURL(tmp_update_url);
   if (!manifest_url->url_.is_valid() ||
       manifest_url->url_.has_ref()) {
-    *error = ErrorUtils::FormatErrorMessageUTF16(errors::kInvalidUpdateURL,
-                                                 *tmp_update_url);
+    *error = ErrorUtils::FormatErrorMessageUTF16(
+        errors::kInvalidUpdateURL, tmp_update_url);
     return false;
   }
 
@@ -156,21 +164,20 @@ AboutPageHandler::~AboutPageHandler() {
 
 bool AboutPageHandler::Parse(Extension* extension, std::u16string* error) {
   std::unique_ptr<ManifestURL> manifest_url(new ManifestURL);
-  const std::string* about_str =
-      extension->manifest()->FindStringPath(keys::kAboutPage);
-  if (about_str == nullptr) {
-    *error = errors::kInvalidAboutPage;
+  std::string about_str;
+  if (!extension->manifest()->GetString(keys::kAboutPage, &about_str)) {
+    *error = base::ASCIIToUTF16(errors::kInvalidAboutPage);
     return false;
   }
 
-  GURL absolute(*about_str);
+  GURL absolute(about_str);
   if (absolute.is_valid()) {
-    *error = errors::kInvalidAboutPageExpectRelativePath;
+    *error = base::ASCIIToUTF16(errors::kInvalidAboutPageExpectRelativePath);
     return false;
   }
-  manifest_url->url_ = extension->GetResourceURL(*about_str);
+  manifest_url->url_ = extension->GetResourceURL(about_str);
   if (!manifest_url->url_.is_valid()) {
-    *error = errors::kInvalidAboutPage;
+    *error = base::ASCIIToUTF16(errors::kInvalidAboutPage);
     return false;
   }
   extension->SetManifestData(keys::kAboutPage, std::move(manifest_url));

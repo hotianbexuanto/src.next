@@ -1,15 +1,19 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
+<<<<<<< HEAD
 import org.jni_zero.CalledByNative;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 
 import java.util.Optional;
+=======
+import org.chromium.base.annotations.CalledByNative;
+>>>>>>> chromium
 
 /**
  * A simple single-argument callback to handle the result of a computation.
@@ -18,9 +22,16 @@ import java.util.Optional;
  */
 @NullMarked
 @FunctionalInterface
+<<<<<<< HEAD
 public interface Callback<T extends @Nullable Object> {
 
     /** Invoked with the result of a computation. */
+=======
+public interface Callback<T> {
+    /**
+     * Invoked with the result of a computation.
+     */
+>>>>>>> chromium
     void onResult(T result);
 
     /**
@@ -36,6 +47,7 @@ public interface Callback<T extends @Nullable Object> {
     }
 
     /**
+<<<<<<< HEAD
      * Runs a callback checking if the callback may be null.
      *
      * <p>Can be used as syntactic sugar for: if (callback != null) callback.onResult(object);
@@ -48,6 +60,8 @@ public interface Callback<T extends @Nullable Object> {
     }
 
     /**
+=======
+>>>>>>> chromium
      * JNI Generator does not know how to target static methods on interfaces
      * (which is new in Java 8, and requires desugaring).
      */
@@ -60,13 +74,6 @@ public interface Callback<T extends @Nullable Object> {
 
         @SuppressWarnings("unchecked")
         @CalledByNative("Helper")
-        static void onOptionalStringResultFromNative(
-                Callback<Optional<String>> callback, boolean hasValue, String result) {
-            callback.onResult(hasValue ? Optional.of(result) : Optional.empty());
-        }
-
-        @SuppressWarnings("unchecked")
-        @CalledByNative("Helper")
         static void onBooleanResultFromNative(Callback callback, boolean result) {
             callback.onResult(Boolean.valueOf(result));
         }
@@ -75,18 +82,6 @@ public interface Callback<T extends @Nullable Object> {
         @CalledByNative("Helper")
         static void onIntResultFromNative(Callback callback, int result) {
             callback.onResult(Integer.valueOf(result));
-        }
-
-        @SuppressWarnings("unchecked")
-        @CalledByNative("Helper")
-        static void onLongResultFromNative(Callback callback, long result) {
-            callback.onResult(Long.valueOf(result));
-        }
-
-        @SuppressWarnings("unchecked")
-        @CalledByNative("Helper")
-        static void onTimeResultFromNative(Callback callback, long result) {
-            callback.onResult(Long.valueOf(result));
         }
 
         @CalledByNative("Helper")

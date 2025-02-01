@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,22 +6,38 @@
 
 #include <memory>
 
+<<<<<<< HEAD
 #include "base/check.h"
 #include "base/functional/bind.h"
 #include "base/notreached.h"
+=======
+#include "base/bind.h"
+#include "build/chromeos_buildflags.h"
+#include "chrome/browser/chrome_notification_types.h"
+>>>>>>> chromium
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profiles_state.h"
-#include "chrome/browser/supervised_user/supervised_user_browser_utils.h"
 #include "chrome/browser/ui/extensions/extension_enable_flow_delegate.h"
-#include "extensions/browser/api/management/management_api.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_system.h"
 
+<<<<<<< HEAD
 #if !BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ui/profiles/profile_picker.h"
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+=======
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chrome/browser/ui/profile_picker.h"
+#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
+
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+#include "chrome/browser/supervised_user/supervised_user_service.h"
+#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
+#include "extensions/browser/api/management/management_api.h"
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
 using extensions::Extension;
 
@@ -90,34 +106,36 @@ void ExtensionEnableFlow::CheckPermissionAndMaybePromptUser() {
   const Extension* extension =
       registry->disabled_extensions().GetByID(extension_id_);
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
   extensions::SupervisedUserExtensionsDelegate*
       supervised_user_extensions_delegate =
           extensions::ManagementAPI::GetFactoryInstance()
               ->Get(profile_)
               ->GetSupervisedUserExtensionsDelegate();
   DCHECK(supervised_user_extensions_delegate);
-  if (supervised_user::AreExtensionsPermissionsEnabled(profile_) && extension &&
-
+  if (profile_->IsChild() && extension &&
       // Only ask for parent approval if the extension still requires approval.
       !supervised_user_extensions_delegate->IsExtensionAllowedByParent(
-          *extension)) {
+          *extension, profile_)) {
     // Either ask for parent permission or notify the child that their parent
     // has disabled this action.
-    auto extension_approval_callback =
-        base::BindOnce(&ExtensionEnableFlow::OnExtensionApprovalDone,
+    auto parent_permission_callback =
+        base::BindOnce(&ExtensionEnableFlow::OnParentPermissionDialogDone,
                        weak_ptr_factory_.GetWeakPtr());
-    supervised_user_extensions_delegate->RequestToEnableExtensionOrShowError(
-        *extension, parent_contents_,
-        SupervisedUserExtensionParentApprovalEntryPoint::
-            kOnTerminatedExtensionEnableFlowOperation,
-        std::move(extension_approval_callback));
+    auto error_callback =
+        base::BindOnce(&ExtensionEnableFlow::OnBlockedByParentDialogDone,
+                       weak_ptr_factory_.GetWeakPtr());
+    supervised_user_extensions_delegate->PromptForParentPermissionOrShowError(
+        *extension, profile_, parent_contents_,
+        std::move(parent_permission_callback), std::move(error_callback));
     return;
   }
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
-  bool abort =
-      !extension ||
-      // The extension might be force-disabled by policy.
-      system->management_policy()->MustRemainDisabled(extension, nullptr);
+  bool abort = !extension ||
+               // The extension might be force-disabled by policy.
+               system->management_policy()->MustRemainDisabled(
+                   extension, nullptr, nullptr);
   if (abort) {
     delegate_->ExtensionEnableFlowAborted(
         /*user_initiated=*/false);  // |delegate_| may delete us.
@@ -125,9 +143,14 @@ void ExtensionEnableFlow::CheckPermissionAndMaybePromptUser() {
   }
 
   if (profiles::IsProfileLocked(profile_->GetPath())) {
+<<<<<<< HEAD
 #if !BUILDFLAG(IS_CHROMEOS)
     ProfilePicker::Show(ProfilePicker::Params::FromEntryPoint(
         ProfilePicker::EntryPoint::kProfileLocked));
+=======
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
+    ProfilePicker::Show(ProfilePicker::EntryPoint::kProfileLocked);
+>>>>>>> chromium
 
 #endif  // !BUILDFLAG(IS_CHROMEOS)
     return;
@@ -161,28 +184,33 @@ void ExtensionEnableFlow::CreatePrompt() {
                     : new ExtensionInstallPrompt(profile_, nullptr));
 }
 
-void ExtensionEnableFlow::OnExtensionApprovalDone(
-    extensions::SupervisedUserExtensionsDelegate::ExtensionApprovalResult
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+void ExtensionEnableFlow::OnParentPermissionDialogDone(
+    extensions::SupervisedUserExtensionsDelegate::ParentPermissionDialogResult
         result) {
   switch (result) {
-    case extensions::SupervisedUserExtensionsDelegate::ExtensionApprovalResult::
-        kApproved:
+    case extensions::SupervisedUserExtensionsDelegate::
+        ParentPermissionDialogResult::kParentPermissionReceived:
       EnableExtension();
       break;
-    case extensions::SupervisedUserExtensionsDelegate::ExtensionApprovalResult::
-        kCanceled:
+    case extensions::SupervisedUserExtensionsDelegate::
+        ParentPermissionDialogResult::kParentPermissionCanceled:
       delegate_->ExtensionEnableFlowAborted(
           /*user_initiated=*/true);  // |delegate_| may delete us.
       break;
-    case extensions::SupervisedUserExtensionsDelegate::ExtensionApprovalResult::
-        kFailed:
-    case extensions::SupervisedUserExtensionsDelegate::ExtensionApprovalResult::
-        kBlocked:
+    case extensions::SupervisedUserExtensionsDelegate::
+        ParentPermissionDialogResult::kParentPermissionFailed:
       delegate_->ExtensionEnableFlowAborted(
           /*user_initiated=*/false);  // |delegate_| may delete us.
       break;
   }
 }
+
+void ExtensionEnableFlow::OnBlockedByParentDialogDone() {
+  delegate_->ExtensionEnableFlowAborted(
+      /*user_initiated=*/false);  // |delegate_| may delete us.
+}
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
 void ExtensionEnableFlow::StartObserving() {
   extension_registry_observation_.Observe(
@@ -238,8 +266,10 @@ void ExtensionEnableFlow::EnableExtension() {
         /*user_initiated=*/true);  // |delegate_| may delete us.
     return;
   }
-  if (supervised_user::AreExtensionsPermissionsEnabled(profile_)) {
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+  if (profile_->IsChild()) {
     // We need to add parent approval first.
+<<<<<<< HEAD
     extensions::SupervisedUserExtensionsDelegate*
         supervised_user_extensions_delegate =
             extensions::ManagementAPI::GetFactoryInstance()
@@ -250,8 +280,15 @@ void ExtensionEnableFlow::EnableExtension() {
     supervised_user_extensions_delegate->MaybeRecordPermissionsIncreaseMetrics(
         *extension);
     supervised_user_extensions_delegate->RecordExtensionEnablementUmaMetrics(
+=======
+    SupervisedUserService* supervised_user_service =
+        SupervisedUserServiceFactory::GetForProfile(profile_);
+    supervised_user_service->AddExtensionApproval(*extension);
+    supervised_user_service->RecordExtensionEnablementUmaMetrics(
+>>>>>>> chromium
         /*enabled=*/true);
   }
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
   service->GrantPermissionsAndEnableExtension(extension);
 
   DCHECK(service->IsExtensionEnabled(extension_id_));
@@ -260,20 +297,13 @@ void ExtensionEnableFlow::EnableExtension() {
 
 void ExtensionEnableFlow::InstallPromptDone(
     ExtensionInstallPrompt::DoneCallbackPayload payload) {
-  switch (payload.result) {
-    case ExtensionInstallPrompt::Result::ACCEPTED:
-      EnableExtension();
-      break;
-    case ExtensionInstallPrompt::Result::ACCEPTED_WITH_WITHHELD_PERMISSIONS:
-      // This dialog doesn't support the "withhold permissions" checkbox.
-      NOTREACHED();
-    case ExtensionInstallPrompt::Result::USER_CANCELED:
-    case ExtensionInstallPrompt::Result::ABORTED:
-      delegate_->ExtensionEnableFlowAborted(/*user_initiated=*/
-                                            payload.result ==
-                                            ExtensionInstallPrompt::Result::
-                                                USER_CANCELED);
-      // `delegate_` may delete us.
-      break;
+  if (payload.result == ExtensionInstallPrompt::Result::ACCEPTED) {
+    EnableExtension();
+  } else {
+    delegate_->ExtensionEnableFlowAborted(/*user_initiated=*/
+                                          payload.result ==
+                                          ExtensionInstallPrompt::Result::
+                                              USER_CANCELED);
+    // |delegate_| may delete us.
   }
 }
