@@ -7,7 +7,11 @@ package org.chromium.content.browser;
 import android.app.Activity;
 
 import org.chromium.base.Callback;
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+=======
 import org.chromium.base.annotations.CalledByNative;
+>>>>>>> chromium
 import org.chromium.device.nfc.NfcDelegate;
 
 /**
@@ -15,6 +19,7 @@ import org.chromium.device.nfc.NfcDelegate;
  * corresponding NfcHost objects, allowing the NFC implementation to access the Activity of the
  * WebContents with which its requesting frame is associated.
  */
+@NullMarked
 public class ContentNfcDelegate implements NfcDelegate {
     @CalledByNative
     private static ContentNfcDelegate create() {

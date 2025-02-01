@@ -28,15 +28,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #include "third_party/blink/public/web/web_frame.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+#include <array>
+=======
+>>>>>>> chromium
 #include <initializer_list>
 #include <limits>
 #include <memory>
 
+<<<<<<< HEAD
+#include "base/containers/to_vector.h"
+#include "base/functional/callback_helpers.h"
+=======
 #include "base/callback_helpers.h"
 #include "base/cxx17_backports.h"
 #include "base/macros.h"
+>>>>>>> chromium
 #include "base/strings/stringprintf.h"
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
@@ -76,6 +91,7 @@
 #include "third_party/blink/public/mojom/scroll/scrollbar_mode.mojom-blink.h"
 #include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
 #include "third_party/blink/public/platform/web_cache.h"
+#include "third_party/blink/public/platform/web_runtime_features.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/public/platform/web_url_loader_client.h"
@@ -119,7 +135,6 @@
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/range.h"
 #include "third_party/blink/renderer/core/editing/editor.h"
 #include "third_party/blink/renderer/core/editing/ephemeral_range.h"
@@ -418,10 +433,16 @@ class WebFrameTest : public testing::Test {
     for (Node& node : range.Nodes()) {
       const DocumentMarkerVector& markers_in_node =
           document->Markers().MarkersFor(To<Text>(node), marker_types);
+<<<<<<< HEAD
+      node_count += std::ranges::count_if(
+          markers_in_node, [start_offset, end_offset, &node, &start_container,
+                            &end_container](const DocumentMarker* marker) {
+=======
       node_count += std::count_if(
           markers_in_node.begin(), markers_in_node.end(),
           [start_offset, end_offset, &node, &start_container,
            &end_container](const DocumentMarker* marker) {
+>>>>>>> chromium
             if (node == start_container && marker->EndOffset() <= start_offset)
               return false;
             if (node == end_container && marker->StartOffset() >= end_offset)
@@ -790,7 +811,7 @@ TEST_F(WebFrameTest, FormWithNullFrame) {
   frame_test_helpers::WebViewHelper web_view_helper;
   web_view_helper.InitializeAndLoad(base_url_ + "form.html");
 
-  WebVector<WebFormElement> forms =
+  std::vector<WebFormElement> forms =
       web_view_helper.LocalMainFrame()->GetDocument().Forms();
   web_view_helper.Reset();
 
@@ -923,8 +944,8 @@ class CSSCallbackWebFrameClient
 
   // frame_test_helpers::TestWebFrameClient:
   void DidMatchCSS(
-      const WebVector<WebString>& newly_matching_selectors,
-      const WebVector<WebString>& stopped_matching_selectors) override;
+      const std::vector<WebString>& newly_matching_selectors,
+      const std::vector<WebString>& stopped_matching_selectors) override;
 
   HashSet<String>& MatchedSelectors() {
     auto it = matched_selectors_.find(Frame());
@@ -940,8 +961,8 @@ class CSSCallbackWebFrameClient
 };
 
 void CSSCallbackWebFrameClient::DidMatchCSS(
-    const WebVector<WebString>& newly_matching_selectors,
-    const WebVector<WebString>& stopped_matching_selectors) {
+    const std::vector<WebString>& newly_matching_selectors,
+    const std::vector<WebString>& stopped_matching_selectors) {
   ++update_count_;
 
   HashSet<String>& frame_selectors = MatchedSelectors();
@@ -1014,9 +1035,8 @@ TEST_F(WebFrameCSSCallbackTest, AuthorStyleSheet) {
       "<div class=\"initial_on\"></div>"
       "<div class=\"initial_off\"></div>");
 
-  Vector<WebString> selectors;
-  selectors.push_back(WebString::FromUTF8("div.initial_on"));
-  frame_->GetDocument().WatchCSSSelectors(WebVector<WebString>(selectors));
+  std::vector<WebString> selectors = {WebString::FromUTF8("div.initial_on")};
+  frame_->GetDocument().WatchCSSSelectors(selectors);
   frame_->View()->MainFrameWidget()->UpdateAllLifecyclePhases(
       DocumentUpdateReason::kTest);
   RunPendingTasks();
@@ -1025,7 +1045,7 @@ TEST_F(WebFrameCSSCallbackTest, AuthorStyleSheet) {
 
   // Check that adding a watched selector calls back for already-present nodes.
   selectors.push_back(WebString::FromUTF8("div.initial_off"));
-  Doc().WatchCSSSelectors(WebVector<WebString>(selectors));
+  Doc().WatchCSSSelectors(selectors);
   frame_->View()->MainFrameWidget()->UpdateAllLifecyclePhases(
       DocumentUpdateReason::kTest);
   RunPendingTasks();
@@ -1034,7 +1054,7 @@ TEST_F(WebFrameCSSCallbackTest, AuthorStyleSheet) {
               ElementsAre("div.initial_off", "div.initial_on"));
 
   // Check that we can turn off callbacks for certain selectors.
-  Doc().WatchCSSSelectors(WebVector<WebString>());
+  Doc().WatchCSSSelectors({});
   frame_->View()->MainFrameWidget()->UpdateAllLifecyclePhases(
       DocumentUpdateReason::kTest);
   RunPendingTasks();
@@ -1044,9 +1064,7 @@ TEST_F(WebFrameCSSCallbackTest, AuthorStyleSheet) {
 
 TEST_F(WebFrameCSSCallbackTest, SharedComputedStyle) {
   // Check that adding an element calls back when it matches an existing rule.
-  Vector<WebString> selectors;
-  selectors.push_back(WebString::FromUTF8("span"));
-  Doc().WatchCSSSelectors(WebVector<WebString>(selectors));
+  Doc().WatchCSSSelectors({WebString::FromUTF8("span")});
 
   ExecuteScript(
       "i1 = document.createElement('span');"
@@ -1084,9 +1102,7 @@ TEST_F(WebFrameCSSCallbackTest, SharedComputedStyle) {
 TEST_F(WebFrameCSSCallbackTest, CatchesAttributeChange) {
   LoadHTML("<span></span>");
 
-  Vector<WebString> selectors;
-  selectors.push_back(WebString::FromUTF8("span[attr=\"value\"]"));
-  Doc().WatchCSSSelectors(WebVector<WebString>(selectors));
+  Doc().WatchCSSSelectors({WebString::FromUTF8("span[attr=\"value\"]")});
   RunPendingTasks();
 
   EXPECT_EQ(0, UpdateCount());
@@ -1101,9 +1117,7 @@ TEST_F(WebFrameCSSCallbackTest, CatchesAttributeChange) {
 TEST_F(WebFrameCSSCallbackTest, DisplayNone) {
   LoadHTML("<div style='display:none'><span></span></div>");
 
-  Vector<WebString> selectors;
-  selectors.push_back(WebString::FromUTF8("span"));
-  Doc().WatchCSSSelectors(WebVector<WebString>(selectors));
+  Doc().WatchCSSSelectors({WebString::FromUTF8("span")});
   RunPendingTasks();
 
   EXPECT_EQ(0, UpdateCount()) << "Don't match elements in display:none trees.";
@@ -1151,8 +1165,7 @@ TEST_F(WebFrameCSSCallbackTest, DisplayNone) {
 TEST_F(WebFrameCSSCallbackTest, DisplayContents) {
   LoadHTML("<div style='display:contents'><span></span></div>");
 
-  Vector<WebString> selectors(1u, WebString::FromUTF8("span"));
-  Doc().WatchCSSSelectors(WebVector<WebString>(selectors));
+  Doc().WatchCSSSelectors({WebString::FromUTF8("span")});
   frame_->View()->MainFrameWidget()->UpdateAllLifecyclePhases(
       DocumentUpdateReason::kTest);
   RunPendingTasks();
@@ -1186,9 +1199,7 @@ TEST_F(WebFrameCSSCallbackTest, Reparenting) {
       "<div id='d1'><span></span></div>"
       "<div id='d2'></div>");
 
-  Vector<WebString> selectors;
-  selectors.push_back(WebString::FromUTF8("span"));
-  Doc().WatchCSSSelectors(WebVector<WebString>(selectors));
+  Doc().WatchCSSSelectors({WebString::FromUTF8("span")});
   frame_->View()->MainFrameWidget()->UpdateAllLifecyclePhases(
       DocumentUpdateReason::kTest);
   RunPendingTasks();
@@ -1210,10 +1221,8 @@ TEST_F(WebFrameCSSCallbackTest, MultiSelector) {
 
   // Check that selector lists match as the whole list, not as each element
   // independently.
-  Vector<WebString> selectors;
-  selectors.push_back(WebString::FromUTF8("span"));
-  selectors.push_back(WebString::FromUTF8("span,p"));
-  Doc().WatchCSSSelectors(WebVector<WebString>(selectors));
+  Doc().WatchCSSSelectors(
+      {WebString::FromUTF8("span"), WebString::FromUTF8("span,p")});
   frame_->View()->MainFrameWidget()->UpdateAllLifecyclePhases(
       DocumentUpdateReason::kTest);
   RunPendingTasks();
@@ -1226,11 +1235,11 @@ TEST_F(WebFrameCSSCallbackTest, InvalidSelector) {
   LoadHTML("<p><span></span></p>");
 
   // Build a list with one valid selector and one invalid.
-  Vector<WebString> selectors;
-  selectors.push_back(WebString::FromUTF8("span"));
-  selectors.push_back(WebString::FromUTF8("["));       // Invalid.
-  selectors.push_back(WebString::FromUTF8("p span"));  // Not compound.
-  Doc().WatchCSSSelectors(WebVector<WebString>(selectors));
+  Doc().WatchCSSSelectors({
+      WebString::FromUTF8("span"),
+      WebString::FromUTF8("["),      // Invalid.
+      WebString::FromUTF8("p span")  // Not compound.
+  });
   frame_->View()->MainFrameWidget()->UpdateAllLifecyclePhases(
       DocumentUpdateReason::kTest);
   RunPendingTasks();
@@ -3883,7 +3892,7 @@ TEST_F(WebFrameTest, DontZoomInOnFocusedInTouchAction) {
   ASSERT_EQ(initial_scale, web_view_helper.GetWebView()->PageScaleFactor());
 
   // Focus the third textbox that has a touch-action: pan-x ancestor, this
-  // should cause an autozoom since it's seperated from the node with the
+  // should cause an autozoom since it's separated from the node with the
   // touch-action by an overflow:scroll element.
   web_view_helper.GetWebView()->AdvanceFocus(false);
   web_view_helper.GetWebView()
@@ -4032,7 +4041,7 @@ TEST_F(WebFrameTest, DivScrollIntoEditablePreservePageScaleTest) {
   const gfx::Rect edit_box_with_text(200, 200, 250, 20);
 
   web_view_helper.GetWebView()->AdvanceFocus(false);
-  // Set the caret to the begining of the input box.
+  // Set the caret to the beginning of the input box.
   web_view_helper.GetWebView()
       ->MainFrameImpl()
       ->GetDocument()
@@ -4059,7 +4068,7 @@ TEST_F(WebFrameTest, DivScrollIntoEditablePreservePageScaleTest) {
       element_bounds, caret_bounds, kAutoZoomToLegibleScale, scale, scroll,
       need_animation);
   EXPECT_TRUE(need_animation);
-  // Edit box and caret should be left alinged
+  // Edit box and caret should be left aligned
   int h_scroll = edit_box_with_text.x();
   EXPECT_NEAR(h_scroll, scroll.X(), 1);
   int v_scroll = edit_box_with_text.y() -
@@ -4624,7 +4633,7 @@ TEST_F(WebFrameTest, ContextNotificationsIsolatedWorlds) {
   ASSERT_EQ(isolated_world_id, notification->world_id);
   ASSERT_EQ(web_view_helper.GetWebView()->MainFrame(), notification->frame);
 
-  // We don't have an API to enumarate isolated worlds for a frame, but we can
+  // We don't have an API to enumerate isolated worlds for a frame, but we can
   // at least assert that the context we got is *not* the main world's context.
   ASSERT_NE(web_view_helper.LocalMainFrame()->MainWorldScriptContext(),
             v8::Local<v8::Context>::New(isolate, notification->context));
@@ -4906,7 +4915,7 @@ TEST_F(WebFrameTest, FindInPageMatchRects) {
   RunPendingTasks();
   EXPECT_TRUE(find_in_page_client.FindResultsAreReady());
 
-  WebVector<gfx::RectF> web_match_rects =
+  Vector<gfx::RectF> web_match_rects =
       main_frame->EnsureTextFinder().FindMatchRects();
   ASSERT_EQ(static_cast<size_t>(kNumResults), web_match_rects.size());
   int rects_version = main_frame->GetFindInPage()->FindMatchMarkersVersion();
@@ -5233,7 +5242,8 @@ TEST_F(WebFrameTest, SetTickmarks) {
     EXPECT_EQ(4u, original_tickmarks.size());
 
     // Override the tickmarks.
-    main_frame->SetTickmarks(WebElement(), kExpectedOverridingTickmarks);
+    main_frame->SetTickmarks(WebElement(),
+                             base::ToVector(kExpectedOverridingTickmarks));
 
     // Check the tickmarks are overridden correctly.
     Vector<IntRect> overriding_tickmarks_actual =
@@ -5241,7 +5251,7 @@ TEST_F(WebFrameTest, SetTickmarks) {
     EXPECT_EQ(kExpectedOverridingTickmarks, overriding_tickmarks_actual);
 
     // Reset the tickmark behavior.
-    main_frame->SetTickmarks(WebElement(), kResetTickmarks);
+    main_frame->SetTickmarks(WebElement(), base::ToVector(kResetTickmarks));
 
     // Check that the original tickmarks are returned
     Vector<IntRect> original_tickmarks_after_reset =
@@ -5264,7 +5274,8 @@ TEST_F(WebFrameTest, SetTickmarks) {
     EXPECT_EQ(0u, original_tickmarks.size());
 
     // Override the tickmarks.
-    main_frame->SetTickmarks(target, kExpectedOverridingTickmarks);
+    main_frame->SetTickmarks(target,
+                             base::ToVector(kExpectedOverridingTickmarks));
 
     // Check the tickmarks are overridden correctly.
     Vector<IntRect> overriding_tickmarks_actual =
@@ -5272,7 +5283,7 @@ TEST_F(WebFrameTest, SetTickmarks) {
     EXPECT_EQ(kExpectedOverridingTickmarks, overriding_tickmarks_actual);
 
     // Reset the tickmark behavior.
-    main_frame->SetTickmarks(target, kResetTickmarks);
+    main_frame->SetTickmarks(target, base::ToVector(kResetTickmarks));
 
     // Check that the original tickmarks are returned
     Vector<IntRect> original_tickmarks_after_reset =
@@ -5313,7 +5324,7 @@ TEST_F(WebFrameTest, FindInPageJavaScriptUpdatesDOM) {
       kFindIdentifier, search_text, *options, false, &active_now));
   EXPECT_TRUE(active_now);
 
-  // Insert new text, which contains occurence of |searchText|.
+  // Insert new text, which contains occurrence of |searchText|.
   frame->ExecuteScript(WebScriptSource(
       "var newTextNode = document.createTextNode('bar5 foo5');"
       "var textArea = document.getElementsByTagName('textarea')[0];"
@@ -5382,7 +5393,7 @@ TEST_F(WebFrameTest, FindInPageJavaScriptUpdatesDOMProperOrdinal) {
   EXPECT_EQ(2, find_in_page_client.ActiveIndex());
   EXPECT_FALSE(frame->EnsureTextFinder().ScopingInProgress());
 
-  // Insert new text, which contains occurence of |searchText|.
+  // Insert new text, which contains occurrence of |searchText|.
   frame->ExecuteScript(
       WebScriptSource("var textDiv = document.getElementById('new_text');"
                       "textDiv.innerHTML = 'foo abc';"));
@@ -6552,13 +6563,11 @@ class TextCheckClient : public WebTextCheckClient {
       const WebString&,
       std::unique_ptr<WebTextCheckingCompletion> completion) override {
     ++number_of_times_checked_;
-    Vector<WebTextCheckingResult> results;
     const int kMisspellingStartOffset = 1;
     const int kMisspellingLength = 8;
-    results.push_back(WebTextCheckingResult(
+    completion->DidFinishCheckingText({WebTextCheckingResult(
         kWebTextDecorationTypeSpelling, kMisspellingStartOffset,
-        kMisspellingLength, WebVector<WebString>()));
-    completion->DidFinishCheckingText(results);
+        kMisspellingLength, {})});
   }
 
   int NumberOfTimesChecked() const { return number_of_times_checked_; }
@@ -6654,6 +6663,8 @@ TEST_F(WebFrameTest, RemoveSpellingMarkers) {
                                  DocumentMarker::MarkerTypes::Spelling()));
 }
 
+<<<<<<< HEAD
+=======
 static void GetSpellingMarkerOffsets(WebVector<unsigned>* offsets,
                                      const Document& document) {
   Vector<unsigned> result;
@@ -6663,6 +6674,7 @@ static void GetSpellingMarkerOffsets(WebVector<unsigned>* offsets,
   offsets->Assign(result);
 }
 
+>>>>>>> chromium
 TEST_F(WebFrameTest, RemoveSpellingMarkersUnderWords) {
   RegisterMockedHttpURLLoad("spell.html");
   frame_test_helpers::WebViewHelper web_view_helper;
@@ -6688,17 +6700,11 @@ TEST_F(WebFrameTest, RemoveSpellingMarkersUnderWords) {
       .GetIdleSpellCheckController()
       .ForceInvocationForTesting();
 
-  WebVector<unsigned> offsets1;
-  GetSpellingMarkerOffsets(&offsets1, *frame->GetDocument());
-  EXPECT_EQ(1U, offsets1.size());
+  EXPECT_EQ(1U, frame->GetDocument()->Markers().Markers().size());
 
-  Vector<String> words;
-  words.push_back("wellcome");
-  frame->RemoveSpellingMarkersUnderWords(words);
+  frame->RemoveSpellingMarkersUnderWords({"wellcome"});
 
-  WebVector<unsigned> offsets2;
-  GetSpellingMarkerOffsets(&offsets2, *frame->GetDocument());
-  EXPECT_EQ(0U, offsets2.size());
+  EXPECT_EQ(0U, frame->GetDocument()->Markers().Markers().size());
 }
 
 class StubbornTextCheckClient : public WebTextCheckClient {
@@ -6726,10 +6732,9 @@ class StubbornTextCheckClient : public WebTextCheckClient {
             WebTextDecorationType type) {
     if (!completion_)
       return;
-    Vector<WebTextCheckingResult> results;
+    std::vector<WebTextCheckingResult> results;
     if (misspelling_start_offset >= 0 && misspelling_length > 0) {
-      results.push_back(WebTextCheckingResult(type, misspelling_start_offset,
-                                              misspelling_length));
+      results.emplace_back(type, misspelling_start_offset, misspelling_length);
     }
     completion_->DidFinishCheckingText(results);
     completion_.reset();
@@ -6767,9 +6772,7 @@ TEST_F(WebFrameTest, SlowSpellcheckMarkerPosition) {
 
   textcheck.Kick();
 
-  WebVector<unsigned> offsets;
-  GetSpellingMarkerOffsets(&offsets, *frame->GetFrame()->GetDocument());
-  EXPECT_EQ(0U, offsets.size());
+  EXPECT_EQ(0U, document->Markers().Markers().size());
 }
 
 TEST_F(WebFrameTest, SpellcheckResultErasesMarkers) {
@@ -7685,7 +7688,14 @@ TEST_F(WebFrameTest, SameDocumentHistoryNavigationCommitType) {
       false /* has_transient_user_activation */, /*initiator_origin=*/nullptr,
       /*is_synchronously_committed=*/false,
       mojom::blink::TriggeringEventInfo::kNotFromEvent,
+<<<<<<< HEAD
+      /*is_browser_initiated=*/true,
+      /*has_ua_visual_transition,=*/false,
+      /*soft_navigation_heuristics_task_id=*/std::nullopt,
+      /*should_skip_screenshot=*/false);
+=======
       nullptr /* extra_data */);
+>>>>>>> chromium
   EXPECT_EQ(kWebBackForwardCommit, client.LastCommitType());
 }
 
@@ -7698,7 +7708,20 @@ TEST_F(WebFrameTest, FirstBlankSubframeNavigation) {
   frame_test_helpers::WebViewHelper web_view_helper;
   web_view_helper.InitializeAndLoad("about:blank");
 
+<<<<<<< HEAD
+  local_frame->Loader().GetDocumentLoader()->CommitSameDocumentNavigation(
+      item->Url(), WebFrameLoadType::kBackForward, item.Get(),
+      ClientRedirectPolicy::kNotClientRedirect,
+      false /* has_transient_user_activation */, /*initiator_origin=*/nullptr,
+      /*is_synchronously_committed=*/false, /*source_element=*/nullptr,
+      mojom::blink::TriggeringEventInfo::kNotFromEvent,
+      /*is_browser_initiated=*/true,
+      /*has_ua_visual_transition,=*/false,
+      /*soft_navigation_heuristics_task_id=*/std::nullopt,
+      /*should_skip_screenshot=*/false);
+=======
   WebLocalFrame* frame = web_view_helper.LocalMainFrame();
+>>>>>>> chromium
 
   frame->ExecuteScript(WebScriptSource(WebString::FromUTF8(
       "document.body.appendChild(document.createElement('iframe'))")));
@@ -7743,7 +7766,7 @@ TEST_F(WebFrameTest, FirstNonBlankSubframeNavigation) {
   EXPECT_FALSE(iframe->GetDocumentLoader()->ReplacesCurrentHistoryItem());
 }
 
-// Test verifies that layout will change a layer's scrollable attibutes
+// Test verifies that layout will change a layer's scrollable attributes
 TEST_F(WebFrameTest, overflowHiddenRewrite) {
   RegisterMockedHttpURLLoad("non-scrollable.html");
   frame_test_helpers::WebViewHelper web_view_helper;
@@ -11546,6 +11569,57 @@ TEST_F(WebFrameTest, LoadJavascriptURLInNewFrame) {
                 ->Url());
 }
 
+<<<<<<< HEAD
+TEST_F(WebFrameTest, DiscardFrame) {
+  DisableRendererSchedulerThrottling();
+  RegisterMockedHttpURLLoad("foo.html");
+
+  frame_test_helpers::WebViewHelper helper;
+  helper.InitializeAndLoad(base_url_ + "foo.html");
+
+  EXPECT_NE("", To<LocalFrame>(helper.GetWebView()->GetPage()->MainFrame())
+                    ->GetDocument()
+                    ->documentElement()
+                    ->innerText());
+
+  helper.LocalMainFrame()->GetFrame()->Discard();
+  RunPendingTasks();
+
+  // Discarding should replace the contents of the document.
+  EXPECT_EQ("", To<LocalFrame>(helper.GetWebView()->GetPage()->MainFrame())
+                    ->GetDocument()
+                    ->documentElement()
+                    ->innerText());
+}
+
+// Tests to ensure that DocumentResourceCoordinators are not instantiated for
+// discarded documents, which are installed following a frame discard operation.
+TEST_F(WebFrameTest, ResourceCoordinatorNotCreatedForDiscardedDocument) {
+  blink::WebRuntimeFeatures::EnablePerformanceManagerInstrumentation(true);
+  DisableRendererSchedulerThrottling();
+  RegisterMockedHttpURLLoad("foo.html");
+
+  frame_test_helpers::WebViewHelper helper;
+  helper.InitializeAndLoad(base_url_ + "foo.html");
+
+  Document* initial_document =
+      To<LocalFrame>(helper.GetWebView()->GetPage()->MainFrame())
+          ->GetDocument();
+  EXPECT_TRUE(initial_document->GetResourceCoordinator());
+
+  helper.LocalMainFrame()->GetFrame()->Discard();
+  RunPendingTasks();
+
+  // Discarded documents should not create resource coordinators.
+  Document* discarded_document =
+      To<LocalFrame>(helper.GetWebView()->GetPage()->MainFrame())
+          ->GetDocument();
+  EXPECT_NE(initial_document, discarded_document);
+  EXPECT_FALSE(discarded_document->GetResourceCoordinator());
+}
+
+=======
+>>>>>>> chromium
 TEST_F(WebFrameTest, EmptyJavascriptFrameUrl) {
   std::string url = "data:text/html,<iframe src=\"javascript:''\"></iframe>";
   frame_test_helpers::WebViewHelper helper;
@@ -11667,6 +11741,16 @@ class MultipleDataChunkDelegate : public WebURLLoaderTestDelegate {
   MultipleDataChunkDelegate() = default;
   ~MultipleDataChunkDelegate() override = default;
 
+<<<<<<< HEAD
+  // URLLoaderTestDelegate:
+  void DidReceiveData(URLLoaderClient* original_client,
+                      base::span<const char> data) override {
+    EXPECT_GT(data.size(), 16u);
+    const auto [first, rest] = data.split_at<16>();
+    original_client->DidReceiveDataForTesting(first);
+    // This didReceiveData call shouldn't crash due to a failed assertion.
+    original_client->DidReceiveDataForTesting(rest);
+=======
   // WebURLLoaderTestDelegate:
   void DidReceiveData(WebURLLoaderClient* original_client,
                       const char* data,
@@ -11675,6 +11759,7 @@ class MultipleDataChunkDelegate : public WebURLLoaderTestDelegate {
     original_client->DidReceiveData(data, 16);
     // This didReceiveData call shouldn't crash due to a failed assertion.
     original_client->DidReceiveData(data + 16, data_length - 16);
+>>>>>>> chromium
   }
 };
 
@@ -12049,7 +12134,7 @@ TEST_F(WebFrameSimTest, FindInPageSelectNextMatch) {
   frame->EnsureTextFinder().StartScopingStringMatches(kFindIdentifier,
                                                       search_text, *options);
 
-  WebVector<gfx::RectF> web_match_rects =
+  Vector<gfx::RectF> web_match_rects =
       frame->EnsureTextFinder().FindMatchRects();
   ASSERT_EQ(2ul, web_match_rects.size());
 
@@ -12350,7 +12435,7 @@ TEST_F(WebFrameSimTest, ScrollFocusedIntoViewClipped) {
   // focused editable element. However, the scroll and zoom is a smoothly
   // animated "PageScaleAnimation" that's performed in CC only on the viewport
   // layers. There are some situations in which the widget resize causes the
-  // focued input to be hidden by clipping parents that aren't the main frame.
+  // focused input to be hidden by clipping parents that aren't the main frame.
   // In these cases, there's no way to scroll just the viewport to make the
   // input visible, we need to also scroll those clip/scroller elements  This
   // test ensures we do so. https://crbug.com/270018.
@@ -13267,8 +13352,56 @@ void RecursiveCollectTextRunDOMNodeIds(
   }
 }
 
+<<<<<<< HEAD
+std::vector<TextRunDOMNodeIdInfo> GetPrintedTextRunDOMNodeIds(
+    WebLocalFrame* frame,
+    const std::vector<uint32_t>* pages = nullptr) {
+  gfx::Size page_size(500, 500);
+  WebPrintParams print_params((gfx::SizeF(page_size)));
+
+  frame->PrintBegin(print_params, WebNode());
+  cc::PaintRecorder recorder;
+  frame->PrintPagesForTesting(recorder.beginRecording(), page_size, pages);
+  frame->PrintEnd();
+
+  cc::PaintRecord paint_record = recorder.finishRecordingAsPicture();
+  std::vector<TextRunDOMNodeIdInfo> text_runs;
+  RecursiveCollectTextRunDOMNodeIds(paint_record, 0, &text_runs);
+
+  return text_runs;
+}
+
 }  // namespace
 
+TEST_F(WebFrameTest, PrintSomePages) {
+  RegisterMockedHttpURLLoad("print-pages.html");
+  frame_test_helpers::WebViewHelper web_view_helper;
+  web_view_helper.InitializeAndLoad(base_url_ + "print-pages.html");
+
+  std::vector<uint32_t> pages = {1, 4, 8};
+  std::vector<TextRunDOMNodeIdInfo> text_runs =
+      GetPrintedTextRunDOMNodeIds(web_view_helper.LocalMainFrame(), &pages);
+
+  ASSERT_EQ(3u, text_runs.size());
+  EXPECT_EQ(2, text_runs[0].glyph_len);  // Page 2
+  EXPECT_EQ(5, text_runs[1].glyph_len);  // Page 5
+  EXPECT_EQ(9, text_runs[2].glyph_len);  // Page 9
+}
+
+TEST_F(WebFrameTest, PrintAllPages) {
+  RegisterMockedHttpURLLoad("print-pages.html");
+  frame_test_helpers::WebViewHelper web_view_helper;
+  web_view_helper.InitializeAndLoad(base_url_ + "print-pages.html");
+
+  std::vector<TextRunDOMNodeIdInfo> text_runs =
+      GetPrintedTextRunDOMNodeIds(web_view_helper.LocalMainFrame());
+  EXPECT_EQ(10u, text_runs.size());
+}
+
+=======
+}  // namespace
+
+>>>>>>> chromium
 TEST_F(WebFrameTest, FirstLetterHasDOMNodeIdWhenPrinting) {
   // When printing, every DrawText painting op needs to have an associated
   // DOM Node ID. This test ensures that when the first-letter style is used,

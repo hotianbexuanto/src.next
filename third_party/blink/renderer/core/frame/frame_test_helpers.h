@@ -276,6 +276,30 @@ class TestWebFrameWidget : public WebFrameWidgetImpl {
       mojo::PendingAssociatedReceiver<mojom::blink::WidgetHost>,
       mojo::PendingAssociatedReceiver<mojom::blink::FrameWidgetHost>);
 
+<<<<<<< HEAD
+  WidgetInputHandlerManager* GetWidgetInputHandlerManager() const;
+  void FlushInputHandlerTasks();
+
+  // Simulates an input event arriving at the WidgetInputHandlerManager from the
+  // browser process.  The event will run synchronously through the compositor's
+  // real input handling code (InputHandlerProxy and ThreadedInputHandler).
+  //
+  // Note that with scroll unification, tests should send gesture scroll events
+  // using this method, and not through WebFrameWidgetImpl::HandleInputEvent or
+  // EventHandler::HandleGestureEvent.  Tests that use this method for scrolling
+  // should also use SimTest::ResizeView or WebViewHelper::Resize (not directly
+  // WebFrameWidgetImpl::Resize) to set the initial size of the viewport.
+  //
+  void DispatchThroughCcInputHandler(const WebInputEvent& event);
+  const mojom::blink::DidOverscrollParamsPtr& last_overscroll() const {
+    return last_overscroll_;
+  }
+
+  void RequestDecode(const cc::DrawImage&,
+                     base::OnceCallback<void(bool)>) override;
+
+=======
+>>>>>>> chromium
   using WebFrameWidgetImpl::GetOriginalScreenInfo;
 
  protected:

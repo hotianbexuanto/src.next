@@ -50,6 +50,50 @@ LayoutUnit ComputeTilePhase(LayoutUnit position, LayoutUnit tile_extent) {
                      : LayoutUnit();
 }
 
+<<<<<<< HEAD
+LayoutUnit ResolveClampedWidthForRatio(LayoutUnit height,
+                                       const PhysicalSize& natural_ratio) {
+  LayoutUnit resolved_width = ResolveWidthForRatio(height, natural_ratio);
+  if (natural_ratio.width >= 1 && resolved_width < 1) {
+    return LayoutUnit(1);
+  }
+  return resolved_width;
+}
+
+LayoutUnit ResolveClampedHeightForRatio(LayoutUnit width,
+                                        const PhysicalSize& natural_ratio) {
+  LayoutUnit resolved_height = ResolveHeightForRatio(width, natural_ratio);
+  if (natural_ratio.height >= 1 && resolved_height < 1) {
+    return LayoutUnit(1);
+  }
+  return resolved_height;
+}
+
+LayoutUnit ResolveXPosition(const FillLayer& fill_layer,
+                            LayoutUnit available_width,
+                            LayoutUnit offset) {
+  const LayoutUnit edge_relative_position =
+      MinimumValueForLength(fill_layer.PositionX(), available_width);
+  // Convert from edge-relative form to absolute.
+  const LayoutUnit absolute_position =
+      fill_layer.BackgroundXOrigin() == BackgroundEdgeOrigin::kRight
+          ? available_width - edge_relative_position
+          : edge_relative_position;
+  return absolute_position - offset;
+}
+
+LayoutUnit ResolveYPosition(const FillLayer& fill_layer,
+                            LayoutUnit available_height,
+                            LayoutUnit offset) {
+  const LayoutUnit edge_relative_position =
+      MinimumValueForLength(fill_layer.PositionY(), available_height);
+  // Convert from edge-relative form to absolute.
+  const LayoutUnit absolute_position =
+      fill_layer.BackgroundYOrigin() == BackgroundEdgeOrigin::kBottom
+          ? available_height - edge_relative_position
+          : edge_relative_position;
+  return absolute_position - offset;
+=======
 PhysicalOffset AccumulatedScrollOffsetForFixedBackground(
     const LayoutBoxModelObject& object,
     const LayoutBoxModelObject* container) {
@@ -67,6 +111,7 @@ PhysicalOffset AccumulatedScrollOffsetForFixedBackground(
       break;
   }
   return result;
+>>>>>>> chromium
 }
 
 }  // anonymous namespace
@@ -688,6 +733,13 @@ void BackgroundImageGeometry::CalculateFillTileSize(
   // generated content) and unsnapped for content that has intrinsic
   // dimensions. Once we choose here we stop tracking whether the tile size is
   // snapped or unsnapped.
+<<<<<<< HEAD
+  NaturalSizingInfo sizing_info = image->GetNaturalSizingInfo(
+      style.EffectiveZoom(), style.ImageOrientation());
+  PhysicalSize image_aspect_ratio =
+      PhysicalSize::FromSizeFFloor(sizing_info.aspect_ratio);
+=======
+>>>>>>> chromium
   PhysicalSize positioning_area_size = !image->HasIntrinsicSize()
                                            ? snapped_positioning_area_size
                                            : unsnapped_positioning_area_size;
@@ -719,9 +771,19 @@ void BackgroundImageGeometry::CalculateFillTileSize(
       // If one of the values is auto we have to use the appropriate
       // scale to maintain our aspect ratio.
       if (layer_width.IsAuto() && !layer_height.IsAuto()) {
+<<<<<<< HEAD
+        if (!image_aspect_ratio.IsEmpty()) {
+          tile_size_.width = ResolveClampedWidthForRatio(tile_size_.height,
+                                                         image_aspect_ratio);
+        } else if (sizing_info.has_width) {
+          tile_size_.width =
+              LayoutUnit::FromFloatFloor(sizing_info.size.width());
+        } else {
+=======
         if (!image->HasIntrinsicSize()) {
           // Spec says that auto should be 100% in the absence of
           // an intrinsic ratio or size.
+>>>>>>> chromium
           tile_size_.width = positioning_area_size.width;
         } else if (image_intrinsic_size.height) {
           LayoutUnit adjusted_width = tile_size_.height.MulDiv(
@@ -731,9 +793,19 @@ void BackgroundImageGeometry::CalculateFillTileSize(
           tile_size_.width = adjusted_width;
         }
       } else if (!layer_width.IsAuto() && layer_height.IsAuto()) {
+<<<<<<< HEAD
+        if (!image_aspect_ratio.IsEmpty()) {
+          tile_size_.height = ResolveClampedHeightForRatio(tile_size_.width,
+                                                           image_aspect_ratio);
+        } else if (sizing_info.has_height) {
+          tile_size_.height =
+              LayoutUnit::FromFloatFloor(sizing_info.size.height());
+        } else {
+=======
         if (!image->HasIntrinsicSize()) {
           // Spec says that auto should be 100% in the absence of
           // an intrinsic ratio or size.
+>>>>>>> chromium
           tile_size_.height = positioning_area_size.height;
         } else if (image_intrinsic_size.width) {
           LayoutUnit adjusted_height = tile_size_.width.MulDiv(
@@ -791,10 +863,139 @@ void BackgroundImageGeometry::CalculateFillTileSize(
   return;
 }
 
+<<<<<<< HEAD
+void BackgroundImageGeometry::CalculateRepeatAndPosition(
+    const FillLayer& fill_layer,
+    const PhysicalOffset& offset_in_background,
+    const PhysicalSize& unsnapped_positioning_area_size,
+    const PhysicalSize& snapped_positioning_area_size,
+    const PhysicalOffset& unsnapped_box_offset,
+    const PhysicalOffset& snapped_box_offset) {
+  EFillRepeat background_repeat_x = fill_layer.Repeat().x;
+  EFillRepeat background_repeat_y = fill_layer.Repeat().y;
+
+  // Maintain both snapped and unsnapped available widths and heights.
+  // Unsnapped values are used for most thing, but snapped are used
+  // to computed sizes that must fill the area, such as round and space.
+  const LayoutUnit unsnapped_available_width =
+      unsnapped_positioning_area_size.width - tile_size_.width;
+  const LayoutUnit unsnapped_available_height =
+      unsnapped_positioning_area_size.height - tile_size_.height;
+  const LayoutUnit snapped_available_width =
+      snapped_positioning_area_size.width - tile_size_.width;
+  const LayoutUnit snapped_available_height =
+      snapped_positioning_area_size.height - tile_size_.height;
+
+  if (background_repeat_x == EFillRepeat::kRoundFill &&
+      snapped_positioning_area_size.width > LayoutUnit() &&
+      tile_size_.width > LayoutUnit()) {
+    LayoutUnit rounded_width = ComputeRoundedTileSize(
+        snapped_positioning_area_size.width, tile_size_.width);
+    // Maintain aspect ratio if background-size: auto is set
+    if (fill_layer.SizeLength().Height().IsAuto() &&
+        background_repeat_y != EFillRepeat::kRoundFill) {
+      tile_size_.height =
+          ResolveClampedHeightForRatio(rounded_width, tile_size_);
+    }
+    tile_size_.width = rounded_width;
+
+    // Force the first tile to line up with the edge of the positioning area.
+    const LayoutUnit x_offset = ResolveXPosition(
+        fill_layer, snapped_available_width, offset_in_background.left);
+    SetPhaseX(ComputeTilePhase(x_offset + unsnapped_box_offset.left,
+                               tile_size_.width));
+    SetSpaceSize(PhysicalSize());
+  }
+
+  if (background_repeat_y == EFillRepeat::kRoundFill &&
+      snapped_positioning_area_size.height > LayoutUnit() &&
+      tile_size_.height > LayoutUnit()) {
+    LayoutUnit rounded_height = ComputeRoundedTileSize(
+        snapped_positioning_area_size.height, tile_size_.height);
+    // Maintain aspect ratio if background-size: auto is set
+    if (fill_layer.SizeLength().Width().IsAuto() &&
+        background_repeat_x != EFillRepeat::kRoundFill) {
+      tile_size_.width =
+          ResolveClampedWidthForRatio(rounded_height, tile_size_);
+    }
+    tile_size_.height = rounded_height;
+
+    // Force the first tile to line up with the edge of the positioning area.
+    const LayoutUnit y_offset = ResolveYPosition(
+        fill_layer, snapped_available_height, offset_in_background.top);
+    SetPhaseY(ComputeTilePhase(y_offset + unsnapped_box_offset.top,
+                               tile_size_.height));
+    SetSpaceSize(PhysicalSize());
+  }
+
+  if (background_repeat_x == EFillRepeat::kRepeatFill) {
+    // Repeat must set the phase accurately, so use unsnapped values.
+    // Recompute computed position because here we need to resolve against
+    // unsnapped widths to correctly set the phase.
+    const LayoutUnit x_offset = ResolveXPosition(
+        fill_layer, unsnapped_available_width, offset_in_background.left);
+    SetRepeatX(unsnapped_box_offset.left + x_offset);
+  } else if (background_repeat_x == EFillRepeat::kSpaceFill &&
+             tile_size_.width > LayoutUnit()) {
+    // SpaceFill uses snapped values to fill the painted area.
+    LayoutUnit space = GetSpaceBetweenImageTiles(
+        snapped_positioning_area_size.width, tile_size_.width);
+    if (space >= LayoutUnit())
+      SetSpaceX(space, snapped_box_offset.left);
+    else
+      background_repeat_x = EFillRepeat::kNoRepeatFill;
+  }
+  if (background_repeat_x == EFillRepeat::kNoRepeatFill) {
+    // NoRepeat moves the dest rects, so needs both snapped and
+    // unsnapped parameters.
+    const LayoutUnit x_offset = ResolveXPosition(
+        fill_layer, unsnapped_available_width, offset_in_background.left);
+    const LayoutUnit snapped_x_offset = ResolveXPosition(
+        fill_layer, snapped_available_width, offset_in_background.left);
+    SetNoRepeatX(fill_layer, unsnapped_box_offset.left + x_offset,
+                 snapped_box_offset.left + snapped_x_offset);
+  }
+
+  if (background_repeat_y == EFillRepeat::kRepeatFill) {
+    // Repeat must set the phase accurately, so use unsnapped values.
+    // Recompute computed position because here we need to resolve against
+    // unsnapped widths to correctly set the phase.
+    const LayoutUnit y_offset = ResolveYPosition(
+        fill_layer, unsnapped_available_height, offset_in_background.top);
+    SetRepeatY(unsnapped_box_offset.top + y_offset);
+  } else if (background_repeat_y == EFillRepeat::kSpaceFill &&
+             tile_size_.height > LayoutUnit()) {
+    // SpaceFill uses snapped values to fill the painted area.
+    LayoutUnit space = GetSpaceBetweenImageTiles(
+        snapped_positioning_area_size.height, tile_size_.height);
+    if (space >= LayoutUnit())
+      SetSpaceY(space, snapped_box_offset.top);
+    else
+      background_repeat_y = EFillRepeat::kNoRepeatFill;
+  }
+  if (background_repeat_y == EFillRepeat::kNoRepeatFill) {
+    // NoRepeat moves the dest rects, so needs both snapped and
+    // unsnapped parameters.
+    const LayoutUnit y_offset = ResolveYPosition(
+        fill_layer, unsnapped_available_height, offset_in_background.top);
+    const LayoutUnit snapped_y_offset = ResolveYPosition(
+        fill_layer, snapped_available_height, offset_in_background.top);
+    SetNoRepeatY(fill_layer, unsnapped_box_offset.top + y_offset,
+                 snapped_box_offset.top + snapped_y_offset);
+  }
+}
+
+void BackgroundImageGeometry::Calculate(
+    const FillLayer& fill_layer,
+    const BoxBackgroundPaintContext& paint_context,
+    const PhysicalRect& paint_rect,
+    const PaintInfo& paint_info) {
+=======
 void BackgroundImageGeometry::Calculate(const LayoutBoxModelObject* container,
                                         PaintPhase paint_phase,
                                         const FillLayer& fill_layer,
                                         const PhysicalRect& paint_rect) {
+>>>>>>> chromium
   // Unsnapped positioning area is used to derive quantities
   // that reference source image maps and define non-integer values, such
   // as phase and position.

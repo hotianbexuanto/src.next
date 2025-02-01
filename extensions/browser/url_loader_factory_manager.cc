@@ -4,6 +4,7 @@
 
 #include "extensions/browser/url_loader_factory_manager.h"
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -17,7 +18,13 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_set.h"
 #include "extensions/common/mojom/host_id.mojom.h"
+<<<<<<< HEAD
+#include "extensions/common/permissions/permissions_data.h"
+#include "extensions/common/url_pattern.h"
+#include "extensions/common/url_pattern_set.h"
+=======
 #include "extensions/common/script_constants.h"
+>>>>>>> chromium
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "services/network/public/mojom/url_loader_factory.mojom.h"
@@ -48,6 +55,20 @@ bool DoContentScriptsDependOnRelaxedCorbOrCors(const Extension& extension) {
   return false;
 }
 
+<<<<<<< HEAD
+bool DoExtensionPermissionsCoverHttpOrHttpsOrigins(
+    const PermissionSet& permissions) {
+  // Looking at explicit (rather than effective) hosts results in stricter
+  // checks that better match ORB/CORS behavior.
+  return std::ranges::any_of(
+      permissions.explicit_hosts(), [](const URLPattern& permission) {
+        return permission.MatchesScheme(url::kHttpScheme) ||
+               permission.MatchesScheme(url::kHttpsScheme);
+      });
+}
+
+=======
+>>>>>>> chromium
 bool DoExtensionPermissionsCoverHttpOrHttpsOrigins(const Extension& extension) {
   // TODO(lukasza): https://crbug.com/1016904: Return false if the |extension|'s
   // permissions do not actually cover http or https origins.  For now we

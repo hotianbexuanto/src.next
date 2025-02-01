@@ -50,7 +50,15 @@ class ContentVerifierHashTest
       public testing::WithParamInterface<ContentVerificationMode> {
  public:
   ContentVerifierHashTest() = default;
+<<<<<<< HEAD
+
+  ContentVerifierHashTest(const ContentVerifierHashTest&) = delete;
+  ContentVerifierHashTest& operator=(const ContentVerifierHashTest&) = delete;
+
+  ~ContentVerifierHashTest() override = default;
+=======
   ~ContentVerifierHashTest() override {}
+>>>>>>> chromium
 
   enum TamperResourceType {
     kTamperRequestedResource,

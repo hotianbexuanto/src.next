@@ -6,6 +6,13 @@ package org.chromium.base;
 
 import android.os.StrictMode;
 
+<<<<<<< HEAD
+import org.chromium.build.BuildConfig;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+
+=======
+>>>>>>> chromium
 import java.io.Closeable;
 
 /**
@@ -21,6 +28,20 @@ import java.io.Closeable;
  * </pre>
  *
  */
+<<<<<<< HEAD
+@NullMarked
+public class StrictModeContext implements Closeable {
+    private static class Impl extends StrictModeContext {
+        private final StrictMode.@Nullable ThreadPolicy mThreadPolicy;
+        private final StrictMode.@Nullable VmPolicy mVmPolicy;
+
+        private Impl(
+                StrictMode.@Nullable ThreadPolicy threadPolicy,
+                StrictMode.@Nullable VmPolicy vmPolicy) {
+            mThreadPolicy = threadPolicy;
+            mVmPolicy = vmPolicy;
+        }
+=======
 public final class StrictModeContext implements Closeable {
     private final StrictMode.ThreadPolicy mThreadPolicy;
     private final StrictMode.VmPolicy mVmPolicy;
@@ -29,6 +50,7 @@ public final class StrictModeContext implements Closeable {
         mThreadPolicy = threadPolicy;
         mVmPolicy = vmPolicy;
     }
+>>>>>>> chromium
 
     private StrictModeContext(StrictMode.ThreadPolicy threadPolicy) {
         this(threadPolicy, null);

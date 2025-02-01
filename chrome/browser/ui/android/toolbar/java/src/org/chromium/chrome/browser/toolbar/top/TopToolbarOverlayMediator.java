@@ -11,6 +11,11 @@ import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
 import org.chromium.base.supplier.ObservableSupplier;
+<<<<<<< HEAD
+import org.chromium.cc.input.BrowserControlsOffsetTagsInfo;
+import org.chromium.cc.input.BrowserControlsState;
+=======
+>>>>>>> chromium
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsUtils;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
@@ -58,6 +63,11 @@ public class TopToolbarOverlayMediator {
     /** The view state for this overlay. */
     private final PropertyModel mModel;
 
+<<<<<<< HEAD
+    private final ObservableSupplier<Integer> mBottomToolbarControlsOffsetSupplier;
+
+=======
+>>>>>>> chromium
     /** Whether visibility is controlled internally or manually by the feature. */
     private boolean mIsVisibilityManuallyControlled;
 
@@ -75,7 +85,13 @@ public class TopToolbarOverlayMediator {
             Callback<ClipDrawableProgressBar.DrawingInfo> progressInfoCallback,
             ObservableSupplier<Tab> tabSupplier,
             BrowserControlsStateProvider browserControlsStateProvider,
+<<<<<<< HEAD
+            TopUiThemeColorProvider topUiThemeColorProvider,
+            ObservableSupplier<Integer> bottomToolbarControlsOffsetSupplier,
+            int layoutsToShowOn,
+=======
             TopUiThemeColorProvider topUiThemeColorProvider, int layoutsToShowOn,
+>>>>>>> chromium
             boolean manualVisibilityControl) {
         mContext = context;
         mLayoutStateProvider = layoutStateProvider;
@@ -83,6 +99,11 @@ public class TopToolbarOverlayMediator {
         mBrowserControlsStateProvider = browserControlsStateProvider;
         mTopUiThemeColorProvider = topUiThemeColorProvider;
         mModel = model;
+<<<<<<< HEAD
+        mBottomToolbarControlsOffsetSupplier = bottomToolbarControlsOffsetSupplier;
+        mBottomToolbarControlsOffsetSupplier.addObserver((unused) -> updateContentOffset(false));
+=======
+>>>>>>> chromium
         mIsVisibilityManuallyControlled = manualVisibilityControl;
 
         mIsOnValidLayout = (mLayoutStateProvider.getActiveLayoutType() & layoutsToShowOn) > 0;
@@ -126,6 +147,26 @@ public class TopToolbarOverlayMediator {
         activityTabCallback.onResult(tabSupplier.get());
         mTabObserver.triggerWithCurrentTab();
 
+<<<<<<< HEAD
+        mBrowserControlsObserver =
+                new BrowserControlsStateProvider.Observer() {
+                    @Override
+                    public void onControlsOffsetChanged(
+                            int topOffset,
+                            int topControlsMinHeightOffset,
+                            boolean topControlsMinHeightChanged,
+                            int bottomOffset,
+                            int bottomControlsMinHeightOffset,
+                            boolean bottomControlsMinHeightChanged,
+                            boolean requestNewFrame,
+                            boolean isVisibilityForced) {
+                        if (!ChromeFeatureList.sBrowserControlsInViz.isEnabled()
+                                || requestNewFrame
+                                || isVisibilityForced
+                                || topControlsMinHeightChanged) {
+                            updateContentOffset(topControlsMinHeightChanged);
+                        }
+=======
         mBrowserControlsObserver = new BrowserControlsStateProvider.Observer() {
             @Override
             public void onControlsOffsetChanged(int topOffset, int topControlsMinHeightOffset,
@@ -135,6 +176,7 @@ public class TopToolbarOverlayMediator {
                 // consists of the top controls offset plus top controls minimum height.
                 int yOffset = topOffset + mBrowserControlsStateProvider.getTopControlsMinHeight();
                 mModel.set(TopToolbarOverlayProperties.Y_OFFSET, yOffset);
+>>>>>>> chromium
 
                 updateShadowState();
                 updateVisibility();
@@ -276,7 +318,41 @@ public class TopToolbarOverlayMediator {
         updateVisibility();
     }
 
+<<<<<<< HEAD
+    void setViewportHeight(float viewportHeight) {
+        if (viewportHeight == mViewportHeight) return;
+        mViewportHeight = viewportHeight;
+        updateContentOffset(false);
+    }
+
+    private void updateContentOffset(boolean minHeightChanged) {
+        // When top-anchored, the content offset is used to position the toolbar
+        // layer instead of the top controls offset because the top controls can
+        // have a different height than that of just the toolbar, (e.g. when status
+        // indicator is visible or tab strip is hidden), and the toolbar should be
+        // positioned at the bottom of the top controls regardless of the overall
+        // height.
+        // When the toolbar is bottom-anchored, the situation is even more ambiguous
+        // because the bottom-anchored toolbar can't be assumed to sit at the top or
+        // bottom of the bottom controls stack. Instead, we rely on an offset
+        // provided to us indirectly via BottomControlsStacker, which controls the
+        // position of bottom controls layers.
+        int contentOffset = mBrowserControlsStateProvider.getContentOffset();
+        if (ChromeFeatureList.sBrowserControlsInViz.isEnabled() && minHeightChanged) {
+            // We only want to use the height, any scroll offsets will be applied by viz.
+            contentOffset = mBrowserControlsStateProvider.getTopControlsCurrentHeight();
+        }
+
+        if (mBrowserControlsStateProvider.getControlsPosition() == ControlsPosition.BOTTOM) {
+            contentOffset = (int) (mBottomToolbarControlsOffsetSupplier.get() + mViewportHeight);
+        }
+
+        mModel.set(TopToolbarOverlayProperties.CONTENT_OFFSET, contentOffset);
+    }
+
+=======
     @VisibleForTesting
+>>>>>>> chromium
     static void setIsTabletForTesting(Boolean isTablet) {
         sIsTabletForTesting = isTablet;
     }

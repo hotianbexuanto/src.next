@@ -9,6 +9,11 @@
 #include <memory>
 #include <string>
 
+<<<<<<< HEAD
+#include "base/run_loop.h"
+#include "base/scoped_observation.h"
+=======
+>>>>>>> chromium
 #include "extensions/browser/event_router.h"
 
 namespace extensions {
@@ -33,9 +38,15 @@ class TestEventRouterObserver : public EventRouter::TestObserver {
 
   EventMap events_;
   EventMap dispatched_events_;
+<<<<<<< HEAD
+  base::ScopedObservation<EventRouter, EventRouter::TestObserver> observation_{
+      this};
+  std::unique_ptr<base::RunLoop> run_loop_;
+=======
   EventRouter* event_router_;
 
   DISALLOW_COPY_AND_ASSIGN(TestEventRouterObserver);
+>>>>>>> chromium
 };
 
 }  // namespace extensions

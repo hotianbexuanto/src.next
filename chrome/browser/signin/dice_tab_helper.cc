@@ -12,7 +12,69 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
+<<<<<<< HEAD
+#include "google_apis/gaia/gaia_auth_util.h"
+
+// static
+DiceTabHelper::EnableSyncCallback
+DiceTabHelper::GetEnableSyncCallbackForBrowser() {
+  return base::BindRepeating([](Profile* profile,
+                                signin_metrics::AccessPoint access_point,
+                                signin_metrics::PromoAction promo_action,
+                                content::WebContents* web_contents,
+                                const CoreAccountInfo& account_info) {
+    DCHECK(profile);
+    Browser* browser = web_contents ? chrome::FindBrowserWithTab(web_contents)
+                                    : chrome::FindBrowserWithProfile(profile);
+    if (!browser) {
+      return;
+    }
+
+    bool is_sync_promo =
+        access_point ==
+        signin_metrics::AccessPoint::kAvatarBubbleSignInWithSyncPromo;
+    if (switches::IsImprovedSettingsUIOnDesktopEnabled()) {
+      is_sync_promo = is_sync_promo ||
+                      access_point == signin_metrics::AccessPoint::kSettings;
+    }
+    TurnSyncOnHelper::SigninAbortedMode abort_mode =
+        is_sync_promo ? TurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT
+                      : TurnSyncOnHelper::SigninAbortedMode::REMOVE_ACCOUNT;
+
+    // TurnSyncOnHelper is suicidal (it will kill itself once it
+    // finishes enabling sync).
+    new TurnSyncOnHelper(profile, browser, access_point, promo_action,
+                         account_info.account_id, abort_mode, is_sync_promo);
+  });
+}
+
+// static
+DiceTabHelper::ShowSigninErrorCallback
+DiceTabHelper::GetShowSigninErrorCallbackForBrowser() {
+  return base::BindRepeating([](Profile* profile,
+                                content::WebContents* web_contents,
+                                const SigninUIError& error) {
+    if (!profile) {
+      return;
+    }
+    Browser* browser = web_contents ? chrome::FindBrowserWithTab(web_contents)
+                                    : chrome::FindBrowserWithProfile(profile);
+    if (!browser) {
+      return;
+    }
+    LoginUIServiceFactory::GetForProfile(profile)->DisplayLoginResult(
+        browser, error, /*from_profile_picker=*/false);
+  });
+}
+
+DiceTabHelper::ResetableState::ResetableState() = default;
+DiceTabHelper::ResetableState::~ResetableState() = default;
+DiceTabHelper::ResetableState::ResetableState(ResetableState&& other) = default;
+DiceTabHelper::ResetableState& DiceTabHelper::ResetableState::operator=(
+    ResetableState&& other) = default;
+=======
 #include "google_apis/gaia/gaia_urls.h"
+>>>>>>> chromium
 
 DiceTabHelper::DiceTabHelper(content::WebContents* web_contents)
     : content::WebContentsObserver(web_contents) {}
@@ -44,6 +106,14 @@ void DiceTabHelper::InitializeSigninFlow(
                                                          promo_action);
     base::RecordAction(base::UserMetricsAction("Signin_SigninPage_Loading"));
   }
+<<<<<<< HEAD
+
+  if (signin_util::IsSigninPending(identity_manager)) {
+    base::UmaHistogramEnumeration(
+        "Signin.SigninPending.ResolutionSourceStarted", access_point);
+  }
+=======
+>>>>>>> chromium
 }
 
 bool DiceTabHelper::IsChromeSigninPage() const {

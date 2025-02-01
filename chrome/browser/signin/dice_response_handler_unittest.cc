@@ -27,8 +27,14 @@
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
+<<<<<<< HEAD
+#include "crypto/signature_verifier.h"
+#include "google_apis/gaia/core_account_id.h"
+#include "google_apis/gaia/gaia_id.h"
+=======
 #include "content/public/test/browser_task_environment.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+>>>>>>> chromium
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -48,7 +54,14 @@ class DiceTestSigninClient : public TestSigninClient, public GaiaAuthConsumer {
   explicit DiceTestSigninClient(PrefService* pref_service)
       : TestSigninClient(pref_service), consumer_(nullptr) {}
 
+<<<<<<< HEAD
+  DiceTestSigninClient(const DiceTestSigninClient&) = delete;
+  DiceTestSigninClient& operator=(const DiceTestSigninClient&) = delete;
+
+  ~DiceTestSigninClient() override = default;
+=======
   ~DiceTestSigninClient() override {}
+>>>>>>> chromium
 
   std::unique_ptr<GaiaAuthFetcher> CreateGaiaAuthFetcher(
       GaiaAuthConsumer* consumer,
@@ -223,11 +236,76 @@ class TestProcessDiceHeaderDelegate : public ProcessDiceHeaderDelegate {
     owner_->HandleTokenExchangeFailure(email, error);
   }
 
+<<<<<<< HEAD
+  signin_metrics::AccessPoint GetAccessPoint() override {
+    return signin_metrics::AccessPoint::kSettings;
+  }
+
+  void OnDiceSigninHeaderReceived() override {}
+
+ private:
+  raw_ptr<DiceResponseHandlerTest> owner_;
+};
+
+void DiceResponseHandlerTest::RunSignoutTest(
+    const DiceResponseParams& dice_params,
+    const std::vector<CoreAccountId>& secondary_with_valid_refresh_tokens,
+    const CoreAccountId& primary_account,
+    bool invalid_primary_account) {
+  dice_response_handler_->ProcessDiceHeader(
+      dice_params, std::make_unique<TestProcessDiceHeaderDelegate>(this));
+
+  // Only the token corresponding the the Dice parameter has been removed, and
+  // the user is still signed in.
+  bool has_primary_account = !primary_account.empty();
+  size_t expected_accounts_with_refresh_tokens =
+      secondary_with_valid_refresh_tokens.size() +
+      (has_primary_account ? 1U : 0U);
+  EXPECT_EQ(identity_manager()->GetAccountsWithRefreshTokens().size(),
+            expected_accounts_with_refresh_tokens);
+  for (const CoreAccountId& account_id : secondary_with_valid_refresh_tokens) {
+    SCOPED_TRACE(account_id.ToString());
+    EXPECT_TRUE(identity_manager()->HasAccountWithRefreshToken(account_id));
+    EXPECT_FALSE(
+        identity_manager()->HasAccountWithRefreshTokenInPersistentErrorState(
+            account_id));
+  }
+
+  CHECK(!invalid_primary_account || has_primary_account);
+  if (has_primary_account) {
+    EXPECT_EQ(
+        identity_manager()->GetPrimaryAccountId(signin::ConsentLevel::kSignin),
+        primary_account);
+    EXPECT_EQ(
+        identity_manager()->HasAccountWithRefreshTokenInPersistentErrorState(
+            primary_account),
+        invalid_primary_account);
+  } else if (identity_manager()->HasPrimaryAccount(
+                 signin::ConsentLevel::kSignin)) {
+    // In the unittest `RemoveAccount()` will not lead to the primary account
+    // being removed. Check there is no refresh token instead.
+    EXPECT_FALSE(identity_manager()->HasAccountWithRefreshToken(
+        identity_manager()->GetPrimaryAccountId(
+            signin::ConsentLevel::kSignin)));
+  }
+
+  if (invalid_primary_account) {
+    auto error = identity_manager()->GetErrorStateOfRefreshTokenForAccount(
+        primary_account);
+    EXPECT_EQ(error.state(), GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS);
+    EXPECT_EQ(error.GetInvalidGaiaCredentialsReason(),
+              GoogleServiceAuthError::InvalidGaiaCredentialsReason::
+                  CREDENTIALS_REJECTED_BY_CLIENT);
+  }
+}
+
+=======
  private:
   DiceResponseHandlerTest* owner_;
 };
 
 // Checks that a SIGNIN action triggers a token exchange request.
+>>>>>>> chromium
 TEST_F(DiceResponseHandlerTest, Signin) {
   DiceResponseParams dice_params = MakeDiceParams(DiceAction::SIGNIN);
   const auto& account_info = dice_params.signin_info->account_info;
@@ -256,6 +334,94 @@ TEST_F(DiceResponseHandlerTest, Signin) {
   EXPECT_EQ(1, reconcilor_blocked_count_);
   EXPECT_EQ(1, reconcilor_unblocked_count_);
   // Check that the AccountInfo::is_under_advanced_protection is set.
+<<<<<<< HEAD
+  AccountInfo extended_account_info =
+      identity_manager()->FindExtendedAccountInfoByAccountId(account_id);
+  EXPECT_TRUE(extended_account_info.is_under_advanced_protection);
+  // Check that the AccessPoint was propagated from the delegate.
+  EXPECT_EQ(extended_account_info.access_point,
+            signin_metrics::AccessPoint::kSettings);
+  EXPECT_EQ(
+      identity_test_env_.GetNumCallsToPrepareForFetchingAccountCapabilities(),
+      1);
+#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
+  histogram_tester_.ExpectUniqueSample(
+      kTokenBindingOutcomeHistogram,
+      DiceResponseHandler::TokenBindingOutcome::kNotBoundNotSupported,
+      /*expected_bucket_count=*/1);
+#endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
+}
+
+#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
+// Checks that a SIGNIN action triggers a token exchange request.
+TEST_F(DiceResponseHandlerTest, SigninWithBoundToken) {
+  EnableRegistrationTokenHelperFactory();
+  DiceResponseParams dice_params = MakeDiceParams(DiceAction::SIGNIN);
+  const auto& account_info = dice_params.signin_info->account_info;
+  CoreAccountId account_id = identity_manager()->PickAccountIdForAccount(
+      account_info.gaia_id, account_info.email);
+  EXPECT_FALSE(identity_manager()->HasAccountWithRefreshToken(account_id));
+  const std::string authorization_code =
+      dice_params.signin_info->authorization_code;
+  ExpectRegistrationTokenHelperCreated({authorization_code},
+                                       base::ToVector(kAcceptableAlgorithms));
+  dice_response_handler_->ProcessDiceHeader(
+      dice_params, std::make_unique<TestProcessDiceHeaderDelegate>(this));
+
+  // Token fetch should be blocked on the binding registration token generation.
+  ASSERT_THAT(signin_client_.GetAndClearConsumer(), testing::IsNull());
+  // Simulate successful token generation.
+  const std::vector<uint8_t> kWrappedKey = {1, 2, 3};
+  SimulateRegistrationTokenHelperResult(
+      authorization_code,
+      RegistrationTokenHelper::Result(unexportable_keys::UnexportableKeyId(),
+                                      kWrappedKey, "test_registration_token"));
+
+  // Check that a GaiaAuthFetcher has been created.
+  GaiaAuthConsumer* consumer = signin_client_.GetAndClearConsumer();
+  ASSERT_THAT(consumer, testing::NotNull());
+  // Simulate GaiaAuthFetcher success.
+  consumer->OnClientOAuthSuccess(GaiaAuthConsumer::ClientOAuthResult(
+      "refresh_token", "access_token", 10, /*is_child_account=*/false,
+      /*is_under_advanced_protection=*/false, /*is_bound_to_key=*/true));
+  // Check that the token has been inserted in the token service.
+  EXPECT_TRUE(identity_manager()->HasAccountWithRefreshToken(account_id));
+  EXPECT_EQ(identity_manager()->GetWrappedBindingKeyOfRefreshTokenForAccount(
+                account_id),
+            kWrappedKey);
+  EXPECT_TRUE(auth_error_email_.empty());
+  EXPECT_EQ(GoogleServiceAuthError::NONE, auth_error_.state());
+  histogram_tester_.ExpectUniqueSample(
+      kTokenBindingOutcomeHistogram,
+      DiceResponseHandler::TokenBindingOutcome::kBound,
+      /*expected_bucket_count=*/1);
+}
+
+// Checks that no token binding attempt is made when an account is ineligible
+// for token binding.
+TEST_F(DiceResponseHandlerTest, SigninIneligibleForTokenBinding) {
+  EnableRegistrationTokenHelperFactory();
+  DiceResponseParams dice_params = MakeDiceParams(DiceAction::SIGNIN);
+  dice_params.signin_info->supported_algorithms_for_token_binding.clear();
+  const auto& account_info = dice_params.signin_info->account_info;
+  CoreAccountId account_id = identity_manager()->PickAccountIdForAccount(
+      account_info.gaia_id, account_info.email);
+  EXPECT_FALSE(identity_manager()->HasAccountWithRefreshToken(account_id));
+
+  dice_response_handler_->ProcessDiceHeader(
+      dice_params, std::make_unique<TestProcessDiceHeaderDelegate>(this));
+  // Check that a GaiaAuthFetcher has been created immediately.
+  GaiaAuthConsumer* consumer = signin_client_.GetAndClearConsumer();
+  ASSERT_THAT(consumer, testing::NotNull());
+  // Simulate GaiaAuthFetcher success.
+  consumer->OnClientOAuthSuccess(GaiaAuthConsumer::ClientOAuthResult(
+      "refresh_token", "access_token", 10, /*is_child_account=*/false,
+      /*is_under_advanced_protection=*/true, /*is_bound_to_key=*/false));
+  // Check that the token has been inserted in the token service and it is
+  // unbound.
+  EXPECT_TRUE(identity_manager()->HasAccountWithRefreshToken(account_id));
+=======
+>>>>>>> chromium
   EXPECT_TRUE(identity_manager()
                   ->FindExtendedAccountInfoByAccountId(account_id)
                   .is_under_advanced_protection);
@@ -465,7 +631,7 @@ TEST_F(DiceResponseHandlerTest, SigninWithTwoAccounts) {
   const auto& account_info_1 = dice_params_1.signin_info->account_info;
   DiceResponseParams dice_params_2 = MakeDiceParams(DiceAction::SIGNIN);
   dice_params_2.signin_info->account_info.email = "other_email";
-  dice_params_2.signin_info->account_info.gaia_id = "other_gaia_id";
+  dice_params_2.signin_info->account_info.gaia_id = GaiaId("other_gaia_id");
   const auto& account_info_2 = dice_params_2.signin_info->account_info;
   CoreAccountId account_id_1 = identity_manager()->PickAccountIdForAccount(
       account_info_1.gaia_id, account_info_1.email);
@@ -757,7 +923,7 @@ TEST_F(DiceResponseHandlerTest, SigninSignoutDifferentAccount) {
   DiceResponseParams signin_params_1 = MakeDiceParams(DiceAction::SIGNIN);
   DiceResponseParams signin_params_2 = MakeDiceParams(DiceAction::SIGNIN);
   signin_params_2.signin_info->account_info.email = "other_email";
-  signin_params_2.signin_info->account_info.gaia_id = "other_gaia_id";
+  signin_params_2.signin_info->account_info.gaia_id = GaiaId("other_gaia_id");
   const auto& signin_account_info_1 = signin_params_1.signin_info->account_info;
   const auto& signin_account_info_2 = signin_params_2.signin_info->account_info;
   CoreAccountId account_id_1 = identity_manager()->PickAccountIdForAccount(

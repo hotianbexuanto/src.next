@@ -24,6 +24,15 @@ import org.chromium.ui.widget.Toast;
  * TODO(twellington): Replace with TabSwitcherButtonCoordinator so code can be shared with bottom
  *                    toolbar.
  */
+<<<<<<< HEAD
+public class ToggleTabStackButton extends ListMenuButton implements TabSwitcherDrawable.Observer {
+    private final Callback<Integer> mTabCountSupplierObserver = this::onUpdateTabCount;
+    private final Callback<Boolean> mNotificationDotObserver = this::onUpdateNotificationDot;
+    private TabSwitcherDrawable mTabSwitcherButtonDrawable;
+    private ObservableSupplier<Integer> mTabCountSupplier;
+    private ObservableSupplier<Boolean> mNotificationDotSupplier;
+    private Supplier<Boolean> mIsIncognitoSupplier;
+=======
 public class ToggleTabStackButton
         extends ListMenuButton implements TabCountProvider.TabCountObserver, View.OnClickListener,
                                           View.OnLongClickListener {
@@ -34,6 +43,7 @@ public class ToggleTabStackButton
     private OnLongClickListener mTabSwitcherLongClickListener;
     private PulseDrawable mHighlightDrawable;
     private Drawable mNormalBackground;
+>>>>>>> chromium
 
     public ToggleTabStackButton(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -48,6 +58,50 @@ public class ToggleTabStackButton
         mTabSwitcherButtonDrawableLight =
                 TabSwitcherDrawable.createTabSwitcherDrawable(getContext(), true);
         setImageDrawable(mTabSwitcherButtonDrawable);
+<<<<<<< HEAD
+        mTabSwitcherButtonDrawable.addTabSwitcherDrawableObserver(this);
+    }
+
+    /** Called to destroy the tab stack button. */
+    void destroy() {
+        if (mTabCountSupplier != null) {
+            mTabCountSupplier.removeObserver(mTabCountSupplierObserver);
+        }
+        if (mNotificationDotSupplier != null) {
+            mNotificationDotSupplier.removeObserver(mNotificationDotObserver);
+        }
+        mTabSwitcherButtonDrawable.removeTabSwitcherDrawableObserver(this);
+    }
+
+    void setBrandedColorScheme(@BrandedColorScheme int brandedColorScheme) {
+        mTabSwitcherButtonDrawable.setTint(
+                ThemeUtils.getThemedToolbarIconTint(getContext(), brandedColorScheme));
+        mTabSwitcherButtonDrawable.setNotificationBackground(brandedColorScheme);
+        if (mIsIncognitoSupplier != null) {
+            mTabSwitcherButtonDrawable.setIncognitoStatus(mIsIncognitoSupplier.get());
+        }
+    }
+
+    /**
+     * @param tabCountSupplier A supplier used to observe the number of tabs in the current model.
+     * @param notificationDotSupplier A supplier used to observe whether to show the notification
+     *     dot.
+     * @param incognitoSupplier A supplier used to check for incongito state.
+     */
+    void setSuppliers(
+            ObservableSupplier<Integer> tabCountSupplier,
+            ObservableSupplier<Boolean> notificationDotSupplier,
+            Supplier<Boolean> isIncognitoSupplier) {
+        assert mTabCountSupplier == null : "setSuppliers should only be called once.";
+
+        mTabCountSupplier = tabCountSupplier;
+        tabCountSupplier.addObserver(mTabCountSupplierObserver);
+
+        mNotificationDotSupplier = notificationDotSupplier;
+        notificationDotSupplier.addObserver(mNotificationDotObserver);
+
+        mIsIncognitoSupplier = isIncognitoSupplier;
+=======
         setOnClickListener(this);
         setOnLongClickListener(this);
     }
@@ -120,6 +174,7 @@ public class ToggleTabStackButton
             CharSequence description = getResources().getString(R.string.open_tabs);
             return Toast.showAnchoredToast(getContext(), v, description);
         }
+>>>>>>> chromium
     }
 
     @Override
@@ -135,4 +190,64 @@ public class ToggleTabStackButton
             super.onLayout(changed, left, top, right, bottom);
         }
     }
+<<<<<<< HEAD
+
+    // TabSwitcherDrawable.Observer implementation.
+
+    @Override
+    public void onDrawableStateChanged() {
+        @PluralsRes
+        int drawableDescRes = R.plurals.accessibility_toolbar_btn_tabswitcher_toggle_default;
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.DATA_SHARING)
+                && mTabSwitcherButtonDrawable.getShowIconNotificationStatus()) {
+            drawableDescRes =
+                    R.plurals
+                            .accessibility_toolbar_btn_tabswitcher_toggle_default_with_notification;
+        }
+
+        int tabCount = mTabCountSupplier.get();
+        String drawableText = getResources().getQuantityString(drawableDescRes, tabCount, tabCount);
+        setContentDescription(drawableText);
+        TooltipCompat.setTooltipText(this, drawableText);
+    }
+
+    /**
+     * Draws the current visual state of this component for the purposes of rendering the tab
+     * switcher animation, setting the alpha to fade the view by the appropriate amount.
+     *
+     * @param canvas Canvas to draw to.
+     * @param alpha Integer (0-255) alpha level to draw at.
+     */
+    public void drawTabSwitcherAnimationOverlay(Canvas canvas, int alpha) {
+        int backgroundWidth = mTabSwitcherButtonDrawable.getIntrinsicWidth();
+        int backgroundHeight = mTabSwitcherButtonDrawable.getIntrinsicHeight();
+        int backgroundLeft =
+                (getWidth() - getPaddingLeft() - getPaddingRight() - backgroundWidth) / 2;
+        backgroundLeft += getPaddingLeft();
+        int backgroundTop =
+                (getHeight() - getPaddingTop() - getPaddingBottom() - backgroundHeight) / 2;
+        backgroundTop += getPaddingTop();
+        canvas.translate(backgroundLeft, backgroundTop);
+
+        int previousAlpha = mTabSwitcherButtonDrawable.getAlpha();
+        mTabSwitcherButtonDrawable.setAlpha(255);
+        mTabSwitcherButtonDrawable.draw(canvas);
+        // restore alpha.
+        getDrawable().setAlpha(previousAlpha);
+    }
+
+    public TabSwitcherDrawable getTabSwitcherDrawableForTesting() {
+        return mTabSwitcherButtonDrawable;
+    }
+
+    private void onUpdateTabCount(int tabCount) {
+        setEnabled(tabCount >= 1);
+        mTabSwitcherButtonDrawable.updateForTabCount(tabCount, mIsIncognitoSupplier.get());
+    }
+
+    private void onUpdateNotificationDot(boolean showDot) {
+        mTabSwitcherButtonDrawable.setNotificationIconStatus(showDot);
+    }
+=======
+>>>>>>> chromium
 }

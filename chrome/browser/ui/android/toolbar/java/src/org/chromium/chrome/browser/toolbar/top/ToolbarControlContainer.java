@@ -94,6 +94,119 @@ public class ToolbarControlContainer extends OptimizedFrameLayout implements Con
         }
     }
 
+<<<<<<< HEAD
+    @Override
+    public void onTabOrModelChanged(boolean incognito) {
+        if (!DeviceFormFactor.isNonMultiDisplayContextOnTablet(getContext())
+                || getBackground() == null) {
+            return;
+        }
+
+        if (mIncognito != incognito) {
+            maybeUpdateTempTabStripDrawableBackground(incognito, mAppHeaderState);
+            mIncognito = incognito;
+        }
+    }
+
+    public void onPageLoadStopped() {
+        ((ToolbarViewResourceAdapter) getToolbarResourceAdapter()).onPageLoadStopped();
+    }
+
+    @Override
+    public void setCompositorBackgroundInitialized() {
+        mIsCompositorInitialized = true;
+        setBackgroundResource(0);
+    }
+
+    @Override
+    public CoordinatorLayout.LayoutParams mutateLayoutParams() {
+        CoordinatorLayout.LayoutParams layoutParams =
+                (CoordinatorLayout.LayoutParams) getLayoutParams();
+        setLayoutParams(layoutParams);
+        return layoutParams;
+    }
+
+    @Override
+    public FrameLayout.LayoutParams mutateHairlineLayoutParams() {
+        FrameLayout.LayoutParams hairlineParams = (LayoutParams) mToolbarHairline.getLayoutParams();
+        mToolbarHairline.setLayoutParams(hairlineParams);
+        return hairlineParams;
+    }
+
+    @Override
+    public void destroy() {
+        ((ToolbarViewResourceAdapter) getToolbarResourceAdapter()).destroy();
+        if (mToolbarContainerDragListener != null) {
+            mToolbarContainer.setOnDragListener(null);
+            mToolbarContainerDragListener = null;
+        }
+    }
+
+    @Override
+    public void setVisibility(int visibility) {
+        mMidVisibilityToggle = true;
+        super.setVisibility(visibility);
+        mMidVisibilityToggle = false;
+    }
+
+    @Override
+    public void onAppHeaderStateChanged(AppHeaderState newState) {
+        maybeUpdateTempTabStripDrawableBackground(mIncognito, newState);
+        mAppHeaderState = newState;
+    }
+
+    private void maybeUpdateTempTabStripDrawableBackground(
+            boolean incognito, @Nullable AppHeaderState appHeaderState) {
+        // If compositor is initialized, we don't want to set the background drawable again since
+        // it'll block the real tab strip in the compositor.
+        if (mIsCompositorInitialized) return;
+
+        Drawable backgroundColor =
+                new ColorDrawable(
+                        TabUiThemeUtil.getTabStripBackgroundColorForActivityState(
+                                getContext(), mIncognito, !mIsAppInUnfocusedDesktopWindow));
+        Drawable backgroundTabImage =
+                ResourcesCompat.getDrawable(
+                        getContext().getResources(),
+                        TabUiThemeUtil.getTabResource(),
+                        getContext().getTheme());
+        backgroundTabImage.setTint(
+                TabUiThemeUtil.getTabStripContainerColor(
+                        getContext(),
+                        incognito,
+                        /* foreground= */ true,
+                        /* isPlaceholder= */ false,
+                        /* isHovered= */ false));
+        LayerDrawable backgroundDrawable =
+                new LayerDrawable(new Drawable[] {backgroundColor, backgroundTabImage});
+
+        final int backgroundTabImageIndex = 1;
+        // Set image size to match tab size.
+        backgroundDrawable.setPadding(0, 0, 0, 0);
+        backgroundDrawable.setLayerSize(
+                backgroundTabImageIndex,
+                ViewUtils.dpToPx(getContext(), TabUiThemeUtil.getMaxTabStripTabWidthDp()),
+                // TODO(crbug.com/335660381): We should use the tab strip height from resource
+                // and add a top insets.
+                mToolbar.getTabStripHeight());
+        // Tab should show up at start of layer based on layout.
+        backgroundDrawable.setLayerGravity(backgroundTabImageIndex, Gravity.START);
+
+        // When app header state available, set the state accordingly.
+        if (appHeaderState != null && appHeaderState.isInDesktopWindow()) {
+            backgroundDrawable.setLayerInset(
+                    backgroundTabImageIndex,
+                    appHeaderState.getLeftPadding(),
+                    0,
+                    appHeaderState.getRightPadding(),
+                    0);
+        }
+
+        setBackground(backgroundDrawable);
+    }
+
+=======
+>>>>>>> chromium
     /**
      * @param toolbar The toolbar contained inside this control container. Should be called
      *                after inflation is complete.
@@ -127,6 +240,8 @@ public class ToolbarControlContainer extends OptimizedFrameLayout implements Con
         return true;
     }
 
+<<<<<<< HEAD
+=======
     /**
      * Invalidate the entire capturing bitmap region.
      */
@@ -134,9 +249,10 @@ public class ToolbarControlContainer extends OptimizedFrameLayout implements Con
         ((ToolbarViewResourceAdapter) getToolbarResourceAdapter()).forceInvalidate();
     }
 
+>>>>>>> chromium
     /**
-     * Update whether the control container is ready to have the bitmap representation of
-     * itself be captured.
+     * Update whether the control container is ready to have the bitmap representation of itself be
+     * captured.
      */
     public void setReadyForBitmapCapture(boolean ready) {
         mToolbarContainer.mReadyForBitmapCapture = ready;
@@ -197,14 +313,6 @@ public class ToolbarControlContainer extends OptimizedFrameLayout implements Con
             mTabStripHeightPx = mToolbar.getTabStripHeight();
         }
 
-        /**
-         * Force this resource to be recaptured in full, ignoring the checks
-         * {@link #invalidate(Rect)} does.
-         */
-        public void forceInvalidate() {
-            super.invalidate(null);
-        }
-
         @Override
         public boolean isDirty() {
             return mToolbar != null && mToolbar.isReadyForTextureCapture() && super.isDirty();
@@ -228,9 +336,6 @@ public class ToolbarControlContainer extends OptimizedFrameLayout implements Con
         @Override
         protected void onCaptureEnd() {
             mToolbar.setTextureCaptureMode(false);
-            // Forcing a texture capture should only be done for one draw. Turn off forced
-            // texture capture.
-            mToolbar.setForceTextureCapture(false);
         }
 
         @Override
@@ -278,7 +383,14 @@ public class ToolbarControlContainer extends OptimizedFrameLayout implements Con
     }
 
     private boolean isOnTabStrip(MotionEvent e) {
+<<<<<<< HEAD
+        // If the tab strip is showing, allow the tab strip to consume its gestures.
+        // Otherwise, permit bottom toolbar to handle swipe up gesture to open tab switcher.
+        int tabStripHeight = mToolbar.getTabStripHeight();
+        return tabStripHeight != 0 && e.getY() <= tabStripHeight;
+=======
         return e.getY() <= mTabStripHeight;
+>>>>>>> chromium
     }
 
     /**

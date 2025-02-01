@@ -3,14 +3,17 @@
 // found in the LICENSE file.
 
 #include "base/observer_list_threadsafe.h"
+<<<<<<< HEAD
 
-namespace base {
-namespace internal {
+#include "base/compiler_specific.h"
+=======
+>>>>>>> chromium
+
+namespace base::internal {
 
 LazyInstance<ThreadLocalPointer<
     const ObserverListThreadSafeBase::NotificationDataBase>>::Leaky
     ObserverListThreadSafeBase::tls_current_notification_ =
         LAZY_INSTANCE_INITIALIZER;
 
-}  // namespace internal
-}  // namespace base
+}  // namespace base::internal

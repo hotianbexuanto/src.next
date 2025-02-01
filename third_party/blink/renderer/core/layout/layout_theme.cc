@@ -69,19 +69,21 @@ namespace blink {
 namespace {
 
 // This function should match to the user-agent stylesheet.
-ControlPart AutoAppearanceFor(const Element& element) {
+AppearanceValue AutoAppearanceFor(const Element& element) {
   if (IsA<HTMLButtonElement>(element))
-    return kButtonPart;
+    return AppearanceValue::kButton;
   if (IsA<HTMLMeterElement>(element))
-    return kMeterPart;
+    return AppearanceValue::kMeter;
   if (IsA<HTMLProgressElement>(element))
-    return kProgressBarPart;
+    return AppearanceValue::kProgressBar;
   if (IsA<HTMLTextAreaElement>(element))
-    return kTextAreaPart;
+    return AppearanceValue::kTextArea;
   if (IsA<SpinButtonElement>(element))
-    return kInnerSpinButtonPart;
-  if (const auto* select = DynamicTo<HTMLSelectElement>(element))
-    return select->UsesMenuList() ? kMenulistPart : kListboxPart;
+    return AppearanceValue::kInnerSpinButton;
+  if (const auto* select = DynamicTo<HTMLSelectElement>(element)) {
+    return select->UsesMenuList() ? AppearanceValue::kMenulist
+                                  : AppearanceValue::kListbox;
+  }
 
   if (const auto* input = DynamicTo<HTMLInputElement>(element)) {
     const AtomicString& type = input->type();
@@ -122,19 +124,19 @@ ControlPart AutoAppearanceFor(const Element& element) {
     const AtomicString& id_value =
         element.FastGetAttribute(html_names::kIdAttr);
     if (id_value == shadow_element_names::kIdSliderThumb)
-      return kSliderThumbHorizontalPart;
+      return AppearanceValue::kSliderThumbHorizontal;
     if (id_value == shadow_element_names::kIdSearchClearButton ||
         id_value == shadow_element_names::kIdClearButton)
-      return kSearchFieldCancelButtonPart;
+      return AppearanceValue::kSearchFieldCancelButton;
 
     // Slider container elements and -webkit-meter-inner-element don't have IDs.
     if (IsSliderContainer(element))
-      return kSliderHorizontalPart;
+      return AppearanceValue::kSliderHorizontal;
     if (element.ShadowPseudoId() ==
         shadow_element_names::kPseudoMeterInnerElement)
-      return kMeterPart;
+      return AppearanceValue::kMeter;
   }
-  return kNoControlPart;
+  return AppearanceValue::kNone;
 }
 
 }  // namespace
@@ -152,6 +154,23 @@ LayoutTheme::LayoutTheme() : has_custom_focus_ring_color_(false) {
   UpdateForcedColorsState();
 }
 
+<<<<<<< HEAD
+AppearanceValue LayoutTheme::AdjustAppearanceWithAuthorStyle(
+    AppearanceValue appearance,
+    const ComputedStyleBuilder& builder) {
+  if (IsControlStyled(appearance, builder)) {
+    return appearance == AppearanceValue::kMenulist
+               ? AppearanceValue::kMenulistButton
+               : AppearanceValue::kNone;
+  }
+  return appearance;
+}
+
+AppearanceValue LayoutTheme::AdjustAppearanceWithElementType(
+    const ComputedStyleBuilder& builder,
+    const Element* element) {
+  AppearanceValue appearance = builder.EffectiveAppearance();
+=======
 ControlPart LayoutTheme::AdjustAppearanceWithAuthorStyle(
     ControlPart part,
     const ComputedStyle& style) {
@@ -164,15 +183,36 @@ ControlPart LayoutTheme::AdjustAppearanceWithElementType(
     const ComputedStyle& style,
     const Element* element) {
   ControlPart part = style.EffectiveAppearance();
+>>>>>>> chromium
   if (!element)
-    return kNoControlPart;
+    return AppearanceValue::kNone;
 
-  ControlPart auto_appearance = AutoAppearanceFor(*element);
-  if (part == auto_appearance)
-    return part;
+  AppearanceValue auto_appearance = AutoAppearanceFor(*element);
+  if (appearance == auto_appearance) {
+    return appearance;
+  }
 
-  switch (part) {
+  switch (appearance) {
     // No restrictions.
+<<<<<<< HEAD
+    case AppearanceValue::kNone:
+    case AppearanceValue::kMediaSlider:
+    case AppearanceValue::kMediaSliderThumb:
+    case AppearanceValue::kMediaVolumeSlider:
+    case AppearanceValue::kMediaVolumeSliderThumb:
+    case AppearanceValue::kMediaControl:
+      return appearance;
+    case AppearanceValue::kBaseSelect: {
+      CHECK(RuntimeEnabledFeatures::CustomizableSelectEnabled());
+      bool base_appearance_allowed = false;
+      if (auto* select = DynamicTo<HTMLSelectElement>(element)) {
+        base_appearance_allowed = !select->IsMultiple();
+      } else if (HTMLSelectElement::IsPopoverForAppearanceBase(element)) {
+        base_appearance_allowed = true;
+      }
+      return base_appearance_allowed ? appearance : auto_appearance;
+    }
+=======
     case kNoControlPart:
     case kMediaSliderPart:
     case kMediaSliderThumbPart:
@@ -180,60 +220,83 @@ ControlPart LayoutTheme::AdjustAppearanceWithElementType(
     case kMediaVolumeSliderThumbPart:
     case kMediaControlPart:
       return part;
+>>>>>>> chromium
 
     // Aliases of 'auto'.
     // https://drafts.csswg.org/css-ui-4/#typedef-appearance-compat-auto
-    case kAutoPart:
-    case kCheckboxPart:
-    case kRadioPart:
-    case kPushButtonPart:
-    case kSquareButtonPart:
-    case kInnerSpinButtonPart:
-    case kListboxPart:
-    case kMenulistPart:
-    case kMeterPart:
-    case kProgressBarPart:
-    case kSliderHorizontalPart:
-    case kSliderThumbHorizontalPart:
-    case kSearchFieldPart:
-    case kSearchFieldCancelButtonPart:
-    case kTextAreaPart:
+    case AppearanceValue::kAuto:
+    case AppearanceValue::kCheckbox:
+    case AppearanceValue::kRadio:
+    case AppearanceValue::kPushButton:
+    case AppearanceValue::kSquareButton:
+    case AppearanceValue::kInnerSpinButton:
+    case AppearanceValue::kListbox:
+    case AppearanceValue::kMenulist:
+    case AppearanceValue::kMeter:
+    case AppearanceValue::kProgressBar:
+    case AppearanceValue::kSliderHorizontal:
+    case AppearanceValue::kSliderThumbHorizontal:
+    case AppearanceValue::kSearchField:
+    case AppearanceValue::kSearchFieldCancelButton:
+    case AppearanceValue::kTextArea:
       return auto_appearance;
 
       // The following keywords should work well for some element types
       // even if their default appearances are different from the keywords.
 
-    case kButtonPart:
-      return (auto_appearance == kPushButtonPart ||
-              auto_appearance == kSquareButtonPart)
-                 ? part
+    case AppearanceValue::kButton:
+      return (auto_appearance == AppearanceValue::kPushButton ||
+              auto_appearance == AppearanceValue::kSquareButton)
+                 ? appearance
                  : auto_appearance;
 
-    case kMenulistButtonPart:
-      return auto_appearance == kMenulistPart ? part : auto_appearance;
-
-    case kSliderVerticalPart:
-      return auto_appearance == kSliderHorizontalPart ? part : auto_appearance;
-
-    case kSliderThumbVerticalPart:
-      return auto_appearance == kSliderThumbHorizontalPart ? part
+    case AppearanceValue::kMenulistButton:
+      return auto_appearance == AppearanceValue::kMenulist ? appearance
                                                            : auto_appearance;
 
+<<<<<<< HEAD
+    case AppearanceValue::kSliderVertical:
+      return auto_appearance == AppearanceValue::kSliderHorizontal
+                 ? appearance
+                 : auto_appearance;
+
+    case AppearanceValue::kSliderThumbVertical:
+      return auto_appearance == AppearanceValue::kSliderThumbHorizontal
+                 ? appearance
+                 : auto_appearance;
+
+    case AppearanceValue::kTextField:
+      if (const auto* input_element = DynamicTo<HTMLInputElement>(*element);
+          input_element &&
+          input_element->FormControlType() == FormControlType::kInputSearch) {
+        return appearance;
+      }
+=======
     case kTextFieldPart:
       if (IsA<HTMLInputElement>(*element) &&
           To<HTMLInputElement>(*element).type() == input_type_names::kSearch)
         return part;
+>>>>>>> chromium
       return auto_appearance;
   }
 
-  return part;
+  return appearance;
 }
 
+<<<<<<< HEAD
+void LayoutTheme::AdjustStyle(const Element* element,
+                              ComputedStyleBuilder& builder) {
+  AppearanceValue original_appearance = builder.Appearance();
+  builder.SetEffectiveAppearance(original_appearance);
+  if (original_appearance == AppearanceValue::kNone) {
+=======
 void LayoutTheme::AdjustStyle(const Element* e, ComputedStyle& style) {
   ControlPart original_part = style.Appearance();
   style.SetEffectiveAppearance(original_part);
   if (original_part == ControlPart::kNoControlPart)
+>>>>>>> chromium
     return;
+  }
 
   // Force inline and table display styles to be inline-block (except for table-
   // which is block)
@@ -252,6 +315,16 @@ void LayoutTheme::AdjustStyle(const Element* e, ComputedStyle& style) {
            style.Display() == EDisplay::kTable)
     style.SetDisplay(EDisplay::kBlock);
 
+<<<<<<< HEAD
+  AppearanceValue appearance = AdjustAppearanceWithAuthorStyle(
+      AdjustAppearanceWithElementType(builder, element), builder);
+  builder.SetEffectiveAppearance(appearance);
+  DCHECK_NE(appearance, AppearanceValue::kAuto);
+  if (appearance == AppearanceValue::kNone) {
+    return;
+  }
+  DCHECK(element);
+=======
   ControlPart part = AdjustAppearanceWithAuthorStyle(
       AdjustAppearanceWithElementType(style, e), style);
   style.SetEffectiveAppearance(part);
@@ -259,13 +332,26 @@ void LayoutTheme::AdjustStyle(const Element* e, ComputedStyle& style) {
   if (part == kNoControlPart)
     return;
   DCHECK(e);
+>>>>>>> chromium
   // After this point, a Node must be non-null Element if
-  // EffectiveAppearance() != kNoControlPart.
+  // EffectiveAppearance() != AppearanceValue::kNone.
 
   AdjustControlPartStyle(style);
 
   // Call the appropriate style adjustment method based off the appearance
   // value.
+<<<<<<< HEAD
+  switch (appearance) {
+    case AppearanceValue::kMenulist:
+      return AdjustMenuListStyle(builder);
+    case AppearanceValue::kMenulistButton:
+      return AdjustMenuListButtonStyle(builder);
+    case AppearanceValue::kSliderThumbHorizontal:
+    case AppearanceValue::kSliderThumbVertical:
+      return AdjustSliderThumbStyle(builder);
+    case AppearanceValue::kSearchFieldCancelButton:
+      return AdjustSearchFieldCancelButtonStyle(builder);
+=======
   switch (part) {
     case kMenulistPart:
       return AdjustMenuListStyle(style);
@@ -283,6 +369,7 @@ void LayoutTheme::AdjustStyle(const Element* e, ComputedStyle& style) {
       return AdjustSearchFieldStyle(style);
     case kSearchFieldCancelButtonPart:
       return AdjustSearchFieldCancelButtonStyle(style);
+>>>>>>> chromium
     default:
       break;
   }
@@ -405,6 +492,26 @@ Color LayoutTheme::PlatformInactiveListBoxSelectionForegroundColor(
   return PlatformInactiveSelectionForegroundColor(color_scheme);
 }
 
+<<<<<<< HEAD
+bool LayoutTheme::IsControlStyled(AppearanceValue appearance,
+                                  const ComputedStyleBuilder& builder) const {
+  switch (appearance) {
+    case AppearanceValue::kPushButton:
+    case AppearanceValue::kSquareButton:
+    case AppearanceValue::kButton:
+    case AppearanceValue::kProgressBar:
+      return builder.HasAuthorBackground() || builder.HasAuthorBorder();
+
+    case AppearanceValue::kMeter:
+      return builder.HasAuthorBackground() || builder.HasAuthorBorder();
+
+    case AppearanceValue::kMenulist:
+    case AppearanceValue::kSearchField:
+    case AppearanceValue::kTextArea:
+    case AppearanceValue::kTextField:
+      return builder.HasAuthorBackground() || builder.HasAuthorBorder() ||
+             builder.BoxShadow();
+=======
 bool LayoutTheme::IsControlStyled(ControlPart part,
                                   const ComputedStyle& style) const {
   switch (part) {
@@ -420,6 +527,7 @@ bool LayoutTheme::IsControlStyled(ControlPart part,
     case kTextFieldPart:
       return style.HasAuthorBackground() || style.HasAuthorBorder() ||
              style.BoxShadow();
+>>>>>>> chromium
 
     default:
       return false;
@@ -484,6 +592,21 @@ void LayoutTheme::AdjustMenuListStyle(ComputedStyle& style) const {
 
 void LayoutTheme::AdjustMenuListButtonStyle(ComputedStyle&) const {}
 
+<<<<<<< HEAD
+void LayoutTheme::AdjustSliderContainerStyle(
+    const Element& element,
+    ComputedStyleBuilder& builder) const {
+  DCHECK(IsSliderContainer(element));
+
+  if (!IsHorizontalWritingMode(builder.GetWritingMode())) {
+    builder.SetTouchAction(TouchAction::kPanX);
+  } else if (RuntimeEnabledFeatures::
+                 NonStandardAppearanceValueSliderVerticalEnabled() &&
+             builder.EffectiveAppearance() ==
+                 AppearanceValue::kSliderVertical) {
+    builder.SetTouchAction(TouchAction::kPanX);
+    builder.SetWritingMode(WritingMode::kVerticalRl);
+=======
 void LayoutTheme::AdjustSliderContainerStyle(const Element& e,
                                              ComputedStyle& style) const {
   const AtomicString& pseudo = e.ShadowPseudoId();
@@ -493,6 +616,7 @@ void LayoutTheme::AdjustSliderContainerStyle(const Element& e,
   if (style.EffectiveAppearance() == kSliderVerticalPart) {
     style.SetTouchAction(TouchAction::kPanX);
     style.SetWritingMode(WritingMode::kVerticalRl);
+>>>>>>> chromium
     // It's always in RTL because the slider value increases up even in LTR.
     style.SetDirection(TextDirection::kRtl);
   } else {
@@ -503,7 +627,11 @@ void LayoutTheme::AdjustSliderContainerStyle(const Element& e,
                                                 OverflowAlignment::kUnsafe));
     }
   }
+<<<<<<< HEAD
+  builder.SetEffectiveAppearance(AppearanceValue::kNone);
+=======
   style.SetEffectiveAppearance(kNoControlPart);
+>>>>>>> chromium
 }
 
 void LayoutTheme::AdjustSliderThumbStyle(ComputedStyle& style) const {
@@ -809,6 +937,19 @@ bool LayoutTheme::SupportsCalendarPicker(const AtomicString& type) const {
 void LayoutTheme::AdjustControlPartStyle(ComputedStyle& style) {
   // Call the appropriate style adjustment method based off the appearance
   // value.
+<<<<<<< HEAD
+  switch (builder.EffectiveAppearance()) {
+    case AppearanceValue::kCheckbox:
+      return AdjustCheckboxStyle(builder);
+    case AppearanceValue::kRadio:
+      return AdjustRadioStyle(builder);
+    case AppearanceValue::kPushButton:
+    case AppearanceValue::kSquareButton:
+    case AppearanceValue::kButton:
+      return AdjustButtonStyle(builder);
+    case AppearanceValue::kInnerSpinButton:
+      return AdjustInnerSpinButtonStyle(builder);
+=======
   switch (style.EffectiveAppearance()) {
     case kCheckboxPart:
       return AdjustCheckboxStyle(style);
@@ -820,6 +961,7 @@ void LayoutTheme::AdjustControlPartStyle(ComputedStyle& style) {
       return AdjustButtonStyle(style);
     case kInnerSpinButtonPart:
       return AdjustInnerSpinButtonStyle(style);
+>>>>>>> chromium
     default:
       break;
   }

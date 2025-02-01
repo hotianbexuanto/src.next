@@ -16,7 +16,7 @@
 namespace gfx {
 class RenderText;
 class Size;
-}
+}  // namespace gfx
 
 // CanvasImageSource for creating extension icon with a badge.
 class IconWithBadgeImageSource : public gfx::CanvasImageSource {

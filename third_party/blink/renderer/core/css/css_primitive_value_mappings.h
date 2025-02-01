@@ -219,21 +219,48 @@ inline CompositeOperator CSSIdentifierValue::ConvertTo() const {
 }
 
 template <>
-inline CSSIdentifierValue::CSSIdentifierValue(ControlPart e)
+inline CSSIdentifierValue::CSSIdentifierValue(AppearanceValue e)
     : CSSValue(kIdentifierClass) {
   switch (e) {
+<<<<<<< HEAD
+    case AppearanceValue::kNone:
+    // Non standard appearance values that are not listed as
+    // compat-auto must be rendered as none.
+    // https://drafts.csswg.org/css-ui/#appearance-switching
+    case AppearanceValue::kInnerSpinButton:
+    case AppearanceValue::kMediaSlider:
+    case AppearanceValue::kMediaSliderThumb:
+    case AppearanceValue::kMediaVolumeSlider:
+    case AppearanceValue::kMediaVolumeSliderThumb:
+    case AppearanceValue::kPushButton:
+    case AppearanceValue::kSearchFieldCancelButton:
+    case AppearanceValue::kSliderThumbHorizontal:
+    case AppearanceValue::kSliderThumbVertical:
+    case AppearanceValue::kSliderHorizontal:
+    case AppearanceValue::kSquareButton:
+=======
     case kNoControlPart:
+>>>>>>> chromium
       value_id_ = CSSValueID::kNone;
       break;
-    case kAutoPart:
+    case AppearanceValue::kAuto:
       value_id_ = CSSValueID::kAuto;
       break;
-    case kCheckboxPart:
+    case AppearanceValue::kCheckbox:
       value_id_ = CSSValueID::kCheckbox;
       break;
-    case kRadioPart:
+    case AppearanceValue::kRadio:
       value_id_ = CSSValueID::kRadio;
       break;
+<<<<<<< HEAD
+    case AppearanceValue::kButton:
+      value_id_ = CSSValueID::kButton;
+      break;
+    case AppearanceValue::kListbox:
+      value_id_ = CSSValueID::kListbox;
+      break;
+    case AppearanceValue::kMediaControl:
+=======
     case kPushButtonPart:
       value_id_ = CSSValueID::kPushButton;
       break;
@@ -262,20 +289,30 @@ inline CSSIdentifierValue::CSSIdentifierValue(ControlPart e)
       value_id_ = CSSValueID::kMediaVolumeSliderthumb;
       break;
     case kMediaControlPart:
+>>>>>>> chromium
       value_id_ = CSSValueID::kInternalMediaControl;
       break;
-    case kMenulistPart:
+    case AppearanceValue::kMenulist:
       value_id_ = CSSValueID::kMenulist;
       break;
-    case kMenulistButtonPart:
+    case AppearanceValue::kMenulistButton:
       value_id_ = CSSValueID::kMenulistButton;
       break;
-    case kMeterPart:
+    case AppearanceValue::kMeter:
       value_id_ = CSSValueID::kMeter;
       break;
-    case kProgressBarPart:
+    case AppearanceValue::kProgressBar:
       value_id_ = CSSValueID::kProgressBar;
       break;
+<<<<<<< HEAD
+    case AppearanceValue::kSliderVertical:
+      value_id_ = CSSValueID::kSliderVertical;
+      break;
+    case AppearanceValue::kSearchField:
+      value_id_ = CSSValueID::kSearchfield;
+      break;
+    case AppearanceValue::kTextField:
+=======
     case kSliderHorizontalPart:
       value_id_ = CSSValueID::kSliderHorizontal;
       break;
@@ -295,15 +332,62 @@ inline CSSIdentifierValue::CSSIdentifierValue(ControlPart e)
       value_id_ = CSSValueID::kSearchfieldCancelButton;
       break;
     case kTextFieldPart:
+>>>>>>> chromium
       value_id_ = CSSValueID::kTextfield;
       break;
-    case kTextAreaPart:
+    case AppearanceValue::kTextArea:
       value_id_ = CSSValueID::kTextarea;
       break;
+<<<<<<< HEAD
+    case AppearanceValue::kBaseSelect:
+      CHECK(RuntimeEnabledFeatures::CustomizableSelectEnabled());
+      value_id_ = CSSValueID::kBaseSelect;
+      break;
+=======
+>>>>>>> chromium
   }
 }
 
 template <>
+<<<<<<< HEAD
+inline AppearanceValue CSSIdentifierValue::ConvertTo() const {
+  switch (value_id_) {
+    case CSSValueID::kNone:
+      return AppearanceValue::kNone;
+    case CSSValueID::kAuto:
+      return AppearanceValue::kAuto;
+    case CSSValueID::kCheckbox:
+      return AppearanceValue::kCheckbox;
+    case CSSValueID::kRadio:
+      return AppearanceValue::kRadio;
+    case CSSValueID::kButton:
+      return AppearanceValue::kButton;
+    case CSSValueID::kListbox:
+      return AppearanceValue::kListbox;
+    case CSSValueID::kInternalMediaControl:
+      return AppearanceValue::kMediaControl;
+    case CSSValueID::kMenulist:
+      return AppearanceValue::kMenulist;
+    case CSSValueID::kMenulistButton:
+      return AppearanceValue::kMenulistButton;
+    case CSSValueID::kMeter:
+      return AppearanceValue::kMeter;
+    case CSSValueID::kProgressBar:
+      return AppearanceValue::kProgressBar;
+    case CSSValueID::kSliderVertical:
+      return AppearanceValue::kSliderVertical;
+    case CSSValueID::kSearchfield:
+      return AppearanceValue::kSearchField;
+    case CSSValueID::kTextfield:
+      return AppearanceValue::kTextField;
+    case CSSValueID::kTextarea:
+      return AppearanceValue::kTextArea;
+    case CSSValueID::kBaseSelect:
+      return AppearanceValue::kBaseSelect;
+    default:
+      NOTREACHED();
+  }
+=======
 inline ControlPart CSSIdentifierValue::ConvertTo() const {
   if (value_id_ == CSSValueID::kNone)
     return kNoControlPart;
@@ -311,6 +395,7 @@ inline ControlPart CSSIdentifierValue::ConvertTo() const {
     return kAutoPart;
   return ControlPart(static_cast<int>(value_id_) -
                      static_cast<int>(CSSValueID::kCheckbox) + kCheckboxPart);
+>>>>>>> chromium
 }
 
 template <>
@@ -1630,7 +1715,390 @@ inline ScrollbarGutter CSSIdentifierValue::ConvertTo() const {
       break;
   }
   NOTREACHED();
+<<<<<<< HEAD
+}
+
+template <>
+inline CSSIdentifierValue::CSSIdentifierValue(TimelineAxis axis)
+    : CSSValue(kIdentifierClass) {
+  switch (axis) {
+    case TimelineAxis::kBlock:
+      value_id_ = CSSValueID::kBlock;
+      break;
+    case TimelineAxis::kInline:
+      value_id_ = CSSValueID::kInline;
+      break;
+    case TimelineAxis::kX:
+      value_id_ = CSSValueID::kX;
+      break;
+    case TimelineAxis::kY:
+      value_id_ = CSSValueID::kY;
+      break;
+  }
+}
+
+template <>
+inline TimelineAxis CSSIdentifierValue::ConvertTo() const {
+  switch (GetValueID()) {
+    case CSSValueID::kBlock:
+      return TimelineAxis::kBlock;
+    case CSSValueID::kInline:
+      return TimelineAxis::kInline;
+    case CSSValueID::kX:
+      return TimelineAxis::kX;
+    case CSSValueID::kY:
+      return TimelineAxis::kY;
+    default:
+      break;
+  }
+  NOTREACHED();
+}
+
+template <>
+inline CSSIdentifierValue::CSSIdentifierValue(TimelineScroller scroller)
+    : CSSValue(kIdentifierClass) {
+  switch (scroller) {
+    case TimelineScroller::kRoot:
+      value_id_ = CSSValueID::kRoot;
+      break;
+    case TimelineScroller::kNearest:
+      value_id_ = CSSValueID::kNearest;
+      break;
+    case TimelineScroller::kSelf:
+      value_id_ = CSSValueID::kSelf;
+      break;
+  }
+}
+
+template <>
+inline TimelineScroller CSSIdentifierValue::ConvertTo() const {
+  switch (GetValueID()) {
+    case CSSValueID::kRoot:
+      return TimelineScroller::kRoot;
+    case CSSValueID::kNearest:
+      return TimelineScroller::kNearest;
+    case CSSValueID::kSelf:
+      return TimelineScroller::kSelf;
+    default:
+      break;
+  }
+  NOTREACHED();
+}
+
+template <>
+inline CSSIdentifierValue::CSSIdentifierValue(
+    TimelineOffset::NamedRange named_range)
+    : CSSValue(kIdentifierClass) {
+  switch (named_range) {
+    case TimelineOffset::NamedRange::kCover:
+      value_id_ = CSSValueID::kCover;
+      break;
+    case TimelineOffset::NamedRange::kContain:
+      value_id_ = CSSValueID::kContain;
+      break;
+    case TimelineOffset::NamedRange::kEntry:
+      value_id_ = CSSValueID::kEntry;
+      break;
+    case TimelineOffset::NamedRange::kEntryCrossing:
+      value_id_ = CSSValueID::kEntryCrossing;
+      break;
+    case TimelineOffset::NamedRange::kExit:
+      value_id_ = CSSValueID::kExit;
+      break;
+    case TimelineOffset::NamedRange::kExitCrossing:
+      value_id_ = CSSValueID::kExitCrossing;
+      break;
+    default:
+      NOTREACHED();
+  }
+}
+
+template <>
+inline TimelineOffset::NamedRange CSSIdentifierValue::ConvertTo() const {
+  switch (GetValueID()) {
+    case CSSValueID::kCover:
+      return TimelineOffset::NamedRange::kCover;
+    case CSSValueID::kContain:
+      return TimelineOffset::NamedRange::kContain;
+    case CSSValueID::kEntry:
+      return TimelineOffset::NamedRange::kEntry;
+    case CSSValueID::kEntryCrossing:
+      return TimelineOffset::NamedRange::kEntryCrossing;
+    case CSSValueID::kExit:
+      return TimelineOffset::NamedRange::kExit;
+    case CSSValueID::kExitCrossing:
+      return TimelineOffset::NamedRange::kExitCrossing;
+    default:
+      break;
+  }
+  NOTREACHED();
+}
+
+template <>
+inline CSSIdentifierValue::CSSIdentifierValue(ScrollStartValueType value_type)
+    : CSSValue(kIdentifierClass) {
+  switch (value_type) {
+    case ScrollStartValueType::kAuto:
+      value_id_ = CSSValueID::kAuto;
+      break;
+    case ScrollStartValueType::kStart:
+      value_id_ = CSSValueID::kStart;
+      break;
+    case ScrollStartValueType::kCenter:
+      value_id_ = CSSValueID::kCenter;
+      break;
+    case ScrollStartValueType::kEnd:
+      value_id_ = CSSValueID::kEnd;
+      break;
+    case ScrollStartValueType::kTop:
+      value_id_ = CSSValueID::kTop;
+      break;
+    case ScrollStartValueType::kBottom:
+      value_id_ = CSSValueID::kBottom;
+      break;
+    case ScrollStartValueType::kLeft:
+      value_id_ = CSSValueID::kLeft;
+      break;
+    case ScrollStartValueType::kRight:
+      value_id_ = CSSValueID::kRight;
+      break;
+    case ScrollStartValueType::kLengthOrPercentage:
+      NOTREACHED();
+  }
+}
+
+template <>
+inline ScrollStartValueType CSSIdentifierValue::ConvertTo() const {
+  switch (GetValueID()) {
+    case CSSValueID::kAuto:
+      return ScrollStartValueType::kAuto;
+    case CSSValueID::kStart:
+      return ScrollStartValueType::kStart;
+    case CSSValueID::kCenter:
+      return ScrollStartValueType::kCenter;
+    case CSSValueID::kEnd:
+      return ScrollStartValueType::kEnd;
+    case CSSValueID::kTop:
+      return ScrollStartValueType::kTop;
+    case CSSValueID::kBottom:
+      return ScrollStartValueType::kBottom;
+    case CSSValueID::kLeft:
+      return ScrollStartValueType::kLeft;
+    case CSSValueID::kRight:
+      return ScrollStartValueType::kRight;
+    default:
+      NOTREACHED();
+  }
+}
+
+template <>
+inline CSSIdentifierValue::CSSIdentifierValue(EScrollInitialTarget target)
+    : CSSValue(kIdentifierClass) {
+  switch (target) {
+    case EScrollInitialTarget::kNone:
+      value_id_ = CSSValueID::kNone;
+      break;
+    case EScrollInitialTarget::kNearest:
+      value_id_ = CSSValueID::kNearest;
+      break;
+  };
+}
+
+template <>
+inline EScrollInitialTarget CSSIdentifierValue::ConvertTo() const {
+  switch (GetValueID()) {
+    case CSSValueID::kNone:
+      return EScrollInitialTarget::kNone;
+    case CSSValueID::kNearest:
+      return EScrollInitialTarget::kNearest;
+    default:
+      NOTREACHED();
+  };
+}
+
+template <>
+inline CSSIdentifierValue::CSSIdentifierValue(PositionAreaRegion region)
+    : CSSValue(kIdentifierClass) {
+  switch (region) {
+    case PositionAreaRegion::kNone:
+      value_id_ = CSSValueID::kNone;
+      break;
+    case PositionAreaRegion::kAll:
+      value_id_ = CSSValueID::kSpanAll;
+      break;
+    case PositionAreaRegion::kCenter:
+      value_id_ = CSSValueID::kCenter;
+      break;
+    case PositionAreaRegion::kStart:
+      value_id_ = CSSValueID::kStart;
+      break;
+    case PositionAreaRegion::kEnd:
+      value_id_ = CSSValueID::kEnd;
+      break;
+    case PositionAreaRegion::kSelfStart:
+      value_id_ = CSSValueID::kSelfStart;
+      break;
+    case PositionAreaRegion::kSelfEnd:
+      value_id_ = CSSValueID::kSelfEnd;
+      break;
+    case PositionAreaRegion::kInlineStart:
+      value_id_ = CSSValueID::kInlineStart;
+      break;
+    case PositionAreaRegion::kInlineEnd:
+      value_id_ = CSSValueID::kInlineEnd;
+      break;
+    case PositionAreaRegion::kSelfInlineStart:
+      value_id_ = CSSValueID::kSelfInlineStart;
+      break;
+    case PositionAreaRegion::kSelfInlineEnd:
+      value_id_ = CSSValueID::kSelfInlineEnd;
+      break;
+    case PositionAreaRegion::kBlockStart:
+      value_id_ = CSSValueID::kBlockStart;
+      break;
+    case PositionAreaRegion::kBlockEnd:
+      value_id_ = CSSValueID::kBlockEnd;
+      break;
+    case PositionAreaRegion::kSelfBlockStart:
+      value_id_ = CSSValueID::kSelfBlockStart;
+      break;
+    case PositionAreaRegion::kSelfBlockEnd:
+      value_id_ = CSSValueID::kSelfBlockEnd;
+      break;
+    case PositionAreaRegion::kTop:
+      value_id_ = CSSValueID::kTop;
+      break;
+    case PositionAreaRegion::kBottom:
+      value_id_ = CSSValueID::kBottom;
+      break;
+    case PositionAreaRegion::kLeft:
+      value_id_ = CSSValueID::kLeft;
+      break;
+    case PositionAreaRegion::kRight:
+      value_id_ = CSSValueID::kRight;
+      break;
+    case PositionAreaRegion::kXStart:
+      value_id_ = CSSValueID::kXStart;
+      break;
+    case PositionAreaRegion::kXEnd:
+      value_id_ = CSSValueID::kXEnd;
+      break;
+    case PositionAreaRegion::kYStart:
+      value_id_ = CSSValueID::kYStart;
+      break;
+    case PositionAreaRegion::kYEnd:
+      value_id_ = CSSValueID::kYEnd;
+      break;
+    case PositionAreaRegion::kXSelfStart:
+      value_id_ = CSSValueID::kXSelfStart;
+      break;
+    case PositionAreaRegion::kXSelfEnd:
+      value_id_ = CSSValueID::kXSelfEnd;
+      break;
+    case PositionAreaRegion::kYSelfStart:
+      value_id_ = CSSValueID::kYSelfStart;
+      break;
+    case PositionAreaRegion::kYSelfEnd:
+      value_id_ = CSSValueID::kYSelfEnd;
+      break;
+  }
+}
+
+template <>
+inline PositionAreaRegion CSSIdentifierValue::ConvertTo() const {
+  switch (GetValueID()) {
+    case CSSValueID::kNone:
+      return PositionAreaRegion::kNone;
+    case CSSValueID::kSpanAll:
+      return PositionAreaRegion::kAll;
+    case CSSValueID::kCenter:
+      return PositionAreaRegion::kCenter;
+    case CSSValueID::kStart:
+      return PositionAreaRegion::kStart;
+    case CSSValueID::kEnd:
+      return PositionAreaRegion::kEnd;
+    case CSSValueID::kSelfStart:
+      return PositionAreaRegion::kSelfStart;
+    case CSSValueID::kSelfEnd:
+      return PositionAreaRegion::kSelfEnd;
+    case CSSValueID::kInlineStart:
+      return PositionAreaRegion::kInlineStart;
+    case CSSValueID::kInlineEnd:
+      return PositionAreaRegion::kInlineEnd;
+    case CSSValueID::kSelfInlineStart:
+      return PositionAreaRegion::kSelfInlineStart;
+    case CSSValueID::kSelfInlineEnd:
+      return PositionAreaRegion::kSelfInlineEnd;
+    case CSSValueID::kBlockStart:
+      return PositionAreaRegion::kBlockStart;
+    case CSSValueID::kBlockEnd:
+      return PositionAreaRegion::kBlockEnd;
+    case CSSValueID::kSelfBlockStart:
+      return PositionAreaRegion::kSelfBlockStart;
+    case CSSValueID::kSelfBlockEnd:
+      return PositionAreaRegion::kSelfBlockEnd;
+    case CSSValueID::kTop:
+      return PositionAreaRegion::kTop;
+    case CSSValueID::kBottom:
+      return PositionAreaRegion::kBottom;
+    case CSSValueID::kLeft:
+      return PositionAreaRegion::kLeft;
+    case CSSValueID::kRight:
+      return PositionAreaRegion::kRight;
+    case CSSValueID::kXStart:
+      return PositionAreaRegion::kXStart;
+    case CSSValueID::kXEnd:
+      return PositionAreaRegion::kXEnd;
+    case CSSValueID::kYStart:
+      return PositionAreaRegion::kYStart;
+    case CSSValueID::kYEnd:
+      return PositionAreaRegion::kYEnd;
+    case CSSValueID::kXSelfStart:
+      return PositionAreaRegion::kXSelfStart;
+    case CSSValueID::kXSelfEnd:
+      return PositionAreaRegion::kXSelfEnd;
+    case CSSValueID::kYSelfStart:
+      return PositionAreaRegion::kYSelfStart;
+    case CSSValueID::kYSelfEnd:
+      return PositionAreaRegion::kYSelfEnd;
+    default:
+      NOTREACHED();
+  };
+}
+
+template <>
+inline CSSIdentifierValue::CSSIdentifierValue(PositionVisibility visibility)
+    : CSSValue(kIdentifierClass) {
+  switch (visibility) {
+    case PositionVisibility::kAlways:
+      value_id_ = CSSValueID::kAlways;
+      break;
+    // TODO(crbug.com/332933527): Support kAnchorsValid.
+    case PositionVisibility::kAnchorsVisible:
+      value_id_ = CSSValueID::kAnchorsVisible;
+      break;
+    case PositionVisibility::kNoOverflow:
+      value_id_ = CSSValueID::kNoOverflow;
+      break;
+  }
+}
+
+template <>
+inline PositionVisibility CSSIdentifierValue::ConvertTo() const {
+  switch (GetValueID()) {
+    case CSSValueID::kAlways:
+      return PositionVisibility::kAlways;
+    // TODO(crbug.com/332933527): Support kAnchorsValid.
+    case CSSValueID::kAnchorsVisible:
+      return PositionVisibility::kAnchorsVisible;
+    case CSSValueID::kNoOverflow:
+      return PositionVisibility::kNoOverflow;
+    default:
+      NOTREACHED();
+  }
+=======
   return kScrollbarGutterAuto;
+>>>>>>> chromium
 }
 
 }  // namespace blink

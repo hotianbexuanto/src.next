@@ -17,6 +17,14 @@ import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.compositor.CompositorViewHolder;
+import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
+import org.chromium.chrome.browser.hub.HubManager;
+import org.chromium.chrome.browser.hub.Pane;
+import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthController;
+import org.chromium.chrome.browser.layouts.LayoutStateProvider;
+=======
 import org.chromium.chrome.browser.compositor.layouts.Layout;
 import org.chromium.chrome.browser.compositor.layouts.LayoutRenderHost;
 import org.chromium.chrome.browser.compositor.layouts.LayoutUpdateHost;
@@ -24,6 +32,7 @@ import org.chromium.chrome.browser.compositor.layouts.OverviewModeBehavior;
 import org.chromium.chrome.browser.compositor.layouts.content.TabContentManager;
 import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
 import org.chromium.chrome.browser.init.ChromeActivityNativeDelegate;
+>>>>>>> chromium
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 import org.chromium.chrome.browser.omnibox.OmniboxStub;
@@ -40,10 +49,16 @@ import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.features.start_surface.StartSurface;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
+<<<<<<< HEAD
+import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
+import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
+import org.chromium.components.tab_group_sync.TabGroupUiActionHandler;
+=======
 import org.chromium.components.browser_ui.widget.MenuOrKeyboardActionController;
 import org.chromium.components.browser_ui.widget.scrim.ScrimCoordinator;
 import org.chromium.components.module_installer.builder.ModuleInterface;
 import org.chromium.ui.base.WindowAndroid;
+>>>>>>> chromium
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.resources.dynamics.DynamicResourceLoader;
@@ -71,6 +86,16 @@ public interface TabManagementDelegate {
     /**
      * Create the {@link TasksSurface}
      * @param activity The {@link Activity} that creates this surface.
+<<<<<<< HEAD
+     * @param parentView The parent view of this UI.
+     * @param browserControlsStateProvider The {@link BrowserControlsStateProvider} of the top
+     *     controls.
+     * @param scrimManager The {@link ScrimManager} to control scrim view.
+     * @param omniboxFocusStateSupplier Supplier to access the focus state of the omnibox.
+     * @param bottomSheetController The {@link BottomSheetController} for the current activity.
+     * @param dataSharingTabManager The {@link} DataSharingTabManager managing communication between
+     *     UI and DataSharing services.
+=======
      * @param scrimCoordinator The {@link ScrimCoordinator} that controls scrim view.
      * @param propertyModel The {@link PropertyModel} contains the {@link TasksSurfaceProperties}
      *         to communicate with this surface.
@@ -113,6 +138,7 @@ public interface TabManagementDelegate {
      * Create the {@link TabSwitcher} to display Tabs in grid.
      * @param activity The current android {@link Activity}.
      * @param activityLifecycleDispatcher Allows observation of the activity lifecycle.
+>>>>>>> chromium
      * @param tabModelSelector Gives access to the current set of {@TabModel}.
      * @param tabContentManager Gives access to the tab content.
      * @param browserControlsStateProvider Gives access to the state of the browser controls.
@@ -185,9 +211,17 @@ public interface TabManagementDelegate {
      * @param snackbarManager Manages the display of snackbars.
      * @return The {@link TabGroupUi}.
      */
+<<<<<<< HEAD
+    TabGroupUi createTabGroupUi(
+            @NonNull Activity activity,
+            @NonNull ViewGroup parentView,
+            @NonNull BrowserControlsStateProvider browserControlsStateProvider,
+            @NonNull ScrimManager scrimManager,
+=======
     TabGroupUi createTabGroupUi(@NonNull Activity activity, @NonNull ViewGroup parentView,
             @NonNull ThemeColorProvider themeColorProvider,
             @NonNull ScrimCoordinator scrimCoordinator,
+>>>>>>> chromium
             @NonNull ObservableSupplier<Boolean> omniboxFocusStateSupplier,
             @NonNull BottomSheetController bottomSheetController,
             @NonNull ActivityLifecycleDispatcher activityLifecycleDispatcher,
@@ -201,12 +235,42 @@ public interface TabManagementDelegate {
             @NonNull SnackbarManager snackbarManager);
 
     /**
+<<<<<<< HEAD
+     * Create a {@link TabSwitcher} and {@link Pane} for the Hub.
+     *
+     * @param activity The {@link Activity} that hosts the pane.
+     * @param lifecycleDispatcher The lifecycle dispatcher for the activity.
+     * @param profileProviderSupplier The supplier for profiles.
+     * @param tabModelSelector For access to {@link TabModel}.
+     * @param tabContentManager For management of thumbnails.
+     * @param tabCreatorManager For creating new tabs.
+     * @param browserControlsStateProvider For determining thumbnail size.
+     * @param multiWindowModeStateDispatcher For managing behavior in multi-window.
+     * @param scrimManager The root UI coordinator's scrim component. On LFF this is unused as the
+     *     root UI's scrim component is used for the show/hide animation.
+     * @param snackbarManager The activity level snackbar manager.
+     * @param modalDialogManager The modal dialog manager for the activity.
+     * @param bottomSheetController The {@link BottomSheetController} for the current activity.
+     * @param dataSharingTabManager The {@link} DataSharingTabManager managing communication between
+     *     UI and DataSharing services.
+     * @param incognitoReauthControllerSupplier The incognito reauth controller supplier.
+     * @param newTabButtonOnClickListener The listener for clicking the new tab button.
+     * @param isIncognito Whether this is an incognito pane.
+     * @param onToolbarAlphaChange Observer to notify when alpha changes during animations.
+     * @param backPressManager Manages different back press handlers throughout the app.
+     * @param edgeToEdgeSupplier Supplier to the {@link EdgeToEdgeController} instance.
+     * @param desktopWindowStateManager Manager to get desktop window and app header state.
+     * @param tabModelNotificationDotSupplier Supplier for whether the notification dot should show
+     *     on the tab switcher drawable.
+     * @param compositorViewHolderSupplier Supplier to the {@link CompositorViewHolder} instance.
+=======
      * Create the {@link StartSurfaceLayout}.
      * @param context The current Android's context.
      * @param updateHost The parent {@link LayoutUpdateHost}.
      * @param renderHost The parent {@link LayoutRenderHost}.
      * @param startSurface The {@link StartSurface} the layout should own.
      * @return The {@link StartSurfaceLayout}.
+>>>>>>> chromium
      */
     Layout createStartSurfaceLayout(Context context, LayoutUpdateHost updateHost,
             LayoutRenderHost renderHost, StartSurface startSurface, JankTracker jankTracker);
@@ -249,18 +313,40 @@ public interface TabManagementDelegate {
             @NonNull WindowAndroid windowAndroid, @NonNull ViewGroup containerView,
             @NonNull Supplier<DynamicResourceLoader> dynamicResourceLoaderSupplier,
             @NonNull TabModelSelector tabModelSelector,
+<<<<<<< HEAD
+            @NonNull TabContentManager tabContentManager,
+            @NonNull TabCreatorManager tabCreatorManager,
+            @NonNull BrowserControlsStateProvider browserControlsStateProvider,
+            @NonNull MultiWindowModeStateDispatcher multiWindowModeStateDispatcher,
+            @NonNull ScrimManager scrimManager,
+=======
             @NonNull BrowserControlsManager browserControlsManager,
+>>>>>>> chromium
             @NonNull SnackbarManager snackbarManager,
             @NonNull Supplier<ShareDelegate> shareDelegateSupplier,
             @NonNull Supplier<OmniboxStub> omniboxStubSupplier,
             @NonNull TabContentManager tabContentManager,
             @NonNull ModalDialogManager modalDialogManager,
+<<<<<<< HEAD
+            @NonNull BottomSheetController bottomSheetController,
+            @NonNull DataSharingTabManager dataSharingTabManager,
+            @Nullable OneshotSupplier<IncognitoReauthController> incognitoReauthControllerSupplier,
+            @NonNull OnClickListener newTabButtonOnClickListener,
+            boolean isIncognito,
+            @NonNull DoubleConsumer onToolbarAlphaChange,
+            @NonNull BackPressManager backPressManager,
+            @NonNull ObservableSupplier<EdgeToEdgeController> edgeToEdgeSupplier,
+            @Nullable DesktopWindowStateManager desktopWindowStateManager,
+            @NonNull ObservableSupplier<Boolean> tabModelNotificationDotSupplier,
+            @NonNull ObservableSupplier<CompositorViewHolder> compositorViewHolderSupplier);
+=======
             @NonNull ChromeActivityNativeDelegate chromeActivityNativeDelegate,
             @NonNull ActivityLifecycleDispatcher activityLifecycleDispatcher,
             @NonNull TabCreatorManager tabCreatorManager,
             @NonNull MenuOrKeyboardActionController menuOrKeyboardActionController,
             @NonNull MultiWindowModeStateDispatcher multiWindowModeStateDispatcher,
             @NonNull JankTracker jankTracker);
+>>>>>>> chromium
 
     /**
      * Create a {@link TabGroupModelFilter} for the given {@link TabModel}.

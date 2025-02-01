@@ -23,7 +23,11 @@ namespace blink {
 class CORE_EXPORT MediaValuesCached final : public MediaValues {
  public:
   struct CORE_EXPORT MediaValuesCachedData final {
+<<<<<<< HEAD
+   public:
+=======
     DISALLOW_NEW();
+>>>>>>> chromium
     // Members variables must be thread safe, since they're copied to the parser
     // thread
     double viewport_width = 0;

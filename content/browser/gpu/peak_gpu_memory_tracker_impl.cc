@@ -8,11 +8,16 @@
 
 #include "base/bind.h"
 #include "base/containers/flat_map.h"
+<<<<<<< HEAD
+#include "components/viz/common/resources/peak_gpu_memory_callback.h"
+#include "components/viz/common/resources/peak_gpu_memory_tracker_util.h"
+=======
 #include "base/location.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/strcat.h"
 #include "base/task/post_task.h"
 #include "base/threading/thread_task_runner_handle.h"
+>>>>>>> chromium
 #include "content/browser/gpu/gpu_process_host.h"
 #include "content/public/browser/gpu_data_manager.h"
 #include "services/viz/privileged/mojom/gl/gpu_service.mojom.h"
@@ -116,17 +121,26 @@ void PeakMemoryCallback(PeakGpuMemoryTracker::Usage usage,
 }  // namespace
 
 // static
+<<<<<<< HEAD
+std::unique_ptr<viz::PeakGpuMemoryTracker> PeakGpuMemoryTrackerFactory::Create(
+    viz::PeakGpuMemoryTracker::Usage usage) {
+=======
 std::unique_ptr<PeakGpuMemoryTracker> PeakGpuMemoryTracker::Create(
     PeakGpuMemoryTracker::Usage usage) {
+>>>>>>> chromium
   return std::make_unique<PeakGpuMemoryTrackerImpl>(usage);
 }
 
-// static
-uint32_t PeakGpuMemoryTrackerImpl::next_sequence_number_ = 0;
-
 PeakGpuMemoryTrackerImpl::PeakGpuMemoryTrackerImpl(
+<<<<<<< HEAD
+    viz::PeakGpuMemoryTracker::Usage usage)
+    : usage_(usage),
+      sequence_num_(
+          viz::GetNextSequenceNumber(viz::SequenceLocation::kBrowserProcess)) {
+=======
     PeakGpuMemoryTracker::Usage usage)
     : usage_(usage) {
+>>>>>>> chromium
   // Actually performs request to GPU service to begin memory tracking for
   // |sequence_number_|. This will normally be created from the UI thread, so
   // repost to the IO thread.
@@ -150,6 +164,24 @@ PeakGpuMemoryTrackerImpl::~PeakGpuMemoryTrackerImpl() {
   if (canceled_)
     return;
 
+<<<<<<< HEAD
+  auto* host =
+      GpuProcessHost::Get(GPU_PROCESS_KIND_SANDBOXED, /*force_create*/ false);
+  // There may be no host nor service available. This may occur during
+  // shutdown, when the service is fully disabled, and in some tests.
+  // In those cases there is nothing to report to UMA. However we
+  // still run the optional testing callback.
+  if (!host) {
+    std::move(post_gpu_service_callback_for_testing_).Run();
+    return;
+  }
+  if (auto* gpu_service = host->gpu_service()) {
+    gpu_service->GetPeakMemoryUsage(
+        sequence_num_,
+        base::BindOnce(&viz::PeakGpuMemoryCallback, usage_,
+                       std::move(post_gpu_service_callback_for_testing_)));
+  }
+=======
   GpuProcessHost::CallOnIO(
       GPU_PROCESS_KIND_SANDBOXED, /* force_create=*/false,
       base::BindOnce(
@@ -171,6 +203,7 @@ PeakGpuMemoryTrackerImpl::~PeakGpuMemoryTrackerImpl() {
           },
           sequence_num_, usage_,
           std::move(post_gpu_service_callback_for_testing_)));
+>>>>>>> chromium
 }
 
 void PeakGpuMemoryTrackerImpl::Cancel() {

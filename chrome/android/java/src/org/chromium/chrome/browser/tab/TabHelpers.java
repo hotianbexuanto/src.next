@@ -40,6 +40,12 @@ public final class TabHelpers {
         AutofillAssistantTabHelper.createForTab(tab);
         // The following will start prefetching data for the price drops feature, so
         // we should only do it if the user is eligible for the feature (e.g. has sync enabled).
+<<<<<<< HEAD
+        if (!tab.isOffTheRecord()
+                && !((TabImpl) tab).isCustomTab()
+                && PriceTrackingFeatures.isPriceAnnotationsEligible(tab.getProfile())) {
+            ShoppingPersistedTabData.initialize(tab);
+=======
         if (!tab.isIncognito() && !((TabImpl) tab).isCustomTab()
                 && PriceTrackingUtilities.isPriceTrackingEligible()
                 && ShoppingPersistedTabData.isPriceTrackingWithOptimizationGuideEnabled()) {
@@ -51,6 +57,7 @@ public final class TabHelpers {
                     ShoppingPersistedTabData.from(tab);
                 }
             });
+>>>>>>> chromium
         }
 
         // TODO(jinsukkim): Do this by having something observe new tab creation.

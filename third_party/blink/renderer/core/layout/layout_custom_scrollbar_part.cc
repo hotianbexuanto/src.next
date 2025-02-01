@@ -38,8 +38,14 @@ namespace blink {
 LayoutCustomScrollbarPart::LayoutCustomScrollbarPart(
     ScrollableArea* scrollable_area,
     CustomScrollbar* scrollbar,
+<<<<<<< HEAD
+    ScrollbarPart part,
+    bool suppress_use_counters)
+    : LayoutReplaced(nullptr),
+=======
     ScrollbarPart part)
     : LayoutReplaced(nullptr, LayoutSize()),
+>>>>>>> chromium
       scrollable_area_(scrollable_area),
       scrollbar_(scrollbar),
       part_(part) {
@@ -154,6 +160,18 @@ int LayoutCustomScrollbarPart::ComputeLength() const {
   if (scrollbar_->Orientation() == kHorizontalScrollbar)
     return ComputeWidth(visible_content_rect.Width());
   return ComputeHeight(visible_content_rect.Height());
+}
+
+PhysicalNaturalSizingInfo LayoutCustomScrollbarPart::GetNaturalDimensions()
+    const {
+  NOT_DESTROYED();
+  // 300x150, no aspect ratio. (Should probably be none.)
+  PhysicalSize natural_size{LayoutUnit(kDefaultWidth),
+                            LayoutUnit(kDefaultHeight)};
+  natural_size.Scale(StyleRef().EffectiveZoom());
+  PhysicalNaturalSizingInfo sizing_info;
+  sizing_info.size = natural_size;
+  return sizing_info;
 }
 
 static LayoutUnit ComputeMargin(const Length& style_margin) {

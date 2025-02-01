@@ -4,9 +4,8 @@
 
 #include "chrome/browser/ui/browser_commands_mac.h"
 
-#include <unistd.h>
-
 #import <Cocoa/Cocoa.h>
+#include <unistd.h>
 
 #include "base/logging.h"
 #include "chrome/browser/profiles/profile.h"
@@ -28,9 +27,15 @@ void ToggleFullscreenToolbar(Browser* browser) {
 }
 
 void ToggleJavaScriptFromAppleEventsAllowed(Browser* browser) {
+<<<<<<< HEAD
+  CGEventRef cg_event = NSApp.currentEvent.CGEvent;
+  if (!cg_event) {
+=======
   CGEventRef cg_event = [[NSApp currentEvent] CGEvent];
   if (!cg_event)
+>>>>>>> chromium
     return;
+  }
 
   // If the event is from another process, do not allow it to toggle this
   // secure setting.

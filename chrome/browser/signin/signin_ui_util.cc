@@ -4,9 +4,13 @@
 
 #include "chrome/browser/signin/signin_ui_util.h"
 
+<<<<<<< HEAD
+#include "base/auto_reset.h"
+=======
 #include "base/bind.h"
 #include "base/callback.h"
 #include "base/callback_helpers.h"
+>>>>>>> chromium
 #include "base/feature_list.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
@@ -53,6 +57,10 @@
 #include "chrome/browser/ui/webui/signin/dice_turn_sync_on_helper.h"
 #endif
 
+<<<<<<< HEAD
+namespace signin_ui_util {
+=======
+>>>>>>> chromium
 namespace {
 
 // Key for storing animated identity per-profile data.
@@ -109,6 +117,21 @@ class AvatarButtonUserData : public base::SupportsUserData::Data {
 };
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+<<<<<<< HEAD
+
+SigninUiDelegate* g_signin_ui_delegate_for_testing = nullptr;
+
+SigninUiDelegate* GetSigninUiDelegate() {
+  if (g_signin_ui_delegate_for_testing)
+    return g_signin_ui_delegate_for_testing;
+
+  static SigninUiDelegateImplDice delegate;
+  return &delegate;
+}
+
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
+=======
 void CreateDiceTurnSyncOnHelper(
     Profile* profile,
     Browser* browser,
@@ -145,6 +168,7 @@ std::string GetReauthAccessPointHistogramSuffix(
   }
 }
 
+>>>>>>> chromium
 }  // namespace
 
 namespace signin_ui_util {
@@ -187,6 +211,161 @@ void ShowSigninErrorLearnMorePage(Profile* profile) {
   Navigate(&params);
 }
 
+<<<<<<< HEAD
+void ShowReauthForPrimaryAccountWithAuthError(
+    Profile* profile,
+    signin_metrics::AccessPoint access_point) {
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile);
+  CoreAccountInfo primary_account_info =
+      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin);
+  if (!identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
+          primary_account_info.account_id)) {
+    return;
+  }
+  ShowReauthForAccount(profile, primary_account_info.email, access_point);
+}
+
+void ShowReauthForAccount(Profile* profile,
+                          const std::string& email,
+                          signin_metrics::AccessPoint access_point) {
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  ::GetAccountManagerFacade(profile->GetPath().value())
+      ->ShowReauthAccountDialog(
+          GetAccountReauthSourceFromAccessPoint(access_point), email,
+          base::DoNothing());
+#elif BUILDFLAG(ENABLE_DICE_SUPPORT)
+  // Pass `false` for `enable_sync`, as this function is not expected to start a
+  // sync setup flow after the reauth.
+  GetSigninUiDelegate()->ShowReauthUI(
+      profile, email,
+      /*enable_sync=*/false, access_point,
+      signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO);
+#endif
+}
+
+void ShowExtensionSigninPrompt(Profile* profile,
+                               bool enable_sync,
+                               const std::string& email_hint) {
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  NOTREACHED();
+#elif BUILDFLAG(ENABLE_DICE_SUPPORT)
+  // There is no sign-in flow for guest or system profile.
+  if (profile->IsGuestSession() || profile->IsSystemProfile())
+    return;
+  // Locked profile should be unlocked with UserManager only.
+  ProfileAttributesEntry* entry =
+      g_browser_process->profile_manager()
+          ->GetProfileAttributesStorage()
+          .GetProfileAttributesWithPath(profile->GetPath());
+  if (entry && entry->IsSigninRequired()) {
+    return;
+  }
+
+  // This may be called in incognito. Redirect to the original profile.
+  profile = profile->GetOriginalProfile();
+
+  if (email_hint.empty()) {
+    // Add a new account.
+    GetSigninUiDelegate()->ShowSigninUI(
+        profile, enable_sync, signin_metrics::AccessPoint::kExtensions,
+        signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO);
+    return;
+  }
+
+  // Re-authenticate an existing account.
+  GetSigninUiDelegate()->ShowReauthUI(
+      profile, email_hint, enable_sync,
+      signin_metrics::AccessPoint::kExtensions,
+      signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO);
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+}
+
+void ShowSigninPromptFromPromo(Profile* profile,
+                               signin_metrics::AccessPoint access_point) {
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  NOTREACHED();
+#elif BUILDFLAG(ENABLE_DICE_SUPPORT)
+  CHECK_NE(signin_metrics::AccessPoint::kUnknown, access_point);
+  CHECK(!profile->IsOffTheRecord());
+
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile);
+  if (identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
+    DVLOG(1) << "The user is already signed in.";
+    return;
+  }
+
+  GetSigninUiDelegate()->ShowSigninUI(
+      profile, /*enable_sync=*/false, access_point,
+      signin_metrics::PromoAction::
+          PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT);
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+}
+
+void SignInFromSingleAccountPromo(Profile* profile,
+                                  const CoreAccountInfo& account,
+                                  signin_metrics::AccessPoint access_point) {
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  DCHECK_NE(signin_metrics::AccessPoint::kUnknown, access_point);
+  DCHECK(!profile->IsOffTheRecord());
+
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile);
+
+  // No account with refresh tokens is present.
+  if (account.IsEmpty()) {
+    signin_metrics::PromoAction new_account_promo_action =
+        identity_manager->GetAccountsWithRefreshTokens().empty()
+            ? signin_metrics::PromoAction::
+                  PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT
+            : signin_metrics::PromoAction::
+                  PROMO_ACTION_NEW_ACCOUNT_EXISTING_ACCOUNT;
+    GetSigninUiDelegate()->ShowSigninUI(profile, /*enable_sync=*/false,
+                                        access_point, new_account_promo_action);
+    return;
+  }
+
+  CHECK(!account.account_id.empty());
+  CHECK(!account.email.empty());
+  CHECK(AccountConsistencyModeManager::IsDiceEnabledForProfile(profile) ||
+        AccountConsistencyModeManager::IsMirrorEnabledForProfile(profile));
+
+  // There is an account, but it needs re-authentication.
+  bool needs_reauth_before_signin =
+      !identity_manager->HasAccountWithRefreshToken(account.account_id) ||
+      identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
+          account.account_id);
+
+  // The user is already signed in.
+  if (identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin) &&
+      identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin) ==
+          account.account_id &&
+      !needs_reauth_before_signin) {
+    DVLOG(1) << "There is already a primary account.";
+    return;
+  }
+
+  if (needs_reauth_before_signin) {
+    GetSigninUiDelegate()->ShowReauthUI(
+        profile, account.email,
+        /*enable_sync=*/false, access_point,
+        signin_metrics::PromoAction::PROMO_ACTION_WITH_DEFAULT);
+    return;
+  }
+
+  // If the account's refresh token are fine, sign in directly.
+  IdentityManagerFactory::GetForProfile(profile)
+      ->GetPrimaryAccountMutator()
+      ->SetPrimaryAccount(account.account_id, signin::ConsentLevel::kSignin,
+                          access_point);
+#else
+  NOTREACHED();
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+}
+
+=======
+>>>>>>> chromium
 void EnableSyncFromSingleAccountPromo(
     Browser* browser,
     const AccountInfo& account,
@@ -200,6 +379,9 @@ void EnableSyncFromMultiAccountPromo(Browser* browser,
                                      signin_metrics::AccessPoint access_point,
                                      bool is_default_promo_account) {
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+<<<<<<< HEAD
+  DCHECK_NE(signin_metrics::AccessPoint::kUnknown, access_point);
+=======
   internal::EnableSyncFromPromo(browser, account, access_point,
                                 is_default_promo_account,
                                 base::BindOnce(&CreateDiceTurnSyncOnHelper));
@@ -227,6 +409,7 @@ void EnableSyncFromPromo(
   DCHECK(browser);
   DCHECK_NE(signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN, access_point);
   Profile* profile = browser->profile();
+>>>>>>> chromium
   DCHECK(!profile->IsOffTheRecord());
 
   if (IdentityManagerFactory::GetForProfile(profile)->HasPrimaryAccount(
@@ -262,6 +445,42 @@ void EnableSyncFromPromo(
     return;
   }
 
+<<<<<<< HEAD
+  // In the UNO model, if the account was in the web-only signed in state,
+  // turning on sync will sign the account in the profile and show the sync
+  // confirmation dialog.
+  // Cancelling the sync confirmation should revert to the initial state,
+  // signing out the account from the profile and keeping it on the web only,
+  // unless the source is the Profile menu or the settings, for which we would
+  // still want the user to be signed in, having sync as optional.
+  // Aborting the sync confirmation for a secondary account reverts the original
+  // primary account as primary, and keeps the secondary account.
+  bool is_sync_promo =
+      access_point ==
+      signin_metrics::AccessPoint::kAvatarBubbleSignInWithSyncPromo;
+  if (switches::IsImprovedSettingsUIOnDesktopEnabled()) {
+    is_sync_promo =
+        is_sync_promo || access_point == signin_metrics::AccessPoint::kSettings;
+  }
+  TurnSyncOnHelper::SigninAbortedMode signin_aborted_mode =
+      switches::IsExplicitBrowserSigninUIOnDesktopEnabled() &&
+              account.account_id !=
+                  identity_manager
+                      ->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
+                      .account_id &&
+              !is_sync_promo
+          ? TurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT_ON_WEB_ONLY
+          : TurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT;
+  signin_metrics::LogSigninAccessPointStarted(access_point,
+                                              existing_account_promo_action);
+  signin_metrics::RecordSigninUserActionForAccessPoint(access_point);
+  GetSigninUiDelegate()->ShowTurnSyncOnUI(
+      profile, access_point, existing_account_promo_action, account.account_id,
+      signin_aborted_mode, is_sync_promo);
+#else
+  DUMP_WILL_BE_NOTREACHED();
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+=======
   signin_metrics::LogSigninAccessPointStarted(access_point, promo_action);
   signin_metrics::RecordSigninUserActionForAccessPoint(access_point,
                                                        promo_action);
@@ -269,6 +488,7 @@ void EnableSyncFromPromo(
       .Run(profile, browser, access_point, promo_action,
            signin_metrics::Reason::kSigninPrimaryAccount, account.account_id,
            DiceTurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT);
+>>>>>>> chromium
 }
 }  // namespace internal
 
@@ -286,6 +506,38 @@ std::vector<AccountInfo> GetAccountsForDicePromos(Profile* profile) {
   // Fetch account information for each id and make sure that the first account
   // in the list matches the unconsented primary account (if available).
   std::vector<AccountInfo> accounts;
+<<<<<<< HEAD
+
+  // First, add the primary account (if available), even if it is not in the
+  // cookie jar.
+  std::vector<AccountInfo>::iterator it = std::ranges::find(
+      accounts_with_tokens, default_account_id, &AccountInfo::account_id);
+
+  if (it != accounts_with_tokens.end()) {
+    accounts.push_back(std::move(*it));
+  }
+
+  // Then, add the other accounts in the order of the accounts in the cookie
+  // jar.
+  for (auto& account_info :
+       accounts_in_jar.GetPotentiallyInvalidSignedInAccounts()) {
+    DCHECK(!account_info.id.empty());
+    if (account_info.id == default_account_id ||
+        (restrict_to_accounts_eligible_for_sync &&
+         !signin::IsUsernameAllowedByPatternFromPrefs(
+             g_browser_process->local_state(), account_info.email))) {
+      continue;
+    }
+
+    // Only insert the account if it has a refresh token, because we need the
+    // account info.
+    it = std::ranges::find(accounts_with_tokens, account_info.id,
+                           &AccountInfo::account_id);
+
+    if (it != accounts_with_tokens.end()) {
+      accounts.push_back(std::move(*it));
+    }
+=======
   for (auto& account_info : accounts_with_tokens) {
     DCHECK(!account_info.IsEmpty());
     if (!signin::IsUsernameAllowedByPatternFromPrefs(
@@ -296,6 +548,7 @@ std::vector<AccountInfo> GetAccountsForDicePromos(Profile* profile) {
       accounts.insert(accounts.begin(), std::move(account_info));
     else
       accounts.push_back(std::move(account_info));
+>>>>>>> chromium
   }
   return accounts;
 }
@@ -387,6 +640,17 @@ bool ShouldShowAnimatedIdentityOnOpeningWindow(
   return identity_manager->GetAccountsWithRefreshTokens().size() > 1;
 }
 
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+base::AutoReset<SigninUiDelegate*> SetSigninUiDelegateForTesting(  // IN-TEST
+    SigninUiDelegate* delegate) {
+  return base::AutoReset<SigninUiDelegate*>(&g_signin_ui_delegate_for_testing,
+                                            delegate);
+}
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
+=======
+>>>>>>> chromium
 void RecordAnimatedIdentityTriggered(Profile* profile) {
   AvatarButtonUserData::SetAnimatedIdentityLastShown(profile,
                                                      base::TimeTicks::Now());

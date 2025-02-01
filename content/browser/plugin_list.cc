@@ -7,6 +7,10 @@
 #include <stddef.h>
 
 #include <algorithm>
+<<<<<<< HEAD
+#include <string_view>
+=======
+>>>>>>> chromium
 
 #include "base/check.h"
 #include "base/command_line.h"
@@ -280,11 +284,18 @@ bool PluginList::GetPluginInfoArray(
   return is_stale;
 }
 
+<<<<<<< HEAD
+void PluginList::RemoveExtraPluginPath(const base::FilePath& plugin_path) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  std::vector<base::FilePath>::iterator it =
+      std::ranges::find(extra_plugin_paths_, plugin_path);
+=======
 void PluginList::RemoveExtraPluginPathLocked(
     const base::FilePath& plugin_path) {
   lock_.AssertAcquired();
   std::vector<base::FilePath>::iterator it = std::find(
       extra_plugin_paths_.begin(), extra_plugin_paths_.end(), plugin_path);
+>>>>>>> chromium
   if (it != extra_plugin_paths_.end())
     extra_plugin_paths_.erase(it);
 }

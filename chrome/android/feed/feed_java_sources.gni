@@ -52,6 +52,8 @@ feed_java_sources = [
 
 feed_srcjar_deps = []
 
+<<<<<<< HEAD
+=======
 feed_junit_test_java_sources = [
   "junit/src/org/chromium/chrome/browser/feed/FeedSurfaceCoordinatorTest.java",
   "junit/src/org/chromium/chrome/browser/feed/FeedSurfaceMediatorTest.java",
@@ -72,6 +74,7 @@ feed_test_java_sources = [
   "//chrome/android/feed/core/javatests/src/org/chromium/chrome/browser/feed/v2/TestFeedServer.java",
 ]
 
+>>>>>>> chromium
 feed_test_deps = feed_deps + [
                    "//chrome/browser/privacy:java",
                    "//chrome/browser/user_education:java",

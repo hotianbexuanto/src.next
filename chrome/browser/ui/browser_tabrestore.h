@@ -21,7 +21,7 @@ class WebContents;
 namespace sessions {
 class SerializedNavigationEntry;
 struct SerializedUserAgentOverride;
-}
+}  // namespace sessions
 
 namespace chrome {
 

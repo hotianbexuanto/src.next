@@ -162,10 +162,16 @@ bool HttpProxyClientSocket::WasAlpnNegotiated() const {
 }
 
 NextProto HttpProxyClientSocket::GetNegotiatedProtocol() const {
+<<<<<<< HEAD
+  // Do not delegate to `socket_`. While `socket_` may negotiate ALPN with the
+  // proxy, this object represents the tunneled TCP connection to the origin.
+  return NextProto::kProtoUnknown;
+=======
   if (socket_)
     return socket_->GetNegotiatedProtocol();
   NOTREACHED();
   return kProtoUnknown;
+>>>>>>> chromium
 }
 
 bool HttpProxyClientSocket::GetSSLInfo(SSLInfo* ssl_info) {

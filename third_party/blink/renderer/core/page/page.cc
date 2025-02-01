@@ -91,6 +91,12 @@
 #include "third_party/blink/renderer/platform/scheduler/public/agent_group_scheduler.h"
 #include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
 #include "third_party/skia/include/core/SkColor.h"
+<<<<<<< HEAD
+#include "ui/color/color_provider.h"
+#include "ui/color/color_provider_utils.h"
+#include "ui/gfx/geometry/insets_conversions.h"
+=======
+>>>>>>> chromium
 
 namespace blink {
 
@@ -105,6 +111,29 @@ const int kMaxNumberOfFrames = 1000;
 const int kTenFrames = 10;
 
 bool g_limit_max_frames_to_ten_for_testing = false;
+<<<<<<< HEAD
+
+// static
+void SetSafeAreaEnvVariables(LocalFrame* frame,
+                             const gfx::InsetsF& safe_area_in_physical_px) {
+  gfx::InsetsF safe_area =
+      ScaleInsets(safe_area_in_physical_px, 1.0f / frame->LayoutZoomFactor());
+
+  DocumentStyleEnvironmentVariables& vars =
+      frame->GetDocument()->GetStyleEngine().EnsureEnvironmentVariables();
+  vars.SetVariable(UADefinedVariable::kSafeAreaInsetTop,
+                   StyleEnvironmentVariables::FormatFloatPx(safe_area.top()));
+  vars.SetVariable(UADefinedVariable::kSafeAreaInsetLeft,
+                   StyleEnvironmentVariables::FormatFloatPx(safe_area.left()));
+  vars.SetVariable(
+      UADefinedVariable::kSafeAreaInsetBottom,
+      StyleEnvironmentVariables::FormatFloatPx(safe_area.bottom()));
+  vars.SetVariable(UADefinedVariable::kSafeAreaInsetRight,
+                   StyleEnvironmentVariables::FormatFloatPx(safe_area.right()));
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 // Function defined in third_party/blink/public/web/blink.h.
@@ -630,6 +659,73 @@ int Page::SubframeCount() const {
   return subframe_count_;
 }
 
+<<<<<<< HEAD
+void Page::UpdateSafeAreaInsetWithBrowserControls(
+    const BrowserControls& browser_controls,
+    bool force_update) {
+  DCHECK(GetSettings().GetDynamicSafeAreaInsetsEnabled());
+
+  if (!DeprecatedLocalMainFrame()) {
+    return;
+  }
+
+  if (Fullscreen::HasFullscreenElements() && !force_update) {
+    LOG(WARNING) << "Attempt to set SAI with browser controls in fullscreen.";
+    return;
+  }
+
+  gfx::InsetsF new_scaled_safe_area(scaled_max_safe_area_insets_);
+
+  // The calculation is done in the unit of physical pixel.
+  if (scaled_max_safe_area_insets_.bottom() > 0) {
+    // Adjust the top / left / right is not needed, since they are set when
+    // display insets was received at |SetSafeArea()|.
+    float inset_bottom = scaled_max_safe_area_insets_.bottom();
+    int bottom_controls_full_height = browser_controls.BottomHeight();
+    float control_ratio = browser_controls.BottomShownRatio();
+
+    // As control_ratio decrease, safe_area_inset_bottom will be added to the
+    // web page to keep the bottom element out from the display cutout area.
+    float safe_area_inset_bottom = std::max(
+        0.f, inset_bottom - control_ratio * bottom_controls_full_height);
+
+    new_scaled_safe_area.set_bottom(safe_area_inset_bottom);
+  }
+
+  if (new_scaled_safe_area != applied_safe_area_insets_ || force_update) {
+    applied_safe_area_insets_ = new_scaled_safe_area;
+    SetSafeAreaEnvVariables(DeprecatedLocalMainFrame(), new_scaled_safe_area);
+  }
+}
+
+void Page::SetMaxSafeAreaInsets(LocalFrame* setter, gfx::Insets max_safe_area) {
+  // Update |scaled_max_safe_area_insets_| first.
+  float dsf = chrome_client_->GetScreenInfo(*setter).device_scale_factor;
+  gfx::InsetsF scaled_max_safe_area_insets =
+      ScaleInsets(gfx::InsetsF(max_safe_area), dsf);
+
+  if (scaled_max_safe_area_insets_ != scaled_max_safe_area_insets) {
+    scaled_max_safe_area_insets_ = scaled_max_safe_area_insets;
+
+    // Update Chrome client CC for MaxSafeAreaInsets change.
+    GetChromeClient().DidUpdateMaxSafeAreaInsets(scaled_max_safe_area_insets);
+  }
+
+  // When the SAI is changed when DynamicSafeAreaInsetsEnabled, the SAI for the
+  // main frame needs to be set per browser controls state.
+  if (GetSettings().GetDynamicSafeAreaInsetsEnabled() &&
+      setter->IsMainFrame()) {
+    // |scaled_max_safe_area_insets_| should be updated before
+    // UpdateSafeAreaInsetWithBrowserControls() is called.
+    UpdateSafeAreaInsetWithBrowserControls(GetBrowserControls(), true);
+  } else {
+    applied_safe_area_insets_ = scaled_max_safe_area_insets_;
+    SetSafeAreaEnvVariables(setter, scaled_max_safe_area_insets_);
+  }
+}
+
+=======
+>>>>>>> chromium
 void Page::SettingsChanged(ChangeType change_type) {
   switch (change_type) {
     case ChangeType::kStyle:
@@ -778,6 +874,13 @@ void Page::SettingsChanged(ChangeType change_type) {
         // Iterate through all of the scrollable areas and mark their layout
         // objects for layout.
         if (LocalFrameView* view = local_frame->View()) {
+<<<<<<< HEAD
+          for (const auto& scrollable_area : view->ScrollableAreas().Values()) {
+            if (scrollable_area->ScrollsOverflow()) {
+              if (auto* layout_box = scrollable_area->GetLayoutBox()) {
+                layout_box->SetNeedsLayout(
+                    layout_invalidation_reason::kScrollbarChanged);
+=======
           if (const auto* scrollable_areas = view->ScrollableAreas()) {
             for (const auto& scrollable_area : *scrollable_areas) {
               if (scrollable_area->ScrollsOverflow()) {
@@ -785,6 +888,7 @@ void Page::SettingsChanged(ChangeType change_type) {
                   layout_box->SetNeedsLayout(
                       layout_invalidation_reason::kScrollbarChanged);
                 }
+>>>>>>> chromium
               }
             }
           }
@@ -856,6 +960,15 @@ void Page::UpdateAcceleratedCompositingSettings() {
     auto* local_frame = DynamicTo<LocalFrame>(frame);
     if (!local_frame)
       continue;
+<<<<<<< HEAD
+    // Mark all scrollable areas as needing a paint property update because the
+    // compositing reasons may have changed.
+    if (LocalFrameView* view = local_frame->View()) {
+      for (const auto& scrollable_area : view->ScrollableAreas().Values()) {
+        if (scrollable_area->ScrollsOverflow()) {
+          if (auto* layout_box = scrollable_area->GetLayoutBox()) {
+            layout_box->SetNeedsPaintPropertyUpdate();
+=======
     LayoutView* layout_view = local_frame->ContentLayoutObject();
     if (!RuntimeEnabledFeatures::CompositeAfterPaintEnabled()) {
       layout_view->Compositor()->UpdateAcceleratedCompositingSettings();
@@ -867,6 +980,7 @@ void Page::UpdateAcceleratedCompositingSettings() {
           if (scrollable_area->ScrollsOverflow()) {
             if (auto* layout_box = scrollable_area->GetLayoutBox())
               layout_box->SetNeedsPaintPropertyUpdate();
+>>>>>>> chromium
           }
         }
       }

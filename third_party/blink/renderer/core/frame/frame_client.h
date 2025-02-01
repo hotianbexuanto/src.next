@@ -9,7 +9,16 @@
 #include "third_party/blink/public/mojom/frame/lifecycle.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/blame_context.h"
 #include "third_party/blink/renderer/core/core_export.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/platform/graphics/dom_node_id.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+
+namespace gfx {
+class Rect;
+}
+=======
 #include "third_party/blink/renderer/platform/heap/handle.h"
+>>>>>>> chromium
 
 namespace blink {
 

@@ -168,6 +168,10 @@
   <message name="IDS_MANAGEMENT_MANAGED_WEBSITES" desc="Title of the configured websites section of the page">
     Websites with info from your organization
   </message>
+<<<<<<< HEAD
+  <message name="IDS_MANAGED_PROFILE_INTERSTITIAL_HEADING" desc="The heading of the interstitial that tells the user that their organization requires them to sign in to Chrome with their managed account in order to access it.">
+    Sign-in is required by your organization
+=======
   <message name="IDS_MANAGEMENT_MANAGED_WEBSITES_EXPLANATION" desc="Message describing that administrator has set some preset organization data to be sent to the following websites">
     The administrator of this device has sent some info to the following websites, like settings or policies.
   </message>
@@ -250,5 +254,6 @@
   </message>
   <message name="IDS_MANAGEMENT_PAGE_VISITED_VISIBLE_DATA" desc="Description of the visible data for the real time URL check feature.">
     URLs of pages you visit are sent to Google Cloud or third parties for analysis. For example, they might be scanned to detect unsafe websites.
+>>>>>>> chromium
   </message>
 </grit-part>

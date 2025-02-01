@@ -91,7 +91,16 @@ class ExtensionActionIconFactoryTest
  public:
   ExtensionActionIconFactoryTest() : quit_in_icon_updated_(false) {}
 
+<<<<<<< HEAD
+  ExtensionActionIconFactoryTest(const ExtensionActionIconFactoryTest&) =
+      delete;
+  ExtensionActionIconFactoryTest& operator=(
+      const ExtensionActionIconFactoryTest&) = delete;
+
+  ~ExtensionActionIconFactoryTest() override = default;
+=======
   ~ExtensionActionIconFactoryTest() override {}
+>>>>>>> chromium
 
   void WaitForIconUpdate() {
     quit_in_icon_updated_ = true;

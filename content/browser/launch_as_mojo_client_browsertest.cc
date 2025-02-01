@@ -12,7 +12,12 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
 #include "build/build_config.h"
+<<<<<<< HEAD
+#include "components/variations/field_trial_config/field_trial_util.h"
+#include "components/variations/variations_switches.h"
+=======
 #include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/content_browser_test.h"
@@ -27,7 +32,11 @@
 #include "ui/ozone/public/ozone_switches.h"
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS) || defined(MEMORY_SANITIZER)
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 #include "ui/gl/gl_switches.h"
 #endif
 
@@ -85,7 +94,7 @@ class LaunchAsMojoClientBrowserTest : public ContentBrowserTest {
     command_line.CopySwitchesFrom(cmdline, kSwitchesToCopy,
                                   base::size(kSwitchesToCopy));
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
     command_line.AppendSwitchASCII(switches::kUseGL,
                                    gl::kGLImplementationSwiftShaderName);
 #endif
@@ -164,6 +173,8 @@ IN_PROC_BROWSER_TEST_F(LaunchAsMojoClientBrowserTest, LaunchAndBindInterface) {
 
   shell_controller->ShutDown();
 }
+<<<<<<< HEAD
+=======
 
 // Running a Content embedder with a dynamically loaded Mojo Core library is
 // currently only supported on Linux and Chrome OS.
@@ -209,6 +220,7 @@ IN_PROC_BROWSER_TEST_F(LaunchAsMojoClientBrowserTest,
   shell_controller->ShutDown();
 }
 #endif  // defined(OS_LINUX) || defined(OS_CHROMEOS)
+>>>>>>> chromium
 
 }  // namespace
 }  // namespace content

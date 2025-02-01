@@ -31,4 +31,3 @@ BASE_EXPORT bool IsSelectiveJniRegistrationEnabled(JNIEnv* env);
 }  // namespace base
 
 #endif  // BASE_ANDROID_JNI_UTILS_H_
-

@@ -33,9 +33,14 @@ import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.offlinepages.OfflinePageBridge;
 import org.chromium.chrome.browser.offlinepages.RequestCoordinatorBridge;
 import org.chromium.chrome.browser.profiles.Profile;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.document.ChromeAsyncTabLauncher;
+=======
 import org.chromium.chrome.browser.tab.state.CriticalPersistedTabData;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.document.TabDelegate;
+>>>>>>> chromium
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.EventConstants;
@@ -57,18 +62,34 @@ public class TabContextMenuItemDelegate implements ContextMenuItemDelegate {
     private EmptyTabObserver mDataReductionProxyContextMenuTabObserver;
     private final Supplier<EphemeralTabCoordinator> mEphemeralTabCoordinatorSupplier;
     private final Runnable mContextMenuCopyLinkObserver;
+<<<<<<< HEAD
+    private final Supplier<SnackbarManager> mSnackbarManagerSupplier;
+    private final Supplier<BottomSheetController> mBottomSheetControllerSupplier;
+=======
     private final Supplier<SnackbarManager> mSnackbarManager;
+>>>>>>> chromium
 
     /**
      * Builds a {@link TabContextMenuItemDelegate} instance.
      */
     public TabContextMenuItemDelegate(Tab tab, TabModelSelector tabModelSelector,
             Supplier<EphemeralTabCoordinator> ephemeralTabCoordinatorSupplier,
+<<<<<<< HEAD
+            Runnable contextMenuCopyLinkObserver,
+            Supplier<SnackbarManager> snackbarManagerSupplier,
+            Supplier<BottomSheetController> bottomSheetControllerSupplier) {
+        mActivity = activity;
+=======
             Runnable contextMenuCopyLinkObserver, Supplier<SnackbarManager> snackbarManager) {
+>>>>>>> chromium
         mTab = (TabImpl) tab;
         mTabModelSelector = tabModelSelector;
         mEphemeralTabCoordinatorSupplier = ephemeralTabCoordinatorSupplier;
         mContextMenuCopyLinkObserver = contextMenuCopyLinkObserver;
+<<<<<<< HEAD
+        mSnackbarManagerSupplier = snackbarManagerSupplier;
+        mBottomSheetControllerSupplier = bottomSheetControllerSupplier;
+=======
         mSnackbarManager = snackbarManager;
 
         mDataReductionProxyContextMenuTabObserver = new EmptyTabObserver() {
@@ -78,6 +99,7 @@ public class TabContextMenuItemDelegate implements ContextMenuItemDelegate {
             }
         };
         mTab.addObserver(mDataReductionProxyContextMenuTabObserver);
+>>>>>>> chromium
     }
 
     @Override
@@ -226,8 +248,16 @@ public class TabContextMenuItemDelegate implements ContextMenuItemDelegate {
         RecordUserAction.record("LinkOpenedInNewTab");
         LoadUrlParams loadUrlParams = new LoadUrlParams(url.getSpec());
         loadUrlParams.setReferrer(referrer);
+<<<<<<< HEAD
+        mTabModelSelector.openNewTab(
+                loadUrlParams,
+                TabLaunchType.FROM_LONGPRESS_BACKGROUND_IN_GROUP,
+                mTab,
+                isIncognito());
+=======
         mTabModelSelector.openNewTab(loadUrlParams,
                 TabLaunchType.FROM_LONGPRESS_BACKGROUND_IN_GROUP, mTab, isIncognito());
+>>>>>>> chromium
     }
 
     @Override

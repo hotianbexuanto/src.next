@@ -275,9 +275,15 @@ TEST_F(EventRouterTest, GetBaseEventName) {
 // Tests adding and removing observers from EventRouter.
 void EventRouterTest::RunEventRouterObserverTest(
     const EventListenerConstructor& constructor) {
+<<<<<<< HEAD
+  EventRouter router(browser_context(), nullptr);
+  std::unique_ptr<EventListener> listener =
+      constructor.Run("event_name", render_process_host(), base::Value::Dict());
+=======
   EventRouter router(nullptr, nullptr);
   std::unique_ptr<EventListener> listener = constructor.Run(
       "event_name", nullptr, std::make_unique<base::DictionaryValue>());
+>>>>>>> chromium
 
   // Add/remove works without any observers.
   router.OnListenerAdded(listener.get());
@@ -344,8 +350,110 @@ TEST_F(EventRouterTest, EventRouterObserverForServiceWorkers) {
       99, 199));
 }
 
+<<<<<<< HEAD
+namespace {
+
+// Tracks event dispatches to a specific process.
+class EventRouterObserver : public EventRouter::TestObserver {
+ public:
+  // Only counts events that match |process_id|.
+  explicit EventRouterObserver(int process_id) : process_id_(process_id) {}
+
+  void OnWillDispatchEvent(const Event& event) override {
+    // Do nothing.
+  }
+
+  void OnDidDispatchEventToProcess(const Event& event,
+                                   int process_id) override {
+    if (process_id == process_id_) {
+      ++dispatch_count;
+    }
+  }
+
+  int dispatch_count = 0;
+  const int process_id_;
+};
+
+// A fake that pretends that all contexts are WebUI.
+class ProcessMapFake : public ProcessMap {
+ public:
+  explicit ProcessMapFake(content::BrowserContext* browser_context)
+      : ProcessMap(browser_context) {}
+
+  mojom::ContextType GetMostLikelyContextType(const Extension* extension,
+                                              int process_id,
+                                              const GURL* url) const override {
+    return mojom::ContextType::kWebUi;
+  }
+};
+
+std::unique_ptr<KeyedService> BuildProcessMap(
+    content::BrowserContext* profile) {
+  return std::make_unique<ProcessMapFake>(profile);
+}
+
+}  // namespace
+
+TEST_F(EventRouterTest, WebUIEventsDoNotCrossIncognitoBoundaries) {
+  // Override ProcessMap to allow routing to WebUI.
+  ProcessMapFactory::GetInstance()->SetTestingFactory(
+      browser_context(), base::BindRepeating(&BuildProcessMap));
+  ProcessMapFactory::GetInstance()->SetTestingFactory(
+      incognito_context(), base::BindRepeating(&BuildProcessMap));
+
+  // Create a SimpleFeature to allow this API call to be routed to our test URL.
+  std::string event_name = "testapi.onEvent";
+  FeatureProvider provider;
+  auto feature = std::make_unique<SimpleFeature>();
+  feature->set_name("test feature");
+  feature->set_matches({"chrome://settings/*"});
+  provider.AddFeature(event_name, std::move(feature));
+
+  ExtensionAPI api;
+  api.RegisterDependencyProvider("api", &provider);
+  ExtensionAPI::OverrideSharedInstanceForTest scope(&api);
+
+  EventRouter router(browser_context(), nullptr);
+  content::MockRenderProcessHost regular_rph(browser_context());
+  content::MockRenderProcessHost otr_rph(incognito_context());
+
+  // Add event listeners, as if we had created two real WebUIs, one in a regular
+  // profile and one in an otr profile. Note that the string chrome://settings
+  // is hardcoded into the api permissions of settingsPrivate.
+  GURL dummy_url("chrome://settings/test");
+  router.AddEventListenerForURL(event_name, &regular_rph, dummy_url);
+  router.AddEventListenerForURL(event_name, &otr_rph, dummy_url);
+
+  // Hook up some test observers
+  EventRouterObserver regular_counter(regular_rph.GetDeprecatedID());
+  router.AddObserverForTesting(&regular_counter);
+  EventRouterObserver otr_counter(otr_rph.GetDeprecatedID());
+  router.AddObserverForTesting(&otr_counter);
+
+  EXPECT_EQ(0, regular_counter.dispatch_count);
+  EXPECT_EQ(0, otr_counter.dispatch_count);
+
+  // Sending an otr event should not trigger the regular observer.
+  auto otr_event =
+      std::make_unique<Event>(extensions::events::FOR_TEST, event_name,
+                              base::Value::List(), incognito_context());
+  router.BroadcastEvent(std::move(otr_event));
+  EXPECT_EQ(0, regular_counter.dispatch_count);
+  EXPECT_EQ(1, otr_counter.dispatch_count);
+
+  // Setting a regular event should not trigger the otr observer.
+  std::unique_ptr<Event> regular_event =
+      std::make_unique<Event>(extensions::events::FOR_TEST, event_name,
+                              base::Value::List(), browser_context());
+  router.BroadcastEvent(std::move(regular_event));
+  EXPECT_EQ(1, regular_counter.dispatch_count);
+  EXPECT_EQ(1, otr_counter.dispatch_count);
+}
+
+=======
+>>>>>>> chromium
 TEST_F(EventRouterTest, MultipleEventRouterObserver) {
-  EventRouter router(nullptr, nullptr);
+  EventRouter router(browser_context(), nullptr);
   std::unique_ptr<EventListener> listener =
       EventListener::ForURL("event_name", GURL("http://google.com/path"),
                             nullptr, std::make_unique<base::DictionaryValue>());
@@ -498,4 +606,215 @@ INSTANTIATE_TEST_SUITE_P(ServiceWorker,
                          EventRouterFilterTest,
                          testing::Values(true));
 
+<<<<<<< HEAD
+class EventRouterDispatchTest : public ExtensionsTest {
+ public:
+  EventRouterDispatchTest() = default;
+  EventRouterDispatchTest(const EventRouterDispatchTest&) = delete;
+  EventRouterDispatchTest& operator=(const EventRouterDispatchTest&) = delete;
+
+  void SetUp() override {
+    ExtensionsTest::SetUp();
+    render_process_host_ =
+        std::make_unique<content::MockRenderProcessHost>(browser_context());
+    ASSERT_TRUE(event_router());  // constructs EventRouter
+  }
+
+  void TearDown() override {
+    render_process_host_.reset();
+    ExtensionsTest::TearDown();
+  }
+
+  content::RenderProcessHost* process() const {
+    return render_process_host_.get();
+  }
+  EventRouter* event_router() { return EventRouter::Get(browser_context()); }
+
+ private:
+  std::unique_ptr<content::RenderProcessHost> render_process_host_;
+};
+
+TEST_F(EventRouterDispatchTest, TestDispatch) {
+  std::string ext1 = "ext1";
+  std::string ext2 = "ext2";
+  GURL webui1("chrome-untrusted://one");
+  GURL webui2("chrome-untrusted://two");
+  std::string event_name = "testapi.onEvent";
+  FeatureProvider provider;
+  auto feature = std::make_unique<SimpleFeature>();
+  feature->set_name("test feature");
+  feature->set_matches({webui1.spec().c_str(), webui2.spec().c_str()});
+  provider.AddFeature(event_name, std::move(feature));
+
+  ExtensionAPI api;
+  api.RegisterDependencyProvider("api", &provider);
+  ExtensionAPI::OverrideSharedInstanceForTest scope(&api);
+
+  TestEventRouterObserver observer(event_router());
+  auto add_extension = [&](const std::string& id) {
+    scoped_refptr<const Extension> extension =
+        ExtensionBuilder()
+            .SetID(id)
+            .SetManifest(base::Value::Dict()
+                             .Set("name", "Test app")
+                             .Set("version", "1.0")
+                             .Set("manifest_version", 2))
+            .Build();
+    ExtensionRegistry::Get(browser_context())->AddEnabled(extension);
+  };
+  add_extension(ext1);
+  add_extension(ext2);
+  auto event = [](std::string name) {
+    return std::make_unique<extensions::Event>(extensions::events::FOR_TEST,
+                                               name, base::Value::List());
+  };
+
+  // Register both extensions and both URLs for event.
+  event_router()->AddEventListener(event_name, process(), ext1);
+  event_router()->AddEventListener(event_name, process(), ext2);
+  event_router()->AddEventListenerForURL(event_name, process(), webui1);
+  event_router()->AddEventListenerForURL(event_name, process(), webui2);
+
+  // Should only dispatch to the single specified extension or url.
+  event_router()->DispatchEventToExtension(ext1, event(event_name));
+  EXPECT_EQ(1u, observer.dispatched_events().size());
+  observer.ClearEvents();
+  event_router()->DispatchEventToExtension(ext2, event(event_name));
+  EXPECT_EQ(1u, observer.dispatched_events().size());
+  observer.ClearEvents();
+  event_router()->DispatchEventToURL(webui1, event(event_name));
+  EXPECT_EQ(1u, observer.dispatched_events().size());
+  observer.ClearEvents();
+  event_router()->DispatchEventToURL(webui2, event(event_name));
+  EXPECT_EQ(1u, observer.dispatched_events().size());
+  observer.ClearEvents();
+
+  // No listeners registered for 'api.other' event.
+  event_router()->DispatchEventToExtension(ext1, event("api.other"));
+  EXPECT_EQ(0u, observer.dispatched_events().size());
+  event_router()->DispatchEventToURL(webui1, event("api.other"));
+  EXPECT_EQ(0u, observer.dispatched_events().size());
+}
+
+// TODO(crbug.com/40281129): test is flaky across platforms.
+TEST_F(EventRouterDispatchTest, DISABLED_TestDispatchCallback) {
+  std::string ext1 = "ext1";
+  std::string ext2 = "ext2";
+  std::string ext3 = "ext3";
+  std::string event_name = "testapi.onEvent";
+  FeatureProvider provider;
+  auto feature = std::make_unique<SimpleFeature>();
+  feature->set_name("test feature");
+  provider.AddFeature(event_name, std::move(feature));
+
+  ExtensionAPI api;
+  api.RegisterDependencyProvider("api", &provider);
+  ExtensionAPI::OverrideSharedInstanceForTest scope(&api);
+
+  auto add_extension = [&](const std::string& id) {
+    scoped_refptr<const Extension> extension =
+        ExtensionBuilder("test extension")
+            .SetManifestVersion(3)
+            .SetID(id)
+            .Build();
+    ExtensionRegistry::Get(browser_context())->AddEnabled(extension);
+  };
+  add_extension(ext1);
+  add_extension(ext2);
+  add_extension(ext3);
+
+  std::vector<extensions::EventTarget> dispatched;
+  auto create_event = [&](const std::string& name) {
+    auto event = std::make_unique<extensions::Event>(
+        extensions::events::FOR_TEST, name, base::Value::List());
+    return event;
+  };
+
+  auto create_event_with_callback = [&](const std::string& name) {
+    auto e = create_event(name);
+    e->did_dispatch_callback =
+        base::BindLambdaForTesting([&](const extensions::EventTarget& target) {
+          dispatched.push_back(target);
+        });
+    // To ensure did_dispatch_callback is copied properly.
+    return e->DeepCopy();
+  };
+
+  auto process1 =
+      std::make_unique<content::MockRenderProcessHost>(browser_context());
+  auto process2 =
+      std::make_unique<content::MockRenderProcessHost>(browser_context());
+  auto process3 =
+      std::make_unique<content::MockRenderProcessHost>(browser_context());
+  auto process4 =
+      std::make_unique<content::MockRenderProcessHost>(browser_context());
+
+  // Register all extensions for the event:
+  // 1) single listener for ext1
+  event_router()->AddEventListener(event_name, process1.get(), ext1);
+  // 2) two listeners for two processes for ext2
+  event_router()->AddEventListener(event_name, process2.get(), ext2);
+  event_router()->AddEventListener(event_name, process3.get(), ext2);
+  // 3) service worker listeners for ext3
+  const int sw_version_id = 10;
+  const int sw_thread_id = 100;
+  MockEventDispatcher sw_event_dispatcher;
+  event_router()->AddServiceWorkerEventListener(
+      mojom::EventListener::New(
+          mojom::EventListenerOwner::NewExtensionId(ext3), event_name,
+          mojom::ServiceWorkerContext::New(GURL(), sw_version_id, sw_thread_id),
+          /*event_filter=*/std::nullopt),
+      process4.get());
+  event_router()->BindServiceWorkerEventDispatcher(
+      process4->GetDeprecatedID(), sw_thread_id,
+      sw_event_dispatcher.BindAndPassRemote());
+
+  // Dispatch without callback set.
+  event_router()->DispatchEventToExtension(ext1, create_event(event_name));
+  event_router()->DispatchEventToExtension(ext2, create_event(event_name));
+  event_router()->DispatchEventToExtension(ext3, create_event(event_name));
+
+  EXPECT_EQ(0u, dispatched.size());
+  dispatched.clear();
+
+  // Dispatch with a post-dispatch callback set.
+  event_router()->DispatchEventToExtension(
+      ext1, create_event_with_callback(event_name));
+  event_router()->DispatchEventToExtension(
+      ext2, create_event_with_callback(event_name));
+  event_router()->DispatchEventToExtension(
+      ext3, create_event_with_callback(event_name));
+
+  const int sw_invalid_version_id =
+      blink::mojom::kInvalidServiceWorkerVersionId;
+  std::vector<EventTarget> expected{
+      {ext1, process1->GetDeprecatedID(), sw_invalid_version_id, kMainThreadId},
+      {ext2, process2->GetDeprecatedID(), sw_invalid_version_id, kMainThreadId},
+      {ext2, process3->GetDeprecatedID(), sw_invalid_version_id, kMainThreadId},
+      {ext3, process4->GetDeprecatedID(), sw_version_id, sw_thread_id},
+  };
+  std::sort(std::begin(dispatched), std::end(dispatched));
+  EXPECT_EQ(dispatched, expected);
+  dispatched.clear();
+
+  // Repeat the same event, but with broadcast: should have the same dispatch
+  // targets.
+  event_router()->BroadcastEvent(create_event_with_callback(event_name));
+
+  std::sort(std::begin(dispatched), std::end(dispatched));
+  EXPECT_EQ(dispatched, expected);
+  dispatched.clear();
+
+  // No listeners registered for 'api.other' event.
+  event_router()->DispatchEventToExtension(
+      ext1, create_event_with_callback("api.other"));
+  event_router()->DispatchEventToExtension(
+      ext2, create_event_with_callback("api.other"));
+  event_router()->DispatchEventToExtension(
+      ext3, create_event_with_callback("api.other"));
+  EXPECT_EQ(0u, dispatched.size());
+}
+
+=======
+>>>>>>> chromium
 }  // namespace extensions

@@ -20,6 +20,13 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.chromium.base.test.util.Feature;
+<<<<<<< HEAD
+import org.chromium.base.test.util.Features.DisableFeatures;
+import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
+import org.chromium.chrome.browser.night_mode.NightModeMetrics.ThemeSettingsEntry;
+=======
+>>>>>>> chromium
 import org.chromium.chrome.browser.night_mode.NightModeUtils;
 import org.chromium.chrome.browser.night_mode.R;
 import org.chromium.chrome.browser.night_mode.ThemeType;
@@ -40,8 +47,17 @@ import org.chromium.content_public.browser.test.util.TestThreadUtils;
 public class ThemeSettingsFragmentTest extends DummyUiChromeActivityTestCase {
     // clang-format on
     @Rule
+<<<<<<< HEAD
+    public BlankUiTestActivitySettingsTestRule mSettingsTestRule =
+            new BlankUiTestActivitySettingsTestRule();
+
+    @Mock public WebsitePreferenceBridge.Natives mMockWebsitePreferenceBridgeJni;
+    @Mock public Profile mProfile;
+    @Mock public Tracker mTracker;
+=======
     public SettingsActivityTestRule<ThemeSettingsFragment> mSettingsActivityTestRule =
             new SettingsActivityTestRule<>(ThemeSettingsFragment.class);
+>>>>>>> chromium
 
     private ThemeSettingsFragment mFragment;
     private RadioButtonGroupThemePreference mPreference;
@@ -57,6 +73,30 @@ public class ThemeSettingsFragmentTest extends DummyUiChromeActivityTestCase {
                 ThemeSettingsFragment.PREF_UI_THEME_PREF);
     }
 
+<<<<<<< HEAD
+    @Before
+    public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        ChromeSharedPreferences.getInstance().removeKey(UI_THEME_SETTING);
+
+        WebsitePreferenceBridgeJni.setInstanceForTesting(mMockWebsitePreferenceBridgeJni);
+
+        TrackerFactory.setTrackerForTests(mTracker);
+
+        // Default value for feature DARKEN_WEBSITES_CHECKBOX_IN_THEMES_SETTING.
+        mForceDarkModeEnabled = true;
+        Mockito.doAnswer(invocation -> mForceDarkModeEnabled)
+                .when(mMockWebsitePreferenceBridgeJni)
+                .isContentSettingEnabled(any(), eq(ContentSettingsType.AUTO_DARK_WEB_CONTENT));
+        Mockito.doAnswer(
+                        invocation -> {
+                            mForceDarkModeEnabled = (boolean) invocation.getArguments()[2];
+                            return null;
+                        })
+                .when(mMockWebsitePreferenceBridgeJni)
+                .setContentSettingEnabled(
+                        any(), eq(ContentSettingsType.AUTO_DARK_WEB_CONTENT), anyBoolean());
+=======
     @Override
     public void tearDownTest() throws Exception {
         TestThreadUtils.runOnUiThreadBlocking(() -> {
@@ -65,6 +105,7 @@ public class ThemeSettingsFragmentTest extends DummyUiChromeActivityTestCase {
         });
 
         super.tearDownTest();
+>>>>>>> chromium
     }
 
     @Test

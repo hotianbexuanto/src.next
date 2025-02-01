@@ -31,6 +31,11 @@
     LegacyTreatAsPartialInterface,
     Exposed=(Window,Worker)
 ] interface mixin WindowOrWorkerGlobalScope {
+<<<<<<< HEAD
+    readonly attribute boolean crossOriginIsolated;
+    [RuntimeEnabled=CoepReflection]
+        readonly attribute DOMString crossOriginEmbedderPolicy;
+=======
     // base64 utility methods
     [RaisesException] DOMString btoa(DOMString btoa);
     [RaisesException] DOMString atob(DOMString atob);
@@ -45,4 +50,5 @@
 
     [RuntimeEnabled=CrossOriginIsolation]
         readonly attribute boolean crossOriginIsolated;
+>>>>>>> chromium
 };

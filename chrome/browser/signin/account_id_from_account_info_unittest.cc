@@ -3,6 +3,13 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/signin/account_id_from_account_info.h"
+<<<<<<< HEAD
+
+#include "chrome/test/base/scoped_testing_local_state.h"
+#include "chrome/test/base/testing_browser_process.h"
+#include "google_apis/gaia/gaia_id.h"
+=======
+>>>>>>> chromium
 #include "testing/gtest/include/gtest/gtest.h"
 
 class AccountIdFromAccountInfoTest : public testing::Test {};
@@ -13,7 +20,7 @@ TEST(AccountIdFromAccountInfoTest,
      AccountIdFromAccountInfo_CanonicalizesRawEmail) {
   AccountInfo info;
   info.email = "test.email@gmail.com";
-  info.gaia = "test_id";
+  info.gaia = GaiaId("test_id");
 
   EXPECT_EQ("testemail@gmail.com",
             AccountIdFromAccountInfo(info).GetUserEmail());

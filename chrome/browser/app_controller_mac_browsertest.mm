@@ -62,7 +62,11 @@
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/common/chrome_constants.h"
+<<<<<<< HEAD
+#include "chrome/common/chrome_paths.h"
+=======
 #include "chrome/common/chrome_features.h"
+>>>>>>> chromium
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
@@ -738,7 +742,49 @@ IN_PROC_BROWSER_TEST_F(AppControllerBrowserTest, OpenInRegularBrowser) {
   EXPECT_EQ(1, incognito_browser->tab_strip_model()->count());
   // Open a url.
   GURL simple(embedded_test_server()->GetURL("/simple.html"));
+<<<<<<< HEAD
+  content::TestNavigationObserver event_navigation_observer(simple);
+  event_navigation_observer.StartWatchingNewWebContents();
+  SendOpenUrlToAppController(simple);
+  event_navigation_observer.Wait();
+  // Check the url is opened in the already opened incognito browser.
+  EXPECT_EQ(BrowserList::GetInstance()->size(), 1u);
+  EXPECT_EQ(2, incognito_browser->tab_strip_model()->count());
+  EXPECT_EQ(simple, incognito_browser->tab_strip_model()
+                        ->GetActiveWebContents()
+                        ->GetLastCommittedURL());
+}
+
+using AppControllerShortcutsNotAppsBrowserTest = InProcessBrowserTest;
+
+IN_PROC_BROWSER_TEST_F(AppControllerShortcutsNotAppsBrowserTest,
+                       OpenChromeWeblocFile) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  AppController* ac =
+      base::apple::ObjCCastStrict<AppController>([NSApp delegate]);
+  ASSERT_TRUE(ac);
+
+  // Create and open a .crwebloc file
+  GURL simple(embedded_test_server()->GetURL("/simple.html"));
+  base::ScopedTempDir temp_dir;
+  base::FilePath crwebloc_file;
+  {
+    base::ScopedAllowBlockingForTesting allow_blocking;
+    ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+    crwebloc_file = temp_dir.GetPath().AppendASCII("test shortcut.crwebloc");
+    ASSERT_TRUE(shortcuts::ChromeWeblocFile(
+                    simple, *base::SafeBaseName::Create(
+                                browser()->profile()->GetPath()))
+                    .SaveToFile(crwebloc_file));
+  }
+
+  content::TestNavigationObserver event_navigation_observer(simple);
+  event_navigation_observer.StartWatchingNewWebContents();
+  SendOpenUrlToAppController(net::FilePathToFileURL(crwebloc_file));
+  event_navigation_observer.Wait();
+=======
   SendAppleEventToOpenUrlToAppController(simple);
+>>>>>>> chromium
   // It should be opened in the regular browser.
   content::TestNavigationObserver event_navigation_observer(
       browser()->tab_strip_model()->GetActiveWebContents());

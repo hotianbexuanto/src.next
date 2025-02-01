@@ -37,14 +37,24 @@
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/identity_manager/accounts_mutator.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "google_apis/gaia/gaia_id.h"
 
 namespace signin_util {
 
 namespace {
 
+<<<<<<< HEAD
+constexpr signin_metrics::AccessPoint kCredentialsProviderAccessPointWin =
+    signin_metrics::AccessPoint::kMachineLogon;
+
+std::unique_ptr<TurnSyncOnHelper::Delegate>*
+GetTurnSyncOnHelperDelegateForTestingStorage() {
+  static base::NoDestructor<std::unique_ptr<TurnSyncOnHelper::Delegate>>
+=======
 std::unique_ptr<DiceTurnSyncOnHelper::Delegate>*
 GetDiceTurnSyncOnHelperDelegateForTestingStorage() {
   static base::NoDestructor<std::unique_ptr<DiceTurnSyncOnHelper::Delegate>>
+>>>>>>> chromium
       delegate;
   return delegate.get();
 }
@@ -116,7 +126,7 @@ void ImportCredentialsFromProvider(Profile* profile,
   CoreAccountId account_id =
       IdentityManagerFactory::GetForProfile(profile)
           ->GetAccountsMutator()
-          ->AddOrUpdateAccount(base::WideToUTF8(gaia_id),
+          ->AddOrUpdateAccount(GaiaId(base::WideToUTF8(gaia_id)),
                                base::WideToUTF8(email), refresh_token,
                                /*is_under_advanced_protection=*/false,
                                signin_metrics::SourceForRefreshTokenOperation::
@@ -181,7 +191,7 @@ void ExtractCredentialProviderUser(std::wstring* cred_provider_gaia_id,
 // credential must be for the same account.  Starts the process to turn on DICE
 // only if |turn_on_sync| is true.
 bool TrySigninWithCredentialProvider(Profile* profile,
-                                     const std::wstring& auth_gaia_id,
+                                     const GaiaId& auth_gaia_id,
                                      bool turn_on_sync) {
   base::win::RegKey key;
   if (key.Open(HKEY_CURRENT_USER, credential_provider::kRegHkcuAccountsPath,
@@ -198,8 +208,10 @@ bool TrySigninWithCredentialProvider(Profile* profile,
     return false;
 
   std::wstring gaia_id = it.Name();
-  if (!auth_gaia_id.empty() && auth_gaia_id != gaia_id)
+  if (!auth_gaia_id.empty() &&
+      base::UTF8ToWide(auth_gaia_id.ToString()) != gaia_id) {
     return false;
+  }
 
   std::wstring email;
   if (key_account.ReadValue(
@@ -289,7 +301,7 @@ void SigninWithCredentialProviderIfPossible(Profile* profile) {
 
   // Chrome doesn't allow signing into current profile if the same user is
   // signed in another profile.
-  if (!CanOfferSignin(profile, base::WideToUTF8(cred_provider_gaia_id),
+  if (!CanOfferSignin(profile, GaiaId(base::WideToUTF8(cred_provider_gaia_id)),
                       base::WideToUTF8(cred_provider_email))
            .IsOk() ||
       IsGCPWUsedInOtherProfile(profile)) {
@@ -297,11 +309,11 @@ void SigninWithCredentialProviderIfPossible(Profile* profile) {
   }
 
   auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
-  std::wstring gaia_id;
+  GaiaId gaia_id;
   if (identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync)) {
-    gaia_id = base::UTF8ToWide(
+    gaia_id =
         identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSync)
-            .gaia);
+            .gaia;
   }
 
   TrySigninWithCredentialProvider(profile, gaia_id, gaia_id.empty());
@@ -323,9 +335,8 @@ bool ReauthWithCredentialProviderIfPossible(Profile* profile) {
     return false;
   }
 
-  std::wstring gaia_id = base::UTF8ToWide(
-      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSync)
-          .gaia.c_str());
+  const GaiaId gaia_id =
+      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSync).gaia;
   return TrySigninWithCredentialProvider(profile, gaia_id, false);
 }
 

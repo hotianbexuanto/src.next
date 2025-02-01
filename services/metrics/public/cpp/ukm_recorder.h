@@ -15,6 +15,10 @@
 #include "services/metrics/public/mojom/ukm_interface.mojom-forward.h"
 #include "url/gurl.h"
 
+<<<<<<< HEAD
+class ChromePermissionsClient;
+=======
+>>>>>>> chromium
 class PermissionUmaUtil;
 class WebApkUkmRecorder;
 
@@ -23,6 +27,12 @@ class UkmRecorderInterface;
 }  // namespace metrics
 
 namespace content {
+<<<<<<< HEAD
+class BtmNavigationHandle;
+class BtmServiceImpl;
+class FedCmMetrics;
+=======
+>>>>>>> chromium
 class PaymentAppProviderUtil;
 class RenderFrameHostImpl;
 }  // namespace content
@@ -71,6 +81,73 @@ class METRICS_EXPORT UkmRecorder {
   // session.
   static SourceId GetNewSourceID();
 
+<<<<<<< HEAD
+  // Gets new source Id for PAYMENT_APP_ID type and updates the source URL to
+  // the scope of the app. This method should only be called by
+  // PaymentAppProviderUtil class when the payment app window is opened.
+  static SourceId GetSourceIdForPaymentAppFromScope(
+      base::PassKey<content::PaymentAppProviderUtil>,
+      const GURL& payment_app_from_scope_url);
+
+  // Gets a new SourceId for WEB_IDENTITY_ID type and updates the source URL
+  // from the identity provider. This method should only be called in the
+  // FedCmMetrics class.
+  static SourceId GetSourceIdForWebIdentityFromScope(
+      base::PassKey<content::FedCmMetrics>,
+      const GURL& provider_url);
+
+  // Gets a new SourceId of REDIRECT_ID type and updates the source URL
+  // from the redirect chain. This method should only be called in the
+  // BtmNavigationHandle class.
+  static SourceId GetSourceIdForRedirectUrl(
+      base::PassKey<content::BtmNavigationHandle>,
+      const GURL& redirect_url);
+
+  // Gets a new SourceId of EXTENSION_ID type and updates the source URL
+  // from the extension message port. This method should only be called by
+  // approved cases, indicated by the PassKeys.
+  static SourceId GetSourceIdForExtensionUrl(
+      base::PassKey<extensions::ExtensionMessagePort>,
+      const GURL& extension_url);
+  static SourceId GetSourceIdForExtensionUrl(
+      base::PassKey<extensions::ManifestV2ExperimentManager>,
+      const GURL& extension_url);
+
+  // Gets a new SourceId of REDIRECT_ID type and updates the source URL to the
+  // given domain. This method should only be called in the BtmServiceImpl
+  // class for sites in the DIPS database. `site` must be a registrable domain.
+  static SourceId GetSourceIdForDipsSite(base::PassKey<content::BtmServiceImpl>,
+                                         const std::string& site);
+
+  // Gets a new SourceId of CHROMEOS_WEBSITE_ID type. This should be only
+  // used for recording ChromeOS website stats.
+  static SourceId GetSourceIdForChromeOSWebsiteURL(
+      base::PassKey<apps::WebsiteMetrics>,
+      const GURL& chromeos_website_url);
+
+  // Gets a new SourceId of NOTIFICATION_ID type. This should only be
+  // used for recording Permission UKM events related to persistent and
+  // nonpersistent notifications. `origin` is the domain that uses the Push API.
+  static SourceId GetSourceIdForNotificationPermission(
+      base::PassKey<ChromePermissionsClient>,
+      const GURL& origin);
+
+  // Gets a new SourceId of NOTIFICATION_ID type. This should only be used
+  // for recording persistent and nonpersistent notification UKM events.
+  static SourceId GetSourceIdForNotificationEvent(
+      base::PassKey<PlatformNotificationServiceImpl>,
+      const GURL& origin);
+
+  // This method should be called when the system is about to shutdown, but
+  // `UkmRecorder` is still available to record metrics.
+  // Calls `OnStartingShutdown` on each observer from `observers_`.
+  void NotifyStartShutdown();
+
+  void AddObserver(Observer* observer);
+  void RemoveObserver(Observer* observer);
+
+=======
+>>>>>>> chromium
   // Add an entry to the UkmEntry list.
   virtual void AddEntry(mojom::UkmEntryPtr entry) = 0;
 

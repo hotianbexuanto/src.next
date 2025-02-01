@@ -247,7 +247,40 @@ class CORE_EXPORT LocalFrameUkmAggregator
     int64_t metric_index_ = -1;
   };
 
+<<<<<<< HEAD
+  // Scoped helper class for timing forced style and layout updates.
+  // Encapsulates the TimeTicks::Now() calls which are expensive on arm. The
+  // time from object creation to destruction is recorded and aggregated within
+  // LocalFrameUkmAggregator.
+  class CORE_EXPORT ScopedForcedLayoutTimer {
+   public:
+    ScopedForcedLayoutTimer(LocalFrameUkmAggregator& aggregator,
+                            DocumentUpdateReason update_reason,
+                            bool avoid_unnecessary_forced_layout_measurements,
+                            bool should_report_uma_this_frame,
+                            bool is_pre_fcp,
+                            bool record_ukm_for_current_frame);
+    ~ScopedForcedLayoutTimer();
+
+    ScopedForcedLayoutTimer(const ScopedForcedLayoutTimer&) = delete;
+    ScopedForcedLayoutTimer& operator=(const ScopedForcedLayoutTimer&) = delete;
+
+    ScopedForcedLayoutTimer(ScopedForcedLayoutTimer&& other);
+    ScopedForcedLayoutTimer& operator=(ScopedForcedLayoutTimer&& other);
+
+   private:
+    scoped_refptr<LocalFrameUkmAggregator> aggregator_;
+    DocumentUpdateReason update_reason_;
+    base::TimeTicks start_time_;
+    bool avoid_unnecessary_forced_layout_measurements_;
+    bool should_report_uma_this_frame_;
+    bool is_pre_fcp_;
+  };
+
+  LocalFrameUkmAggregator();
+=======
   LocalFrameUkmAggregator(int64_t source_id, ukm::UkmRecorder*);
+>>>>>>> chromium
   LocalFrameUkmAggregator(const LocalFrameUkmAggregator&) = delete;
   LocalFrameUkmAggregator& operator=(const LocalFrameUkmAggregator&) = delete;
   ~LocalFrameUkmAggregator();

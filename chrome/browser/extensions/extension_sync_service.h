@@ -116,9 +116,26 @@ class ExtensionSyncService : public syncer::SyncableService,
       syncer::ModelType type,
       std::vector<extensions::ExtensionSyncData>* sync_data_list) const;
 
+<<<<<<< HEAD
+  // Returns if the extension corresponding to the given `extension_sync_data`
+  // should be promoted to an account extension, or false if there is no
+  // corresponding extension.
+  // Note that this is used if only the account extension state needs to be set.
+  bool ShouldPromoteToAccountExtension(
+      const extensions::ExtensionSyncData& extension_sync_data) const;
+
+  // Returns if the given `extension` should receive and apply updates from
+  // incoming sync data. This does not necessarily mean the extension can be
+  // uploaded to sync (ShouldSync returns false).
+  bool ShouldReceiveSyncData(const extensions::Extension& extension) const;
+
+  // Returns if the given `extension` should be synced by this class (i.e. it
+  // can be uploaded to the sync server).
+=======
   // Returns whether the given extension should be synced by this class.
   // Filters out unsyncable extensions as well as themes (which are handled by
   // ThemeSyncableService instead).
+>>>>>>> chromium
   bool ShouldSync(const extensions::Extension& extension) const;
 
   // The normal profile associated with this ExtensionSyncService.

@@ -7,6 +7,14 @@ package org.chromium.content.browser;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
+<<<<<<< HEAD
+import android.text.TextUtils;
+
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JNINamespace;
+import org.jni_zero.NativeMethods;
+=======
+>>>>>>> chromium
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.TraceEvent;
@@ -15,7 +23,13 @@ import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.task.AsyncTask;
 import org.chromium.base.task.PostTask;
+<<<<<<< HEAD
+import org.chromium.base.task.TaskTraits;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.content_public.browser.UiThreadTaskTraits;
+>>>>>>> chromium
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +45,7 @@ import java.util.Locale;
  * use PostTask.runOrPostTask(UiThreadTaskTraits.DEFAULT, ...)  when calling back to C++.
  */
 @JNINamespace("content")
+@NullMarked
 class TtsPlatformImpl {
     private static class TtsVoice {
         private TtsVoice(String name, String language) {
@@ -57,6 +72,135 @@ class TtsPlatformImpl {
             mImpl.speak(mUtteranceId, mText, mLang, mRate, mPitch, mVolume);
         }
 
+<<<<<<< HEAD
+        /**
+         * Constructor for a specific TTS Engine with package name
+         * @param engineId Package name for the TTS Engine to be used.
+         */
+        private TtsEngine(String engineId) {
+            mInitialized = false;
+            mTextToSpeech =
+                    new TextToSpeech(
+                            ContextUtils.getApplicationContext(),
+                            status -> {
+                                if (status == TextToSpeech.SUCCESS) {
+                                    initializeNonDefault();
+                                }
+                            },
+                            engineId);
+        }
+
+        /** Initialization for non-default TTS Engine does not enumerate voices. */
+        private void initializeNonDefault() {
+            mInitialized = true;
+            if (mPendingUtterance != null) mPendingUtterance.speak();
+        }
+
+        /**
+         * Note: we enforce that this method is called on the UI thread, so
+         * we can call TtsPlatformImplJni.get().voicesChanged directly.
+         */
+        private void initializeDefault() {
+            TraceEvent.startAsync("TtsEngine:initialize_default", hashCode());
+
+            new AsyncTask<List<TtsVoice>>() {
+                @Override
+                protected List<TtsVoice> doInBackground() {
+                    assert mNativeTtsPlatformImplAndroid != 0;
+
+                    try (TraceEvent te =
+                            TraceEvent.scoped("TtsEngine:initialize_default.async_task")) {
+                        Locale[] locales = Locale.getAvailableLocales();
+                        final List<TtsVoice> voices = new ArrayList<>();
+                        for (Locale locale : locales) {
+                            if (!locale.getVariant().isEmpty()) continue;
+                            try {
+                                if (mTextToSpeech.isLanguageAvailable(locale) > 0) {
+                                    String name = locale.getDisplayLanguage();
+                                    if (!locale.getCountry().isEmpty()) {
+                                        name += " " + locale.getDisplayCountry();
+                                    }
+                                    TtsVoice voice = new TtsVoice(name, locale.toString());
+                                    voices.add(voice);
+                                }
+                            } catch (Exception e) {
+                                // Just skip the locale if it's invalid.
+                                //
+                                // We used to catch only java.util.MissingResourceException,
+                                // but we need to catch more exceptions to work around a bug
+                                // in Google TTS when we query "bn".
+                                // http://crbug.com/792856
+                            }
+                        }
+                        return voices;
+                    }
+                }
+
+                @Override
+                protected void onPostExecute(List<TtsVoice> voices) {
+                    mVoices = voices;
+                    mInitialized = true;
+
+                    TtsPlatformImplJni.get().voicesChanged(mNativeTtsPlatformImplAndroid);
+
+                    if (mPendingUtterance != null) mPendingUtterance.speak();
+
+                    TraceEvent.finishAsync(
+                            "TtsEngine:initialize_default", TtsEngine.this.hashCode());
+                }
+            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        }
+
+        private boolean isInitialized() {
+            return mInitialized;
+        }
+
+        private void setPendingUtterance(PendingUtterance pendingUtterance) {
+            mPendingUtterance = pendingUtterance;
+        }
+
+        private void clearPendingUtterance() {
+            mPendingUtterance = null;
+        }
+
+        private boolean speak(
+                int utteranceId, String text, String lang, float rate, float pitch, float volume) {
+            if (!isInitialized()) {
+                return false;
+            }
+            if (lang == null) {
+                mCurrentLanguage = null;
+            } else if (!TextUtils.equals(lang, mCurrentLanguage)) {
+                mTextToSpeech.setLanguage(LocaleUtils.forLanguageTag(lang.replace("_", "-")));
+                mCurrentLanguage = lang;
+            }
+
+            mTextToSpeech.setSpeechRate(rate);
+            mTextToSpeech.setPitch(pitch);
+            Bundle params = new Bundle();
+            if (volume != 1.0) {
+                params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume);
+            }
+            int result =
+                    mTextToSpeech.speak(
+                            text, TextToSpeech.QUEUE_FLUSH, params, Integer.toString(utteranceId));
+            return (result == TextToSpeech.SUCCESS);
+        }
+
+        private void stop() {
+            if (isInitialized()) mTextToSpeech.stop();
+            if (mPendingUtterance != null) mPendingUtterance = null;
+        }
+
+        private TextToSpeech getTextToSpeech() {
+            return mTextToSpeech;
+        }
+
+        private List<TtsVoice> getVoices() {
+            assert mVoices != null;
+            return mVoices;
+        }
+=======
         TtsPlatformImpl mImpl;
         int mUtteranceId;
         String mText;
@@ -64,6 +208,7 @@ class TtsPlatformImpl {
         float mRate;
         float mPitch;
         float mVolume;
+>>>>>>> chromium
     }
 
     private long mNativeTtsPlatformImplAndroid;

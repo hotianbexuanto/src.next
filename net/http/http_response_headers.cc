@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 // The rules for header parsing were borrowed from Firefox:
 // http://lxr.mozilla.org/seamonkey/source/netwerk/protocol/http/src/nsHttpResponseHead.cpp
 // The rules for parsing content-types were also borrowed from Firefox:
@@ -20,6 +25,10 @@
 #include "base/logging.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/pickle.h"
+<<<<<<< HEAD
+#include "base/strings/escape.h"
+=======
+>>>>>>> chromium
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece.h"
@@ -184,6 +193,96 @@ HttpResponseHeaders::HttpResponseHeaders(base::PickleIterator* iter)
     Parse(raw_input);
 }
 
+<<<<<<< HEAD
+HttpResponseHeaders::HttpResponseHeaders(
+    BuilderPassKey,
+    HttpVersion version,
+    std::string_view status,
+    base::span<const std::pair<std::string_view, std::string_view>> headers)
+    : http_version_(version) {
+  // This must match the behaviour of Parse(). We don't use Parse() because
+  // avoiding the overhead of parsing is the point of this constructor.
+
+  std::string formatted_status;
+  formatted_status.reserve(status.size() + 1);  // ParseStatus() may add a space
+  response_code_ = ParseStatus(status, formatted_status);
+
+  // First calculate how big the output will be so that we can allocate the
+  // right amount of memory.
+  size_t expected_size = 8;  // "HTTP/x.x"
+  expected_size += formatted_status.size();
+  expected_size += 1;  // "\0"
+  size_t expected_parsed_size = 0;
+
+  // Track which headers (by index) have a comma in the value. Since bools are
+  // only 1 byte, we can afford to put 100 of them on the stack and avoid
+  // allocating more memory 99.9% of the time.
+  absl::InlinedVector<bool, 100> header_contains_comma;
+  for (const auto& [key, value] : headers) {
+    expected_size += key.size();
+    expected_size += 1;  // ":"
+    expected_size += value.size();
+    expected_size += 1;  // "\0"
+    // It's okay if we over-estimate the size of `parsed_`, so treat all ','
+    // characters as if they might split the value to avoid parsing the value
+    // carefully here.
+    const size_t comma_count = std::ranges::count(value, ',') + 1;
+    expected_parsed_size += comma_count;
+    header_contains_comma.push_back(comma_count);
+  }
+  expected_size += 1;  // "\0"
+  raw_headers_.reserve(expected_size);
+  parsed_.reserve(expected_parsed_size);
+
+  // Now fill in the output.
+  const uint16_t major = version.major_value();
+  const uint16_t minor = version.minor_value();
+  CHECK_LE(major, 9);
+  CHECK_LE(minor, 9);
+  raw_headers_.append("HTTP/");
+  raw_headers_.push_back('0' + major);
+  raw_headers_.push_back('.');
+  raw_headers_.push_back('0' + minor);
+  raw_headers_.append(formatted_status);
+  raw_headers_.push_back('\0');
+  // It is vital that `raw_headers_` iterators are not invalidated after this
+  // point.
+  const char* const data_at_start = raw_headers_.data();
+  size_t index = 0;
+  for (const auto& [key, value] : headers) {
+    CheckDoesNotHaveEmbeddedNulls(key);
+    CheckDoesNotHaveEmbeddedNulls(value);
+    // Because std::string iterators are random-access, end() has to point to
+    // the position where the next character will be appended.
+    const auto name_begin = raw_headers_.cend();
+    raw_headers_.append(key);
+    const auto name_end = raw_headers_.cend();
+    raw_headers_.push_back(':');
+    auto values_begin = raw_headers_.cend();
+    raw_headers_.append(value);
+    auto values_end = raw_headers_.cend();
+    raw_headers_.push_back('\0');
+    // The HTTP/2 standard disallows header values starting or ending with
+    // whitespace (RFC 9113 8.2.1). Hopefully the same is also true of HTTP/3.
+    // TODO(crbug.com/40282642): Validate that our implementations
+    // actually enforce this constraint and change this TrimLWS() to a DCHECK.
+    HttpUtil::TrimLWS(&values_begin, &values_end);
+    AddHeader(name_begin, name_end, values_begin, values_end,
+              header_contains_comma[index] ? ContainsCommas::kYes
+                                           : ContainsCommas::kNo);
+    ++index;
+  }
+  raw_headers_.push_back('\0');
+  CHECK_EQ(expected_size, raw_headers_.size());
+  CHECK_EQ(data_at_start, raw_headers_.data());
+  DCHECK_LE(parsed_.size(), expected_parsed_size);
+
+  DCHECK_EQ('\0', raw_headers_[raw_headers_.size() - 2]);
+  DCHECK_EQ('\0', raw_headers_[raw_headers_.size() - 1]);
+}
+
+=======
+>>>>>>> chromium
 scoped_refptr<HttpResponseHeaders> HttpResponseHeaders::TryToCreate(
     base::StringPiece headers) {
   // Reject strings with nulls.
@@ -452,8 +551,12 @@ void HttpResponseHeaders::Parse(const std::string& raw_input) {
 
   // ParseStatusLine adds a normalized status line to raw_headers_
   std::string::const_iterator line_begin = raw_input.begin();
+<<<<<<< HEAD
+  std::string::const_iterator line_end = std::ranges::find(raw_input, '\0');
+=======
   std::string::const_iterator line_end =
       std::find(line_begin, raw_input.end(), '\0');
+>>>>>>> chromium
   // has_headers = true, if there is any data following the status line.
   // Used by ParseStatusLine() to decide if a HTTP/0.9 is really a HTTP/1.0.
   bool has_headers =
@@ -537,7 +640,12 @@ std::string HttpResponseHeaders::GetStatusText() const {
   // '<http_version> SP <response_code>' or
   // '<http_version> SP <response_code> SP <status_text>'.
   std::string status_text = GetStatusLine();
+<<<<<<< HEAD
+  // Seek to beginning of <response_code>.
+  std::string::const_iterator begin = std::ranges::find(status_text, ' ');
+=======
   std::string::const_iterator begin = status_text.begin();
+>>>>>>> chromium
   std::string::const_iterator end = status_text.end();
   // Seek to beginning of <response_code>.
   begin = std::find(begin, end, ' ');
@@ -959,6 +1067,35 @@ bool HttpResponseHeaders::IsRedirect(std::string* location) const {
   return true;
 }
 
+<<<<<<< HEAD
+bool HttpResponseHeaders::HasStorageAccessRetryHeader(
+    const std::string* expected_origin) const {
+  std::optional<std::string> header_value =
+      GetNormalizedHeader(kActivateStorageAccessHeader);
+  if (!header_value) {
+    return false;
+  }
+  const std::optional<structured_headers::ParameterizedItem> item =
+      structured_headers::ParseItem(*header_value);
+  if (!item || !item->item.is_token() || item->item.GetString() != "retry") {
+    return false;
+  }
+  return std::ranges::any_of(
+      item->params, [&](const auto& key_and_value) -> bool {
+        const auto [key, value] = key_and_value;
+        if (key != "allowed-origin") {
+          return false;
+        }
+        if (value.is_token() && value.GetString() == "*") {
+          return true;
+        }
+        return expected_origin && value.is_string() &&
+               value.GetString() == *expected_origin;
+      });
+}
+
+=======
+>>>>>>> chromium
 // static
 bool HttpResponseHeaders::IsRedirectResponseCode(int response_code) {
   // Users probably want to see 300 (multiple choice) pages, so we don't count

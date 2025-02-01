@@ -7,7 +7,11 @@
 
 #include "base/memory/weak_ptr.h"
 #include "gpu/command_buffer/common/mailbox_holder.h"
+<<<<<<< HEAD
+#include "gpu/command_buffer/common/shared_image_usage.h"
+=======
 #include "third_party/blink/renderer/platform/graphics/canvas_color_params.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
@@ -86,7 +90,15 @@ class PLATFORM_EXPORT StaticBitmapImage : public Image {
     return gpu::MailboxHolder();
   }
   virtual void UpdateSyncToken(const gpu::SyncToken&) { NOTREACHED(); }
+<<<<<<< HEAD
+
+  bool IsPremultiplied() const {
+    return GetSkImageInfo().alphaType() == SkAlphaType::kPremul_SkAlphaType;
+  }
+  SkColorInfo GetSkColorInfo() const { return GetSkImageInfo().colorInfo(); }
+=======
   virtual bool IsPremultiplied() const { return true; }
+>>>>>>> chromium
 
   // Methods have exactly the same implementation for all sub-classes
   bool OriginClean() const { return is_origin_clean_; }

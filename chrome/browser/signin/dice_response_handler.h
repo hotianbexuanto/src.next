@@ -20,6 +20,7 @@
 #include "components/signin/core/browser/signin_header_helper.h"
 #include "components/signin/public/base/account_consistency_method.h"
 #include "google_apis/gaia/gaia_auth_consumer.h"
+#include "google_apis/gaia/gaia_id.h"
 
 class AboutSigninInternals;
 class GaiaAuthFetcher;
@@ -89,6 +90,24 @@ class DiceResponseHandler : public KeyedService {
   // Helper class to fetch a refresh token from an authorization code.
   class DiceTokenFetcher : public GaiaAuthConsumer {
    public:
+<<<<<<< HEAD
+    DiceTokenFetcher(
+        const GaiaId& gaia_id,
+        const std::string& email,
+        const std::string& authorization_code,
+        SigninClient* signin_client,
+        AccountReconcilor* account_reconcilor,
+        std::unique_ptr<ProcessDiceHeaderDelegate> delegate,
+#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
+        base::expected<raw_ref<RegistrationTokenHelper>, TokenBindingOutcome>
+            registration_token_helper_or_error,
+#endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
+        DiceResponseHandler* dice_response_handler);
+
+    DiceTokenFetcher(const DiceTokenFetcher&) = delete;
+    DiceTokenFetcher& operator=(const DiceTokenFetcher&) = delete;
+
+=======
     DiceTokenFetcher(const std::string& gaia_id,
                      const std::string& email,
                      const std::string& authorization_code,
@@ -96,9 +115,10 @@ class DiceResponseHandler : public KeyedService {
                      AccountReconcilor* account_reconcilor,
                      std::unique_ptr<ProcessDiceHeaderDelegate> delegate,
                      DiceResponseHandler* dice_response_handler);
+>>>>>>> chromium
     ~DiceTokenFetcher() override;
 
-    const std::string& gaia_id() const { return gaia_id_; }
+    const GaiaId& gaia_id() const { return gaia_id_; }
     const std::string& email() const { return email_; }
     const std::string& authorization_code() const {
       return authorization_code_;
@@ -121,11 +141,20 @@ class DiceResponseHandler : public KeyedService {
     // Lock the account reconcilor while tokens are being fetched.
     std::unique_ptr<AccountReconcilor::Lock> account_reconcilor_lock_;
 
+<<<<<<< HEAD
+    const GaiaId gaia_id_;
+    const std::string email_;
+    const std::string authorization_code_;
+    const std::unique_ptr<ProcessDiceHeaderDelegate> delegate_;
+    const raw_ptr<DiceResponseHandler> dice_response_handler_;
+    const raw_ptr<SigninClient> signin_client_;
+=======
     std::string gaia_id_;
     std::string email_;
     std::string authorization_code_;
     std::unique_ptr<ProcessDiceHeaderDelegate> delegate_;
     DiceResponseHandler* dice_response_handler_;
+>>>>>>> chromium
     base::CancelableOnceClosure timeout_closure_;
     bool should_enable_sync_;
     std::unique_ptr<GaiaAuthFetcher> gaia_auth_fetcher_;
@@ -138,7 +167,7 @@ class DiceResponseHandler : public KeyedService {
 
   // Process the Dice signin action.
   void ProcessDiceSigninHeader(
-      const std::string& gaia_id,
+      const GaiaId& gaia_id,
       const std::string& email,
       const std::string& authorization_code,
       bool no_authorization_code,
@@ -146,7 +175,7 @@ class DiceResponseHandler : public KeyedService {
 
   // Process the Dice enable sync action.
   void ProcessEnableSyncHeader(
-      const std::string& gaia_id,
+      const GaiaId& gaia_id,
       const std::string& email,
       std::unique_ptr<ProcessDiceHeaderDelegate> delegate);
 

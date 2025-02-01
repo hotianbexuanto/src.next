@@ -5,6 +5,15 @@
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_util.h"
 
 #include "base/synchronization/waitable_event.h"
+<<<<<<< HEAD
+#include "base/task/single_thread_task_runner.h"
+#include "gpu/command_buffer/client/context_support.h"
+#include "third_party/blink/public/platform/web_url.h"
+#include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
+#include "third_party/blink/renderer/platform/heap/cross_thread_handle.h"
+#include "third_party/blink/renderer/platform/scheduler/public/main_thread.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
@@ -50,6 +59,23 @@ CreateContextProviderOnWorkerThread(
                           CrossThreadUnretained(&waitable_event)));
   waitable_event.Wait();
   return std::move(creation_info.created_context_provider);
+}
+
+void SetAggressivelyFreeSharedGpuContextResourcesIfPossible(bool value) {
+  base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper =
+      SharedGpuContext::ContextProviderWrapper();
+
+  if (!context_provider_wrapper) {
+    return;
+  }
+
+  gpu::ContextSupport* context_support =
+      context_provider_wrapper->ContextProvider().ContextSupport();
+  if (!context_support) {
+    return;
+  }
+
+  context_support->SetAggressivelyFreeResources(value);
 }
 
 }  // namespace blink

@@ -43,6 +43,190 @@ void RecordHistogramsOnLauncherThread(base::TimeDelta launch_time) {
   }
 }
 
+<<<<<<< HEAD
+// If the histogram shared memory region is valid and passing the histogram
+// shared memory region via the command line is enabled, update the launch
+// parameters to pass the shared memory handle. The allocation of the shared
+// memory region is dependent on the process-type being launched, and non-fatal
+// if not enabled.
+//
+// This function is NOP if the platform does not use Blink.
+void PassHistogramSharedMemoryHandle(
+    [[maybe_unused]] const base::UnsafeSharedMemoryRegion*
+        histogram_memory_region,
+    [[maybe_unused]] base::CommandLine* command_line,
+    [[maybe_unused]] base::LaunchOptions* launch_options,
+    [[maybe_unused]] FileMappedForLaunch* files_to_register) {
+#if BUILDFLAG(USE_BLINK)
+  CHECK(command_line);
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+  // TODO(crbug.com/40109064): content::FileMappedForLaunch (POSIX) is redundant
+  // wrt the base::LaunchOptions::<platform-specific-handles-to-transfer>
+  // members. Refactor this so that the details of base::Launch vs Zygote on
+  // (some) POSIX platforms is an implementation detail and not exposed here.
+  // I.e., populate launch options (like for all other platforms) then if it's
+  // a Zygote launch pull out the handles to transfer and send them to the
+  // zygote, instead of (for posix only) ignoring the launch-options here,
+  // populating the |files_to_register| param then (if there's no zygote)
+  // filling in |launch_options|
+  CHECK(files_to_register);
+  base::ScopedFD descriptor_to_transfer;
+#else
+  CHECK(launch_options);
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+
+  // TODO(crbug.com/40109064): Once all process types support histogram shared
+  // memory being passed at launch, remove this if.
+  const bool enabled =
+      histogram_memory_region && histogram_memory_region->IsValid();
+  DVLOG(1) << (enabled ? "A" : "Not a")
+           << "dding histogram shared memory launch parameters for "
+           << command_line->GetSwitchValueASCII(::switches::kProcessType)
+           << " process.";
+  if (!enabled) {
+    return;
+  }
+  base::HistogramSharedMemory::AddToLaunchParameters(
+      *histogram_memory_region,
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+      /*descriptor_key=*/kHistogramSharedMemoryDescriptor,
+      /*descriptor_to_share=*/descriptor_to_transfer,
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+      command_line, launch_options);
+
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+  if (descriptor_to_transfer.is_valid()) {
+    files_to_register->Transfer(kHistogramSharedMemoryDescriptor,
+                                std::move(descriptor_to_transfer));
+  }
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+#endif  // BUILDFLAG(USE_BLINK)
+}
+
+// Update the process launch parameters to transmit the field trial shared
+// memory handle to the child process via the command line.
+//
+// This function is NOP if the platform does not use Blink.
+void PassFieldTrialSharedMemoryHandle(
+    [[maybe_unused]] base::CommandLine* command_line,
+    [[maybe_unused]] base::LaunchOptions* launch_options,
+    [[maybe_unused]] FileMappedForLaunch* files_to_register) {
+#if BUILDFLAG(USE_BLINK)
+  CHECK(command_line);
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+  // TODO(crbug.com/40109064): content::FileMappedForLaunch (POSIX) is redundant
+  // wrt the base::LaunchOptions::<platform-specific-handles-to-transfer>
+  // members. Refactor this so that the details of base::Launch vs Zygote on
+  // (some) POSIX platforms is an implementation detail and not exposed here.
+  // I.e., populate launch options (like for all other platforms) then if it's
+  // a Zygote launch pull out the handles to transfer and send them to the
+  // zygote, instead of (for posix only) ignoring the launch-options here,
+  // populating the |files_to_register| param then (if there's no zygote)
+  // filling in |launch_options|
+  CHECK(files_to_register);
+  base::ScopedFD descriptor_to_transfer;
+#else
+  CHECK(launch_options);
+#endif
+
+  variations::PopulateLaunchOptionsWithVariationsInfo(
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+      /*descriptor_key=*/kFieldTrialDescriptor,
+      /*descriptor_to_share=*/descriptor_to_transfer,
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+      command_line, launch_options);
+
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+  if (descriptor_to_transfer.is_valid()) {
+    files_to_register->Transfer(kFieldTrialDescriptor,
+                                std::move(descriptor_to_transfer));
+  }
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+#endif  // BUILDFLAG(USE_BLINK)
+}
+
+void PassStartupTracingConfigSharedMemoryHandle(
+    [[maybe_unused]] const base::ReadOnlySharedMemoryRegion*
+        read_only_memory_region,
+    [[maybe_unused]] base::CommandLine* command_line,
+    [[maybe_unused]] base::LaunchOptions* launch_options,
+    [[maybe_unused]] FileMappedForLaunch* files_to_register) {
+#if BUILDFLAG(USE_BLINK)
+  CHECK(command_line);
+  if (!read_only_memory_region || !read_only_memory_region->IsValid()) {
+    return;
+  }
+
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+  CHECK(files_to_register);
+  base::ScopedFD descriptor_to_transfer;
+#else
+  CHECK(launch_options);
+#endif
+
+  tracing::AddTraceConfigToLaunchParameters(*read_only_memory_region,
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+                                            kTraceConfigSharedMemoryDescriptor,
+                                            descriptor_to_transfer,
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+                                            command_line, launch_options);
+
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+  if (descriptor_to_transfer.is_valid()) {
+    files_to_register->Transfer(kTraceConfigSharedMemoryDescriptor,
+                                std::move(descriptor_to_transfer));
+  }
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+#endif  // BUILDFLAG(USE_BLINK)
+}
+
+// This function is NOP if the platform does not use Blink.
+void PassStartupOutputSharedMemoryHandle(
+    [[maybe_unused]] const base::UnsafeSharedMemoryRegion*
+        trace_output_memory_region,
+    [[maybe_unused]] base::CommandLine* command_line,
+    [[maybe_unused]] base::LaunchOptions* launch_options,
+    [[maybe_unused]] FileMappedForLaunch* files_to_register) {
+#if BUILDFLAG(USE_BLINK)
+  CHECK(command_line);
+  if (!trace_output_memory_region || !trace_output_memory_region->IsValid()) {
+    return;
+  }
+
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+  // TODO(crbug.com/40109064): content::FileMappedForLaunch (POSIX) is redundant
+  // wrt the base::LaunchOptions::<platform-specific-handles-to-transfer>
+  // members. Refactor this so that the details of base::Launch vs Zygote on
+  // (some) POSIX platforms is an implementation detail and not exposed here.
+  // I.e., populate launch options (like for all other platforms) then if it's
+  // a Zygote launch pull out the handles to transfer and send them to the
+  // zygote, instead of (for posix only) ignoring the launch-options here,
+  // populating the |files_to_register| param then (if there's no zygote)
+  // filling in |launch_options|
+  CHECK(files_to_register);
+  base::ScopedFD descriptor_to_transfer;
+#else
+  CHECK(launch_options);
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+
+  tracing::AddTraceOutputToLaunchParameters(*trace_output_memory_region,
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+                                            kTraceOutputSharedMemoryDescriptor,
+                                            descriptor_to_transfer,
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+                                            command_line, launch_options);
+
+#if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+  if (descriptor_to_transfer.is_valid()) {
+    files_to_register->Transfer(kTraceOutputSharedMemoryDescriptor,
+                                std::move(descriptor_to_transfer));
+  }
+#endif  // BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_APPLE)
+#endif  // BUILDFLAG(USE_BLINK)
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 ChildProcessLauncherHelper::Process::Process(Process&& other)
@@ -76,7 +260,17 @@ ChildProcessLauncherHelper::ChildProcessLauncherHelper(
 #endif
     mojo::OutgoingInvitation mojo_invitation,
     const mojo::ProcessErrorCallback& process_error_callback,
+<<<<<<< HEAD
+    std::unique_ptr<ChildProcessLauncherFileData> file_data,
+    scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+        histogram_memory_region,
+    scoped_refptr<base::RefCountedData<base::ReadOnlySharedMemoryRegion>>
+        tracing_config_memory_region,
+    scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+        tracing_output_memory_region)
+=======
     std::map<std::string, base::FilePath> files_to_preload)
+>>>>>>> chromium
     : child_process_id_(child_process_id),
       client_task_runner_(base::SequencedTaskRunnerHandle::Get()),
       command_line_(std::move(command_line)),
@@ -90,7 +284,21 @@ ChildProcessLauncherHelper::ChildProcessLauncherHelper(
       ,
       can_use_warm_up_connection_(can_use_warm_up_connection)
 #endif
+<<<<<<< HEAD
+      histogram_memory_region_(std::move(histogram_memory_region)),
+      tracing_config_memory_region_(std::move(tracing_config_memory_region)),
+      tracing_output_memory_region_(std::move(tracing_output_memory_region)),
+      init_start_time_(base::TimeTicks::Now()) {
+  if (!mojo::core::GetConfiguration().is_broker_process &&
+      !command_line_->HasSwitch(switches::kDisableMojoBroker)) {
+    command_line_->AppendSwitch(switches::kDisableMojoBroker);
+  }
+  // command_line_ is always accessed from the launcher thread, so detach it
+  // from the client thread here.
+  command_line_->DetachFromCurrentSequence();
+=======
 {
+>>>>>>> chromium
 }
 
 ChildProcessLauncherHelper::~ChildProcessLauncherHelper() = default;
@@ -125,6 +333,29 @@ void ChildProcessLauncherHelper::LaunchOnLauncherThread() {
   int launch_result = LAUNCH_RESULT_FAILURE;
   base::LaunchOptions options;
 
+<<<<<<< HEAD
+  // Update the command line and launch options to pass the histogram and
+  // field trial shared memory region handles.
+  PassHistogramSharedMemoryHandle(
+      histogram_memory_region_ ? &histogram_memory_region_->data : nullptr,
+      command_line(), options_ptr, files_to_register.get());
+  PassFieldTrialSharedMemoryHandle(command_line(), options_ptr,
+                                   files_to_register.get());
+  PassStartupTracingConfigSharedMemoryHandle(
+      tracing_config_memory_region_ ? &tracing_config_memory_region_->data
+                                    : nullptr,
+      command_line(), options_ptr, files_to_register.get());
+  PassStartupOutputSharedMemoryHandle(
+      tracing_output_memory_region_ ? &tracing_output_memory_region_->data
+                                    : nullptr,
+      command_line(), options_ptr, files_to_register.get());
+
+  // Transfer logging switches & handles if necessary.
+  PassLoggingSwitches(options_ptr, command_line());
+
+  // Launch the child process.
+=======
+>>>>>>> chromium
   Process process;
   if (BeforeLaunchOnLauncherThread(*files_to_register, &options)) {
     process =

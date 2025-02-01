@@ -40,7 +40,7 @@ namespace {
 
 // Salt to separate otherwise identical string hashes so a class-selector like
 // .article won't match <article> elements.
-enum { kTagNameSalt = 13, kIdSalt = 17, kClassSalt = 19, kAttributeSalt = 23 };
+enum { kTagNameSalt = 1, kIdSalt = 3, kClassSalt = 5, kAttributeSalt = 7 };
 
 inline bool IsExcludedAttribute(const AtomicString& name) {
   return name == html_names::kClassAttr.LocalName() ||
@@ -78,9 +78,22 @@ inline void CollectElementIdentifierHashes(
   }
 }
 
+<<<<<<< HEAD
+void CollectDescendantCompoundSelectorIdentifierHashes(
+    const CSSSelector* selector,
+    CSSSelector::RelationType relation,
+    const StyleScope* style_scope,
+    Vector<uint16_t>& hashes);
+
+inline void CollectDescendantSelectorIdentifierHashes(
+    const CSSSelector& selector,
+    const StyleScope* style_scope,
+    Vector<uint16_t>& hashes) {
+=======
 inline void CollectDescendantSelectorIdentifierHashes(
     const CSSSelector& selector,
     unsigned*& hash) {
+>>>>>>> chromium
   switch (selector.Match()) {
     case CSSSelector::kId:
       if (!selector.Value().IsEmpty())
@@ -91,11 +104,15 @@ inline void CollectDescendantSelectorIdentifierHashes(
         (*hash++) = selector.Value().Impl()->ExistingHash() * kClassSalt;
       break;
     case CSSSelector::kTag:
+<<<<<<< HEAD
+      hashes.push_back(selector.TagQName().LocalName().Hash() * kTagNameSalt);
+=======
       if (selector.TagQName().LocalName() !=
           CSSSelector::UniversalSelectorAtom()) {
         (*hash++) = selector.TagQName().LocalName().Impl()->ExistingHash() *
                     kTagNameSalt;
       }
+>>>>>>> chromium
       break;
     case CSSSelector::kAttributeExact:
     case CSSSelector::kAttributeSet:
@@ -117,6 +134,13 @@ inline void CollectDescendantSelectorIdentifierHashes(
   }
 }
 
+<<<<<<< HEAD
+void CollectDescendantCompoundSelectorIdentifierHashes(
+    const CSSSelector* selector,
+    CSSSelector::RelationType relation,
+    const StyleScope* style_scope,
+    Vector<uint16_t>& hashes) {
+=======
 }  // namespace
 
 void SelectorFilter::PushParentStackFrame(Element& parent) {
@@ -186,6 +210,7 @@ void SelectorFilter::CollectIdentifierHashes(
   unsigned* hash = identifier_hashes;
   unsigned* end = identifier_hashes + maximum_identifier_count;
   CSSSelector::RelationType relation = selector.Relation();
+>>>>>>> chromium
   // Skip the rightmost compound. It is handled quickly by the rule hashes.
   bool skip_over_subselectors = true;
   for (const CSSSelector* current = selector.TagHistory(); current;
@@ -193,8 +218,15 @@ void SelectorFilter::CollectIdentifierHashes(
     // Only collect identifiers that match ancestors.
     switch (relation) {
       case CSSSelector::kSubSelector:
+<<<<<<< HEAD
+        if (!skip_over_subselectors) {
+          CollectDescendantSelectorIdentifierHashes(*current, style_scope,
+                                                    hashes);
+        }
+=======
         if (!skip_over_subselectors)
           CollectDescendantSelectorIdentifierHashes(*current, hash);
+>>>>>>> chromium
         break;
       case CSSSelector::kDirectAdjacent:
       case CSSSelector::kIndirectAdjacent:
@@ -216,8 +248,58 @@ void SelectorFilter::CollectIdentifierHashes(
   *hash = 0;
 }
 
+<<<<<<< HEAD
+}  // namespace
+
+void SelectorFilter::PushAllParentsOf(TreeScope& tree_scope) {
+  PushAncestors(tree_scope.RootNode());
+}
+
+void SelectorFilter::PushAncestors(const Node& node) {
+  Element* parent = node.ParentOrShadowHostElement();
+  if (parent != nullptr) {
+    PushAncestors(*parent);
+    PushParent(*parent);
+  }
+}
+
+void SelectorFilter::PushParent(Element& parent) {
+#if DCHECK_IS_ON()
+  if (parent_stack_.empty()) {
+    DCHECK_EQ(parent, parent.GetDocument().documentElement());
+  } else if (parent_stack_.back() != FlatTreeTraversal::ParentElement(parent) &&
+             parent_stack_.back() != parent.ParentOrShadowHostElement()) {
+    LOG(DFATAL) << "Parent stack must be consistent; pushed " << parent
+                << " with parent " << parent.ParentOrShadowHostElement()
+                << " and flat-tree parent "
+                << FlatTreeTraversal::ParentElement(parent)
+                << ", but the stack contained " << parent_stack_.back()
+                << ", which is neither";
+  }
+#endif
+  parent_stack_.push_back(parent);
+  // Mix tags, class names and ids into some sort of weird bouillabaisse.
+  // The filter is used for fast rejection of child and descendant selectors.
+  CollectElementIdentifierHashes(parent, [this](unsigned hash) {
+    hash &= kFilterMask;
+    if (!ancestor_identifier_filter_.test(hash)) {
+      ancestor_identifier_filter_.set(hash);
+      set_bits_.push_back(hash);
+    }
+  });
+}
+
+void SelectorFilter::CollectIdentifierHashes(
+    const CSSSelector& selector,
+    const StyleScope* style_scope,
+    Vector<uint16_t>& bloom_hash_backing) {
+  CollectDescendantCompoundSelectorIdentifierHashes(
+      selector.NextSimpleSelector(), selector.Relation(), style_scope,
+      bloom_hash_backing);
+=======
 void SelectorFilter::ParentStackFrame::Trace(Visitor* visitor) const {
   visitor->Trace(element);
+>>>>>>> chromium
 }
 
 void SelectorFilter::Trace(Visitor* visitor) const {

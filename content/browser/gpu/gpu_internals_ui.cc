@@ -95,6 +95,10 @@ WebUIDataSource* CreateGpuHTMLSource() {
       "trusted-types jstemplate;");
 
   source->UseStringsJs();
+<<<<<<< HEAD
+  source->AddResourcePaths(kGpuResources);
+  source->AddResourcePath("", IDR_GPU_GPU_INTERNALS_HTML);
+=======
   source->AddResourcePath("browser_bridge.js", IDR_GPU_BROWSER_BRIDGE_JS);
   source->AddResourcePath("gpu_internals.js", IDR_GPU_INTERNALS_JS);
   source->AddResourcePath("info_view.js", IDR_GPU_INFO_VIEW_JS);
@@ -105,6 +109,7 @@ WebUIDataSource* CreateGpuHTMLSource() {
                           IDR_VULKAN_TYPES_MOJO_JS);
   source->SetDefaultResource(IDR_GPU_INTERNALS_HTML);
   return source;
+>>>>>>> chromium
 }
 
 #if defined(OS_WIN)

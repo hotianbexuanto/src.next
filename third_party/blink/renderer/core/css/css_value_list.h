@@ -70,6 +70,12 @@ class CORE_EXPORT CSSValueList : public CSSValue {
 
   String CustomCSSText() const;
   bool Equals(const CSSValueList&) const;
+<<<<<<< HEAD
+  unsigned CustomHash() const;
+
+  const CSSValueList& PopulateWithTreeScope(const TreeScope*) const;
+=======
+>>>>>>> chromium
 
   bool HasFailedOrCanceledSubresources() const;
 

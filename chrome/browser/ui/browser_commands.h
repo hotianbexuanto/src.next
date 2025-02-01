@@ -11,7 +11,11 @@
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "chrome/browser/devtools/devtools_toggle_action.h"
+<<<<<<< HEAD
+#include "chrome/browser/task_manager/task_manager_metrics_recorder.h"
+=======
 #include "chrome/browser/devtools/devtools_window.h"
+>>>>>>> chromium
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
@@ -27,7 +31,7 @@ class Profile;
 
 namespace content {
 class WebContents;
-}
+}  // namespace content
 
 namespace chrome {
 
@@ -196,11 +200,22 @@ void ToggleDevToolsWindow(Browser* browser,
                           DevToolsOpenedByAction opened_by);
 bool CanOpenTaskManager();
 // Opens task manager UI. Note that |browser| can be nullptr as input.
+<<<<<<< HEAD
+// StartAction denotes which location the task manager UI was started from.
+void OpenTaskManager(
+    Browser* browser,
+    task_manager::StartAction start_action = task_manager::StartAction::kOther);
+void OpenFeedbackDialog(Browser* browser,
+                        feedback::FeedbackSource source,
+                        const std::string& description_template = std::string(),
+                        const std::string& category_tag = std::string());
+=======
 void OpenTaskManager(Browser* browser);
 void OpenFeedbackDialog(
     Browser* browser,
     FeedbackSource source,
     const std::string& description_template = std::string());
+>>>>>>> chromium
 void ToggleBookmarkBar(Browser* browser);
 void ToggleShowFullURLs(Browser* browser);
 void ShowAppMenu(Browser* browser);
@@ -214,7 +229,7 @@ void ToggleRequestTabletSite(Browser* browser);
 // using its mobile version layout. Note it won't take effect until the web
 // contents is reloaded.
 void SetAndroidOsForTabletSite(content::WebContents* current_tab);
-void ToggleFullscreenMode(Browser* browser);
+void ToggleFullscreenMode(Browser* browser, bool user_initiated = false);
 void ClearCache(Browser* browser);
 bool IsDebuggerAttachedToCurrentTab(Browser* browser);
 void CopyURL(Browser* browser);

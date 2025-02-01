@@ -205,6 +205,10 @@ buildflag_header("bindings_buildflags") {
     "RAW_HEAP_SNAPSHOTS=$enable_additional_blink_object_names",
     "RCS_COUNT_EVERYTHING=$runtime_call_stats_count_everything",
     "BLINK_BINDINGS_TRACE_ENABLED=$enable_blink_bindings_tracing",
+<<<<<<< HEAD
+    "HAS_ZSTD_COMPRESSION=$has_zstd_compression",
+=======
+>>>>>>> chromium
   ]
 }
 
@@ -312,7 +316,12 @@ component("platform") {
     "audio/audio_delay_dsp_kernel.h",
     "audio/audio_destination.cc",
     "audio/audio_destination.h",
+<<<<<<< HEAD
+    "audio/audio_destination_uma_reporter.cc",
+    "audio/audio_destination_uma_reporter.h",
+=======
     "audio/audio_destination_consumer.h",
+>>>>>>> chromium
     "audio/audio_dsp_kernel.cc",
     "audio/audio_dsp_kernel.h",
     "audio/audio_dsp_kernel_processor.cc",
@@ -406,6 +415,11 @@ component("platform") {
     "bindings/active_script_wrappable_base.h",
     "bindings/active_script_wrappable_manager.cc",
     "bindings/active_script_wrappable_manager.h",
+<<<<<<< HEAD
+    "bindings/bigint.cc",
+    "bindings/bigint.h",
+=======
+>>>>>>> chromium
     "bindings/binding_security_for_platform.cc",
     "bindings/binding_security_for_platform.h",
     "bindings/callback_function_base.cc",
@@ -414,7 +428,11 @@ component("platform") {
     "bindings/callback_interface_base.h",
     "bindings/callback_method_retriever.cc",
     "bindings/callback_method_retriever.h",
+<<<<<<< HEAD
+    "bindings/cross_thread_copier.h",
+=======
     "bindings/custom_wrappable.h",
+>>>>>>> chromium
     "bindings/dictionary_base.cc",
     "bindings/dictionary_base.h",
     "bindings/dom_data_store.cc",
@@ -430,8 +448,11 @@ component("platform") {
     "bindings/exception_state.h",
     "bindings/idl_member_installer.cc",
     "bindings/idl_member_installer.h",
+<<<<<<< HEAD
+=======
     "bindings/microtask.cc",
     "bindings/microtask.h",
+>>>>>>> chromium
     "bindings/name_client.h",
     "bindings/no_alloc_direct_call_exception_state.cc",
     "bindings/no_alloc_direct_call_exception_state.h",
@@ -813,8 +834,15 @@ component("platform") {
     "graphics/box_reflection.h",
     "graphics/canvas_2d_layer_bridge.cc",
     "graphics/canvas_2d_layer_bridge.h",
+<<<<<<< HEAD
+    "graphics/canvas_deferred_paint_record.cc",
+    "graphics/canvas_deferred_paint_record.h",
+    "graphics/canvas_hibernation_handler.cc",
+    "graphics/canvas_hibernation_handler.h",
+=======
     "graphics/canvas_color_params.cc",
     "graphics/canvas_color_params.h",
+>>>>>>> chromium
     "graphics/canvas_resource.cc",
     "graphics/canvas_resource.h",
     "graphics/canvas_resource_dispatcher.cc",
@@ -1214,8 +1242,21 @@ component("platform") {
     "keyboard_codes.h",
     "language.cc",
     "language.h",
+<<<<<<< HEAD
+    "language_detection/language_detection_model.cc",
+    "language_detection/language_detection_model.h",
     "link_hash.cc",
     "link_hash.h",
+    "media/media_player_client.h",
+    "media/media_player_util.cc",
+    "media/media_player_util.h",
+    "media/player_id_generator.cc",
+    "media/player_id_generator.h",
+    "media/remote_playback_client.h",
+=======
+    "link_hash.cc",
+    "link_hash.h",
+>>>>>>> chromium
     "media/web_audio_source_provider_client.h",
     "media/webaudiosourceprovider_impl.cc",
     "media_capabilities/web_audio_configuration.h",
@@ -1472,6 +1513,7 @@ component("platform") {
     "transforms/transformation_matrix.h",
     "transforms/translate_transform_operation.cc",
     "transforms/translate_transform_operation.h",
+    "use_counter_and_console_logger.h",
     "video_capture/video_capture_impl.cc",
     "video_capture/video_capture_impl.h",
     "web_test_support.cc",
@@ -1676,6 +1718,13 @@ component("platform") {
     "//build:chromeos_buildflags",
     "//cc/ipc",
     "//cc/mojo_embedder",
+<<<<<<< HEAD
+    "//components/language_detection/content/common",
+    "//components/language_detection/content/common:common_blink",
+    "//components/language_detection/content/renderer",
+    "//components/language_detection/core",
+=======
+>>>>>>> chromium
     "//components/paint_preview/common",
     "//components/power_scheduler",
     "//components/search_engines:search_engine_utils",
@@ -1706,7 +1755,11 @@ component("platform") {
     "//third_party/blink/renderer/platform/wtf",
     "//third_party/ced",
     "//third_party/emoji-segmenter",
+<<<<<<< HEAD
+    "//third_party/highway:libhwy",
+=======
     "//third_party/harfbuzz-ng:hb_scoped_util",
+>>>>>>> chromium
     "//third_party/icu",
     "//third_party/libyuv",
     "//third_party/one_euro_filter",
@@ -1920,6 +1973,7 @@ static_library("test_support") {
     "testing/weburl_loader_mock_factory_impl.cc",
     "testing/weburl_loader_mock_factory_impl.h",
     "webrtc/testing/mock_webrtc_video_frame_adapter_shared_resources.h",
+    "widget/compositing/test/stub_widget_base_client.h",
   ]
 
   # fuzzed_data_provider may not work with a custom toolchain.
@@ -1983,9 +2037,42 @@ test("blink_platform_unittests") {
   }
 
   if (is_android) {
+<<<<<<< HEAD
+    deps += [
+      # Required because of an indirect dependency on //media/base/android via
+      # platform/media:unit_tests.
+      "//media/base/android:media_java",
+
+      # Required to disable broken tests.
+      "//testing/buildbot/filters:blink_platform_unittests",
+    ]
+  }
+  if (is_ios) {
+    bundle_deps = [
+      ":blink_platform_unittests_bundle_data",
+      "//media:unit_tests_bundle_data",
+      "//testing/buildbot/filters:blink_platform_unittests_filters_bundle_data",
+    ]
+  }
+}
+
+if (enable_nocompile_tests) {
+  nocompile_source_set("blink_platform_nocompile_tests") {
+    sources = [
+      "heap/test/heap_bind_nocompile.nc",
+      "wtf/functional_nocompile.nc",
+      "wtf/text/string_view_nocompile.nc",
+    ]
+
+    deps = [
+      ":platform",
+      "//base",
+    ]
+=======
     # Required because of an indirect dependency on //media/base/android via
     # platform/media:unit_tests.
     deps += [ "//media/base/android:media_java" ]
+>>>>>>> chromium
   }
 }
 
@@ -2003,6 +2090,11 @@ source_set("blink_platform_unittests_sources") {
     "animation/compositor_keyframe_model_test.cc",
     "animation/timing_function_test.cc",
     "audio/audio_destination_test.cc",
+<<<<<<< HEAD
+    "audio/audio_destination_uma_reporter_test.cc",
+    "audio/audio_frame_stats_accumulator_test.cc",
+=======
+>>>>>>> chromium
     "audio/push_pull_fifo_multithread_test.cc",
     "audio/push_pull_fifo_test.cc",
     "audio/vector_math_test.cc",
@@ -2016,7 +2108,11 @@ source_set("blink_platform_unittests_sources") {
     "exported/web_icon_sizes_parser_test.cc",
     "exported/web_screen_info_test.cc",
     "exported/web_string_test.cc",
+<<<<<<< HEAD
+    "exported/web_thread_safe_data_test.cc",
+=======
     "exported/web_vector_test.cc",
+>>>>>>> chromium
     "fonts/bitmap_glyphs_block_list_test.cc",
     "fonts/cursor_position_test.cc",
     "fonts/font_cache_test.cc",
@@ -2216,8 +2312,11 @@ source_set("blink_platform_unittests_sources") {
     "widget/input/input_event_prediction_unittest.cc",
     "widget/input/input_handler_proxy_unittest.cc",
     "widget/input/main_thread_event_queue_unittest.cc",
+    "widget/input/mock_input_handler_proxy.h",
+    "widget/input/mock_input_handler_proxy_client.h",
     "widget/input/prediction/filter_factory_unittests.cc",
     "widget/input/scroll_predictor_unittest.cc",
+    "widget/input/widget_input_handler_manager_unittest.cc",
   ]
 
   if (is_android) {
@@ -2478,6 +2577,47 @@ fuzzer_test("web_icon_sizes_fuzzer") {
     ":platform",
   ]
   dict = "//testing/libfuzzer/fuzzers/dicts/web_icon_sizes.dict"
+<<<<<<< HEAD
+  additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
+}
+
+# Fuzzer for blink::CrabbyAVIFImageDecoder
+fuzzer_test("blink_crabbyavif_decoder_fuzzer") {
+  sources = [ "image-decoders/avif/crabbyavif_image_decoder_fuzzer.cc" ]
+  deps = [
+    ":blink_fuzzer_test_support",
+    ":blink_image_decoder_fuzzer_test_support",
+    ":platform",
+  ]
+  seed_corpuses = [ "//third_party/blink/web_tests/images/resources/avif" ]
+  libfuzzer_options = [ "rss_limit_mb=8192" ]
+  additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
+}
+
+# Fuzzer for blink::ICOImageDecoder.
+fuzzer_test("blink_ico_decoder_fuzzer") {
+  sources = [ "image-decoders/ico/ico_image_decoder_fuzzer.cc" ]
+  deps = [
+    ":blink_fuzzer_test_support",
+    ":platform",
+  ]
+  seed_corpuses = [ "//third_party/blink/web_tests/images/resources/icofuzz" ]
+  libfuzzer_options = [ "rss_limit_mb=8192" ]
+  additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
+}
+
+# Fuzzer for blink::GIFImageDecoder
+fuzzer_test("blink_gif_decoder_fuzzer") {
+  sources = [ "image-decoders/gif/gif_image_decoder_fuzzer.cc" ]
+  deps = [
+    ":blink_fuzzer_test_support",
+    ":platform",
+  ]
+  seed_corpuses = [ "//third_party/blink/web_tests/images/resources/giffuzz" ]
+  libfuzzer_options = [ "rss_limit_mb=8192" ]
+  additional_configs = [ "//third_party/blink/renderer:inside_blink" ]
+=======
+>>>>>>> chromium
 }
 
 fuzzer_test("blink_png_decoder_fuzzer") {
@@ -2579,8 +2719,12 @@ source_set("unit_tests") {
   visibility = [ "//third_party/blink/renderer/*" ]
   sources = [
     "graphics/animation_worklet_mutator_dispatcher_impl_test.cc",
+<<<<<<< HEAD
+    "graphics/canvas_hibernation_handler_test.cc",
+=======
     "graphics/canvas_2d_layer_bridge_test.cc",
     "graphics/canvas_color_params_test.cc",
+>>>>>>> chromium
     "graphics/canvas_resource_dispatcher_test.cc",
     "graphics/canvas_resource_provider_test.cc",
     "graphics/canvas_resource_test.cc",

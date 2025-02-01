@@ -8,12 +8,15 @@ import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.MainDex;
 import org.chromium.base.annotations.NativeMethods;
 
+import org.chromium.build.annotations.NullMarked;
+
 /**
  * A class that serves as a bridge to native code to check the status of feature switches.
  *
  * Each subclass represents a set of related features. Each instance of such a class correlates to a
  * single C++ Feature.
  */
+@NullMarked
 @JNINamespace("base::android")
 @MainDex
 public abstract class Features {
@@ -30,6 +33,12 @@ public abstract class Features {
 
     /** Returns true if the given feature is enabled. */
     public boolean isEnabled() {
+<<<<<<< HEAD
+        // FeatureFlags set for testing override the native default value.
+        Boolean testValue = FeatureOverrides.getTestValueForFeatureStrict(getName());
+        if (testValue != null) return testValue;
+=======
+>>>>>>> chromium
         return FeaturesJni.get().isEnabled(getFeaturePointer());
     }
 

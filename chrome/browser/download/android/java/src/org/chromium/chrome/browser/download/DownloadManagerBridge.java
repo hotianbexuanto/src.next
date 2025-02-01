@@ -15,6 +15,13 @@ import android.os.Build.VERSION_CODES;
 import android.os.Environment;
 import android.text.TextUtils;
 
+<<<<<<< HEAD
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
+
+=======
+>>>>>>> chromium
 import org.chromium.base.Callback;
 import org.chromium.base.ContentUriUtils;
 import org.chromium.base.ContextUtils;
@@ -106,13 +113,23 @@ public class DownloadManagerBridge {
 
     /**
      * Removes a download from Android DownloadManager.
+     *
      * @param downloadGuid The GUID of the download.
      * @param externallyRemoved If download is externally removed in other application.
      */
     @CalledByNative
+<<<<<<< HEAD
+    public static void removeCompletedDownload(
+            @JniType("std::string") String downloadGuid, boolean externallyRemoved) {
+        PostTask.postTask(
+                TaskTraits.BEST_EFFORT_MAY_BLOCK,
+                () -> {
+                    long downloadId = removeDownloadIdMapping(downloadGuid);
+=======
     public static void removeCompletedDownload(String downloadGuid, boolean externallyRemoved) {
         PostTask.postTask(TaskTraits.BEST_EFFORT_MAY_BLOCK, () -> {
             long downloadId = removeDownloadIdMapping(downloadGuid);
+>>>>>>> chromium
 
             // Let Android DownloadManager to remove download only if the user removed the file in
             // Chrome. If the user renamed or moved the file, Chrome should keep it intact.
@@ -264,9 +281,22 @@ public class DownloadManagerBridge {
      * to the android's DownloadManager if the download is not a content URI.
      */
     @CalledByNative
+<<<<<<< HEAD
+    private static void addCompletedDownload(
+            @JniType("std::string") String fileName,
+            @JniType("std::string") String description,
+            @JniType("std::string") String originalMimeType,
+            @JniType("std::string") String filePath,
+            long fileSizeBytes,
+            GURL originalUrl,
+            GURL referrer,
+            @JniType("std::string") String downloadGuid,
+            long callbackId) {
+=======
     private static void addCompletedDownload(String fileName, String description,
             String originalMimeType, String filePath, long fileSizeBytes, String originalUrl,
             String referrer, String downloadGuid, long callbackId) {
+>>>>>>> chromium
         final String mimeType =
                 MimeUtils.remapGenericMimeType(originalMimeType, originalUrl, fileName);
         AsyncTask<Long> task = new AsyncTask<Long>() {

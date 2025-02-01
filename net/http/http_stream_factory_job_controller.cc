@@ -20,6 +20,12 @@
 #include "net/base/load_flags.h"
 #include "net/base/url_util.h"
 #include "net/http/bidirectional_stream_impl.h"
+<<<<<<< HEAD
+#include "net/http/http_stream_key.h"
+#include "net/http/http_stream_pool.h"
+#include "net/http/http_stream_pool_request_info.h"
+=======
+>>>>>>> chromium
 #include "net/http/transport_security_state.h"
 #include "net/log/net_log.h"
 #include "net/log/net_log_capture_mode.h"
@@ -79,6 +85,47 @@ void ConvertWsToHttp(url::SchemeHostPort& input) {
   input = url::SchemeHostPort(url::kHttpsScheme, input.host(), input.port());
 }
 
+<<<<<<< HEAD
+void HistogramProxyUsed(const ProxyInfo& proxy_info, bool success) {
+  const ProxyServer::Scheme max_scheme = ProxyServer::Scheme::SCHEME_QUIC;
+  ProxyServer::Scheme proxy_scheme = ProxyServer::Scheme::SCHEME_INVALID;
+  if (!proxy_info.is_empty() && !proxy_info.is_direct()) {
+    if (proxy_info.proxy_chain().is_multi_proxy()) {
+      // TODO(crbug.com/40284947): Update this histogram to have a new
+      // bucket for multi-chain proxies. Until then, don't influence the
+      // existing metric counts which have historically been only for single-hop
+      // proxies.
+      return;
+    }
+    proxy_scheme = proxy_info.proxy_chain().is_direct()
+                       ? static_cast<ProxyServer::Scheme>(1)
+                       : proxy_info.proxy_chain().First().scheme();
+  }
+  if (success) {
+    UMA_HISTOGRAM_ENUMERATION("Net.HttpJob.ProxyTypeSuccess", proxy_scheme,
+                              max_scheme);
+  } else {
+    UMA_HISTOGRAM_ENUMERATION("Net.HttpJob.ProxyTypeFailed", proxy_scheme,
+                              max_scheme);
+  }
+}
+
+// Generate a AlternativeService for DNS alt job. Note: Chrome does not yet
+// support different port DNS alpn.
+AlternativeService GetAlternativeServiceForDnsJob(const GURL& url) {
+  return AlternativeService(NextProto::kProtoQUIC, HostPortPair::FromURL(url));
+}
+
+base::Value::Dict NetLogAltSvcParams(const AlternativeServiceInfo* alt_svc_info,
+                                     bool is_broken) {
+  base::Value::Dict dict;
+  dict.Set("alt_svc", alt_svc_info->ToString());
+  dict.Set("is_broken", is_broken);
+  return dict;
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 // The maximum time to wait for the alternate job to complete before resuming
@@ -343,6 +390,17 @@ void HttpStreamFactory::JobController::OnStreamFailed(
   } else {
     DCHECK_EQ(main_job_.get(), job);
     main_job_net_error_ = status;
+<<<<<<< HEAD
+  } else if (job->job_type() == ALTERNATIVE) {
+    DCHECK_EQ(alternative_job_.get(), job);
+    DCHECK_NE(NextProto::kProtoUnknown, alternative_service_info_.protocol());
+    alternative_job_net_error_ = status;
+  } else {
+    DCHECK_EQ(job->job_type(), DNS_ALPN_H3);
+    DCHECK_EQ(dns_alpn_h3_job_.get(), job);
+    dns_alpn_h3_job_net_error_ = status;
+=======
+>>>>>>> chromium
   }
 
   MaybeResumeMainJob(job, base::TimeDelta());
@@ -719,7 +777,7 @@ int HttpStreamFactory::JobController::DoCreateJobs() {
         GetAlternativeServiceInfoFor(request_info_, delegate_, stream_type_);
   }
   quic::ParsedQuicVersion quic_version = quic::ParsedQuicVersion::Unsupported();
-  if (alternative_service_info_.protocol() == kProtoQUIC) {
+  if (alternative_service_info_.protocol() == NextProto::kProtoQUIC) {
     quic_version =
         SelectQuicVersion(alternative_service_info_.advertised_versions());
     DCHECK_NE(quic_version, quic::ParsedQuicVersion::Unsupported());
@@ -730,9 +788,29 @@ int HttpStreamFactory::JobController::DoCreateJobs() {
     // priority currently makes sense for preconnects. The priority for
     // preconnects is currently ignored (see RequestSocketsForPool()), but could
     // be used at some point for proxy resolution or something.
+<<<<<<< HEAD
+    // Note: When `dns_alpn_h3_job_enabled` is true, we create a
+    // PRECONNECT_DNS_ALPN_H3 job. If no matching HTTPS DNS ALPN records are
+    // received, the PRECONNECT_DNS_ALPN_H3 job will fail with
+    // ERR_DNS_NO_MATCHING_SUPPORTED_ALPN, and `preconnect_backup_job_` will
+    // be started in OnPreconnectsComplete().
+    std::unique_ptr<Job> preconnect_job = job_factory_->CreateJob(
+        this, dns_alpn_h3_job_enabled ? PRECONNECT_DNS_ALPN_H3 : PRECONNECT,
+        session_, request_info_, IDLE, proxy_info_, allowed_bad_certs_,
+        destination, origin_url_, is_websocket_, enable_ip_based_pooling_,
+        net_log_.net_log(), NextProto::kProtoUnknown,
+        quic::ParsedQuicVersion::Unsupported());
+    // When there is an valid alternative service info, and `preconnect_job`
+    // has no existing QUIC session, create a job for the alternative service.
+    if (alternative_service_info_.protocol() != NextProto::kProtoUnknown &&
+        !preconnect_job->HasAvailableQuicSession()) {
+      GURL alternative_url = CreateAltSvcUrl(
+          origin_url_, alternative_service_info_.GetHostPortPair());
+=======
     if (alternative_service_info_.protocol() != kProtoUnknown) {
       GURL alternative_url = CreateAltSvcUrl(
           origin_url, alternative_service_info_.host_port_pair());
+>>>>>>> chromium
       RewriteUrlWithHostMappingRules(alternative_url);
 
       url::SchemeHostPort alternative_destination =
@@ -761,15 +839,30 @@ int HttpStreamFactory::JobController::DoCreateJobs() {
       is_websocket_, enable_ip_based_pooling_, net_log_.net_log());
   // Alternative Service can only be set for HTTPS requests while Alternative
   // Proxy is set for HTTP requests.
+<<<<<<< HEAD
+  // The main job may use HTTP/3 if the origin is specified in
+  // `--origin-to-force-quic-on` switch. In that case, do not create
+  // `alternative_job_` and `dns_alpn_h3_job_`.
+  if ((alternative_service_info_.protocol() != NextProto::kProtoUnknown) &&
+      !main_job_->using_quic()) {
+    DCHECK(origin_url_.SchemeIs(url::kHttpsScheme));
+    DCHECK(!is_websocket_);
+=======
   if (alternative_service_info_.protocol() != kProtoUnknown) {
     DCHECK(request_info_.url.SchemeIs(url::kHttpsScheme));
+>>>>>>> chromium
     DVLOG(1) << "Selected alternative service (host: "
-             << alternative_service_info_.host_port_pair().host()
-             << " port: " << alternative_service_info_.host_port_pair().port()
+             << alternative_service_info_.GetHostPortPair().host()
+             << " port: " << alternative_service_info_.GetHostPortPair().port()
              << " version: " << quic_version << ")";
 
+<<<<<<< HEAD
+    GURL alternative_url = CreateAltSvcUrl(
+        origin_url_, alternative_service_info_.GetHostPortPair());
+=======
     GURL alternative_url =
         CreateAltSvcUrl(origin_url, alternative_service_info_.host_port_pair());
+>>>>>>> chromium
     RewriteUrlWithHostMappingRules(alternative_url);
 
     url::SchemeHostPort alternative_destination =
@@ -968,10 +1061,15 @@ HttpStreamFactory::JobController::GetAlternativeServiceInfoFor(
   AlternativeServiceInfo alternative_service_info =
       GetAlternativeServiceInfoInternal(request_info, delegate, stream_type);
   AlternativeServiceType type;
-  if (alternative_service_info.protocol() == kProtoUnknown) {
+  if (alternative_service_info.protocol() == NextProto::kProtoUnknown) {
     type = NO_ALTERNATIVE_SERVICE;
+<<<<<<< HEAD
+  } else if (alternative_service_info.protocol() == NextProto::kProtoQUIC) {
+    if (http_request_info_url.host_piece() ==
+=======
   } else if (alternative_service_info.protocol() == kProtoQUIC) {
     if (request_info.url.host_piece() ==
+>>>>>>> chromium
         alternative_service_info.alternative_service().host) {
       type = QUIC_SAME_DESTINATION;
     } else {
@@ -1019,7 +1117,12 @@ HttpStreamFactory::JobController::GetAlternativeServiceInfoInternal(
   for (const AlternativeServiceInfo& alternative_service_info :
        alternative_service_info_vector) {
     DCHECK(IsAlternateProtocolValid(alternative_service_info.protocol()));
+<<<<<<< HEAD
+    if (!quic_advertised &&
+        alternative_service_info.protocol() == NextProto::kProtoQUIC) {
+=======
     if (!quic_advertised && alternative_service_info.protocol() == kProtoQUIC)
+>>>>>>> chromium
       quic_advertised = true;
     const bool is_broken = http_server_properties.IsAlternativeServiceBroken(
         alternative_service_info.alternative_service(),
@@ -1051,17 +1154,27 @@ HttpStreamFactory::JobController::GetAlternativeServiceInfoInternal(
          original_url.EffectiveIntPort() < kUnrestrictedPort))
       continue;
 
+<<<<<<< HEAD
+    if (alternative_service_info.protocol() == NextProto::kProtoHTTP2) {
+      if (!session_->params().enable_http2_alternative_service) {
+=======
     if (alternative_service_info.protocol() == kProtoHTTP2) {
       if (!session_->params().enable_http2_alternative_service)
+>>>>>>> chromium
         continue;
 
       // Cache this entry if we don't have a non-broken Alt-Svc yet.
+<<<<<<< HEAD
+      if (first_alternative_service_info.protocol() ==
+          NextProto::kProtoUnknown) {
+=======
       if (first_alternative_service_info.protocol() == kProtoUnknown)
+>>>>>>> chromium
         first_alternative_service_info = alternative_service_info;
       continue;
     }
 
-    DCHECK_EQ(kProtoQUIC, alternative_service_info.protocol());
+    DCHECK_EQ(NextProto::kProtoQUIC, alternative_service_info.protocol());
     quic_all_broken = false;
     if (!session_->IsQuicEnabled())
       continue;
@@ -1091,7 +1204,7 @@ HttpStreamFactory::JobController::GetAlternativeServiceInfoInternal(
         request_info.secure_dns_policy);
 
     GURL destination = CreateAltSvcUrl(
-        original_url, alternative_service_info.host_port_pair());
+        original_url, alternative_service_info.GetHostPortPair());
     if (session_key.host() != destination.host_piece() &&
         !session_->context().quic_context->params()->allow_remote_alt_svc) {
       continue;
@@ -1106,7 +1219,11 @@ HttpStreamFactory::JobController::GetAlternativeServiceInfoInternal(
       continue;
 
     // Cache this entry if we don't have a non-broken Alt-Svc yet.
+<<<<<<< HEAD
+    if (first_alternative_service_info.protocol() == NextProto::kProtoUnknown) {
+=======
     if (first_alternative_service_info.protocol() == kProtoUnknown)
+>>>>>>> chromium
       first_alternative_service_info = alternative_service_info;
   }
 
@@ -1215,4 +1332,58 @@ bool HttpStreamFactory::JobController::IsQuicAllowedForHost(
   return base::Contains(host_allowlist, lowered_host);
 }
 
+<<<<<<< HEAD
+void HttpStreamFactory::JobController::SwitchToHttpStreamPool() {
+  CHECK(request_info_.socket_tag == SocketTag());
+  CHECK_EQ(stream_type_, HttpStreamRequest::HTTP_STREAM);
+
+  switched_to_http_stream_pool_ = true;
+
+  bool disable_cert_network_fetches =
+      !!(request_info_.load_flags & LOAD_DISABLE_CERT_NETWORK_FETCHES);
+  url::SchemeHostPort destination(origin_url_);
+  session_->ApplyTestingFixedPort(destination);
+  HttpStreamPoolRequestInfo pool_request_info(
+      std::move(destination), request_info_.privacy_mode,
+      request_info_.socket_tag, request_info_.network_anonymization_key,
+      request_info_.secure_dns_policy, disable_cert_network_fetches,
+      alternative_service_info_, request_info_.is_http1_allowed,
+      request_info_.load_flags, proxy_info_, net_log_);
+  if (is_preconnect_) {
+    int rv = session_->http_stream_pool()->Preconnect(
+        std::move(pool_request_info), num_streams_,
+        base::BindOnce(&JobController::OnPoolPreconnectsComplete,
+                       ptr_factory_.GetWeakPtr()));
+    if (rv != ERR_IO_PENDING) {
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce(&JobController::OnPoolPreconnectsComplete,
+                                    ptr_factory_.GetWeakPtr(), rv));
+    }
+    return;
+  }
+
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&JobController::CallOnSwitchesToHttpStreamPool,
+                     ptr_factory_.GetWeakPtr(), std::move(pool_request_info)));
+}
+
+void HttpStreamFactory::JobController::OnPoolPreconnectsComplete(int rv) {
+  CHECK(switched_to_http_stream_pool_);
+  factory_->OnPreconnectsCompleteInternal();
+  MaybeNotifyFactoryOfCompletion();
+}
+
+void HttpStreamFactory::JobController::CallOnSwitchesToHttpStreamPool(
+    HttpStreamPoolRequestInfo request_info) {
+  CHECK(request_);
+  CHECK(delegate_);
+
+  // `request_` and `delegate_` will be reset later.
+
+  delegate_->OnSwitchesToHttpStreamPool(std::move(request_info));
+}
+
+=======
+>>>>>>> chromium
 }  // namespace net

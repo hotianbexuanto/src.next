@@ -57,6 +57,37 @@ class CORE_EXPORT LayoutHTMLCanvas final : public LayoutReplaced {
 
   void WillBeDestroyed() override;
 
+<<<<<<< HEAD
+  void Trace(Visitor*) const override;
+
+  LayoutObject* FirstChild() const {
+    NOT_DESTROYED();
+    DCHECK_EQ(Children(), VirtualChildren());
+    return Children()->FirstChild();
+  }
+  LayoutObject* LastChild() const {
+    NOT_DESTROYED();
+    DCHECK_EQ(Children(), VirtualChildren());
+    return Children()->LastChild();
+  }
+
+  // As with LayoutMedia, use firstChild or lastChild instead.
+  void SlowFirstChild() const = delete;
+  void SlowLastChild() const = delete;
+
+  const LayoutObjectChildList* Children() const {
+    NOT_DESTROYED();
+    return &children_;
+  }
+  LayoutObjectChildList* Children() {
+    NOT_DESTROYED();
+    return &children_;
+  }
+
+  void DidInvalidatePaintForPlacedElement(Element* placedElement);
+
+=======
+>>>>>>> chromium
  private:
   void PaintReplaced(const PaintInfo&,
                      const PhysicalOffset& paint_offset) const override;
@@ -64,12 +95,18 @@ class CORE_EXPORT LayoutHTMLCanvas final : public LayoutReplaced {
     NOT_DESTROYED();
     CanvasSizeChanged();
   }
+  PhysicalNaturalSizingInfo GetNaturalDimensions() const override;
 
+<<<<<<< HEAD
+  LayoutObjectChildList children_;
+  PhysicalSize natural_size_;
+=======
   bool CanHaveAdditionalCompositingReasons() const override {
     NOT_DESTROYED();
     return true;
   }
   CompositingReasons AdditionalCompositingReasons() const override;
+>>>>>>> chromium
 };
 
 template <>

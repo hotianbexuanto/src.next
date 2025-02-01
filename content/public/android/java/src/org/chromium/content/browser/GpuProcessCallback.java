@@ -7,12 +7,17 @@ package org.chromium.content.browser;
 import android.view.Surface;
 
 import org.chromium.base.UnguessableToken;
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+=======
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+>>>>>>> chromium
 import org.chromium.content.common.IGpuProcessCallback;
 import org.chromium.content.common.SurfaceWrapper;
 
 @JNINamespace("content")
+@NullMarked
 class GpuProcessCallback extends IGpuProcessCallback.Stub {
     GpuProcessCallback() {}
 

@@ -5,6 +5,10 @@
 #include "content/browser/child_process_security_policy_impl.h"
 
 #include <algorithm>
+<<<<<<< HEAD
+#include <string_view>
+=======
+>>>>>>> chromium
 #include <tuple>
 #include <utility>
 
@@ -19,6 +23,11 @@
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/metrics/histogram_macros.h"
+<<<<<<< HEAD
+#include "base/not_fatal_until.h"
+#include "base/strings/string_number_conversions.h"
+=======
+>>>>>>> chromium
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -992,6 +1001,22 @@ void ChildProcessSecurityPolicyImpl::GrantRequestSpecificFileURL(
   if (!url.SchemeIs(url::kFileScheme))
     return;
 
+<<<<<<< HEAD
+  // When the child process has been commanded to request a file:// URL,
+  // then we grant it the capability for that URL only. Canonicalize the path
+  // via roundtrip to file:// URL so it will match the incoming URL we validate
+  // against (crbug.com/382645162), except android content:// URLs.
+#if BUILDFLAG(IS_ANDROID)
+  if (path.IsContentUri()) {
+    state->second->GrantRequestOfSpecificFile(path);
+    return;
+  }
+#endif
+  GURL url = net::FilePathToFileURL(path);
+  base::FilePath canonical_path;
+  if (net::FileURLToFilePath(url, &canonical_path)) {
+    state->second->GrantRequestOfSpecificFile(canonical_path);
+=======
   {
     base::AutoLock lock(lock_);
     auto state = security_state_.find(child_id);
@@ -1003,6 +1028,7 @@ void ChildProcessSecurityPolicyImpl::GrantRequestSpecificFileURL(
     base::FilePath path;
     if (net::FileURLToFilePath(url, &path))
       state->second->GrantRequestOfSpecificFile(path);
+>>>>>>> chromium
   }
 }
 
@@ -1315,10 +1341,17 @@ bool ChildProcessSecurityPolicyImpl::CanReadFile(int child_id,
 bool ChildProcessSecurityPolicyImpl::CanReadAllFiles(
     int child_id,
     const std::vector<base::FilePath>& files) {
+<<<<<<< HEAD
+  return std::ranges::all_of(files,
+                             [this, child_id](const base::FilePath& file) {
+                               return CanReadFile(child_id, file);
+                             });
+=======
   return std::all_of(files.begin(), files.end(),
                      [this, child_id](const base::FilePath& file) {
                        return CanReadFile(child_id, file);
                      });
+>>>>>>> chromium
 }
 
 bool ChildProcessSecurityPolicyImpl::CanReadRequestBody(
@@ -1359,6 +1392,11 @@ bool ChildProcessSecurityPolicyImpl::CanReadRequestBody(
   DCHECK(site_instance);
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
+<<<<<<< HEAD
+  return CanReadRequestBody(
+      process->GetDeprecatedID(),
+      process->GetStoragePartition()->GetFileSystemContext(), body);
+=======
   int child_id = site_instance->GetProcess()->GetID();
 
   StoragePartition* storage_partition =
@@ -1367,6 +1405,7 @@ bool ChildProcessSecurityPolicyImpl::CanReadRequestBody(
       storage_partition->GetFileSystemContext();
 
   return CanReadRequestBody(child_id, file_system_context, body);
+>>>>>>> chromium
 }
 
 bool ChildProcessSecurityPolicyImpl::CanCreateReadWriteFile(
@@ -1892,11 +1931,17 @@ void ChildProcessSecurityPolicyImpl::AddFutureIsolatedOrigins(
     BrowserContext* browser_context) {
   std::vector<IsolatedOriginPattern> patterns;
   patterns.reserve(origins_to_add.size());
+<<<<<<< HEAD
+  std::ranges::transform(
+      origins_to_add, std::back_inserter(patterns),
+      [](const url::Origin& o) { return IsolatedOriginPattern(o); });
+=======
   std::transform(origins_to_add.cbegin(), origins_to_add.cend(),
                  std::back_inserter(patterns),
                  [](const url::Origin& o) -> IsolatedOriginPattern {
                    return IsolatedOriginPattern(o);
                  });
+>>>>>>> chromium
   AddFutureIsolatedOrigins(patterns, source, browser_context);
 }
 
@@ -2288,7 +2333,37 @@ bool ChildProcessSecurityPolicyImpl::HasOriginEverRequestedOptInIsolation(
          base::Contains(origin_isolation_opt_ins_[browser_context], origin);
 }
 
+<<<<<<< HEAD
+OriginAgentClusterIsolationState*
+ChildProcessSecurityPolicyImpl::LookupOriginIsolationState(
+    const BrowsingInstanceId& browsing_instance_id,
+    const url::Origin& origin) {
+  auto it_isolation_by_browsing_instance =
+      origin_isolation_by_browsing_instance_.find(browsing_instance_id);
+  if (it_isolation_by_browsing_instance ==
+      origin_isolation_by_browsing_instance_.end()) {
+    return nullptr;
+  }
+  auto& origin_list = it_isolation_by_browsing_instance->second;
+  auto it_origin_list = std::ranges::find(
+      origin_list, origin, &OriginAgentClusterOptInEntry::origin);
+  if (it_origin_list != origin_list.end())
+    return &(it_origin_list->oac_isolation_state);
+  return nullptr;
+}
+
+OriginAgentClusterIsolationState*
+ChildProcessSecurityPolicyImpl::LookupOriginIsolationStateForTesting(
+    const BrowsingInstanceId& browsing_instance_id,
+    const url::Origin& origin) {
+  base::AutoLock lock(origins_isolation_opt_in_lock_);
+  return LookupOriginIsolationState(browsing_instance_id, origin);
+}
+
+void ChildProcessSecurityPolicyImpl::AddDefaultIsolatedOriginIfNeeded(
+=======
 void ChildProcessSecurityPolicyImpl::AddNonIsolatedOriginIfNeeded(
+>>>>>>> chromium
     const IsolationContext& isolation_context,
     const url::Origin& origin,
     bool is_global_walk_or_frame_removal) {

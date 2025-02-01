@@ -16,9 +16,22 @@ import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 
+<<<<<<< HEAD
+import org.chromium.base.power_monitor.BatteryPowerStatus;
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
+import org.chromium.build.annotations.NullMarked;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+/** Integrates native PowerMonitor with the java side. */
+@NullMarked
+=======
 /**
  * Integrates native PowerMonitor with the java side.
  */
+>>>>>>> chromium
 @JNINamespace("base::android")
 public class PowerMonitor {
     private static PowerMonitor sInstance;
@@ -55,11 +68,30 @@ public class PowerMonitor {
         IntentFilter powerConnectedFilter = new IntentFilter();
         powerConnectedFilter.addAction(Intent.ACTION_POWER_CONNECTED);
         powerConnectedFilter.addAction(Intent.ACTION_POWER_DISCONNECTED);
+<<<<<<< HEAD
+        ContextUtils.registerProtectedBroadcastReceiver(
+                context,
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        PowerMonitor.onBatteryChargingChanged(
+                                Intent.ACTION_POWER_DISCONNECTED.equals(intent.getAction()));
+                    }
+                },
+                powerConnectedFilter);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            PowerManager powerManager =
+                    (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null) {
+                PowerMonitorForQ.addThermalStatusListener(powerManager);
+=======
         context.registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 PowerMonitor.onBatteryChargingChanged(
                         intent.getAction().equals(Intent.ACTION_POWER_DISCONNECTED));
+>>>>>>> chromium
             }
         }, powerConnectedFilter);
     }

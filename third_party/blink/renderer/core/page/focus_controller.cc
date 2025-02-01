@@ -36,6 +36,10 @@
 #include "third_party/blink/renderer/core/dom/element_traversal.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/focus_params.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/dom/popover_data.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/range.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"  // For firstPositionInOrBeforeNode
@@ -63,11 +67,293 @@
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/slot_scoped_traversal.h"
 #include "third_party/blink/renderer/core/page/spatial_navigation.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/style/computed_style_constants.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#include "third_party/blink/renderer/platform/wtf/casting.h"
+=======
+>>>>>>> chromium
 
 namespace blink {
 
 namespace {
 
+<<<<<<< HEAD
+// Start of carousel helpers for focus navigation.
+// As per https://drafts.csswg.org/css-overflow-5/#focus-order,
+// focus order for carousel scroller and pseudo elements is different
+// from usual DOM order, these functions here help to achieve the specced
+// order.
+Element* GetSelectedScrollMarkerFromScrollMarkerGroup(const Element& current) {
+  if (auto* scroll_marker_group =
+          DynamicTo<ScrollMarkerGroupPseudoElement>(current)) {
+    return scroll_marker_group->Selected();
+  }
+  return nullptr;
+}
+
+bool ElementHasScrollButton(const Element& element) {
+  return element.GetPseudoElement(kPseudoIdScrollButtonBlockStart) ||
+         element.GetPseudoElement(kPseudoIdScrollButtonInlineStart) ||
+         element.GetPseudoElement(kPseudoIdScrollButtonInlineEnd) ||
+         element.GetPseudoElement(kPseudoIdScrollButtonBlockEnd);
+}
+
+bool ElementHasPrecedingCarouselPseudoElement(const Element& element) {
+  return element.GetPseudoElement(kPseudoIdScrollMarkerGroupBefore) ||
+         ElementHasScrollButton(element);
+}
+
+// Overwrites the DOM source order if it is currently inside a carousel or might
+// move into the carousel element. If not, it will call NextIncludingPseudo.
+// Carousel here means scroller with some special pseudo elements and the focus
+// order changes as described below.
+// DOM order for carousel is:
+// scroller, ::scroll-marker-group(before), ::scroll-button(),
+// scroller's children (with ::scroll-markers), ::scroll-marker-group(after).
+// Carousel focus order is
+// (https://drafts.csswg.org/css-overflow-5/#focus-order):
+// active ::scroll-marker from ::scroll-marker-group(before), ::scroll-button(),
+// scroller, scroller's children, active ::scroll-marker from
+// ::scroll-marker-group(after).
+// In some cases, we need to continue searching in DOM order for next
+// focusable element from the element returned by this function, but
+// in other cases, we should immediately return that element.
+// `should_continue_search` argument determines the way we should
+// take.
+Element* GetNextInCarouselOrDomOrder(const Element& current,
+                                     const ContainerNode* stay_within,
+                                     bool& should_continue_search) {
+  should_continue_search = true;
+  // From ::scroll-marker we try to move to:
+  if (auto* scroll_marker = DynamicTo<ScrollMarkerPseudoElement>(current)) {
+    const Element* scroll_marker_group = scroll_marker->ScrollMarkerGroup();
+    CHECK(scroll_marker_group);
+    Element* scroller = scroll_marker_group->parentElement();
+    // - ::scroll-button(), if ::::scroll-marker-group is before and scroller
+    // has buttons;
+    // - next element in DOM order, if ::::scroll-marker-group is after.
+    if (ElementHasScrollButton(*scroller) ||
+        scroll_marker_group->IsScrollMarkerGroupAfterPseudoElement()) {
+      return ElementTraversal::NextIncludingPseudo(*scroll_marker_group,
+                                                   stay_within);
+    }
+    // - scroller, if ::::scroll-marker-group is before and scroller doesn't
+    // have buttons; also, return early here, as AdjustNextForCarouselFocusOrder
+    // checks for scroller and can change result.
+    should_continue_search = false;
+    return scroller;
+  }
+  // If `current` has a ::scroll-marker-group(before) or a ::scroll-button(), we
+  // need to move to the next element in DOM order.
+  // Note: We can only get here when `current` has preceding
+  // carousel pseudo elements, since we force them to be result of calling `next
+  // element for focus` function, once we detect element has pseudos.
+  if (ElementHasPrecedingCarouselPseudoElement(current)) {
+    return ElementTraversal::Next(current, stay_within);
+  }
+  // If no special case, just find regular next element.
+  return ElementTraversal::NextIncludingPseudo(current, stay_within);
+}
+
+// Once we found our next candidate, we might want to change it to follow
+// the carousel focus order.
+Element* AdjustNextForCarouselFocusOrder(const Element& current,
+                                         Element* next) {
+  if (!next) {
+    return nullptr;
+  }
+  // If we went from ::scroll-button() to non ::scroll-button(),
+  // we should return scroller (look at carousel focus order).
+  if (current.IsScrollButtonPseudoElement() &&
+      !next->IsScrollButtonPseudoElement()) {
+    return current.parentElement();
+  }
+  // If we found ::scroll-marker-group(after), we should return its active
+  // marker, if there is one.
+  if (next->IsScrollMarkerGroupAfterPseudoElement()) {
+    if (Element* scroll_marker =
+            GetSelectedScrollMarkerFromScrollMarkerGroup(*next)) {
+      return scroll_marker;
+    }
+  }
+  // If we found a scroller with ::scroll-marker-group(before), we should
+  // return its active marker, if there is one.
+  if (auto* scroll_marker_group = DynamicTo<ScrollMarkerGroupPseudoElement>(
+          next->GetPseudoElement(kPseudoIdScrollMarkerGroupBefore))) {
+    if (Element* scroll_marker = scroll_marker_group->Selected()) {
+      return scroll_marker;
+    }
+  }
+  // If we found a scroller with ::scroll-button(), we should return them
+  // instead (look at carousel focus order).
+  if (ElementHasScrollButton(*next)) {
+    return ElementTraversal::NextIncludingPseudo(*next);
+  }
+  return next;
+}
+
+// All the same as above, but backwards.
+Element* GetPreviousInCarouselOrDomOrder(const Element& current,
+                                         const ContainerNode* stay_within,
+                                         bool& should_continue_search) {
+  should_continue_search = true;
+  // We should start looking for previous from ::scroll-marker-group of active
+  // ::scroll-marker, if its ::scroll-marker-group(after), otherwise, we should
+  // look for previous, starting from the scroller. And we do it here, since
+  // ::scroll-marker is not child of
+  // ::scroll-marker-group in DOM tree, but only in layout tree.
+  if (auto* scroll_marker = DynamicTo<ScrollMarkerPseudoElement>(current)) {
+    ScrollMarkerGroupPseudoElement* scroll_marker_group =
+        scroll_marker->ScrollMarkerGroup();
+    DCHECK(scroll_marker_group);
+    if (scroll_marker_group->IsScrollMarkerGroupAfterPseudoElement()) {
+      return ElementTraversal::PreviousIncludingPseudo(*scroll_marker_group,
+                                                       stay_within);
+    }
+    return ElementTraversal::PreviousIncludingPseudo(
+        *scroll_marker_group->parentElement(), stay_within);
+  }
+  // If we found a scroller with preceding Carousel pseudos, we should
+  // return the last of them instead, or ::scroll-marker for
+  // ::scroll-marker-group(before) (look at Carousel focus order).
+  if (ElementHasPrecedingCarouselPseudoElement(current)) {
+    // This order is described in
+    // https://drafts.csswg.org/css-overflow-5/#scroll-buttons
+    static std::array<PseudoId, 5> order = {
+        kPseudoIdScrollButtonBlockEnd, kPseudoIdScrollButtonInlineEnd,
+        kPseudoIdScrollButtonInlineStart, kPseudoIdScrollButtonBlockStart,
+        kPseudoIdScrollMarkerGroupBefore};
+    for (auto pseudo_id : order) {
+      if (Element* pseudo = current.GetPseudoElement(pseudo_id)) {
+        should_continue_search = false;
+        if (Element* scroll_marker =
+                GetSelectedScrollMarkerFromScrollMarkerGroup(*pseudo)) {
+          return scroll_marker;
+        }
+        return pseudo;
+      }
+    }
+  }
+  Element* previous =
+      ElementTraversal::PreviousIncludingPseudo(current, stay_within);
+  if (!previous) {
+    return nullptr;
+  }
+  // If we go from preceding Carousel pseudos to scroller, we should skip
+  // scroller.
+  if ((current.IsScrollButtonPseudoElement() ||
+       current.IsScrollMarkerGroupBeforePseudoElement()) &&
+      !previous->IsScrollButtonPseudoElement() &&
+      !previous->IsScrollMarkerGroupBeforePseudoElement()) {
+    return ElementTraversal::PreviousIncludingPseudo(*current.parentElement(),
+                                                     stay_within);
+  }
+  // If no special case, just find regular previous element.
+  return previous;
+}
+
+Element* AdjustPreviousForCarouselFocusOrder(const Element& current,
+                                             Element* previous) {
+  if (!previous) {
+    return nullptr;
+  }
+  // If we went from non ::scroll-button() to preceding Carousel pseudo,
+  // we should return scroller (look at Carousel focus order).
+  if (!current.IsScrollButtonPseudoElement() &&
+      (previous->IsScrollMarkerGroupBeforePseudoElement() ||
+       previous->IsScrollButtonPseudoElement())) {
+    return previous->parentElement();
+  }
+  // If we found ::scroll-marker-group, we should
+  // return its active ::scroll-marker, if it exists.
+  if (Element* scroll_marker =
+          GetSelectedScrollMarkerFromScrollMarkerGroup(*previous)) {
+    return scroll_marker;
+  }
+  return previous;
+}
+// End of carousel helpers.
+
+bool IsOpenPopoverWithInvoker(const Node* node) {
+  auto* popover = DynamicTo<HTMLElement>(node);
+  return popover && popover->HasPopoverAttribute() && popover->popoverOpen() &&
+         popover->GetPopoverData()->invoker();
+}
+
+const Element* InclusiveAncestorOpenPopoverWithInvoker(const Element* element) {
+  for (; element; element = FlatTreeTraversal::ParentElement(*element)) {
+    if (IsOpenPopoverWithInvoker(element)) {
+      return element;  // Return the popover
+    }
+  }
+  return nullptr;
+}
+
+bool IsOpenPopoverInvoker(const Node* node) {
+  auto* invoker = DynamicTo<HTMLFormControlElement>(node);
+  if (!invoker)
+    return false;
+  HTMLElement* popover = const_cast<HTMLFormControlElement*>(invoker)
+                             ->popoverTargetElement()
+                             .popover;
+  // There could be more than one invoker for a given popover. Only return true
+  // if this invoker was the one that was actually used.
+  return popover && popover->popoverOpen() &&
+         popover->GetPopoverData()->invoker() == invoker;
+}
+
+// If node is a reading-flow container or a display: contents element whose
+// layout parent is a reading-flow container, return that container.
+// This is a helper for SetReadingFlowInfo.
+const ContainerNode* ReadingFlowContainerOrDisplayContents(
+    const ContainerNode* node) {
+  if (!node) {
+    return nullptr;
+  }
+  if (node->IsReadingFlowContainer()) {
+    return node;
+  }
+  if (const Element* element = DynamicTo<Element>(node);
+      element && element->HasDisplayContentsStyle()) {
+    ContainerNode* closest_layout_parent =
+        LayoutTreeBuilderTraversal::LayoutParent(*node);
+    if (closest_layout_parent &&
+        closest_layout_parent->IsReadingFlowContainer()) {
+      return closest_layout_parent;
+    }
+  }
+  return nullptr;
+}
+
+// A reading-flow item scope owner is a reading-flow item that is not a scope
+// owner by other definitions.
+bool IsReadingFlowItemScopeOwner(const ContainerNode* node) {
+  // An iframe scope behaves the same way as a reading-flow item scope. We add
+  // this condition to avoid overlapping definition, which will mess up finding
+  // focusable elements across scopes.
+  if (IsA<HTMLIFrameElement>(node)) {
+    return false;
+  }
+  if (const Element* element = DynamicTo<Element>(node)) {
+    if (ContainerNode* closest_layout_parent =
+            LayoutTreeBuilderTraversal::LayoutParent(*element)) {
+      return closest_layout_parent->IsReadingFlowContainer();
+    }
+  }
+  return false;
+}
+
+// Returns true if node is a reading-flow container, a display: contents
+// with a reading-flow container as its layout parent, or a reading-flow
+// item scope owner.
+bool IsReadingFlowScopeOwner(const ContainerNode* node) {
+  return ReadingFlowContainerOrDisplayContents(node) ||
+         IsReadingFlowItemScopeOwner(node);
+}
+
+=======
+>>>>>>> chromium
 // This class defines the navigation order.
 class FocusNavigation : public GarbageCollected<FocusNavigation> {
  public:
@@ -78,6 +364,158 @@ class FocusNavigation : public GarbageCollected<FocusNavigation> {
                   FocusController::OwnerMap& owner_map)
       : root_(&root), slot_(&slot), owner_map_(owner_map) {}
 
+<<<<<<< HEAD
+#if DCHECK_IS_ON()
+  // Elements that have position absolute/fixed or display: contents will not
+  // be sorted in reading-flow order. They should be visited at the end of
+  // the reading flow elements, in DOM order.
+  bool ShouldBeAtEndOfReadingFlow(const Element& element) {
+    if (LayoutObject* layout = element.GetLayoutObject()) {
+      return layout->IsFixedPositioned() || layout->IsAbsolutePositioned();
+    }
+    return element.HasDisplayContentsStyle();
+  }
+#endif
+
+  void SetReadingFlowInfo(const ContainerNode& reading_flow_container) {
+    DCHECK(reading_flow_container.GetLayoutBox());
+    DCHECK(!reading_flow_container_);
+    reading_flow_container_ = reading_flow_container;
+    auto* children = MakeGarbageCollected<HeapVector<Member<Element>>>();
+    // Layout box only includes elements that are in the reading flow
+    // container's layout. For each reading flow item, check if itself or its
+    // ancestor should be included in this scope instead, in reading flow order.
+    for (Node* reading_flow_node :
+         reading_flow_container_->GetLayoutBox()->ReadingFlowNodes()) {
+      Element* reading_flow_item = DynamicTo<Element>(reading_flow_node);
+      if (!reading_flow_item) {
+        continue;
+      }
+      do {
+        if (IsOwnedByRoot(*reading_flow_item)) {
+          // TODO(dizhangg) this check is O(n^2)
+          if (!children->Contains(reading_flow_item)) {
+            children->push_back(reading_flow_item);
+          }
+          break;
+        }
+        reading_flow_item =
+            FlatTreeTraversal::ParentElement(*reading_flow_item);
+        // If parent is reading flow container, then we have traversed all
+        // potential parents and there is no reading flow item to add.
+      } while (reading_flow_item &&
+               reading_flow_item != reading_flow_container_);
+    }
+    // If a child is not in the sorted children, we add it after in DOM order.
+    // This includes elements with computed style display:contents,
+    // position:absolute, and position:fixed.
+    for (Element& child : ElementTraversal::ChildrenOf(*root_)) {
+      // TODO(dizhangg) this check is O(n^2)
+      if (!children->Contains(child) && IsOwnedByRoot(child)) {
+#if DCHECK_IS_ON()
+        DCHECK(ShouldBeAtEndOfReadingFlow(child));
+#endif
+        children->push_back(child);
+      }
+    }
+    reading_flow_next_elements_.ReserveCapacityForSize(children->size());
+    reading_flow_previous_elements_.ReserveCapacityForSize(children->size());
+    Element* prev_element = nullptr;
+    for (Element* child : *children) {
+      // Pseudo elements in reading-flow are not focusable and should not be
+      // included in the elements to traverse.
+      if (child->IsPseudoElement()) {
+        continue;
+      }
+      if (!prev_element) {
+        reading_flow_first_element_ = child;
+      } else {
+        reading_flow_next_elements_.insert(prev_element, child);
+      }
+      reading_flow_previous_elements_.insert(child, prev_element);
+      prev_element = child;
+    }
+    if (prev_element) {
+      reading_flow_next_elements_.insert(prev_element, nullptr);
+      reading_flow_last_element_ = prev_element;
+    }
+#if DCHECK_IS_ON()
+    // At this point, the number of reading flow elements added should equal the
+    // number of children.
+    size_t num_children = 0;
+    for (Element& child : ElementTraversal::ChildrenOf(*root_)) {
+      DCHECK(reading_flow_next_elements_.Contains(&child));
+      ++num_children;
+    }
+    DCHECK_EQ(reading_flow_next_elements_.size(), num_children);
+#endif
+  }
+
+  const Element* NextInDomOrder(const Element& current) {
+    Element* next;
+    if (RuntimeEnabledFeatures::PseudoElementsFocusableEnabled()) {
+      bool should_continue_search;
+      next =
+          GetNextInCarouselOrDomOrder(current, root_, should_continue_search);
+      if (!should_continue_search) {
+        return next;
+      }
+      // We skip every ::scroll-marker we find inside scroller,
+      // since we only want to get to it from ::scroll-marker-group.
+      while (next &&
+             (!IsOwnedByRoot(*next) || next->IsScrollMarkerPseudoElement())) {
+        next = ElementTraversal::NextIncludingPseudo(*next, root_);
+      }
+      next = AdjustNextForCarouselFocusOrder(current, next);
+    } else {
+      next = ElementTraversal::Next(current, root_);
+      while (next && !IsOwnedByRoot(*next)) {
+        next = ElementTraversal::Next(*next, root_);
+      }
+    }
+    return next;
+  }
+
+  // Given current element, find next element to traverse:
+  // 1. If current scope is in a reading-flow container and the current element
+  //    is a reading flow element, use the reading flow.
+  // 2. Else, use the DOM tree order.
+  const Element* Next(const Element& current) {
+    return reading_flow_container_ &&
+                   reading_flow_next_elements_.Contains(&current)
+               ? reading_flow_next_elements_.at(&current)
+               : NextInDomOrder(current);
+  }
+
+  const Element* PreviousInDomOrder(const Element& current) {
+    Element* previous;
+    if (RuntimeEnabledFeatures::PseudoElementsFocusableEnabled()) {
+      bool should_continue_search;
+      previous = GetPreviousInCarouselOrDomOrder(current, root_,
+                                                 should_continue_search);
+      if (!should_continue_search) {
+        return previous;
+      }
+      if (previous == root_) {
+        return nullptr;
+      }
+      // We skip every ::scroll-marker we find inside scroller,
+      // since we only want to get to it from ::scroll-marker-group.
+      while (previous && (!IsOwnedByRoot(*previous) ||
+                          previous->IsScrollMarkerPseudoElement())) {
+        previous = ElementTraversal::PreviousIncludingPseudo(*previous, root_);
+      }
+      previous = AdjustPreviousForCarouselFocusOrder(current, previous);
+    } else {
+      previous = ElementTraversal::Previous(current, root_);
+      if (previous == root_) {
+        return nullptr;
+      }
+      while (previous && !IsOwnedByRoot(*previous)) {
+        previous = ElementTraversal::Previous(*previous, root_);
+      }
+    }
+=======
   const Element* Next(const Element& current) {
     Element* next = ElementTraversal::Next(current, root_);
     while (next && !IsOwnedByRoot(*next))
@@ -91,6 +529,7 @@ class FocusNavigation : public GarbageCollected<FocusNavigation> {
       return nullptr;
     while (previous && !IsOwnedByRoot(*previous))
       previous = ElementTraversal::Previous(*previous, root_);
+>>>>>>> chromium
     return previous;
   }
 
@@ -424,15 +863,47 @@ inline bool IsShadowHostWithoutCustomFocusLogic(const Element& element) {
 }
 
 inline bool IsNonKeyboardFocusableShadowHost(const Element& element) {
+<<<<<<< HEAD
+  if (!IsShadowHostWithoutCustomFocusLogic(element) ||
+      element.IsShadowHostWithDelegatesFocus()) {
+    return false;
+  }
+  if (!element.IsFocusable()) {
+    return true;
+  }
+  if (element.IsKeyboardFocusableSlow()) {
+    return false;
+  }
+  // This host supports focus, but cannot be keyboard focused. For example:
+  // - Tabindex is negative
+  // - It is a scroller with focusable children
+  // When tabindex is negative, we should not visit the host.
+  return !(element.GetIntegralAttribute(html_names::kTabindexAttr, 0) < 0);
+}
+
+inline bool IsNonKeyboardFocusableReadingFlowOwner(const Element& element) {
+  return IsReadingFlowScopeOwner(&element) &&
+         !element.IsKeyboardFocusableSlow();
+}
+
+inline bool IsKeyboardFocusableReadingFlowOwner(const Element& element) {
+  return IsReadingFlowScopeOwner(&element) && element.IsKeyboardFocusableSlow();
+=======
   return IsShadowHostWithoutCustomFocusLogic(element) &&
          !(element.GetShadowRoot()
                ? (element.IsFocusable() || element.DelegatesFocus())
                : element.IsKeyboardFocusable());
+>>>>>>> chromium
 }
 
 inline bool IsKeyboardFocusableShadowHost(const Element& element) {
   return IsShadowHostWithoutCustomFocusLogic(element) &&
+<<<<<<< HEAD
+         (element.IsKeyboardFocusableSlow() ||
+          element.IsShadowHostWithDelegatesFocus());
+=======
          (element.IsKeyboardFocusable() || element.DelegatesFocus());
+>>>>>>> chromium
 }
 
 inline bool IsNonFocusableFocusScopeOwner(Element& element) {
@@ -457,7 +928,15 @@ inline int AdjustedTabIndex(Element& element) {
 }
 
 inline bool ShouldVisit(Element& element) {
+<<<<<<< HEAD
+  DCHECK(!element.IsKeyboardFocusableSlow() ||
+         FocusController::AdjustedTabIndex(element) >= 0)
+      << "Keyboard focusable element with negative tabindex" << element;
+  return element.IsKeyboardFocusableSlow() ||
+         element.IsShadowHostWithDelegatesFocus() ||
+=======
   return element.IsKeyboardFocusable() || element.DelegatesFocus() ||
+>>>>>>> chromium
          IsNonFocusableFocusScopeOwner(element);
 }
 
@@ -1093,12 +1572,17 @@ bool FocusController::AdvanceFocusInDocumentOrder(
   auto* owner = DynamicTo<HTMLFrameOwnerElement>(element);
   bool has_remote_frame =
       owner && owner->ContentFrame() && owner->ContentFrame()->IsRemoteFrame();
+<<<<<<< HEAD
+  if (owner && (has_remote_frame || !IsA<HTMLPlugInElement>(*element) ||
+                !element->IsKeyboardFocusableSlow())) {
+=======
   // Portals do not currently allow input events, so we block focus from
   // advancing into the portal's content frame.
   bool is_portal = IsA<HTMLPortalElement>(owner);
   if (owner && !is_portal &&
       (has_remote_frame || !IsA<HTMLPlugInElement>(*element) ||
        !element->IsKeyboardFocusable())) {
+>>>>>>> chromium
     // FIXME: We should not focus frames that have no scrollbars, as focusing
     // them isn't useful to the user.
     if (!owner->ContentFrame()) {
@@ -1139,19 +1623,28 @@ bool FocusController::AdvanceFocusInDocumentOrder(
     document->SetSequentialFocusNavigationStartingPoint(nullptr);
   }
 
-  SetFocusedFrame(new_document.GetFrame());
+  Frame* new_frame = new_document.GetFrame();
+  new_frame->SetAllowFocusDuringFocusAdvance(true);
+  SetFocusedFrame(new_frame);
 
+<<<<<<< HEAD
+  element->Focus(FocusParams(SelectionBehaviorOnFocus::kReset, type,
+                             source_capabilities, FocusOptions::Create(),
+                             FocusTrigger::kUserGesture));
+  new_frame->SetAllowFocusDuringFocusAdvance(false);
+=======
   element->focus(
       FocusParams(SelectionBehaviorOnFocus::kReset, type, source_capabilities));
+>>>>>>> chromium
   return true;
 }
 
-Element* FocusController::FindFocusableElement(mojom::blink::FocusType type,
-                                               Element& element,
-                                               OwnerMap& owner_map) {
-  // FIXME: No spacial navigation code yet.
-  DCHECK(type == mojom::blink::FocusType::kForward ||
-         type == mojom::blink::FocusType::kBackward);
+Element* FocusController::FindFocusableElementForImeAutofillAndTesting(
+    mojom::blink::FocusType type,
+    Element& element,
+    OwnerMap& owner_map) {
+  CHECK(type == mojom::blink::FocusType::kForward ||
+        type == mojom::blink::FocusType::kBackward);
   ScopedFocusNavigation scope =
       ScopedFocusNavigation::CreateFor(element, owner_map);
   return FindFocusableElementAcrossFocusScopes(type, scope, owner_map);
@@ -1159,7 +1652,7 @@ Element* FocusController::FindFocusableElement(mojom::blink::FocusType type,
 
 Element* FocusController::NextFocusableElementInForm(
     Element* element,
-    mojom::blink::FocusType focus_type) {
+    const mojom::blink::FocusType focus_type) {
   // TODO(ajith.v) Due to crbug.com/781026 when next/previous element is far
   // from current element in terms of tabindex, then it's signalling CPU load.
   // Will nvestigate further for a proper solution later.
@@ -1183,11 +1676,12 @@ Element* FocusController::NextFocusableElementInForm(
     return nullptr;
 
   OwnerMap owner_map;
-  Element* next_element = FindFocusableElement(focus_type, *element, owner_map);
+  Element* next_element = FindFocusableElementForImeAutofillAndTesting(
+      focus_type, *element, owner_map);
   int traversal = 0;
   for (; next_element && traversal < kFocusTraversalThreshold;
-       next_element =
-           FindFocusableElement(focus_type, *next_element, owner_map),
+       next_element = FindFocusableElementForImeAutofillAndTesting(
+           focus_type, *next_element, owner_map),
        ++traversal) {
     auto* next_html_element = DynamicTo<HTMLElement>(next_element);
     if (!next_html_element)
@@ -1242,6 +1736,26 @@ Element* FocusController::FindFocusableElementInShadowHost(
   return nullptr;
 }
 
+<<<<<<< HEAD
+// static
+HTMLElement* FocusController::FindScopeOwnerSlotOrReadingFlowContainer(
+    const Element& current) {
+  Element* element = const_cast<Element*>(&current);
+  if (element->IsPseudoElement()) {
+    DCHECK(RuntimeEnabledFeatures::PseudoElementsFocusableEnabled());
+    return nullptr;
+  }
+  while (element) {
+    if (HTMLSlotElement* slot_element = element->AssignedSlot()) {
+      return slot_element;
+    }
+    element = element->parentElement();
+    if (element && IsReadingFlowScopeOwner(element)) {
+      return DynamicTo<HTMLElement>(element);
+    }
+  }
+  return nullptr;
+=======
 Element* FocusController::FindFocusableElementAfter(
     Element& element,
     mojom::blink::FocusType type) {
@@ -1252,6 +1766,7 @@ Element* FocusController::FindFocusableElementAfter(
 
   OwnerMap owner_map;
   return FindFocusableElement(type, element, owner_map);
+>>>>>>> chromium
 }
 
 static bool RelinquishesEditingFocus(const Element& element) {

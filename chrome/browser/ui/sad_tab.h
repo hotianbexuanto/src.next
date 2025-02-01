@@ -29,7 +29,14 @@ class SadTab {
   // Returns true if the sad tab should be shown.
   static bool ShouldShow(base::TerminationStatus status);
 
+<<<<<<< HEAD
+  SadTab(const SadTab&) = delete;
+  SadTab& operator=(const SadTab&) = delete;
+
+  virtual ~SadTab() = default;
+=======
   virtual ~SadTab() {}
+>>>>>>> chromium
 
   // Called when the sad tab needs to be reinstalled in its window,
   // for example because an inactive tab was activated, or because a tab was

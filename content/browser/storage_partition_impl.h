@@ -54,8 +54,16 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote.h"
+<<<<<<< HEAD
+#include "mojo/public/cpp/bindings/unique_receiver_set.h"
+#include "net/cookies/cookie_setting_override.h"
+#include "services/network/public/cpp/network_service_buildflags.h"
+#include "services/network/public/mojom/cert_verifier_service_updater.mojom.h"
+#include "services/network/public/mojom/device_bound_sessions.mojom.h"
+=======
 #include "mojo/public/cpp/bindings/shared_remote.h"
 #include "services/network/public/mojom/cookie_manager.mojom.h"
+>>>>>>> chromium
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "services/network/public/mojom/network_service.mojom.h"
 #include "services/network/public/mojom/trust_tokens.mojom.h"
@@ -72,17 +80,48 @@ class ProtoDatabaseProvider;
 
 namespace net {
 class IsolationInfo;
+<<<<<<< HEAD
+}  // namespace net
+
+namespace network {
+namespace mojom {
+class SharedDictionaryAccessObserver;
+class DeviceBoundSessionAccessObserver;
+}  // namespace mojom
+}  // namespace network
+
+namespace storage {
+struct BucketClientInfo;
+class SharedStorageManager;
+=======
+>>>>>>> chromium
 }
 
 namespace content {
 
 class BackgroundFetchContext;
 class BlobRegistryWrapper;
+<<<<<<< HEAD
+class BluetoothAllowedDevicesMap;
+class BroadcastChannelService;
+class BrowsingDataFilterBuilder;
+class KeepAliveURLLoaderService;
+class BucketManager;
+class CacheStorageControlWrapper;
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+class CdmStorageDataModel;
+class CdmStorageManager;
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+class CookieDeprecationLabelManagerImpl;
+class CookieStoreManager;
+class DevToolsBackgroundServicesContextImpl;
+=======
 class ConversionManagerImpl;
 class ComputePressureManager;
 class CookieStoreContext;
 class FontAccessContext;
 class GeneratedCodeCacheContext;
+>>>>>>> chromium
 class FileSystemAccessEntryFactory;
 class FileSystemAccessManagerImpl;
 class InterestGroupManager;
@@ -130,6 +169,25 @@ class CONTENT_EXPORT StoragePartitionImpl
       BackgroundSyncContextImpl* background_sync_context);
   void OverrideSharedWorkerServiceForTesting(
       std::unique_ptr<SharedWorkerServiceImpl> shared_worker_service);
+<<<<<<< HEAD
+  void OverrideSharedStorageRuntimeManagerForTesting(
+      std::unique_ptr<SharedStorageRuntimeManager>
+          shared_storage_runtime_manager);
+  void OverrideSharedStorageHeaderObserverForTesting(
+      std::unique_ptr<SharedStorageHeaderObserver>
+          shared_storage_header_observer);
+  void OverrideAggregationServiceForTesting(
+      std::unique_ptr<AggregationService> aggregation_service);
+  void OverrideAttributionManagerForTesting(
+      std::unique_ptr<AttributionManager> attribution_manager);
+  void OverridePrivateAggregationManagerForTesting(
+      std::unique_ptr<PrivateAggregationManagerImpl>
+          private_aggregation_manager);
+  void OverrideDeviceBoundSessionManagerForTesting(
+      std::unique_ptr<network::mojom::DeviceBoundSessionManager>
+          device_bound_session_manager);
+=======
+>>>>>>> chromium
 
   // StoragePartition interface.
   base::FilePath GetPath() override;
@@ -178,6 +236,21 @@ class CONTENT_EXPORT StoragePartitionImpl
 #endif  // !defined(OS_ANDROID)
   PlatformNotificationContextImpl* GetPlatformNotificationContext() override;
   leveldb_proto::ProtoDatabaseProvider* GetProtoDatabaseProvider() override;
+<<<<<<< HEAD
+  // Use outside content.
+  AttributionDataModel* GetAttributionDataModel() override;
+  PrivateAggregationDataModel* GetPrivateAggregationDataModel() override;
+  CookieDeprecationLabelManager* GetCookieDeprecationLabelManager() override;
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+  CdmStorageDataModel* GetCdmStorageDataModel() override;
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+  network::mojom::DeviceBoundSessionManager* GetDeviceBoundSessionManager()
+      override;
+
+  void DeleteStaleSessionData() override;
+
+=======
+>>>>>>> chromium
   void SetProtoDatabaseProvider(
       std::unique_ptr<leveldb_proto::ProtoDatabaseProvider> proto_db_provider)
       override;
@@ -226,11 +299,24 @@ class CONTENT_EXPORT StoragePartitionImpl
   FileSystemAccessManagerImpl* GetFileSystemAccessManager();
   BucketContext* GetBucketContext();
   QuotaContext* GetQuotaContext();
+<<<<<<< HEAD
+  // Use inside content.
+  AttributionManager* GetAttributionManager();
+  void SetFontAccessManagerForTesting(
+      std::unique_ptr<FontAccessManager> font_access_manager);
+  const std::string& GetPartitionDomain() const;
+  AggregationService* GetAggregationService();
+  FontAccessManager* GetFontAccessManager();
+
+  storage::SharedStorageManager* GetSharedStorageManager() override;
+  PrivateAggregationManager* GetPrivateAggregationManager();
+=======
   ConversionManagerImpl* GetConversionManager();
   FontAccessManagerImpl* GetFontAccessManager();
   InterestGroupManager* GetInterestGroupManager();
   ComputePressureManager* GetComputePressureManager();
   std::string GetPartitionDomain();
+>>>>>>> chromium
 
   // blink::mojom::DomStorage interface.
   void OpenLocalStorage(
@@ -264,12 +350,20 @@ class CONTENT_EXPORT StoragePartitionImpl
       const std::string& spn,
       OnGenerateHttpNegotiateAuthTokenCallback callback) override;
 #endif
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CT_SUPPORTED)
+  void OnCanSendSCTAuditingReport(
+      OnCanSendSCTAuditingReportCallback callback) override;
+  void OnNewSCTAuditingReportSent() override;
+#endif
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   void OnTrustAnchorUsed() override;
 #endif
   void OnTrustTokenIssuanceDivertedToSystem(
       network::mojom::FulfillTrustTokenIssuanceRequestPtr request,
       OnTrustTokenIssuanceDivertedToSystemCallback callback) override;
+>>>>>>> chromium
 
   // network::mojom::URLLoaderNetworkServiceObserver interface.
   void OnSSLCertificateError(const GURL& url,
@@ -303,6 +397,15 @@ class CONTENT_EXPORT StoragePartitionImpl
   void OnDataUseUpdate(int32_t network_traffic_annotation_id_hash,
                        int64_t recv_bytes,
                        int64_t sent_bytes) override;
+<<<<<<< HEAD
+  void OnSharedStorageHeaderReceived(
+      const url::Origin& request_origin,
+      std::vector<network::mojom::SharedStorageModifierMethodWithOptionsPtr>
+          methods_with_options,
+      const std::optional<std::string>& with_lock,
+      OnSharedStorageHeaderReceivedCallback callback) override;
+=======
+>>>>>>> chromium
 
   scoped_refptr<URLLoaderFactoryGetter> url_loader_factory_getter() {
     return url_loader_factory_getter_;
@@ -363,6 +466,11 @@ class CONTENT_EXPORT StoragePartitionImpl
       bool is_service_worker,
       int process_id,
       int routing_id,
+<<<<<<< HEAD
+      net::CookieSettingOverrides cookie_setting_overrides,
+      net::CookieSettingOverrides devtools_cookie_setting_overrides,
+=======
+>>>>>>> chromium
       mojo::PendingReceiver<network::mojom::RestrictedCookieManager> receiver,
       mojo::PendingRemote<network::mojom::CookieAccessObserver>
           cookie_observer);
@@ -379,6 +487,9 @@ class CONTENT_EXPORT StoragePartitionImpl
   mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
   CreateAuthCertObserverForServiceWorker();
 
+  mojo::PendingRemote<network::mojom::DeviceBoundSessionAccessObserver>
+  CreateDeviceBoundSessionObserverForServiceWorker();
+
   std::vector<std::string> GetCorsExemptHeaderList();
 
   // Empties the collection |pending_trust_token_issuance_callbacks_| of
@@ -391,6 +502,13 @@ class CONTENT_EXPORT StoragePartitionImpl
   class QuotaManagedDataDeletionHelper;
   class URLLoaderFactoryForBrowserProcess;
   class ServiceWorkerCookieAccessObserver;
+<<<<<<< HEAD
+  class ServiceWorkerTrustTokenAccessObserver;
+  class ServiceWorkerSharedDictionaryAccessObserver;
+  class ServiceWorkerDeviceBoundSessionAccessObserver;
+  struct NetworkContextOwner;
+=======
+>>>>>>> chromium
 
   friend class BackgroundSyncManagerTest;
   friend class BackgroundSyncServiceImplTestHarness;
@@ -495,6 +613,21 @@ class CONTENT_EXPORT StoragePartitionImpl
   network::mojom::URLLoaderFactory*
   GetURLLoaderFactoryForBrowserProcessInternal(bool corb_enabled);
 
+<<<<<<< HEAD
+  void CreateURLLoaderFactoryForBrowserProcessInternal(
+      mojo::PendingRemote<network::mojom::URLLoaderFactory>* out_factory);
+
+  std::optional<blink::StorageKey> CalculateStorageKey(
+      const url::Origin& origin,
+      const base::UnguessableToken* nonce);
+
+  GlobalRenderFrameHostId GetRenderFrameHostIdFromNetworkContext();
+
+  void DeleteStaleSessionOnlyCookiesAfterDelay();
+
+  void ClearNoncesInNetworkContextAfterDelayCallback(
+      const std::vector<base::UnguessableToken>& nonces);
+=======
   // If |local_trust_token_fulfiller_| is bound, returns immediately.
   //
   // Otherwise, if it's supported by the environment, attempts to bind
@@ -505,6 +638,7 @@ class CONTENT_EXPORT StoragePartitionImpl
   // rejects the connection, this will be reflected asynchronously by a call to
   // OnLocalTrustTokenFulfillerConnectionError.
   void ProvisionallyBindUnboundLocalTrustTokenFulfillerIfSupportedBySystem();
+>>>>>>> chromium
 
   // Raw pointer that should always be valid. The BrowserContext owns the
   // StoragePartitionImplMap which then owns StoragePartitionImpl. When the
@@ -561,6 +695,36 @@ class CONTENT_EXPORT StoragePartitionImpl
   std::unique_ptr<leveldb_proto::ProtoDatabaseProvider>
       proto_database_provider_;
   scoped_refptr<ContentIndexContextImpl> content_index_context_;
+<<<<<<< HEAD
+  std::unique_ptr<AttributionManager> attribution_manager_;
+  std::unique_ptr<FontAccessManager> font_access_manager_;
+  std::unique_ptr<InterestGroupManagerImpl> interest_group_manager_;
+  std::unique_ptr<BrowsingTopicsSiteDataManager>
+      browsing_topics_site_data_manager_;
+  std::unique_ptr<AggregationService> aggregation_service_;
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+  std::unique_ptr<CdmStorageManager> cdm_storage_manager_;
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+  mojo::Remote<network::mojom::DeviceBoundSessionManager>
+      device_bound_session_manager_;
+
+  // Owning pointer to the SharedStorageManager for this partition.
+  std::unique_ptr<storage::SharedStorageManager> shared_storage_manager_;
+
+  // This needs to be declared after `shared_storage_manager_` because
+  // `shared_storage_worklet_host` (managed by
+  // `shared_storage_runtime_manager_`) ultimately stores a raw pointer on
+  // it.
+  std::unique_ptr<SharedStorageRuntimeManager> shared_storage_runtime_manager_;
+
+  // Owning pointer to the `SharedStorageHeaderObserver` for this partition.
+  std::unique_ptr<SharedStorageHeaderObserver> shared_storage_header_observer_;
+
+  std::unique_ptr<PrivateAggregationManagerImpl> private_aggregation_manager_;
+
+  std::unique_ptr<CookieDeprecationLabelManagerImpl>
+      cookie_deprecation_label_manager_;
+=======
   scoped_refptr<NativeIOContextImpl> native_io_context_;
   std::unique_ptr<ConversionManagerImpl> conversion_manager_;
   std::unique_ptr<FontAccessManagerImpl> font_access_manager_;
@@ -569,6 +733,7 @@ class CONTENT_EXPORT StoragePartitionImpl
   // TODO(crbug.com/1205695): ComputePressureManager should live elsewher. The
   //                          Compute Pressure API does not store data.
   std::unique_ptr<ComputePressureManager> compute_pressure_manager_;
+>>>>>>> chromium
 
   // ReceiverSet for DomStorage, using the
   // ChildProcessSecurityPolicyImpl::Handle as the binding context type. The
@@ -634,10 +799,29 @@ class CONTENT_EXPORT StoragePartitionImpl
   mojo::UniqueReceiverSet<network::mojom::CookieAccessObserver>
       service_worker_cookie_observers_;
 
+<<<<<<< HEAD
+  // A set of connections to the network service used to notify browser process
+  // about Trust Token accesses made by a service worker in this process.
+  mojo::UniqueReceiverSet<network::mojom::TrustTokenAccessObserver>
+      service_worker_trust_token_observers_;
+
+  // A set of connections to the network service used to notify browser process
+  // about shared dictionary accesses made by a service worker in this process.
+  mojo::UniqueReceiverSet<network::mojom::SharedDictionaryAccessObserver>
+      service_worker_shared_dictionary_observers_;
+
+  // A set of connections to the network service used to notify the
+  // browser process about device bound session accesses made by a
+  // service worker in this process.
+  mojo::UniqueReceiverSet<network::mojom::DeviceBoundSessionAccessObserver>
+      service_worker_device_bound_session_observers_;
+
+=======
   struct URLLoaderNetworkContext {
     int process_id;
     int routing_id;
   };
+>>>>>>> chromium
   mojo::ReceiverSet<network::mojom::URLLoaderNetworkServiceObserver,
                     URLLoaderNetworkContext>
       url_loader_network_observers_;

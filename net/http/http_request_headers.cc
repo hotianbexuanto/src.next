@@ -213,6 +213,63 @@ base::Value HttpRequestHeaders::NetLogParams(
   return dict;
 }
 
+<<<<<<< HEAD
+void HttpRequestHeaders::SetAcceptEncodingIfMissing(
+    const GURL& url,
+    const std::optional<base::flat_set<SourceStream::SourceType>>&
+        accepted_stream_types,
+    bool enable_brotli,
+    bool enable_zstd) {
+  if (HasHeader(kAcceptEncoding))
+    return;
+
+  // If a range is specifically requested, set the "Accepted Encoding" header to
+  // "identity".
+  if (HasHeader(kRange)) {
+    SetHeader(kAcceptEncoding, "identity");
+    return;
+  }
+
+  // Supply Accept-Encoding headers first so that it is more likely that they
+  // will be in the first transmitted packet. This can sometimes make it easier
+  // to filter and analyze the streams to assure that a proxy has not damaged
+  // these headers. Some proxies deliberately corrupt Accept-Encoding headers.
+  std::vector<std::string> advertised_encoding_names;
+  if (SupportsStreamType(accepted_stream_types,
+                         SourceStream::SourceType::TYPE_GZIP)) {
+    advertised_encoding_names.push_back("gzip");
+  }
+  if (SupportsStreamType(accepted_stream_types,
+                         SourceStream::SourceType::TYPE_DEFLATE)) {
+    advertised_encoding_names.push_back("deflate");
+  }
+
+  const bool can_use_advanced_encodings =
+      (url.SchemeIsCryptographic() || IsLocalhost(url));
+
+  // Advertise "br" encoding only if transferred data is opaque to proxy.
+  if (enable_brotli &&
+      SupportsStreamType(accepted_stream_types,
+                         SourceStream::SourceType::TYPE_BROTLI) &&
+      can_use_advanced_encodings) {
+    advertised_encoding_names.push_back("br");
+  }
+  // Advertise "zstd" encoding only if transferred data is opaque to proxy.
+  if (enable_zstd &&
+      SupportsStreamType(accepted_stream_types,
+                         SourceStream::SourceType::TYPE_ZSTD) &&
+      can_use_advanced_encodings) {
+    advertised_encoding_names.push_back("zstd");
+  }
+  if (!advertised_encoding_names.empty()) {
+    // Tell the server what compression formats are supported.
+    SetHeader(kAcceptEncoding,
+              base::JoinString(base::span(advertised_encoding_names), ", "));
+  }
+}
+
+=======
+>>>>>>> chromium
 HttpRequestHeaders::HeaderVector::iterator HttpRequestHeaders::FindHeader(
     const base::StringPiece& key) {
   for (auto it = headers_.begin(); it != headers_.end(); ++it) {

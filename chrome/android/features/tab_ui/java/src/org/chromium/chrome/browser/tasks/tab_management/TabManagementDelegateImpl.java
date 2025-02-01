@@ -20,6 +20,14 @@ import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.compositor.CompositorViewHolder;
+import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
+import org.chromium.chrome.browser.hub.HubManager;
+import org.chromium.chrome.browser.hub.Pane;
+import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthController;
+import org.chromium.chrome.browser.layouts.LayoutStateProvider;
+=======
 import org.chromium.chrome.browser.compositor.layouts.Layout;
 import org.chromium.chrome.browser.compositor.layouts.LayoutRenderHost;
 import org.chromium.chrome.browser.compositor.layouts.LayoutUpdateHost;
@@ -28,6 +36,7 @@ import org.chromium.chrome.browser.compositor.layouts.content.TabContentManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
 import org.chromium.chrome.browser.init.ChromeActivityNativeDelegate;
+>>>>>>> chromium
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.metrics.UmaSessionStats;
 import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
@@ -47,9 +56,15 @@ import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.features.start_surface.StartSurface;
 import org.chromium.chrome.features.start_surface.StartSurfaceDelegate;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
+<<<<<<< HEAD
+import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
+import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
+import org.chromium.components.tab_group_sync.TabGroupUiActionHandler;
+=======
 import org.chromium.components.browser_ui.widget.MenuOrKeyboardActionController;
 import org.chromium.components.browser_ui.widget.scrim.ScrimCoordinator;
 import org.chromium.ui.base.WindowAndroid;
+>>>>>>> chromium
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.resources.dynamics.DynamicResourceLoader;
@@ -70,6 +85,9 @@ public class TabManagementDelegateImpl implements TabManagementDelegate {
             @NonNull TabContentManager tabContentManager,
             @NonNull ModalDialogManager modalDialogManager,
             @NonNull BrowserControlsStateProvider browserControlsStateProvider,
+<<<<<<< HEAD
+            @NonNull ScrimManager scrimManager,
+=======
             @NonNull TabCreatorManager tabCreatorManager,
             @NonNull MenuOrKeyboardActionController menuOrKeyboardActionController,
             @NonNull Supplier<ShareDelegate> shareDelegateSupplier,
@@ -135,6 +153,7 @@ public class TabManagementDelegateImpl implements TabManagementDelegate {
     public TabGroupUi createTabGroupUi(@NonNull Activity activity, @NonNull ViewGroup parentView,
             @NonNull ThemeColorProvider themeColorProvider,
             @NonNull ScrimCoordinator scrimCoordinator,
+>>>>>>> chromium
             @NonNull ObservableSupplier<Boolean> omniboxFocusStateSupplier,
             @NonNull BottomSheetController bottomSheetController,
             @NonNull ActivityLifecycleDispatcher activityLifecycleDispatcher,
@@ -142,6 +161,25 @@ public class TabManagementDelegateImpl implements TabManagementDelegate {
             @NonNull TabContentManager tabContentManager, ViewGroup rootView,
             @NonNull Supplier<DynamicResourceLoader> dynamicResourceLoaderSupplier,
             @NonNull TabCreatorManager tabCreatorManager,
+<<<<<<< HEAD
+            @NonNull OneshotSupplier<LayoutStateProvider> layoutStateProviderSupplier,
+            @NonNull ModalDialogManager modalDialogManager,
+            @NonNull ThemeColorProvider themeColorProvider) {
+        return new TabGroupUiCoordinator(
+                activity,
+                parentView,
+                browserControlsStateProvider,
+                scrimManager,
+                omniboxFocusStateSupplier,
+                bottomSheetController,
+                dataSharingTabManager,
+                tabModelSelector,
+                tabContentManager,
+                tabCreatorManager,
+                layoutStateProviderSupplier,
+                modalDialogManager,
+                themeColorProvider);
+=======
             @NonNull Supplier<ShareDelegate> shareDelegateSupplier,
             @NonNull OneshotSupplier<OverviewModeBehavior> overviewModeBehaviorSupplier,
             @NonNull SnackbarManager snackbarManager) {
@@ -150,6 +188,7 @@ public class TabManagementDelegateImpl implements TabManagementDelegate {
                 isWarmOnResumeSupplier, tabModelSelector, tabContentManager, rootView,
                 dynamicResourceLoaderSupplier, tabCreatorManager, shareDelegateSupplier,
                 overviewModeBehaviorSupplier, snackbarManager);
+>>>>>>> chromium
     }
 
     @Override
@@ -168,12 +207,100 @@ public class TabManagementDelegateImpl implements TabManagementDelegate {
             @NonNull WindowAndroid windowAndroid, @NonNull ViewGroup containerView,
             @NonNull Supplier<DynamicResourceLoader> dynamicResourceLoaderSupplier,
             @NonNull TabModelSelector tabModelSelector,
+<<<<<<< HEAD
+            @NonNull TabContentManager tabContentManager,
+            @NonNull TabCreatorManager tabCreatorManager,
+            @NonNull BrowserControlsStateProvider browserControlsStateProvider,
+            @NonNull MultiWindowModeStateDispatcher multiWindowModeStateDispatcher,
+            @NonNull ScrimManager scrimManager,
+=======
             @NonNull BrowserControlsManager browserControlsManager,
+>>>>>>> chromium
             @NonNull SnackbarManager snackbarManager,
             @NonNull Supplier<ShareDelegate> shareDelegateSupplier,
             @NonNull Supplier<OmniboxStub> omniboxStubSupplier,
             @NonNull TabContentManager tabContentManager,
             @NonNull ModalDialogManager modalDialogManager,
+<<<<<<< HEAD
+            @NonNull BottomSheetController bottomSheetController,
+            @NonNull DataSharingTabManager dataSharingTabManager,
+            @Nullable OneshotSupplier<IncognitoReauthController> incognitoReauthControllerSupplier,
+            @NonNull OnClickListener newTabButtonOnClickListener,
+            boolean isIncognito,
+            @NonNull DoubleConsumer onToolbarAlphaChange,
+            @NonNull BackPressManager backPressManager,
+            @NonNull ObservableSupplier<EdgeToEdgeController> edgeToEdgeSupplier,
+            @Nullable DesktopWindowStateManager desktopWindowStateManager,
+            @NonNull ObservableSupplier<Boolean> tabModelNotificationDotSupplier,
+            @NonNull ObservableSupplier<CompositorViewHolder> compositorViewHolderSupplier) {
+        // TODO(crbug.com/40946413): Consider making this an activity scoped singleton and possibly
+        // hosting it in CTA/HubProvider.
+        TabSwitcherPaneCoordinatorFactory factory =
+                new TabSwitcherPaneCoordinatorFactory(
+                        activity,
+                        lifecycleDispatcher,
+                        profileProviderSupplier,
+                        tabModelSelector,
+                        tabContentManager,
+                        tabCreatorManager,
+                        browserControlsStateProvider,
+                        multiWindowModeStateDispatcher,
+                        scrimManager,
+                        snackbarManager,
+                        modalDialogManager,
+                        bottomSheetController,
+                        dataSharingTabManager,
+                        backPressManager,
+                        desktopWindowStateManager,
+                        edgeToEdgeSupplier);
+        OneshotSupplierImpl<Profile> profileSupplier = new OneshotSupplierImpl<>();
+        Handler handler = new Handler();
+        profileProviderSupplier.onAvailable(
+                (profileProvider) -> profileSupplier.set(profileProvider.getOriginalProfile()));
+        UserEducationHelper userEducationHelper =
+                new UserEducationHelper(activity, profileSupplier, handler);
+
+        TabSwitcherPaneBase pane;
+        if (isIncognito) {
+            Supplier<TabGroupModelFilter> incongitorTabGroupModelFilterSupplier =
+                    () ->
+                            tabModelSelector
+                                    .getTabGroupModelFilterProvider()
+                                    .getTabGroupModelFilter(true);
+            pane =
+                    new IncognitoTabSwitcherPane(
+                            activity,
+                            factory,
+                            incongitorTabGroupModelFilterSupplier,
+                            newTabButtonOnClickListener,
+                            incognitoReauthControllerSupplier,
+                            onToolbarAlphaChange,
+                            userEducationHelper,
+                            edgeToEdgeSupplier,
+                            compositorViewHolderSupplier);
+        } else {
+            Supplier<TabGroupModelFilter> tabGroupModelFilterSupplier =
+                    () ->
+                            tabModelSelector
+                                    .getTabGroupModelFilterProvider()
+                                    .getTabGroupModelFilter(false);
+            pane =
+                    new TabSwitcherPane(
+                            activity,
+                            ContextUtils.getAppSharedPreferences(),
+                            profileProviderSupplier,
+                            factory,
+                            tabGroupModelFilterSupplier,
+                            newTabButtonOnClickListener,
+                            new TabSwitcherPaneDrawableCoordinator(
+                                    activity, tabModelSelector, tabModelNotificationDotSupplier),
+                            onToolbarAlphaChange,
+                            userEducationHelper,
+                            edgeToEdgeSupplier,
+                            compositorViewHolderSupplier);
+        }
+        return Pair.create(pane, pane);
+=======
             @NonNull ChromeActivityNativeDelegate chromeActivityNativeDelegate,
             @NonNull ActivityLifecycleDispatcher activityLifecycleDispatcher,
             @NonNull TabCreatorManager tabCreatorManager,
@@ -187,6 +314,7 @@ public class TabManagementDelegateImpl implements TabManagementDelegate {
                 tabContentManager, modalDialogManager, chromeActivityNativeDelegate,
                 activityLifecycleDispatcher, tabCreatorManager, menuOrKeyboardActionController,
                 multiWindowModeStateDispatcher, jankTracker);
+>>>>>>> chromium
     }
 
     @Override

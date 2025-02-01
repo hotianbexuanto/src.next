@@ -46,8 +46,15 @@ static MockTransactionMap mock_transactions;
 }  // namespace
 
 TransportInfo DefaultTransportInfo() {
+<<<<<<< HEAD
+  return TransportInfo(
+      TransportType::kDirect, IPEndPoint(IPAddress::IPv4Localhost(), 80),
+      /*accept_ch_frame_arg=*/"",
+      /*cert_is_issued_by_known_root=*/false, NextProto::kProtoUnknown);
+=======
   return TransportInfo(TransportType::kDirect,
                        IPEndPoint(IPAddress::IPv4Localhost(), 80), "");
+>>>>>>> chromium
 }
 
 //-----------------------------------------------------------------------------

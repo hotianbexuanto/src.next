@@ -37,9 +37,19 @@ extern const char kChromeWebstoreUpdateURL[];
 // slash. Do not use this as a prefix/extent for the store.
 GURL GetWebstoreLaunchURL();
 
+<<<<<<< HEAD
+// Returns a url with a utm_source query param value of `utm_source_value`
+// appended.
+GURL AppendUtmSource(const GURL& url, std::string_view utm_source_value);
+
+// Returns the URL to the extensions category on the old and new Web Store
+// depending on extensions_features::kNewWebstoreURL feature flag.
+GURL GetWebstoreExtensionsCategoryURL();
+=======
 // Returns the URL to the extensions category on the Web Store. This is
 // derived from GetWebstoreLaunchURL().
 std::string GetWebstoreExtensionsCategoryURL();
+>>>>>>> chromium
 
 // Returns the URL prefix for an item in the extension/app gallery. This URL
 // will contain a trailing slash and should be concatenated with an item ID

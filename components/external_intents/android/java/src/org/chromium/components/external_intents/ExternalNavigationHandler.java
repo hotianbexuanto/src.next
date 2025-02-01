@@ -427,10 +427,21 @@ public class ExternalNavigationHandler {
     }
 
     /** http://crbug.com/464669 : Disallow firing external intent from background tab. */
+<<<<<<< HEAD
+    private boolean blockExternalNavFromBackgroundTab(
+            ExternalNavigationParams params, boolean incomingIntentRedirect) {
+        // See #blockExternalNavWhileBackgrounded - isBackgroundTabNavigation is effectively
+        // checking both that the tab is foreground, and the app is foreground, so we can skip it
+        // for intent launches for the same reason.
+        if (incomingIntentRedirect) return false;
+        if (params.isBackgroundTabNavigation()) {
+            if (debug()) Log.i(TAG, "Navigation in background tab");
+=======
     private boolean blockExternalNavFromBackgroundTab(ExternalNavigationParams params) {
         if (params.isBackgroundTabNavigation()
                 && !params.areIntentLaunchesAllowedInBackgroundTabs()) {
             if (DEBUG) Log.i(TAG, "Navigation in background tab");
+>>>>>>> chromium
             return true;
         }
         return false;
@@ -759,6 +770,132 @@ public class ExternalNavigationHandler {
     }
 
     /**
+<<<<<<< HEAD
+     * @return whether something along the navigation chain prevents the current navigation from
+     *     leaving Chrome.
+     */
+    private @NavigationChainResult int navigationChainBlocksExternalNavigation(
+            ExternalNavigationParams params,
+            QueryIntentActivitiesSupplier resolvingInfos,
+            boolean isExternalProtocol,
+            boolean shouldReturnAsResult) {
+        RedirectHandler handler = params.getRedirectHandler();
+        RedirectHandler.InitialNavigationState initialState = handler.getInitialNavigationState();
+
+        // If a navigation chain has used the history API to go back/forward external navigation is
+        // probably not expected or desirable.
+        if (handler.navigationChainUsedBackOrForward()) {
+            if (debug()) Log.i(TAG, "Navigation chain used back or forward.");
+            return NavigationChainResult.REQUIRES_PROMPT;
+        }
+
+        // Used to prevent things like chaining fallback URLs.
+        if (handler.shouldNotOverrideUrlLoading()) {
+            if (debug()) Log.i(TAG, "Navigation chain has blocked app launching.");
+            return NavigationChainResult.REQUIRES_PROMPT;
+        }
+
+        // Tab Restores should definitely not launch apps, and refreshes launching apps would
+        // probably not be expected or desirable.
+        if (initialState.isFromReload) {
+            if (debug()) Log.i(TAG, "Navigation chain is from a tab restore or refresh.");
+            return NavigationChainResult.REQUIRES_PROMPT;
+        }
+
+        // TODO(crbug.com/40232652): We only need to check isFromTyping because WebLayer's
+        // implementation of disabling intent processing is broken and doesn't actually disable
+        // intent processing, but to align with current weblayer behavior the first navigation has
+        // to be blocked even if the weblayer delegate tells us not to block embedder initiated
+        // navigations. See
+        // https://source.chromium.org/chromium/chromium/src/+/main:weblayer/browser/navigation_controller_impl.cc;drc=88d7b2e74349cbf8b3e15b61cc0663d65f9d1873;l=220
+        if (!initialState.isRendererInitiated
+                && !initialState.isFromIntent
+                && (mDelegate.shouldEmbedderInitiatedNavigationsStayInBrowser()
+                        || initialState.isFromTyping)) {
+            if (debug()) Log.i(TAG, "Browser initiated navigation chain.");
+            return NavigationChainResult.REQUIRES_PROMPT;
+        }
+
+        // If the intent targets the calling app, we can bypass the gesture requirements and any
+        // signals from the initial intent that suggested the intent wanted to stay in Chrome.
+        // This also takes effect if the url is overridden for Activity#setResult.
+        if (mDelegate.isForTrustedCallingApp(resolvingInfos) || shouldReturnAsResult) {
+            return NavigationChainResult.FOR_TRUSTED_CALLER;
+        }
+
+        // See RedirectHandler#NAVIGATION_CHAIN_TIMEOUT_MILLIS for details. We don't want an
+        // unattended page to redirect to an app.
+        if (handler.isNavigationChainExpired()) {
+            if (debug()) {
+                Log.i(
+                        TAG,
+                        "Navigation chain expired "
+                                + "(a page waited more than %d seconds to redirect).",
+                        RedirectHandler.NAVIGATION_CHAIN_TIMEOUT_MILLIS);
+            }
+            return NavigationChainResult.REQUIRES_PROMPT;
+        }
+
+        // If an intent targeted Chrome explicitly, we assume the app wanted to launch Chrome and
+        // not another app.
+        if (handler.intentPrefersToStayInChrome() && !isExternalProtocol) {
+            if (debug()) Log.i(TAG, "Launching intent explicitly targeted the browser.");
+            return NavigationChainResult.REQUIRES_PROMPT;
+        }
+
+        // Ensure the navigation was started with a user gesture so that inactive pages can't launch
+        // apps unexpectedly, unless we trust the calling app for a CCT/TWA.
+        if (initialState.isRendererInitiated && !initialState.hasUserGesture) {
+            if (debug()) Log.i(TAG, "Navigation chain started without a gesture.");
+            return NavigationChainResult.REQUIRES_PROMPT;
+        }
+        return NavigationChainResult.ALLOWED;
+    }
+
+    /**
+     * If a site is submitting a form, it most likely wants to submit that data to a server rather
+     * than launch an app.
+     */
+    private boolean isDirectFormSubmit(
+            ExternalNavigationParams params, boolean isExternalProtocol) {
+        // If a form is submitting to an external protocol, don't block it.
+        if (isExternalProtocol) return false;
+
+        // Redirects off of form submits need to be able to launch apps.
+        if (params.isRedirect()) return false;
+
+        int pageTransitionCore = params.getPageTransition() & PageTransition.CORE_MASK;
+        boolean isFormSubmit = pageTransitionCore == PageTransition.FORM_SUBMIT;
+        if (isFormSubmit) {
+            if (debug()) Log.i(TAG, "Direct form submission, not a redirect");
+            return true;
+        }
+        return false;
+    }
+
+    /*
+     * The initial navigation from an Intent should always stay in the browser as the sending app,
+     * or the user must have chosen the browser to do the navigation.
+     */
+    private boolean isDirectIntentNavigation(
+            ExternalNavigationParams params,
+            boolean intentMatchesNonDefaultWebApk,
+            boolean incomingIntentRedirect) {
+        // S+ workaround for WebAPKs not being able to handle Intents.
+        if (intentMatchesNonDefaultWebApk) return false;
+
+        if (!params.isFromIntent()) return false;
+
+        // Redirects off of intents are still allowed to launch apps (eg. URL shorteners).
+        if (incomingIntentRedirect) return false;
+
+        if (debug()) Log.i(TAG, "Initial intent navigation.");
+        return true;
+    }
+
+    /**
+=======
+>>>>>>> chromium
      * If the intent can't be resolved, we should fall back to the browserFallbackUrl, or try to
      * find the app on the market if no fallback is provided.
      */
@@ -1820,6 +1957,91 @@ public class ExternalNavigationHandler {
         return UrlUtilitiesJni.get().isGoogleSearchUrl(referrerUrl.getSpec());
     }
 
+<<<<<<< HEAD
+    /** @return whether this navigation is a redirect from an intent. */
+    private static boolean isIncomingIntentRedirect(ExternalNavigationParams params) {
+        boolean isOnEffectiveIntentRedirect =
+                params.getRedirectHandler().isOnNoninitialLoadForIntentNavigationChain();
+        return (params.isFromIntent() && params.isRedirect()) || isOnEffectiveIntentRedirect;
+    }
+
+    /**
+     * Checks whether {@param intent} is for an Instant App. Considers both package and actions that
+     * would resolve to Supervisor.
+     * @return Whether the given intent is going to open an Instant App.
+     */
+    private static boolean isIntentToInstantApp(Intent intent) {
+        if (INSTANT_APP_SUPERVISOR_PKG.equals(intent.getPackage())) return true;
+
+        String intentAction = intent.getAction();
+        for (String action : INSTANT_APP_START_ACTIONS) {
+            if (action.equals(intentAction)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Adjusts the URL to account for the googlechrome:// scheme.
+     * Currently, its only use is to handle navigations, only http and https URL is allowed.
+     * @param url URL to be processed
+     * @return The string with the scheme and prefixes chopped off, if a valid prefix was used.
+     *         Otherwise returns null.
+     */
+    public static String getUrlFromSelfSchemeUrl(String selfScheme, String url) {
+        String prefix = selfScheme + SELF_SCHEME_NAVIGATE_PREFIX;
+        if (url.toLowerCase(Locale.US).startsWith(prefix)) {
+            String parsedUrl = url.substring(prefix.length());
+            if (!TextUtils.isEmpty(parsedUrl)) {
+                String scheme = getSanitizedUrlScheme(parsedUrl);
+                if (scheme == null) {
+                    // If no scheme, assuming this is an http url.
+                    parsedUrl = UrlConstants.HTTP_URL_PREFIX + parsedUrl;
+                }
+            }
+            if (UrlUtilities.isHttpOrHttps(parsedUrl)) return parsedUrl;
+        }
+
+        return null;
+    }
+
+    /**
+     * Parses the scheme out of the URL if possible, trimming and getting rid of unsafe characters.
+     * This is useful for determining if a URL has a sneaky, unsafe scheme, e.g. "java  script" or
+     * "j$a$r". See: http://crbug.com/248398
+     * @return The sanitized URL scheme or null if no scheme is specified.
+     */
+    public static String getSanitizedUrlScheme(String url) {
+        if (url == null) {
+            return null;
+        }
+
+        int colonIdx = url.indexOf(":");
+        if (colonIdx < 0) {
+            // No scheme specified for the url
+            return null;
+        }
+
+        String scheme = url.substring(0, colonIdx).toLowerCase(Locale.US).trim();
+
+        // Check for the presence of and get rid of all non-alphanumeric characters in the scheme,
+        // except dash, plus and period. Those are the only valid scheme chars:
+        // https://tools.ietf.org/html/rfc3986#section-3.1
+        boolean nonAlphaNum = false;
+        for (int i = 0; i < scheme.length(); i++) {
+            char ch = scheme.charAt(i);
+            if (!Character.isLetterOrDigit(ch) && ch != '-' && ch != '+' && ch != '.') {
+                nonAlphaNum = true;
+                break;
+            }
+        }
+
+        if (nonAlphaNum) {
+            scheme = scheme.replaceAll("[^a-z0-9.+-]", "");
+        }
+        return scheme;
+=======
     /**
      * @return whether this navigation is from a Google domain.
      */
@@ -1829,5 +2051,6 @@ public class ExternalNavigationHandler {
         if (referrerUrl == null || referrerUrl.isEmpty()) return false;
 
         return UrlUtilitiesJni.get().isGoogleSubDomainUrl(referrerUrl.getSpec());
+>>>>>>> chromium
     }
 }

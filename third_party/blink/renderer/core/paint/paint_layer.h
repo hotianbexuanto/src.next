@@ -187,16 +187,10 @@ struct PaintLayerRareData {
 // The class is central to painting and hit-testing. That's because it handles
 // a lot of tasks (we included ones done by associated satellite objects for
 // historical reasons):
+// - Stacking management (with PaintLayerStackingNode),
 // - Complex painting operations (opacity, clipping, filters, reflections, ...).
-// - hardware acceleration (through PaintLayerCompositor).
 // - scrolling (through PaintLayerScrollableArea).
-// - some performance optimizations.
-//
-// The compositing code is also based on PaintLayer. The entry to it is the
-// PaintLayerCompositor, which fills |composited_layer_mapping| for hardware
-// accelerated layers.
-//
-// TODO(jchaffraix): Expand the documentation about hardware acceleration.
+// - etc. (see LayoutBoxModelObject::LayerTypeRequired() implementations).
 //
 //
 // ***** SELF-PAINTING LAYER *****
@@ -268,10 +262,10 @@ class CORE_EXPORT PaintLayer : public DisplayItemClient {
 
   const PaintLayer* CommonAncestor(const PaintLayer*) const;
 
-  // TODO(wangxianzhu): Find a better name for it. 'paintContainer' might be
-  // good but we can't use it for now because it conflicts with
-  // PaintInfo::paintContainer.
-  PaintLayer* CompositingContainer() const;
+  // Returns the parent layer in paint order. The layer will iterate this layer
+  // as a child in PaintLayerPaintOrderIterator.
+  PaintLayer* PaintingContainer() const;
+
   PaintLayer* AncestorStackingContext() const;
 
   void AddChild(PaintLayer* new_child, PaintLayer* before_child = nullptr);
@@ -1005,6 +999,8 @@ class CORE_EXPORT PaintLayer : public DisplayItemClient {
       const PhysicalOffset& sub_pixel_accumulation = PhysicalOffset()) const;
 
   bool SelfNeedsRepaint() const { return self_needs_repaint_; }
+  // Whether any descendant in paint order (not including descendants across
+  // paint-blocking display locks) has SelfNeedsRepaint().
   bool DescendantNeedsRepaint() const { return descendant_needs_repaint_; }
   bool SelfOrDescendantNeedsRepaint() const {
     return self_needs_repaint_ || descendant_needs_repaint_;
@@ -1090,7 +1086,7 @@ class CORE_EXPORT PaintLayer : public DisplayItemClient {
 
   bool Has3DTransformedDescendant() const {
     DCHECK(!needs_descendant_dependent_flags_update_);
-    return has3d_transformed_descendant_;
+    return has_3d_transformed_descendant_;
   }
 
   // Whether the value of isSelfPaintingLayer() changed since the last clearing
@@ -1143,6 +1139,31 @@ class CORE_EXPORT PaintLayer : public DisplayItemClient {
 
   void DirtyStackingContextZOrderLists();
 
+<<<<<<< HEAD
+  bool IsZOrderListVisible() const;
+
+  bool KnownToClipSubtreeToPaddingBox() const;
+
+  void Trace(Visitor*) const override;
+
+  PhysicalRect LocalBoundingBoxIncludingSelfPaintingDescendants() const;
+
+  // If `invisible` is true, the whole subtree will be omitted in painting and
+  // hit-testing. The invisible status of each LayerPositionVisibility value is
+  // tracked separately.
+  void SetInvisibleForPositionVisibility(LayerPositionVisibility visibility,
+                                         bool invisible);
+  // Returns true if any bit of the flag is set.
+  bool InvisibleForPositionVisibility() const {
+    return invisible_for_position_visibility_;
+  }
+  bool HasAncestorInvisibleForPositionVisibility() const;
+  bool HasViewTransitionName() const { return has_view_transition_name_; }
+
+ private:
+  void UpdateHasVisibleContent();
+  void SetHasVisibleSelfPaintingDescendant(bool);
+=======
   PhysicalOffset OffsetForInFlowRelPosition() const {
     return rare_data_ ? rare_data_->offset_for_in_flow_rel_position
                       : PhysicalOffset();
@@ -1164,6 +1185,7 @@ class CORE_EXPORT PaintLayer : public DisplayItemClient {
 
   void SetNeedsCompositingInputsUpdateInternal();
 
+>>>>>>> chromium
   void Update3DTransformedDescendantStatus();
 
   // Bounding box in the coordinates of this layer.
@@ -1283,11 +1305,18 @@ class CORE_EXPORT PaintLayer : public DisplayItemClient {
 
   void RemoveAncestorScrollContainerLayer(const PaintLayer* removed_layer);
 
+<<<<<<< HEAD
+  enum class PaintingContainerType { kParent, kStackingContext };
+  PaintingContainerType GetPaintingContainerType() const;
+
+  void MarkPaintingContainerChainForNeedsRepaint();
+=======
   void UpdatePaginationRecursive(bool needs_pagination_update = false);
   void ClearPaginationRecursive();
 
   void SetSelfNeedsRepaint();
   void MarkCompositingContainerChainForNeedsRepaint();
+>>>>>>> chromium
 
   PaintLayerRareData& EnsureRareData() {
     if (!rare_data_)
@@ -1355,8 +1384,17 @@ class CORE_EXPORT PaintLayer : public DisplayItemClient {
 
   // Set on a stacking context layer that has 3D descendants anywhere
   // in a preserves3D hierarchy. Hint to do 3D-aware hit testing.
-  unsigned has3d_transformed_descendant_ : 1;
+  unsigned has_3d_transformed_descendant_ : 1 = false;
 
+<<<<<<< HEAD
+  unsigned self_needs_repaint_ : 1 = false;
+  // This is marked along the PaintingContainer() chain, i.e. the 'descendant'
+  // here is in paint order.
+  unsigned descendant_needs_repaint_ : 1 = false;
+  // This is marked for the layer itself and along the Parent() chain, i.e.
+  // the 'subtree' here is in PaintLayer tree order.
+  unsigned subtree_needs_clear_repaint_flags_ : 1 = false;
+=======
   unsigned needs_ancestor_dependent_compositing_inputs_update_ : 1;
   unsigned child_needs_compositing_inputs_update_ : 1;
 
@@ -1374,6 +1412,7 @@ class CORE_EXPORT PaintLayer : public DisplayItemClient {
 
   unsigned self_needs_repaint_ : 1;
   unsigned descendant_needs_repaint_ : 1;
+>>>>>>> chromium
 
   unsigned needs_cull_rect_update_ : 1;
   unsigned forces_children_cull_rect_update_ : 1;
@@ -1424,6 +1463,8 @@ class CORE_EXPORT PaintLayer : public DisplayItemClient {
   unsigned needs_paint_offset_translation_for_compositing_ : 1;
 
   unsigned needs_check_raster_invalidation_ : 1;
+
+  unsigned has_view_transition_name_ : 1 = false;
 
 #if DCHECK_IS_ON()
   mutable unsigned layer_list_mutation_allowed_ : 1;

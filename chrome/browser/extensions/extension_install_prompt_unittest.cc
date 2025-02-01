@@ -82,8 +82,19 @@ void SetImage(gfx::Image* image_out,
 
 class ExtensionInstallPromptUnitTest : public testing::Test {
  public:
+<<<<<<< HEAD
+  ExtensionInstallPromptUnitTest() = default;
+
+  ExtensionInstallPromptUnitTest(const ExtensionInstallPromptUnitTest&) =
+      delete;
+  ExtensionInstallPromptUnitTest& operator=(
+      const ExtensionInstallPromptUnitTest&) = delete;
+
+  ~ExtensionInstallPromptUnitTest() override = default;
+=======
   ExtensionInstallPromptUnitTest() {}
   ~ExtensionInstallPromptUnitTest() override {}
+>>>>>>> chromium
 
   // testing::Test:
   void SetUp() override { profile_ = std::make_unique<TestingProfile>(); }

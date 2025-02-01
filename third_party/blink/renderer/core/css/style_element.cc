@@ -39,10 +39,15 @@
 
 namespace blink {
 
+<<<<<<< HEAD
+static bool IsCSS(const AtomicString& type) {
+  return type.empty() || EqualIgnoringASCIICase(type, "text/css");
+=======
 static bool IsCSS(const Element& element, const AtomicString& type) {
   return type.IsEmpty() ||
          (element.IsHTMLElement() ? EqualIgnoringASCIICase(type, "text/css")
                                   : (type == "text/css"));
+>>>>>>> chromium
 }
 
 StyleElement::StyleElement(Document* document, bool created_by_parser)
@@ -150,8 +155,13 @@ StyleElement::ProcessingResult StyleElement::CreateSheet(Element& element,
 
   // If type is empty or CSS, this is a CSS style sheet.
   const AtomicString& type = this->type();
+<<<<<<< HEAD
+  if (IsCSS(type) && passes_content_security_policy_checks) {
+    MediaQuerySet* media_queries = nullptr;
+=======
   if (IsCSS(element, type) && passes_content_security_policy_checks) {
     scoped_refptr<MediaQuerySet> media_queries;
+>>>>>>> chromium
     const AtomicString& media_string = media();
     if (!media_string.IsEmpty()) {
       media_queries =

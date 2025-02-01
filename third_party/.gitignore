@@ -149,11 +149,15 @@
 /libsrtp
 /libsync/src
 /libupnp
+<<<<<<< HEAD
+/libva-fake-driver/src
+=======
 /libunwindstack
 /libvpx/source/libvpx
 /libwebm/source
 /libyuv
 /lighttpd
+>>>>>>> chromium
 /llvm
 /llvm-allocated-type
 /llvm-bootstrap
@@ -247,6 +251,14 @@
 /usb_ids
 /usrsctp/usrsctplib
 /v8-i18n
+<<<<<<< HEAD
+/vulkan-headers/src
+/vulkan-loader/src
+/vulkan-tools/src
+/vulkan-utility-libraries/src
+/vulkan-validation-layers/src
+/wasm_tts_engine/src
+=======
 /valgrind
 /vulkan-deps
 /vulkan_memory_allocator
@@ -255,6 +267,7 @@
 /wayland-protocols/kde
 /wayland-protocols/src
 /webdriver/pylib
+>>>>>>> chromium
 /webdriver/python/selenium
 /webgl
 /webgl/src

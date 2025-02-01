@@ -4,6 +4,14 @@
 
 package org.chromium.content.browser;
 
+<<<<<<< HEAD
+import org.chromium.base.ThreadUtils;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+
+/** A class factory for downstream injecting code to content layer. */
+@NullMarked
+=======
 import android.os.Build;
 
 import org.chromium.base.ThreadUtils;
@@ -17,8 +25,9 @@ import org.chromium.content.browser.selection.SelectionPopupControllerImpl;
 /**
  * A class factory for downstream injecting code to content layer.
  */
+>>>>>>> chromium
 public class ContentClassFactory {
-    private static ContentClassFactory sSingleton;
+    private static @Nullable ContentClassFactory sSingleton;
 
     /**
      * Sets the factory object.

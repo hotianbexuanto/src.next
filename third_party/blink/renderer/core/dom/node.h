@@ -29,6 +29,11 @@
 #include "base/dcheck_is_on.h"
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/css/counters_attachment_context.h"
+#include "third_party/blink/renderer/core/css/invalidation/invalidation_tracing_flag.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
 #include "third_party/blink/renderer/core/dom/events/simulated_click_options.h"
 #include "third_party/blink/renderer/core/dom/mutation_observer_options.h"
@@ -45,7 +50,6 @@
 
 namespace blink {
 
-class ComputedStyle;
 class ContainerNode;
 class Document;
 class Element;
@@ -267,6 +271,10 @@ class CORE_EXPORT Node : public EventTarget {
 
   Node* insertBefore(Node* new_child, Node* ref_child, ExceptionState&);
   Node* insertBefore(Node* new_child, Node* ref_child);
+<<<<<<< HEAD
+  void moveBefore(Node* new_child, Node* ref_child, ExceptionState&);
+=======
+>>>>>>> chromium
   Node* replaceChild(Node* new_child, Node* old_child, ExceptionState&);
   Node* replaceChild(Node* new_child, Node* old_child);
   Node* removeChild(Node* child, ExceptionState&);
@@ -323,8 +331,13 @@ class CORE_EXPORT Node : public EventTarget {
     return GetElementNamespaceType() == ElementNamespaceType::kSVG;
   }
 
+<<<<<<< HEAD
+  DISABLE_CFI_PERF bool IsCheckPseudoElement() const {
+    return GetPseudoId() == kPseudoIdCheckMark;
+=======
   DISABLE_CFI_PERF bool IsPseudoElement() const {
     return GetPseudoId() != kPseudoIdNone;
+>>>>>>> chromium
   }
   DISABLE_CFI_PERF bool IsBeforePseudoElement() const {
     return GetPseudoId() == kPseudoIdBefore;
@@ -332,6 +345,30 @@ class CORE_EXPORT Node : public EventTarget {
   DISABLE_CFI_PERF bool IsAfterPseudoElement() const {
     return GetPseudoId() == kPseudoIdAfter;
   }
+<<<<<<< HEAD
+  DISABLE_CFI_PERF bool IsPickerIconPseudoElement() const {
+    return GetPseudoId() == kPseudoIdPickerIcon;
+  }
+  DISABLE_CFI_PERF bool IsScrollMarkerGroupBeforePseudoElement() const {
+    return GetPseudoId() == kPseudoIdScrollMarkerGroupBefore;
+  }
+  DISABLE_CFI_PERF bool IsScrollMarkerGroupAfterPseudoElement() const {
+    return GetPseudoId() == kPseudoIdScrollMarkerGroupAfter;
+  }
+  DISABLE_CFI_PERF bool IsScrollButtonBlockStartPseudoElement() const {
+    return GetPseudoId() == kPseudoIdScrollButtonBlockStart;
+  }
+  DISABLE_CFI_PERF bool IsScrollButtonInlineStartPseudoElement() const {
+    return GetPseudoId() == kPseudoIdScrollButtonInlineStart;
+  }
+  DISABLE_CFI_PERF bool IsScrollButtonInlineEndPseudoElement() const {
+    return GetPseudoId() == kPseudoIdScrollButtonInlineEnd;
+  }
+  DISABLE_CFI_PERF bool IsScrollButtonBlockEndPseudoElement() const {
+    return GetPseudoId() == kPseudoIdScrollButtonBlockEnd;
+  }
+=======
+>>>>>>> chromium
   DISABLE_CFI_PERF bool IsMarkerPseudoElement() const {
     return GetPseudoId() == kPseudoIdMarker;
   }
@@ -502,6 +539,9 @@ class CORE_EXPORT Node : public EventTarget {
     DCHECK(isConnected());
     if (ShouldSkipMarkingStyleDirty())
       return;
+    if (InvalidationTracingFlag::IsEnabled()) [[unlikely]] {
+      MaybeAddNodeInsertedTraceEvent();
+    }
     if (!NeedsStyleRecalc())
       SetStyleChange(kLocalStyleChange);
     MarkAncestorsWithChildNeedsStyleRecalc();
@@ -725,6 +765,8 @@ class CORE_EXPORT Node : public EventTarget {
 
   void ReattachLayoutTree(AttachContext&);
 
+<<<<<<< HEAD
+=======
   // ---------------------------------------------------------------------------
   // Inline ComputedStyle accessors
   //
@@ -735,6 +777,7 @@ class CORE_EXPORT Node : public EventTarget {
   inline const ComputedStyle* GetComputedStyle() const;
   inline const ComputedStyle* ParentComputedStyle() const;
   inline const ComputedStyle& ComputedStyleRef() const;
+>>>>>>> chromium
   bool ShouldSkipMarkingStyleDirty() const;
 
   const ComputedStyle* EnsureComputedStyle(
@@ -812,6 +855,7 @@ class CORE_EXPORT Node : public EventTarget {
 #endif
 
   NodeListsNodeData* NodeLists();
+  const NodeListsNodeData* NodeLists() const;
   void ClearNodeLists();
 
   FlatTreeNodeData* GetFlatTreeNodeData() const;
@@ -927,6 +971,20 @@ class CORE_EXPORT Node : public EventTarget {
   void SetHasDisplayLockContext() { SetFlag(kHasDisplayLockContext); }
   bool HasDisplayLockContext() const { return GetFlag(kHasDisplayLockContext); }
 
+<<<<<<< HEAD
+  // Converts |node_unions| from bindings into actual Nodes by converting
+  // strings and script into text nodes, and if more than one node resulted,
+  // removes them from their old parent (as though they had been inserted into
+  // a DocumentFragment).
+  static HeapVector<Member<Node>> ConvertNodeUnionsIntoNodes(
+      const ContainerNode* parent,
+      const HeapVector<Member<V8UnionNodeOrStringOrTrustedScript>>& node_unions,
+      Document& document,
+      const char* property_name,
+      ExceptionState& exception_state);
+
+=======
+>>>>>>> chromium
   bool SelfOrAncestorHasDirAutoAttribute() const {
     return GetFlag(kSelfOrAncestorHasDirAutoAttribute);
   }
@@ -1142,6 +1200,8 @@ class CORE_EXPORT Node : public EventTarget {
   void TrackForDebugging();
 
   NodeRareData& CreateRareData();
+
+  void MaybeAddNodeInsertedTraceEvent();
 
   const HeapVector<Member<MutationObserverRegistration>>*
   MutationObserverRegistry();

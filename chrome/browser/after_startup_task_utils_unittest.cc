@@ -64,7 +64,7 @@ class WrappedTaskRunner : public base::SequencedTaskRunner {
   }
 
  private:
-  ~WrappedTaskRunner() override {}
+  ~WrappedTaskRunner() override = default;
 
   void RunWrappedTask(base::OnceClosure task) {
     ++ran_task_count_;

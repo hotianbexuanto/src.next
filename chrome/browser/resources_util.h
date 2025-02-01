@@ -15,9 +15,13 @@ class ResourcesUtil {
   static int GetThemeResourceId(const std::string& resource_name);
 
  private:
+<<<<<<< HEAD
+  ResourcesUtil() = default;
+=======
   ResourcesUtil() {}
 
   DISALLOW_COPY_AND_ASSIGN(ResourcesUtil);
+>>>>>>> chromium
 };
 
 #endif  // CHROME_BROWSER_RESOURCES_UTIL_H_

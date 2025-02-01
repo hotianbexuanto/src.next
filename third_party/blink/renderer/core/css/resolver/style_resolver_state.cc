@@ -26,8 +26,9 @@
 #include "third_party/blink/renderer/core/animation/css/css_animations.h"
 #include "third_party/blink/renderer/core/css/css_light_dark_value_pair.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
+#include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
+#include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 #include "third_party/blink/renderer/core/dom/node.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 
@@ -51,6 +52,7 @@ StyleResolverState::StyleResolverState(
     const StyleRequest& style_request)
     : element_context_(element),
       document_(&document),
+      css_to_length_conversion_data_(&element),
       parent_style_(style_request.parent_override),
       layout_parent_style_(style_request.layout_parent_override),
       pseudo_request_type_(style_request.type),
@@ -62,8 +64,25 @@ StyleResolverState::StyleResolverState(
       element_type_(style_request.IsPseudoStyleRequest()
                         ? ElementType::kPseudoElement
                         : ElementType::kElement),
+<<<<<<< HEAD
+      container_unit_context_(style_recalc_context
+                                  ? style_recalc_context->container
+                                  : FlatTreeTraversal::ParentElement(element)),
+      anchor_evaluator_(style_recalc_context
+                            ? style_recalc_context->anchor_evaluator
+                            : nullptr),
+      originating_element_style_(style_request.originating_element_style),
+      is_for_highlight_(IsHighlightPseudoElement(style_request.pseudo_id)),
+      uses_highlight_pseudo_inheritance_(
+          ::blink::UsesHighlightPseudoInheritance(style_request.pseudo_id)),
+      is_outside_flat_tree_(style_recalc_context
+                                ? style_recalc_context->is_outside_flat_tree
+                                : false),
+      can_trigger_animations_(style_request.can_trigger_animations) {
+=======
       nearest_container_(style_recalc_context.container),
       can_cache_base_style_(blink::CanCacheBaseStyle(style_request)) {
+>>>>>>> chromium
   DCHECK(!!parent_style_ == !!layout_parent_style_);
 
   if (!parent_style_) {
@@ -98,7 +117,24 @@ scoped_refptr<ComputedStyle> StyleResolverState::TakeStyle() {
       pseudo_request_type_ == StyleRequest::kForRenderer) {
     return nullptr;
   }
+<<<<<<< HEAD
+  return style_builder_->TakeStyle();
+}
+
+void StyleResolverState::UpdateLengthConversionData() {
+  css_to_length_conversion_data_ = CSSToLengthConversionData(
+      *style_builder_, ParentStyle(), RootElementStyle(),
+      GetDocument().GetStyleEngine().GetViewportSize(),
+      CSSToLengthConversionData::ContainerSizes(container_unit_context_),
+      CSSToLengthConversionData::AnchorData(
+          anchor_evaluator_, StyleBuilder().PositionAnchor(),
+          StyleBuilder().PositionAreaOffsets()),
+      StyleBuilder().EffectiveZoom(), length_conversion_flags_, &GetElement());
+  element_style_resources_.UpdateLengthConversionData(
+      &css_to_length_conversion_data_);
+=======
   return std::move(style_);
+>>>>>>> chromium
 }
 
 CSSToLengthConversionData StyleResolverState::UnzoomedLengthConversionData(
@@ -109,10 +145,22 @@ CSSToLengthConversionData StyleResolverState::UnzoomedLengthConversionData(
       em, rem, &font_style->GetFont(), font_style->EffectiveZoom());
   CSSToLengthConversionData::ViewportSize viewport_size(
       GetDocument().GetLayoutView());
+<<<<<<< HEAD
+  CSSToLengthConversionData::ContainerSizes container_sizes(
+      container_unit_context_);
+  CSSToLengthConversionData::AnchorData anchor_data(
+      anchor_evaluator_, StyleBuilder().PositionAnchor(),
+      StyleBuilder().PositionAreaOffsets());
+  return CSSToLengthConversionData(StyleBuilder().GetWritingMode(), font_sizes,
+                                   line_height_size, viewport_size,
+                                   container_sizes, anchor_data, 1,
+                                   length_conversion_flags_, &GetElement());
+=======
   CSSToLengthConversionData::ContainerSizes container_sizes(nearest_container_);
 
   return CSSToLengthConversionData(Style(), font_sizes, viewport_size,
                                    container_sizes, 1);
+>>>>>>> chromium
 }
 
 CSSToLengthConversionData StyleResolverState::FontSizeConversionData() const {
@@ -129,6 +177,13 @@ void StyleResolverState::SetParentStyle(
   parent_style_ = std::move(parent_style);
 }
 
+void StyleResolverState::EnsureParentStyle() {
+  if (!ParentStyle()) {
+    SetParentStyle(StyleResolver(GetDocument()).InitialStyleForElement());
+    SetLayoutParentStyle(ParentStyle());
+  }
+}
+
 void StyleResolverState::SetLayoutParentStyle(
     scoped_refptr<const ComputedStyle> parent_style) {
   layout_parent_style_ = std::move(parent_style);
@@ -142,6 +197,21 @@ void StyleResolverState::LoadPendingResources() {
       StyleRef().IsEnsuredOutsideFlatTree()) {
     return;
   }
+<<<<<<< HEAD
+  if (StyleBuilder().Display() == EDisplay::kNone && GetStyledElement() &&
+      !GetStyledElement()->LayoutObjectIsNeeded(
+          style_builder_->GetDisplayStyle())) {
+    // Don't load resources for display:none elements unless we are animating
+    // display. If we are animating display, we might otherwise have ended up
+    // caching a base style with pending images.
+    Element* animating_element = GetAnimatingElement();
+    if (!animating_element || !CSSAnimations::IsAnimatingDisplayProperty(
+                                  animating_element->GetElementAnimations())) {
+      return;
+    }
+  }
+=======
+>>>>>>> chromium
 
   if (StyleRef().StyleType() == kPseudoIdTargetText) {
     // Do not load any resources for ::target-text since that could leak text
@@ -149,7 +219,12 @@ void StyleResolverState::LoadPendingResources() {
     return;
   }
 
+<<<<<<< HEAD
+  element_style_resources_.LoadPendingResources(StyleBuilder(),
+                                                css_to_length_conversion_data_);
+=======
   element_style_resources_.LoadPendingResources(StyleRef());
+>>>>>>> chromium
 }
 
 const FontDescription& StyleResolverState::ParentFontDescription() const {

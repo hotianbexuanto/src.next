@@ -290,10 +290,13 @@ class CORE_EXPORT LayoutInline : public LayoutBoxModelObject {
   void AbsoluteQuadsForSelf(Vector<FloatQuad>& quads,
                             MapCoordinatesFlags mode = 0) const override;
 
+<<<<<<< HEAD
+=======
   PhysicalOffset OffsetFromContainerInternal(
       const LayoutObject*,
       bool ignore_scroll_offset) const final;
 
+>>>>>>> chromium
  private:
   bool AbsoluteTransformDependsOnPoint(const LayoutObject& object) const;
   void QuadsForSelfInternal(Vector<FloatQuad>& quads,
@@ -375,7 +378,7 @@ class CORE_EXPORT LayoutInline : public LayoutBoxModelObject {
     NOTREACHED();
   }  // Do nothing for layout()
 
-  void Paint(const PaintInfo&) const final;
+  void Paint(const PaintInfo&) const override;
 
   bool NodeAtPoint(HitTestResult&,
                    const HitTestLocation&,

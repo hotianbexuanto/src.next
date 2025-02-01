@@ -22,7 +22,11 @@ namespace blink {
 class InputDeviceCapabilitiesConstants;
 class LocalDOMWindow;
 class Location;
+<<<<<<< HEAD
+class ScriptObject;
+=======
 class MessageEvent;
+>>>>>>> chromium
 class ScriptValue;
 class SecurityOrigin;
 class SerializedScriptValue;
@@ -100,7 +104,11 @@ class CORE_EXPORT DOMWindow : public EventTargetWithInlineData {
   void postMessage(v8::Isolate*,
                    const ScriptValue& message,
                    const String& target_origin,
+<<<<<<< HEAD
+                   HeapVector<ScriptObject> transfer,
+=======
                    HeapVector<ScriptValue>& transfer,
+>>>>>>> chromium
                    ExceptionState&);
 
   void postMessage(v8::Isolate*,

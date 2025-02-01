@@ -29,10 +29,15 @@ namespace {
 WebUIDataSource* CreateUkmHTMLSource() {
   WebUIDataSource* source = WebUIDataSource::Create(kChromeUIUkmHost);
 
+<<<<<<< HEAD
+  source->AddResourcePaths(kUkmResources);
+  source->SetDefaultResource(IDR_UKM_UKM_INTERNALS_HTML);
+=======
   source->AddResourcePath("ukm_internals.js", IDR_UKM_INTERNALS_JS);
   source->AddResourcePath("ukm_internals.css", IDR_UKM_INTERNALS_CSS);
   source->SetDefaultResource(IDR_UKM_INTERNALS_HTML);
   return source;
+>>>>>>> chromium
 }
 
 // This class receives javascript messages from the renderer.

@@ -76,9 +76,18 @@ class StyleBuilderConverterBase {
   STATIC_ONLY(StyleBuilderConverterBase);
 
  public:
+<<<<<<< HEAD
+  static FontSelectionValue ConvertFontStretch(const CSSLengthResolver&,
+                                               const CSSValue&);
+  static FontSelectionValue ConvertFontStyle(const CSSLengthResolver&,
+                                             const CSSValue&);
+  static FontSelectionValue ConvertFontWeight(const CSSLengthResolver&,
+                                              const CSSValue&,
+=======
   static FontSelectionValue ConvertFontStretch(const CSSValue&);
   static FontSelectionValue ConvertFontStyle(const CSSValue&);
   static FontSelectionValue ConvertFontWeight(const CSSValue&,
+>>>>>>> chromium
                                               FontSelectionValue);
   static FontDescription::FontVariantCaps ConvertFontVariantCaps(
       const CSSValue&);
@@ -177,15 +186,28 @@ class StyleBuilderConverter {
                             const CSSValue&);  // clamps to [0,1]
   static StyleOffsetRotation ConvertOffsetRotate(StyleResolverState&,
                                                  const CSSValue&);
-  static LengthPoint ConvertPosition(StyleResolverState&, const CSSValue&);
+  static LengthPoint ConvertPosition(const StyleResolverState&,
+                                     const CSSValue&);
   static LengthPoint ConvertPositionOrAuto(StyleResolverState&,
                                            const CSSValue&);
   static float ConvertPerspective(StyleResolverState&, const CSSValue&);
   static Length ConvertQuirkyLength(StyleResolverState&, const CSSValue&);
   static scoped_refptr<QuotesData> ConvertQuotes(StyleResolverState&,
                                                  const CSSValue&);
-  static LengthSize ConvertRadius(StyleResolverState&, const CSSValue&);
+  static LengthSize ConvertRadius(const StyleResolverState&, const CSSValue&);
   static EPaintOrder ConvertPaintOrder(StyleResolverState&, const CSSValue&);
+<<<<<<< HEAD
+  static GapDataList<StyleColor> ConvertGapDecorationColorDataList(
+      StyleResolverState&,
+      const CSSValue&,
+      bool for_visited_link = false);
+  static GapDataList<int> ConvertGapDecorationWidthDataList(StyleResolverState&,
+                                                            const CSSValue&);
+  static GapDataList<EBorderStyle> ConvertGapDecorationStyleDataList(
+      StyleResolverState&,
+      const CSSValue&);
+=======
+>>>>>>> chromium
   static ShadowData ConvertShadow(const CSSToLengthConversionData&,
                                   StyleResolverState*,
                                   const CSSValue&);
@@ -263,8 +285,14 @@ class StyleBuilderConverter {
                                                      const CSSValue&);
   static StyleOffsetRotation ConvertOffsetRotate(const CSSValue&);
   template <CSSValueID cssValueFor0, CSSValueID cssValueFor100>
+<<<<<<< HEAD
+  static Length ConvertPositionLength(const StyleResolverState&,
+                                      const CSSValue&);
+  static Rotation ConvertRotation(const CSSLengthResolver&, const CSSValue&);
+=======
   static Length ConvertPositionLength(StyleResolverState&, const CSSValue&);
   static Rotation ConvertRotation(const CSSValue&);
+>>>>>>> chromium
 
   static const CSSValue& ConvertRegisteredPropertyInitialValue(const Document&,
                                                                const CSSValue&);
@@ -276,7 +304,8 @@ class StyleBuilderConverter {
 
   static scoped_refptr<CSSVariableData> ConvertRegisteredPropertyVariableData(
       const CSSValue&,
-      bool is_animation_tainted);
+      bool is_animation_tainted,
+      bool is_attr_tainted);
 
   static LengthSize ConvertIntrinsicSize(StyleResolverState&, const CSSValue&);
 
@@ -361,8 +390,9 @@ T StyleBuilderConverter::ConvertLineWidth(StyleResolverState& state,
 }
 
 template <CSSValueID cssValueFor0, CSSValueID cssValueFor100>
-Length StyleBuilderConverter::ConvertPositionLength(StyleResolverState& state,
-                                                    const CSSValue& value) {
+Length StyleBuilderConverter::ConvertPositionLength(
+    const StyleResolverState& state,
+    const CSSValue& value) {
   if (const auto* pair = DynamicTo<CSSValuePair>(value)) {
     Length length = StyleBuilderConverter::ConvertLength(state, pair->Second());
     if (To<CSSIdentifierValue>(pair->First()).GetValueID() == cssValueFor0)

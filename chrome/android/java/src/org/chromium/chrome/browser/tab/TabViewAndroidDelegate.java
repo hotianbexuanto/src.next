@@ -29,10 +29,48 @@ public class TabViewAndroidDelegate extends ViewAndroidDelegate {
     /** The inset supplier the observer is currently attached to. */
     private ObservableSupplier<Integer> mCurrentInsetSupplier;
 
+<<<<<<< HEAD
+    private final Callback<ViewportInsets> mInsetObserver =
+            (unused) -> updateVisualViewportBottomInset();
+
+    TabViewAndroidDelegate(Tab tab, ContentView containerView) {
+=======
     TabViewAndroidDelegate(Tab tab, ViewGroup containerView) {
+>>>>>>> chromium
         super(containerView);
         mTab = (TabImpl) tab;
 
+<<<<<<< HEAD
+        if (ContentFeatureMap.isEnabled(ContentFeatures.TOUCH_DRAG_AND_CONTEXT_MENU)) {
+            mDragAndDropBrowserDelegate =
+                    new ChromeDragAndDropBrowserDelegate(
+                            () -> {
+                                if (mTab == null || mTab.getWindowAndroid() == null) return null;
+                                return mTab.getWindowAndroid().getActivity().get();
+                            });
+            getDragAndDropDelegate().setDragAndDropBrowserDelegate(mDragAndDropBrowserDelegate);
+        }
+
+        mCurrentInsetSupplier = tab.getWindowAndroid().getApplicationBottomInsetSupplier();
+        mCurrentInsetSupplier.addObserver(mInsetObserver);
+
+        mTab.addObserver(
+                new EmptyTabObserver() {
+                    @Override
+                    public void onActivityAttachmentChanged(
+                            Tab tab, @Nullable WindowAndroid window) {
+                        if (mCurrentInsetSupplier != null) {
+                            mCurrentInsetSupplier.removeObserver(mInsetObserver);
+                            mCurrentInsetSupplier = null;
+                        }
+                        if (window != null) {
+                            mCurrentInsetSupplier =
+                                    tab.getWindowAndroid().getApplicationBottomInsetSupplier();
+                            mCurrentInsetSupplier.addObserver(mInsetObserver);
+                        }
+                        updateVisualViewportBottomInset();
+                    }
+=======
         Callback<Integer> insetObserver = (inset) -> updateInsetViewportBottom();
         mCurrentInsetSupplier = tab.getWindowAndroid().getApplicationBottomInsetProvider();
         mCurrentInsetSupplier.addObserver(insetObserver);
@@ -50,6 +88,7 @@ public class TabViewAndroidDelegate extends ViewAndroidDelegate {
                     updateInsetViewportBottom();
                 }
             }
+>>>>>>> chromium
 
             @Override
             public void onShown(Tab tab, int type) {
@@ -99,6 +138,65 @@ public class TabViewAndroidDelegate extends ViewAndroidDelegate {
 
     @Override
     protected int getViewportInsetBottom() {
+<<<<<<< HEAD
+        return mVisualViewportInsetBottomPx;
+    }
+
+    @Override
+    public void updateAnchorViews(ViewGroup oldContainerView) {
+        super.updateAnchorViews(oldContainerView);
+
+        assert oldContainerView instanceof ContentView
+                : "TabViewAndroidDelegate does not host container views other than ContentView.";
+
+        // Transfer the drag state tracker to the new container view.
+        ((ContentView) oldContainerView).removeOnDragListener(getDragStateTracker());
+        getContentView().addOnDragListener(getDragStateTracker());
+    }
+
+    private ContentView getContentView() {
+        assert getContainerView() instanceof ContentView
+                : "TabViewAndroidDelegate does not host container views other than ContentView.";
+
+        return (ContentView) getContainerView();
+    }
+
+    /* Destroy and clean up {@link DragStateTracker} to the content view. */
+    @Override
+    public void destroy() {
+        super.destroy();
+        if (getContentView() != null) {
+            getContentView().removeOnDragListener(getDragStateTracker());
+        }
+        if (mDragAndDropBrowserDelegate != null) {
+            getDragAndDropDelegate().setDragAndDropBrowserDelegate(null);
+            mDragAndDropBrowserDelegate = null;
+        }
+        if (mCurrentInsetSupplier != null) {
+            mCurrentInsetSupplier.removeObserver(mInsetObserver);
+            mCurrentInsetSupplier = null;
+        }
+    }
+
+    @Override
+    public void onProvideAutofillVirtualStructure(ViewStructure structure, int flags) {
+        mTab.onProvideAutofillVirtualStructure(structure, flags);
+    }
+
+    @Override
+    public void autofill(final SparseArray<AutofillValue> values) {
+        mTab.autofill(values);
+    }
+
+    @Override
+    public boolean providesAutofillStructure() {
+        return mTab.providesAutofillStructure();
+    }
+
+    DragAndDropBrowserDelegate getDragAndDropBrowserDelegateForTesting() {
+        return mDragAndDropBrowserDelegate;
+=======
         return mApplicationViewportInsetBottomPx;
+>>>>>>> chromium
     }
 }

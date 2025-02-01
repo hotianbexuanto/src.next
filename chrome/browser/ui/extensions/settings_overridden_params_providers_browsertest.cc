@@ -4,11 +4,18 @@
 
 #include "chrome/browser/ui/extensions/settings_overridden_params_providers.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+
+#include "base/containers/contains.h"
+=======
+>>>>>>> chromium
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/extensions/extension_service.h"
+#include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/extensions/settings_api_helpers.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
@@ -36,8 +43,8 @@ class SettingsOverriddenParamsProvidersBrowserTest
   const extensions::Extension* AddExtensionControllingSearch(
       const char* path = "search_provider_override") {
     const extensions::Extension* extension =
-        InstallExtensionWithPermissionsGranted(
-            test_data_dir_.AppendASCII("search_provider_override"), 1);
+        InstallExtensionWithPermissionsGranted(test_data_dir_.AppendASCII(path),
+                                               1);
     EXPECT_EQ(extension,
               extensions::GetExtensionOverridingSearchEngine(profile()));
     return extension;
@@ -64,6 +71,16 @@ class SettingsOverriddenParamsProvidersBrowserTest
     TemplateURLService* const template_url_service = GetTemplateURLService();
     TemplateURLService::TemplateURLVector template_urls =
         template_url_service->GetTemplateURLs();
+<<<<<<< HEAD
+    auto iter = std::ranges::find_if(
+        template_urls, [template_url_service, new_search_shows_in_default_list](
+                           const TemplateURL* turl) {
+          return !turl->HasGoogleBaseURLs(
+                     template_url_service->search_terms_data()) &&
+                 template_url_service->ShowInDefaultList(turl) ==
+                     new_search_shows_in_default_list;
+        });
+=======
     auto iter =
         std::find_if(template_urls.begin(), template_urls.end(),
                      [template_url_service, new_search_shows_in_default_list](
@@ -73,11 +90,13 @@ class SettingsOverriddenParamsProvidersBrowserTest
                               template_url_service->ShowInDefaultList(turl) ==
                                   new_search_shows_in_default_list;
                      });
+>>>>>>> chromium
     ASSERT_NE(template_urls.end(), iter);
     // iter != template_urls.end());
     template_url_service->SetUserSelectedDefaultSearchProvider(*iter);
-    if (new_turl_out)
+    if (new_turl_out) {
       *new_turl_out = *iter;
+    }
   }
 
   TemplateURLService* GetTemplateURLService() {
@@ -122,6 +141,32 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenParamsProvidersBrowserTest,
       "The \"Search Override Extension\" extension changed search to use "
       "example.com",
       base::UTF16ToUTF8(params->dialog_message));
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsOverriddenParamsProvidersBrowserTest,
+                       LongNameExtensionControllingSearch) {
+  // With no extensions installed, there should be no controlling extension.
+  ASSERT_EQ(std::nullopt,
+            settings_overridden_params::GetSearchOverriddenParams(profile()));
+
+  // Install an extensions which overrides the default search engine and has a
+  // long name.
+  const extensions::Extension* search_extension =
+      AddExtensionControllingSearch("search_provider_override_long_name");
+  std::optional<const ExtensionSettingsOverriddenDialog::Params> params =
+      settings_overridden_params::GetSearchOverriddenParams(profile());
+  ASSERT_TRUE(params);
+  EXPECT_EQ(search_extension->id(), params->controlling_extension_id);
+
+  const std::u16string extension_name =
+      base::UTF8ToUTF16(search_extension->name());
+  const std::u16string truncated_name =
+      extensions::util::GetFixupExtensionNameForUIDisplay(extension_name);
+  ASSERT_LT(truncated_name.size(), extension_name.size());
+
+  // The dialog message should contain the truncated name.
+  EXPECT_TRUE(base::Contains(params->dialog_message, truncated_name));
+  EXPECT_FALSE(base::Contains(params->dialog_message, extension_name));
 }
 
 IN_PROC_BROWSER_TEST_F(SettingsOverriddenParamsProvidersBrowserTest,
@@ -170,7 +215,7 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_TRUE(first);
 
   const extensions::Extension* second =
-      AddExtensionControllingSearch("search_provider_override2");
+      AddExtensionControllingSearch("search_provider_override_2");
   ASSERT_TRUE(second);
 
   absl::optional<ExtensionSettingsOverriddenDialog::Params> params =
@@ -283,6 +328,15 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenParamsProvidersBrowserTest,
   TemplateURLService* const template_url_service = GetTemplateURLService();
   TemplateURLService::TemplateURLVector template_urls =
       template_url_service->GetTemplateURLs();
+<<<<<<< HEAD
+  auto iter = std::ranges::find_if_not(
+      template_urls, [template_url_service](const TemplateURL* turl) {
+        // For the test, we can be a bit lazier and just use HasGoogleBaseURLs()
+        // instead of getting the full search URL.
+        return turl->HasGoogleBaseURLs(
+            template_url_service->search_terms_data());
+      });
+=======
   auto iter = std::find_if(template_urls.begin(), template_urls.end(),
                            [template_url_service](const TemplateURL* turl) {
                              // For the test, we can be a bit lazier and just
@@ -291,6 +345,7 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenParamsProvidersBrowserTest,
                              return !turl->HasGoogleBaseURLs(
                                  template_url_service->search_terms_data());
                            });
+>>>>>>> chromium
   ASSERT_TRUE(iter != template_urls.end());
   template_url_service->SetUserSelectedDefaultSearchProvider(*iter);
 

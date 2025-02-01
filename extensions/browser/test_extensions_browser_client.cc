@@ -92,7 +92,39 @@ BrowserContext* TestExtensionsBrowserClient::GetOriginalContext(
   return main_context_;
 }
 
+<<<<<<< HEAD
+content::BrowserContext*
+TestExtensionsBrowserClient::GetContextRedirectedToOriginal(
+    content::BrowserContext* context) {
+  return GetOriginalContext(context);
+}
+
+content::BrowserContext* TestExtensionsBrowserClient::GetContextOwnInstance(
+    content::BrowserContext* context) {
+  return context;
+}
+
+content::BrowserContext* TestExtensionsBrowserClient::GetContextForOriginalOnly(
+    content::BrowserContext* context) {
+  // Default implementation of
+  // `BrowserContextKeyedServiceFactory::GetBrowserContextToUse()`.
+  return context->IsOffTheRecord() ? nullptr : context;
+}
+
+bool TestExtensionsBrowserClient::AreExtensionsDisabledForContext(
+    content::BrowserContext* context) {
+  return false;
+}
+
+#if BUILDFLAG(IS_CHROMEOS)
+bool TestExtensionsBrowserClient::IsActiveContext(
+    content::BrowserContext* browser_context) const {
+  return true;
+}
+
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 std::string TestExtensionsBrowserClient::GetUserIdHashFromContext(
     content::BrowserContext* context) {
   if (context != main_context_ || !chromeos::LoginState::IsInitialized())
@@ -252,11 +284,6 @@ TestExtensionsBrowserClient::CreateUpdateClient(
   return update_client_factory_.is_null()
              ? nullptr
              : base::WrapRefCounted(update_client_factory_.Run());
-}
-
-bool TestExtensionsBrowserClient::IsLockScreenContext(
-    content::BrowserContext* context) {
-  return lock_screen_context_ && context == lock_screen_context_;
 }
 
 std::string TestExtensionsBrowserClient::GetApplicationLocale() {

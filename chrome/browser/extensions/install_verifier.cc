@@ -290,6 +290,13 @@ void InstallVerifier::RemoveMany(const ExtensionIdSet& ids) {
   if (!signature_.get() || !ShouldFetchSignature())
     return;
 
+<<<<<<< HEAD
+  if (std::ranges::any_of(ids, [this](const std::string& id) {
+        return base::Contains(signature_->ids, id) ||
+               base::Contains(signature_->invalid_ids, id);
+      })) {
+    return;
+=======
   bool found_any = false;
   for (auto i = ids.begin(); i != ids.end(); ++i) {
     if (base::Contains(signature_->ids, *i) ||
@@ -297,6 +304,7 @@ void InstallVerifier::RemoveMany(const ExtensionIdSet& ids) {
       found_any = true;
       break;
     }
+>>>>>>> chromium
   }
   if (!found_any)
     return;
@@ -400,8 +408,16 @@ void InstallVerifier::MaybeBootstrapSelf() {
   bool needs_bootstrap = false;
 
   ExtensionIdSet extension_ids = GetExtensionsToVerify();
+<<<<<<< HEAD
+  if ((signature_.get() == nullptr && ShouldFetchSignature()) ||
+      std::ranges::any_of(extension_ids, [this](const std::string& id) {
+        return !IsKnownId(id);
+      })) {
+    AddMany(extension_ids, ADD_ALL_BOOTSTRAP);
+=======
   if (signature_.get() == NULL && ShouldFetchSignature()) {
     needs_bootstrap = true;
+>>>>>>> chromium
   } else {
     for (auto iter = extension_ids.begin(); iter != extension_ids.end();
          ++iter) {

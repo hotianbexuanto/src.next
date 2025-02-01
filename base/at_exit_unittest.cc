@@ -3,8 +3,12 @@
 // found in the LICENSE file.
 
 #include "base/at_exit.h"
+<<<<<<< HEAD
+=======
 #include "base/bind.h"
+>>>>>>> chromium
 
+#include "base/functional/bind.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace {

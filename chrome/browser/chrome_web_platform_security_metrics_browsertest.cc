@@ -263,6 +263,50 @@ IN_PROC_BROWSER_TEST_F(ChromeWebPlatformSecurityMetricsBrowserTest,
   ExpectHistogramIncreasedBy(1);
 }
 
+<<<<<<< HEAD
+IN_PROC_BROWSER_TEST_F(ChromeWebPlatformSecurityMetricsBrowserTest,
+                       LogCSPFrameSrcWildcardMatchFeature) {
+  struct {
+    const char* csp_frame_src;
+    const char* sub_document_url;
+    int expected_kCspWouldBlockIfWildcardDoesNotMatchWs;
+  } test_cases[] = {
+      {"*", "http://example.com", 0},
+      // Feature shouldn't be logged if matches explicitly.
+      {"ftp:*", "ftp://example.com", 0},
+      {"ws:*", "ws://example.com", 0},
+      {"wss:*", "wss://example.com", 0},
+      {"*", "ws://example.com", 1},
+      {"*", "wss://example.com", 1},
+  };
+  int total_kCspWouldBlockIfWildcardDoesNotMatchWs = 0;
+  for (const auto& test_case : test_cases) {
+    GURL main_document_url = https_server().GetURL(
+        "a.com",
+        base::StrCat({"/set-header?Content-Security-Policy: frame-src ",
+                      test_case.csp_frame_src, ";"}));
+    url::Origin main_document_origin = url::Origin::Create(main_document_url);
+    GURL sub_document_url = GURL(test_case.sub_document_url);
+    EXPECT_TRUE(content::NavigateToURL(web_contents(), main_document_url));
+
+    content::TestNavigationObserver load_observer(web_contents());
+    EXPECT_TRUE(
+        content::ExecJs(web_contents(), content::JsReplace(R"(
+      let iframe = document.createElement("iframe");
+      iframe.src = $1;
+      document.body.appendChild(iframe);
+    )",
+                                                           sub_document_url)));
+    load_observer.Wait();
+
+    CheckCounter(WebFeature::kCspWouldBlockIfWildcardDoesNotMatchWs,
+                 total_kCspWouldBlockIfWildcardDoesNotMatchWs +=
+                 test_case.expected_kCspWouldBlockIfWildcardDoesNotMatchWs);
+  }
+}
+
+=======
+>>>>>>> chromium
 // Check kCrossOriginSubframeWithoutEmbeddingControl reporting. Cross-origin
 // iframe (CSP frame-ancestors) => 0 count.
 IN_PROC_BROWSER_TEST_F(
@@ -1113,6 +1157,30 @@ IN_PROC_BROWSER_TEST_F(ChromeWebPlatformSecurityMetricsBrowserTest,
   LoadIFrame(child_url);
   CheckCounter(WebFeature::kCrossOriginEmbedderPolicyCredentialless, 1);
   CheckCounter(WebFeature::kCrossOriginEmbedderPolicyRequireCorp, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeWebPlatformSecurityMetricsBrowserTest,
+                       NoCharsetAutoDetection) {
+  EXPECT_TRUE(content::NavigateToURL(
+      web_contents(), https_server().GetURL("/security/utf8.html")));
+  CheckCounter(WebFeature::kCharsetAutoDetection, 0);
+  CheckCounter(WebFeature::kCharsetAutoDetectionISO2022JP, 0);
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeWebPlatformSecurityMetricsBrowserTest,
+                       CharsetAutoDetection) {
+  EXPECT_TRUE(content::NavigateToURL(
+      web_contents(), https_server().GetURL("/security/no_charset.html")));
+  CheckCounter(WebFeature::kCharsetAutoDetection, 1);
+  CheckCounter(WebFeature::kCharsetAutoDetectionISO2022JP, 0);
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeWebPlatformSecurityMetricsBrowserTest,
+                       ISO2022JPDetection) {
+  EXPECT_TRUE(content::NavigateToURL(
+      web_contents(), https_server().GetURL("/security/iso_2022_jp.html")));
+  CheckCounter(WebFeature::kCharsetAutoDetection, 1);
+  CheckCounter(WebFeature::kCharsetAutoDetectionISO2022JP, 1);
 }
 
 // TODO(arthursonzogni): Add basic test(s) for the WebFeatures:

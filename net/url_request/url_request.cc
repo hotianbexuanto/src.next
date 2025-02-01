@@ -10,6 +10,13 @@
 #include "base/callback.h"
 #include "base/callback_helpers.h"
 #include "base/compiler_specific.h"
+<<<<<<< HEAD
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
+#include "base/metrics/histogram_functions.h"
+=======
+>>>>>>> chromium
 #include "base/metrics/histogram_macros.h"
 #include "base/rand_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -129,6 +136,35 @@ void ConvertRealLoadTimesToBlockingTimes(LoadTimingInfo* load_timing_info) {
   }
 }
 
+<<<<<<< HEAD
+NetLogWithSource CreateNetLogWithSource(
+    NetLog* net_log,
+    std::optional<net::NetLogSource> net_log_source) {
+  if (net_log_source) {
+    return NetLogWithSource::Make(net_log, net_log_source.value());
+  }
+  return NetLogWithSource::Make(net_log, NetLogSourceType::URL_REQUEST);
+}
+
+// TODO(https://crbug.com/366284840): remove this, once the "retry" header is
+// handled in URLLoader.
+net::cookie_util::StorageAccessStatusOutcome
+ConvertSecFetchStorageAccessHeaderValueToOutcome(
+    net::cookie_util::StorageAccessStatus storage_access_status) {
+  using enum net::cookie_util::StorageAccessStatusOutcome;
+  switch (storage_access_status) {
+    case net::cookie_util::StorageAccessStatus::kInactive:
+      return kValueInactive;
+    case net::cookie_util::StorageAccessStatus::kActive:
+      return kValueActive;
+    case net::cookie_util::StorageAccessStatus::kNone:
+      return kValueNone;
+  }
+  NOTREACHED();
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -961,6 +997,56 @@ void URLRequest::Redirect(
   Start();
 }
 
+<<<<<<< HEAD
+void URLRequest::RetryWithStorageAccess() {
+  CHECK(!cookie_setting_overrides().Has(
+      CookieSettingOverride::kStorageAccessGrantEligibleViaHeader));
+  CHECK(!cookie_setting_overrides().Has(
+      CookieSettingOverride::kStorageAccessGrantEligible));
+
+  net_log_.AddEvent(NetLogEventType::URL_REQUEST_RETRY_WITH_STORAGE_ACCESS);
+  if (network_delegate()) {
+    network_delegate()->NotifyBeforeRetry(this);
+  }
+
+  // TODO(https://crbug.com/366284840): this state mutation should reuse the
+  // Sec- header helpers at a higher layer, not within //net.
+  cookie_setting_overrides().Put(
+      CookieSettingOverride::kStorageAccessGrantEligibleViaHeader);
+  set_per_hop_load_flags(LOAD_BYPASS_CACHE);
+  set_storage_access_status(CalculateStorageAccessStatus());
+  // This code is only reachable if the status was previously "inactive", which
+  // implies that the URL is "potentially trustworthy" and that adding the
+  // `kStorageAccessGrantEligibleViaHeader` override is sufficient to make the
+  // status "active".
+  CHECK(storage_access_status());
+  CHECK_EQ(static_cast<int>(storage_access_status().value()),
+           static_cast<int>(cookie_util::StorageAccessStatus::kActive));
+  extra_request_headers_.SetHeader("Sec-Fetch-Storage-Access", "active");
+  base::UmaHistogramEnumeration(
+      "API.StorageAccessHeader.SecFetchStorageAccessOutcome",
+      cookie_util::SecFetchStorageAccessOutcome::kValueActive);
+
+  if (!final_upload_progress_.position() && upload_data_stream_) {
+    final_upload_progress_ = upload_data_stream_->GetUploadProgress();
+  }
+  PrepareToRestart();
+
+  // This isn't really a proper redirect, but we add to the `url_chain_` and
+  // count it against the redirect limit anyway, to avoid unbounded retries.
+  url_chain_.push_back(url());
+  --redirect_limit_;
+
+  Start();
+}
+
+// static
+bool URLRequest::DefaultCanUseCookies() {
+  return g_default_can_use_cookies;
+}
+
+=======
+>>>>>>> chromium
 const URLRequestContext* URLRequest::context() const {
   return context_;
 }
@@ -1204,11 +1290,72 @@ void URLRequest::SetEarlyResponseHeadersCallback(
   early_response_headers_callback_ = std::move(callback);
 }
 
+<<<<<<< HEAD
+void URLRequest::SetIsSharedDictionaryReadAllowedCallback(
+    base::RepeatingCallback<bool()> callback) {
+  DCHECK(!job_.get());
+  DCHECK(is_shared_dictionary_read_allowed_callback_.is_null());
+  is_shared_dictionary_read_allowed_callback_ = std::move(callback);
+}
+
+void URLRequest::SetDeviceBoundSessionAccessCallback(
+    base::RepeatingCallback<void(const device_bound_sessions::SessionAccess&)>
+        callback) {
+  device_bound_session_access_callback_ = std::move(callback);
+}
+
+=======
+>>>>>>> chromium
 void URLRequest::set_socket_tag(const SocketTag& socket_tag) {
   DCHECK(!is_pending_);
   DCHECK(url().SchemeIsHTTPOrHTTPS());
   socket_tag_ = socket_tag;
 }
+<<<<<<< HEAD
+std::optional<net::cookie_util::StorageAccessStatus>
+URLRequest::CalculateStorageAccessStatus(
+    base::optional_ref<const RedirectInfo> redirect_info) const {
+  std::optional<net::cookie_util::StorageAccessStatus> storage_access_status =
+      network_delegate()->GetStorageAccessStatus(*this, redirect_info);
+
+  auto get_storage_access_value_outcome_if_omitted =
+      [&]() -> std::optional<net::cookie_util::StorageAccessStatusOutcome> {
+    if (!network_delegate()->IsStorageAccessHeaderEnabled(
+            base::OptionalToPtr(isolation_info().top_frame_origin()), url())) {
+      return net::cookie_util::StorageAccessStatusOutcome::
+          kOmittedFeatureDisabled;
+    }
+    if (!storage_access_status) {
+      return net::cookie_util::StorageAccessStatusOutcome::kOmittedSameSite;
+    }
+    return std::nullopt;
+  };
+
+  auto storage_access_value_outcome =
+      get_storage_access_value_outcome_if_omitted();
+  if (storage_access_value_outcome) {
+    storage_access_status = std::nullopt;
+  } else {
+    storage_access_value_outcome =
+        ConvertSecFetchStorageAccessHeaderValueToOutcome(
+            storage_access_status.value());
+  }
+
+  base::UmaHistogramEnumeration(
+      "API.StorageAccessHeader.StorageAccessStatusOutcome",
+      storage_access_value_outcome.value());
+
+  return storage_access_status;
+}
+
+void URLRequest::SetSharedDictionaryGetter(
+    SharedDictionaryGetter shared_dictionary_getter) {
+  CHECK(!job_.get());
+  CHECK(shared_dictionary_getter_.is_null());
+  shared_dictionary_getter_ = std::move(shared_dictionary_getter);
+}
+=======
+>>>>>>> chromium
 
 base::WeakPtr<URLRequest> URLRequest::GetWeakPtr() {
   return weak_factory_.GetWeakPtr();

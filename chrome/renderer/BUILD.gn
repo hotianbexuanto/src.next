@@ -166,7 +166,10 @@ static_library("renderer") {
     "//components/contextual_search/content:renderer",
     "//components/data_reduction_proxy/core/common",
     "//components/dom_distiller/content/renderer",
+<<<<<<< HEAD
+=======
     "//components/feed:buildflags",
+>>>>>>> chromium
     "//components/feed:feature_list",
     "//components/feed/content/renderer:feed_renderer",
     "//components/network_hints/renderer",
@@ -278,6 +281,11 @@ static_library("renderer") {
 
   if (enable_pdf) {
     deps += [
+<<<<<<< HEAD
+      "//components/pdf/renderer",
+      "//pdf:features",
+    ]
+=======
       "//components/pdf/common",
       "//components/pdf/renderer",
     ]
@@ -289,6 +297,7 @@ static_library("renderer") {
 
   if (is_chromeos_ash) {
     deps += [ "//ash/constants" ]
+>>>>>>> chromium
   }
 
   if (enable_widevine_cdm_component) {
@@ -428,8 +437,6 @@ static_library("renderer") {
 
   if (is_android) {
     sources += [
-      "net/available_offline_content_helper.cc",
-      "net/available_offline_content_helper.h",
       "net/page_auto_fetcher_helper_android.cc",
       "net/page_auto_fetcher_helper_android.h",
       "sandbox_status_extension_android.cc",

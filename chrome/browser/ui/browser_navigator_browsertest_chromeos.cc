@@ -2,7 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#include "chrome/browser/ui/browser_navigator_browsertest.h"
+
 #include "ash/constants/ash_switches.h"
+#include "ash/wm/window_pin_util.h"
+=======
+#include "ash/constants/ash_switches.h"
+>>>>>>> chromium
 #include "base/command_line.h"
 #include "chrome/browser/ash/login/chrome_restart_request.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
@@ -12,7 +19,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_navigator.h"
-#include "chrome/browser/ui/browser_navigator_browsertest.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_switches.h"
@@ -27,6 +33,11 @@
 
 namespace {
 
+<<<<<<< HEAD
+using BrowserNavigatorTestChromeOS = BrowserNavigatorTest;
+
+=======
+>>>>>>> chromium
 GURL GetGoogleURL() {
   return GURL("http://www.google.com/");
 }
@@ -85,6 +96,38 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestChromeOS,
       params.browser->tab_strip_model()->GetActiveWebContents()->GetURL());
 }
 
+<<<<<<< HEAD
+// Verify that page navigation is allowed in locked fullscreen mode when locked
+// for OnTask. Only applicable for non-web browser scenarios.
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTestChromeOS,
+                       NavigationAllowedInLockedFullscreenWhenLockedForOnTask) {
+  // Set locked fullscreen state.
+  aura::Window* const window = browser()->window()->GetNativeWindow();
+  PinWindow(window, /*trusted=*/true);
+  browser()->SetLockedForOnTask(true);
+
+  // Navigate to a page.
+  const GURL kUrl(chrome::kChromeUIVersionURL);
+  NavigateParams params(MakeNavigateParams(browser()));
+  params.disposition = WindowOpenDisposition::NEW_WINDOW;
+  params.url = kUrl;
+  params.window_action = NavigateParams::SHOW_WINDOW;
+  Navigate(&params);
+
+  // The original browser should still be at the same page, but the newly
+  // opened browser should sit on the chrome:version page.
+  ASSERT_EQ(2u, chrome::GetTotalBrowserCount());
+  ASSERT_EQ(1, browser()->tab_strip_model()->count());
+  EXPECT_EQ(GURL(url::kAboutBlankURL),
+            browser()->tab_strip_model()->GetActiveWebContents()->GetURL());
+  ASSERT_EQ(1, params.browser->tab_strip_model()->count());
+  EXPECT_EQ(
+      kUrl,
+      params.browser->tab_strip_model()->GetActiveWebContents()->GetURL());
+}
+
+=======
+>>>>>>> chromium
 // Subclass that tests navigation while in the Guest session.
 class BrowserGuestSessionNavigatorTest : public BrowserNavigatorTest {
  protected:

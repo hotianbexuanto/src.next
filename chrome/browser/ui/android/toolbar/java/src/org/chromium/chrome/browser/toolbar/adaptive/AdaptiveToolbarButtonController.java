@@ -167,7 +167,11 @@ public class AdaptiveToolbarButtonController implements ButtonDataProvider, Butt
             RecordHistogram.recordEnumeratedHistogram(
                     "Android.AdaptiveToolbarButton.SessionVariant",
                     receivedButtonData.getButtonSpec().getButtonVariant(),
+<<<<<<< HEAD
+                    AdaptiveToolbarButtonVariant.MAX_VALUE);
+=======
                     AdaptiveToolbarButtonVariant.NUM_ENTRIES);
+>>>>>>> chromium
         }
 
         mButtonData.setCanShow(receivedButtonData.canShow());
@@ -194,8 +198,15 @@ public class AdaptiveToolbarButtonController implements ButtonDataProvider, Butt
     private static View.OnClickListener wrapClickListener(View.OnClickListener receivedListener,
             @AdaptiveToolbarButtonVariant int buttonVariant) {
         return view -> {
+<<<<<<< HEAD
+            RecordHistogram.recordEnumeratedHistogram(
+                    "Android.AdaptiveToolbarButton.Clicked",
+                    buttonVariant,
+                    AdaptiveToolbarButtonVariant.MAX_VALUE);
+=======
             RecordHistogram.recordEnumeratedHistogram("Android.AdaptiveToolbarButton.Clicked",
                     buttonVariant, AdaptiveToolbarButtonVariant.NUM_ENTRIES);
+>>>>>>> chromium
             receivedListener.onClick(view);
         };
     }
@@ -255,12 +266,79 @@ public class AdaptiveToolbarButtonController implements ButtonDataProvider, Butt
         if (ADAPTIVE_TOOLBAR_CUSTOMIZATION_SETTINGS.equals(key)
                 || ADAPTIVE_TOOLBAR_CUSTOMIZATION_ENABLED.equals(key)) {
             assert AdaptiveToolbarFeatures.isCustomizationEnabled();
+<<<<<<< HEAD
+            mAdaptiveToolbarStatePredictor.recomputeUiState(mUiStateCallback);
+        }
+    }
+
+    /** Called to notify the controller that a dynamic action is available and should be shown. */
+    public void showDynamicAction(@AdaptiveToolbarButtonVariant int action) {
+        int actionToShow =
+                action != AdaptiveToolbarButtonVariant.UNKNOWN ? action : mSessionButtonVariant;
+        RecordHistogram.recordEnumeratedHistogram(
+                "Android.AdaptiveToolbarButton.Variant.OnPageLoad",
+                actionToShow,
+                AdaptiveToolbarButtonVariant.MAX_VALUE);
+        if (mOriginalButtonSpec != null && mOriginalButtonSpec.getButtonVariant() == actionToShow) {
+            return;
+        }
+        setSingleProvider(actionToShow);
+        notifyObservers(true);
+    }
+
+    /**
+     * Creates a metrics recorder that records the button variant shown for every page load. The
+     * metrics is recorded at the start of a new navigation for the old page being shown.
+     *
+     * @param tabSupplier Supplier of current tab.
+     */
+    public void initializePageLoadMetricsRecorder(ObservableSupplier<Tab> tabSupplier) {
+        if (mPageLoadMetricsRecorder != null) return;
+        mPageLoadMetricsRecorder =
+                new CurrentTabObserver(
+                        tabSupplier,
+                        new EmptyTabObserver() {
+                            @Override
+                            public void onDidStartNavigationInPrimaryMainFrame(
+                                    Tab tab, NavigationHandle navigationHandle) {
+                                Integer currentVariant = AdaptiveToolbarButtonVariant.UNKNOWN;
+                                for (Integer variant : mButtonDataProviderMap.keySet()) {
+                                    if (mSingleProvider == mButtonDataProviderMap.get(variant)) {
+                                        currentVariant = variant;
+                                        break;
+                                    }
+                                }
+
+                                RecordHistogram.recordEnumeratedHistogram(
+                                        "Android.AdaptiveToolbarButton.Variant.OnStartNavigation",
+                                        currentVariant,
+                                        AdaptiveToolbarButtonVariant.MAX_VALUE);
+                            }
+                        },
+                        null);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        if (!mLifecycleDispatcher.isNativeInitializationFinished()
+                || mScreenWidthDp == newConfig.screenWidthDp) {
+            return;
+        }
+
+        boolean wasOldScreenWideEnoughForButton = isScreenWideEnoughForButton();
+
+        mScreenWidthDp = newConfig.screenWidthDp;
+
+        if (wasOldScreenWideEnoughForButton != isScreenWideEnoughForButton()) {
+            notifyObservers(mButtonData.canShow());
+=======
             new AdaptiveToolbarStatePredictor().recomputeUiState(uiState -> {
                 setSingleProvider(uiState.canShowUi
                                 ? mButtonDataProviderMap.get(uiState.toolbarButtonState)
                                 : null);
                 notifyObservers(uiState.canShowUi);
             });
+>>>>>>> chromium
         }
     }
 }

@@ -30,6 +30,7 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_LOCAL_FRAME_H_
 
 #include <memory>
+#include <vector>
 
 #include "base/time/default_tick_clock.h"
 #include "base/unguessable_token.h"
@@ -58,12 +59,19 @@
 #include "third_party/blink/public/mojom/reporting/reporting.mojom-blink.h"
 #include "third_party/blink/public/mojom/web_feature/web_feature.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/task_type.h"
+<<<<<<< HEAD
+#include "third_party/blink/public/platform/web_background_resource_fetch_assets.h"
+#include "third_party/blink/public/platform/web_content_settings_client.h"
+#include "third_party/blink/public/web/web_print_params.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/public/web/web_script_execution_callback.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/weak_identifier_map.h"
 #include "third_party/blink/renderer/core/editing/forward.h"
 #include "third_party/blink/renderer/core/frame/frame.h"
 #include "third_party/blink/renderer/core/frame/frame_types.h"
+#include "third_party/blink/renderer/core/frame/frame_visibility_observer.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/platform/graphics/touch_action.h"
@@ -285,8 +293,7 @@ class CORE_EXPORT LocalFrame final : public Frame,
   // The |notification_type| parameter is used for histograms only.
   static void NotifyUserActivation(
       LocalFrame*,
-      mojom::blink::UserActivationNotificationType notification_type,
-      bool need_browser_verification = false);
+      mojom::blink::UserActivationNotificationType notification_type);
 
   // Returns the transient user activation state of the |LocalFrame|, provided
   // it is non-null.  Otherwise returns |false|.
@@ -360,9 +367,23 @@ class CORE_EXPORT LocalFrame final : public Frame,
   // media query value changed.
   void MediaQueryAffectingValueChangedForLocalSubtree(MediaValueChange);
 
+<<<<<<< HEAD
+  void ViewportSegmentsChanged(const std::vector<gfx::Rect>& viewport_segments);
+  void UpdateViewportSegmentCSSEnvironmentVariables(
+      const std::vector<gfx::Rect>& viewport_segments);
+  void UpdateViewportSegmentCSSEnvironmentVariables(
+      StyleEnvironmentVariables& vars,
+      const std::vector<gfx::Rect>& viewport_segments);
+
+  void OverrideDevicePostureForEmulation(
+      mojom::blink::DevicePostureType device_posture_param);
+  void DisableDevicePostureOverrideForEmulation();
+  mojom::blink::DevicePostureType GetDevicePosture();
+=======
   void WindowSegmentsChanged(const WebVector<gfx::Rect>& window_segments);
   void UpdateCSSFoldEnvironmentVariables(
       const WebVector<gfx::Rect>& window_segments);
+>>>>>>> chromium
 
   String SelectedText() const;
   String SelectedTextForClipboard() const;
@@ -718,6 +739,133 @@ class CORE_EXPORT LocalFrame final : public Frame,
   void BindTextFragmentReceiver(
       mojo::PendingReceiver<mojom::blink::TextFragmentReceiver> receiver);
 
+<<<<<<< HEAD
+  void CreateTextFragmentHandler();
+
+  // Invokes on first paint, this method could be invoked multiple times, refer
+  // to FrameFirstPaint.
+  void OnFirstPaint(bool text_painted, bool image_painted);
+
+  // Invoked on first contentful paint on this frame.
+  void OnFirstContentfulPaint();
+
+#if BUILDFLAG(IS_MAC)
+  void ResetTextInputHostForTesting();
+  void RebindTextInputHostForTesting();
+#endif
+
+  void WriteIntoTrace(perfetto::TracedValue ctx) const;
+
+  bool AncestorOrSelfHasCSPEE() const { return ancestor_or_self_has_cspee_; }
+  void SetAncestorOrSelfHasCSPEE(bool has_policy) {
+    ancestor_or_self_has_cspee_ = has_policy;
+  }
+
+  void SetBackgroundColorPaintImageGeneratorForTesting(
+      BackgroundColorPaintImageGenerator* generator);
+
+  std::optional<SkColor> GetFrameOverlayColorForTesting() const;
+
+  // Returns a PendingRemote resolved via this frame's BrowserInterfaceBroker
+  // for use when creating the PublicUrlManager instance in threaded worklets.
+  // See `WorkletGlobalScope::TakeBlobUrlStorePendingRemote()` for more info.
+  mojo::PendingRemote<mojom::blink::BlobURLStore>
+  GetBlobUrlStorePendingRemote();
+
+  void AddScrollSnapshotClient(ScrollSnapshotClient&);
+
+  // Take a snapshot for relevant scrollers at the beginning of a frame update.
+  // https://drafts.csswg.org/scroll-animations-1/#avoiding-cycles
+  void UpdateScrollSnapshots();
+
+  // Each ScrollSnapshotClients has their internal state updated at
+  // a specific point in the lifecycle (see call to UpdateSnapshot).
+  // Since this call takes place *before* layout, ScrollSnapshotClients also
+  // get an additional opportunity to update their state (see ValidateSnapshot).
+  //
+  // The lifecycle update will call this function after style and layout has
+  // completed. The function will then go though all clients, and compare the
+  // current state snapshot to a fresh state snapshot. If they are equal, then
+  // no further action is needed. Otherwise, all effect targets associated
+  // with the client are marked for recalc, which causes the style/layout phase
+  // to run again.
+  //
+  // Returns true if all client states are valid, otherwise returns false.
+  //
+  // https://github.com/w3c/csswg-drafts/issues/5261
+  bool ValidateScrollSnapshotClients();
+
+  void ClearScrollSnapshotClients();
+
+  const HeapHashSet<WeakMember<ScrollSnapshotClient>>&
+  GetScrollSnapshotClientsForTesting() {
+    return scroll_snapshot_clients_;
+  }
+
+  void ScheduleNextServiceForScrollSnapshotClients();
+
+  void CheckPositionAnchorsForCssVisibilityChanges();
+  // This is called after all other position-visibility conditions have been
+  // checked.
+  void CheckPositionAnchorsForChainedVisibilityChanges();
+
+  using BlockingDetailsList = Vector<mojom::blink::BlockingDetailsPtr>;
+  static BlockingDetailsList ConvertFeatureAndLocationToMojomStruct(
+      const BFCacheBlockingFeatureAndLocations&,
+      const BFCacheBlockingFeatureAndLocations&);
+
+  bool IsSameOrigin();
+
+  v8_compile_hints::V8LocalCompileHintsProducer&
+  GetV8LocalCompileHintsProducer() {
+    return *v8_local_compile_hints_producer_;
+  }
+
+  // Returns whether images are allowed to load for the current frame. This is a
+  // convenience method that checks both renderer content settings and frame
+  // settings.
+  // Can only be called while the frame is not detached.
+  bool ImagesEnabled();
+
+  // Returns whether script is allowed to run for the current frame. This is a
+  // convenience method that checks both renderer content settings and frame
+  // settings.
+  // Can only be called while the frame is not detached.
+  bool ScriptEnabled();
+
+  const WebPrintParams& GetPrintParams() const;
+
+  // Returns the `Frame` for which `provisional_frame_ == this`. May only be
+  // called on a provisional frame.
+  Frame* GetProvisionalOwnerFrame();
+
+  // Return a keep alive handle for the browser side NavigationStateKeepAlive.
+  // The NavigationStateKeepAlive is created by a RenderFrameHost. Holding the
+  // pending receiver of this remote means the keep alive handle can still exist
+  // beyond the lifetime of the RenderFrameHost that created it.
+  mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle>
+  IssueKeepAliveHandle();
+
+  WebLinkPreviewTriggerer* GetOrCreateLinkPreviewTriggerer();
+  void SetLinkPreviewTriggererForTesting(
+      std::unique_ptr<WebLinkPreviewTriggerer> trigger);
+
+  void AllowStorageAccessAndNotify(
+      blink::WebContentSettingsClient::StorageType storage_type,
+      base::OnceCallback<void(bool)> callback);
+
+  bool AllowStorageAccessSyncAndNotify(
+      blink::WebContentSettingsClient::StorageType storage_type);
+
+  void NotifyFrameVisibilityChanged(mojom::blink::FrameVisibility visibility);
+
+  HeapHashSet<WeakMember<FrameVisibilityObserver>>&
+  GetFrameVisibilityObserverSet() {
+    return frame_visibility_observers_;
+  }
+
+=======
+>>>>>>> chromium
  private:
   friend class FrameNavigationDisabler;
   // LocalFrameMojoHandler is a part of LocalFrame.
@@ -757,18 +905,9 @@ class CORE_EXPORT LocalFrame final : public Frame,
                    float maximum_shrink_ratio);
 
   // FrameScheduler::Delegate overrides:
-  ukm::UkmRecorder* GetUkmRecorder() override;
-  ukm::SourceId GetUkmSourceId() override;
   void UpdateTaskTime(base::TimeDelta time) override;
   void UpdateActiveSchedulerTrackedFeatures(uint64_t features_mask) override;
   const base::UnguessableToken& GetAgentClusterId() const override;
-
-  // Activates the user activation states of this frame and all its ancestors.
-  //
-  // The |notification_type| parameter is used for histograms only.
-  void NotifyUserActivation(
-      mojom::blink::UserActivationNotificationType notification_type,
-      bool need_browser_verification);
 
   // Consumes and returns the transient user activation state this frame, after
   // updating all other frames in the frame tree.
@@ -966,6 +1105,44 @@ class CORE_EXPORT LocalFrame final : public Frame,
   bool is_subframe_created_by_ad_script_ = false;
 
   bool evict_cached_session_storage_on_freeze_or_unload_ = false;
+<<<<<<< HEAD
+
+  // Indicate if the current document's color scheme was notified.
+  bool notified_color_scheme_ = false;
+
+  // Stores whether this frame is affected by a CSPEE policy (from any ancestor
+  // frame). Calculated browser-side and used to help determine if this frame
+  // is allowed to load a new child opaque-ads fenced frame.
+  bool ancestor_or_self_has_cspee_ = false;
+
+  // Reduced accept language for top-level frame.
+  AtomicString reduced_accept_language_;
+
+  Member<v8_compile_hints::V8LocalCompileHintsProducer>
+      v8_local_compile_hints_producer_;
+
+  // This handle notifies the scheduler of whether the unload handler is used or
+  // not so it can block BFCache.
+  FrameScheduler::SchedulingAffectingFeatureHandle
+      feature_handle_for_scheduler_;
+
+  WebPrintParams print_params_;
+
+  BrowserInterfaceBrokerProxyImpl browser_interface_broker_proxy_;
+
+  // Holds WebLinkPreviewTriggerer instance if content renderer client wants to
+  // inject it. Note that `link_preview_triggerer_` may be nullptr after
+  // initialization.
+  bool is_link_preivew_triggerer_initialized_ = false;
+  std::unique_ptr<WebLinkPreviewTriggerer> link_preview_triggerer_;
+
+  HeapHashSet<WeakMember<FrameVisibilityObserver>> frame_visibility_observers_;
+
+  void OnStorageAccessCallback(base::OnceCallback<void(bool)> callback,
+                               mojom::blink::StorageTypeAccessed storage_type,
+                               bool isAllowed);
+=======
+>>>>>>> chromium
 };
 
 inline FrameLoader& LocalFrame::Loader() const {

@@ -93,7 +93,28 @@ class NavigationHandler implements TouchEventObserver {
     private PropertyModel mModel;
 
     // Total horizontal pull offset for a swipe gesture.
+<<<<<<< HEAD
+    private float mPullOffsetX;
+
+    private @BackGestureEventSwipeEdge int mInitiatingEdge;
+
+    private @TriggerUiCallSource int mTriggerUiCallSource;
+
+    private int mIncorrectEdgeSwipeCount;
+    private boolean mBackGestureForTabHistoryInProgress;
+    private boolean mStartNavDuringOngoingGesture;
+    private TabObserver mTabObserver =
+            new EmptyTabObserver() {
+                @Override
+                public void onDidStartNavigationInPrimaryMainFrame(
+                        Tab tab, NavigationHandle navigationHandle) {
+                    if (tab != mTab) return;
+                    mStartNavDuringOngoingGesture |= mBackGestureForTabHistoryInProgress;
+                }
+            };
+=======
     private float mPullOffset;
+>>>>>>> chromium
 
     private class SideNavGestureListener extends GestureDetector.SimpleOnGestureListener {
         @Override
@@ -130,6 +151,7 @@ class NavigationHandler implements TouchEventObserver {
             }
         };
         parentView.addOnAttachStateChangeListener(mAttachStateListener);
+        mIncorrectEdgeSwipeCount = 0;
     }
 
     void setTab(Tab tab) {
@@ -204,17 +226,37 @@ class NavigationHandler implements TouchEventObserver {
         if (!isValidState()) return false;
 
         mModel.set(DIRECTION, forward);
+<<<<<<< HEAD
+        mModel.set(EDGE, mInitiatingEdge);
+        if (canNavigate(forward)) {
+            // Correct swipe, reset mIncorrectEdgeSwipeCount.
+            // Only record metrics if mIncorrectEdgeSwipeCount > 0.
+            if (mIncorrectEdgeSwipeCount > 0) {
+                BackPressMetrics.recordIncorrectEdgeSwipeCountChained(mIncorrectEdgeSwipeCount);
+                mIncorrectEdgeSwipeCount = 0;
+            }
+
+=======
         boolean navigable = canNavigate(forward);
         if (navigable) {
+>>>>>>> chromium
             if (mState != GestureState.STARTED) mModel.set(ACTION, GestureAction.RESET_BUBBLE);
             mModel.set(CLOSE_INDICATOR, getCloseIndicator(forward));
             mModel.set(ACTION, GestureAction.SHOW_ARROW);
             mState = GestureState.DRAGGED;
         } else {
+<<<<<<< HEAD
+            // Incorrect swipe.
+            // Record the initiating edge (left or right).
+            mIncorrectEdgeSwipeCount += 1;
+            BackPressMetrics.recordIncorrectEdgeSwipe(mInitiatingEdge);
+            mBackActionDelegate.onGestureUnhandled();
+=======
             if (mState != GestureState.STARTED) mModel.set(ACTION, GestureAction.RESET_GLOW);
             mModel.set(GESTURE_POS, new GesturePoint(x, y, 0L));
             mModel.set(ACTION, GestureAction.SHOW_GLOW);
             mState = GestureState.GLOW;
+>>>>>>> chromium
         }
         return navigable;
     }
@@ -227,6 +269,7 @@ class NavigationHandler implements TouchEventObserver {
 
     /**
      * Perform navigation back or forward.
+     *
      * @param forward {@code true} for forward navigation, or {@code false} for back.
      */
     void navigate(boolean forward) {

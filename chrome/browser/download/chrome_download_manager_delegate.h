@@ -284,10 +284,16 @@ class ChromeDownloadManagerDelegate
       DownloadTargetDeterminerDelegate::ConfirmationCallback callback,
       download::PathValidationResult result,
       const base::FilePath& target_path);
+<<<<<<< HEAD
+  // Return true if the mime type is pdf and Chrome supports open this pdf.
+  bool IsPdfAndSupported(const std::string& mime_type,
+                         content::WebContents* web_contents);
+=======
 
   // Returns whether to show download later dialog.
   bool ShouldShowDownloadLaterDialog(
       const download::DownloadItem* download) const;
+>>>>>>> chromium
 #endif
 
   Profile* profile_;

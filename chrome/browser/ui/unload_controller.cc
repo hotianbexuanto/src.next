@@ -4,11 +4,20 @@
 
 #include "chrome/browser/ui/unload_controller.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+
+=======
 #include "base/bind.h"
+>>>>>>> chromium
 #include "base/containers/contains.h"
 #include "base/location.h"
+<<<<<<< HEAD
+#include "base/task/single_thread_task_runner.h"
+=======
 #include "base/single_thread_task_runner.h"
 #include "base/threading/thread_task_runner_handle.h"
+>>>>>>> chromium
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/ui/browser.h"
@@ -42,8 +51,27 @@ UnloadController::~UnloadController() {
 bool UnloadController::CanCloseContents(content::WebContents* contents) {
   // Don't try to close the tab when the whole browser is being closed, since
   // that avoids the fast shutdown path where we just kill all the renderers.
-  if (is_attempting_to_close_browser_)
+  if (is_attempting_to_close_browser_) {
     ClearUnloadState(contents, true);
+<<<<<<< HEAD
+  }
+
+  if (!web_app::IsTabClosable(
+          browser_->tab_strip_model(),
+          browser_->tab_strip_model()->GetIndexOfWebContents(contents))) {
+    return false;
+  }
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // Tabs cannot be closed when the app is locked for OnTask. Only relevant for
+  // non-web browser scenarios.
+  if (browser_->IsLockedForOnTask()) {
+    return false;
+  }
+#endif
+
+=======
+>>>>>>> chromium
   return !is_attempting_to_close_browser_ ||
          is_calling_before_unload_handlers();
 }
@@ -73,8 +101,9 @@ bool UnloadController::RunUnloadEventsHelper(content::WebContents* contents) {
   // close if it's beforeunload event has already fired which will happen due
   // to the interception of it's content's beforeunload.
   if (browser_->is_type_devtools() &&
-      DevToolsWindow::HasFiredBeforeUnloadEventForDevToolsBrowser(browser_))
+      DevToolsWindow::HasFiredBeforeUnloadEventForDevToolsBrowser(browser_)) {
     return false;
+  }
 
   // If there's a devtools window attached to |contents|,
   // we would like devtools to call its own beforeunload handlers first,
@@ -110,8 +139,9 @@ bool UnloadController::BeforeUnloadFired(content::WebContents* contents,
   }
 
   if (!is_attempting_to_close_browser_) {
-    if (!proceed)
+    if (!proceed) {
       contents->SetClosedByUserGesture(false);
+    }
     return proceed;
   }
 
@@ -190,8 +220,9 @@ bool UnloadController::TryToCloseWindow(
 }
 
 void UnloadController::ResetTryToCloseWindow() {
-  if (!is_calling_before_unload_handlers())
+  if (!is_calling_before_unload_handlers()) {
     return;
+  }
   CancelWindowClose();
 }
 
@@ -218,13 +249,13 @@ void UnloadController::CancelWindowClose() {
   // case some of this code might not have an effect, but it's still useful to,
   // for example, call the notification(s).
   tabs_needing_before_unload_fired_.clear();
-  for (auto it = tabs_needing_unload_fired_.begin();
-       it != tabs_needing_unload_fired_.end(); ++it) {
-    DevToolsWindow::OnPageCloseCanceled(*it);
+  for (const auto& it : tabs_needing_unload_fired_) {
+    DevToolsWindow::OnPageCloseCanceled(it);
   }
   tabs_needing_unload_fired_.clear();
-  if (is_calling_before_unload_handlers())
+  if (is_calling_before_unload_handlers()) {
     std::move(on_close_confirmed_).Run(false);
+  }
   is_attempting_to_close_browser_ = false;
 
   chrome::OnClosingAllBrowsers(false);
@@ -253,20 +284,24 @@ void UnloadController::OnTabStripModelChanged(
   std::vector<content::WebContents*> old_contents;
 
   if (change.type() == TabStripModelChange::kInserted) {
-    for (const auto& contents : change.GetInsert()->contents)
+    for (const auto& contents : change.GetInsert()->contents) {
       new_contents.push_back(contents.contents);
+    }
   } else if (change.type() == TabStripModelChange::kReplaced) {
     new_contents.push_back(change.GetReplace()->new_contents);
     old_contents.push_back(change.GetReplace()->old_contents);
   } else if (change.type() == TabStripModelChange::kRemoved) {
-    for (const auto& contents : change.GetRemove()->contents)
+    for (const auto& contents : change.GetRemove()->contents) {
       old_contents.push_back(contents.contents);
+    }
   }
 
-  for (auto* contents : old_contents)
+  for (auto* contents : old_contents) {
     TabDetachedImpl(contents);
-  for (auto* contents : new_contents)
+  }
+  for (auto* contents : new_contents) {
     TabAttachedImpl(contents);
+  }
 }
 
 void UnloadController::TabStripEmpty() {
@@ -285,8 +320,18 @@ void UnloadController::TabAttachedImpl(content::WebContents* contents) {
 }
 
 void UnloadController::TabDetachedImpl(content::WebContents* contents) {
-  if (is_attempting_to_close_browser_)
+  if (is_attempting_to_close_browser_) {
     ClearUnloadState(contents, false);
+<<<<<<< HEAD
+  }
+  // TODO(crbug.com/40054609): This CHECK is only in place to diagnose a UAF
+  // bug. This is both used to confirm that a WebContents* isn't being removed
+  // from this set, and also if that hypothesis is correct turns a UAF into a
+  // non-security crash.
+  CHECK(tabs_needing_before_unload_fired_.find(contents) ==
+        tabs_needing_before_unload_fired_.end());
+=======
+>>>>>>> chromium
   web_contents_collection_.StopObserving(contents);
 }
 
@@ -326,8 +371,9 @@ void UnloadController::ProcessPendingTabs(bool skip_beforeunload) {
       // we would like devtools to call its own beforeunload handlers first,
       // and then call beforeunload handlers for |web_contents|.
       // See DevToolsWindow::InterceptPageBeforeUnload for details.
-      if (!DevToolsWindow::InterceptPageBeforeUnload(web_contents))
+      if (!DevToolsWindow::InterceptPageBeforeUnload(web_contents)) {
         web_contents->DispatchBeforeUnload(false /* auto_cancel */);
+      }
     } else {
       ClearUnloadState(web_contents, true);
     }
@@ -337,10 +383,31 @@ void UnloadController::ProcessPendingTabs(bool skip_beforeunload) {
     // Reset |on_close_confirmed_| in case the callback tests
     // |is_calling_before_unload_handlers()|, we want to return that calling
     // is complete.
-    if (tabs_needing_unload_fired_.empty())
+    if (tabs_needing_unload_fired_.empty()) {
       on_close_confirmed_.Reset();
-    if (!skip_beforeunload)
+    }
+    if (!skip_beforeunload) {
       on_close_confirmed.Run(true);
+<<<<<<< HEAD
+    }
+    return;
+  }
+  CHECK(!tabs_needing_unload_fired_.empty());
+  // We've finished firing all beforeunload events and can proceed with unload
+  // events.
+  // TODO(ojan): We should add a call to browser_shutdown::OnShutdownStarting
+  // somewhere around here so that we have accurate measurements of shutdown
+  // time.
+  // TODO(ojan): We can probably fire all the unload events in parallel and
+  // get a perf benefit from that in the cases where the tab hangs in it's
+  // unload handler or takes a long time to page in.
+  content::WebContents* const web_contents =
+      *(tabs_needing_unload_fired_.begin());
+  // Null check render_view_host here as this gets called on a PostTask and
+  // the tab's render_view_host may have been nulled out.
+  if (web_contents->GetPrimaryMainFrame()->GetRenderViewHost()) {
+    web_contents->ClosePage();
+=======
   } else if (!tabs_needing_unload_fired_.empty()) {
     // We've finished firing all beforeunload events and can proceed with unload
     // events.
@@ -358,6 +425,7 @@ void UnloadController::ProcessPendingTabs(bool skip_beforeunload) {
     } else {
       ClearUnloadState(web_contents, true);
     }
+>>>>>>> chromium
   } else {
     NOTREACHED();
   }
@@ -373,7 +441,11 @@ bool UnloadController::RemoveFromSet(UnloadListenerSet* set,
                                      content::WebContents* web_contents) {
   DCHECK(is_attempting_to_close_browser_);
 
+<<<<<<< HEAD
+  auto iter = std::ranges::find(*set, web_contents);
+=======
   auto iter = std::find(set->begin(), set->end(), web_contents);
+>>>>>>> chromium
   if (iter != set->end()) {
     set->erase(iter);
     return true;
@@ -390,9 +462,14 @@ void UnloadController::ClearUnloadState(content::WebContents* web_contents,
       ProcessPendingTabs(false);
     } else {
       // Do not post a new task if there is already any.
-      if (weak_factory_.HasWeakPtrs())
+      if (weak_factory_.HasWeakPtrs()) {
         return;
+<<<<<<< HEAD
+      }
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+=======
       base::ThreadTaskRunnerHandle::Get()->PostTask(
+>>>>>>> chromium
           FROM_HERE, base::BindOnce(&UnloadController::ProcessPendingTabs,
                                     weak_factory_.GetWeakPtr(), false));
     }

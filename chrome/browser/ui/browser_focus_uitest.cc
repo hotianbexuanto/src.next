@@ -4,8 +4,13 @@
 
 #include <stddef.h>
 
+<<<<<<< HEAD
+#include <array>
+
+=======
 #include "base/bind.h"
 #include "base/cxx17_backports.h"
+>>>>>>> chromium
 #include "base/files/file_util.h"
 #include "base/format_macros.h"
 #include "base/location.h"
@@ -52,6 +57,83 @@
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "third_party/blink/public/common/switches.h"
 #include "ui/base/test/ui_controls.h"
+<<<<<<< HEAD
+#include "ui/base/ui_base_features.h"
+#include "ui/views/focus/focus_manager.h"
+#include "ui/views/interaction/view_focus_observer.h"
+#include "ui/views/test/widget_activation_waiter.h"
+#include "ui/views/widget/widget.h"
+
+#if BUILDFLAG(IS_MAC)
+#include "base/mac/mac_util.h"
+#endif
+
+#if BUILDFLAG(IS_WIN)
+#include "base/test/scoped_feature_list.h"
+#endif
+
+namespace {
+
+constexpr char kGetFocusedElementJS[] = "getFocusedElement();";
+
+// Listens to UI and DOM element focus changes.
+class FocusChangeObserver : public views::FocusChangeListener,
+                            public content::WebContentsObserver {
+ public:
+  FocusChangeObserver(views::FocusManager* focus_manager,
+                      content::WebContents* web_contents)
+      : content::WebContentsObserver(web_contents) {
+    obs_.Observe(focus_manager);
+  }
+
+  void WaitForFocusChange() { run_loop_.Run(); }
+
+  // FocusChangeListener:
+  void OnWillChangeFocus(views::View* focused_before,
+                         views::View* focused_now) override {}
+  void OnDidChangeFocus(views::View* focused_before,
+                        views::View* focused_now) override {
+    if (focused_now) {
+      SCOPED_TRACE(base::StrCat(
+          {"View with ID=", base::NumberToString(focused_now->GetID()),
+           " is focused now."}));
+    }
+    run_loop_.Quit();
+  }
+
+  // WebContentsObserver:
+  void OnFocusChangedInPage(content::FocusedNodeDetails* details) override {
+    SCOPED_TRACE(base::StrCat(
+        {"Page element with id=",
+         content::EvalJs(web_contents(), kGetFocusedElementJS).ExtractString(),
+         " is focused now."}));
+    run_loop_.Quit();
+  }
+
+ private:
+  base::ScopedObservation<views::FocusManager, FocusChangeObserver> obs_{this};
+  base::RunLoop run_loop_;
+};
+
+}  // namespace
+
+namespace base {
+
+template <>
+struct ScopedObservationTraits<views::FocusManager, FocusChangeObserver> {
+  static void AddObserver(views::FocusManager* source,
+                          FocusChangeObserver* observer) {
+    source->AddFocusChangeListener(observer);
+  }
+  static void RemoveObserver(views::FocusManager* source,
+                             FocusChangeObserver* observer) {
+    source->RemoveFocusChangeListener(observer);
+  }
+};
+
+}  // namespace base
+=======
+>>>>>>> chromium
 
 namespace {
 
@@ -70,7 +152,79 @@ const char kTypicalPage[] = "/focus/typical_page.html";
 
 class BrowserFocusTest : public InProcessBrowserTest {
  public:
+<<<<<<< HEAD
+  BrowserFocusBasicTest() {
+    // interactive_ui_tests set `ui_test_utils::BringBrowserWindowToFront()` for
+    // the setup function, which interferes with what the test wants to test so
+    // unset it.
+    set_global_browser_set_up_function(nullptr);
+#if BUILDFLAG(IS_WIN)
+    // For CHROME_HEADLESS, which is currently used for browser tests, native
+    // window occlusion is turned off. Turn it on to match the production
+    // environment.
+    base::FieldTrialParams field_trial_params{
+        { features::kApplyNativeOcclusionToCompositorType.name,
+          features::kApplyNativeOcclusionToCompositorTypeRelease }};
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        /*enabled_features=*/
+        {{features::kApplyNativeOcclusionToCompositor, field_trial_params},
+         { features::kAlwaysTrackNativeWindowOcclusionForTest,
+           {} }},
+        /*disabled_features=*/{});
+#endif
+  }
+
+  views::Widget* GetWidgetForBrowser(Browser* browser) {
+    BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
+    CHECK(browser_view);
+    views::Widget* widget = browser_view->GetWidget();
+    CHECK(widget);
+    return widget;
+  }
+
+  bool IsBrowserActive(Browser* browser) {
+    return GetWidgetForBrowser(browser)->IsActive();
+  }
+
+ private:
+#if BUILDFLAG(IS_WIN)
+  base::test::ScopedFeatureList scoped_feature_list_;
+#endif
+};
+
+// A basic test to check that a newly opened browser window has focus and the
+// focus is on the omnibox.
+IN_PROC_BROWSER_TEST_F(BrowserFocusBasicTest, BrowserFocusedOnCreation) {
+  // Ensure that the initialization of the browser window is completed.
+  ui_test_utils::CreateAsyncWidgetRequestWaiter(*browser()).Wait();
+  // Widget activation happens asynchronously after window creation on some
+  // platforms like Linux so absorb the difference by waiting for the
+  // activation.
+  views::test::WaitForWidgetActive(GetWidgetForBrowser(browser()), true);
+  // Check that when a browser is created, it's active.
+  EXPECT_TRUE(IsBrowserActive(browser()));
+  EXPECT_TRUE(ui_test_utils::IsViewFocused(browser(), VIEW_ID_OMNIBOX));
+
+  // Use `chrome::OpenEmptyWindow()` instead of directly creating a `Browser`
+  // instance with `Browser::Create()` and calling `BrowserView::Show()` like
+  // some tests do because this is what the production code does when opening a
+  // new window. The difference is that it makes sure that there is at least one
+  // tab on the window before calling `BrowserView::Show()`.
+  Browser* browser2 = chrome::OpenEmptyWindow(browser()->profile());
+  ui_test_utils::CreateAsyncWidgetRequestWaiter(*browser2).Wait();
+  views::test::WaitForWidgetActive(GetWidgetForBrowser(browser2), true);
+  EXPECT_TRUE(IsBrowserActive(browser2));
+  EXPECT_TRUE(ui_test_utils::IsViewFocused(browser2, VIEW_ID_OMNIBOX));
+}
+
+DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebContentsId);
+
+class BrowserFocusTest : public InteractiveBrowserTest {
+ public:
+  // InteractiveBrowserTest overrides:
+=======
   // InProcessBrowserTest overrides:
+>>>>>>> chromium
   void SetUpOnMainThread() override {
     ASSERT_TRUE(embedded_test_server()->Start());
   }
@@ -237,9 +391,11 @@ IN_PROC_BROWSER_TEST_F(BrowserFocusTest, TabsRememberFocus) {
   }
 
   // Alternate focus for the tab.
-  const bool kFocusPage[3][5] = {{true, true, true, true, false},
-                                 {false, false, false, false, false},
-                                 {false, true, false, true, false}};
+  const std::array<std::array<const bool, 5>, 3> kFocusPage = {{
+      {true, true, true, true, false},
+      {false, false, false, false, false},
+      {false, true, false, true, false},
+  }};
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 5; j++) {
@@ -626,7 +782,12 @@ IN_PROC_BROWSER_TEST_F(BrowserFocusTest, NavigateFromOmniboxIntoNewTab) {
   controller->OnAutocompleteAccept(
       url2, nullptr, WindowOpenDisposition::NEW_FOREGROUND_TAB,
       ui::PAGE_TRANSITION_TYPED, AutocompleteMatchType::URL_WHAT_YOU_TYPED,
+<<<<<<< HEAD
+      base::TimeTicks(), false, false, std::u16string(), AutocompleteMatch(),
+      AutocompleteMatch());
+=======
       base::TimeTicks(), false);
+>>>>>>> chromium
 
   // Make sure the second tab is selected.
   EXPECT_EQ(1, browser()->tab_strip_model()->active_index());

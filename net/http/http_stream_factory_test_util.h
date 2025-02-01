@@ -96,8 +96,19 @@ class MockHttpStreamRequestDelegate : public HttpStreamRequest::Delegate {
 
   MOCK_METHOD0(OnQuicBroken, void());
 
+<<<<<<< HEAD
+  // `switching_info` is not copyable and therefore cannot be mocked.
+  MOCK_METHOD1(OnSwitchesToHttpStreamPoolImpl,
+               void(HttpStreamPoolRequestInfo& request_info));
+
+  void OnSwitchesToHttpStreamPool(
+      HttpStreamPoolRequestInfo request_info) override {
+    OnSwitchesToHttpStreamPoolImpl(request_info);
+  }
+=======
  private:
   DISALLOW_COPY_AND_ASSIGN(MockHttpStreamRequestDelegate);
+>>>>>>> chromium
 };
 
 class MockHttpStreamFactoryJob : public HttpStreamFactory::Job {

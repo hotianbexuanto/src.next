@@ -104,8 +104,20 @@ class LoadedIncognitoObserver : public ExtensionRegistryObserver {
 
 class LazyBackgroundPageApiTest : public ExtensionApiTest {
  public:
+<<<<<<< HEAD
+  LazyBackgroundPageApiTest() {
+    feature_list_.InitAndEnableFeature(kNaclAllow);
+  }
+
+  LazyBackgroundPageApiTest(const LazyBackgroundPageApiTest&) = delete;
+  LazyBackgroundPageApiTest& operator=(const LazyBackgroundPageApiTest&) =
+      delete;
+
+  ~LazyBackgroundPageApiTest() override = default;
+=======
   LazyBackgroundPageApiTest() {}
   ~LazyBackgroundPageApiTest() override {}
+>>>>>>> chromium
 
   void SetUpInProcessBrowserTestFixture() override {
     ExtensionApiTest::SetUpInProcessBrowserTestFixture();
@@ -332,8 +344,20 @@ IN_PROC_BROWSER_TEST_F(LazyBackgroundPageApiTest,
 
 // Tests that the lazy background page stays alive until all visible views are
 // closed.
+<<<<<<< HEAD
+// TODO: crbug.com/379109454 - Fix flakiness of the test.
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#define MAYBE_WaitForView DISABLED_WaitForView
+#else
+#define MAYBE_WaitForView WaitForView
+#endif
+IN_PROC_BROWSER_TEST_F(LazyBackgroundPageApiTest, MAYBE_WaitForView) {
+  ExtensionHostTestHelper host_helper(profile());
+  host_helper.RestrictToType(mojom::ViewType::kExtensionBackgroundPage);
+=======
 IN_PROC_BROWSER_TEST_F(LazyBackgroundPageApiTest, WaitForView) {
   LazyBackgroundObserver page_complete;
+>>>>>>> chromium
   ResultCatcher catcher;
   base::FilePath extdir = test_data_dir_.AppendASCII("lazy_background_page").
       AppendASCII("wait_for_view");
@@ -470,7 +494,12 @@ IN_PROC_BROWSER_TEST_F(LazyBackgroundPageApiTest, NaClInView) {
 // Tests that the lazy background page stays alive until all visible views are
 // closed.
 // http://crbug.com/175778; test fails frequently on OS X
+<<<<<<< HEAD
+// TODO: crbug.com/379109454 - Fix flakiness of the test.
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+=======
 #if defined(OS_MAC)
+>>>>>>> chromium
 #define MAYBE_WaitForNTP DISABLED_WaitForNTP
 #else
 #define MAYBE_WaitForNTP WaitForNTP
@@ -598,11 +627,19 @@ IN_PROC_BROWSER_TEST_F(LazyBackgroundPageApiTest, MAYBE_Messaging) {
   EXPECT_TRUE(catcher.GetNextResult()) << catcher.message();
   EXPECT_TRUE(IsBackgroundPageAlive(last_loaded_extension_id()));
 
+<<<<<<< HEAD
+  // Navigate away
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+  // Navigating away triggers closing the message channel and
+  // therefore the background page.
+  host_helper.WaitForHostDestroyed();
+=======
   // Navigate away, closing the message channel and therefore the background
   // page.
   ui_test_utils::NavigateToURL(browser(), GURL("about:blank"));
   lazybg.WaitUntilClosed();
 
+>>>>>>> chromium
   EXPECT_FALSE(IsBackgroundPageAlive(last_loaded_extension_id()));
 }
 
@@ -709,7 +746,17 @@ class PictureInPictureLazyBackgroundPageApiTest
     : public LazyBackgroundPageApiTest {
  public:
   PictureInPictureLazyBackgroundPageApiTest() = default;
+<<<<<<< HEAD
+
+  PictureInPictureLazyBackgroundPageApiTest(
+      const PictureInPictureLazyBackgroundPageApiTest&) = delete;
+  PictureInPictureLazyBackgroundPageApiTest& operator=(
+      const PictureInPictureLazyBackgroundPageApiTest&) = delete;
+
+  ~PictureInPictureLazyBackgroundPageApiTest() override = default;
+=======
   ~PictureInPictureLazyBackgroundPageApiTest() override {}
+>>>>>>> chromium
 
   void SetUpInProcessBrowserTestFixture() override {
     LazyBackgroundPageApiTest::SetUpInProcessBrowserTestFixture();

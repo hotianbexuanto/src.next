@@ -45,6 +45,11 @@ include_rules = [
   "+components/policy",
   "+components/prefs/android",
   "+components/query_tiles",
+<<<<<<< HEAD
+  "+components/safe_browsing/android/java",
+  "+components/saved_tab_groups/public/android/java",
+=======
+>>>>>>> chromium
   "+components/security_interstitials/content/android",
   "+components/signin/public/android",
   "+components/site_engagement/content/android",

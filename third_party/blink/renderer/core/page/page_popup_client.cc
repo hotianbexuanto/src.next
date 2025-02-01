@@ -31,10 +31,10 @@
 #include "third_party/blink/renderer/core/page/page_popup_client.h"
 
 #include "third_party/blink/renderer/core/css/css_font_selector.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page_popup_controller.h"
+#include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/text/platform_locale.h"
 #include "third_party/blink/renderer/platform/wtf/text/character_names.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -55,7 +55,11 @@ float PagePopupClient::ScaledZoomFactor() {
   return ZoomFactor() / scale_factor;
 }
 
+<<<<<<< HEAD
+#define addLiteral(literal, data) data.Append(base::span_from_cstring(literal))
+=======
 #define addLiteral(literal, data) data->Append(literal, sizeof(literal) - 1)
+>>>>>>> chromium
 
 void PagePopupClient::AddJavaScriptString(const String& str,
                                           SharedBuffer* data) {
@@ -85,37 +89,59 @@ void PagePopupClient::AddJavaScriptString(const String& str,
   addLiteral("\"", data);
 }
 
+<<<<<<< HEAD
+void PagePopupClient::AddProperty(std::string_view name,
+                                  const StringView& value,
+                                  SegmentedBuffer& data) {
+  data.Append(name);
+=======
 void PagePopupClient::AddProperty(const char* name,
                                   const String& value,
                                   SharedBuffer* data) {
   data->Append(name, strlen(name));
+>>>>>>> chromium
   addLiteral(": ", data);
   AddJavaScriptString(value, data);
   addLiteral(",\n", data);
 }
 
-void PagePopupClient::AddProperty(const char* name,
+void PagePopupClient::AddProperty(std::string_view name,
                                   int value,
+<<<<<<< HEAD
+                                  SegmentedBuffer& data) {
+  data.Append(name);
+=======
                                   SharedBuffer* data) {
   data->Append(name, strlen(name));
+>>>>>>> chromium
   addLiteral(": ", data);
   AddString(String::Number(value), data);
   addLiteral(",\n", data);
 }
 
-void PagePopupClient::AddProperty(const char* name,
+void PagePopupClient::AddProperty(std::string_view name,
                                   unsigned value,
+<<<<<<< HEAD
+                                  SegmentedBuffer& data) {
+  data.Append(name);
+=======
                                   SharedBuffer* data) {
   data->Append(name, strlen(name));
+>>>>>>> chromium
   addLiteral(": ", data);
   AddString(String::Number(value), data);
   addLiteral(",\n", data);
 }
 
-void PagePopupClient::AddProperty(const char* name,
+void PagePopupClient::AddProperty(std::string_view name,
                                   bool value,
+<<<<<<< HEAD
+                                  SegmentedBuffer& data) {
+  data.Append(name);
+=======
                                   SharedBuffer* data) {
   data->Append(name, strlen(name));
+>>>>>>> chromium
   addLiteral(": ", data);
   if (value)
     addLiteral("true", data);
@@ -124,19 +150,29 @@ void PagePopupClient::AddProperty(const char* name,
   addLiteral(",\n", data);
 }
 
-void PagePopupClient::AddProperty(const char* name,
+void PagePopupClient::AddProperty(std::string_view name,
                                   double value,
+<<<<<<< HEAD
+                                  SegmentedBuffer& data) {
+  data.Append(name);
+=======
                                   SharedBuffer* data) {
   data->Append(name, strlen(name));
+>>>>>>> chromium
   addLiteral(": ", data);
   AddString(String::Number(value), data);
   addLiteral(",\n", data);
 }
 
-void PagePopupClient::AddProperty(const char* name,
+void PagePopupClient::AddProperty(std::string_view name,
                                   const Vector<String>& values,
+<<<<<<< HEAD
+                                  SegmentedBuffer& data) {
+  data.Append(name);
+=======
                                   SharedBuffer* data) {
   data->Append(name, strlen(name));
+>>>>>>> chromium
   addLiteral(": [", data);
   for (unsigned i = 0; i < values.size(); ++i) {
     if (i)
@@ -146,10 +182,17 @@ void PagePopupClient::AddProperty(const char* name,
   addLiteral("],\n", data);
 }
 
+<<<<<<< HEAD
+void PagePopupClient::AddProperty(std::string_view name,
+                                  const gfx::Rect& rect,
+                                  SegmentedBuffer& data) {
+  data.Append(name);
+=======
 void PagePopupClient::AddProperty(const char* name,
                                   const IntRect& rect,
                                   SharedBuffer* data) {
   data->Append(name, strlen(name));
+>>>>>>> chromium
   addLiteral(": {", data);
   AddProperty("x", rect.X(), data);
   AddProperty("y", rect.Y(), data);
@@ -158,7 +201,7 @@ void PagePopupClient::AddProperty(const char* name,
   addLiteral("},\n", data);
 }
 
-void PagePopupClient::AddLocalizedProperty(const char* name,
+void PagePopupClient::AddLocalizedProperty(std::string_view name,
                                            int resource_id,
                                            SharedBuffer* data) {
   AddProperty(name, GetLocale().QueryString(resource_id), data);

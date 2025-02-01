@@ -25,6 +25,8 @@ public interface TabModel extends TabList {
     public Profile getProfile();
 
     /**
+<<<<<<< HEAD
+=======
      * Unregisters and destroys the specified tab, and then switches to the previous tab.
      * @param tab The non-null tab to close
      * @return true if the tab was found
@@ -72,6 +74,7 @@ public interface TabModel extends TabList {
             boolean uponExit, boolean canUndo);
 
     /**
+>>>>>>> chromium
      * Returns which tab would be selected if the specified tab {@code id} were closed.
      * @param id The ID of tab which would be closed.
      * @return The id of the next tab that would be visible.
@@ -175,6 +178,8 @@ public interface TabModel extends TabList {
     void addTab(Tab tab, int index, @TabLaunchType int type, @TabCreationState int creationState);
 
     /**
+<<<<<<< HEAD
+=======
      * Removes the given tab from the model without destroying it. The tab should be inserted into
      * another model to avoid leaking as after this the link to the old Activity will be broken.
      * @param tab The tab to remove.
@@ -182,6 +187,7 @@ public interface TabModel extends TabList {
     void removeTab(Tab tab);
 
     /**
+>>>>>>> chromium
      * Subscribes a {@link TabModelObserver} to be notified about changes to this model.
      * @param observer The observer to be subscribed.
      */

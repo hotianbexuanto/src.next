@@ -10,7 +10,11 @@
 #include "base/task/thread_pool.h"
 #include "base/task_runner.h"
 #include "build/build_config.h"
+<<<<<<< HEAD
+#include "components/file_access/scoped_file_access.h"
+=======
 #include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "content/browser/child_process_security_policy_impl.h"
 #include "content/public/browser/network_context_client_base.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -114,6 +118,12 @@ void NetworkContextClientBase::OnGenerateHttpNegotiateAuthToken(
 }
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CT_SUPPORTED)
+void NetworkContextClientBase::OnCanSendSCTAuditingReport(
+    OnCanSendSCTAuditingReportCallback callback) {
+  std::move(callback).Run(false);
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 void NetworkContextClientBase::OnTrustAnchorUsed() {}
 #endif
@@ -125,6 +135,7 @@ void NetworkContextClientBase::OnTrustTokenIssuanceDivertedToSystem(
   response->status =
       network::mojom::FulfillTrustTokenIssuanceAnswer::Status::kNotFound;
   std::move(callback).Run(std::move(response));
+>>>>>>> chromium
 }
 
 }  // namespace content

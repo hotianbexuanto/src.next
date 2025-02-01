@@ -101,10 +101,19 @@ CSSPrimitiveValue::UnitCategory CSSPrimitiveValue::UnitTypeToUnitCategory(
   }
 }
 
-bool CSSPrimitiveValue::IsCalculatedPercentageWithLength() const {
+bool CSSPrimitiveValue::IsResolvableBeforeLayout() const {
   // TODO(crbug.com/979895): Move this function to |CSSMathFunctionValue|.
+<<<<<<< HEAD
+  if (!IsCalculated()) {
+    return true;
+  }
+  CalculationResultCategory category =
+      To<CSSMathFunctionValue>(this)->Category();
+  return category != kCalcLengthFunction && category != kCalcIntrinsicSize;
+=======
   return IsCalculated() &&
          To<CSSMathFunctionValue>(this)->Category() == kCalcPercentLength;
+>>>>>>> chromium
 }
 
 bool CSSPrimitiveValue::IsResolution() const {
@@ -289,12 +298,60 @@ float CSSPrimitiveValue::ComputeLength(
 
 template <>
 double CSSPrimitiveValue::ComputeLength(
+<<<<<<< HEAD
+    const CSSLengthResolver& length_resolver) const {
+  return CSSValueClampingUtils::ClampLength(
+      ComputeLengthDouble(length_resolver));
+}
+
+int CSSPrimitiveValue::ComputeInteger(
+    const CSSLengthResolver& length_resolver) const {
+  DCHECK(IsNumber());
+  return IsCalculated()
+             ? To<CSSMathFunctionValue>(this)->ComputeInteger(length_resolver)
+             : To<CSSNumericLiteralValue>(this)->ComputeInteger();
+}
+
+double CSSPrimitiveValue::ComputeNumber(
+    const CSSLengthResolver& length_resolver) const {
+  DCHECK(IsNumber() || IsPercentage());
+  // NOTE: Division by 100 will be done by ComputeNumber() if needed.
+  return IsCalculated()
+             ? To<CSSMathFunctionValue>(this)->ComputeNumber(length_resolver)
+             : To<CSSNumericLiteralValue>(this)->ComputeNumber();
+}
+
+double CSSPrimitiveValue::ComputePercentage(
+    const CSSLengthResolver& length_resolver) const {
+  DCHECK(IsPercentage());
+  return IsCalculated() ? To<CSSMathFunctionValue>(this)->ComputePercentage(
+                              length_resolver)
+                        : To<CSSNumericLiteralValue>(this)->ComputePercentage();
+}
+
+double CSSPrimitiveValue::ComputeValueInCanonicalUnit(
+    const CSSLengthResolver& length_resolver) const {
+  // Don't use it for mix of length and percentage or similar,
+  // as it would compute 10px + 10% to 20.
+  DCHECK(IsResolvableBeforeLayout());
+  return IsCalculated()
+             ? To<CSSMathFunctionValue>(this)->ComputeValueInCanonicalUnit(
+                   length_resolver)
+             : To<CSSNumericLiteralValue>(this)->ComputeInCanonicalUnit(
+                   length_resolver);
+=======
     const CSSToLengthConversionData& conversion_data) const {
   double value = ComputeLengthDouble(conversion_data);
   if (RuntimeEnabledFeatures::CSSCalcInfinityAndNaNEnabled()) {
     return CSSValueClampingUtils::ClampLength(value);
   }
   return value;
+>>>>>>> chromium
+}
+
+std::optional<double> CSSPrimitiveValue::GetValueIfKnown() const {
+  return IsCalculated() ? To<CSSMathFunctionValue>(this)->GetValueIfKnown()
+                        : To<CSSNumericLiteralValue>(this)->GetValueIfKnown();
 }
 
 double CSSPrimitiveValue::ComputeLengthDouble(
@@ -386,11 +443,16 @@ Length CSSPrimitiveValue::ConvertToLength(
   if (IsPercentage()) {
     if (IsNumericLiteralValue() ||
         !To<CSSMathFunctionValue>(this)->AllowsNegativePercentageReference()) {
+<<<<<<< HEAD
+      return Length::Percent(CSSValueClampingUtils::ClampLength(
+          ComputePercentage(length_resolver)));
+=======
       double value = GetDoubleValueWithoutClamping();
       if (RuntimeEnabledFeatures::CSSCalcInfinityAndNaNEnabled()) {
         value = CSSValueClampingUtils::ClampLength(value);
       }
       return Length::Percent(value);
+>>>>>>> chromium
     }
   }
   DCHECK(IsCalculated());
@@ -406,11 +468,14 @@ double CSSPrimitiveValue::GetDoubleValueWithoutClamping() const {
                         : To<CSSNumericLiteralValue>(this)->DoubleValue();
 }
 
+<<<<<<< HEAD
+=======
 bool CSSPrimitiveValue::IsZero() const {
   return IsCalculated() ? To<CSSMathFunctionValue>(this)->IsZero()
                         : To<CSSNumericLiteralValue>(this)->IsZero();
 }
 
+>>>>>>> chromium
 CSSPrimitiveValue::UnitType CSSPrimitiveValue::CanonicalUnitTypeForCategory(
     UnitCategory category) {
   // The canonical unit type is chosen according to the way

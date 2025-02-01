@@ -495,7 +495,12 @@ static bool ChildRulesHaveFailedOrCanceledSubresources(
       case StyleRuleBase::kImport:
       case StyleRuleBase::kNamespace:
         NOTREACHED();
+<<<<<<< HEAD
+      case StyleRuleBase::kNestedDeclarations:
+      case StyleRuleBase::kFunctionDeclarations:
+=======
         break;
+>>>>>>> chromium
       case StyleRuleBase::kPage:
       case StyleRuleBase::kProperty:
       case StyleRuleBase::kKeyframes:
@@ -597,9 +602,24 @@ RuleSet& StyleSheetContents::EnsureRuleSet(const MediaQueryEvaluator& medium,
     rule_set_ = nullptr;
   if (!rule_set_) {
     rule_set_ = MakeGarbageCollected<RuleSet>();
+<<<<<<< HEAD
+    rule_set_->AddRulesFromSheet(this, medium);
+    if (rule_set_diff_) {
+      rule_set_diff_->NewRuleSetCreated(rule_set_);
+    }
+    rule_set_->CompactRulesIfNeeded();
+=======
     rule_set_->AddRulesFromSheet(this, medium, add_rule_flags);
+>>>>>>> chromium
   }
   return *rule_set_.Get();
+}
+
+RuleSet* StyleSheetContents::CreateUnconnectedRuleSet(
+    const MediaQueryEvaluator& medium) const {
+  auto* rule_set = MakeGarbageCollected<RuleSet>();
+  rule_set->AddRulesFromSheet(this, medium);
+  return rule_set;
 }
 
 static void SetNeedsActiveStyleUpdateForClients(

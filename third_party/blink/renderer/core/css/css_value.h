@@ -123,6 +123,7 @@ class CORE_EXPORT CSSValue : public GarbageCollected<CSSValue> {
     return class_type_ == kLinearGradientClass;
   }
   bool IsPathValue() const { return class_type_ == kPathClass; }
+  bool IsShapeValue() const { return class_type_ == kShapeClass; }
   bool IsQuadValue() const { return class_type_ == kQuadClass; }
   bool IsRayValue() const { return class_type_ == kRayClass; }
   bool IsRadialGradientValue() const {
@@ -191,6 +192,17 @@ class CORE_EXPORT CSSValue : public GarbageCollected<CSSValue> {
     return class_type_ == kElementOffsetClass;
   }
 
+<<<<<<< HEAD
+  // NOTE: Relative colors can also be unresolved; this is about
+  // the specific case of unresolved absolute colors.
+  bool IsUnresolvedColorValue() const {
+    return class_type_ == kUnresolvedColorClass;
+  }
+
+  bool IsRepeatValue() const { return class_type_ == kRepeatClass; }
+
+=======
+>>>>>>> chromium
   bool HasFailedOrCanceledSubresources() const;
   bool MayContainUrl() const;
   void ReResolveUrl(const Document&) const;
@@ -198,7 +210,24 @@ class CORE_EXPORT CSSValue : public GarbageCollected<CSSValue> {
   bool operator==(const CSSValue&) const;
   bool operator!=(const CSSValue& o) const { return !(*this == o); }
 
+<<<<<<< HEAD
+  // Returns the same CSS value, but populated with the given tree scope for
+  // tree-scoped names and references.
+  const CSSValue& EnsureScopedValue(const TreeScope* tree_scope) const {
+    if (!needs_tree_scope_population_) {
+      return *this;
+    }
+    return PopulateWithTreeScope(tree_scope);
+  }
+  bool IsScopedValue() const { return !needs_tree_scope_population_; }
+
+#if DCHECK_IS_ON()
+  WTF::String ClassTypeToString() const;
+#endif
+
+=======
   void FinalizeGarbageCollectedObject();
+>>>>>>> chromium
   void TraceAfterDispatch(blink::Visitor* visitor) const {}
   void Trace(Visitor*) const;
 
@@ -214,6 +243,11 @@ class CORE_EXPORT CSSValue : public GarbageCollected<CSSValue> {
     kMathFunctionClass,
     kIdentifierClass,
     kColorClass,
+<<<<<<< HEAD
+    kUnresolvedColorClass,
+    kColorMixClass,
+=======
+>>>>>>> chromium
     kCounterClass,
     kQuadClass,
     kCustomIdentClass,
@@ -264,6 +298,7 @@ class CORE_EXPORT CSSValue : public GarbageCollected<CSSValue> {
     kUnicodeRangeClass,
     kGridTemplateAreasClass,
     kPathClass,
+    kShapeClass,
     kRayClass,
     kVariableReferenceClass,
     kCustomPropertyDeclarationClass,
@@ -329,6 +364,22 @@ class CORE_EXPORT CSSValue : public GarbageCollected<CSSValue> {
   // CSSMathFunctionValue:
   uint8_t allows_negative_percentage_reference_ : 1;  // NOLINT
 
+<<<<<<< HEAD
+  // Any CSS value that defines/references a global name should be tree-scoped.
+  // However, to allow sharing StyleSheetContents, we don't directly populate
+  // CSS values with tree scope in parsed results, but wait until resolving an
+  // element's style.
+  // The flag is true if the value contains such references but hasn't been
+  // populated with a tree scope.
+  uint8_t needs_tree_scope_population_ : 1;  // NOLINT
+
+  // Whether this value originally came from a quirksmode-specific declaration.
+  // Used for use counting of such situations (to see if we can try to remove
+  // the functionality).
+  uint8_t was_quirky_ : 1 = false;
+
+=======
+>>>>>>> chromium
  private:
   const uint8_t class_type_;  // ClassType
 };

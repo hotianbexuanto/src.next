@@ -83,7 +83,12 @@ class CORE_EXPORT LayoutTheme : public RefCounted<LayoutTheme> {
 
   // Whether or not the control has been styled enough by the author to disable
   // the native appearance.
+<<<<<<< HEAD
+  virtual bool IsControlStyled(AppearanceValue appearance,
+                               const ComputedStyleBuilder&) const;
+=======
   virtual bool IsControlStyled(ControlPart part, const ComputedStyle&) const;
+>>>>>>> chromium
 
   bool ShouldDrawDefaultFocusRing(const Node*, const ComputedStyle&) const;
 
@@ -245,11 +250,20 @@ class CORE_EXPORT LayoutTheme : public RefCounted<LayoutTheme> {
   // implementation to hand back the appropriate platform theme.
   static LayoutTheme& NativeTheme();
 
+<<<<<<< HEAD
+  AppearanceValue AdjustAppearanceWithAuthorStyle(
+      AppearanceValue appearance,
+      const ComputedStyleBuilder& style);
+
+  AppearanceValue AdjustAppearanceWithElementType(const ComputedStyleBuilder&,
+                                                  const Element*);
+=======
   ControlPart AdjustAppearanceWithAuthorStyle(ControlPart part,
                                               const ComputedStyle& style);
 
   ControlPart AdjustAppearanceWithElementType(const ComputedStyle& style,
                                               const Element* element);
+>>>>>>> chromium
 
   void UpdateForcedColorsState();
 

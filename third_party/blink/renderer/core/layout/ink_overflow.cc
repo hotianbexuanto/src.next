@@ -2,11 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "third_party/blink/renderer/core/layout/ink_overflow.h"
 
 #include "build/chromeos_buildflags.h"
@@ -81,8 +76,10 @@ InkOverflow::InkOverflow(Type source_type, const InkOverflow& source) {
                     "outsets should be the size of a pointer");
       single_ = source.single_;
 #if DCHECK_IS_ON()
-      for (wtf_size_t i = 0; i < std::size(outsets_); ++i)
-        DCHECK_EQ(outsets_[i], source.outsets_[i]);
+      for (wtf_size_t i = 0; i < std::size(outsets_); ++i) {
+        // TODO(crbug.com/351564777): Resolve a buffer safety issue.
+        UNSAFE_TODO(DCHECK_EQ(outsets_[i], source.outsets_[i]));
+      }
 #endif
       break;
     case Type::kSelf:
@@ -110,8 +107,10 @@ InkOverflow::InkOverflow(Type source_type, InkOverflow&& source) {
                     "outsets should be the size of a pointer");
       single_ = source.single_;
 #if DCHECK_IS_ON()
-      for (wtf_size_t i = 0; i < std::size(outsets_); ++i)
-        DCHECK_EQ(outsets_[i], source.outsets_[i]);
+      for (wtf_size_t i = 0; i < std::size(outsets_); ++i) {
+        // TODO(crbug.com/351564777): Resolve a buffer safety issue.
+        UNSAFE_TODO(DCHECK_EQ(outsets_[i], source.outsets_[i]));
+      }
 #endif
       break;
     case Type::kSelf:
@@ -150,11 +149,16 @@ InkOverflow::Type InkOverflow::Reset(Type type, Type new_type) {
 }
 
 PhysicalRect InkOverflow::FromOutsets(const PhysicalSize& size) const {
-  const LayoutUnit left_outset(LayoutUnit::FromRawValue(outsets_[0]));
-  const LayoutUnit top_outset(LayoutUnit::FromRawValue(outsets_[1]));
+  // TODO(crbug.com/351564777): Resolve a buffer safety issue.
+  const LayoutUnit left_outset(
+      LayoutUnit::FromRawValue(UNSAFE_TODO(outsets_[0])));
+  const LayoutUnit top_outset(
+      LayoutUnit::FromRawValue(UNSAFE_TODO(outsets_[1])));
   return {-left_outset, -top_outset,
-          left_outset + size.width + LayoutUnit::FromRawValue(outsets_[2]),
-          top_outset + size.height + LayoutUnit::FromRawValue(outsets_[3])};
+          left_outset + size.width +
+              LayoutUnit::FromRawValue(UNSAFE_TODO(outsets_[2])),
+          top_outset + size.height +
+              LayoutUnit::FromRawValue(UNSAFE_TODO(outsets_[3]))};
 }
 
 PhysicalRect InkOverflow::Self(Type type, const PhysicalSize& size) const {
@@ -252,9 +256,10 @@ bool InkOverflow::TrySetOutsets(Type type,
     return false;
   Reset(type);
   outsets_[0] = left_outset.RawValue();
-  outsets_[1] = top_outset.RawValue();
-  outsets_[2] = right_outset.RawValue();
-  outsets_[3] = bottom_outset.RawValue();
+  // TODO(crbug.com/351564777): Resolve a buffer safety issue.
+  UNSAFE_TODO(outsets_[1]) = top_outset.RawValue();
+  UNSAFE_TODO(outsets_[2]) = right_outset.RawValue();
+  UNSAFE_TODO(outsets_[3]) = bottom_outset.RawValue();
   return true;
 }
 
@@ -480,14 +485,22 @@ std::optional<PhysicalRect> InkOverflow::ComputeTextInkOverflow(
                                                ink_overflow);
   }
 
-  if (const ShadowList* text_shadow = style.TextShadow()) {
-    ExpandForShadowOverflow(ink_overflow, *text_shadow, writing_mode);
+  if (!RuntimeEnabledFeatures::TextShadowPaintingOptimizationEnabled()) {
+    if (const ShadowList* text_shadow = style.TextShadow()) {
+      ExpandForShadowOverflow(ink_overflow, *text_shadow, writing_mode);
+    }
   }
 
   PhysicalRect local_ink_overflow =
       WritingModeConverter({writing_mode, TextDirection::kLtr},
                            rect_in_container.size)
           .ToPhysical(ink_overflow);
+
+  if (RuntimeEnabledFeatures::TextShadowPaintingOptimizationEnabled()) {
+    if (const ShadowList* text_shadow = style.TextShadow()) {
+      ExpandForShadowOverflow(local_ink_overflow, *text_shadow);
+    }
+  }
 
   // Uniting the frame rect ensures that non-ink spaces such side bearings, or
   // even space characters, are included in the visual rect for decorations.
@@ -520,6 +533,16 @@ LogicalRect InkOverflow::ComputeEmphasisMarkOverflow(
         ink_overflow.BlockEndOffset(), logical_height + emphasis_mark_height));
   }
   return ink_overflow;
+}
+
+// static
+void InkOverflow::ExpandForShadowOverflow(PhysicalRect& ink_overflow,
+                                          const ShadowList& text_shadow) {
+  gfx::OutsetsF text_shadow_outsets =
+      text_shadow.RectOutsetsIncludingOriginal();
+  // Get rid of negative outsets.
+  text_shadow_outsets.SetToMax(gfx::OutsetsF());
+  ink_overflow.Expand(PhysicalBoxStrut::Enclosing(text_shadow_outsets));
 }
 
 // static

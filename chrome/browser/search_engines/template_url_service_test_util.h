@@ -12,10 +12,24 @@
 #include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/time/time.h"
+<<<<<<< HEAD
+#include "chrome/test/base/scoped_testing_local_state.h"
+#include "chrome/test/base/testing_profile.h"
+#include "components/search_engines/enterprise/enterprise_search_manager.h"
+=======
+>>>>>>> chromium
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_service_observer.h"
 #include "services/data_decoder/public/cpp/test_support/in_process_data_decoder.h"
+
+namespace regional_capabilities {
+class RegionalCapabilitiesService;
+}
+
+namespace search_engines {
+class SearchEngineChoiceService;
+}
 
 class KeywordWebDataService;
 class TemplateURLService;
@@ -30,6 +44,21 @@ void SetManagedDefaultSearchPreferences(const TemplateURLData& managed_data,
 // Removes all the managed preferences for the default search provider.
 void RemoveManagedDefaultSearchPreferences(TestingProfile* profile);
 
+<<<<<<< HEAD
+// Sets the recommended preferences for the default search provider. `enabled`
+// enables/disables use of the managed engine by `DefaultSearchManager`.
+void SetRecommendedDefaultSearchPreferences(const TemplateURLData& data,
+                                            bool enabled,
+                                            TestingProfile* profile);
+
+// Sets the managed preferences for search providers.
+void SetManagedSearchSettingsPreference(
+    const EnterpriseSearchManager::OwnedTemplateURLDataVector&
+        enterprise_search_engines,
+    TestingProfile* profile);
+
+=======
+>>>>>>> chromium
 // Creates a TemplateURL with some test values. The caller owns the returned
 // TemplateURL*.
 std::unique_ptr<TemplateURL> CreateTestTemplateURL(
@@ -38,7 +67,12 @@ std::unique_ptr<TemplateURL> CreateTestTemplateURL(
     const std::string& guid = std::string(),
     base::Time last_modified = base::Time::FromTimeT(100),
     bool safe_for_autoreplace = false,
+<<<<<<< HEAD
+    TemplateURLData::PolicyOrigin policy_origin =
+        TemplateURLData::PolicyOrigin::kNoPolicy,
+=======
     bool created_by_policy = false,
+>>>>>>> chromium
     int prepopulate_id = 999999);
 
 class TemplateURLServiceTestUtil : public TemplateURLServiceObserver {
@@ -100,6 +134,13 @@ class TemplateURLServiceTestUtil : public TemplateURLServiceObserver {
   std::u16string search_term_;
   int dsp_set_to_google_callback_count_ = 0;
   scoped_refptr<KeywordWebDataService> web_data_service_;
+<<<<<<< HEAD
+  std::unique_ptr<regional_capabilities::RegionalCapabilitiesService>
+      regional_capabilities_service_;
+  std::unique_ptr<search_engines::SearchEngineChoiceService>
+      search_engine_choice_service_;
+=======
+>>>>>>> chromium
   std::unique_ptr<TemplateURLService> model_;
   data_decoder::test::InProcessDataDecoder data_decoder_;
 

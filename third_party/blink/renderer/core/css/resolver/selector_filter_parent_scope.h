@@ -12,43 +12,50 @@
 
 namespace blink {
 
-// Maintains the parent element stack (and bloom filter) inside RecalcStyle.
+// Maintains the existence filter inside RecalcStyle.
 // SelectorFilterParentScope for the parent element is added to the stack before
-// recalculating style for its children. The bloom filter is populated lazily by
-// PushParentIfNeeded().
+// recalculating style for its children.
 class CORE_EXPORT SelectorFilterParentScope {
   STACK_ALLOCATED();
 
  public:
-  explicit SelectorFilterParentScope(Element& parent)
-      : SelectorFilterParentScope(&parent, ScopeType::kParent) {
-    DCHECK(previous_);
-    DCHECK(previous_->scope_type_ == ScopeType::kRoot ||
-           (previous_->parent_ &&
-            &previous_->parent_->GetDocument() == &parent.GetDocument()));
-  }
-  ~SelectorFilterParentScope();
-
-  static void EnsureParentStackIsPushed();
-
- protected:
+  // When starting the style recalc, we push an object of this class onto the
+  // stack to establish a root scope for the SelectorFilter for a document to
+  // make the style recalc re-entrant.
   enum class ScopeType { kParent, kRoot };
-  SelectorFilterParentScope(Element* parent, ScopeType scope);
+
+  explicit SelectorFilterParentScope(Element* parent, ScopeType scope_type) {
+    if (parent) {
+      DCHECK(parent->GetDocument().InStyleRecalc());
+      resolver_ = &parent->GetDocument().GetStyleResolver();
+      mark_ = resolver_->GetSelectorFilter().SetMark();
+      if (scope_type == ScopeType::kRoot) {
+        PushAncestors(*parent);
+        resolver_->GetSelectorFilter().PushParent(*parent);
+      } else {
+        resolver_->GetSelectorFilter().PushParent(*parent);
+      }
+    }
+  }
+
+  ~SelectorFilterParentScope() {
+    if (resolver_) {
+      resolver_->GetSelectorFilter().PopTo(mark_);
+    }
+  }
 
  private:
   void PushParentIfNeeded();
   void PushAncestors(Element&);
   void PopAncestors(Element&);
 
-  Element* parent_;
   bool pushed_ = false;
-  ScopeType scope_type_;
-  SelectorFilterParentScope* previous_;
-  StyleResolver* resolver_;
-
-  static SelectorFilterParentScope* current_scope_;
+  SelectorFilter::Mark mark_;
+  StyleResolver* resolver_ = nullptr;
 };
 
+<<<<<<< HEAD
+=======
 // When starting the style recalc, we push an object of this class onto the
 // stack to establish a root scope for the SelectorFilter for a document to
 // make the style recalc re-entrant. If we do a style recalc for a document
@@ -117,6 +124,7 @@ inline void SelectorFilterParentScope::PushParentIfNeeded() {
   pushed_ = true;
 }
 
+>>>>>>> chromium
 }  // namespace blink
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_SELECTOR_FILTER_PARENT_SCOPE_H_

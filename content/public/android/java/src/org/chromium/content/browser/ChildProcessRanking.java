@@ -8,6 +8,8 @@ import android.os.Handler;
 
 import org.chromium.base.process_launcher.ChildProcessConnection;
 import org.chromium.build.BuildConfig;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.content_public.browser.ChildProcessImportance;
 
 import java.util.ArrayList;
@@ -15,9 +17,14 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
+<<<<<<< HEAD
+/** Ranking of ChildProcessConnections for a particular ChildConnectionAllocator. */
+@NullMarked
+=======
 /**
  * Ranking of ChildProcessConnections for a particular ChildConnectionAllocator.
  */
+>>>>>>> chromium
 public class ChildProcessRanking implements Iterable<ChildProcessConnection> {
     private static final boolean ENABLE_CHECKS = BuildConfig.ENABLE_ASSERTS;
     private static final int NO_GROUP = 0;
@@ -228,8 +235,17 @@ public class ChildProcessRanking implements Iterable<ChildProcessConnection> {
         if (ENABLE_CHECKS) checkOrder();
     }
 
+<<<<<<< HEAD
+    public void updateConnection(
+            @Nullable ChildProcessConnection connection,
+            boolean visible,
+            long frameDepth,
+            boolean intersectsViewport,
+            @ChildProcessImportance int importance) {
+=======
     public void updateConnection(ChildProcessConnection connection, boolean visible,
             long frameDepth, boolean intersectsViewport, @ChildProcessImportance int importance) {
+>>>>>>> chromium
         assert connection != null;
         assert mRankings.size() > 0;
         int i = indexOf(connection);
@@ -243,7 +259,7 @@ public class ChildProcessRanking implements Iterable<ChildProcessConnection> {
         reposition(i);
     }
 
-    public ChildProcessConnection getLowestRankedConnection() {
+    public @Nullable ChildProcessConnection getLowestRankedConnection() {
         if (mRankings.isEmpty()) return null;
         return mRankings.get(mRankings.size() - 1).connection;
     }

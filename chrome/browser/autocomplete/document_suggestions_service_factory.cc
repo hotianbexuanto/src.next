@@ -39,7 +39,17 @@ KeyedService* DocumentSuggestionsServiceFactory::BuildServiceInstanceFor(
 DocumentSuggestionsServiceFactory::DocumentSuggestionsServiceFactory()
     : BrowserContextKeyedServiceFactory(
           "DocumentSuggestionsService",
+<<<<<<< HEAD
+          ProfileSelections::Builder()
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              .WithGuest(ProfileSelection::kNone)
+              // TODO(crbug.com/41488885): Check if this service is needed for
+              // Ash Internals.
+              .WithAshInternals(ProfileSelection::kOriginalOnly)
+              .Build()) {
+=======
           BrowserContextDependencyManager::GetInstance()) {
+>>>>>>> chromium
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 

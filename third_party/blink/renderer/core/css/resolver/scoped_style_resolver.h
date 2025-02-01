@@ -63,13 +63,39 @@ class CORE_EXPORT ScopedStyleResolver final
   CounterStyleMap* GetCounterStyleMap() { return counter_style_map_; }
   static void CounterStyleRulesChanged(TreeScope& scope);
 
+<<<<<<< HEAD
+  StyleRulePositionTry* PositionTryForName(const AtomicString& try_name);
+
+  StyleRuleFunction* FunctionForName(StringView name);
+
+  const FontFeatureValuesStorage* FontFeatureValuesForFamily(
+      AtomicString font_family);
+
+  void RebuildCascadeLayerMap(const ActiveStyleSheetVector& sheets);
+  bool HasCascadeLayerMap() const { return cascade_layer_map_.Get(); }
+  const CascadeLayerMap* GetCascadeLayerMap() const {
+    return cascade_layer_map_.Get();
+  }
+  const ActiveStyleSheetVector& GetActiveStyleSheets() const {
+    return active_style_sheets_;
+  }
+
+  // See InspectorGhostRules.
+  void QuietlySwapActiveStyleSheets(ActiveStyleSheetVector& other);
+
+=======
+>>>>>>> chromium
   void AppendActiveStyleSheets(unsigned index, const ActiveStyleSheetVector&);
   void CollectMatchingElementScopeRules(ElementRuleCollector&);
   void CollectMatchingShadowHostRules(ElementRuleCollector&);
   void CollectMatchingSlottedRules(ElementRuleCollector&);
   void CollectMatchingPartPseudoRules(ElementRuleCollector&,
+<<<<<<< HEAD
+                                      PartNames* part_names);
+=======
                                       PartNames& part_names,
                                       bool for_shadow_pseudo);
+>>>>>>> chromium
   void MatchPageRules(PageRuleCollector&);
   void CollectFeaturesTo(RuleFeatureSet&,
                          HeapHashSet<Member<const StyleSheetContents>>&
@@ -96,9 +122,15 @@ class CORE_EXPORT ScopedStyleResolver final
 
   Member<TreeScope> scope_;
 
+<<<<<<< HEAD
+  ActiveStyleSheetVector active_style_sheets_;
+  MediaQueryResultFlags media_query_result_flags_;
+  HeapVector<RuleSetGroup> rule_set_groups_;
+=======
   HeapVector<Member<CSSStyleSheet>> style_sheets_;
   MediaQueryResultList viewport_dependent_media_query_results_;
   MediaQueryResultList device_dependent_media_query_results_;
+>>>>>>> chromium
 
   using KeyframesRuleMap =
       HeapHashMap<AtomicString, Member<StyleRuleKeyframes>>;

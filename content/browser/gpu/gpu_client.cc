@@ -13,6 +13,16 @@
 namespace content {
 
 std::unique_ptr<viz::GpuClient, base::OnTaskRunnerDeleter> CreateGpuClient(
+<<<<<<< HEAD
+    mojo::PendingReceiver<viz::mojom::Gpu> receiver) {
+  // TODO(crbug.com/379869738): Refactor to use client_id without
+  // GetUnsafeValue().
+  const ChildProcessId client_id =
+      ChildProcessHostImpl::GenerateChildProcessUniqueId();
+  const uint64_t client_tracing_id =
+      ChildProcessHostImpl::ChildProcessIdToTracingProcessId(client_id);
+  auto task_runner = GetUIThreadTaskRunner({});
+=======
     mojo::PendingReceiver<viz::mojom::Gpu> receiver,
     viz::GpuClient::ConnectionErrorHandlerClosure connection_error_handler) {
   const int client_id = ChildProcessHostImpl::GenerateChildProcessUniqueId();
@@ -21,11 +31,11 @@ std::unique_ptr<viz::GpuClient, base::OnTaskRunnerDeleter> CreateGpuClient(
   auto task_runner = base::FeatureList::IsEnabled(features::kProcessHostOnUI)
                          ? GetUIThreadTaskRunner({})
                          : GetIOThreadTaskRunner({});
+>>>>>>> chromium
   std::unique_ptr<viz::GpuClient, base::OnTaskRunnerDeleter> gpu_client(
-      new viz::GpuClient(
-          std::make_unique<BrowserGpuClientDelegate>(), client_id,
-          client_tracing_id,
-          task_runner),
+      new viz::GpuClient(std::make_unique<BrowserGpuClientDelegate>(),
+                         client_id.GetUnsafeValue(), client_tracing_id,
+                         task_runner),
       base::OnTaskRunnerDeleter(task_runner));
   gpu_client->SetConnectionErrorHandler(std::move(connection_error_handler));
   task_runner->PostTask(

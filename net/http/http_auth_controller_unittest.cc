@@ -146,8 +146,13 @@ TEST(HttpAuthControllerTest, Logging) {
   // There should be at least two events.
   ASSERT_GE(entries.size(), 2u);
 
+<<<<<<< HEAD
+  auto begin =
+      std::ranges::find_if(entries, [](const NetLogEntry& e) {
+=======
   auto begin = std::find_if(
       entries.begin(), entries.end(), [](const NetLogEntry& e) -> bool {
+>>>>>>> chromium
         if (e.type != NetLogEventType::AUTH_CONTROLLER ||
             e.phase != NetLogEventPhase::BEGIN)
           return false;

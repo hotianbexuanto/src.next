@@ -104,6 +104,97 @@ public class TabProperties {
     public static final WritableObjectPropertyKey<String> SEARCH_QUERY =
             new WritableObjectPropertyKey<>();
 
+<<<<<<< HEAD
+    public static final WritableObjectPropertyKey<TextResolver> CONTENT_DESCRIPTION_TEXT_RESOLVER =
+            new WritableObjectPropertyKey<>();
+
+    public static final WritableObjectPropertyKey<TextResolver>
+            ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER = new WritableObjectPropertyKey<>();
+
+    public static final WritableObjectPropertyKey<ShoppingPersistedTabDataFetcher>
+            SHOPPING_PERSISTED_TAB_DATA_FETCHER = new WritableObjectPropertyKey<>(true);
+
+    public static final WritableBooleanPropertyKey SHOULD_SHOW_PRICE_DROP_TOOLTIP =
+            new WritableBooleanPropertyKey();
+
+    public static final WritableIntPropertyKey QUICK_DELETE_ANIMATION_STATUS =
+            new WritableIntPropertyKey();
+
+    public static final WritableIntPropertyKey VISIBILITY = new WritableIntPropertyKey();
+
+    public static final WritableBooleanPropertyKey USE_SHRINK_CLOSE_ANIMATION =
+            new WritableBooleanPropertyKey();
+
+    // TODO(crbug.com/365972761): Move this to `TabGroupProperties` when it is created.
+    /**
+     * Provides a view for the tab group color. In list mode this is shown alongside the row. In
+     * grid mode this replaces the favicon image view. {@code #destroy()} must be invoked on this
+     * object before it is nulled out or the property model as a whole is removed.
+     */
+    public static final WritableObjectPropertyKey<TabGroupColorViewProvider>
+            TAB_GROUP_COLOR_VIEW_PROVIDER = new WritableObjectPropertyKey<>();
+
+    // TODO(crbug.com/365973166): Move this to `TabStripProperties` when it is created.
+    public static final WritableBooleanPropertyKey HAS_NOTIFICATION_BUBBLE =
+            new WritableBooleanPropertyKey();
+
+    public static final WritableObjectPropertyKey<TabCardLabelData> TAB_CARD_LABEL_DATA =
+            new WritableObjectPropertyKey<>(/* skipEquality= */ true);
+
+    public static final PropertyKey[] ALL_KEYS_TAB_GRID =
+            new PropertyKey[] {
+                TAB_ACTION_STATE,
+                TAB_ID,
+                IS_INCOGNITO,
+                TAB_CLICK_LISTENER,
+                TAB_LONG_CLICK_LISTENER,
+                TAB_ACTION_BUTTON_DATA,
+                FAVICON_FETCHED,
+                FAVICON_FETCHER,
+                IS_SELECTED,
+                GRID_CARD_SIZE,
+                THUMBNAIL_FETCHER,
+                TITLE,
+                CARD_ALPHA,
+                CARD_ANIMATION_STATUS,
+                TAB_SELECTION_DELEGATE,
+                URL_DOMAIN,
+                ACCESSIBILITY_DELEGATE,
+                CARD_TYPE,
+                CONTENT_DESCRIPTION_TEXT_RESOLVER,
+                ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER,
+                SHOPPING_PERSISTED_TAB_DATA_FETCHER,
+                SHOULD_SHOW_PRICE_DROP_TOOLTIP,
+                QUICK_DELETE_ANIMATION_STATUS,
+                TAB_GROUP_COLOR_VIEW_PROVIDER,
+                VISIBILITY,
+                USE_SHRINK_CLOSE_ANIMATION,
+                HAS_NOTIFICATION_BUBBLE,
+                TAB_CARD_LABEL_DATA,
+            };
+
+    public static final PropertyKey[] ALL_KEYS_TAB_STRIP =
+            new PropertyKey[] {
+                TAB_ID,
+                IS_INCOGNITO,
+                TAB_CLICK_LISTENER,
+                TAB_ACTION_BUTTON_DATA,
+                FAVICON_FETCHED,
+                FAVICON_FETCHER,
+                IS_SELECTED,
+                TITLE,
+                HAS_NOTIFICATION_BUBBLE
+            };
+
+    public static final WritableObjectPropertyKey[] TAB_ACTION_STATE_OBJECT_KEYS =
+            new WritableObjectPropertyKey[] {
+                TAB_ACTION_BUTTON_DATA,
+                TAB_CLICK_LISTENER,
+                TAB_LONG_CLICK_LISTENER,
+                ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER,
+                CONTENT_DESCRIPTION_TEXT_RESOLVER,
+            };
+=======
     public static final WritableObjectPropertyKey<TabListMediator.ShoppingPersistedTabDataFetcher>
             SHOPPING_PERSISTED_TAB_DATA_FETCHER = new WritableObjectPropertyKey<>(true);
 
@@ -139,4 +230,5 @@ public class TabProperties {
     public static final PropertyKey[] ALL_KEYS_TAB_STRIP =
             new PropertyKey[] {TAB_ID, TAB_SELECTED_LISTENER, TAB_CLOSED_LISTENER, FAVICON,
                     IS_SELECTED, TITLE, TABSTRIP_FAVICON_BACKGROUND_COLOR_ID, IS_INCOGNITO};
+>>>>>>> chromium
 }

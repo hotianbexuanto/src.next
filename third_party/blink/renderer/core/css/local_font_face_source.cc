@@ -107,6 +107,49 @@ scoped_refptr<SimpleFontData> LocalFontFaceSource::CreateFontData(
   unstyled_description.SetStyle(NormalSlopeValue());
   unstyled_description.SetWeight(NormalWeightValue());
 #endif
+<<<<<<< HEAD
+  // We're using the FontCache here to perform local unique lookup, including
+  // potentially doing GMSCore lookups for fonts available through that, mainly
+  // to retrieve and get access to the SkTypeface. This may return nullptr (e.g.
+  // OOM), in which case we want to exit before creating the SkTypeface.
+  const SimpleFontData* unique_lookup_result = FontCache::Get().GetFontData(
+      unstyled_description, font_name_, AlternateFontName::kLocalUniqueFace);
+  if (!unique_lookup_result) {
+    return nullptr;
+  }
+
+  sk_sp<SkTypeface> typeface(unique_lookup_result->PlatformData().TypefaceSp());
+
+  // From the SkTypeface, here we're reusing the FontCustomPlatformData code
+  // which performs application of font-variation-settings, optical sizing and
+  // mapping of style (stretch, style, weight) to canonical variation axes. (See
+  // corresponding code in RemoteFontFaceSource). For the size argument,
+  // specifying 0, as the font instances returned from the font cache are
+  // usually memory-mapped, and not kept and decoded in memory as in
+  // RemoteFontFaceSource.
+  FontCustomPlatformData* custom_platform_data =
+      FontCustomPlatformData::Create(typeface, 0);
+  SimpleFontData* font_data_variations_palette_applied =
+      MakeGarbageCollected<SimpleFontData>(
+          custom_platform_data->GetFontPlatformData(
+              font_description.EffectiveFontSize(),
+              font_description.AdjustedSpecifiedSize(),
+              font_description.IsSyntheticBold() &&
+                  font_description.SyntheticBoldAllowed(),
+              font_description.IsSyntheticItalic() &&
+                  font_description.SyntheticItalicAllowed(),
+              font_description.GetFontSelectionRequest(),
+              font_selection_capabilities, font_description.FontOpticalSizing(),
+              font_description.TextRendering(),
+              font_description.ResolveFontFeatures(),
+              font_description.Orientation(),
+              font_description.VariationSettings(),
+              font_description.GetFontPalette()));
+
+  histograms_.Record(font_data_variations_palette_applied);
+  ReportFontLookup(unstyled_description, font_data_variations_palette_applied);
+  return font_data_variations_palette_applied;
+=======
   scoped_refptr<SimpleFontData> font_data =
       FontCache::GetFontCache()->GetFontData(
           unstyled_description, font_name_,
@@ -114,6 +157,7 @@ scoped_refptr<SimpleFontData> LocalFontFaceSource::CreateFontData(
   histograms_.Record(font_data.get());
   ReportFontLookup(unstyled_description, font_data.get());
   return font_data;
+>>>>>>> chromium
 }
 
 void LocalFontFaceSource::BeginLoadIfNeeded() {

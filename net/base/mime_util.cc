@@ -12,6 +12,11 @@
 #include "base/check_op.h"
 #include "base/containers/span.h"
 #include "base/lazy_instance.h"
+<<<<<<< HEAD
+#include "base/memory/raw_ptr_exclusion.h"
+#include "base/no_destructor.h"
+=======
+>>>>>>> chromium
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece.h"
@@ -26,6 +31,17 @@
 using std::string;
 
 namespace net {
+
+namespace {
+
+// Overrides the mime type for "get a mime type" functions below, for test
+// purposes. (Empty string by default, indicates no override.)
+std::string& GetOverridingMimeType() {
+  static base::NoDestructor<std::string> overriding_mime_type;
+  return *overriding_mime_type;
+}
+
+}  // namespace
 
 // Singleton utility class for mime types.
 class MimeUtil : public PlatformMimeUtil {
@@ -313,6 +329,12 @@ bool MimeUtil::GetMimeTypeFromExtensionHelper(
     string* result) const {
   DCHECK(ext.empty() || ext[0] != '.')
       << "extension passed in must not include leading dot";
+
+  // Used for tests.
+  if (!GetOverridingMimeType().empty()) {
+    *result = GetOverridingMimeType();
+    return true;
+  }
 
   // Avoids crash when unable to handle a long file path. See crbug.com/48733.
   const unsigned kMaxFilePathSize = 65536;
@@ -919,4 +941,34 @@ void AddMultipartFinalDelimiterForUpload(const std::string& mime_boundary,
   post_data->append("--" + mime_boundary + "--\r\n");
 }
 
+<<<<<<< HEAD
+// TODO(toyoshim): We may prefer to implement a strict RFC2616 media-type
+// (https://tools.ietf.org/html/rfc2616#section-3.7) parser.
+std::optional<std::string> ExtractMimeTypeFromMediaType(
+    std::string_view type_string,
+    bool accept_comma_separated) {
+  std::string::size_type end = type_string.find(';');
+  if (accept_comma_separated) {
+    end = std::min(end, type_string.find(','));
+  }
+  std::string top_level_type;
+  std::string subtype;
+  if (ParseMimeTypeWithoutParameter(type_string.substr(0, end), &top_level_type,
+                                    &subtype)) {
+    return top_level_type + "/" + subtype;
+  }
+  return std::nullopt;
+}
+
+ScopedOverrideGetMimeTypeForTesting::ScopedOverrideGetMimeTypeForTesting(
+    std::string_view overriding_mime_type) {
+  GetOverridingMimeType() = overriding_mime_type;
+}
+
+ScopedOverrideGetMimeTypeForTesting::~ScopedOverrideGetMimeTypeForTesting() {
+  GetOverridingMimeType().clear();
+}
+
+=======
+>>>>>>> chromium
 }  // namespace net

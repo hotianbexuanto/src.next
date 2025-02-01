@@ -68,6 +68,11 @@ void InitializePlatformLanguage() {
       const AtomicString, platform_language, (([]() {
         String canonicalized = CanonicalizeLanguageIdentifier(
             Platform::Current()->DefaultLocale());
+<<<<<<< HEAD
+        if (!canonicalized.empty()) {
+          StringImpl* impl =
+              StringImpl::CreateStatic(base::as_chars(canonicalized.Span8()));
+=======
         if (!canonicalized.IsEmpty()) {
           StringImpl* impl = StringImpl::CreateStatic(
               reinterpret_cast<const char*>(canonicalized.Characters8()),
@@ -75,6 +80,7 @@ void InitializePlatformLanguage() {
               StringHasher::ComputeHashAndMaskTop8Bits(
                   canonicalized.Characters8(), canonicalized.length()));
 
+>>>>>>> chromium
           return AtomicString(impl);
         }
         return AtomicString();

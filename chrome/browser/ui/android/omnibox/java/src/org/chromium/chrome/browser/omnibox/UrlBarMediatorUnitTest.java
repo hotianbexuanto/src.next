@@ -294,6 +294,13 @@ public class UrlBarMediatorUnitTest {
         Mockito.verify(mAnotherMockTextWatcher, Mockito.times(1)).onTextChanged(text, 0, 1, 2);
     }
 
+    @Test
+    public void setIsInCct() {
+        Assert.assertFalse(mModel.get(UrlBarProperties.IS_IN_CCT));
+        mMediator.setIsInCct(true);
+        Assert.assertTrue(mModel.get(UrlBarProperties.IS_IN_CCT));
+    }
+
     private static SpannableStringBuilder spannable(String text) {
         return new SpannableStringBuilder(text);
     }

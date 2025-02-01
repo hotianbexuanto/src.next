@@ -6,10 +6,13 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_VIDEO_FRAME_IMAGE_UTIL_H_
 
 #include "base/memory/scoped_refptr.h"
+#include "components/viz/common/resources/shared_image_format.h"
 #include "media/base/video_transformation.h"
 #include "third_party/blink/renderer/platform/geometry/int_size.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
+#include "third_party/skia/include/core/SkAlphaType.h"
+#include "ui/gfx/color_space.h"
 #include "ui/gfx/geometry/rect.h"
 
 // Note: Don't include "media/base/video_frame.h" here without good reason,
@@ -98,6 +101,18 @@ PLATFORM_EXPORT bool DrawVideoFrameIntoResourceProvider(
 PLATFORM_EXPORT std::unique_ptr<CanvasResourceProvider>
 CreateResourceProviderForVideoFrame(
     IntSize size,
+    viz::RasterContextProvider* raster_context_provider);
+
+// Creates a CanvasResourceProvider which is appropriate for drawing VideoFrame
+// objects into. Some callers to CreateImageFromVideoFrame() may choose to cache
+// their resource providers. If |raster_context_provider| is null a software
+// resource provider will be returned.
+PLATFORM_EXPORT std::unique_ptr<CanvasResourceProvider>
+CreateResourceProviderForVideoFrame(
+    gfx::Size size,
+    viz::SharedImageFormat format,
+    SkAlphaType alpha_type,
+    const gfx::ColorSpace& color_space,
     viz::RasterContextProvider* raster_context_provider);
 
 }  // namespace blink

@@ -8,7 +8,10 @@
 #include <memory>
 #include <set>
 
+<<<<<<< HEAD
+=======
 #include "base/macros.h"
+>>>>>>> chromium
 #include "components/download/content/public/all_download_item_notifier.h"
 #include "components/download/public/common/download_item.h"
 #include "content/public/browser/download_manager.h"
@@ -62,8 +65,11 @@ class DownloadStatusUpdater
   std::vector<std::unique_ptr<download::AllDownloadItemNotifier>> notifiers_;
   std::map<Profile*, std::unique_ptr<ScopedProfileKeepAlive>>
       profile_keep_alives_;
+<<<<<<< HEAD
+=======
 
   DISALLOW_COPY_AND_ASSIGN(DownloadStatusUpdater);
+>>>>>>> chromium
 };
 
 #endif  // CHROME_BROWSER_DOWNLOAD_DOWNLOAD_STATUS_UPDATER_H_

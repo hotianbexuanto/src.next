@@ -6,6 +6,24 @@ package org.chromium.content.browser;
 
 import android.os.Handler;
 import android.os.Looper;
+<<<<<<< HEAD
+import android.os.Message;
+import android.util.Pair;
+
+import androidx.annotation.MainThread;
+
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JNINamespace;
+import org.jni_zero.NativeMethods;
+
+import org.chromium.base.Log;
+import org.chromium.base.ThreadUtils;
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.content_public.browser.MessagePayload;
+=======
 
 import org.chromium.base.Log;
 import org.chromium.base.annotations.CalledByNative;
@@ -17,6 +35,7 @@ import org.chromium.blink.mojom.MessagePortDescriptor;
 import org.chromium.blink.mojom.SerializedArrayBufferContents;
 import org.chromium.blink.mojom.SerializedBlob;
 import org.chromium.blink.mojom.TransferableMessage;
+>>>>>>> chromium
 import org.chromium.content_public.browser.MessagePort;
 import org.chromium.mojo.bindings.Connector;
 import org.chromium.mojo.bindings.DeserializationException;
@@ -78,7 +97,12 @@ import org.chromium.skia.mojom.BitmapN32;
  * transferring data. As a return, it simplifies implementation and prevents hard
  * to debug, racy corner cases while receiving/sending data.
  */
+<<<<<<< HEAD
+@JNINamespace("content::android")
+@NullMarked
+=======
 @JNINamespace("content")
+>>>>>>> chromium
 public class AppWebMessagePort implements MessagePort {
     private static final String TAG = "AppWebMessagePort";
 
@@ -94,6 +118,10 @@ public class AppWebMessagePort implements MessagePort {
 
         private final MessageCallback mMessageCallback;
 
+<<<<<<< HEAD
+        MessageHandler(MessageCallback callback, @Nullable Handler handler) {
+            super(handler == null ? Looper.getMainLooper() : handler.getLooper());
+=======
         // Type for the |obj| value for handleMessage.
         private static class MessagePortMessage {
             public byte[] encodedMessage;
@@ -102,11 +130,16 @@ public class AppWebMessagePort implements MessagePort {
 
         public MessageHandler(Looper looper, MessageCallback callback) {
             super(looper);
+>>>>>>> chromium
             mMessageCallback = callback;
         }
 
         @Override
+<<<<<<< HEAD
+        public void handleMessage(final Message msg) {
+=======
         public void handleMessage(android.os.Message msg) {
+>>>>>>> chromium
             if (msg.what == MESSAGE_RECEIVED) {
                 MessagePortMessage message = (MessagePortMessage) msg.obj;
                 String decodedMessage =
@@ -121,6 +154,13 @@ public class AppWebMessagePort implements MessagePort {
             throw new IllegalStateException("undefined message");
         }
 
+<<<<<<< HEAD
+        @MainThread
+        public void onMessage(
+                final MessagePayload messagePayload, final MessagePort @Nullable [] sentPorts) {
+            ThreadUtils.assertOnUiThread();
+            sendMessage(obtainMessage(MESSAGE_RECEIVED, Pair.create(messagePayload, sentPorts)));
+=======
         @Override
         public boolean accept(Message mojoMessage) {
             try {
@@ -140,16 +180,23 @@ public class AppWebMessagePort implements MessagePort {
                 return false;
             }
             return true;
+>>>>>>> chromium
         }
 
         @Override
         public void close() {}
     }
 
+<<<<<<< HEAD
+    // Accessed on UI thread only.
+    private long mNativeAppWebMessagePort;
+    private @Nullable MessageHandler mMessageHandler;
+=======
     private boolean mClosed;
     private boolean mTransferred;
     private boolean mStarted;
     private boolean mWatching;
+>>>>>>> chromium
 
     private Core mMojoCore;
     private AppWebMessagePortDescriptor mDescriptor;
@@ -265,7 +312,12 @@ public class AppWebMessagePort implements MessagePort {
     }
 
     @Override
+<<<<<<< HEAD
+    public void postMessage(MessagePayload messagePayload, MessagePort @Nullable [] sentPorts)
+            throws IllegalStateException {
+=======
     public void postMessage(String message, MessagePort[] sentPorts) throws IllegalStateException {
+>>>>>>> chromium
         if (isClosed() || isTransferred()) {
             throw new IllegalStateException("Port is already closed or transferred");
         }
@@ -291,6 +343,79 @@ public class AppWebMessagePort implements MessagePort {
         }
         mStarted = true;
 
+<<<<<<< HEAD
+    /**
+     * A finalizer is required to ensure that the native object associated with this descriptor gets
+     * torn down, otherwise there would be a memory leak.
+     *
+     * <p>This is safe because posting a task is fast.
+     *
+     * <p>TODO(chrisha): Chase down the existing offenders that don't call close, and flip this to
+     * use LifetimeAssert. (also: https://crbug.com/40286193)
+     *
+     * @see java.lang.Object#finalize()
+     */
+    @Override
+    @SuppressWarnings("Finalize")
+    protected void finalize() throws Throwable {
+        try {
+            if (mNativeAppWebMessagePort == 0L) return;
+            Log.d(TAG, "AppWebMessagePort was not closed before finalization");
+            PostTask.postTask(
+                    TaskTraits.UI_DEFAULT,
+                    () -> {
+                        if (mNativeAppWebMessagePort == 0L) return;
+                        mClosed = true;
+                        AppWebMessagePortJni.get().closeAndDestroy(mNativeAppWebMessagePort);
+                    });
+        } finally {
+            super.finalize();
+        }
+    }
+
+    @MainThread
+    @CalledByNative
+    private long getNativeObj() {
+        ThreadUtils.assertOnUiThread();
+        assert mNativeAppWebMessagePort != 0L;
+        return mNativeAppWebMessagePort;
+    }
+
+    @MainThread
+    @CalledByNative
+    private void onMessage(MessagePayload payload, MessagePort @Nullable [] ports) {
+        ThreadUtils.assertOnUiThread();
+        if (mMessageHandler != null) {
+            mMessageHandler.onMessage(payload, ports);
+        } else {
+            // Their will be a case that the Java listener is cleared, but listeners in C++ is not
+            // cleared yet. We can safely ignore those messages and close the ports to avoid
+            // relaying on GC.
+            if (ports != null) {
+                for (final MessagePort port : ports) {
+                    port.close();
+                }
+            }
+        }
+    }
+
+    // Called when native object is destroyed.
+    @MainThread
+    @CalledByNative
+    private void nativeDestroyed() {
+        ThreadUtils.assertOnUiThread();
+        assert mNativeAppWebMessagePort != 0L;
+        // When calling this method, the port must be closed or transferred.
+        assert mClosed || mTransferred;
+        mNativeAppWebMessagePort = 0L;
+    }
+
+    // Called when MessagePort is transferred. The native object will be destroyed later.
+    @CalledByNative
+    private void setTransferred() {
+        assert !mStarted;
+        mTransferred = true;
+=======
         TransferableMessage msg = new TransferableMessage();
         msg.message = new CloneableMessage();
         msg.message.encodedMessage = BigBufferUtil.createBigBufferFromBytes(
@@ -303,11 +428,26 @@ public class AppWebMessagePort implements MessagePort {
         msg.ports = ports;
         msg.streamChannels = new MessagePortDescriptor[0];
         mConnector.accept(msg.serializeWithHeader(mMojoCore, MESSAGE_HEADER));
+>>>>>>> chromium
     }
 
     @NativeMethods
     interface Natives {
+<<<<<<< HEAD
+
+        AppWebMessagePort[] createPair();
+
+        void postMessage(
+                long nativeAppWebMessagePort,
+                MessagePayload messagePayload,
+                MessagePort @Nullable [] sentPorts);
+
+        void setShouldReceiveMessages(long nativeAppWebMessagePort, boolean shouldReceiveMessage);
+
+        void closeAndDestroy(long nativeAppWebMessagePort);
+=======
         String decodeStringMessage(byte[] encodedData);
         byte[] encodeStringMessage(String message);
+>>>>>>> chromium
     }
 }

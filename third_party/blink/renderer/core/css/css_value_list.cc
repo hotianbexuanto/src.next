@@ -80,6 +80,37 @@ CSSValueList* CSSValueList::Copy() const {
   return new_list;
 }
 
+<<<<<<< HEAD
+const CSSValueList& CSSValueList::PopulateWithTreeScope(
+    const TreeScope* tree_scope) const {
+  // Note: this will be changed if any subclass also involves values that need
+  // TreeScope population, as in that case, we will need to return an instance
+  // of the subclass.
+  DCHECK(IsBaseValueList());
+  DCHECK(!IsScopedValue());
+  CSSValueList* new_list = nullptr;
+  switch (value_list_separator_) {
+    case kSpaceSeparator:
+      new_list = CreateSpaceSeparated();
+      break;
+    case kCommaSeparator:
+      new_list = CreateCommaSeparated();
+      break;
+    case kSlashSeparator:
+      new_list = CreateSlashSeparated();
+      break;
+    default:
+      NOTREACHED();
+  }
+  new_list->values_.ReserveInitialCapacity(values_.size());
+  for (const CSSValue* value : values_) {
+    new_list->values_.push_back(&value->EnsureScopedValue(tree_scope));
+  }
+  return *new_list;
+}
+
+=======
+>>>>>>> chromium
 String CSSValueList::CustomCSSText() const {
   StringView separator;
   switch (value_list_separator_) {

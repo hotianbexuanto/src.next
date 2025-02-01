@@ -27,6 +27,7 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_VIDEO_H_
 
 #include "third_party/blink/renderer/core/layout/layout_media.h"
+#include "third_party/blink/renderer/core/layout/natural_sizing_info.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
 namespace blink {
@@ -49,6 +50,8 @@ class LayoutVideo final : public LayoutMedia {
 
   HTMLVideoElement* VideoElement() const;
 
+  void StyleDidChange(StyleDifference, const ComputedStyle* old_style) override;
+
   const char* GetName() const override {
     NOT_DESTROYED();
     return "LayoutVideo";
@@ -64,8 +67,13 @@ class LayoutVideo final : public LayoutMedia {
  private:
   void UpdateFromElement() override;
 
+<<<<<<< HEAD
+  PhysicalNaturalSizingInfo GetNaturalDimensions() const override;
+  void UpdateNaturalSize();
+=======
   LayoutSize CalculateIntrinsicSize(float scale);
   void UpdateIntrinsicSize(bool is_in_layout);
+>>>>>>> chromium
 
   void ImageChanged(WrappedImagePtr, CanDeferInvalidation) override;
 
@@ -91,9 +99,13 @@ class LayoutVideo final : public LayoutMedia {
   }
   CompositingReasons AdditionalCompositingReasons() const override;
 
+<<<<<<< HEAD
+  PhysicalNaturalSizingInfo natural_dimensions_;
+=======
   void UpdatePlayer(bool is_in_layout);
 
   LayoutSize cached_image_size_;
+>>>>>>> chromium
 };
 
 template <>

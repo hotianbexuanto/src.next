@@ -19,11 +19,21 @@ import androidx.annotation.VisibleForTesting;
 import org.chromium.base.Callback;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.chrome.browser.toolbar.R;
+<<<<<<< HEAD
+import org.chromium.components.browser_ui.widget.BrowserUiListMenuUtils;
+import org.chromium.components.feature_engagement.EventConstants;
+import org.chromium.ui.listmenu.BasicListMenu;
+import org.chromium.ui.listmenu.ListMenu;
+import org.chromium.ui.listmenu.ListMenuButton;
+import org.chromium.ui.listmenu.ListMenuDelegate;
+import org.chromium.ui.listmenu.ListMenuItemProperties;
+=======
 import org.chromium.components.browser_ui.widget.listmenu.BasicListMenu;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenu;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenuButton;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenuButtonDelegate;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenuItemProperties;
+>>>>>>> chromium
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.widget.RectProvider;
@@ -101,6 +111,19 @@ public class TabSwitcherActionMenuCoordinator {
         int verticalPadding = context.getResources().getDimensionPixelOffset(
                 R.dimen.tab_switcher_menu_vertical_padding);
         ListView listView = listMenu.getListView();
+<<<<<<< HEAD
+        listView.setPaddingRelative(
+                listView.getPaddingStart(),
+                verticalPadding,
+                listView.getPaddingEnd(),
+                verticalPadding);
+        ListMenuDelegate delegate =
+                new ListMenuDelegate() {
+                    @Override
+                    public ListMenu getListMenu() {
+                        return listMenu;
+                    }
+=======
         listView.setPaddingRelative(listView.getPaddingStart(), verticalPadding,
                 listView.getPaddingEnd(), verticalPadding);
         ListMenuButtonDelegate delegate = new ListMenuButtonDelegate() {
@@ -108,6 +131,7 @@ public class TabSwitcherActionMenuCoordinator {
             public ListMenu getListMenu() {
                 return listMenu;
             }
+>>>>>>> chromium
 
             @Override
             public RectProvider getRectProvider(View listMenuButton) {

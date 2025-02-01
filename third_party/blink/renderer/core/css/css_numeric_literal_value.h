@@ -6,6 +6,7 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_NUMERIC_LITERAL_VALUE_H_
 
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
+#include "third_party/blink/renderer/core/css/css_value_clamping_utils.h"
 
 namespace blink {
 
@@ -45,14 +46,29 @@ class CORE_EXPORT CSSNumericLiteralValue : public CSSPrimitiveValue {
   }
   bool IsFlex() const { return CSSPrimitiveValue::IsFlex(GetType()); }
 
+<<<<<<< HEAD
+=======
   bool IsZero() const { return !DoubleValue(); }
 
+>>>>>>> chromium
   bool IsComputationallyIndependent() const;
 
   double DoubleValue() const { return num_; }
+  double ClampedDoubleValue() const {
+    return CSSValueClampingUtils::ClampDouble(num_);
+  }
+
   double ComputeSeconds() const;
   double ComputeDegrees() const;
   double ComputeDotsPerPixel() const;
+<<<<<<< HEAD
+  double ComputeInCanonicalUnit() const;
+  double ComputeInCanonicalUnit(const CSSLengthResolver&) const;
+  std::optional<double> GetValueIfKnown() const {
+    return ComputeInCanonicalUnit();
+  }
+=======
+>>>>>>> chromium
 
   double ComputeLengthPx(
       const CSSToLengthConversionData& conversion_data) const;

@@ -24,6 +24,11 @@
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/navigation_simulator.h"
+<<<<<<< HEAD
+#include "google_apis/gaia/core_account_id.h"
+#include "google_apis/gaia/gaia_id.h"
+=======
+>>>>>>> chromium
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -32,7 +37,7 @@ using signin_metrics::Reason;
 namespace {
 
 signin_metrics::AccessPoint kTestAccessPoint =
-    signin_metrics::AccessPoint::ACCESS_POINT_BOOKMARK_BUBBLE;
+    signin_metrics::AccessPoint::kBookmarkBubble;
 
 signin_metrics::PromoAction kTestPromoAction =
     signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO;
@@ -93,7 +98,16 @@ class ProcessDiceHeaderDelegateImplTest
         show_error_called_(false),
         account_id_("12345"),
         email_("foo@bar.com"),
+<<<<<<< HEAD
+        auth_error_(GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS) {
+    std::string kGaiaId = "12345";
+    account_info_.gaia = GaiaId(kGaiaId);
+    account_info_.account_id = CoreAccountId::FromGaiaId(account_info_.gaia);
+    account_info_.email = "email@gmail.com";
+  }
+=======
         auth_error_(GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS) {}
+>>>>>>> chromium
 
   ~ProcessDiceHeaderDelegateImplTest() override {}
 
@@ -138,6 +152,25 @@ class ProcessDiceHeaderDelegateImplTest
     }
     simulator->Commit();
     DCHECK_EQ(signin_url_, web_contents()->GetVisibleURL());
+<<<<<<< HEAD
+
+    if (is_sync_signin_tab) {
+      return ProcessDiceHeaderDelegateImpl::Create(web_contents());
+    } else {
+      // Use the constructor rather than the `Create()` method, to specify the
+      // error callback.
+      return std::make_unique<ProcessDiceHeaderDelegateImpl>(
+          web_contents(), /*is_sync_signin_tab=*/false,
+          signin_metrics::AccessPoint::kWebSignin, kTestPromoAction, GURL(),
+          ProcessDiceHeaderDelegateImpl::EnableSyncCallback(),
+          base::BindRepeating(
+              &ProcessDiceHeaderDelegateImplTest::OnSigninHeaderReceived,
+              base::Unretained(this)),
+          base::BindOnce(
+              &ProcessDiceHeaderDelegateImplTest::ShowSigninErrorCallback,
+              base::Unretained(this)));
+    }
+=======
     return std::make_unique<ProcessDiceHeaderDelegateImpl>(
         web_contents(),
         base::BindOnce(&ProcessDiceHeaderDelegateImplTest::StartSyncCallback,
@@ -145,6 +178,7 @@ class ProcessDiceHeaderDelegateImplTest
         base::BindOnce(
             &ProcessDiceHeaderDelegateImplTest::ShowSigninErrorCallback,
             base::Unretained(this)));
+>>>>>>> chromium
   }
 
   // ChromeRenderViewHostTestHarness:
@@ -328,20 +362,46 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::ValuesIn(kHandleTokenExchangeFailureTestCases));
 
 struct TokenExchangeSuccessConfiguration {
+<<<<<<< HEAD
+  bool is_reauth = false;   // User was already signed in with the account.
+  bool signin_tab = false;  // A DiceTabHelper is attached to the tab.
+  Reason reason = Reason::kSigninPrimaryAccount;
+  // Expected value for the MaybeInterceptWebSigin call.
+  bool sync_signin = false;
+  signin_metrics::AccessPoint access_point =
+      signin_metrics::AccessPoint::kUnknown;
+=======
   bool is_reauth;   // User was already signed in with the account.
   bool signin_tab;  // A DiceTabHelper is attached to the tab.
   Reason reason;
   bool sync_signin;  // Expected value for the MaybeInterceptWebSigin call.
+>>>>>>> chromium
 };
 
 TokenExchangeSuccessConfiguration kHandleTokenExchangeSuccessTestCases[] = {
     // clang-format off
+<<<<<<< HEAD
+    // is_reauth | signin_tab |       reason               |
+    //      sync_signin  | access_point
+    {  false,      false,     Reason::kSigninPrimaryAccount,
+            false, signin_metrics::AccessPoint::kWebSignin },
+    {  false,      true,      Reason::kSigninPrimaryAccount,
+            true, signin_metrics::AccessPoint::kBookmarkBubble },
+    {  false,      true,      Reason::kAddSecondaryAccount,
+            false, signin_metrics::AccessPoint::kBookmarkBubble },
+    {  true,       false,     Reason::kSigninPrimaryAccount,
+            false, signin_metrics::AccessPoint::kWebSignin },
+    {  true,       true,      Reason::kSigninPrimaryAccount,
+            true, signin_metrics::AccessPoint::kBookmarkBubble },
+
+=======
     // is_reauth | signin_tab |       reason               | sync_signin
     {  false,      false,     Reason::kSigninPrimaryAccount, false },
     {  false,      true,      Reason::kSigninPrimaryAccount, true },
     {  false,      true,      Reason::kAddSecondaryAccount,  false },
     {  true,       false,     Reason::kSigninPrimaryAccount, false },
     {  true,       true,      Reason::kSigninPrimaryAccount, true },
+>>>>>>> chromium
     // clang-format on
 };
 

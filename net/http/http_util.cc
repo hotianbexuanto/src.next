@@ -987,9 +987,26 @@ bool HttpUtil::NameValuePairsIterator::GetNext() {
   value_is_quoted_ = false;
   unquoted_value_.clear();
 
+<<<<<<< HEAD
+  // If there is a value, do additional checking and calculate the value.
+  if (has_value) {
+    // Check that no quote appears before the equals sign.
+    if (std::ranges::any_of(name_, IsQuote)) {
+      return false;
+    }
+
+    // Value consists of everything after the equals sign, with whitespace
+    // trimmed.
+    value_ = TrimLWS(name_value_pair.substr(equals + 1));
+    if (value_.empty()) {
+      // Malformed; value is empty
+      return false;
+    }
+=======
   if (equals != value_end_ && value_begin_ == value_end_) {
     // Malformed; value is empty
     return valid_ = false;
+>>>>>>> chromium
   }
 
   if (value_begin_ != value_end_ && IsQuote(*value_begin_)) {

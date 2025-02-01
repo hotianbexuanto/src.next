@@ -236,6 +236,24 @@ bool EventListenerMap::HasProcessListener(
 }
 
 void EventListenerMap::RemoveListenersForExtension(
+<<<<<<< HEAD
+    const ExtensionId& extension_id) {
+  RemoveListenersForExtensionImpl(
+      extension_id, /*removal_predicate=*/base::BindRepeating(
+          [](const ExtensionId& extension_id, EventListener* listener) {
+            return listener->extension_id() == extension_id;
+          }));
+}
+
+void EventListenerMap::RemoveActiveServiceWorkerListenersForExtension(
+    const ExtensionId& extension_id) {
+  RemoveListenersForExtensionImpl(
+      extension_id, /*removal_predicate=*/base::BindRepeating(
+          [](const ExtensionId& extension_id, EventListener* listener) {
+            return listener->extension_id() == extension_id &&
+                   listener->is_for_service_worker() && !listener->IsLazy();
+          }));
+=======
     const std::string& extension_id) {
   for (auto it = listeners_.begin(); it != listeners_.end();) {
     auto& listener_list = it->second;
@@ -256,6 +274,7 @@ void EventListenerMap::RemoveListenersForExtension(
     else
       ++it;
   }
+>>>>>>> chromium
 }
 
 void EventListenerMap::LoadUnfilteredLazyListeners(
@@ -354,6 +373,32 @@ void EventListenerMap::RemoveListenersForProcess(
       it = listeners_.erase(it);
     else
       ++it;
+  }
+}
+
+void EventListenerMap::RemoveListenersForExtensionImpl(
+    const ExtensionId& extension_id,
+    base::RepeatingCallback<bool(const ExtensionId&, EventListener*)>
+        removal_predicate) {
+  for (auto it = listeners_.begin(); it != listeners_.end();) {
+    auto& listener_list = it->second;
+    for (auto it2 = listener_list.begin(); it2 != listener_list.end();) {
+      if (removal_predicate.Run(extension_id, it2->get())) {
+        std::unique_ptr<EventListener> listener_removed = std::move(*it2);
+        CleanupListener(listener_removed.get());
+        it2 = listener_list.erase(it2);
+        delegate_->OnListenerRemoved(listener_removed.get());
+      } else {
+        ++it2;
+      }
+    }
+    // Check if we removed all the listeners from the list. If so,
+    // remove the list entry entirely.
+    if (listener_list.empty()) {
+      it = listeners_.erase(it);
+    } else {
+      ++it;
+    }
   }
 }
 

@@ -28,6 +28,12 @@
             android:src="@drawable/btn_toolbar_home"
             android:contentDescription="@string/accessibility_toolbar_btn_home"
             android:visibility="gone"
+<<<<<<< HEAD
+            app:menuMaxWidth="@dimen/home_button_list_menu_width"
+            app:menuPositionedAtStart="true"
+            app:menuVerticalOverlapAnchor="false"
+=======
+>>>>>>> chromium
             app:tint="@color/default_icon_color_tint_list" />
 
         <org.chromium.ui.widget.ChromeImageButton

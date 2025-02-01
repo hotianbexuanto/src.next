@@ -8,12 +8,19 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
+#include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+#include "third_party/blink/renderer/core/layout/fragmentation_utils.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/layout/layout_video.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/paint/clip_path_clipper.h"
 #include "third_party/blink/renderer/core/paint/compositing/composited_layer_mapping.h"
 #include "third_party/blink/renderer/core/paint/ng/ng_box_fragment_painter.h"
 #include "third_party/blink/renderer/core/paint/object_paint_properties.h"
+#include "third_party/blink/renderer/core/paint/paint_flags.h"
 #include "third_party/blink/renderer/core/paint/paint_info.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_paint_order_iterator.h"
@@ -32,6 +39,87 @@
 
 namespace blink {
 
+<<<<<<< HEAD
+namespace {
+
+constexpr char kDevToolsTimelineCategory[] = "devtools.timeline";
+
+class PaintTimelineReporter {
+  STACK_ALLOCATED();
+
+ public:
+  PaintTimelineReporter(const PaintLayer& layer, bool should_paint_content)
+      : layer_(layer) {
+    if (ShouldReport(should_paint_content)) {
+      reset_current_reporting_.emplace(&current_reporting_, this);
+      TRACE_EVENT_BEGIN1(
+          kDevToolsTimelineCategory, "Paint", "data",
+          [&layer](perfetto::TracedValue context) {
+            const LayoutObject& object = layer.GetLayoutObject();
+            gfx::Rect cull_rect =
+                object.FirstFragment().GetContentsCullRect().Rect();
+            // Convert the cull rect into the local coordinates of layer.
+            cull_rect.Offset(
+                -ToRoundedVector2d(object.FirstFragment().PaintOffset()));
+            inspector_paint_event::Data(std::move(context), object.GetFrame(),
+                                        &object, cull_rect);
+          });
+    }
+  }
+
+  ~PaintTimelineReporter() {
+    if (current_reporting_ == this) {
+      TRACE_EVENT_END0(kDevToolsTimelineCategory, "Paint");
+    }
+  }
+
+ private:
+  bool ShouldReport(bool should_paint_content) const {
+    if (!TRACE_EVENT_CATEGORY_ENABLED(kDevToolsTimelineCategory)) {
+      return false;
+    }
+    // Always report for the top layer to cover the cost of tree walk and
+    // cache copying of non-repainted contents.
+    if (!current_reporting_) {
+      return true;
+    }
+    if (!should_paint_content) {
+      return false;
+    }
+    if (!layer_.SelfNeedsRepaint()) {
+      return false;
+    }
+    if (!current_reporting_->layer_.SelfNeedsRepaint()) {
+      return true;
+    }
+    // The layer should report if it has an expanded cull rect.
+    if (const auto* properties =
+            layer_.GetLayoutObject().FirstFragment().PaintProperties()) {
+      if (const auto* scroll = properties->Scroll()) {
+        if (CullRect::CanExpandForScroll(*scroll)) {
+          return true;
+        }
+      }
+      if (properties->ForNodes<TransformPaintPropertyNode>(
+              [](const TransformPaintPropertyNode& node) {
+                return node.RequiresCullRectExpansion();
+              })) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static PaintTimelineReporter* current_reporting_;
+  const PaintLayer& layer_;
+  std::optional<base::AutoReset<PaintTimelineReporter*>>
+      reset_current_reporting_;
+};
+
+PaintTimelineReporter* PaintTimelineReporter::current_reporting_ = nullptr;
+
+}  // namespace
+=======
 void PaintLayerPainter::Paint(GraphicsContext& context,
                               const CullRect& cull_rect,
                               const GlobalPaintFlags global_paint_flags,
@@ -49,6 +137,7 @@ static ShouldRespectOverflowClipType ShouldRespectOverflowClip(
              ? kIgnoreOverflowClip
              : kRespectOverflowClip;
 }
+>>>>>>> chromium
 
 bool PaintLayerPainter::PaintedOutputInvisible(const ComputedStyle& style) {
   if (style.HasNonInitialBackdropFilter())
@@ -203,6 +292,14 @@ bool PaintLayerPainter::ShouldUseInfiniteCullRectInternal(
       !is_printing)
     return true;
 
+<<<<<<< HEAD
+  if (((paint_flags & PaintFlag::kPlacedElement) == 0) &&
+      !IsA<HTMLCanvasElement>(object.GetNode()) &&
+      IsA<Element>(object.GetNode()) &&
+      To<Element>(object.GetNode())->IsInCanvasSubtree()) {
+    // This prevents canvas fallback content from being rendered.
+    return kFullyPainted;
+=======
   // Cull rect mapping doesn't work under perspective in some cases.
   // See http://crbug.com/887558 for details.
   if (paint_layer_.GetLayoutObject().StyleRef().HasPerspective())
@@ -221,6 +318,7 @@ bool PaintLayerPainter::ShouldUseInfiniteCullRectInternal(
           return true;
       }
     }
+>>>>>>> chromium
   }
 
   // We do not apply cull rect optimizations across transforms for two
@@ -495,6 +593,12 @@ PaintResult PaintLayerPainter::PaintLayerContents(
     subsequence_recorder.emplace(context, paint_layer_);
   }
 
+<<<<<<< HEAD
+  PaintTimelineReporter timeline_reporter(paint_layer_, should_paint_content);
+
+  std::optional<ScopedEffectivelyInvisible> effectively_invisible;
+  if (PaintedOutputInvisible(object.StyleRef()))
+=======
   bool is_painting_root_layer = (&paint_layer_) == painting_info.root_layer;
   bool should_paint_background =
       should_paint_content && !selection_drag_image_only &&
@@ -515,6 +619,7 @@ PaintResult PaintLayerPainter::PaintLayerContents(
   absl::optional<ScopedEffectivelyInvisible> effectively_invisible;
   if (RuntimeEnabledFeatures::CompositeAfterPaintEnabled() &&
       PaintedOutputInvisible(object.StyleRef()))
+>>>>>>> chromium
     effectively_invisible.emplace(context.GetPaintController());
 
   absl::optional<ScopedPaintChunkHint> paint_chunk_hint;

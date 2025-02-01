@@ -10,6 +10,10 @@
 
 #include "base/callback.h"
 #include "base/check.h"
+<<<<<<< HEAD
+#include "base/functional/callback.h"
+=======
+>>>>>>> chromium
 #include "content/public/browser/media_capture_devices.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/permissions/permissions_data.h"
@@ -27,6 +31,19 @@ namespace {
 
 const MediaStreamDevice* GetRequestedDeviceOrDefault(
     const MediaStreamDevices& devices,
+<<<<<<< HEAD
+    const std::vector<std::string>& requested_device_ids) {
+  for (const auto& requested_device_id : requested_device_ids) {
+    if (requested_device_id.empty()) {
+      continue;
+    }
+
+    auto it =
+        std::ranges::find(devices, requested_device_id, &MediaStreamDevice::id);
+    if (it != devices.end()) {
+      return &(*it);
+    }
+=======
     const std::string& requested_device_id) {
   if (!requested_device_id.empty()) {
     auto it =
@@ -35,6 +52,7 @@ const MediaStreamDevice* GetRequestedDeviceOrDefault(
                        return device.id == requested_device_id;
                      });
     return it != devices.end() ? &(*it) : nullptr;
+>>>>>>> chromium
   }
 
   if (!devices.empty())

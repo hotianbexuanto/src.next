@@ -63,10 +63,20 @@ class CORE_EXPORT DragData {
       FilenameConversionPolicy filename_policy = kConvertFilenames) const;
   bool ContainsPlainText() const;
   bool ContainsCompatibleContent() const;
+<<<<<<< HEAD
+  WTF::String AsURL(
+      FilenameConversionPolicy filename_policy = kConvertFilenames,
+      WTF::String* title = nullptr) const;
+  Vector<WTF::String> AsURLs(
+      FilenameConversionPolicy filename_policy = kConvertFilenames) const;
+  WTF::String AsPlainText() const;
+  void AsFilePaths(Vector<WTF::String>&) const;
+=======
   String AsURL(FilenameConversionPolicy filename_policy = kConvertFilenames,
                String* title = nullptr) const;
   String AsPlainText() const;
   void AsFilePaths(Vector<String>&) const;
+>>>>>>> chromium
   unsigned NumberOfFiles() const;
   DocumentFragment* AsFragment(LocalFrame*) const;
   bool CanSmartReplace() const;

@@ -1270,7 +1270,7 @@ TEST_P(PaintLayerTest, DescendantDependentFlagsStopsAtThrottledFrames) {
                    ->needs_descendant_dependent_flags_update_);
 }
 
-TEST_P(PaintLayerTest, CompositingContainerStackedFloatUnderStackingInline) {
+TEST_P(PaintLayerTest, PaintingContainerStackedFloatUnderStackingInline) {
   SetBodyInnerHTML(R"HTML(
     <div id='compositedContainer' style='position: relative;
         will-change: transform'>
@@ -1283,6 +1283,9 @@ TEST_P(PaintLayerTest, CompositingContainerStackedFloatUnderStackingInline) {
   )HTML");
 
   PaintLayer* target = GetPaintLayerByElementId("target");
+<<<<<<< HEAD
+  EXPECT_EQ(GetPaintLayerByElementId("span"), target->PaintingContainer());
+=======
   EXPECT_EQ(GetPaintLayerByElementId("span"), target->CompositingContainer());
 
   // enclosingLayerWithCompositedLayerMapping is not needed or applicable to
@@ -1291,9 +1294,10 @@ TEST_P(PaintLayerTest, CompositingContainerStackedFloatUnderStackingInline) {
     EXPECT_EQ(GetPaintLayerByElementId("compositedContainer"),
               target->EnclosingLayerWithCompositedLayerMapping(kExcludeSelf));
   }
+>>>>>>> chromium
 }
 
-TEST_P(PaintLayerTest, CompositingContainerColumnSpanAll) {
+TEST_P(PaintLayerTest, PaintingContainerColumnSpanAll) {
   SetBodyInnerHTML(R"HTML(
     <div>
       <div id='compositedContainer' style='columns: 1'>
@@ -1303,13 +1307,21 @@ TEST_P(PaintLayerTest, CompositingContainerColumnSpanAll) {
     </div>
   )HTML");
 
+<<<<<<< HEAD
+  PaintLayer* columnSpan = GetPaintLayerByElementId("columnSpan");
+  EXPECT_EQ(GetPaintLayerByElementId("paintContainer"),
+            columnSpan->PaintingContainer());
+  EXPECT_EQ(GetPaintLayerByElementId("multicol"),
+            columnSpan->ContainingLayer());
+=======
   PaintLayer* target = GetPaintLayerByElementId("columnSpan");
   EXPECT_EQ(target->Parent(), target->CompositingContainer());
   EXPECT_EQ(target->Parent()->Parent(), target->ContainingLayer());
+>>>>>>> chromium
 }
 
 TEST_P(PaintLayerTest,
-       CompositingContainerStackedFloatUnderStackingCompositedInline) {
+       PaintingContainerStackedFloatUnderStackingCompositedInline) {
   SetBodyInnerHTML(R"HTML(
     <div id='compositedContainer' style='position: relative;
         will-change: transform'>
@@ -1323,6 +1335,9 @@ TEST_P(PaintLayerTest,
 
   PaintLayer* target = GetPaintLayerByElementId("target");
   PaintLayer* span = GetPaintLayerByElementId("span");
+<<<<<<< HEAD
+  EXPECT_EQ(span, target->PaintingContainer());
+=======
   EXPECT_EQ(span, target->CompositingContainer());
 
   // enclosingLayerWithCompositedLayerMapping is not needed or applicable to
@@ -1331,9 +1346,10 @@ TEST_P(PaintLayerTest,
     EXPECT_EQ(span,
               target->EnclosingLayerWithCompositedLayerMapping(kExcludeSelf));
   }
+>>>>>>> chromium
 }
 
-TEST_P(PaintLayerTest, CompositingContainerNonStackedFloatUnderStackingInline) {
+TEST_P(PaintLayerTest, PaintingContainerNonStackedFloatUnderStackingInline) {
   SetBodyInnerHTML(R"HTML(
     <div id='compositedContainer' style='position: relative;
         will-change: transform'>
@@ -1346,6 +1362,9 @@ TEST_P(PaintLayerTest, CompositingContainerNonStackedFloatUnderStackingInline) {
   )HTML");
 
   PaintLayer* target = GetPaintLayerByElementId("target");
+<<<<<<< HEAD
+  EXPECT_EQ(GetPaintLayerByElementId("span"), target->PaintingContainer());
+=======
   if (RuntimeEnabledFeatures::LayoutNGEnabled()) {
     EXPECT_EQ(GetPaintLayerByElementId("span"), target->CompositingContainer());
   } else {
@@ -1359,10 +1378,11 @@ TEST_P(PaintLayerTest, CompositingContainerNonStackedFloatUnderStackingInline) {
     EXPECT_EQ(GetPaintLayerByElementId("compositedContainer"),
               target->EnclosingLayerWithCompositedLayerMapping(kExcludeSelf));
   }
+>>>>>>> chromium
 }
 
 TEST_P(PaintLayerTest,
-       CompositingContainerNonStackedFloatUnderStackingCompositedInline) {
+       PaintingContainerNonStackedFloatUnderStackingCompositedInline) {
   SetBodyInnerHTML(R"HTML(
     <div id='compositedContainer' style='position: relative;
         will-change: transform'>
@@ -1375,6 +1395,9 @@ TEST_P(PaintLayerTest,
   )HTML");
 
   PaintLayer* target = GetPaintLayerByElementId("target");
+<<<<<<< HEAD
+  EXPECT_EQ(GetPaintLayerByElementId("span"), target->PaintingContainer());
+=======
   if (RuntimeEnabledFeatures::LayoutNGEnabled()) {
     EXPECT_EQ(GetPaintLayerByElementId("span"), target->CompositingContainer());
   } else {
@@ -1393,10 +1416,10 @@ TEST_P(PaintLayerTest,
                 target->EnclosingLayerWithCompositedLayerMapping(kExcludeSelf));
     }
   }
+>>>>>>> chromium
 }
 
-TEST_P(PaintLayerTest,
-       CompositingContainerStackedUnderFloatUnderStackingInline) {
+TEST_P(PaintLayerTest, PaintingContainerStackedUnderFloatUnderStackingInline) {
   SetBodyInnerHTML(R"HTML(
     <div id='compositedContainer' style='position: relative;
         will-change: transform'>
@@ -1411,6 +1434,9 @@ TEST_P(PaintLayerTest,
   )HTML");
 
   PaintLayer* target = GetPaintLayerByElementId("target");
+<<<<<<< HEAD
+  EXPECT_EQ(GetPaintLayerByElementId("span"), target->PaintingContainer());
+=======
   EXPECT_EQ(GetPaintLayerByElementId("span"), target->CompositingContainer());
 
   // enclosingLayerWithCompositedLayerMapping is not needed or applicable to
@@ -1419,10 +1445,11 @@ TEST_P(PaintLayerTest,
     EXPECT_EQ(GetPaintLayerByElementId("compositedContainer"),
               target->EnclosingLayerWithCompositedLayerMapping(kExcludeSelf));
   }
+>>>>>>> chromium
 }
 
 TEST_P(PaintLayerTest,
-       CompositingContainerStackedUnderFloatUnderStackingCompositedInline) {
+       PaintingContainerStackedUnderFloatUnderStackingCompositedInline) {
   SetBodyInnerHTML(R"HTML(
     <div id='compositedContainer' style='position: relative;
         will-change: transform'>
@@ -1438,6 +1465,9 @@ TEST_P(PaintLayerTest,
 
   PaintLayer* target = GetPaintLayerByElementId("target");
   PaintLayer* span = GetPaintLayerByElementId("span");
+<<<<<<< HEAD
+  EXPECT_EQ(span, target->PaintingContainer());
+=======
   EXPECT_EQ(span, target->CompositingContainer());
 
   // enclosingLayerWithCompositedLayerMapping is not needed or applicable to
@@ -1446,10 +1476,11 @@ TEST_P(PaintLayerTest,
     EXPECT_EQ(span,
               target->EnclosingLayerWithCompositedLayerMapping(kExcludeSelf));
   }
+>>>>>>> chromium
 }
 
 TEST_P(PaintLayerTest,
-       CompositingContainerNonStackedUnderFloatUnderStackingInline) {
+       PaintingContainerNonStackedUnderFloatUnderStackingInline) {
   SetBodyInnerHTML(R"HTML(
     <div id='compositedContainer' style='position: relative;
         will-change: transform'>
@@ -1464,6 +1495,9 @@ TEST_P(PaintLayerTest,
   )HTML");
 
   PaintLayer* target = GetPaintLayerByElementId("target");
+<<<<<<< HEAD
+  EXPECT_EQ(GetPaintLayerByElementId("span"), target->PaintingContainer());
+=======
   if (RuntimeEnabledFeatures::LayoutNGEnabled()) {
     EXPECT_EQ(GetPaintLayerByElementId("span"), target->CompositingContainer());
   } else {
@@ -1477,10 +1511,11 @@ TEST_P(PaintLayerTest,
     EXPECT_EQ(GetPaintLayerByElementId("compositedContainer"),
               target->EnclosingLayerWithCompositedLayerMapping(kExcludeSelf));
   }
+>>>>>>> chromium
 }
 
 TEST_P(PaintLayerTest,
-       CompositingContainerNonStackedUnderFloatUnderStackingCompositedInline) {
+       PaintingContainerNonStackedUnderFloatUnderStackingCompositedInline) {
   SetBodyInnerHTML(R"HTML(
     <div id='compositedContainer' style='position: relative;
         will-change: transform'>
@@ -1495,6 +1530,9 @@ TEST_P(PaintLayerTest,
   )HTML");
 
   PaintLayer* target = GetPaintLayerByElementId("target");
+<<<<<<< HEAD
+  EXPECT_EQ(GetPaintLayerByElementId("span"), target->PaintingContainer());
+=======
   if (RuntimeEnabledFeatures::LayoutNGEnabled()) {
     EXPECT_EQ(GetPaintLayerByElementId("span"), target->CompositingContainer());
   } else {
@@ -1513,6 +1551,7 @@ TEST_P(PaintLayerTest,
                 target->EnclosingLayerWithCompositedLayerMapping(kExcludeSelf));
     }
   }
+>>>>>>> chromium
 }
 
 TEST_P(PaintLayerTest, FloatLayerAndAbsoluteUnderInlineLayer) {
@@ -1865,7 +1904,7 @@ TEST_P(PaintLayerTest, LayerUnderFloatUnderInlineLayer) {
   }
 }
 
-TEST_P(PaintLayerTest, CompositingContainerFloatingIframe) {
+TEST_P(PaintLayerTest, PaintingContainerFloatingIframe) {
   SetBodyInnerHTML(R"HTML(
     <div id='compositedContainer' style='position: relative;
         will-change: transform'>
@@ -1884,6 +1923,9 @@ TEST_P(PaintLayerTest, CompositingContainerFloatingIframe) {
   // A non-positioned iframe still gets a PaintLayer because PaintLayers are
   // forced for all LayoutEmbeddedContent objects. However, such PaintLayers are
   // not stacked.
+<<<<<<< HEAD
+  EXPECT_EQ(GetPaintLayerByElementId("span"), target->PaintingContainer());
+=======
   if (RuntimeEnabledFeatures::LayoutNGEnabled()) {
     EXPECT_EQ(GetPaintLayerByElementId("span"), target->CompositingContainer());
   } else {
@@ -1923,6 +1965,7 @@ TEST_P(PaintLayerTest, CompositingContainerSelfPaintingNonStackedFloat) {
     EXPECT_EQ(container, target->ContainingLayer());
   }
   EXPECT_EQ(span, target->CompositingContainer());
+>>>>>>> chromium
 }
 
 TEST_P(PaintLayerTest, ColumnSpanLayerUnderExtraLayerScrolled) {
@@ -2000,12 +2043,17 @@ TEST_P(PaintLayerTest, NeedsRepaintOnSelfPaintingStatusChange) {
 
   // Target layer is self painting because it is a multicol container.
   EXPECT_TRUE(target_layer->IsSelfPaintingLayer());
-  EXPECT_EQ(span_layer, target_layer->CompositingContainer());
+  EXPECT_EQ(span_layer, target_layer->PaintingContainer());
   EXPECT_FALSE(target_layer->SelfNeedsRepaint());
   EXPECT_FALSE(span_layer->SelfNeedsRepaint());
 
+<<<<<<< HEAD
+  // Removing position:relative makes target layer no longer self-painting,
+  // and change its painting container. The original painting container
+=======
   // Removing column-width: 10px makes target layer no longer self-painting,
   // and change its compositing container. The original compositing container
+>>>>>>> chromium
   // span_layer should be marked SelfNeedsRepaint.
   target_element->setAttribute(html_names::kStyleAttr,
                                "overflow: hidden; float: left");
@@ -2017,13 +2065,17 @@ TEST_P(PaintLayerTest, NeedsRepaintOnSelfPaintingStatusChange) {
   target_object = target_element->GetLayoutObject();
   target_layer = To<LayoutBoxModelObject>(target_object)->Layer();
   EXPECT_FALSE(target_layer->IsSelfPaintingLayer());
+<<<<<<< HEAD
+  EXPECT_EQ(span_layer, target_layer->PaintingContainer());
+=======
   if (RuntimeEnabledFeatures::LayoutNGEnabled()) {
     EXPECT_EQ(span_layer, target_layer->CompositingContainer());
   } else {
     EXPECT_EQ(span_layer->Parent(), target_layer->CompositingContainer());
   }
+>>>>>>> chromium
   EXPECT_TRUE(target_layer->SelfNeedsRepaint());
-  EXPECT_TRUE(target_layer->CompositingContainer()->SelfNeedsRepaint());
+  EXPECT_TRUE(target_layer->PaintingContainer()->SelfNeedsRepaint());
   EXPECT_TRUE(span_layer->SelfNeedsRepaint());
   UpdateAllLifecyclePhasesForTest();
 }
@@ -2039,11 +2091,11 @@ TEST_P(PaintLayerTest, NeedsRepaintOnRemovingStackedLayer) {
   auto* target_object = target_element->GetLayoutObject();
   auto* target_layer = To<LayoutBoxModelObject>(target_object)->Layer();
 
-  // |container| is not the CompositingContainer of |target| because |target|
+  // |container| is not the PaintingContainer of |target| because |target|
   // is stacked but |container| is not a stacking context.
   EXPECT_TRUE(target_layer->GetLayoutObject().IsStacked());
-  EXPECT_NE(body_layer, target_layer->CompositingContainer());
-  auto* old_compositing_container = target_layer->CompositingContainer();
+  EXPECT_NE(body_layer, target_layer->PaintingContainer());
+  auto* old_painting_container = target_layer->PaintingContainer();
 
   body->setAttribute(html_names::kStyleAttr, "margin-top: 0");
   target_element->setAttribute(html_names::kStyleAttr, "top: 0");
@@ -2051,7 +2103,7 @@ TEST_P(PaintLayerTest, NeedsRepaintOnRemovingStackedLayer) {
 
   EXPECT_FALSE(target_object->HasLayer());
   EXPECT_TRUE(body_layer->SelfNeedsRepaint());
-  EXPECT_TRUE(old_compositing_container->DescendantNeedsRepaint());
+  EXPECT_TRUE(old_painting_container->DescendantNeedsRepaint());
 
   UpdateAllLifecyclePhasesForTest();
 }

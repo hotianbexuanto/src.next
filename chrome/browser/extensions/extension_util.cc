@@ -13,6 +13,9 @@
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+<<<<<<< HEAD
+#include "chrome/browser/profiles/profile.h"
+=======
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_sync_service.h"
 #include "chrome/browser/extensions/launch_util.h"
@@ -24,6 +27,7 @@
 #include "chrome/browser/ui/webui/extensions/extension_icon_source.h"
 #include "chrome/browser/web_applications/extensions/bookmark_app_util.h"
 #include "chrome/common/chrome_switches.h"
+>>>>>>> chromium
 #include "chrome/common/extensions/api/url_handlers/url_handlers_parser.h"
 #include "chrome/common/extensions/sync_helper.h"
 #include "components/variations/variations_associated_data.h"
@@ -34,6 +38,13 @@
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/extension_util.h"
+<<<<<<< HEAD
+#include "extensions/browser/pref_names.h"
+#include "extensions/browser/process_map.h"
+#include "extensions/browser/renderer_startup_helper.h"
+#include "extensions/browser/user_script_manager.h"
+=======
+>>>>>>> chromium
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_icon_set.h"
 #include "extensions/common/extension_urls.h"
@@ -49,6 +60,17 @@
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/file_manager/app_id.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
+#endif
+
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/extensions/desktop_android/desktop_android_extension_system.h"
+#else
+#include "chrome/browser/extensions/extension_service.h"
+#include "chrome/browser/extensions/extension_sync_service.h"
+#include "chrome/browser/extensions/permissions/permissions_updater.h"
+#include "chrome/browser/extensions/shared_module_service.h"
+#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/webui/extensions/extension_icon_source.h"
 #endif
 
 namespace extensions {
@@ -68,10 +90,18 @@ std::string ReloadExtensionIfEnabled(const std::string& extension_id,
   // When we reload the extension the ID may be invalidated if we've passed it
   // by const ref everywhere. Make a copy to be safe. http://crbug.com/103762
   std::string id = extension_id;
+#if BUILDFLAG(IS_ANDROID)
+  DesktopAndroidExtensionSystem* extension_system =
+      static_cast<DesktopAndroidExtensionSystem*>(
+          ExtensionSystem::Get(context));
+  CHECK(extension_system);
+  extension_system->ReloadExtension(id);
+#else
   ExtensionService* service =
       ExtensionSystem::Get(context)->extension_service();
   CHECK(service);
   service->ReloadExtension(id);
+#endif
   return id;
 }
 
@@ -114,9 +144,13 @@ void SetIsIncognitoEnabled(const std::string& extension_id,
       registry->GetExtensionById(extension_id, ExtensionRegistry::EVERYTHING);
 
   if (extension) {
-    if (!util::CanBeIncognitoEnabled(extension))
+    if (!util::CanBeIncognitoEnabled(extension)) {
       return;
+    }
 
+    // TODO(crbug.com/356905053): Enable handling component extensions on
+    // desktop android.
+#if !BUILDFLAG(IS_ANDROID)
     // TODO(treib,kalman): Should this be Manifest::IsComponentLocation(..)?
     // (which also checks for kExternalComponent).
     if (extension->location() == mojom::ManifestLocation::kComponent) {
@@ -136,6 +170,7 @@ void SetIsIncognitoEnabled(const std::string& extension_id,
       DCHECK_EQ(enabled, IsIncognitoEnabled(extension_id, context));
       return;
     }
+#endif  // !BUILDFLAG(IS_ANDROID)
   }
 
   ExtensionPrefs* extension_prefs = ExtensionPrefs::Get(context);
@@ -143,8 +178,9 @@ void SetIsIncognitoEnabled(const std::string& extension_id,
   // if the value changed and the extension is actually enabled, since there is
   // no UI otherwise.
   bool old_enabled = extension_prefs->IsIncognitoEnabled(extension_id);
-  if (enabled == old_enabled)
+  if (enabled == old_enabled) {
     return;
+  }
 
   extension_prefs->SetIsIncognitoEnabled(extension_id, enabled);
 
@@ -152,12 +188,20 @@ void SetIsIncognitoEnabled(const std::string& extension_id,
 
   // Reloading the extension invalidates the |extension| pointer.
   extension = registry->GetExtensionById(id, ExtensionRegistry::EVERYTHING);
+  // TODO(crbug.com/356905053): Enable extensions sync on desktop android.
+#if !BUILDFLAG(IS_ANDROID)
   if (extension) {
     Profile* profile = Profile::FromBrowserContext(context);
     ExtensionSyncService::Get(profile)->SyncExtensionChangeIfNeeded(*extension);
   }
+#endif
 }
 
+<<<<<<< HEAD
+// TODO(crbug.com/356905053): Enable more extension util functions on
+// desktop android.
+#if !BUILDFLAG(IS_ANDROID)
+=======
 bool CanLoadInIncognito(const Extension* extension,
                         content::BrowserContext* context) {
   CHECK(extension);
@@ -176,6 +220,7 @@ bool AllowFileAccess(const std::string& extension_id,
          ExtensionPrefs::Get(context)->AllowFileAccess(extension_id);
 }
 
+>>>>>>> chromium
 void SetAllowFileAccess(const std::string& extension_id,
                         content::BrowserContext* context,
                         bool allow) {
@@ -243,6 +288,7 @@ bool IsExtensionIdle(const std::string& extension_id,
   }
 
   ProcessManager* process_manager = ProcessManager::Get(context);
+  ProcessMap* process_map = ProcessMap::Get(context);
   for (std::vector<std::string>::const_iterator i = ids_to_check.begin();
        i != ids_to_check.end();
        i++) {
@@ -251,14 +297,16 @@ bool IsExtensionIdle(const std::string& extension_id,
     if (host)
       return false;
 
-    scoped_refptr<content::SiteInstance> site_instance =
-        process_manager->GetSiteInstanceForURL(
-            Extension::GetBaseURLFromExtensionId(id));
-    if (site_instance && site_instance->HasProcess())
+    if (!process_manager->GetRenderFrameHostsForExtension(id).empty()) {
       return false;
+    }
 
-    if (!process_manager->GetRenderFrameHostsForExtension(id).empty())
+    // TODO(devlin): We can probably remove the checks above (for background
+    // hosts and frame hosts). If an extension has any active frames, it should
+    // have a dedicated process.
+    if (process_map->ExtensionHasProcess(id)) {
       return false;
+    }
   }
   return true;
 }
@@ -334,5 +382,45 @@ std::vector<content::BrowserContext*> GetAllRelatedProfiles(
   return related_contexts;
 }
 
+<<<<<<< HEAD
+void SetDeveloperModeForProfile(Profile* profile, bool in_developer_mode) {
+  profile->GetPrefs()->SetBoolean(prefs::kExtensionsUIDeveloperMode,
+                                  in_developer_mode);
+  SetCurrentDeveloperMode(util::GetBrowserContextId(profile),
+                          in_developer_mode);
+  RendererStartupHelperFactory::GetForBrowserContext(profile)
+      ->OnDeveloperModeChanged(in_developer_mode);
+
+  // kDynamicUserScript scripts are allowed if and only if the user is in dev
+  // mode (since they allow raw code execution). Notify the user script manager
+  // to properly enable or disable any scripts.
+  UserScriptManager* user_script_manager =
+      ExtensionSystem::Get(profile)->user_script_manager();
+  if (!user_script_manager) {
+    CHECK_IS_TEST();  // `user_script_manager` can be null in unit tests.
+    return;
+  }
+
+  user_script_manager->SetUserScriptSourceEnabledForExtensions(
+      UserScript::Source::kDynamicUserScript, in_developer_mode);
+}
+
+std::u16string GetFixupExtensionNameForUIDisplay(
+    const std::u16string& extension_name) {
+  const size_t extension_name_char_limit =
+      75;  // Extension name char limit on CWS
+  gfx::BreakType break_type = gfx::BreakType::CHARACTER_BREAK;
+  std::u16string fixup_extension_name = gfx::TruncateString(
+      extension_name, extension_name_char_limit, break_type);
+  return fixup_extension_name;
+}
+std::u16string GetFixupExtensionNameForUIDisplay(
+    const std::string& extension_name) {
+  return GetFixupExtensionNameForUIDisplay(base::UTF8ToUTF16(extension_name));
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+=======
+>>>>>>> chromium
 }  // namespace util
 }  // namespace extensions

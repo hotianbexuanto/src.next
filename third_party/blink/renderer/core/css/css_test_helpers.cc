@@ -105,15 +105,69 @@ void RegisterProperty(Document& document,
   ASSERT_FALSE(exception_state.HadException());
 }
 
+<<<<<<< HEAD
+void DeclareProperty(Document& document,
+                     const String& name,
+                     const String& syntax,
+                     const std::optional<String>& initial_value,
+                     bool is_inherited) {
+  StringBuilder builder;
+  builder.Append("@property ");
+  builder.Append(name);
+  builder.Append(" { ");
+
+  // syntax:
+  builder.Append("syntax:\"");
+  builder.Append(syntax);
+  builder.Append("\";");
+
+  // initial-value:
+  if (initial_value.has_value()) {
+    builder.Append("initial-value:");
+    builder.Append(initial_value.value());
+    builder.Append(";");
+  }
+
+  // inherits:
+  builder.Append("inherits:");
+  builder.Append(String::Boolean(is_inherited));
+  builder.Append(";");
+
+  builder.Append(" }");
+
+  auto* rule =
+      DynamicTo<StyleRuleProperty>(ParseRule(document, builder.ToString()));
+  if (!rule) {
+    return;
+  }
+  auto* registration = PropertyRegistration::MaybeCreateForDeclaredProperty(
+      document, AtomicString(name), *rule);
+  if (!registration) {
+    return;
+  }
+  document.EnsurePropertyRegistry().DeclareProperty(AtomicString(name),
+                                                    *registration);
+  document.GetStyleEngine().PropertyRegistryChanged();
+}
+
+CSSVariableData* CreateVariableData(String s) {
+=======
 scoped_refptr<CSSVariableData> CreateVariableData(String s) {
   CSSTokenizer tokenizer(s);
   auto tokens = tokenizer.TokenizeToEOF();
   CSSParserTokenRange range(tokens);
+>>>>>>> chromium
   bool is_animation_tainted = false;
+  bool is_attr_tainted = false;
   bool needs_variable_resolution = false;
+<<<<<<< HEAD
+  return CSSVariableData::Create(s, is_animation_tainted, is_attr_tainted,
+                                 needs_variable_resolution);
+=======
   return CSSVariableData::Create({range, StringView(s)}, is_animation_tainted,
                                  needs_variable_resolution, KURL(),
                                  WTF::TextEncoding());
+>>>>>>> chromium
 }
 
 const CSSValue* CreateCustomIdent(AtomicString s) {
@@ -144,10 +198,23 @@ const CSSPropertyValueSet* ParseDeclarationBlock(const String& block_text,
 }
 
 StyleRuleBase* ParseRule(Document& document, String text) {
+  return ParseNestedRule(document, text, CSSNestingType::kNone,
+                         /*parent_rule_for_nesting=*/nullptr);
+}
+
+StyleRuleBase* ParseNestedRule(Document& document,
+                               String text,
+                               CSSNestingType nesting_type,
+                               StyleRule* parent_rule_for_nesting) {
   auto* sheet = CSSStyleSheet::CreateInline(
       document, NullURL(), TextPosition::MinimumPosition(), UTF8Encoding());
   const auto* context = MakeGarbageCollected<CSSParserContext>(document);
+<<<<<<< HEAD
+  return CSSParser::ParseRule(context, sheet->Contents(), nesting_type,
+                              parent_rule_for_nesting, text);
+=======
   return CSSParser::ParseRule(context, sheet->Contents(), text);
+>>>>>>> chromium
 }
 
 const CSSValue* ParseValue(Document& document, String syntax, String value) {
@@ -162,6 +229,25 @@ const CSSValue* ParseValue(Document& document, String syntax, String value) {
                                   /* is_animation_tainted */ false);
 }
 
+<<<<<<< HEAD
+CSSSelectorList* ParseSelectorList(const String& string) {
+  return ParseSelectorList(string, CSSNestingType::kNone,
+                           /*parent_rule_for_nesting=*/nullptr);
+}
+
+CSSSelectorList* ParseSelectorList(const String& string,
+                                   CSSNestingType nesting_type,
+                                   const StyleRule* parent_rule_for_nesting) {
+  auto* context = MakeGarbageCollected<CSSParserContext>(
+      kHTMLStandardMode, SecureContextMode::kInsecureContext);
+  auto* sheet = MakeGarbageCollected<StyleSheetContents>(context);
+  CSSParserTokenStream stream(string);
+  HeapVector<CSSSelector> arena;
+  base::span<CSSSelector> vector = CSSSelectorParser::ParseSelector(
+      stream, context, nesting_type, parent_rule_for_nesting,
+      /* semicolon_aborts_nested_selector */ false, sheet, arena);
+  return CSSSelectorList::AdoptSelectorVector(vector);
+=======
 CSSSelectorList ParseSelectorList(const String& string) {
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -170,6 +256,7 @@ CSSSelectorList ParseSelectorList(const String& string) {
   const auto tokens = tokenizer.TokenizeToEOF();
   CSSParserTokenRange range(tokens);
   return CSSSelectorParser::ParseSelector(range, context, sheet);
+>>>>>>> chromium
 }
 
 }  // namespace css_test_helpers

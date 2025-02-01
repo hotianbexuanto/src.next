@@ -47,10 +47,15 @@ class ExtensionAssetsManagerImpl :  public ExtensionAssetsManager {
  private:
   friend struct base::DefaultSingletonTraits<ExtensionAssetsManagerImpl>;
 
+<<<<<<< HEAD
+  ExtensionAssetsManagerImpl() = default;
+  ~ExtensionAssetsManagerImpl() override = default;
+=======
   ExtensionAssetsManagerImpl() {}
   ~ExtensionAssetsManagerImpl() override {}
 
   DISALLOW_COPY_AND_ASSIGN(ExtensionAssetsManagerImpl);
+>>>>>>> chromium
 };
 
 }  // namespace

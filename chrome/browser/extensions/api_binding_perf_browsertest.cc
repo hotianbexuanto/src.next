@@ -26,8 +26,8 @@ namespace {
 
 class APIBindingPerfBrowserTest : public ExtensionBrowserTest {
  protected:
-  APIBindingPerfBrowserTest() {}
-  ~APIBindingPerfBrowserTest() override {}
+  APIBindingPerfBrowserTest() = default;
+  ~APIBindingPerfBrowserTest() override = default;
 
   void SetUpOnMainThread() override {
     ExtensionBrowserTest::SetUpOnMainThread();

@@ -25,12 +25,22 @@ import androidx.annotation.VisibleForTesting;
 import org.chromium.base.CallbackController;
 import org.chromium.base.CommandLine;
 import org.chromium.base.ObserverList;
+import org.chromium.base.TraceEvent;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.supplier.BooleanSupplier;
 import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.OneshotSupplier;
+<<<<<<< HEAD
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
+import org.chromium.chrome.browser.device.DeviceClassManager;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
+=======
 import org.chromium.base.supplier.OneshotSupplierImpl;
+>>>>>>> chromium
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.gsa.GSAState;
 import org.chromium.chrome.browser.lens.LensController;
@@ -134,8 +144,13 @@ class LocationBarMediator
     private final LocationBarLayout mLocationBarLayout;
     private VoiceRecognitionHandler mVoiceRecognitionHandler;
     private final LocationBarDataProvider mLocationBarDataProvider;
+<<<<<<< HEAD
+    private final @Nullable BrowserControlsStateProvider mBrowserControlsStateProvider;
+    private final LocationBarEmbedderUiOverrides mEmbedderUiOverrides;
+=======
     private final OneshotSupplierImpl<AssistantVoiceSearchService>
             mAssistantVoiceSearchServiceSupplier = new OneshotSupplierImpl<>();
+>>>>>>> chromium
     private StatusCoordinator mStatusCoordinator;
     private AutocompleteCoordinator mAutocompleteCoordinator;
     private OmniboxPrerender mOmniboxPrerender;
@@ -187,9 +202,18 @@ class LocationBarMediator
             @NonNull BackKeyBehaviorDelegate backKeyBehavior, @NonNull WindowAndroid windowAndroid,
             boolean isTablet, @NonNull SearchEngineLogoUtils searchEngineLogoUtils,
             @NonNull LensController lensController,
+<<<<<<< HEAD
+            @NonNull SaveOfflineButtonState saveOfflineButtonState,
+            @NonNull OmniboxUma omniboxUma,
+            @NonNull BooleanSupplier isToolbarMicEnabledSupplier,
+            @NonNull OmniboxSuggestionsDropdownEmbedderImpl dropdownEmbedder,
+            @Nullable ObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
+            @Nullable BrowserControlsStateProvider browserControlsStateProvider) {
+=======
             @NonNull Runnable launchAssistanceSettingsAction,
             @NonNull SaveOfflineButtonState saveOfflineButtonState, @NonNull OmniboxUma omniboxUma,
             @NonNull BooleanSupplier isToolbarMicEnabledSupplier) {
+>>>>>>> chromium
         mContext = context;
         mLocationBarLayout = locationBarLayout;
         mLocationBarDataProvider = locationBarDataProvider;
@@ -213,6 +237,12 @@ class LocationBarMediator
         mSaveOfflineButtonState = saveOfflineButtonState;
         mOmniboxUma = omniboxUma;
         mIsToolbarMicEnabledSupplier = isToolbarMicEnabledSupplier;
+<<<<<<< HEAD
+        mEmbedderImpl = dropdownEmbedder;
+        mTabModelSelectorSupplier = tabModelSelectorSupplier;
+        mBrowserControlsStateProvider = browserControlsStateProvider;
+=======
+>>>>>>> chromium
     }
 
     /**
@@ -257,9 +287,20 @@ class LocationBarMediator
 
         if (hasFocus) {
             if (mNativeInitialized) RecordUserAction.record("FocusLocation");
+<<<<<<< HEAD
+            boolean shouldRetainOmniboxOnFocus = OmniboxFeatures.shouldRetainOmniboxOnFocus();
+            if (!mUrlFocusedWithPastedText
+                    && !shouldRetainOmniboxOnFocus
+                    && mLocationBarLayout.shouldClearTextOnFocus()) {
+                setUrlBarText(
+                        UrlBarData.EMPTY, UrlBar.ScrollType.NO_SCROLL, SelectionState.SELECT_END);
+            } else if (shouldRetainOmniboxOnFocus) {
+                mUrlCoordinator.setSelectAllOnFocus(true);
+=======
             UrlBarData urlBarData = mLocationBarDataProvider.getUrlBarData();
             if (urlBarData.editingText != null) {
                 setUrlBarText(urlBarData, UrlBar.ScrollType.NO_SCROLL, SelectionState.SELECT_ALL);
+>>>>>>> chromium
             }
         } else {
             mUrlFocusedFromFakebox = false;
@@ -486,7 +527,17 @@ class LocationBarMediator
         }
         mLocaleManager.recordLocaleBasedSearchMetrics(false, url, transition);
 
+<<<<<<< HEAD
+        // Without the following postDelayedTask, focusCurrentTab runs on the critical path of
+        // navigation. The following code postpone running focusCurrentTab and prioritize
+        // running navigation code.
+        PostTask.postDelayedTask(
+                TaskTraits.UI_USER_VISIBLE,
+                this::focusCurrentTab,
+                OmniboxFeatures.sPostDelayedTaskFocusTabTimeMillis.getValue());
+=======
         focusCurrentTab();
+>>>>>>> chromium
     }
 
     /* package */ boolean didFocusUrlFromFakebox() {
@@ -872,10 +923,12 @@ class LocationBarMediator
     }
 
     private void focusCurrentTab() {
-        assert mLocationBarDataProvider != null;
-        if (mLocationBarDataProvider.hasTab()) {
-            View view = mLocationBarDataProvider.getTab().getView();
-            if (view != null) view.requestFocus();
+        try (TraceEvent traceEvent = TraceEvent.scoped("LocationBarMediator.focusCurrentTab")) {
+            assert mLocationBarDataProvider != null;
+            if (mLocationBarDataProvider.hasTab()) {
+                View view = mLocationBarDataProvider.getTab().getView();
+                if (view != null) view.requestFocus();
+            }
         }
     }
 
@@ -938,8 +991,15 @@ class LocationBarMediator
     }
 
     private void updateShouldAnimateIconChanges() {
+        boolean isToolbarTopAnchored =
+                mBrowserControlsStateProvider != null
+                        && mBrowserControlsStateProvider.getControlsPosition()
+                                == ControlsPosition.TOP;
         boolean shouldAnimate =
-                mIsTablet ? isUrlBarFocused() : isUrlBarFocused() || mIsUrlFocusChangeInProgress;
+                mIsTablet
+                        ? isUrlBarFocused()
+                        : isToolbarTopAnchored
+                                && (isUrlBarFocused() || mIsUrlFocusChangeInProgress);
         mStatusCoordinator.setShouldAnimateIconChanges(shouldAnimate);
     }
 

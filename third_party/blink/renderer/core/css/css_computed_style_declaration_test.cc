@@ -156,4 +156,52 @@ TEST_F(CSSComputedStyleDeclarationTest, SVGInlineSizeLayoutDependent) {
   EXPECT_FALSE(rect->GetLayoutObject()->NeedsLayout());
 }
 
+<<<<<<< HEAD
+TEST_F(CSSComputedStyleDeclarationTest, UseCountDurationZero) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      div {
+        color: green;
+        /* No animation here. */
+      }
+    </style>
+    <div id=div></div>
+  )HTML");
+  UpdateAllLifecyclePhasesForTest();
+
+  Element* div = GetDocument().getElementById(AtomicString("div"));
+  ASSERT_TRUE(div);
+  auto* style = MakeGarbageCollected<CSSComputedStyleDeclaration>(div);
+
+  // There is no animation property specified at all, so getting the computed
+  // value should not trigger the counter.
+  EXPECT_TRUE(style->GetPropertyCSSValue(CSSPropertyID::kAnimationDuration));
+  EXPECT_FALSE(GetDocument().IsUseCounted(
+      WebFeature::kCSSGetComputedAnimationDurationZero));
+  EXPECT_TRUE(style->GetPropertyCSSValue(CSSPropertyID::kWebkitFontSmoothing));
+  EXPECT_FALSE(GetDocument().IsUseCounted(
+      WebFeature::kCSSGetComputedWebkitFontSmoothingAnimationDurationZero));
+
+  // Set some animation with zero duration.
+  div->SetInlineStyleProperty(CSSPropertyID::kAnimation, "anim 0s linear");
+  UpdateAllLifecyclePhasesForTest();
+
+  // Duration should remain uncounted until we retrieve the computed value.
+  EXPECT_FALSE(GetDocument().IsUseCounted(
+      WebFeature::kCSSGetComputedAnimationDurationZero));
+  EXPECT_TRUE(style->GetPropertyCSSValue(CSSPropertyID::kAnimationDuration));
+  EXPECT_TRUE(GetDocument().IsUseCounted(
+      WebFeature::kCSSGetComputedAnimationDurationZero));
+
+  // Font smoothing count should remain uncounted until we retrieve the computed
+  // value.
+  EXPECT_FALSE(GetDocument().IsUseCounted(
+      WebFeature::kCSSGetComputedWebkitFontSmoothingAnimationDurationZero));
+  EXPECT_TRUE(style->GetPropertyCSSValue(CSSPropertyID::kWebkitFontSmoothing));
+  EXPECT_TRUE(GetDocument().IsUseCounted(
+      WebFeature::kCSSGetComputedWebkitFontSmoothingAnimationDurationZero));
+}
+
+=======
+>>>>>>> chromium
 }  // namespace blink

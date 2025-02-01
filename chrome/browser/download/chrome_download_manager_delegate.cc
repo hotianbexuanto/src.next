@@ -92,7 +92,12 @@
 
 #if defined(OS_ANDROID)
 #include "base/android/path_utils.h"
+<<<<<<< HEAD
+#include "base/process/process_handle.h"
+#include "chrome/browser/android/tab_android.h"
+=======
 #include "chrome/browser/download/android/chrome_duplicate_download_infobar_delegate.h"
+>>>>>>> chromium
 #include "chrome/browser/download/android/download_controller.h"
 #include "chrome/browser/download/android/download_dialog_bridge.h"
 #include "chrome/browser/download/android/download_manager_service.h"
@@ -365,10 +370,17 @@ void MaybeReportDangerousDownloadBlocked(
   if (router) {
     std::string raw_digest_sha256 = download->GetHash();
     router->OnDangerousDownloadEvent(
+<<<<<<< HEAD
+        download->GetURL(), download->GetTabUrl(), download_path,
+        base::HexEncode(raw_digest_sha256), danger_type,
+        download->GetMimeType(), /*scan_id*/ "", download->GetTotalBytes(),
+        enterprise_connectors::EventResult::BLOCKED);
+=======
         download->GetURL(), download_path,
         base::HexEncode(raw_digest_sha256.data(), raw_digest_sha256.size()),
         danger_type, download->GetMimeType(), /*scan_id*/ "",
         download->GetTotalBytes(), safe_browsing::EventResult::BLOCKED);
+>>>>>>> chromium
   }
 #endif
 }
@@ -720,8 +732,48 @@ bool ChromeDownloadManagerDelegate::InterceptDownloadIfApplicable(
     return true;
   }
 #endif
+<<<<<<< HEAD
+
+#if BUILDFLAG(IS_ANDROID)
+  if (base::android::BuildInfo::GetInstance()->is_automotive()) {
+    if (!blink::IsSupportedMimeType(mime_type) &&
+        !IsPdfAndSupported(mime_type, web_contents)) {
+      download_message_bridge_->ShowUnsupportedDownloadMessage(web_contents);
+      base::UmaHistogramEnumeration(
+          "Download.Blocked.ContentType.Automotive",
+          download::DownloadContentFromMimeType(mime_type, false));
+      return true;
+    }
+  }
+
+  if (ShouldOpenPdfInlineInternal(/*incognito=*/false) &&
+      mime_type == pdf::kPDFMimeType) {
+    // If this is already a file, there is no need to download.
+    if (url.SchemeIsFile() || url.SchemeIs("content")) {
+      return true;
+    }
+  }
+#endif  // BUILDFLAG(IS_ANDROID)
+
+=======
+>>>>>>> chromium
   return false;
 }
+
+#if BUILDFLAG(IS_ANDROID)
+bool ChromeDownloadManagerDelegate::IsPdfAndSupported(
+    const std::string& mime_type,
+    content::WebContents* web_contents) {
+  if (mime_type != pdf::kPDFMimeType) {
+    return false;
+  }
+  if (web_contents == nullptr || web_contents->GetBrowserContext() == nullptr) {
+    return false;
+  }
+  return ShouldOpenPdfInlineInternal(
+      web_contents->GetBrowserContext()->IsOffTheRecord());
+}
+#endif  // BUILDFLAG(IS_ANDROID)
 
 void ChromeDownloadManagerDelegate::GetSaveDir(
     content::BrowserContext* browser_context,
@@ -1531,9 +1583,40 @@ void ChromeDownloadManagerDelegate::MaybeSendDangerousDownloadOpenedReport(
                                                     show_download_in_folder);
   }
 #endif
+<<<<<<< HEAD
+}
+
+void ChromeDownloadManagerDelegate::MaybeSendDangerousDownloadCanceledReport(
+    DownloadItem* download,
+    bool is_shutdown) {
+#if BUILDFLAG(FULL_SAFE_BROWSING)
+  safe_browsing::SafeBrowsingService* sb_service =
+      g_browser_process->safe_browsing_service();
+  if (!sb_service) {
+    return;
+  }
+  // Note: We cannot go through download_protection_service here, because this
+  // function may be called at shutdown. The download_protection_service
+  // object may already be deleted at this point.
+  if (is_shutdown) {
+    sb_service->PersistDownloadReportAndSendOnNextStartup(
+        download,
+        safe_browsing::ClientSafeBrowsingReportRequest::
+            DANGEROUS_DOWNLOAD_PROFILE_CLOSED,
+        /*did_proceed=*/false, std::nullopt);
+  } else {
+    sb_service->SendDownloadReport(
+        download,
+        safe_browsing::ClientSafeBrowsingReportRequest::
+            DANGEROUS_DOWNLOAD_AUTO_DELETED,
+        /*did_proceed=*/false, std::nullopt);
+  }
+#endif
+=======
   safe_browsing::RecordDownloadOpened(download->GetDangerType(),
                                       base::Time::Now(), download->GetEndTime(),
                                       show_download_in_folder);
+>>>>>>> chromium
 }
 
 void ChromeDownloadManagerDelegate::CheckDownloadAllowed(
@@ -1614,7 +1697,8 @@ void ChromeDownloadManagerDelegate::OnCheckDownloadAllowedComplete(
 }
 
 #if BUILDFLAG(FULL_SAFE_BROWSING)
-ChromeDownloadManagerDelegate::SafeBrowsingState::~SafeBrowsingState() {}
+ChromeDownloadManagerDelegate::SafeBrowsingState::~SafeBrowsingState() =
+    default;
 
 const char ChromeDownloadManagerDelegate::SafeBrowsingState::
     kSafeBrowsingUserDataKey[] = "Safe Browsing ID";

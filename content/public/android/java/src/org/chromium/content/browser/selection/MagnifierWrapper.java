@@ -4,9 +4,16 @@
 
 package org.chromium.content.browser.selection;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+
+/** A wrapper interface of Magnifier class. */
+@NullMarked
+=======
 /**
  * A wrapper interface of Magnifier class.
  */
+>>>>>>> chromium
 public interface MagnifierWrapper {
     /**
      * Wrapper of {@link Magnifier#show()}.

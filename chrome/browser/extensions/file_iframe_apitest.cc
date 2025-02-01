@@ -18,7 +18,15 @@
 
 class FileIFrameAPITest : public extensions::ExtensionBrowserTest {
  public:
+<<<<<<< HEAD
+  FileIFrameAPITest() = default;
+
+  FileIFrameAPITest(const FileIFrameAPITest&) = delete;
+  FileIFrameAPITest& operator=(const FileIFrameAPITest&) = delete;
+
+=======
   FileIFrameAPITest() {}
+>>>>>>> chromium
   void set_has_all_urls(bool val) { has_all_urls_ = val; }
   void set_has_file_access(bool val) { has_file_access_ = val; }
 

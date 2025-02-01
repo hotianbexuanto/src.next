@@ -173,7 +173,7 @@ bool ColorCorrectionTestUtils::ConvertPixelsToColorSpaceAndPixelFormatForTest(
     ImageDataStorageFormat src_storage_format,
     CanvasColorSpace dst_color_space,
     CanvasPixelFormat dst_canvas_pixel_format,
-    std::unique_ptr<uint8_t[]>& converted_pixels,
+    base::span<uint8_t> converted_pixels,
     PixelFormat pixel_format_for_f16_canvas) {
   skcms_PixelFormat src_pixel_format = skcms_PixelFormat_RGBA_8888;
   if (src_storage_format == kUint16ArrayStorageFormat) {
@@ -189,6 +189,10 @@ bool ColorCorrectionTestUtils::ConvertPixelsToColorSpaceAndPixelFormatForTest(
                            : skcms_PixelFormat_RGBA_ffff;
   }
 
+<<<<<<< HEAD
+  sk_sp<SkColorSpace> src_sk_color_space =
+      PredefinedColorSpaceToSkColorSpace(src_color_space);
+=======
   sk_sp<SkColorSpace> src_sk_color_space = nullptr;
   src_sk_color_space =
       CanvasColorParams(src_color_space,
@@ -197,12 +201,12 @@ bool ColorCorrectionTestUtils::ConvertPixelsToColorSpaceAndPixelFormatForTest(
                             : CanvasPixelFormat::kF16,
                         kNonOpaque)
           .GetSkColorSpace();
+>>>>>>> chromium
   if (!src_sk_color_space.get())
     src_sk_color_space = SkColorSpace::MakeSRGB();
 
   sk_sp<SkColorSpace> dst_sk_color_space =
-      CanvasColorParams(dst_color_space, dst_canvas_pixel_format, kNonOpaque)
-          .GetSkColorSpace();
+      PredefinedColorSpaceToSkColorSpace(dst_color_space);
   if (!dst_sk_color_space.get())
     dst_sk_color_space = SkColorSpace::MakeSRGB();
 
@@ -222,7 +226,7 @@ bool ColorCorrectionTestUtils::ConvertPixelsToColorSpaceAndPixelFormatForTest(
   skcms_AlphaFormat alpha_format = skcms_AlphaFormat_Unpremul;
   bool conversion_result =
       skcms_Transform(src_data, src_pixel_format, alpha_format, src_profile_ptr,
-                      converted_pixels.get(), dst_pixel_format, alpha_format,
+                      converted_pixels.data(), dst_pixel_format, alpha_format,
                       dst_profile_ptr, num_elements / 4);
 
   return conversion_result;

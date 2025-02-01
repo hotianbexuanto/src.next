@@ -126,6 +126,16 @@ grit("content_resources") {
   ]
 }
 
+<<<<<<< HEAD
+  if (is_chromeos) {
+    deps = [
+      "//mojo/public/mojom/base:base_js__generator",
+      "//ui/base/mojom:mojom_js__generator",
+      "//url/mojom:url_mojom_gurl_js__generator",
+      "//url/mojom:url_mojom_origin_js__generator",
+    ]
+  }
+=======
 grit("dev_ui_content_resources") {
   source = "dev_ui_content_resources.grd"
 
@@ -137,6 +147,7 @@ grit("dev_ui_content_resources") {
     "//content/browser/conversions:mojo_bindings_webui_js",
     "//content/browser/process_internals:mojo_bindings_webui_js",
   ]
+>>>>>>> chromium
 }
 
 # This target exists to "hold" the content_export header so we can do proper

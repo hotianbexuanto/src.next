@@ -4,7 +4,8 @@
 
 #include "content/browser/back_forward_cache_test_util.h"
 
-#include "base/ranges/algorithm.h"
+#include <algorithm>
+
 #include "content/common/content_navigation_policy.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
@@ -19,8 +20,8 @@ using ::testing::Not;
 using ::testing::UnorderedElementsAreArray;
 
 void AddSampleToBuckets(std::vector<base::Bucket>* buckets,
-                        base::HistogramBase::Sample sample) {
-  auto it = base::ranges::find(*buckets, sample, &base::Bucket::min);
+                        base::HistogramBase::Sample32 sample) {
+  auto it = std::ranges::find(*buckets, sample, &base::Bucket::min);
   if (it == buckets->end()) {
     buckets->push_back(base::Bucket(sample, 1));
   } else {
@@ -52,8 +53,9 @@ void BackForwardCacheMetricsTestMatcher::ExpectOutcomeDidNotChange(
         << location.ToString();
   }
 
-  if (!check_all_sites_)
+  if (!check_all_sites_) {
     return;
+  }
 
   EXPECT_EQ(expected_outcomes_,
             histogram_tester().GetAllSamples(
@@ -99,8 +101,9 @@ void BackForwardCacheMetricsTestMatcher::ExpectNotRestoredDidNotChange(
 
   std::string not_restored_reasons = "BackForwardCache.NotRestoredReasons";
 
-  if (!check_all_sites_)
+  if (!check_all_sites_) {
     return;
+  }
 
   EXPECT_EQ(expected_not_restored_,
             histogram_tester().GetAllSamples(
@@ -132,7 +135,8 @@ void BackForwardCacheMetricsTestMatcher::ExpectEvictedAfterCommitted(
     base::Location location) {
   for (BackForwardCacheMetrics::EvictedAfterDocumentRestoredReason reason :
        reasons) {
-    base::HistogramBase::Sample sample = base::HistogramBase::Sample(reason);
+    base::HistogramBase::Sample32 sample =
+        base::HistogramBase::Sample32(reason);
     AddSampleToBuckets(&expected_eviction_after_committing_, sample);
   }
 
@@ -140,8 +144,9 @@ void BackForwardCacheMetricsTestMatcher::ExpectEvictedAfterCommitted(
                   "BackForwardCache.EvictedAfterDocumentRestoredReason"),
               UnorderedElementsAreArray(expected_eviction_after_committing_))
       << location.ToString();
-  if (!check_all_sites_)
+  if (!check_all_sites_) {
     return;
+  }
 
   EXPECT_THAT(
       histogram_tester().GetAllSamples(
@@ -154,7 +159,7 @@ void BackForwardCacheMetricsTestMatcher::ExpectOutcome(
     BackForwardCacheMetrics::HistoryNavigationOutcome outcome,
     std::vector<BackForwardCacheMetrics::NotRestoredReason> not_restored,
     base::Location location) {
-  base::HistogramBase::Sample sample = base::HistogramBase::Sample(outcome);
+  base::HistogramBase::Sample32 sample = base::HistogramBase::Sample32(outcome);
   AddSampleToBuckets(&expected_outcomes_, sample);
 
   auto delegate_disabled_idx =
@@ -171,8 +176,9 @@ void BackForwardCacheMetricsTestMatcher::ExpectOutcome(
         << location.ToString();
   }
 
-  if (!check_all_sites_)
+  if (!check_all_sites_) {
     return;
+  }
 
   EXPECT_THAT(histogram_tester().GetAllSamples(
                   "BackForwardCache.AllSites.HistoryNavigationOutcome"),
@@ -201,15 +207,15 @@ void BackForwardCacheMetricsTestMatcher::ExpectReasons(
     base::Location location) {
   // Check that the expected reasons are consistent.
   bool expect_blocklisted =
-      base::ranges::count(
+      std::ranges::count(
           not_restored,
           BackForwardCacheMetrics::NotRestoredReason::kBlocklistedFeatures) > 0;
   bool has_blocklisted = block_listed.size() > 0;
   EXPECT_EQ(expect_blocklisted, has_blocklisted);
   bool expect_disabled_for_render_frame_host =
-      base::ranges::count(not_restored,
-                          BackForwardCacheMetrics::NotRestoredReason::
-                              kDisableForRenderFrameHostCalled) > 0;
+      std::ranges::count(not_restored,
+                         BackForwardCacheMetrics::NotRestoredReason::
+                             kDisableForRenderFrameHostCalled) > 0;
   bool has_disabled_for_render_frame_host =
       disabled_for_render_frame_host.size() > 0;
   EXPECT_EQ(expect_disabled_for_render_frame_host,
@@ -228,7 +234,8 @@ void BackForwardCacheMetricsTestMatcher::ExpectNotRestoredReasons(
     base::Location location) {
   uint64_t not_restored_reasons_bits = 0;
   for (BackForwardCacheMetrics::NotRestoredReason reason : reasons) {
-    base::HistogramBase::Sample sample = base::HistogramBase::Sample(reason);
+    base::HistogramBase::Sample32 sample =
+        base::HistogramBase::Sample32(reason);
     AddSampleToBuckets(&expected_not_restored_, sample);
     not_restored_reasons_bits |= 1ull << static_cast<int>(reason);
   }
@@ -247,8 +254,9 @@ void BackForwardCacheMetricsTestMatcher::ExpectNotRestoredReasons(
         << location.ToString();
   }
 
-  if (!check_all_sites_)
+  if (!check_all_sites_) {
     return;
+  }
 
   EXPECT_THAT(histogram_tester().GetAllSamples(
                   "BackForwardCache.AllSites.HistoryNavigationOutcome."
@@ -269,7 +277,8 @@ void BackForwardCacheMetricsTestMatcher::ExpectBlocklistedFeatures(
     std::vector<blink::scheduler::WebSchedulerTrackedFeature> features,
     base::Location location) {
   for (auto feature : features) {
-    base::HistogramBase::Sample sample = base::HistogramBase::Sample(feature);
+    base::HistogramBase::Sample32 sample =
+        base::HistogramBase::Sample32(feature);
     AddSampleToBuckets(&expected_blocklisted_features_, sample);
   }
 
@@ -279,8 +288,9 @@ void BackForwardCacheMetricsTestMatcher::ExpectBlocklistedFeatures(
               UnorderedElementsAreArray(expected_blocklisted_features_))
       << location.ToString();
 
-  if (!check_all_sites_)
+  if (!check_all_sites_) {
     return;
+  }
 
   EXPECT_THAT(histogram_tester().GetAllSamples(
                   "BackForwardCache.AllSites.HistoryNavigationOutcome."
@@ -293,7 +303,7 @@ void BackForwardCacheMetricsTestMatcher::ExpectDisabledWithReasons(
     const std::vector<BackForwardCache::DisabledReason>& reasons,
     base::Location location) {
   for (BackForwardCache::DisabledReason reason : reasons) {
-    base::HistogramBase::Sample sample = base::HistogramBase::Sample(
+    base::HistogramBase::Sample32 sample = base::HistogramBase::Sample32(
         content::BackForwardCacheMetrics::MetricValue(reason));
     AddSampleToBuckets(&expected_disabled_reasons_, sample);
   }
@@ -308,7 +318,7 @@ void BackForwardCacheMetricsTestMatcher::ExpectDisallowActivationReasons(
     const std::vector<uint64_t>& reasons,
     base::Location location) {
   for (const uint64_t& reason : reasons) {
-    base::HistogramBase::Sample sample(reason);
+    base::HistogramBase::Sample32 sample(reason);
     AddSampleToBuckets(&expected_disallow_activation_reasons_, sample);
   }
   EXPECT_THAT(histogram_tester().GetAllSamples(
@@ -323,7 +333,8 @@ void BackForwardCacheMetricsTestMatcher::
         const std::vector<ShouldSwapBrowsingInstance>& reasons,
         base::Location location) {
   for (auto reason : reasons) {
-    base::HistogramBase::Sample sample = base::HistogramBase::Sample(reason);
+    base::HistogramBase::Sample32 sample =
+        base::HistogramBase::Sample32(reason);
     AddSampleToBuckets(&expected_browsing_instance_not_swapped_reasons_,
                        sample);
   }
@@ -333,8 +344,9 @@ void BackForwardCacheMetricsTestMatcher::
               UnorderedElementsAreArray(
                   expected_browsing_instance_not_swapped_reasons_))
       << location.ToString();
-  if (!check_all_sites_)
+  if (!check_all_sites_) {
     return;
+  }
 
   EXPECT_THAT(histogram_tester().GetAllSamples(
                   "BackForwardCache.AllSites.HistoryNavigationOutcome."

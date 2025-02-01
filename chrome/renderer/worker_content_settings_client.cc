@@ -51,7 +51,7 @@ WorkerContentSettingsClient::WorkerContentSettingsClient(
       pending_content_settings_manager_.InitWithNewPipeAndPassReceiver());
 }
 
-WorkerContentSettingsClient::~WorkerContentSettingsClient() {}
+WorkerContentSettingsClient::~WorkerContentSettingsClient() = default;
 
 std::unique_ptr<blink::WebContentSettingsClient>
 WorkerContentSettingsClient::Clone() {

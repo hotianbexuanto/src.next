@@ -37,7 +37,11 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/dom/pseudo_element.h"
+=======
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/frame/event_handler_registry.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -126,6 +130,16 @@ bool HostIsInputFile(const Element* element) {
       return input->type() == input_type_names::kFile;
   }
   return false;
+}
+
+// We need to avoid to inlinify children of <fieldset>, <audio>, and <video>.
+// They create dedicated LayoutObjects, and assume only block children.
+bool ShouldBeInlinified(const Element* element) {
+  if (!element) {
+    return true;
+  }
+  const Element* parent = element->ParentOrShadowHostElement();
+  return !IsA<HTMLFieldSetElement>(parent) && !IsA<HTMLMediaElement>(parent);
 }
 
 }  // namespace
@@ -490,6 +504,58 @@ void StyleAdjuster::AdjustOverflow(ComputedStyle& style, Element* element) {
   }
 }
 
+<<<<<<< HEAD
+// g-issues.chromium.org/issues/349835587
+// https://github.com/WICG/canvas-place-element
+static bool IsCanvasPlacedElement(const Element* element) {
+  if (RuntimeEnabledFeatures::CanvasPlaceElementEnabled() && element &&
+      element->IsInCanvasSubtree()) {
+    // Placed elements are always immediate children of the canvas.
+    if (const auto* canvas =
+            DynamicTo<HTMLCanvasElement>(element->parentElement())) {
+      return canvas->HasPlacedElements();
+    }
+  }
+
+  return false;
+}
+
+static bool IsCanvasWithPlacedElements(const Element* element) {
+  if (!RuntimeEnabledFeatures::CanvasPlaceElementEnabled() || !element) {
+    return false;
+  }
+
+  if (const auto* canvas = DynamicTo<HTMLCanvasElement>(element)) {
+    return canvas->HasPlacedElements();
+  }
+
+  return false;
+}
+
+void StyleAdjuster::AdjustStyleForDisplay(
+    ComputedStyleBuilder& builder,
+    const ComputedStyle& layout_parent_style,
+    const Element* element,
+    Document* document) {
+  bool is_canvas_placed_element = IsCanvasPlacedElement(element);
+
+  if ((layout_parent_style.BlockifiesChildren() && !HostIsInputFile(element)) ||
+      is_canvas_placed_element) {
+    builder.SetIsInBlockifyingDisplay();
+    if (builder.Display() != EDisplay::kContents) {
+      builder.SetDisplay(EquivalentBlockDisplay(builder.Display()));
+      if (!builder.HasOutOfFlowPosition()) {
+        builder.SetIsFlexOrGridOrCustomItem();
+      }
+    }
+    if (layout_parent_style.IsDisplayFlexibleOrGridBox() ||
+        layout_parent_style.IsDisplayMathType() || is_canvas_placed_element) {
+      builder.SetIsInsideDisplayIgnoringFloatingChildren();
+    }
+
+    if (is_canvas_placed_element) {
+      builder.SetPosition(EPosition::kStatic);
+=======
 static void AdjustStyleForDisplay(ComputedStyle& style,
                                   const ComputedStyle& layout_parent_style,
                                   const Element* element,
@@ -501,15 +567,44 @@ static void AdjustStyleForDisplay(ComputedStyle& style,
       style.SetDisplay(EquivalentBlockDisplay(style.Display()));
       if (!style.HasOutOfFlowPosition())
         style.SetIsFlexOrGridOrCustomItem();
+>>>>>>> chromium
     }
     if (layout_parent_style.IsDisplayFlexibleOrGridBox())
       style.SetIsFlexOrGridItem();
   }
 
+<<<<<<< HEAD
+  if (layout_parent_style.InlinifiesChildren() &&
+      !builder.HasOutOfFlowPosition() && ShouldBeInlinified(element)) {
+    if (builder.IsFloating()) {
+      builder.SetFloating(EFloat::kNone);
+      if (document) {
+        document->AddConsoleMessage(
+            MakeGarbageCollected<ConsoleMessage>(
+                ConsoleMessage::Source::kRendering,
+                ConsoleMessage::Level::kInfo,
+                "`float` property is not supported correctly inside an element "
+                "with `display: ruby` or `display: ruby-text`."),
+            true);
+      }
+    }
+    if (!builder.IsFloating()) {
+      builder.SetIsInInlinifyingDisplay();
+      builder.SetDisplay(EquivalentInlineDisplay(builder.Display()));
+    }
+  }
+
+  if (builder.StyleType() == kPseudoIdScrollMarkerGroup) {
+    builder.SetDisplay(EquivalentBlockDisplay(builder.Display()));
+  }
+
+  if (builder.Display() == EDisplay::kBlock) {
+=======
   if (style.Display() == EDisplay::kBlock && !style.IsFloating())
     return;
 
   if (style.Display() == EDisplay::kContents)
+>>>>>>> chromium
     return;
 
   // FIXME: Don't support this mutation for pseudo styles like first-letter or
@@ -542,6 +637,18 @@ static void AdjustStyleForDisplay(ComputedStyle& style,
     style.UpdateFontOrientation();
   }
 
+<<<<<<< HEAD
+  // display: -webkit-box when used with (-webkit)-line-clamp
+  if (builder.BoxOrient() == EBoxOrient::kVertical &&
+      (builder.WebkitLineClamp() != 0 || builder.StandardLineClamp() != 0 ||
+       builder.HasAutoStandardLineClamp())) {
+    if (builder.Display() == EDisplay::kWebkitBox) {
+      builder.SetDisplay(EDisplay::kFlowRoot);
+      builder.SetIsSpecifiedDisplayWebkitBox();
+    } else if (builder.Display() == EDisplay::kWebkitInlineBox) {
+      builder.SetDisplay(EDisplay::kInlineBlock);
+      builder.SetIsSpecifiedDisplayWebkitBox();
+=======
   // Disable editing custom layout elements, until EditingNG is ready.
   if (!RuntimeEnabledFeatures::EditingNGEnabled() &&
       (style.Display() == EDisplay::kLayoutCustom ||
@@ -560,6 +667,7 @@ static void AdjustStyleForDisplay(ComputedStyle& style,
     if (style.MarginBefore().IsPercentOrCalc() ||
         style.MarginAfter().IsPercentOrCalc()) {
       UseCounter::Count(document, WebFeature::kFlexboxPercentageMarginVertical);
+>>>>>>> chromium
     }
   }
 }
@@ -629,9 +737,40 @@ static void AdjustEffectiveTouchAction(ComputedStyle& style,
     element_touch_action &= ~TouchAction::kInternalPanXScrolls;
   }
 
+<<<<<<< HEAD
+  const bool is_writable = IsEditableElement(element, builder) &&
+                           !IsPasswordFieldWithUnrevealedPassword(element);
+  // TODO(crbug.com/40232387): Full style invalidation is needed when this
+  // feature status changes at runtime as it affects the computed style.
+  if (RuntimeEnabledFeatures::StylusHandwritingEnabled() &&
+      (element_touch_action & TouchAction::kPan) == TouchAction::kPan &&
+      is_writable) {
+    element_touch_action &= ~TouchAction::kInternalNotWritable;
+  }
+
+  const TouchAction effective_touch_action =
+      (element_touch_action & inherited_action) | enforced_by_policy;
+  // Apply the adjusted parent effective touch actions.
+  builder.SetEffectiveTouchAction(effective_touch_action);
+
+  // crbug.com/378027646 : This use counter counts how many pages would lose
+  // handwriting capabilities on platforms that support it if the handwriting
+  // keyword were implemented on this CSS attribute. Please see the linked bug
+  // for more information.
+  const bool would_lose_handwriting =
+      is_writable && effective_touch_action != TouchAction::kNone &&
+      (effective_touch_action & TouchAction::kInternalHandwriting) !=
+          TouchAction::kInternalHandwriting;
+  if (would_lose_handwriting) {
+    UseCounter::Count(
+        element->GetDocument(),
+        WebFeature::kNonNoneTouchActionWouldLoseEditableHandwriting);
+  }
+=======
   // Apply the adjusted parent effective touch actions.
   style.SetEffectiveTouchAction((element_touch_action & inherited_action) |
                                 enforced_by_policy);
+>>>>>>> chromium
 
   // Propagate touch action to child frames.
   if (auto* frame_owner = DynamicTo<HTMLFrameOwnerElement>(element)) {
@@ -723,8 +862,29 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
     AdjustStyleForFirstLetter(style);
     AdjustStyleForMarker(style, parent_style, state.GetElement());
 
+<<<<<<< HEAD
+    if (builder.StyleType() != kPseudoIdScrollMarker) {
+      AdjustStyleForDisplay(builder, layout_parent_style, element,
+                            element ? &element->GetDocument() : nullptr);
+    }
+
+    if (builder.StyleType() == kPseudoIdScrollMarkerGroup) {
+      // A scroll marker group always needs layout containment, since it
+      // modifies its layout box structure during layout. Only in-flow
+      // positioned scroll marker groups need size containment, though, since
+      // the size of out-of-flow positioned scroll marker groups don't affect
+      // anything on the outside (which is precisely why we DO need it for
+      // in-flow groups).
+      unsigned containment = builder.Contain() | kContainsLayout;
+      if (!builder.HasOutOfFlowPosition()) {
+        containment |= kContainsSize;
+      }
+      builder.SetContain(containment);
+    }
+=======
     AdjustStyleForDisplay(style, layout_parent_style, element,
                           element ? &element->GetDocument() : nullptr);
+>>>>>>> chromium
 
     // If this is a child of a LayoutNGCustom, we need the name of the parent
     // layout function for invalidation purposes.
@@ -756,6 +916,15 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
     style.SetIsStackingContextWithoutContainment(true);
   }
 
+<<<<<<< HEAD
+  if (element == state.GetDocument().documentElement() ||
+      (element && IsA<SVGForeignObjectElement>(*element)) ||
+      builder.Overlay() == EOverlay::kAuto ||
+      builder.StyleType() == kPseudoIdBackdrop ||
+      builder.StyleType() == kPseudoIdViewTransition ||
+      IsCanvasPlacedElement(element) || IsCanvasWithPlacedElements(element)) {
+    builder.SetForcesStackingContext(true);
+=======
   if (style.OverflowX() != EOverflow::kVisible ||
       style.OverflowY() != EOverflow::kVisible)
     AdjustOverflow(style, element);
@@ -766,6 +935,7 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
                                   style.OverflowY() == EOverflow::kClip)) {
     style.SetOverflowClipMargin(
         ComputedStyleInitialValues::InitialOverflowClipMargin());
+>>>>>>> chromium
   }
 
   if (StopPropagateTextDecorations(style, element))
@@ -895,6 +1065,21 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
     }
   }
 
+<<<<<<< HEAD
+  if (element && element->HasCustomStyleCallbacks()) {
+    element->AdjustStyle(base::PassKey<StyleAdjuster>(), builder);
+  }
+
+  // We need to use styled element here to ensure coverage for pseudo-elements.
+  if (state.GetStyledElement() &&
+      ViewTransitionUtils::IsViewTransitionElementExcludingRootFromSupplement(
+          *state.GetStyledElement())) {
+    builder.SetElementIsViewTransitionParticipant();
+  }
+
+  if (builder.ContentVisibility() == EContentVisibility::kAuto) {
+    builder.SetContainIntrinsicSizeAuto();
+=======
   if (RuntimeEnabledFeatures::LayoutNGBlockFragmentationEnabled()) {
     // When establishing a block fragmentation context for LayoutNG, we require
     // that everything fragmentable inside can be laid out by NG natively, since
@@ -905,6 +1090,7 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
     if (style.SpecifiesColumns() ||
         (element && element->GetDocument().Printing()))
       style.SetInsideNGFragmentationContext(true);
+>>>>>>> chromium
   }
 }
 }  // namespace blink

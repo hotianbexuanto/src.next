@@ -24,7 +24,11 @@
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/first_letter_pseudo_element.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/dom/scriptable_document_parser.h"
+=======
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/dom/slot_assignment_engine.h"
 #include "third_party/blink/renderer/core/dom/text.h"
@@ -105,9 +109,18 @@ class StyleEngineTest : public testing::Test {
     return GetDocument().IsUseCounted(feature);
   }
 
+  bool IsWebDXFeatureCounted(mojom::blink::WebDXFeature feature) {
+    return GetDocument().IsWebDXFeatureCounted(feature);
+  }
+
   void ClearUseCounter(mojom::WebFeature feature) {
     GetDocument().ClearUseCounterForTesting(feature);
     DCHECK(!IsUseCounted(feature));
+  }
+
+  void ClearWebDXFeatureCounter(mojom::blink::WebDXFeature feature) {
+    GetDocument().ClearWebDXFeatureCounterForTesting(feature);
+    DCHECK(!IsWebDXFeatureCounted(feature));
   }
 
   String GetListMarkerText(LayoutObject* list_item) {
@@ -160,6 +173,17 @@ StyleEngineTest::ScheduleInvalidationsForRules(TreeScope& tree_scope,
   rule_sets.insert(&rule_set);
   GetStyleEngine().ScheduleInvalidationsForRuleSets(tree_scope, rule_sets);
   return kRuleSetInvalidationsScheduled;
+}
+
+TEST_F(StyleEngineTest, ClearWebDXFeatureCounter) {
+  // Chosen arbitrarily.
+  WebDXFeature feature = WebDXFeature::kViewportUnitVariants;
+
+  EXPECT_FALSE(IsWebDXFeatureCounted(feature));
+  GetDocument().CountWebDXFeature(feature);
+  EXPECT_TRUE(IsWebDXFeatureCounted(feature));
+  ClearWebDXFeatureCounter(feature);
+  EXPECT_FALSE(IsWebDXFeatureCounted(feature));
 }
 
 TEST_F(StyleEngineTest, DocumentDirtyAfterInject) {
@@ -3274,6 +3298,351 @@ TEST_F(StyleEngineTest, InternalForcedProperties) {
   }
 }
 
+<<<<<<< HEAD
+TEST_F(StyleEngineTest, HasViewportUnitFlags) {
+  struct {
+    const char* value;
+    bool has_static;
+    bool has_dynamic;
+  } test_data[] = {
+      {"1px", false, false},
+      {"1em", false, false},
+      {"1rem", false, false},
+
+      {"1vw", true, false},
+      {"1vh", true, false},
+      {"1vi", true, false},
+      {"1vb", true, false},
+      {"1vmin", true, false},
+      {"1vmax", true, false},
+
+      {"1svw", true, false},
+      {"1svh", true, false},
+      {"1svi", true, false},
+      {"1svb", true, false},
+      {"1svmin", true, false},
+      {"1svmax", true, false},
+
+      {"1lvw", true, false},
+      {"1lvh", true, false},
+      {"1lvi", true, false},
+      {"1lvb", true, false},
+      {"1lvmin", true, false},
+      {"1lvmax", true, false},
+
+      {"1dvw", false, true},
+      {"1dvh", false, true},
+      {"1dvi", false, true},
+      {"1dvb", false, true},
+      {"1dvmin", false, true},
+      {"1dvmax", false, true},
+
+      {"calc(1vh)", true, false},
+      {"calc(1dvh)", false, true},
+      {"calc(1vh + 1dvh)", true, true},
+  };
+
+  for (const auto& data : test_data) {
+    SCOPED_TRACE(data.value);
+    auto holder = std::make_unique<DummyPageHolder>(gfx::Size(800, 600));
+    Document& document = holder->GetDocument();
+    document.body()->setInnerHTML(String::Format(R"HTML(
+      <style>
+        div { width: %s; }
+      </style>
+      <div id=target></div>
+    )HTML",
+                                                 data.value));
+    document.View()->UpdateAllLifecyclePhasesForTest();
+
+    Element* target = document.getElementById(AtomicString("target"));
+    ASSERT_TRUE(target);
+
+    EXPECT_EQ(data.has_static,
+              target->GetComputedStyle()->HasStaticViewportUnits());
+    EXPECT_EQ(data.has_dynamic,
+              target->GetComputedStyle()->HasDynamicViewportUnits());
+    EXPECT_EQ(data.has_static, document.HasStaticViewportUnits());
+    EXPECT_EQ(data.has_dynamic, document.HasDynamicViewportUnits());
+  }
+}
+
+TEST_F(StyleEngineTest, DynamicViewportUnitInvalidation) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+  <style>
+    #target_px { width: 1px; }
+    #target_svh { width: 1svh; }
+    #target_dvh { width: 1dvh; }
+  </style>
+  <div id=target_px></div>
+  <div id=target_svh></div>
+  <div id=target_dvh></div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  Element* target_px = GetDocument().getElementById(AtomicString("target_px"));
+  Element* target_svh =
+      GetDocument().getElementById(AtomicString("target_svh"));
+  Element* target_dvh =
+      GetDocument().getElementById(AtomicString("target_dvh"));
+  ASSERT_TRUE(target_px);
+  ASSERT_TRUE(target_svh);
+  ASSERT_TRUE(target_dvh);
+
+  EXPECT_FALSE(target_px->NeedsStyleRecalc());
+  EXPECT_FALSE(target_svh->NeedsStyleRecalc());
+  EXPECT_FALSE(target_dvh->NeedsStyleRecalc());
+
+  // Only dvh should be affected:
+  GetDocument().DynamicViewportUnitsChanged();
+  GetStyleEngine().InvalidateViewportUnitStylesIfNeeded();
+  EXPECT_FALSE(target_px->NeedsStyleRecalc());
+  EXPECT_FALSE(target_svh->NeedsStyleRecalc());
+  EXPECT_TRUE(target_dvh->NeedsStyleRecalc());
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(target_px->NeedsStyleRecalc());
+  EXPECT_FALSE(target_svh->NeedsStyleRecalc());
+  EXPECT_FALSE(target_dvh->NeedsStyleRecalc());
+
+  //  svh/dvh should be affected:
+  GetDocument().LayoutViewportWasResized();
+  GetStyleEngine().InvalidateViewportUnitStylesIfNeeded();
+  EXPECT_FALSE(target_px->NeedsStyleRecalc());
+  EXPECT_TRUE(target_svh->NeedsStyleRecalc());
+  EXPECT_TRUE(target_dvh->NeedsStyleRecalc());
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(target_px->NeedsStyleRecalc());
+  EXPECT_FALSE(target_svh->NeedsStyleRecalc());
+  EXPECT_FALSE(target_dvh->NeedsStyleRecalc());
+}
+
+TEST_F(StyleEngineTest, DynamicViewportUnitsInMediaQuery) {
+  // Changes in the dynamic viewport should not affect NeedsActiveStyleUpdate
+  // when we don't use dynamic viewport units.
+  {
+    auto holder = DummyPageHolderWithHTML(R"HTML(
+        <style>
+          @media (min-width: 50vh) {
+            :root { color: green; }
+          }
+        </style>
+      )HTML");
+    Document& document = holder->GetDocument();
+
+    EXPECT_FALSE(document.GetStyleEngine().NeedsActiveStyleUpdate());
+    document.DynamicViewportUnitsChanged();
+    EXPECT_FALSE(document.GetStyleEngine().NeedsActiveStyleUpdate());
+  }
+
+  // NeedsActiveStyleUpdate should be set when dv* units are used.
+  {
+    auto holder = DummyPageHolderWithHTML(R"HTML(
+        <style>
+          @media (min-width: 50dvh) {
+            :root { color: green; }
+          }
+        </style>
+      )HTML");
+    Document& document = holder->GetDocument();
+
+    EXPECT_FALSE(document.GetStyleEngine().NeedsActiveStyleUpdate());
+    document.DynamicViewportUnitsChanged();
+    EXPECT_TRUE(document.GetStyleEngine().NeedsActiveStyleUpdate());
+  }
+
+  // Same as the first test, but with media attribute.
+  {
+    auto holder = DummyPageHolderWithHTML(R"HTML(
+        <style media="(min-width: 50vh)">
+          :root { color: green; }
+        </style>
+      )HTML");
+    Document& document = holder->GetDocument();
+
+    EXPECT_FALSE(document.GetStyleEngine().NeedsActiveStyleUpdate());
+    document.DynamicViewportUnitsChanged();
+    EXPECT_FALSE(document.GetStyleEngine().NeedsActiveStyleUpdate());
+  }
+
+  // // Same as the second test, but with media attribute.
+  {
+    auto holder = DummyPageHolderWithHTML(R"HTML(
+      <style media="(min-width: 50dvh)">
+        :root { color: green; }
+      </style>
+    )HTML");
+    Document& document = holder->GetDocument();
+
+    EXPECT_FALSE(document.GetStyleEngine().NeedsActiveStyleUpdate());
+    document.DynamicViewportUnitsChanged();
+    EXPECT_TRUE(document.GetStyleEngine().NeedsActiveStyleUpdate());
+  }
+}
+
+TEST_F(StyleEngineTest, ViewportUnitVariantsUseCounter) {
+  EXPECT_FALSE(IsWebDXFeatureCounted(WebDXFeature::kViewportUnitVariants));
+
+  GetDocument().body()->setInnerHTML("<style> body { top: 10vh; } </style>");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(IsWebDXFeatureCounted(WebDXFeature::kViewportUnitVariants));
+
+  GetDocument().body()->setInnerHTML("<style> body { top: 10vi; } </style>");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(IsWebDXFeatureCounted(WebDXFeature::kViewportUnitVariants));
+
+  GetDocument().body()->setInnerHTML("<style> body { top: 10vmax; } </style>");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(IsWebDXFeatureCounted(WebDXFeature::kViewportUnitVariants));
+
+  GetDocument().body()->setInnerHTML("<style> body { top: 10svh; } </style>");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(IsWebDXFeatureCounted(WebDXFeature::kViewportUnitVariants));
+  ClearWebDXFeatureCounter(WebDXFeature::kViewportUnitVariants);
+
+  GetDocument().body()->setInnerHTML("<style> body { top: 10lvi; } </style>");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(IsWebDXFeatureCounted(WebDXFeature::kViewportUnitVariants));
+  ClearWebDXFeatureCounter(WebDXFeature::kViewportUnitVariants);
+
+  GetDocument().body()->setInnerHTML("<style> body { top: 10dvmax; } </style>");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(IsWebDXFeatureCounted(WebDXFeature::kViewportUnitVariants));
+  ClearWebDXFeatureCounter(WebDXFeature::kViewportUnitVariants);
+}
+
+TEST_F(StyleEngineTest, MediaQueriesChangeDisplayState) {
+  ScopedDesktopPWAsAdditionalWindowingControlsForTest scoped_feature(true);
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      body {
+        background-color: white;
+      }
+      @media (display-state: normal) {
+        body {
+          background-color: yellow;
+        }
+      }
+      @media (display-state: minimized) {
+        body {
+          background-color: cyan;
+        }
+      }
+      @media (display-state: maximized) {
+        body {
+          background-color: red;
+        }
+      }
+      @media (display-state: fullscreen) {
+        body {
+          background-color: blue;
+        }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  // display-state: normal
+  // Default is set in /third_party/blink/renderer/core/frame/settings.json5.
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(/*yellow*/ 255, 255, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyBackgroundColor()));
+
+  WTF::Vector<std::pair<ui::mojom::blink::WindowShowState, Color>> test_cases =
+      {{ui::mojom::blink::WindowShowState::kMinimized,
+        Color::FromRGB(/*cyan*/ 0, 255, 255)},
+       {ui::mojom::blink::WindowShowState::kMaximized,
+        Color::FromRGB(/*red*/ 255, 0, 0)},
+       {ui::mojom::blink::WindowShowState::kFullscreen,
+        Color::FromRGB(/*blue*/ 0, 0, 255)}};
+
+  for (const auto& [show_state, color] : test_cases) {
+    GetFrame().GetSettings()->SetWindowShowState(show_state);
+    UpdateAllLifecyclePhases();
+    EXPECT_EQ(color,
+              GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                  GetCSSPropertyBackgroundColor()));
+  }
+}
+
+TEST_F(StyleEngineTest, MediaQueriesChangeResizable) {
+  ScopedDesktopPWAsAdditionalWindowingControlsForTest scoped_feature(true);
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      body {
+        background-color: white;
+      }
+      @media (resizable: true) {
+        body {
+          background-color: yellow;
+        }
+      }
+      @media (resizable: false) {
+        body {
+          background-color: cyan;
+        }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  // resizable: true
+  // Default is set in /third_party/blink/renderer/core/frame/settings.json5.
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(/*yellow*/ 255, 255, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyBackgroundColor()));
+
+  // resizable: false
+  GetFrame().GetSettings()->SetResizable(false);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(/*cyan*/ 0, 255, 255),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyBackgroundColor()));
+}
+
+namespace {
+
+class TestMediaQueryListListener : public MediaQueryListListener {
+ public:
+  void NotifyMediaQueryChanged() override { notified = true; }
+  bool notified = false;
+};
+
+}  // namespace
+
+TEST_F(StyleEngineTest, DynamicViewportUnitsInMediaQueryMatcher) {
+  auto& matcher = GetDocument().GetMediaQueryMatcher();
+  auto* listener = MakeGarbageCollected<TestMediaQueryListListener>();
+  matcher.AddViewportListener(listener);
+
+  // Note: SimulateFrame is responsible for eventually causing dispatch of
+  // pending events to MediaQueryListListener.
+  // See step 10.8 (call to CallMediaQueryListListeners) in
+  // ScriptedAnimationController::ServiceScriptedAnimations.
+
+  MediaQuerySet* mq_static = MediaQuerySet::Create(
+      "(min-width: 50vh)", GetDocument().GetExecutionContext());
+  ASSERT_TRUE(mq_static);
+  matcher.Evaluate(mq_static);
+  GetDocument().DynamicViewportUnitsChanged();
+  SimulateFrame();
+  EXPECT_FALSE(listener->notified);
+
+  // Evaluating a media query with dv* units will mark the MediaQueryMatcher
+  // as dependent on such units, hence we should see events when calling
+  // DynamicViewportUnitsChanged after that.
+  MediaQuerySet* mq_dynamic = MediaQuerySet::Create(
+      "(min-width: 50dvh)", GetDocument().GetExecutionContext());
+  ASSERT_TRUE(mq_dynamic);
+  matcher.Evaluate(mq_dynamic);
+  GetDocument().DynamicViewportUnitsChanged();
+  SimulateFrame();
+  EXPECT_TRUE(listener->notified);
+}
+
+=======
+>>>>>>> chromium
 class StyleEngineSimTest : public SimTest {};
 
 TEST_F(StyleEngineSimTest, OwnerColorScheme) {
@@ -4023,4 +4392,1893 @@ TEST_F(StyleEngineTest, SystemFontsObeyDefaultFontSize) {
   EXPECT_EQ(10000, input->GetComputedStyle()->FontSize());
 }
 
+<<<<<<< HEAD
+TEST_F(StyleEngineTest, CascadeLayersInOriginsAndTreeScopes) {
+  // Verifies that user layers and author layers in each tree scope are managed
+  // separately. Each have their own layer ordering.
+
+  auto* user_sheet = MakeGarbageCollected<StyleSheetContents>(
+      MakeGarbageCollected<CSSParserContext>(GetDocument()));
+  user_sheet->ParseString("@layer foo, bar;");
+  StyleSheetKey user_key("user_layers");
+  GetStyleEngine().InjectSheet(user_key, user_sheet, WebCssOrigin::kUser);
+
+  GetDocument().body()->setHTMLUnsafe(R"HTML(
+    <style>
+      @layer bar, foo;
+    </style>
+    <div id="host">
+      <template shadowrootmode="open">
+        <style>
+          @layer foo, bar, foo.baz;
+        </style>
+      </template>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  // User layer order: foo, bar, (implicit outer layer)
+  auto* user_layer_map = GetStyleEngine().GetUserCascadeLayerMap();
+  ASSERT_TRUE(user_layer_map);
+
+  const CascadeLayer& user_outer_layer =
+      user_sheet->GetRuleSet().CascadeLayers();
+  EXPECT_EQ("", user_outer_layer.GetName());
+  EXPECT_EQ(CascadeLayerMap::kImplicitOuterLayerOrder,
+            user_layer_map->GetLayerOrder(user_outer_layer));
+
+  const CascadeLayer& user_foo = *user_outer_layer.GetDirectSubLayers()[0];
+  EXPECT_EQ("foo", user_foo.GetName());
+  EXPECT_EQ(0u, user_layer_map->GetLayerOrder(user_foo));
+
+  const CascadeLayer& user_bar = *user_outer_layer.GetDirectSubLayers()[1];
+  EXPECT_EQ("bar", user_bar.GetName());
+  EXPECT_EQ(1u, user_layer_map->GetLayerOrder(user_bar));
+
+  // Document scope author layer order: bar, foo, (implicit outer layer)
+  auto* document_layer_map =
+      GetDocument().GetScopedStyleResolver()->GetCascadeLayerMap();
+  ASSERT_TRUE(document_layer_map);
+
+  const CascadeLayer& document_outer_layer =
+      To<HTMLStyleElement>(GetDocument().QuerySelector(AtomicString("style")))
+          ->sheet()
+          ->Contents()
+          ->GetRuleSet()
+          .CascadeLayers();
+  EXPECT_EQ("", document_outer_layer.GetName());
+  EXPECT_EQ(CascadeLayerMap::kImplicitOuterLayerOrder,
+            document_layer_map->GetLayerOrder(document_outer_layer));
+
+  const CascadeLayer& document_bar =
+      *document_outer_layer.GetDirectSubLayers()[0];
+  EXPECT_EQ("bar", document_bar.GetName());
+  EXPECT_EQ(0u, document_layer_map->GetLayerOrder(document_bar));
+
+  const CascadeLayer& document_foo =
+      *document_outer_layer.GetDirectSubLayers()[1];
+  EXPECT_EQ("foo", document_foo.GetName());
+  EXPECT_EQ(1u, document_layer_map->GetLayerOrder(document_foo));
+
+  // Shadow scope author layer order: foo.baz, foo, bar, (implicit outer layer)
+  ShadowRoot* shadow =
+      GetDocument().getElementById(AtomicString("host"))->GetShadowRoot();
+  auto* shadow_layer_map =
+      shadow->GetScopedStyleResolver()->GetCascadeLayerMap();
+  ASSERT_TRUE(shadow_layer_map);
+
+  const CascadeLayer& shadow_outer_layer =
+      To<HTMLStyleElement>(shadow->QuerySelector(AtomicString("style")))
+          ->sheet()
+          ->Contents()
+          ->GetRuleSet()
+          .CascadeLayers();
+  EXPECT_EQ("", shadow_outer_layer.GetName());
+  EXPECT_EQ(CascadeLayerMap::kImplicitOuterLayerOrder,
+            shadow_layer_map->GetLayerOrder(shadow_outer_layer));
+
+  const CascadeLayer& shadow_foo = *shadow_outer_layer.GetDirectSubLayers()[0];
+  EXPECT_EQ("foo", shadow_foo.GetName());
+  EXPECT_EQ(1u, shadow_layer_map->GetLayerOrder(shadow_foo));
+
+  const CascadeLayer& shadow_foo_baz = *shadow_foo.GetDirectSubLayers()[0];
+  EXPECT_EQ("baz", shadow_foo_baz.GetName());
+  EXPECT_EQ(0u, shadow_layer_map->GetLayerOrder(shadow_foo_baz));
+
+  const CascadeLayer& shadow_bar = *shadow_outer_layer.GetDirectSubLayers()[1];
+  EXPECT_EQ("bar", shadow_bar.GetName());
+  EXPECT_EQ(2u, shadow_layer_map->GetLayerOrder(shadow_bar));
+}
+
+TEST_F(StyleEngineTest, CascadeLayersFromMultipleSheets) {
+  // The layer ordering in sheet2 is different from the final ordering.
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style id="sheet1">
+      @layer foo, bar;
+    </style>
+    <style id="sheet2">
+      @layer baz, bar.qux, foo.quux;
+    </style>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  // Final layer ordering:
+  // foo.quux, foo, bar.qux, bar, baz, (implicit outer layer)
+  auto* layer_map =
+      GetDocument().GetScopedStyleResolver()->GetCascadeLayerMap();
+  ASSERT_TRUE(layer_map);
+
+  const CascadeLayer& sheet1_outer_layer =
+      To<HTMLStyleElement>(GetDocument().getElementById(AtomicString("sheet1")))
+          ->sheet()
+          ->Contents()
+          ->GetRuleSet()
+          .CascadeLayers();
+  EXPECT_EQ("", sheet1_outer_layer.GetName());
+  EXPECT_EQ(CascadeLayerMap::kImplicitOuterLayerOrder,
+            layer_map->GetLayerOrder(sheet1_outer_layer));
+
+  const CascadeLayer& sheet1_foo = *sheet1_outer_layer.GetDirectSubLayers()[0];
+  EXPECT_EQ("foo", sheet1_foo.GetName());
+  EXPECT_EQ(1u, layer_map->GetLayerOrder(sheet1_foo));
+
+  const CascadeLayer& sheet1_bar = *sheet1_outer_layer.GetDirectSubLayers()[1];
+  EXPECT_EQ("bar", sheet1_bar.GetName());
+  EXPECT_EQ(3u, layer_map->GetLayerOrder(sheet1_bar));
+
+  const CascadeLayer& sheet2_outer_layer =
+      To<HTMLStyleElement>(GetDocument().getElementById(AtomicString("sheet2")))
+          ->sheet()
+          ->Contents()
+          ->GetRuleSet()
+          .CascadeLayers();
+  EXPECT_EQ("", sheet2_outer_layer.GetName());
+  EXPECT_EQ(CascadeLayerMap::kImplicitOuterLayerOrder,
+            layer_map->GetLayerOrder(sheet2_outer_layer));
+
+  const CascadeLayer& sheet2_baz = *sheet2_outer_layer.GetDirectSubLayers()[0];
+  EXPECT_EQ("baz", sheet2_baz.GetName());
+  EXPECT_EQ(4u, layer_map->GetLayerOrder(sheet2_baz));
+
+  const CascadeLayer& sheet2_bar = *sheet2_outer_layer.GetDirectSubLayers()[1];
+  EXPECT_EQ("bar", sheet2_bar.GetName());
+  EXPECT_EQ(3u, layer_map->GetLayerOrder(sheet2_bar));
+
+  const CascadeLayer& sheet2_bar_qux = *sheet2_bar.GetDirectSubLayers()[0];
+  EXPECT_EQ("qux", sheet2_bar_qux.GetName());
+  EXPECT_EQ(2u, layer_map->GetLayerOrder(sheet2_bar_qux));
+
+  const CascadeLayer& sheet2_foo = *sheet2_outer_layer.GetDirectSubLayers()[2];
+  EXPECT_EQ("foo", sheet2_foo.GetName());
+  EXPECT_EQ(1u, layer_map->GetLayerOrder(sheet2_foo));
+
+  const CascadeLayer& sheet2_foo_quux = *sheet2_foo.GetDirectSubLayers()[0];
+  EXPECT_EQ("quux", sheet2_foo_quux.GetName());
+  EXPECT_EQ(0u, layer_map->GetLayerOrder(sheet2_foo_quux));
+}
+
+TEST_F(StyleEngineTest, CascadeLayersNotExplicitlyDeclared) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      #no-layers { }
+    </style>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  // We don't create CascadeLayerMap if no layers are explicitly declared.
+  ASSERT_TRUE(GetDocument().GetScopedStyleResolver());
+  ASSERT_FALSE(GetDocument().GetScopedStyleResolver()->GetCascadeLayerMap());
+  EXPECT_FALSE(IsUseCounted(WebFeature::kCSSCascadeLayers));
+}
+
+TEST_F(StyleEngineTest, CascadeLayersSheetsRemoved) {
+  GetDocument().body()->setHTMLUnsafe(R"HTML(
+    <style>
+      @layer bar, foo;
+    </style>
+    <div id="host">
+      <template shadowrootmode="open">
+        <style>
+          @layer foo, bar, foo.baz;
+        </style>
+      </template>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  ASSERT_TRUE(GetDocument().GetScopedStyleResolver());
+  ASSERT_TRUE(GetDocument().GetScopedStyleResolver()->GetCascadeLayerMap());
+
+  ShadowRoot* shadow =
+      GetDocument().getElementById(AtomicString("host"))->GetShadowRoot();
+  ASSERT_TRUE(shadow->GetScopedStyleResolver());
+  ASSERT_TRUE(shadow->GetScopedStyleResolver()->GetCascadeLayerMap());
+
+  GetDocument().QuerySelector(AtomicString("style"))->remove();
+  shadow->QuerySelector(AtomicString("style"))->remove();
+  UpdateAllLifecyclePhases();
+
+  // When all sheets are removed, document ScopedStyleResolver is not cleared
+  // but the CascadeLayerMap should be cleared.
+  ASSERT_TRUE(GetDocument().GetScopedStyleResolver());
+  ASSERT_FALSE(GetDocument().GetScopedStyleResolver()->GetCascadeLayerMap());
+
+  // When all sheets are removed, shadow tree ScopedStyleResolver is cleared.
+  ASSERT_FALSE(shadow->GetScopedStyleResolver());
+}
+
+TEST_F(StyleEngineTest, NonSlottedStyleDirty) {
+  GetDocument().body()->setInnerHTML("<div id=host></div>");
+  auto* host = GetDocument().getElementById(AtomicString("host"));
+  ASSERT_TRUE(host);
+  host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+  UpdateAllLifecyclePhases();
+
+  // Add a child element to a shadow host with no slots. The inserted element is
+  // not marked for style recalc because the GetStyleRecalcParent() returns
+  // nullptr.
+  auto* span = MakeGarbageCollected<HTMLSpanElement>(GetDocument());
+  host->appendChild(span);
+  EXPECT_FALSE(host->ChildNeedsStyleRecalc());
+  EXPECT_FALSE(span->NeedsStyleRecalc());
+
+  UpdateAllLifecyclePhases();
+
+  // Set a style on the inserted child outside the flat tree.
+  // GetStyleRecalcParent() still returns nullptr, and the ComputedStyle of the
+  // child outside the flat tree is still null. No need to mark dirty.
+  span->SetInlineStyleProperty(CSSPropertyID::kColor, "red");
+  EXPECT_FALSE(host->ChildNeedsStyleRecalc());
+  EXPECT_FALSE(span->NeedsStyleRecalc());
+
+  // Ensure the ComputedStyle for the child and then change the style.
+  // GetStyleRecalcParent() is still null, which means the host is not marked
+  // with ChildNeedsStyleRecalc(), but the child needs to be marked dirty to
+  // make sure the next EnsureComputedStyle updates the style to reflect the
+  // changes.
+  const ComputedStyle* old_style = span->EnsureComputedStyle();
+  span->SetInlineStyleProperty(CSSPropertyID::kColor, "green");
+  EXPECT_FALSE(host->ChildNeedsStyleRecalc());
+  EXPECT_TRUE(span->NeedsStyleRecalc());
+  UpdateAllLifecyclePhases();
+
+  EXPECT_EQ(span->GetComputedStyle(), old_style);
+  const ComputedStyle* new_style = span->EnsureComputedStyle();
+  EXPECT_NE(new_style, old_style);
+
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            old_style->VisitedDependentColor(GetCSSPropertyColor()));
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            new_style->VisitedDependentColor(GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, CascadeLayerUseCount) {
+  {
+    ASSERT_FALSE(IsUseCounted(WebFeature::kCSSCascadeLayers));
+    GetDocument().body()->setInnerHTML("<style>@layer foo;</style>");
+    EXPECT_TRUE(IsUseCounted(WebFeature::kCSSCascadeLayers));
+    ClearUseCounter(WebFeature::kCSSCascadeLayers);
+  }
+
+  {
+    ASSERT_FALSE(IsUseCounted(WebFeature::kCSSCascadeLayers));
+    GetDocument().body()->setInnerHTML("<style>@layer foo { }</style>");
+    EXPECT_TRUE(IsUseCounted(WebFeature::kCSSCascadeLayers));
+    ClearUseCounter(WebFeature::kCSSCascadeLayers);
+  }
+
+  {
+    ASSERT_FALSE(IsUseCounted(WebFeature::kCSSCascadeLayers));
+    GetDocument().body()->setInnerHTML(
+        "<style>@import url(foo.css) layer(foo);</style>");
+    EXPECT_TRUE(IsUseCounted(WebFeature::kCSSCascadeLayers));
+    ClearUseCounter(WebFeature::kCSSCascadeLayers);
+  }
+}
+
+TEST_F(StyleEngineTest, UserKeyframesOverrideWithCascadeLayers) {
+  auto* user_sheet = MakeGarbageCollected<StyleSheetContents>(
+      MakeGarbageCollected<CSSParserContext>(GetDocument()));
+  user_sheet->ParseString(R"CSS(
+    @layer base, override;
+
+    #target {
+      animation: anim 1s paused;
+    }
+
+    @layer override {
+      @keyframes anim {
+        from { width: 100px; }
+      }
+    }
+
+    @layer base {
+      @keyframes anim {
+        from { width: 50px; }
+      }
+    }
+  )CSS");
+  StyleSheetKey key("user");
+  GetStyleEngine().InjectSheet(key, user_sheet, WebCssOrigin::kUser);
+
+  GetDocument().body()->setInnerHTML(
+      "<div id=target style='height: 100px'></div>");
+
+  UpdateAllLifecyclePhases();
+
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  EXPECT_EQ(100, target->OffsetWidth());
+}
+
+TEST_F(StyleEngineTest, UserCounterStyleOverrideWithCascadeLayers) {
+  PageTestBase::LoadAhem(*GetDocument().GetFrame());
+
+  auto* user_sheet = MakeGarbageCollected<StyleSheetContents>(
+      MakeGarbageCollected<CSSParserContext>(GetDocument()));
+  user_sheet->ParseString(R"CSS(
+    @layer base, override;
+
+    #target {
+      width: min-content;
+      font: 10px/1 Ahem;
+    }
+
+    #target::before {
+      content: counter(dont-care, cnt-style);
+    }
+
+    @layer override {
+      @counter-style cnt-style {
+        system: cyclic;
+        symbols: '0000';
+      }
+    }
+
+    @layer base {
+      @counter-style cnt-style {
+        system: cyclic;
+        symbols: '000';
+      }
+    }
+  )CSS");
+  StyleSheetKey key("user");
+  GetStyleEngine().InjectSheet(key, user_sheet, WebCssOrigin::kUser);
+
+  GetDocument().body()->setInnerHTML("<div id=target></div>");
+
+  UpdateAllLifecyclePhases();
+
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  EXPECT_EQ(40, target->OffsetWidth());
+}
+
+TEST_F(StyleEngineTest, UserPropertyOverrideWithCascadeLayers) {
+  auto* user_sheet = MakeGarbageCollected<StyleSheetContents>(
+      MakeGarbageCollected<CSSParserContext>(GetDocument()));
+  user_sheet->ParseString(R"CSS(
+    @layer base, override;
+
+    #target {
+      width: var(--foo);
+    }
+
+    @layer override {
+      @property --foo {
+        syntax: '<length>';
+        initial-value: 100px;
+        inherits: false;
+      }
+    }
+
+    @layer base {
+      @property --foo {
+        syntax: '<length>';
+        initial-value: 50px;
+        inherits: false;
+      }
+    }
+  )CSS");
+  StyleSheetKey key("user");
+  GetStyleEngine().InjectSheet(key, user_sheet, WebCssOrigin::kUser);
+
+  GetDocument().body()->setInnerHTML(
+      "<div id=target style='height: 100px'></div>");
+
+  UpdateAllLifecyclePhases();
+
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  EXPECT_EQ(100, target->OffsetWidth());
+}
+
+TEST_F(StyleEngineTest, UserAndAuthorPropertyOverrideWithCascadeLayers) {
+  auto* user_sheet = MakeGarbageCollected<StyleSheetContents>(
+      MakeGarbageCollected<CSSParserContext>(GetDocument()));
+  user_sheet->ParseString(R"CSS(
+    @layer base, override;
+
+    @layer override {
+      @property --foo {
+        syntax: '<length>';
+        initial-value: 50px;
+        inherits: false;
+      }
+    }
+  )CSS");
+  StyleSheetKey key("user");
+  GetStyleEngine().InjectSheet(key, user_sheet, WebCssOrigin::kUser);
+
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      @property --foo {
+        syntax: '<length>';
+        initial-value: 100px;
+        inherits: false;
+      }
+
+      #target {
+        width: var(--foo);
+      }
+    </style>
+    <div id=target style='height: 100px'></div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  // User-defined custom properties should not override author-defined
+  // properties regardless of cascade layers.
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  EXPECT_EQ(100, target->OffsetWidth());
+}
+
+TEST_F(StyleEngineSimTest, UserFontFaceOverrideWithCascadeLayers) {
+  SimRequest main_resource("https://example.com", "text/html");
+  SimSubresourceRequest ahem_resource("https://example.com/ahem.woff2",
+                                      "font/woff2");
+
+  LoadURL("https://example.com");
+
+  main_resource.Complete(R"HTML(
+    <!doctype html>
+    <div id=target>Test</div>
+  )HTML");
+
+  auto* user_sheet = MakeGarbageCollected<StyleSheetContents>(
+      MakeGarbageCollected<CSSParserContext>(GetDocument()));
+  user_sheet->ParseString(R"CSS(
+    @layer base, override;
+
+    @layer override {
+      @font-face {
+        font-family: custom-font;
+        src: url('ahem.woff2') format('woff2');
+      }
+    }
+
+    @layer base {
+      @font-face {
+        font-family: custom-font;
+        src: url('ahem.woff2') format('woff2');
+        size-adjust: 200%; /* To distinguish with the other @font-face */
+      }
+    }
+
+    #target {
+      font: 20px/1 custom-font;
+      width: min-content;
+    }
+  )CSS");
+  StyleSheetKey key("user");
+  GetDocument().GetStyleEngine().InjectSheet(key, user_sheet,
+                                             WebCssOrigin::kUser);
+
+  Compositor().BeginFrame();
+
+  ahem_resource.Complete(
+      *test::ReadFromFile(test::CoreTestDataPath("Ahem.woff2")));
+
+  test::RunPendingTasks();
+  Compositor().BeginFrame();
+
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  EXPECT_EQ(80, target->OffsetWidth());
+}
+
+TEST_F(StyleEngineSimTest, UserAndAuthorFontFaceOverrideWithCascadeLayers) {
+  SimRequest main_resource("https://example.com", "text/html");
+  SimSubresourceRequest ahem_resource("https://example.com/ahem.woff2",
+                                      "font/woff2");
+
+  LoadURL("https://example.com");
+
+  main_resource.Complete(R"HTML(
+    <!doctype html>
+    <style>
+      @font-face {
+        font-family: custom-font;
+        src: url('ahem.woff2') format('woff2');
+      }
+
+      #target {
+        font: 20px/1 custom-font;
+        width: min-content;
+      }
+    </style>
+    <div id=target>Test</div>
+  )HTML");
+
+  auto* user_sheet = MakeGarbageCollected<StyleSheetContents>(
+      MakeGarbageCollected<CSSParserContext>(GetDocument()));
+  user_sheet->ParseString(R"CSS(
+    @layer base, override;
+
+    @layer override {
+      @font-face {
+        font-family: custom-font;
+        src: url('ahem.woff2') format('woff2');
+        size-adjust: 200%; /* To distinguish with the other @font-face */
+      }
+    }
+
+  )CSS");
+  StyleSheetKey key("user");
+  GetDocument().GetStyleEngine().InjectSheet(key, user_sheet,
+                                             WebCssOrigin::kUser);
+
+  Compositor().BeginFrame();
+
+  ahem_resource.Complete(
+      *test::ReadFromFile(test::CoreTestDataPath("Ahem.woff2")));
+
+  test::RunPendingTasks();
+  Compositor().BeginFrame();
+
+  // User-defined font faces should not override author-defined font faces
+  // regardless of cascade layers.
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  EXPECT_EQ(80, target->OffsetWidth());
+}
+
+TEST_F(StyleEngineTest, CascadeLayerActiveStyleSheetVectorNullRuleSetCrash) {
+  // This creates an ActiveStyleSheetVector where the first entry has no
+  // RuleSet, and the second entry has a layer rule difference.
+  GetDocument().documentElement()->setInnerHTML(
+      "<style media=invalid></style>"
+      "<style>@layer {}</style>");
+
+  // Should not crash
+  UpdateAllLifecyclePhases();
+}
+
+TEST_F(StyleEngineTest, EmptyDetachParent) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <span id="parent"><b>A</b> <i>B</i></span>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  auto* parent = GetDocument().getElementById(AtomicString("parent"));
+  parent->setInnerHTML("");
+
+  ASSERT_TRUE(parent->GetLayoutObject());
+  EXPECT_FALSE(parent->GetLayoutObject()->WhitespaceChildrenMayChange());
+  EXPECT_FALSE(GetDocument().NeedsLayoutTreeUpdate());
+}
+
+TEST_F(StyleEngineTest, LegacyListItemRebuildRootCrash) {
+  UpdateAllLifecyclePhases();
+
+  auto* doc_elm = GetDocument().documentElement();
+  ASSERT_TRUE(doc_elm);
+
+  doc_elm->SetInlineStyleProperty(CSSPropertyID::kDisplay, "list-item");
+  doc_elm->SetInlineStyleProperty(CSSPropertyID::kColumnCount, "1");
+  UpdateAllLifecyclePhases();
+
+  doc_elm->SetInlineStyleProperty(CSSPropertyID::kBackgroundColor, "green");
+  // Should not crash
+  UpdateAllLifecyclePhases();
+}
+
+// Regression test for https://crbug.com/1270190
+TEST_F(StyleEngineTest, ScrollbarStyleNoExcessiveCaching) {
+  GetDocument().documentElement()->setInnerHTML(R"HTML(
+    <style>
+    .a {
+      width: 50px;
+      height: 50px;
+      background-color: magenta;
+      overflow-y: scroll;
+      margin: 5px;
+      float: left;
+    }
+
+    .b {
+      height: 100px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: green;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: red;
+    }
+    </style>
+    <div class="a" id="container">
+      <div class="b">
+      </div>
+    </div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  // We currently don't cache ::-webkit-scrollbar-* pseudo element styles, so
+  // the cache is always empty. If we decide to cache them, we should make sure
+  // that the cache size remains bounded.
+
+  Element* container = GetDocument().getElementById(AtomicString("container"));
+  EXPECT_FALSE(container->GetComputedStyle()->GetPseudoElementStyleCache());
+
+  PaintLayerScrollableArea* area =
+      container->GetLayoutBox()->GetScrollableArea();
+  Scrollbar* scrollbar = area->VerticalScrollbar();
+  CustomScrollbar* custom_scrollbar = To<CustomScrollbar>(scrollbar);
+
+  scrollbar->SetHoveredPart(kThumbPart);
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(container->GetComputedStyle()->GetPseudoElementStyleCache());
+  EXPECT_EQ("rgb(255, 0, 0)", custom_scrollbar->GetPart(kThumbPart)
+                                  ->Style()
+                                  ->BackgroundColor()
+                                  .GetColor()
+                                  .SerializeAsCSSColor());
+
+  scrollbar->SetHoveredPart(kNoPart);
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(container->GetComputedStyle()->GetPseudoElementStyleCache());
+  EXPECT_EQ("rgb(0, 128, 0)", custom_scrollbar->GetPart(kThumbPart)
+                                  ->Style()
+                                  ->BackgroundColor()
+                                  .GetColor()
+                                  .SerializeAsCSSColor());
+}
+
+TEST_F(StyleEngineTest, HasPseudoClassInvalidationSkipIrrelevantClassChange) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>.a:has(.b) { background-color: lime; }</style>
+    <div id=div1>
+      <div id=div2 class='a'>
+        <div id=div3>
+          <div id=div4></div>
+        </div>
+      </div>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  unsigned start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div4"))
+      ->setAttribute(html_names::kClassAttr, AtomicString("c"));
+  UpdateAllLifecyclePhases();
+  unsigned element_count =
+      GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(0U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div4"))
+      ->setAttribute(html_names::kClassAttr, AtomicString("b"));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(1U, element_count);
+}
+
+TEST_F(StyleEngineTest, HasPseudoClassInvalidationSkipIrrelevantIdChange) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>.a:has(#b) { background-color: lime; }</style>
+    <div id=div1>
+      <div id=div2 class='a'>
+        <div id=div3>
+          <div id=div4></div>
+        </div>
+      </div>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  unsigned start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div4"))
+      ->setAttribute(html_names::kIdAttr, AtomicString("c"));
+  UpdateAllLifecyclePhases();
+  unsigned element_count =
+      GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(0U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("c"))
+      ->setAttribute(html_names::kIdAttr, AtomicString("b"));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(1U, element_count);
+}
+
+TEST_F(StyleEngineTest,
+       HasPseudoClassInvalidationSkipIrrelevantAttributeChange) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>.a:has([b]) { background-color: lime; }</style>
+    <div id=div1>
+      <div id=div2 class='a'>
+        <div id=div3>
+          <div id=div4></div>
+        </div>
+      </div>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  unsigned start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div4"))
+      ->setAttribute(
+          QualifiedName(g_empty_atom, AtomicString("c"), g_empty_atom),
+          AtomicString("C"));
+  UpdateAllLifecyclePhases();
+  unsigned element_count =
+      GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(0U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div4"))
+      ->setAttribute(
+          QualifiedName(g_empty_atom, AtomicString("b"), g_empty_atom),
+          AtomicString("B"));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(1U, element_count);
+}
+
+TEST_F(StyleEngineTest,
+       HasPseudoClassInvalidationSkipIrrelevantInsertionRemoval) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>.a:has(.b) { background-color: lime; }</style>
+    <div id=div1>
+      <div id=div2 class='a'>
+        <div id=div3></div>
+        <div id=div4></div>
+      </div>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  unsigned start_count = GetStyleEngine().StyleForElementCount();
+  auto* div5 = MakeGarbageCollected<HTMLDivElement>(GetDocument());
+  div5->setAttribute(html_names::kIdAttr, AtomicString("div5"));
+  div5->setInnerHTML(R"HTML(<div class='c'></div>)HTML");
+  GetDocument().getElementById(AtomicString("div3"))->AppendChild(div5);
+  UpdateAllLifecyclePhases();
+  unsigned element_count =
+      GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(2U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  auto* div6 = MakeGarbageCollected<HTMLDivElement>(GetDocument());
+  div6->setAttribute(html_names::kIdAttr, AtomicString("div6"));
+  div6->setInnerHTML(R"HTML(<div class='b'></div>)HTML");
+  GetDocument().getElementById(AtomicString("div4"))->AppendChild(div6);
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(3U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div3"))
+      ->RemoveChild(GetDocument().getElementById(AtomicString("div5")));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(0U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div4"))
+      ->RemoveChild(GetDocument().getElementById(AtomicString("div6")));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(1U, element_count);
+}
+
+TEST_F(StyleEngineTest, HasPseudoClassInvalidationUniversalInArgument) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>.a:has(*) { background-color: lime; }</style>
+    <div id=div1>
+      <div id=div2 class='a'>
+      </div>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  unsigned start_count = GetStyleEngine().StyleForElementCount();
+  auto* div3 = MakeGarbageCollected<HTMLDivElement>(GetDocument());
+  div3->setAttribute(html_names::kIdAttr, AtomicString("div3"));
+  GetDocument().getElementById(AtomicString("div2"))->AppendChild(div3);
+  UpdateAllLifecyclePhases();
+  unsigned element_count =
+      GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(2U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div2"))
+      ->RemoveChild(GetDocument().getElementById(AtomicString("div3")));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(1U, element_count);
+}
+
+TEST_F(StyleEngineTest,
+       HasPseudoClassInvalidationInsertionRemovalWithPseudoInHas) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      .a:has(.b:focus) { background-color: lime; }
+      .c:has(.d) { background-color: green; }
+    </style>
+    <div id=div1>
+      <div id=div2 class='a'></div>
+      <div id=div3 class='c'></div>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  unsigned start_count = GetStyleEngine().StyleForElementCount();
+  auto* div4 = MakeGarbageCollected<HTMLDivElement>(GetDocument());
+  div4->setAttribute(html_names::kIdAttr, AtomicString("div4"));
+  GetDocument().getElementById(AtomicString("div2"))->AppendChild(div4);
+  UpdateAllLifecyclePhases();
+  unsigned element_count =
+      GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(2U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  auto* div5 = MakeGarbageCollected<HTMLDivElement>(GetDocument());
+  div5->setAttribute(html_names::kIdAttr, AtomicString("div5"));
+  GetDocument().getElementById(AtomicString("div3"))->AppendChild(div5);
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(1U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div2"))
+      ->RemoveChild(GetDocument().getElementById(AtomicString("div4")));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(1U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div3"))
+      ->RemoveChild(GetDocument().getElementById(AtomicString("div5")));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(0U, element_count);
+}
+
+TEST_F(StyleEngineTest, HasPseudoClassInvalidationLinkInHas) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      .a:has(:link) { background-color: lime; }
+    </style>
+    <div id=div1 class='a'>
+      <a href="unvisited"></a>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  unsigned start_count = GetStyleEngine().StyleForElementCount();
+  auto* anchor = MakeGarbageCollected<HTMLAnchorElement>(GetDocument());
+  anchor->setAttribute(html_names::kIdAttr, AtomicString("anchor1"));
+  GetDocument().getElementById(AtomicString("div1"))->AppendChild(anchor);
+  UpdateAllLifecyclePhases();
+  unsigned element_count =
+      GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(2U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div1"))
+      ->RemoveChild(GetDocument().getElementById(AtomicString("anchor1")));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(1U, element_count);
+}
+
+TEST_F(StyleEngineTest, HasPseudoClassInvalidationIgnoreVisitedPseudoInHas) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      .a:has(:visited) { background-color: lime; }
+    </style>
+    <div id=div1 class='a'>
+      <a href="unvisited"></a>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  unsigned start_count = GetStyleEngine().StyleForElementCount();
+  auto* anchor = MakeGarbageCollected<HTMLAnchorElement>(GetDocument());
+  anchor->SetHref(g_empty_atom);
+  anchor->setAttribute(html_names::kIdAttr, AtomicString("anchor1"));
+  GetDocument().getElementById(AtomicString("div1"))->AppendChild(anchor);
+  UpdateAllLifecyclePhases();
+  unsigned element_count =
+      GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(1U, element_count);
+
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("div1"))
+      ->RemoveChild(GetDocument().getElementById(AtomicString("anchor1")));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  ASSERT_EQ(0U, element_count);
+}
+
+TEST_F(StyleEngineTest, HasPseudoClassInvalidationCheckFiltering) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+    div { color: grey }
+    .a:has(.b) { color: red }
+    .c:has(.d) { color: green }
+    .e:has(.f) .g { color: blue }
+    .e:has(.h) .i { color: navy }
+    .e:has(.f.h) .j { color: lightgreen }
+    </style>
+    <div class='a e'>
+      <div class=g></div>
+      <div class=i></div>
+      <div class=j></div>
+      <div id=child></div>
+    </div>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+
+  // TODO(blee@igalia.com) Should be 0U. Need additional filtering
+  // - skip invalidation of non-subject :has() rules
+  //    - .e:has(.f) .g
+  //    - .e:has(.h) .i
+  //    - .e:has(.f.h) .j
+  // - skip invalidation of the irrelevant ancestor
+  //    - .a:has(.b)
+  unsigned start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("child"))
+      ->setAttribute(html_names::kClassAttr, AtomicString("d"));
+  UpdateAllLifecyclePhases();
+  unsigned element_count =
+      GetStyleEngine().StyleForElementCount() - start_count;
+  EXPECT_EQ(4U, element_count);
+
+  GetDocument()
+      .getElementById(AtomicString("child"))
+      ->setAttribute(html_names::kClassAttr, g_empty_atom);
+  UpdateAllLifecyclePhases();
+
+  // TODO(blee@igalia.com) Should be 1U. Need additional filtering
+  // - skip invalidation of subject :has() rules
+  //    - .a:has(.b)
+  // - skip invalidation of irrelevant rules
+  //    - .e:has(.h) .i
+  // - skip invalidation of the mutation on irrelevant element
+  //    - .e:has(.f.h) .j
+  start_count = GetStyleEngine().StyleForElementCount();
+  GetDocument()
+      .getElementById(AtomicString("child"))
+      ->setAttribute(html_names::kClassAttr, AtomicString("b"));
+  UpdateAllLifecyclePhases();
+  element_count = GetStyleEngine().StyleForElementCount() - start_count;
+  EXPECT_EQ(4U, element_count);
+}
+
+TEST_F(StyleEngineTest, CSSComparisonFunctionsUseCount) {
+  ClearUseCounter(WebFeature::kCSSComparisonFunctions);
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      div { width: calc(10px + 20%); }
+    </style>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(IsUseCounted(WebFeature::kCSSComparisonFunctions));
+  ClearUseCounter(WebFeature::kCSSComparisonFunctions);
+
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      div { width: calc(min(10px, 20%) + max(20px, 10%)); }
+    </style>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(IsUseCounted(WebFeature::kCSSComparisonFunctions));
+  ClearUseCounter(WebFeature::kCSSComparisonFunctions);
+
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      div { width: calc(clamp(10px, 20px, 30px)); }
+    </style>
+    <div></div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(IsUseCounted(WebFeature::kCSSComparisonFunctions));
+  ClearUseCounter(WebFeature::kCSSComparisonFunctions);
+
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      div { width: calc(clamp(10px, 20%, 20px + 30%)); }
+    </style>
+    <div></div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(IsUseCounted(WebFeature::kCSSComparisonFunctions));
+  ClearUseCounter(WebFeature::kCSSComparisonFunctions);
+}
+
+TEST_F(StyleEngineTest, MathDepthOverflow) {
+  css_test_helpers::RegisterProperty(
+      GetDocument(), "--int16-max", "<integer>",
+      String::Format("%i", std::numeric_limits<int16_t>::max()), false);
+
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      #parent1 {
+        math-style: compact;
+        math-depth: var(--int16-max);
+      }
+      #parent2 {
+        math-style: compact;
+        math-depth: 1;
+      }
+      #child1, #control1 {
+        math-depth: add(1);
+      }
+      #child2, #control2 {
+        math-depth: auto-add;
+      }
+      #child3 {
+        math-depth: calc(var(--int16-max) + 1);
+      }
+    </style>
+    <div id=parent1>
+      <div id=child1></div>
+      <div id=child2></div>
+      <div id=child3></div>
+    </div>
+    <div id=parent2>
+      <div id=control1></div>
+      <div id=control2></div>
+    </div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  Element* control1 = GetDocument().getElementById(AtomicString("control1"));
+  Element* control2 = GetDocument().getElementById(AtomicString("control2"));
+
+  ASSERT_TRUE(control1 && control1->GetComputedStyle());
+  ASSERT_TRUE(control2 && control2->GetComputedStyle());
+
+  EXPECT_EQ(2, control1->GetComputedStyle()->MathDepth());
+  EXPECT_EQ(2, control2->GetComputedStyle()->MathDepth());
+
+  Element* child1 = GetDocument().getElementById(AtomicString("child1"));
+  Element* child2 = GetDocument().getElementById(AtomicString("child2"));
+  Element* child3 = GetDocument().getElementById(AtomicString("child3"));
+
+  ASSERT_TRUE(child1 && child1->GetComputedStyle());
+  ASSERT_TRUE(child2 && child2->GetComputedStyle());
+  ASSERT_TRUE(child3 && child3->GetComputedStyle());
+
+  EXPECT_EQ(std::numeric_limits<int16_t>::max(),
+            child1->GetComputedStyle()->MathDepth());
+  EXPECT_EQ(std::numeric_limits<int16_t>::max(),
+            child2->GetComputedStyle()->MathDepth());
+  EXPECT_EQ(std::numeric_limits<int16_t>::max(),
+            child3->GetComputedStyle()->MathDepth());
+}
+
+TEST_F(StyleEngineTest, RemovedBodyToHTMLPropagation) {
+  GetDocument().body()->SetInlineStyleProperty(CSSPropertyID::kWritingMode,
+                                               "vertical-lr");
+
+  UpdateAllLifecyclePhases();
+
+  Element* root = GetDocument().documentElement();
+  ASSERT_TRUE(root);
+  EXPECT_TRUE(root->ComputedStyleRef().IsHorizontalWritingMode())
+      << "body to html propagation does not affect computed value";
+  EXPECT_FALSE(root->GetLayoutObject()->StyleRef().IsHorizontalWritingMode())
+      << "body to html propagation affects used value";
+
+  // Make sure that recalculating style for the root element does not trigger a
+  // visual diff that requires layout. That is, we take the body -> root
+  // propagation of writing-mode into account before setting ComputedStyle on
+  // the root LayoutObject.
+  GetDocument().body()->remove();
+
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(root->ComputedStyleRef().IsHorizontalWritingMode())
+      << "body to html propagation does not affect computed value";
+  EXPECT_TRUE(root->GetLayoutObject()->StyleRef().IsHorizontalWritingMode())
+      << "No propagation from removed body";
+}
+
+TEST_F(StyleEngineTest, RevertWithPresentationalHints) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      img {
+        width: revert;
+        height: revert;
+      }
+    </style>
+    <img id="img" width="44" height="33"></img>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  // For the purpose of the 'revert' keyword, presentational hints are
+  // considered part of the author origin.
+  Element* img = GetElementById("img");
+  EXPECT_NE(44, img->OffsetWidth());
+  EXPECT_NE(33, img->OffsetHeight());
+}
+
+TEST_F(StyleEngineTest, RevertLayerWithPresentationalHints) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      img {
+        width: revert-layer;
+        height: revert-layer;
+      }
+    </style>
+    <img id="img" width="44" height="33"></img>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  // 'revert-layer' from the lowest author layer should revert to the
+  // presentational hints.
+  Element* img = GetElementById("img");
+  EXPECT_EQ(44, img->OffsetWidth());
+  EXPECT_EQ(33, img->OffsetHeight());
+}
+
+TEST_F(StyleEngineSimTest, ResizeWithBlockingSheetTransition) {
+  WebView().MainFrameWidget()->Resize(gfx::Size(500, 500));
+
+  SimRequest html_request("https://example.com/test.html", "text/html");
+  SimSubresourceRequest css_request("https://example.com/slow.css", "text/css");
+
+  LoadURL("https://example.com/test.html");
+  html_request.Complete(R"HTML(
+      <!DOCTYPE html>
+      <style>
+        #trans {
+          transition-duration: 30s;
+          color: red;
+        }
+      </style>
+      <link rel="stylesheet" href="slow.css">
+      <div id="trans"></div>
+  )HTML");
+
+  css_request.Start();
+  WebView().MainFrameWidget()->Resize(gfx::Size(800, 800));
+
+  css_request.Complete(R"CSS(
+    #trans { color: green; }
+  )CSS");
+
+  Compositor().BeginFrame();
+  test::RunPendingTasks();
+
+  Element* trans = GetDocument().getElementById(AtomicString("trans"));
+  ASSERT_TRUE(trans);
+
+  // Completing the linked stylesheet should not start a transition since the
+  // sheet is render-blocking.
+  EXPECT_EQ(
+      trans->ComputedStyleRef().VisitedDependentColor(GetCSSPropertyColor()),
+      Color::FromRGB(0, 128, 0));
+}
+
+TEST_F(StyleEngineSimTest, FocusWithBlockingSheetTransition) {
+  WebView().MainFrameWidget()->Resize(gfx::Size(500, 500));
+
+  SimRequest html_request("https://example.com/test.html", "text/html");
+  SimSubresourceRequest css_request("https://example.com/slow.css", "text/css");
+
+  LoadURL("https://example.com/test.html");
+  html_request.Complete(R"HTML(
+      <!DOCTYPE html>
+      <style>
+        #trans {
+          transition-duration: 30s;
+          color: red;
+        }
+      </style>
+      <link rel="stylesheet" href="slow.css">
+      <div id="trans"></div>
+  )HTML");
+
+  css_request.Start();
+
+  GetDocument().GetPage()->GetFocusController().SetActive(true);
+  GetDocument().GetPage()->GetFocusController().SetFocused(true);
+  GetDocument().GetPage()->GetFocusController().SetFocusedFrame(
+      GetDocument().GetFrame());
+
+  css_request.Complete(R"CSS(
+    #trans { color: green; }
+  )CSS");
+
+  Compositor().BeginFrame();
+  test::RunPendingTasks();
+
+  Element* trans = GetDocument().getElementById(AtomicString("trans"));
+  ASSERT_TRUE(trans);
+
+  // Completing the linked stylesheet should not start a transition since the
+  // sheet is render-blocking.
+  EXPECT_EQ(
+      trans->ComputedStyleRef().VisitedDependentColor(GetCSSPropertyColor()),
+      Color::FromRGB(0, 128, 0));
+}
+
+TEST_F(StyleEngineSimTest,
+       ShouldInvalidateSubjectPseudoHasAfterChildrenParsingFinished) {
+  SimRequest main_resource("https://example.com/", "text/html");
+
+  LoadURL("https://example.com/");
+
+  main_resource.Write(R"HTML(
+    <!DOCTYPE html>
+    <style>
+      .a { color: black }
+      .a:not(:has(+ div)) { color: red }
+    </style>
+    <div id="first" class="a"> First </div>
+    <div id="second" class="a"> Second
+  )HTML");
+
+  Compositor().BeginFrame();
+  test::RunPendingTasks();
+
+  Element* first = GetDocument().getElementById(AtomicString("first"));
+  EXPECT_TRUE(first);
+  EXPECT_EQ(
+      Color::FromRGB(0, 0, 0),
+      first->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  Element* second = GetDocument().getElementById(AtomicString("second"));
+  EXPECT_TRUE(second);
+  EXPECT_EQ(
+      Color::FromRGB(255, 0, 0),
+      second->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  main_resource.Write(R"HTML(
+    </div>
+    <div id="third" class="a"> Third
+  )HTML");
+
+  Compositor().BeginFrame();
+  test::RunPendingTasks();
+
+  first = GetDocument().getElementById(AtomicString("first"));
+  EXPECT_TRUE(first);
+  EXPECT_EQ(
+      Color::FromRGB(0, 0, 0),
+      first->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  second = GetDocument().getElementById(AtomicString("second"));
+  EXPECT_TRUE(second);
+  EXPECT_EQ(
+      Color::FromRGB(255, 0, 0),
+      second->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  Element* third = GetDocument().getElementById(AtomicString("third"));
+  EXPECT_TRUE(third);
+  EXPECT_EQ(
+      Color::FromRGB(255, 0, 0),
+      third->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  main_resource.Complete(R"HTML(
+    </div>
+    <div id="fourth"> Fourth </div>
+  )HTML");
+
+  first = GetDocument().getElementById(AtomicString("first"));
+  EXPECT_TRUE(first);
+  EXPECT_EQ(
+      Color::FromRGB(0, 0, 0),
+      first->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  second = GetDocument().getElementById(AtomicString("second"));
+  EXPECT_TRUE(second);
+  EXPECT_EQ(
+      Color::FromRGB(0, 0, 0),
+      second->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  third = GetDocument().getElementById(AtomicString("third"));
+  EXPECT_TRUE(third);
+  EXPECT_EQ(
+      Color::FromRGB(0, 0, 0),
+      third->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  Element* fourth = GetDocument().getElementById(AtomicString("fourth"));
+  EXPECT_TRUE(fourth);
+  EXPECT_EQ(
+      Color::FromRGB(0, 0, 0),
+      fourth->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, StyleElementTypeAttrChange) {
+  Element* style = GetDocument().CreateElementForBinding(AtomicString("style"));
+  style->setAttribute(html_names::kTypeAttr, AtomicString("invalid"));
+  style->setInnerHTML("body { color: red }");
+  GetDocument().body()->appendChild(style);
+
+  // <style> has no effect due to invalid type attribute value
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // <style> should now be effective with a valid type attribute value
+  style->setAttribute(html_names::kTypeAttr, AtomicString("text/css"));
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, SVGURIValueCacheClipPath) {
+  Element* body = GetDocument().body();
+  body->setInnerHTML(R"HTML(
+    <svg><text clip-path="inset(10px)">CLIPPED</text><svg>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  EXPECT_EQ(FillOrClipPathCacheSize(), 0u);
+
+  body->setInnerHTML(R"HTML(
+    <svg><text clip-path="url(#clipped)">CLIPPED</text><svg>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  EXPECT_EQ(FillOrClipPathCacheSize(), 1u);
+}
+
+TEST_F(StyleEngineTest, SVGURIValueCacheFill) {
+  Element* body = GetDocument().body();
+  body->setInnerHTML(R"HTML(
+    <svg><rect fill="red">FILLED</rect><svg>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  EXPECT_EQ(FillOrClipPathCacheSize(), 0u);
+
+  body->setInnerHTML(R"HTML(
+    <svg><rect fill="url(#fill)">FILLED</rect><svg>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  EXPECT_EQ(FillOrClipPathCacheSize(), 1u);
+}
+
+TEST_F(StyleEngineTest, BorderWidthsAreRecalculatedWhenZoomChanges) {
+  // Tests that Border Widths are recalculated as expected
+  // when Zoom and Device Scale Factor are changed.
+
+  frame_test_helpers::WebViewHelper web_view_helper;
+  WebViewImpl* web_view_impl = web_view_helper.Initialize();
+
+  WebFrameWidget* mainFrameWidget = web_view_impl->MainFrameWidget();
+
+  const auto setZoom{[&](const float zoomFactor) {
+    mainFrameWidget->SetZoomLevelForTesting(ZoomFactorToZoomLevel(zoomFactor));
+
+    mainFrameWidget->UpdateAllLifecyclePhases(DocumentUpdateReason::kTest);
+  }};
+
+  auto resetZoom{[&]() { setZoom(1.0f); }};
+
+  const auto setDeviceScaleFactor{[&](const float deviceScaleFactor) {
+    mainFrameWidget->SetDeviceScaleFactorForTesting(deviceScaleFactor);
+
+    mainFrameWidget->UpdateAllLifecyclePhases(DocumentUpdateReason::kTest);
+  }};
+
+  auto resetDeviceScaleFactor{[&]() { setDeviceScaleFactor(1.0f); }};
+
+  auto reset{[&]() {
+    resetZoom();
+    resetDeviceScaleFactor();
+  }};
+
+  Document* document =
+      To<LocalFrame>(web_view_impl->GetPage()->MainFrame())->GetDocument();
+
+  document->body()->setInnerHTML(R"HTML(
+    <style>
+    #square {
+      height: 100px;
+      width: 100px;
+      border: 1.5px solid gray;
+    }
+    </style>
+    <div id='square'></div>
+  )HTML");
+
+  mainFrameWidget->UpdateAllLifecyclePhases(DocumentUpdateReason::kTest);
+
+  const Element* square = document->getElementById(AtomicString("square"));
+  ASSERT_NE(square, nullptr);
+
+  const auto checkBorderWidth{[&](const float expected) {
+    const ComputedStyle* computedStyle = square->GetComputedStyle();
+    ASSERT_NE(computedStyle, nullptr);
+
+    EXPECT_FLOAT_EQ(expected, computedStyle->BorderTopWidth());
+  }};
+
+  // Check initial border width.
+  reset();
+  checkBorderWidth(1.0f);
+
+  // Check border width with zoom factors.
+  setZoom(0.33f);
+  checkBorderWidth(1.0f);
+
+  setZoom(1.75f);
+  checkBorderWidth(2.0f);
+
+  setZoom(2.0f);
+  checkBorderWidth(3.0f);
+
+  // Check border width after zoom is reset.
+  resetZoom();
+  checkBorderWidth(1.0f);
+
+  // Check border width with device scale factors.
+  setDeviceScaleFactor(2.0f);
+  checkBorderWidth(3.0f);
+
+  setDeviceScaleFactor(3.0f);
+  checkBorderWidth(4.0f);
+
+  // Check border width after device scale factor is reset.
+  resetDeviceScaleFactor();
+  checkBorderWidth(1.0f);
+
+  // Check border width with a combination
+  // of zoom and device scale factors.
+  setZoom(2.0f);
+  setDeviceScaleFactor(2.0f);
+  checkBorderWidth(6.0f);
+
+  setZoom(1.5f);
+  checkBorderWidth(4.0f);
+
+  setDeviceScaleFactor(2.6f);
+  checkBorderWidth(5.0f);
+
+  setZoom(0.33f);
+  checkBorderWidth(1.0f);
+
+  // Check border width after resetting both
+  // zoom and device scale factor is reset.
+  reset();
+  checkBorderWidth(1.0f);
+}
+
+TEST_F(StyleEngineTest, InitialStyle_Recalc) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      #target {
+        background-color: green;
+        @starting-style { background-color: red; }
+      }
+    </style>
+    <div id="target"></div>
+  )HTML");
+
+  UpdateAllLifecyclePhasesForTest();
+
+  constexpr Color green = Color::FromRGB(0, 128, 0);
+  constexpr Color lime = Color::FromRGB(0, 255, 0);
+
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  unsigned before_count = GetStyleEngine().StyleForElementCount();
+
+  target->SetInlineStyleProperty(CSSPropertyID::kColor, "lime");
+  UpdateAllLifecyclePhasesForTest();
+
+  EXPECT_EQ(GetStyleEngine().StyleForElementCount() - before_count, 1u)
+      << "The style recalc should not do a separate @starting-style pass since "
+         "the element already has a style";
+  EXPECT_EQ(target->ComputedStyleRef().VisitedDependentColor(
+                GetCSSPropertyBackgroundColor()),
+            green)
+      << "Make sure @starting-style rules do not apply for the second pass";
+  EXPECT_EQ(
+      target->ComputedStyleRef().VisitedDependentColor(GetCSSPropertyColor()),
+      lime)
+      << "Check that the color changed to lime";
+}
+
+TEST_F(StyleEngineTest, InitialStyle_FromDisplayNone) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      #target {
+        background-color: green;
+        @starting-style { background-color: red; }
+      }
+    </style>
+    <div id="target" style="display:none"></div>
+  )HTML");
+
+  UpdateAllLifecyclePhasesForTest();
+
+  constexpr Color green = Color::FromRGB(0, 128, 0);
+
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  unsigned before_count = GetStyleEngine().StyleForElementCount();
+
+  target->SetInlineStyleProperty(CSSPropertyID::kDisplay, "block");
+  UpdateAllLifecyclePhasesForTest();
+
+  EXPECT_EQ(GetStyleEngine().StyleForElementCount() - before_count, 2u)
+      << "The style recalc needs to do two passes because the element was "
+         "display:none and @starting-style styles are matching";
+  EXPECT_EQ(target->ComputedStyleRef().VisitedDependentColor(
+                GetCSSPropertyBackgroundColor()),
+            green)
+      << "Make sure @starting-style do not apply for the second pass";
+}
+
+TEST_F(StyleEngineTest, InitialStyleCount_EnsureComputedStyle) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      #target {
+        background-color: green;
+        transition: background-color 100s step-end;
+        @starting-style { background-color: red; }
+      }
+    </style>
+    <div id="target" style="display:none"></div>
+  )HTML");
+
+  UpdateAllLifecyclePhasesForTest();
+
+  constexpr Color green = Color::FromRGB(0, 128, 0);
+
+  Element* target = GetDocument().getElementById(AtomicString("target"));
+  unsigned before_count = GetStyleEngine().StyleForElementCount();
+
+  ASSERT_FALSE(target->GetComputedStyle())
+      << "Initially no ComputedStyle on display:none element";
+
+  const ComputedStyle* none_style = target->EnsureComputedStyle();
+  ASSERT_TRUE(none_style);
+
+  EXPECT_EQ(GetStyleEngine().StyleForElementCount() - before_count, 1u)
+      << "No @starting-style pass for EnsureComputedStyle";
+
+  EXPECT_EQ(target->ComputedStyleRef().VisitedDependentColor(
+                GetCSSPropertyBackgroundColor()),
+            green)
+      << "Transitions are not started and @starting-style does not apply in "
+         "display:none";
+}
+
+TEST_F(StyleEngineTest, UseCountCSSAnchorPositioning) {
+  EXPECT_FALSE(IsUseCounted(WebFeature::kCSSAnchorPositioning));
+
+  SetBodyInnerHTML("<style>#foo { top: anchor(top); }");
+  EXPECT_TRUE(IsUseCounted(WebFeature::kCSSAnchorPositioning));
+
+  ClearUseCounter(WebFeature::kCSSAnchorPositioning);
+  SetBodyInnerHTML("<style>#foo { width: anchor-size(width); }");
+  EXPECT_TRUE(IsUseCounted(WebFeature::kCSSAnchorPositioning));
+
+  ClearUseCounter(WebFeature::kCSSAnchorPositioning);
+  SetBodyInnerHTML("<style>@position-try --pf {}</style>");
+  EXPECT_TRUE(IsUseCounted(WebFeature::kCSSAnchorPositioning));
+}
+
+TEST_F(StyleEngineTest, EnsureAppRegionTriggersRelayout) {
+  frame_test_helpers::WebViewHelper web_view_helper;
+  WebViewImpl* web_view_impl = web_view_helper.Initialize();
+  web_view_impl->SetSupportsDraggableRegions(true);
+  web_view_impl->MainFrameWidget()->UpdateAllLifecyclePhases(
+      DocumentUpdateReason::kTest);
+
+  Document* document =
+      To<LocalFrame>(web_view_impl->GetPage()->MainFrame())->GetDocument();
+  document->body()->setInnerHTML(R"HTML(
+    <head>
+    <style>
+      .drag {
+        app-region: drag
+      }
+      .no-drag {
+        app-region: no-drag
+      }
+    </style>
+    </head>
+    <body>
+       <div id="drag-region"></div>
+    </body>
+  )HTML");
+
+  Element* drag_element = document->getElementById(AtomicString("drag-region"));
+
+  auto regions = document->DraggableRegions();
+  auto it =
+      std::find_if(regions.begin(), regions.end(),
+                   [](blink::DraggableRegionValue s) { return s.draggable; });
+  EXPECT_EQ(it, regions.end()) << "There should be no drag regions";
+
+  drag_element->classList().Add(AtomicString("drag"));
+  web_view_impl->MainFrameWidget()->UpdateAllLifecyclePhases(
+      DocumentUpdateReason::kTest);
+
+  regions = document->DraggableRegions();
+  it = std::find_if(regions.begin(), regions.end(),
+                    [](blink::DraggableRegionValue s) { return s.draggable; });
+  EXPECT_NE(it, regions.end()) << "There should be one drag region";
+
+  drag_element->classList().Add(AtomicString("no-drag"));
+  web_view_impl->MainFrameWidget()->UpdateAllLifecyclePhases(
+      DocumentUpdateReason::kTest);
+
+  regions = document->DraggableRegions();
+  it = std::find_if(regions.begin(), regions.end(),
+                    [](blink::DraggableRegionValue s) { return s.draggable; });
+
+  EXPECT_EQ(it, regions.end()) << "There should be no drag regions";
+}
+
+TEST_F(StyleEngineTest, ForcedColorsLightDark) {
+  ScopedForcedColorsForTest scoped_feature(true);
+  ColorSchemeHelper color_scheme_helper(GetDocument());
+  color_scheme_helper.SetInForcedColors(GetDocument(),
+                                        /*in_forced_colors=*/true);
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style>
+      :root { color-scheme: light only; }
+      #light-dark {
+        color: light-dark(GrayText, red);
+      }
+      #reference {
+        color: GrayText;
+      }
+    </style>
+    <div id="light-dark"></div>
+    <div id="reference"></div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  const ComputedStyle& light_dark =
+      GetDocument()
+          .getElementById(AtomicString("light-dark"))
+          ->ComputedStyleRef();
+  const ComputedStyle& reference =
+      GetDocument()
+          .getElementById(AtomicString("reference"))
+          ->ComputedStyleRef();
+
+  EXPECT_EQ(light_dark.VisitedDependentColor(GetCSSPropertyColor()),
+            reference.VisitedDependentColor(GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, UseCountMediaQueryRangeSyntax) {
+  EXPECT_FALSE(IsUseCounted(WebFeature::kMediaQueryRangeSyntax));
+
+  ClearUseCounter(WebFeature::kMediaQueryRangeSyntax);
+  SetBodyInnerHTML("<style>@media (width: 1px){}</style>");
+  EXPECT_FALSE(IsUseCounted(WebFeature::kMediaQueryRangeSyntax));
+
+  ClearUseCounter(WebFeature::kMediaQueryRangeSyntax);
+  SetBodyInnerHTML("<style>@media (width = 1px){}</style>");
+  EXPECT_TRUE(IsUseCounted(WebFeature::kMediaQueryRangeSyntax));
+
+  ClearUseCounter(WebFeature::kMediaQueryRangeSyntax);
+  SetBodyInnerHTML("<style>@media ((width: 1px) and (height: 1px)){}</style>");
+  EXPECT_FALSE(IsUseCounted(WebFeature::kMediaQueryRangeSyntax));
+
+  ClearUseCounter(WebFeature::kMediaQueryRangeSyntax);
+  SetBodyInnerHTML("<style>@media (width){}</style>");
+  EXPECT_FALSE(IsUseCounted(WebFeature::kMediaQueryRangeSyntax));
+
+  ClearUseCounter(WebFeature::kMediaQueryRangeSyntax);
+  SetBodyInnerHTML("<style>@media (width < 1px){}</style>");
+  EXPECT_TRUE(IsUseCounted(WebFeature::kMediaQueryRangeSyntax));
+
+  ClearUseCounter(WebFeature::kMediaQueryRangeSyntax);
+  SetBodyInnerHTML("<style>@media (1px < width){}</style>");
+  EXPECT_TRUE(IsUseCounted(WebFeature::kMediaQueryRangeSyntax));
+
+  ClearUseCounter(WebFeature::kMediaQueryRangeSyntax);
+  SetBodyInnerHTML("<style>@media (1px < width < 2px){}</style>");
+  EXPECT_TRUE(IsUseCounted(WebFeature::kMediaQueryRangeSyntax));
+}
+
+TEST_F(StyleEngineTest, CreateUnconnectedRuleSet) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style id=style>
+      .a { color: green; }
+      .a { width: 100px; }
+    </style>
+  )HTML");
+  UpdateAllLifecyclePhases();
+
+  CSSStyleSheet* sheet =
+      To<HTMLStyleElement>(GetDocument().getElementById(AtomicString("style")))
+          ->sheet();
+  ASSERT_TRUE(sheet);
+  EXPECT_TRUE(sheet->Contents()->HasRuleSet());
+
+  sheet->Contents()->ClearRuleSet();
+  EXPECT_FALSE(sheet->Contents()->HasRuleSet());
+
+  RuleSet* rule_set = GetStyleEngine().CreateUnconnectedRuleSet(*sheet);
+  ASSERT_TRUE(rule_set);
+  EXPECT_EQ(2u, rule_set->ClassRules(AtomicString("a")).size());
+
+  // As the above RuleSet is unconnected, it should not have affected
+  // the RuleSet held by StyleSheetContents.
+  EXPECT_FALSE(sheet->Contents()->HasRuleSet());
+}
+
+TEST_F(StyleEngineTest, CreateUnconnectedRuleSetMedia) {
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <style id=style media=print>
+      .a { color: green; }
+      .a { width: 100px; }
+    </style>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  CSSStyleSheet* sheet =
+      To<HTMLStyleElement>(GetDocument().getElementById(AtomicString("style")))
+          ->sheet();
+  EXPECT_FALSE(GetStyleEngine().CreateUnconnectedRuleSet(*sheet));
+}
+
+TEST_F(StyleEngineTest, HasComplexSafaAreaConstraints) {
+  ScopedUpdateComplexSafaAreaConstraintsForTest
+      update_complex_safe_area_constraints(true);
+
+  // (a) Any styles that are not 'bottom' anchored, should not have complex
+  // safe area constraints.
+
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="padding-bottom: 30px" />
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(GetStyleEngine().HasComplexSafaAreaConstraints());
+
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="padding-bottom: env(safe-area-inset-bottom)" />
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(GetStyleEngine().HasComplexSafaAreaConstraints());
+
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="height: calc(env(safe-area-inset-bottom) + 30px)" />
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(GetStyleEngine().HasComplexSafaAreaConstraints());
+
+  // (b) Any styles that are 'bottom' anchored, may have complex safe area
+  // constraints depending on the following usages.
+
+  // When no style properties use env(safe-area-inset-bottom), there are no
+  // complex safe area constraints.
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="bottom: 5px; padding-bottom: 30px" />
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(GetStyleEngine().HasComplexSafaAreaConstraints());
+
+  // When a style property other than 'bottom' uses env(safe-area-inset-bottom),
+  // there are complex safe area constraints.
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="bottom: 5px; padding-bottom: env(safe-area-inset-bottom)" />
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(GetStyleEngine().HasComplexSafaAreaConstraints());
+
+  // When the 'bottom' style property uses env(safe-area-inset-bottom)
+  // as defined under 'IsBottomRelativeToSafeAreaInset' in
+  // computed_style_extra_fields.json5, this is considered a "fast-path"
+  // and there are no complex safe area constraints.
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="bottom: env(safe-area-inset-bottom)" />
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(GetStyleEngine().HasComplexSafaAreaConstraints());
+
+  // When a style property other than 'bottom' uses calc() with
+  // env(safe-area-inset-bottom), there are complex safe area constraints.
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="bottom: 5px; height: calc(env(safe-area-inset-bottom) + 30px)" />
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(GetStyleEngine().HasComplexSafaAreaConstraints());
+}
+
+TEST_F(StyleEngineTest, HasComplexSafaAreaConstraintsNestedBottom) {
+  ScopedUpdateComplexSafaAreaConstraintsForTest
+      update_complex_safe_area_constraints(true);
+
+  // Any styles that are nested in a 'bottom' anchored element, may have
+  // complex safe area constraints depending on the following usages.
+
+  // When no style properties use env(safe-area-inset-bottom), there are no
+  // complex safe area constraints.
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="bottom: 5px">
+      <div style="padding-bottom: 30px" />
+    </div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(GetStyleEngine().HasComplexSafaAreaConstraints());
+
+  // When a style property other than 'bottom' uses env(safe-area-inset-bottom),
+  // there are complex safe area constraints.
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="bottom: 5px">
+      <div style="padding-bottom: env(safe-area-inset-bottom)" />
+    </div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(GetStyleEngine().HasComplexSafaAreaConstraints());
+
+  // When the 'bottom' style property uses env(safe-area-inset-bottom)
+  // as defined under 'IsBottomRelativeToSafeAreaInset' in
+  // computed_style_extra_fields.json5, this is considered a "fast-path"
+  // and there are no complex safe area constraints.
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="bottom: 5px">
+      <div style="env(safe-area-inset-bottom)" />
+    </div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_FALSE(GetStyleEngine().HasComplexSafaAreaConstraints());
+
+  // When a style property other than 'bottom' uses calc() with
+  // env(safe-area-inset-bottom), there are complex safe area constraints.
+  GetDocument().body()->setInnerHTML(R"HTML(
+    <div style="bottom: 5px">
+      <div style="height: calc(env(safe-area-inset-bottom) + 30px)" />
+    </div>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  EXPECT_TRUE(GetStyleEngine().HasComplexSafaAreaConstraints());
+}
+
+=======
+>>>>>>> chromium
 }  // namespace blink

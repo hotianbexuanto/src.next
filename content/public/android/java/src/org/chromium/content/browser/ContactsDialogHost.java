@@ -8,9 +8,18 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.text.TextUtils;
 
+<<<<<<< HEAD
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JNINamespace;
+import org.jni_zero.NativeMethods;
+
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+>>>>>>> chromium
 import org.chromium.content_public.browser.ContactsPicker;
 import org.chromium.content_public.browser.ContactsPickerListener;
 import org.chromium.ui.base.WindowAndroid;
@@ -23,6 +32,7 @@ import java.util.List;
  * side.
  */
 @JNINamespace("content")
+@NullMarked
 public class ContactsDialogHost implements ContactsPickerListener {
     private long mNativeContactsProviderAndroid;
     private final WindowAndroid mWindowAndroid;
@@ -127,8 +137,19 @@ public class ContactsDialogHost implements ContactsPickerListener {
 
     @NativeMethods
     interface Natives {
+<<<<<<< HEAD
+        void addContact(
+                long nativeContactsProviderAndroid,
+                String @Nullable [] names,
+                String @Nullable [] emails,
+                String @Nullable [] tel,
+                ByteBuffer @Nullable [] addresses,
+                ByteBuffer @Nullable [] icons);
+
+=======
         void addContact(long nativeContactsProviderAndroid, String[] names, String[] emails,
                 String[] tel, ByteBuffer[] addresses, ByteBuffer[] icons);
+>>>>>>> chromium
         void endContactsList(
                 long nativeContactsProviderAndroid, int percentageShared, int propertiesRequested);
         void endWithPermissionDenied(long nativeContactsProviderAndroid);

@@ -15,13 +15,13 @@
         <item name="android:windowContentOverlay">@null</item>
 
         <!-- Navigation Transitions, requires API level 21 -->
-        <item name="android:windowAllowEnterTransitionOverlap" tools:targetApi="21">false</item>
-        <item name="android:windowAllowReturnTransitionOverlap" tools:targetApi="21">true</item>
-        <item name="android:windowContentTransitions" tools:targetApi="21">true</item>
-        <item name="android:windowEnterTransition" tools:targetApi="21">@transition/fade</item>
-        <item name="android:windowExitTransition" tools:targetApi="21">@null</item>
-        <item name="android:windowSharedElementEnterTransition" tools:targetApi="21">@transition/move_image</item>
-        <item name="android:windowSharedElementExitTransition" tools:targetApi="21">@transition/move_image</item>
+        <item name="android:windowAllowEnterTransitionOverlap">false</item>
+        <item name="android:windowAllowReturnTransitionOverlap">true</item>
+        <item name="android:windowContentTransitions">true</item>
+        <item name="android:windowEnterTransition">@transition/fade</item>
+        <item name="android:windowExitTransition">@null</item>
+        <item name="android:windowSharedElementEnterTransition">@transition/move_image</item>
+        <item name="android:windowSharedElementExitTransition">@transition/move_image</item>
     </style>
 
     <style name="Theme.Chromium" parent="Base.Theme.Chromium" />
@@ -319,12 +319,6 @@
     </style>
 
     <!-- Misc styles -->
-    <style name="TabBarShadow">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">@dimen/action_bar_shadow_height</item>
-        <item name="android:src">@drawable/modern_toolbar_shadow</item>
-        <item name="android:scaleType">fitXY</item>
-    </style>
     <style name="TabBarLineShadow">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">1dp</item>
@@ -491,7 +485,32 @@
       <!-- TODO(https://crbug.com/1216642): Move color attributes here. -->
     </style>
 
+<<<<<<< HEAD
+     <!-- Bookmark styles -->
+    <style name="TextAppearance.SpecialFolderChildCount" parent="TextAppearance.TextLarge.Primary.OnAccent1Container" tools:ignore="SpUsage">
+        <!-- The same as the regular style, but using dp instead of sp. -->
+        <item name="android:textSize">16dp</item>
+    </style>
+        <style name="TextAppearance.RegularFolderChildCount" parent="TextAppearance.TextLarge.Primary" tools:ignore="SpUsage">
+        <!-- The same as the regular style, but using dp instead of sp. -->
+        <item name="android:textSize">16dp</item>
+    </style>
+
+     <!-- Magic Stack styles -->
+    <style name="TextAppearance.ShoppingPriceDropSmallText" parent="TextAppearance.TextSmall.Secondary">
+        <item name="android:textColor">@color/price_drop_annotation_text_green</item>
+    </style>
+
+    <!--
+        TODO(crbug.com/40900841): Tinting the drawable for the popup theme doesn't work in clank.
+        The "colorAccent" attribute works in a standalone Android project, but it doesn't have any
+        effect in clank.
+    -->
+    <style name="ModernToolbarPopupTheme">
+        <item name="android:listChoiceIndicatorSingle">@drawable/checkmark_selection_drawable</item>
+=======
     <style name="ThemeOverlay.DisableOverscroll" parent="">
         <item name="android:overScrollMode">never</item>
+>>>>>>> chromium
     </style>
 </resources>

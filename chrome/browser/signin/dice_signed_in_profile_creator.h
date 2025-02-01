@@ -57,7 +57,11 @@ class DiceSignedInProfileCreator {
   // Callback invoked once the token service is ready for the new profile.
   void OnNewProfileTokensLoaded(Profile* new_profile);
 
+<<<<<<< HEAD
+  const base::WeakPtr<Profile> source_profile_;
+=======
   Profile* const source_profile_;
+>>>>>>> chromium
   const CoreAccountId account_id_;
 
   base::OnceCallback<void(Profile*)> callback_;

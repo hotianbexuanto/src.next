@@ -20,10 +20,114 @@
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "third_party/blink/renderer/platform/scheduler/public/worker_pool.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/platform/wtf/cross_thread_copier.h"
+#include "third_party/blink/renderer/platform/wtf/cross_thread_copier_base.h"
+#include "third_party/blink/renderer/platform/wtf/cross_thread_copier_gfx.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 
 namespace blink {
 
+<<<<<<< HEAD
+namespace {
+
+void DecodeSVGOnMainThread(
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    SegmentedBuffer data_buffer,
+    gfx::Size resize_dimensions,
+    CrossThreadOnceFunction<void(SkBitmap, double)> done_callback) {
+  DCHECK(IsMainThread());
+  blink::WebData buffer(SharedBuffer::Create(std::move(data_buffer)));
+  SkBitmap icon = blink::WebImage::DecodeSVG(buffer, resize_dimensions);
+  if (icon.drawsNothing()) {
+    PostCrossThreadTask(
+        *task_runner, FROM_HERE,
+        CrossThreadBindOnce(std::move(done_callback), SkBitmap(), -1.0));
+    return;
+  }
+  PostCrossThreadTask(
+      *task_runner, FROM_HERE,
+      CrossThreadBindOnce(std::move(done_callback), std::move(icon), 1.0));
+}
+
+void DecodeAndResizeImage(
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    SegmentedBuffer data_buffer,
+    gfx::Size resize_dimensions,
+    CrossThreadOnceFunction<void(SkBitmap, double)> done_callback) {
+  auto notify_complete = [&](SkBitmap icon, double resize_scale) {
+    // This is needed so it can be moved cross-thread.
+    icon.setImmutable();
+    PostCrossThreadTask(*task_runner, FROM_HERE,
+                        CrossThreadBindOnce(std::move(done_callback),
+                                            std::move(icon), resize_scale));
+  };
+
+  scoped_refptr<SegmentReader> data = SegmentReader::CreateFromSharedBuffer(
+      SharedBuffer::Create(std::move(data_buffer)));
+  std::unique_ptr<ImageDecoder> decoder = ImageDecoder::Create(
+      std::move(data), /*data_complete=*/true,
+      ImageDecoder::kAlphaPremultiplied, ImageDecoder::kDefaultBitDepth,
+      ColorBehavior::kTransformToSRGB, cc::AuxImage::kDefault,
+      Platform::GetMaxDecodedImageBytes());
+
+  if (!decoder) {
+    notify_complete(SkBitmap(), -1.0);
+    return;
+  }
+
+  ImageFrame* image_frame = decoder->DecodeFrameBufferAtIndex(0);
+
+  if (!image_frame) {
+    notify_complete(SkBitmap(), -1.0);
+    return;
+  }
+
+  SkBitmap decoded_icon = image_frame->Bitmap();
+  if (resize_dimensions.IsEmpty()) {
+    notify_complete(std::move(decoded_icon), 1.0);
+    return;
+  }
+
+  // If the icon is larger than |resize_dimensions| permits, we need to
+  // resize it as well. This can be done synchronously given that we're on a
+  // background thread already.
+  double scale = std::min(
+      static_cast<double>(resize_dimensions.width()) / decoded_icon.width(),
+      static_cast<double>(resize_dimensions.height()) / decoded_icon.height());
+
+  if (scale >= 1.0) {
+    notify_complete(std::move(decoded_icon), 1.0);
+    return;
+  }
+
+  int resized_width = std::clamp(static_cast<int>(scale * decoded_icon.width()),
+                                 1, resize_dimensions.width());
+  int resized_height =
+      std::clamp(static_cast<int>(scale * decoded_icon.height()), 1,
+                 resize_dimensions.height());
+
+  // Use the RESIZE_GOOD quality allowing the implementation to pick an
+  // appropriate method for the resize. Can be increased to RESIZE_BETTER
+  // or RESIZE_BEST if the quality looks poor.
+  SkBitmap resized_icon = skia::ImageOperations::Resize(
+      decoded_icon, skia::ImageOperations::RESIZE_GOOD, resized_width,
+      resized_height);
+
+  if (resized_icon.isNull()) {
+    notify_complete(std::move(decoded_icon), 1.0);
+    return;
+  }
+
+  notify_complete(std::move(resized_icon), scale);
+}
+
+}  // namespace
+
+=======
+>>>>>>> chromium
 void ThreadedIconLoader::Start(
     ExecutionContext* execution_context,
     const ResourceRequestHead& resource_request,
@@ -59,17 +163,27 @@ void ThreadedIconLoader::Stop() {
   }
 }
 
+<<<<<<< HEAD
+void ThreadedIconLoader::DidReceiveResponse(uint64_t,
+                                            const ResourceResponse& response) {
+  response_mime_type_ = response.MimeType();
+}
+
+void ThreadedIconLoader::DidReceiveData(base::span<const char> data) {
+  data_.Append(data);
+=======
 void ThreadedIconLoader::DidReceiveData(const char* data, unsigned length) {
   if (!data_)
     data_ = SharedBuffer::Create();
   data_->Append(data, length);
+>>>>>>> chromium
 }
 
 void ThreadedIconLoader::DidFinishLoading(uint64_t resource_identifier) {
   if (stopped_)
     return;
 
-  if (!data_) {
+  if (data_.empty()) {
     std::move(icon_callback_).Run(SkBitmap(), -1);
     return;
   }
@@ -77,15 +191,36 @@ void ThreadedIconLoader::DidFinishLoading(uint64_t resource_identifier) {
   UMA_HISTOGRAM_MEDIUM_TIMES("Blink.ThreadedIconLoader.LoadTime",
                              base::TimeTicks::Now() - start_time_);
 
+<<<<<<< HEAD
+  if (response_mime_type_ == "image/svg+xml") {
+    PostCrossThreadTask(
+        *Thread::MainThread()->GetTaskRunner(MainThreadTaskRunnerRestricted()),
+        FROM_HERE,
+        CrossThreadBindOnce(
+            &DecodeSVGOnMainThread, std::move(task_runner), std::move(data_),
+            resize_dimensions_ ? *resize_dimensions_ : gfx::Size(),
+            CrossThreadBindOnce(&ThreadedIconLoader::OnBackgroundTaskComplete,
+                                MakeUnwrappingCrossThreadWeakHandle(this))));
+    return;
+  }
+=======
   scoped_refptr<base::SingleThreadTaskRunner> task_runner =
       Thread::Current()->GetTaskRunner();
+>>>>>>> chromium
 
   worker_pool::PostTask(
       FROM_HERE,
       CrossThreadBindOnce(
+<<<<<<< HEAD
+          &DecodeAndResizeImage, std::move(task_runner), std::move(data_),
+          resize_dimensions_ ? *resize_dimensions_ : gfx::Size(),
+          CrossThreadBindOnce(&ThreadedIconLoader::OnBackgroundTaskComplete,
+                              MakeUnwrappingCrossThreadWeakHandle(this))));
+=======
           &ThreadedIconLoader::DecodeAndResizeImageOnBackgroundThread,
           WrapCrossThreadPersistent(this), std::move(task_runner),
           SegmentReader::CreateFromSharedBuffer(std::move(data_))));
+>>>>>>> chromium
 }
 
 void ThreadedIconLoader::DecodeAndResizeImageOnBackgroundThread(

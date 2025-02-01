@@ -107,14 +107,14 @@ ProcessMemoryInformation::ProcessMemoryInformation()
 ProcessMemoryInformation::ProcessMemoryInformation(
     const ProcessMemoryInformation& other) = default;
 
-ProcessMemoryInformation::~ProcessMemoryInformation() {}
+ProcessMemoryInformation::~ProcessMemoryInformation() = default;
 
 bool ProcessMemoryInformation::operator<(
     const ProcessMemoryInformation& rhs) const {
   return private_memory_footprint_kb < rhs.private_memory_footprint_kb;
 }
 
-ProcessData::ProcessData() {}
+ProcessData::ProcessData() = default;
 
 ProcessData::ProcessData(const ProcessData& rhs)
     : name(rhs.name),
@@ -122,7 +122,7 @@ ProcessData::ProcessData(const ProcessData& rhs)
       processes(rhs.processes) {
 }
 
-ProcessData::~ProcessData() {}
+ProcessData::~ProcessData() = default;
 
 ProcessData& ProcessData::operator=(const ProcessData& rhs) {
   name = rhs.name;
@@ -227,6 +227,49 @@ void MemoryDetails::CollectChildInfoOnProcessThread() {
       base::BindOnce(&MemoryDetails::CollectProcessData, this, child_info));
 }
 
+<<<<<<< HEAD
+MemoryDetails::~MemoryDetails() = default;
+
+std::string MemoryDetails::ToLogString(bool include_tab_title) {
+  std::string log;
+  log.reserve(4096);
+  ProcessMemoryInformationList processes = ChromeBrowser()->processes;
+  // Sort by memory consumption, low to high.
+  std::sort(processes.begin(), processes.end());
+  // Print from high to low.
+  for (const ProcessMemoryInformation& process_info :
+       base::Reversed(processes)) {
+    log += ProcessMemoryInformation::GetFullTypeNameInEnglish(
+        process_info.process_type, process_info.renderer_type);
+    // The title of a renderer may contain PII.
+    if ((process_info.process_type != content::PROCESS_TYPE_RENDERER ||
+         include_tab_title) &&
+        !process_info.titles.empty()) {
+      log += " [";
+      bool first_title = true;
+      for (const std::u16string& title : process_info.titles) {
+        if (!first_title)
+          log += "|";
+        first_title = false;
+        log += base::UTF16ToUTF8(title);
+      }
+      log += "]";
+    }
+    log += StringPrintf(
+        " %d MB",
+        static_cast<int>(process_info.private_memory_footprint_kb) / 1024);
+    if (process_info.num_open_fds != -1 ||
+        process_info.open_fds_soft_limit != -1) {
+      log += StringPrintf(", %d FDs open of %d", process_info.num_open_fds,
+                          process_info.open_fds_soft_limit);
+    }
+    log += "\n";
+  }
+  return log;
+}
+
+=======
+>>>>>>> chromium
 void MemoryDetails::CollectChildInfoOnUIThread() {
   DCHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
   ProcessData* const chrome_browser = ChromeBrowser();
@@ -268,7 +311,12 @@ void MemoryDetails::CollectChildInfoOnUIThread() {
           extensions::ExtensionRegistry::Get(context);
       extensions::ProcessMap* process_map =
           extensions::ProcessMap::Get(context);
+<<<<<<< HEAD
+      DCHECK(process_map);
+      int rph_id = render_process_host->GetDeprecatedID();
+=======
       int rph_id = render_process_host->GetID();
+>>>>>>> chromium
       process_is_for_extensions = process_map->Contains(rph_id);
 
       // For our purposes, don't count processes containing only hosted apps

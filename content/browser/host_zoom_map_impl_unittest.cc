@@ -2,11 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> chromium
 #include "content/browser/host_zoom_map_impl.h"
 
 #include <stddef.h>
 
+<<<<<<< HEAD
+#include <array>
+
+=======
 #include "base/cxx17_backports.h"
+>>>>>>> chromium
 #include "base/memory/ref_counted.h"
 #include "base/test/simple_test_clock.h"
 #include "content/public/test/browser_task_environment.h"
@@ -66,14 +75,21 @@ TEST_F(HostZoomMapTest, GetAllZoomLevels) {
   host_zoom_map.SetZoomLevelForHostAndScheme("chrome", "login", zoomed);
 
   HostZoomMap::ZoomLevelVector levels = host_zoom_map.GetAllZoomLevels();
-  HostZoomMap::ZoomLevelChange expected[] = {
+  auto expected = std::to_array<HostZoomMap::ZoomLevelChange>({
       {HostZoomMap::ZOOM_CHANGED_FOR_HOST, "zoomed.com", std::string(), zoomed},
       {HostZoomMap::ZOOM_CHANGED_FOR_SCHEME_AND_HOST, "login", "chrome",
        zoomed},
       {HostZoomMap::ZOOM_CHANGED_FOR_SCHEME_AND_HOST, "zoomed.com", "https",
+<<<<<<< HEAD
+       zoomed},
+  });
+  ASSERT_EQ(std::size(expected), levels.size());
+  for (size_t i = 0; i < std::size(expected); ++i) {
+=======
        zoomed}, };
   ASSERT_EQ(base::size(expected), levels.size());
   for (size_t i = 0; i < base::size(expected); ++i) {
+>>>>>>> chromium
     SCOPED_TRACE(testing::Message() << "levels[" << i << "]");
     EXPECT_EQ(expected[i].mode, levels[i].mode);
     EXPECT_EQ(expected[i].scheme, levels[i].scheme);
@@ -101,15 +117,21 @@ TEST_F(HostZoomMapTest, LastModifiedTimestamp) {
 
   HostZoomMap::ZoomLevelVector levels = host_zoom_map.GetAllZoomLevels();
   std::string scheme;
-  HostZoomMap::ZoomLevelChange expected[] = {
+  auto expected = std::to_array<HostZoomMap::ZoomLevelChange>({
       {HostZoomMap::ZOOM_CHANGED_FOR_HOST, "zoomed.com", scheme, 1.5, now},
       {HostZoomMap::ZOOM_CHANGED_FOR_HOST, "zoomed2.com", scheme, 2.5, later},
       {HostZoomMap::ZOOM_CHANGED_FOR_HOST, "zoomzoom.com", scheme, 3.0, later},
       {HostZoomMap::ZOOM_CHANGED_FOR_SCHEME_AND_HOST, "login", "chrome", 3.0,
        base::Time()},
+<<<<<<< HEAD
+  });
+  ASSERT_EQ(std::size(expected), levels.size());
+  for (size_t i = 0; i < std::size(expected); ++i) {
+=======
   };
   ASSERT_EQ(base::size(expected), levels.size());
   for (size_t i = 0; i < base::size(expected); ++i) {
+>>>>>>> chromium
     SCOPED_TRACE(testing::Message() << "levels[" << i << "]");
     EXPECT_EQ(expected[i].mode, levels[i].mode);
     EXPECT_EQ(expected[i].scheme, levels[i].scheme);

@@ -66,6 +66,7 @@ struct CORE_EXPORT FrameLoadRequest {
   mojom::RequestContextFrameType GetFrameType() const { return frame_type_; }
   void SetFrameType(mojom::RequestContextFrameType frame_type) {
     frame_type_ = frame_type;
+    ResolveBlobURLIfNeeded();
   }
 
   ResourceRequest& GetResourceRequest() { return resource_request_; }
@@ -136,7 +137,8 @@ struct CORE_EXPORT FrameLoadRequest {
   // is needed for blob URLs, because the blob URL might be revoked before the
   // actual fetch happens, which would result in incorrect failures to fetch.
   // The token lets the browser process securely resolves the blob URL even
-  // after the url has been revoked.
+  // after the url has been revoked. `ResolveBlobURLIfNeeded()` must have been
+  // called in `SetFrameType()` for the BlobURLToken to be available.
   mojo::PendingRemote<mojom::blink::BlobURLToken> GetBlobURLToken() const {
     if (!blob_url_token_)
       return mojo::NullRemote();
@@ -208,6 +210,27 @@ struct CORE_EXPORT FrameLoadRequest {
   mojo::PendingRemote<mojom::blink::PolicyContainerHostKeepAliveHandle>
       initiator_policy_container_keep_alive_handle_;
   std::unique_ptr<SourceLocation> source_location_;
+<<<<<<< HEAD
+  KURL requestor_base_url_;
+
+  // This is only used for navigations originating in MPArch fenced frames
+  // targeting the outermost frame, which is not visible to the renderer
+  // process as a remote frame.
+  // TODO(crbug.com/1315802): Refactor _unfencedTop handling.
+  bool is_unfenced_top_navigation_ = false;
+
+  mojom::blink::ForceHistoryPush force_history_push_ =
+      mojom::blink::ForceHistoryPush::kNo;
+
+  // Only container-initiated navigations (e.g. iframe change src) report a
+  // resource timing entry to the parent.
+  bool is_container_initiated_ = false;
+
+  // Resolves a Blob URL into a BlobURLToken if the URL is a blob URL, and
+  // otherwise has no effect. It is called after the FrameType has been set.
+  void ResolveBlobURLIfNeeded();
+=======
+>>>>>>> chromium
 };
 
 }  // namespace blink

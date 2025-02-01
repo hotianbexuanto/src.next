@@ -1245,7 +1245,20 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
 
       const NGPhysicalBoxFragment& operator*() const;
 
+<<<<<<< HEAD
+      Iterator& operator++() {
+        // TODO(crbug.com/351564777): Resolve a buffer safety issue.
+        UNSAFE_TODO(++iterator_);
+        return *this;
+      }
+      Iterator operator++(int) {
+        Iterator copy = *this;
+        ++*this;
+        return copy;
+      }
+=======
       void operator++() { ++iterator_; }
+>>>>>>> chromium
 
       bool operator==(const Iterator& other) const {
         return iterator_ == other.iterator_;
@@ -1792,6 +1805,14 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
     return LayoutOverflowIsSet();
   }
 
+<<<<<<< HEAD
+  // Returns true if reading flow should be used on this LayoutBox's content.
+  // https://drafts.csswg.org/css-display-4/#reading-flow
+  bool IsReadingFlowContainer() const;
+  // Returns the nodes corresponding to this LayoutBox's layout children,
+  // sorted in reading flow if IsReadingFlowContainer().
+  const HeapVector<Member<Node>>& ReadingFlowNodes() const;
+=======
   // Return true if re-laying out the containing block of this object means that
   // we need to recalculate the preferred min/max logical widths of this object.
   //
@@ -1803,6 +1824,7 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
   // how it is and how it's going to stay, unless we want to undertake a
   // substantial maintenance task of the min/max preferred widths machinery.
   virtual bool NeedsPreferredWidthsRecalculation() const;
+>>>>>>> chromium
 
   // See README.md for an explanation of scroll origin.
   IntSize OriginAdjustmentForScrollbars() const;

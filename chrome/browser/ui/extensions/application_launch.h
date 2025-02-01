@@ -5,6 +5,10 @@
 #ifndef CHROME_BROWSER_UI_EXTENSIONS_APPLICATION_LAUNCH_H_
 #define CHROME_BROWSER_UI_EXTENSIONS_APPLICATION_LAUNCH_H_
 
+<<<<<<< HEAD
+#include "base/functional/callback.h"
+=======
+>>>>>>> chromium
 #include "chrome/browser/apps/app_service/app_launch_params.h"
 #include "url/gurl.h"
 
@@ -59,8 +63,7 @@ content::WebContents* OpenApplicationWindow(Profile* profile,
 // and shortcuts that open an installed application.  This function
 // is used to open the former.  To open the latter, use
 // application_launch::OpenApplication().
-content::WebContents* OpenAppShortcutWindow(Profile* profile,
-                                            const GURL& url);
+content::WebContents* OpenAppShortcutWindow(Profile* profile, const GURL& url);
 
 // Whether the extension can be launched by sending a
 // chrome.app.runtime.onLaunched event.
@@ -76,7 +79,12 @@ void LaunchAppWithCallback(
     const std::string& app_id,
     const base::CommandLine& command_line,
     const base::FilePath& current_directory,
+<<<<<<< HEAD
+    base::OnceCallback<void(Browser* browser, apps::LaunchContainer container)>
+        callback);
+=======
     base::OnceCallback<void(Browser* browser,
                             apps::mojom::LaunchContainer container)> callback);
+>>>>>>> chromium
 
 #endif  // CHROME_BROWSER_UI_EXTENSIONS_APPLICATION_LAUNCH_H_

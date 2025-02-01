@@ -59,6 +59,10 @@ group("remoting_all") {
 
     if (is_linux && !is_chromeos_lacros) {
       deps += [
+<<<<<<< HEAD
+        "//remoting/host/crash:crash_tools",
+=======
+>>>>>>> chromium
         "//remoting/host/linux:remoting_dev_me2me_host",
         "//remoting/host/linux:remoting_user_session",
       ]

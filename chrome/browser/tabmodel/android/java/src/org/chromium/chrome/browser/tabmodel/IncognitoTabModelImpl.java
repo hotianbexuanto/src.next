@@ -37,7 +37,54 @@ class IncognitoTabModelImpl implements IncognitoTabModel {
     private final ObserverList<TabModelObserver> mObservers = new ObserverList<>();
     private final ObserverList<IncognitoTabModelObserver> mIncognitoObservers =
             new ObserverList<>();
+<<<<<<< HEAD
+    private final Callback<Tab> mDelegateModelCurrentTabSupplierObserver;
+    private final ObservableSupplierImpl<Tab> mCurrentTabSupplier = new ObservableSupplierImpl<>();
+    private final Callback<Integer> mDelegateModelTabCountSupplierObserver;
+    private final ObservableSupplierImpl<Integer> mTabCountSupplier =
+            new ObservableSupplierImpl<>();
+    private final TabRemover mTabRemoverProxy =
+            new TabRemover() {
+                @Override
+                public void closeTabs(
+                        @NonNull TabClosureParams tabClosureParams,
+                        boolean allowDialog,
+                        @Nullable TabModelActionListener listener) {
+                    mDelegateModel
+                            .getTabRemover()
+                            .closeTabs(tabClosureParams, allowDialog, listener);
+                }
+
+                @Override
+                public void prepareCloseTabs(
+                        @NonNull TabClosureParams tabClosureParams,
+                        boolean allowDialog,
+                        @Nullable TabModelActionListener listener,
+                        @NonNull Callback<TabClosureParams> onPreparedCallback) {
+                    mDelegateModel
+                            .getTabRemover()
+                            .prepareCloseTabs(
+                                    tabClosureParams, allowDialog, listener, onPreparedCallback);
+                }
+
+                @Override
+                public void forceCloseTabs(@NonNull TabClosureParams tabClosureParams) {
+                    mDelegateModel.getTabRemover().forceCloseTabs(tabClosureParams);
+                }
+
+                @Override
+                public void removeTab(
+                        @NonNull Tab tab,
+                        boolean allowDialog,
+                        @Nullable TabModelActionListener listener) {
+                    mDelegateModel.getTabRemover().removeTab(tab, allowDialog, listener);
+                }
+            };
+
+    private TabModelInternal mDelegateModel;
+=======
     private TabModel mDelegateModel;
+>>>>>>> chromium
     private int mCountOfAddingOrClosingTabs;
     private boolean mActive;
 

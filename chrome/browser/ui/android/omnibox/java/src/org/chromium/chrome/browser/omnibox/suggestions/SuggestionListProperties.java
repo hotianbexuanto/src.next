@@ -6,6 +6,11 @@ package org.chromium.chrome.browser.omnibox.suggestions;
 
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyKey;
+<<<<<<< HEAD
+import org.chromium.ui.modelutil.PropertyModel.ReadableBooleanPropertyKey;
+import org.chromium.ui.modelutil.PropertyModel.ReadableObjectPropertyKey;
+=======
+>>>>>>> chromium
 import org.chromium.ui.modelutil.PropertyModel.WritableBooleanPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
 
@@ -17,6 +22,14 @@ public class SuggestionListProperties {
     public static final WritableBooleanPropertyKey VISIBLE = new WritableBooleanPropertyKey();
 
     /** The embedder for the suggestion list. */
+<<<<<<< HEAD
+    static final ReadableObjectPropertyKey<OmniboxSuggestionsDropdownEmbedder> EMBEDDER =
+            new ReadableObjectPropertyKey<>();
+
+    /** The list of models controlling the state of the suggestion items. */
+    static final ReadableObjectPropertyKey<ModelList> SUGGESTION_MODELS =
+            new ReadableObjectPropertyKey<>();
+=======
     public static final WritableObjectPropertyKey<OmniboxSuggestionsDropdownEmbedder> EMBEDDER =
             new WritableObjectPropertyKey<>();
 
@@ -26,6 +39,7 @@ public class SuggestionListProperties {
      */
     public static final WritableObjectPropertyKey<ModelList> SUGGESTION_MODELS =
             new WritableObjectPropertyKey<>(true);
+>>>>>>> chromium
 
     /** Whether the suggestion list should have a dark background. */
     public static final WritableBooleanPropertyKey IS_INCOGNITO = new WritableBooleanPropertyKey();

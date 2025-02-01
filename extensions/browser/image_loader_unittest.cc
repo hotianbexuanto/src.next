@@ -6,8 +6,17 @@
 
 #include <stddef.h>
 
+<<<<<<< HEAD
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+
+=======
 #include "base/bind.h"
 #include "base/cxx17_backports.h"
+>>>>>>> chromium
 #include "base/files/file_path.h"
 #include "base/json/json_file_value_serializer.h"
 #include "base/path_service.h"
@@ -182,14 +191,24 @@ TEST_F(ImageLoaderTest, MultipleImages) {
   ASSERT_TRUE(extension.get() != nullptr);
 
   std::vector<ImageLoader::ImageRepresentation> info_list;
+<<<<<<< HEAD
+  static constexpr int sizes[] = {
+      extension_misc::EXTENSION_ICON_BITTY,
+      extension_misc::EXTENSION_ICON_SMALLISH,
+  };
+  for (const auto& entry : sizes) {
+    ExtensionResource resource = IconsInfo::GetIconResource(
+        extension.get(), entry, ExtensionIconSet::Match::kExactly);
+=======
   int sizes[] = {extension_misc::EXTENSION_ICON_BITTY,
                  extension_misc::EXTENSION_ICON_SMALLISH, };
   for (size_t i = 0; i < base::size(sizes); ++i) {
     ExtensionResource resource = IconsInfo::GetIconResource(
         extension.get(), sizes[i], ExtensionIconSet::MATCH_EXACTLY);
+>>>>>>> chromium
     info_list.push_back(ImageLoader::ImageRepresentation(
         resource, ImageLoader::ImageRepresentation::RESIZE_WHEN_LARGER,
-        gfx::Size(sizes[i], sizes[i]), 1.f));
+        gfx::Size(entry, entry), 1.f));
   }
 
   ImageLoader loader;
@@ -225,14 +244,22 @@ TEST_F(ImageLoaderTest, LoadImageFamily) {
   ASSERT_TRUE(extension.get() != nullptr);
 
   std::vector<ImageLoader::ImageRepresentation> info_list;
+<<<<<<< HEAD
+  static constexpr int sizes[] = {extension_misc::EXTENSION_ICON_BITTY,
+                                  extension_misc::EXTENSION_ICON_SMALLISH};
+  for (int size : sizes) {
+    ExtensionResource resource = IconsInfo::GetIconResource(
+        extension.get(), size, ExtensionIconSet::Match::kExactly);
+=======
   int sizes[] = {extension_misc::EXTENSION_ICON_BITTY,
                  extension_misc::EXTENSION_ICON_SMALLISH, };
   for (size_t i = 0; i < base::size(sizes); ++i) {
     ExtensionResource resource = IconsInfo::GetIconResource(
         extension.get(), sizes[i], ExtensionIconSet::MATCH_EXACTLY);
+>>>>>>> chromium
     info_list.push_back(ImageLoader::ImageRepresentation(
         resource, ImageLoader::ImageRepresentation::NEVER_RESIZE,
-        gfx::Size(sizes[i], sizes[i]), 1.f));
+        gfx::Size(size, size), 1.f));
   }
 
   // Add a second icon of 200P which should get grouped with the smaller icon's
@@ -262,9 +289,15 @@ TEST_F(ImageLoaderTest, LoadImageFamily) {
   EXPECT_EQ(1, image_loaded_count());
 
   // Check that all images were loaded.
+<<<<<<< HEAD
+  for (int size : sizes) {
+    const gfx::Image* image = image_family_.GetBest(size, size);
+    EXPECT_EQ(size, image->Width());
+=======
   for (size_t i = 0; i < base::size(sizes); ++i) {
     const gfx::Image* image = image_family_.GetBest(sizes[i], sizes[i]);
     EXPECT_EQ(sizes[i], image->Width());
+>>>>>>> chromium
   }
 
   // Check the smaller image has 2 representations of different scale factors.

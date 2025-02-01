@@ -4,10 +4,16 @@
 
 #include "components/history/core/browser/history_types.h"
 
+#include <algorithm>
 #include <limits>
 
 #include "base/check.h"
 #include "base/notreached.h"
+<<<<<<< HEAD
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
+=======
+>>>>>>> chromium
 #include "components/history/core/browser/page_usage_data.h"
 
 namespace history {
@@ -385,11 +391,21 @@ Cluster::Cluster(const Cluster&) = default;
 Cluster& Cluster::operator=(const Cluster&) = default;
 Cluster::~Cluster() = default;
 
+<<<<<<< HEAD
+const ClusterVisit& Cluster::GetMostRecentVisit() const {
+  return *std::ranges::max_element(
+      visits, [](auto time1, auto time2) { return time1 < time2; },
+      [](const auto& cluster_visit) {
+        return cluster_visit.annotated_visit.visit_row.visit_time;
+      });
+}
+=======
 ClusterRow::ClusterRow() = default;
 ClusterRow::ClusterRow(int64_t cluster_id) : cluster_id(cluster_id) {}
 ClusterRow::ClusterRow(const ClusterRow&) = default;
 ClusterRow& ClusterRow::operator=(const ClusterRow&) = default;
 ClusterRow::~ClusterRow() = default;
+>>>>>>> chromium
 
 ClusterIdsAndAnnotatedVisitsResult::ClusterIdsAndAnnotatedVisitsResult() =
     default;

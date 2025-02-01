@@ -312,7 +312,9 @@ class NavigationSheetCoordinator implements BottomSheetContent, NavigationSheet 
     }
 
     @Override
-    public void destroy() {}
+    public void destroy() {
+        mMediator.destroy();
+    }
 
     @Override
     public @ContentPriority int getPriority() {

@@ -23,8 +23,17 @@ bool RadioUtils::IsSupported() {
 }
 
 RadioConnectionType RadioUtils::GetConnectionType() {
+<<<<<<< HEAD
+  if (g_overrider_for_tests) {
+    // If GetConnectionType is being used in tests
+    return g_overrider_for_tests->GetConnectionType();
+  }
+  if (!IsSupported()) {
+=======
   if (!IsSupported())
+>>>>>>> chromium
     return RadioConnectionType::kUnknown;
+  }
 
   JNIEnv* env = AttachCurrentThread();
   if (Java_RadioUtils_isWifiConnected(env)) {
@@ -34,9 +43,16 @@ RadioConnectionType RadioUtils::GetConnectionType() {
   }
 }
 
+<<<<<<< HEAD
+std::optional<RadioSignalLevel> RadioUtils::GetCellSignalLevel() {
+  if (!IsSupported()) {
+    return std::nullopt;
+  }
+=======
 absl::optional<RadioSignalLevel> RadioUtils::GetCellSignalLevel() {
   if (!IsSupported())
     return absl::nullopt;
+>>>>>>> chromium
 
   JNIEnv* env = AttachCurrentThread();
   int signal_level = Java_RadioUtils_getCellSignalLevel(env);
@@ -47,9 +63,16 @@ absl::optional<RadioSignalLevel> RadioUtils::GetCellSignalLevel() {
   }
 }
 
+<<<<<<< HEAD
+std::optional<RadioDataActivity> RadioUtils::GetCellDataActivity() {
+  if (!IsSupported()) {
+    return std::nullopt;
+  }
+=======
 absl::optional<RadioDataActivity> RadioUtils::GetCellDataActivity() {
   if (!IsSupported())
     return absl::nullopt;
+>>>>>>> chromium
 
   JNIEnv* env = AttachCurrentThread();
   return static_cast<RadioDataActivity>(

@@ -32,7 +32,11 @@
 #include "base/threading/sequence_local_storage_slot.h"
 #include "base/time/default_clock.h"
 #include "build/build_config.h"
+<<<<<<< HEAD
+#include "components/attribution_reporting/features.h"
+=======
 #include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "components/leveldb_proto/public/proto_database_provider.h"
 #include "components/services/storage/public/cpp/constants.h"
 #include "components/services/storage/public/cpp/filesystem/filesystem_impl.h"
@@ -41,6 +45,12 @@
 #include "components/services/storage/public/mojom/storage_service.mojom.h"
 #include "components/services/storage/storage_service_impl.h"
 #include "components/variations/net/variations_http_headers.h"
+<<<<<<< HEAD
+#include "content/browser/aggregation_service/aggregation_service.h"
+#include "content/browser/aggregation_service/aggregation_service_impl.h"
+#include "content/browser/attribution_reporting/attribution_manager_impl.h"
+=======
+>>>>>>> chromium
 #include "content/browser/background_fetch/background_fetch_context.h"
 #include "content/browser/blob_storage/blob_registry_wrapper.h"
 #include "content/browser/blob_storage/chrome_blob_storage_context.h"
@@ -56,10 +66,26 @@
 #include "content/browser/devtools/devtools_url_loader_interceptor.h"
 #include "content/browser/file_system/browser_file_system_helper.h"
 #include "content/browser/file_system_access/file_system_access_manager_impl.h"
+<<<<<<< HEAD
+#include "content/browser/font_access/font_access_manager.h"
+#include "content/browser/gpu/gpu_disk_cache_factory.h"
+#include "content/browser/guest_page_holder_impl.h"
+#include "content/browser/host_zoom_level_context.h"
+#include "content/browser/indexed_db/indexed_db_control_wrapper.h"
+#include "content/browser/interest_group/interest_group_manager_impl.h"
+#include "content/browser/loader/keep_alive_url_loader_service.h"
+#include "content/browser/loader/reconnectable_url_loader_factory.h"
+#include "content/browser/loader/subresource_proxying_url_loader_service.h"
+#include "content/browser/loader/url_loader_factory_utils.h"
+#include "content/browser/locks/lock_manager.h"
+#include "content/browser/navigation_or_document_handle.h"
+#include "content/browser/network/shared_dictionary_util.h"
+=======
 #include "content/browser/gpu/shader_cache_factory.h"
 #include "content/browser/interest_group/interest_group_manager.h"
 #include "content/browser/loader/prefetch_url_loader_service.h"
 #include "content/browser/native_io/native_io_context_impl.h"
+>>>>>>> chromium
 #include "content/browser/network_context_client_base_impl.h"
 #include "content/browser/notifications/platform_notification_context_impl.h"
 #include "content/browser/prerender/prerender_host_registry.h"
@@ -105,8 +131,15 @@
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/network/public/cpp/cross_thread_pending_shared_url_loader_factory.h"
 #include "services/network/public/cpp/features.h"
+<<<<<<< HEAD
+#include "services/network/public/cpp/ip_address_space_util.h"
+#include "services/network/public/cpp/url_loader_factory_builder.h"
+#include "services/network/public/mojom/clear_data_filter.mojom.h"
+=======
+>>>>>>> chromium
 #include "services/network/public/mojom/cookie_access_observer.mojom.h"
 #include "services/network/public/mojom/cookie_manager.mojom.h"
+#include "services/network/public/mojom/device_bound_sessions.mojom.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "services/network/public/mojom/trust_tokens.mojom.h"
 #include "storage/browser/blob/blob_registry_impl.h"
@@ -129,9 +162,17 @@
 #include "content/browser/host_zoom_map_impl.h"
 #endif  // defined(OS_ANDROID)
 
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+#include "content/browser/media/cdm_storage_common.h"
+#include "content/browser/media/cdm_storage_manager.h"
+#include "content/public/browser/cdm_storage_data_model.h"
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+=======
 #if BUILDFLAG(ENABLE_PLUGINS)
 #include "content/browser/plugin_private_storage_helper.h"
 #endif  // BUILDFLAG(ENABLE_PLUGINS)
+>>>>>>> chromium
 
 using CookieDeletionFilter = network::mojom::CookieDeletionFilter;
 using CookieDeletionFilterPtr = network::mojom::CookieDeletionFilterPtr;
@@ -454,7 +495,8 @@ class LoginHandlerDelegate {
       uint32_t request_id,
       const GURL& url,
       scoped_refptr<net::HttpResponseHeaders> response_headers,
-      bool first_auth_attempt)
+      bool first_auth_attempt,
+      FrameTreeNodeId frame_tree_node_id)
       : auth_challenge_responder_(std::move(auth_challenge_responder)),
         auth_info_(auth_info),
         request_id_(process_id, request_id),
@@ -464,7 +506,13 @@ class LoginHandlerDelegate {
         url_(url),
         response_headers_(std::move(response_headers)),
         first_auth_attempt_(first_auth_attempt),
+<<<<<<< HEAD
+        web_contents_(web_contents ? web_contents->GetWeakPtr() : nullptr),
+        browser_context_(browser_context->GetWeakPtr()),
+        frame_tree_node_id_(frame_tree_node_id) {
+=======
         web_contents_getter_(web_contents_getter) {
+>>>>>>> chromium
     DCHECK_CURRENTLY_ON(BrowserThread::UI);
     auth_challenge_responder_.set_disconnect_handler(base::BindOnce(
         &LoginHandlerDelegate::OnRequestCancelled, base::Unretained(this)));
@@ -499,11 +547,33 @@ class LoginHandlerDelegate {
       return;
     }
 
+<<<<<<< HEAD
+    if (web_contents_) {
+      CHECK_EQ(web_contents_->GetBrowserContext(), browser_context_.get());
+    }
+
+    FrameTreeNode* frame_tree_node =
+        FrameTreeNode::GloballyFindByID(frame_tree_node_id_);
+    GuestPageHolder* guest = nullptr;
+    if (frame_tree_node) {
+      guest = GuestPageHolderImpl::FromRenderFrameHost(
+          *frame_tree_node->current_frame_host());
+    }
+
+    // WeakPtr is not strictly necessary here due to OnRequestCancelled.
+    creating_login_delegate_ = true;
+    login_delegate_ = GetContentClient()->browser()->CreateLoginDelegate(
+        auth_info_, web_contents_.get(), browser_context_.get(), request_id_,
+        is_request_for_primary_main_frame_navigation_,
+        is_request_for_navigation_, url_, response_headers_,
+        first_auth_attempt_, guest,
+=======
     // WeakPtr is not strictly necessary here due to OnRequestCancelled.
     creating_login_delegate_ = true;
     login_delegate_ = GetContentClient()->browser()->CreateLoginDelegate(
         auth_info_, web_contents, request_id_, is_request_for_main_frame_, url_,
         response_headers_, first_auth_attempt_,
+>>>>>>> chromium
         base::BindOnce(&LoginHandlerDelegate::OnAuthCredentials,
                        weak_factory_.GetWeakPtr()));
     creating_login_delegate_ = false;
@@ -535,6 +605,7 @@ class LoginHandlerDelegate {
   bool first_auth_attempt_;
   WebContents::Getter web_contents_getter_;
   std::unique_ptr<LoginDelegate> login_delegate_;
+  FrameTreeNodeId frame_tree_node_id_;
   base::WeakPtrFactory<LoginHandlerDelegate> weak_factory_{this};
 };
 
@@ -740,6 +811,16 @@ base::RepeatingCallback<bool(const url::Origin&)> CreateGenericOriginMatcher(
                              url::Origin::Create(storage_origin));
 }
 
+std::vector<GlobalRenderFrameHostId> GetRoutingIdsForOrigin(
+    StoragePartitionImpl* storage_partition,
+    const url::Origin& origin) {
+  scoped_refptr<ServiceWorkerContextWrapper> service_worker_context =
+      storage_partition->GetServiceWorkerContext();
+
+  return *service_worker_context->GetWindowClientFrameRoutingIds(
+      blink::StorageKey::CreateFirstParty(origin));
+}
+
 }  // namespace
 
 class StoragePartitionImpl::URLLoaderFactoryForBrowserProcess
@@ -822,6 +903,10 @@ storage::QuotaClientTypes StoragePartitionImpl::GenerateQuotaClientTypes(
     quota_client_types.insert(storage::QuotaClientType::kServiceWorkerCache);
   if (remove_mask & StoragePartition::REMOVE_DATA_MASK_BACKGROUND_FETCH)
     quota_client_types.insert(storage::QuotaClientType::kBackgroundFetch);
+<<<<<<< HEAD
+  }
+=======
+>>>>>>> chromium
   return quota_client_types;
 }
 
@@ -925,8 +1010,20 @@ class StoragePartitionImpl::DataDeletionHelper {
       storage::SpecialStoragePolicy* special_storage_policy,
       storage::FileSystemContext* filesystem_context,
       network::mojom::CookieManager* cookie_manager,
+<<<<<<< HEAD
+      InterestGroupManagerImpl* interest_group_manager,
+      AttributionManager* attribution_manager,
+      AggregationService* aggregation_service,
+      PrivateAggregationManagerImpl* private_aggregation_manager,
+      storage::SharedStorageManager* shared_storage_manager,
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+      CdmStorageManager* cdm_storage_manager,
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+      network::mojom::DeviceBoundSessionManager* device_bound_session_manager,
+=======
       InterestGroupManager* interest_group_manager,
       ConversionManagerImpl* conversion_manager,
+>>>>>>> chromium
       bool perform_storage_cleanup,
       const base::Time begin,
       const base::Time end);
@@ -955,7 +1052,18 @@ class StoragePartitionImpl::DataDeletionHelper {
     kShaderCache = 6,
     kPluginPrivate = 7,
     kConversions = 8,
+<<<<<<< HEAD
+    kAggregationService = 9,
+    kSharedStorage = 10,
+    kGpuCache = 11,
+    kPrivateAggregation = 12,
+    kInterestGroups = 13,
+    kCdmStorage = 14,
+    kDeviceBoundSessions = 15,
+    kMaxValue = kDeviceBoundSessions,
+=======
     kMaxValue = kConversions,
+>>>>>>> chromium
   };
 
   base::OnceClosure CreateTaskCompletionClosure(TracingDataType data_type);
@@ -1015,6 +1123,17 @@ class StoragePartitionImpl::ServiceWorkerCookieAccessObserver
         std::move(observer));
   }
 
+<<<<<<< HEAD
+  void OnCookiesAccessed(std::vector<network::mojom::CookieAccessDetailsPtr>
+                             details_vector) override {
+    DCHECK_CURRENTLY_ON(BrowserThread::UI);
+    for (auto& details : details_vector) {
+      for (GlobalRenderFrameHostId frame_id : GetRoutingIdsForOrigin(
+               storage_partition_, url::Origin::Create(details->url))) {
+        if (RenderFrameHostImpl* rfh = RenderFrameHostImpl::FromID(frame_id)) {
+          rfh->OnCookiesAccessed(mojo::Clone(details_vector));
+        }
+=======
   void OnCookiesAccessed(
       network::mojom::CookieAccessDetailsPtr details) override {
     scoped_refptr<ServiceWorkerContextWrapper> service_worker_context =
@@ -1045,13 +1164,135 @@ class StoragePartitionImpl::ServiceWorkerCookieAccessObserver
     for (GlobalRenderFrameHostId frame_id : destinations) {
       if (RenderFrameHostImpl* rfh = RenderFrameHostImpl::FromID(frame_id)) {
         rfh->OnCookiesAccessed(mojo::Clone(details));
+>>>>>>> chromium
       }
     }
   }
 
   // |storage_partition_| owns this object via UniqueReceiverSet
   // (service_worker_cookie_observers_).
+<<<<<<< HEAD
+  raw_ptr<StoragePartitionImpl> storage_partition_;
+};
+
+class StoragePartitionImpl::ServiceWorkerTrustTokenAccessObserver
+    : public network::mojom::TrustTokenAccessObserver {
+ public:
+  explicit ServiceWorkerTrustTokenAccessObserver(
+      StoragePartitionImpl* storage_partition)
+      : storage_partition_(storage_partition) {}
+
+ private:
+  void Clone(mojo::PendingReceiver<network::mojom::TrustTokenAccessObserver>
+                 observer) override {
+    storage_partition_->service_worker_trust_token_observers_.Add(
+        std::make_unique<ServiceWorkerTrustTokenAccessObserver>(
+            storage_partition_),
+        std::move(observer));
+  }
+
+  void OnTrustTokensAccessed(
+      network::mojom::TrustTokenAccessDetailsPtr details) override {
+    DCHECK_CURRENTLY_ON(BrowserThread::UI);
+
+    url::Origin origin;
+    switch (details->which()) {
+      case network::mojom::TrustTokenAccessDetails::Tag::kIssuance:
+        origin = details->get_issuance()->origin;
+        break;
+      case network::mojom::TrustTokenAccessDetails::Tag::kRedemption:
+        origin = details->get_redemption()->origin;
+        break;
+      case network::mojom::TrustTokenAccessDetails::Tag::kSigning:
+        origin = details->get_signing()->origin;
+        break;
+    }
+
+    for (GlobalRenderFrameHostId frame_id :
+         GetRoutingIdsForOrigin(storage_partition_, origin)) {
+      if (RenderFrameHostImpl* rfh = RenderFrameHostImpl::FromID(frame_id)) {
+        rfh->OnTrustTokensAccessed(mojo::Clone(details));
+      }
+    }
+  }
+
+  // `storage_partition_` owns this object via UniqueReceiverSet
+  // (service_worker_trust_token_observers_).
+  raw_ptr<StoragePartitionImpl> storage_partition_;
+};
+
+class StoragePartitionImpl::ServiceWorkerSharedDictionaryAccessObserver
+    : public network::mojom::SharedDictionaryAccessObserver {
+ public:
+  explicit ServiceWorkerSharedDictionaryAccessObserver(
+      StoragePartitionImpl* storage_partition)
+      : storage_partition_(storage_partition) {}
+
+ private:
+  void Clone(
+      mojo::PendingReceiver<network::mojom::SharedDictionaryAccessObserver>
+          observer) override {
+    storage_partition_->service_worker_shared_dictionary_observers_.Add(
+        std::make_unique<ServiceWorkerSharedDictionaryAccessObserver>(
+            storage_partition_),
+        std::move(observer));
+  }
+
+  void OnSharedDictionaryAccessed(
+      network::mojom::SharedDictionaryAccessDetailsPtr details) override {
+    DCHECK_CURRENTLY_ON(BrowserThread::UI);
+    for (GlobalRenderFrameHostId frame_id : GetRoutingIdsForOrigin(
+             storage_partition_, details->isolation_key.frame_origin())) {
+      if (RenderFrameHostImpl* rfh = RenderFrameHostImpl::FromID(frame_id)) {
+        rfh->OnSharedDictionaryAccessed(mojo::Clone(details));
+      }
+    }
+  }
+
+  // `storage_partition_` owns this object via UniqueReceiverSet
+  // (service_worker_shared_dictionary_observers_).
+  raw_ptr<StoragePartitionImpl> storage_partition_;
+};
+
+class StoragePartitionImpl::ServiceWorkerDeviceBoundSessionAccessObserver
+    : public network::mojom::DeviceBoundSessionAccessObserver {
+ public:
+  explicit ServiceWorkerDeviceBoundSessionAccessObserver(
+      StoragePartitionImpl* storage_partition)
+      : storage_partition_(storage_partition) {}
+
+ private:
+  void Clone(
+      mojo::PendingReceiver<network::mojom::DeviceBoundSessionAccessObserver>
+          observer) override {
+    storage_partition_->service_worker_device_bound_session_observers_.Add(
+        std::make_unique<ServiceWorkerDeviceBoundSessionAccessObserver>(
+            storage_partition_),
+        std::move(observer));
+  }
+
+  void OnDeviceBoundSessionAccessed(
+      const net::device_bound_sessions::SessionAccess& access) override {
+    DCHECK_CURRENTLY_ON(BrowserThread::UI);
+    for (GlobalRenderFrameHostId frame_id : GetRoutingIdsForOrigin(
+             storage_partition_,
+             url::Origin::Create(access.session_key.site.GetURL()))) {
+      if (RenderFrameHostImpl* rfh = RenderFrameHostImpl::FromID(frame_id)) {
+        rfh->OnDeviceBoundSessionAccessed(access);
+      }
+    }
+  }
+
+  // `storage_partition_` owns this object via UniqueReceiverSet
+  // (service_worker_device_bound_session_observers_).
+  raw_ptr<StoragePartitionImpl> storage_partition_;
+};
+
+struct StoragePartitionImpl::NetworkContextOwner {
+  mojo::Remote<network::mojom::NetworkContext> network_context;
+=======
   StoragePartitionImpl* storage_partition_;
+>>>>>>> chromium
 };
 
 StoragePartitionImpl::StoragePartitionImpl(
@@ -1197,7 +1438,14 @@ void StoragePartitionImpl::Initialize(
   dom_storage_context_ = DOMStorageContextWrapper::Create(
       this, browser_context_->GetSpecialStoragePolicy());
 
+<<<<<<< HEAD
+  lock_manager_ = std::make_unique<LockManager<storage::BucketId>>();
+
+  shared_storage_runtime_manager_ =
+      std::make_unique<SharedStorageRuntimeManager>(*this);
+=======
   lock_manager_ = std::make_unique<LockManager>();
+>>>>>>> chromium
 
   scoped_refptr<ChromeBlobStorageContext> blob_context =
       ChromeBlobStorageContext::GetFor(browser_context_);
@@ -1340,8 +1588,43 @@ void StoragePartitionImpl::Initialize(
                                                settings.size_in_bytes());
   }
 
+<<<<<<< HEAD
+  font_access_manager_ = FontAccessManager::Create();
+
+  aggregation_service_ =
+      std::make_unique<AggregationServiceImpl>(is_in_memory(), path, this);
+
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+  if (is_in_memory()) {
+    // Pass an empty path if in_memory so that CdmStorage.db is not stored on
+    // disk.
+    cdm_storage_manager_ =
+        std::make_unique<CdmStorageManager>(base::FilePath());
+  } else {
+    cdm_storage_manager_ = std::make_unique<CdmStorageManager>(
+        partition_path_.Append(kCdmStorageDatabaseFileName));
+  }
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+
+  if (base::FeatureList::IsEnabled(blink::features::kSharedStorageAPI)) {
+    base::FilePath shared_storage_path =
+        is_in_memory() ? base::FilePath()
+                       : path.Append(storage::kSharedStoragePath);
+    shared_storage_manager_ = std::make_unique<storage::SharedStorageManager>(
+        shared_storage_path, special_storage_policy_);
+    shared_storage_header_observer_ =
+        std::make_unique<SharedStorageHeaderObserver>(this);
+  }
+
+  if (base::FeatureList::IsEnabled(blink::features::kPrivateAggregationApi)) {
+    private_aggregation_manager_ =
+        std::make_unique<PrivateAggregationManagerImpl>(is_in_memory(), path,
+                                                        this);
+  }
+=======
   font_access_manager_ = std::make_unique<FontAccessManagerImpl>();
   compute_pressure_manager_ = ComputePressureManager::Create();
+>>>>>>> chromium
 }
 
 void StoragePartitionImpl::OnStorageServiceDisconnected() {
@@ -1419,15 +1702,27 @@ void StoragePartitionImpl::CreateRestrictedCookieManager(
     bool is_service_worker,
     int process_id,
     int routing_id,
+<<<<<<< HEAD
+    net::CookieSettingOverrides cookie_setting_overrides,
+    net::CookieSettingOverrides devtools_cookie_setting_overrides,
+=======
+>>>>>>> chromium
     mojo::PendingReceiver<network::mojom::RestrictedCookieManager> receiver,
     mojo::PendingRemote<network::mojom::CookieAccessObserver> cookie_observer) {
   DCHECK(initialized_);
   if (!GetContentClient()->browser()->WillCreateRestrictedCookieManager(
           role, browser_context_, origin, isolation_info, is_service_worker,
           process_id, routing_id, &receiver)) {
+<<<<<<< HEAD
+    GetNetworkContext()->GetRestrictedCookieManager(
+        std::move(receiver), role, origin, isolation_info,
+        cookie_setting_overrides, devtools_cookie_setting_overrides,
+        std::move(cookie_observer));
+=======
     GetNetworkContext()->GetRestrictedCookieManager(std::move(receiver), role,
                                                     origin, isolation_info,
                                                     std::move(cookie_observer));
+>>>>>>> chromium
   }
 }
 
@@ -1616,6 +1911,41 @@ FontAccessManagerImpl* StoragePartitionImpl::GetFontAccessManager() {
   return font_access_manager_.get();
 }
 
+<<<<<<< HEAD
+void StoragePartitionImpl::SetFontAccessManagerForTesting(
+    std::unique_ptr<FontAccessManager> font_access_manager) {
+  DCHECK(initialized_);
+  DCHECK(font_access_manager);
+  font_access_manager_ = std::move(font_access_manager);
+}
+
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+CdmStorageDataModel* StoragePartitionImpl::GetCdmStorageDataModel() {
+  DCHECK(initialized_);
+  return cdm_storage_manager_.get();
+}
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+
+network::mojom::DeviceBoundSessionManager*
+StoragePartitionImpl::GetDeviceBoundSessionManager() {
+  DCHECK(initialized_);
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+  if (!device_bound_session_manager_ ||
+      !device_bound_session_manager_.is_connected()) {
+    // Reset `device_bound_session_manager_` before binding it again.
+    device_bound_session_manager_.reset();
+    GetNetworkContext()->GetDeviceBoundSessionManager(
+        device_bound_session_manager_.BindNewPipeAndPassReceiver());
+  }
+
+  return device_bound_session_manager_.get();
+#else
+  return nullptr;
+#endif  // BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+}
+
+=======
+>>>>>>> chromium
 InterestGroupManager* StoragePartitionImpl::GetInterestGroupManager() {
   DCHECK(initialized_);
   return interest_group_manager_.get();
@@ -1657,6 +1987,57 @@ StoragePartitionImpl::GetProtoDatabaseProviderForTesting() {
   return proto_database_provider_.get();
 }
 
+<<<<<<< HEAD
+storage::SharedStorageManager* StoragePartitionImpl::GetSharedStorageManager() {
+  return shared_storage_manager_.get();
+}
+
+PrivateAggregationManager*
+StoragePartitionImpl::GetPrivateAggregationManager() {
+  DCHECK(initialized_);
+  return private_aggregation_manager_.get();
+}
+
+PrivateAggregationDataModel*
+StoragePartitionImpl::GetPrivateAggregationDataModel() {
+  DCHECK(initialized_);
+  return private_aggregation_manager_.get();
+}
+
+CookieDeprecationLabelManager*
+StoragePartitionImpl::GetCookieDeprecationLabelManager() {
+  CHECK(initialized_);
+  return cookie_deprecation_label_manager_.get();
+}
+
+void StoragePartitionImpl::DeleteStaleSessionData() {
+  GetDOMStorageContext()->StartScavengingUnusedSessionStorage();
+
+  if (base::FeatureList::IsEnabled(
+          features::kDeleteStaleSessionCookiesOnStartup)) {
+    // We need to delay deleting stale session cookies until after the cookie db
+    // has initialized, otherwise we will bypass lazy loading and block.
+    // See crbug.com/40285083 for more info.
+    CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
+    GetUIThreadTaskRunner({})->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(
+            &StoragePartitionImpl::DeleteStaleSessionOnlyCookiesAfterDelay,
+            weak_factory_.GetWeakPtr()),
+        delete_stale_session_only_cookies_delay_);
+  }
+}
+
+void StoragePartitionImpl::DeleteStaleSessionOnlyCookiesAfterDelay() {
+  GetCookieManagerForBrowserProcess()->DeleteStaleSessionOnlyCookies(
+      base::BindOnce([](const uint32_t num_deleted) {
+        base::UmaHistogramCounts10M(
+            "Cookie.StaleSessionCookiesDeletedOnStartup", num_deleted);
+      }));
+}
+
+=======
+>>>>>>> chromium
 void StoragePartitionImpl::OpenLocalStorage(
     const url::Origin& origin,
     mojo::PendingReceiver<blink::mojom::StorageArea> receiver) {
@@ -1727,10 +2108,145 @@ void StoragePartitionImpl::OnAuthRequired(
     web_contents_getter =
         base::BindRepeating(GetWebContents, process_id, routing_id);
   }
+<<<<<<< HEAD
+
+  // If the request is for a prerendering page, prerendering should be cancelled
+  // because the embedder may show UI for auth requests, and it's unsuitable for
+  // a hidden page.
+  if (CancelIfPrerendering(context.navigation_or_document(),
+                           PrerenderFinalStatus::kLoginAuthRequested)) {
+    return;
+  }
+
+  if (!is_primary_main_frame_navigation.has_value()) {
+    is_primary_main_frame_navigation = context.IsPrimaryMainFrameRequest();
+  }
+  if (!is_navigation_request.has_value()) {
+    is_navigation_request = context.IsNavigationRequestContext();
+  }
+  int process_id = network::mojom::kBrowserProcessId;
+  if (context.type() == ContextType::kRenderFrameHostContext) {
+    // Set `process_id` to `kInvalidProcessId` considering `render_frame_host`
+    // can be null when it's destroyed already. `process_id` is updated only if
+    // `render_frame_host` is not null. If `render_frame_host` is null,
+    // later logic will call OnAuthCredentials() with a nullopt that triggers
+    // CancelAuth().
+    process_id = network::mojom::kInvalidProcessId;
+
+    // `navigation_or_document_` can be null when `context` is created with
+    // an invalid RenderFrameHost after a page is destroyed.
+    // It is currently possible for the ServiceWorker case above to use
+    // kRenderFrameHostContext for the auth request, after the RenderFrameHost
+    // has been deleted. Treating this as an invalid process ID will cancel the
+    // auth, which is the same outcome as if the ServiceWorker's process were
+    // used.
+    // TODO(crbug.com/40224422): Update the ServiceWorker code to
+    // recognize when the RenderFrameHost goes away and not use
+    // CreateForRenderFrameHost above.
+    if (context.navigation_or_document()) {
+      auto* render_frame_host = context.navigation_or_document()->GetDocument();
+      if (render_frame_host) {
+        process_id = render_frame_host->GetGlobalId().child_id;
+      }
+    }
+  } else if (context.type() == ContextType::kServiceWorkerContext) {
+    process_id = context.process_id();
+  }
+
+  FrameTreeNodeId frame_tree_node_id;
+  if (auto* navigation_or_document = context.navigation_or_document()) {
+    if (auto* frame_tree_node = navigation_or_document->GetFrameTreeNode()) {
+      frame_tree_node_id = frame_tree_node->frame_tree_node_id();
+    }
+  }
+
+  WebContents* current_web_contents = context.GetWebContents();
+  if (current_web_contents) {
+    // Evict all the BFCache entries that
+    // 1): are stored in the same BrowserContext
+    // 2): were loaded with the "Cache-control: no-store" header
+    // 3): match the challenger information of the page that requires HTTP
+    // authentication.
+    for (WebContentsImpl* web_contents : WebContentsImpl::GetAllWebContents()) {
+      if (web_contents->GetBrowserContext()->UniqueId() ==
+          current_web_contents->GetBrowserContext()->UniqueId()) {
+        for (const std::unique_ptr<BackForwardCacheImpl::Entry>& entry :
+             web_contents->GetController().GetBackForwardCache().GetEntries()) {
+          RenderFrameHostImpl* rfh = entry->render_frame_host();
+          const GURL& last_committed_url = rfh->GetLastCommittedURL();
+          if (rfh->LoadedWithCacheControlNoStoreHeader() &&
+              auth_info.challenger ==
+                  url::SchemeHostPort(last_committed_url.scheme(),
+                                      last_committed_url.host(),
+                                      last_committed_url.IntPort())) {
+            BackForwardCacheCanStoreDocumentResult flattened_reasons;
+            flattened_reasons.No(BackForwardCacheMetrics::NotRestoredReason::
+                                     kCacheControlNoStore);
+            flattened_reasons.No(
+                BackForwardCacheMetrics::NotRestoredReason::kHTTPAuthRequired);
+            rfh->EvictFromBackForwardCacheWithFlattenedReasons(
+                flattened_reasons);
+          }
+        }
+      }
+    }
+  }
+
+  new LoginHandlerDelegate(
+      std::move(auth_challenge_responder), current_web_contents,
+      browser_context_, auth_info, *is_primary_main_frame_navigation,
+      *is_navigation_request, process_id, request_id, url, head_headers,
+      first_auth_attempt, frame_tree_node_id);  // deletes self
+}
+
+void StoragePartitionImpl::OnPrivateNetworkAccessPermissionRequired(
+    const GURL& url,
+    const net::IPAddress& ip_address,
+    const std::optional<std::string>& private_network_device_id,
+    const std::optional<std::string>& private_network_device_name,
+    OnPrivateNetworkAccessPermissionRequiredCallback callback) {
+  if (!base::FeatureList::IsEnabled(
+          network::features::kPrivateNetworkAccessPermissionPrompt)) {
+    std::move(callback).Run(false);
+    return;
+  }
+
+  if (url_loader_network_observers_.empty()) {
+    std::move(callback).Run(false);
+    return;
+  }
+  const URLLoaderNetworkContext& context =
+      url_loader_network_observers_.current_context();
+
+  if (context.type() != ContextType::kRenderFrameHostContext ||
+      !context.navigation_or_document()) {
+    std::move(callback).Run(false);
+    return;
+  }
+  RenderFrameHost* render_frame_host =
+      context.navigation_or_document()->GetDocument();
+  if (!render_frame_host) {
+    std::move(callback).Run(false);
+    return;
+  }
+  auto device = blink::mojom::PrivateNetworkDevice::New(
+      private_network_device_id, private_network_device_name, ip_address);
+
+  PrivateNetworkDeviceDelegate* delegate =
+      GetContentClient()->browser()->GetPrivateNetworkDeviceDelegate();
+  if (!delegate) {
+    std::move(callback).Run(false);
+    return;
+  }
+
+  delegate->RequestPermission(*render_frame_host, std::move(device),
+                              std::move(callback));
+=======
   OnAuthRequiredContinuation(process_id, routing_id, request_id, url,
                              is_main_frame, first_auth_attempt, auth_info,
                              head_headers, std::move(auth_challenge_responder),
                              web_contents_getter);
+>>>>>>> chromium
 }
 
 void StoragePartitionImpl::OnCertificateRequested(
@@ -1787,6 +2303,13 @@ void StoragePartitionImpl::OnCertificateRequested(
     // RenderFrameHostImpl instances.
     DCHECK(!window_id);
 
+<<<<<<< HEAD
+    if (context.navigation_or_document()) {
+      auto* render_frame_host = context.navigation_or_document()->GetDocument();
+      if (render_frame_host) {
+        process_id = render_frame_host->GetProcess()->GetDeprecatedID();
+      }
+=======
     // This observer is for Frame, see
     // `CreateURLLoaderNetworkObserverForFrame()`.
     auto* render_frame_host_impl =
@@ -1800,6 +2323,7 @@ void StoragePartitionImpl::OnCertificateRequested(
       render_frame_host_impl->CancelPrerendering(
           PrerenderHost::FinalStatus::kClientCertRequested);
       return;
+>>>>>>> chromium
     }
 
     web_contents_getter =
@@ -1852,6 +2376,37 @@ void StoragePartitionImpl::OnDataUseUpdate(
       sent_bytes);
 }
 
+<<<<<<< HEAD
+void StoragePartitionImpl::OnSharedStorageHeaderReceived(
+    const url::Origin& request_origin,
+    std::vector<network::mojom::SharedStorageModifierMethodWithOptionsPtr>
+        methods_with_options,
+    const std::optional<std::string>& with_lock,
+    OnSharedStorageHeaderReceivedCallback callback) {
+  if (!shared_storage_header_observer_) {
+    std::move(callback).Run();
+    return;
+  }
+
+  // Currently, shared-storage-writable headers aren't available for requests
+  // initiated by service workers, so `navigation_or_document` should be
+  // non-null.
+  //
+  // TODO(cammie): If we handle the service worker case by allowing service
+  // workers to initiate shared-storage-writable requests, the assumption that
+  // `navigation_or_document` must be non-null may become incorrect.
+  auto* navigation_or_document =
+      url_loader_network_observers_.current_context().navigation_or_document();
+  DCHECK(navigation_or_document);
+
+  shared_storage_header_observer_->HeaderReceived(
+      request_origin, url_loader_network_observers_.current_context().type(),
+      navigation_or_document, std::move(methods_with_options), with_lock,
+      std::move(callback), mojo::GetBadMessageCallback(), /*can_defer=*/true);
+}
+
+=======
+>>>>>>> chromium
 void StoragePartitionImpl::Clone(
     mojo::PendingReceiver<network::mojom::URLLoaderNetworkServiceObserver>
         observer) {
@@ -1975,6 +2530,15 @@ void StoragePartitionImpl::OnGenerateHttpNegotiateAuthToken(
 }
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CT_SUPPORTED)
+void StoragePartitionImpl::OnCanSendSCTAuditingReport(
+    OnCanSendSCTAuditingReportCallback callback) {
+  bool allowed =
+      GetContentClient()->browser()->CanSendSCTAuditingReport(browser_context_);
+  std::move(callback).Run(allowed);
+}
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 void StoragePartitionImpl::OnTrustAnchorUsed() {
   GetContentClient()->browser()->OnTrustAnchorUsed(browser_context_);
@@ -1989,6 +2553,7 @@ void StoragePartitionImpl::OnTrustTokenIssuanceDivertedToSystem(
     attempted_to_bind_local_trust_token_fulfiller_ = true;
     ProvisionallyBindUnboundLocalTrustTokenFulfillerIfSupportedBySystem();
   }
+>>>>>>> chromium
 
   if (!local_trust_token_fulfiller_) {
     auto response = network::mojom::FulfillTrustTokenIssuanceAnswer::New();
@@ -2055,8 +2620,18 @@ void StoragePartitionImpl::ClearDataImpl(
       std::move(cookie_deletion_filter), GetPath(), dom_storage_context_.get(),
       quota_manager_.get(), special_storage_policy_.get(),
       filesystem_context_.get(), GetCookieManagerForBrowserProcess(),
+<<<<<<< HEAD
+      interest_group_manager_.get(), attribution_manager_.get(),
+      aggregation_service_.get(), private_aggregation_manager_.get(),
+      shared_storage_manager_.get(),
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+      cdm_storage_manager_.get(),
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+      GetDeviceBoundSessionManager(), perform_storage_cleanup, begin, end);
+=======
       interest_group_manager_.get(), conversion_manager_.get(),
       perform_storage_cleanup, begin, end);
+>>>>>>> chromium
 }
 
 void StoragePartitionImpl::DeletionHelperDone(base::OnceClosure callback) {
@@ -2255,8 +2830,20 @@ void StoragePartitionImpl::DataDeletionHelper::ClearDataOnUIThread(
     storage::SpecialStoragePolicy* special_storage_policy,
     storage::FileSystemContext* filesystem_context,
     network::mojom::CookieManager* cookie_manager,
+<<<<<<< HEAD
+    InterestGroupManagerImpl* interest_group_manager,
+    AttributionManager* attribution_manager,
+    AggregationService* aggregation_service,
+    PrivateAggregationManagerImpl* private_aggregation_manager,
+    storage::SharedStorageManager* shared_storage_manager,
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+    CdmStorageManager* cdm_storage_manager,
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+    network::mojom::DeviceBoundSessionManager* device_bound_session_manager,
+=======
     InterestGroupManager* interest_group_manager,
     ConversionManagerImpl* conversion_manager,
+>>>>>>> chromium
     bool perform_storage_cleanup,
     const base::Time begin,
     const base::Time end) {
@@ -2290,6 +2877,15 @@ void StoragePartitionImpl::DataDeletionHelper::ClearDataOnUIThread(
       cookie_deletion_filter->created_after_time = begin;
     if (!end.is_null())
       cookie_deletion_filter->created_before_time = end;
+<<<<<<< HEAD
+    }
+    if (!storage_key_origin_empty) {
+      cookie_deletion_filter->cookie_partition_key_collection =
+          net::CookiePartitionKeyCollection::FromOptional(
+              storage_key.ToCookiePartitionKey());
+    }
+=======
+>>>>>>> chromium
 
     cookie_manager->DeleteCookies(
         std::move(cookie_deletion_filter),
@@ -2309,6 +2905,26 @@ void StoragePartitionImpl::DataDeletionHelper::ClearDataOnUIThread(
     }
   }
 
+<<<<<<< HEAD
+  if (remove_mask_ & REMOVE_DATA_MASK_INTEREST_GROUP_PERMISSIONS_CACHE) {
+    if (interest_group_manager) {
+      interest_group_manager->ClearPermissionsCache();
+    }
+  }
+
+#if BUILDFLAG(ENABLE_LIBRARY_CDMS)
+  if ((remove_mask_ & REMOVE_DATA_MASK_MEDIA_LICENSES)) {
+    auto cdm_deletion_callback = base::BindOnce(
+        base::IgnoreArgs<bool>(mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+            CreateTaskCompletionClosure(TracingDataType::kCdmStorage))));
+
+    cdm_storage_manager->DeleteData(generic_filter, storage_key, begin, end,
+                                    std::move(cdm_deletion_callback));
+  }
+#endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
+
+=======
+>>>>>>> chromium
   if (remove_mask_ & REMOVE_DATA_MASK_INDEXEDDB ||
       remove_mask_ & REMOVE_DATA_MASK_WEBSQL ||
       remove_mask_ & REMOVE_DATA_MASK_APPCACHE ||
@@ -2378,7 +2994,19 @@ void StoragePartitionImpl::DataDeletionHelper::ClearDataOnUIThread(
             origin_matcher, storage_policy_ref, begin, end,
             CreateTaskCompletionClosure(TracingDataType::kPluginPrivate)));
   }
+<<<<<<< HEAD
+
+  if (remove_mask_ & REMOVE_DATA_MASK_DEVICE_BOUND_SESSIONS &&
+      device_bound_session_manager) {
+    device_bound_session_manager->DeleteAllSessions(
+        begin, end,
+        filter_builder ? filter_builder->BuildNetworkServiceFilter() : nullptr,
+        mojo::WrapCallbackWithDefaultInvokeIfNotRun(CreateTaskCompletionClosure(
+            TracingDataType::kDeviceBoundSessions)));
+  }
+=======
 #endif  // BUILDFLAG(ENABLE_PLUGINS)
+>>>>>>> chromium
 }
 
 void StoragePartitionImpl::ClearDataForOrigin(
@@ -2598,6 +3226,51 @@ void StoragePartitionImpl::OverrideSharedWorkerServiceForTesting(
   shared_worker_service_ = std::move(shared_worker_service);
 }
 
+<<<<<<< HEAD
+void StoragePartitionImpl::OverrideSharedStorageRuntimeManagerForTesting(
+    std::unique_ptr<SharedStorageRuntimeManager>
+        shared_storage_runtime_manager) {
+  DCHECK(initialized_);
+  shared_storage_runtime_manager_ = std::move(shared_storage_runtime_manager);
+}
+
+void StoragePartitionImpl::OverrideSharedStorageHeaderObserverForTesting(
+    std::unique_ptr<SharedStorageHeaderObserver>
+        shared_storage_header_observer) {
+  DCHECK(initialized_);
+  shared_storage_header_observer_ = std::move(shared_storage_header_observer);
+}
+
+void StoragePartitionImpl::OverrideAggregationServiceForTesting(
+    std::unique_ptr<AggregationService> aggregation_service) {
+  DCHECK(initialized_);
+  aggregation_service_ = std::move(aggregation_service);
+}
+
+void StoragePartitionImpl::OverrideAttributionManagerForTesting(
+    std::unique_ptr<AttributionManager> attribution_manager) {
+  DCHECK(initialized_);
+  attribution_manager_ = std::move(attribution_manager);
+}
+
+void StoragePartitionImpl::OverridePrivateAggregationManagerForTesting(
+    std::unique_ptr<PrivateAggregationManagerImpl>
+        private_aggregation_manager) {
+  DCHECK(initialized_);
+  private_aggregation_manager_ = std::move(private_aggregation_manager);
+}
+
+void StoragePartitionImpl::OverrideDeviceBoundSessionManagerForTesting(
+    std::unique_ptr<network::mojom::DeviceBoundSessionManager>
+        device_bound_session_manager) {
+  DCHECK(initialized_);
+  mojo::MakeSelfOwnedReceiver(
+      std::move(device_bound_session_manager),
+      device_bound_session_manager_.BindNewPipeAndPassReceiver());
+}
+
+=======
+>>>>>>> chromium
 void StoragePartitionImpl::GetQuotaSettings(
     storage::OptionalQuotaSettingsCallback callback) {
   if (g_test_quota_settings) {
@@ -2757,9 +3430,101 @@ void StoragePartitionImpl::OnLocalTrustTokenFulfillerConnectionError() {
   pending_trust_token_issuance_callbacks_.clear();
 }
 
+<<<<<<< HEAD
+mojo::PendingRemote<network::mojom::SharedDictionaryAccessObserver>
+StoragePartitionImpl::CreateSharedDictionaryAccessObserverForServiceWorker() {
+  mojo::PendingRemote<network::mojom::SharedDictionaryAccessObserver> remote;
+  service_worker_shared_dictionary_observers_.Add(
+      std::make_unique<ServiceWorkerSharedDictionaryAccessObserver>(this),
+      remote.InitWithNewPipeAndPassReceiver());
+  return remote;
+}
+
+mojo::PendingRemote<network::mojom::DeviceBoundSessionAccessObserver>
+StoragePartitionImpl::CreateDeviceBoundSessionObserverForServiceWorker() {
+  mojo::PendingRemote<network::mojom::DeviceBoundSessionAccessObserver> remote;
+  service_worker_device_bound_session_observers_.Add(
+      std::make_unique<ServiceWorkerDeviceBoundSessionAccessObserver>(this),
+      remote.InitWithNewPipeAndPassReceiver());
+  return remote;
+}
+
+void StoragePartitionImpl::OpenLocalStorageForProcess(
+    int process_id,
+    const blink::StorageKey& storage_key,
+    mojo::PendingReceiver<blink::mojom::StorageArea> receiver) {
+  DCHECK(initialized_);
+  auto handle =
+      ChildProcessSecurityPolicyImpl::GetInstance()->CreateHandle(process_id);
+  dom_storage_context_->OpenLocalStorage(storage_key, std::nullopt,
+                                         std::move(receiver), std::move(handle),
+                                         base::DoNothing());
+}
+
+void StoragePartitionImpl::BindSessionStorageAreaForProcess(
+    int process_id,
+    const blink::StorageKey& storage_key,
+    const std::string& namespace_id,
+    mojo::PendingReceiver<blink::mojom::StorageArea> receiver) {
+  DCHECK(initialized_);
+  auto handle =
+      ChildProcessSecurityPolicyImpl::GetInstance()->CreateHandle(process_id);
+  dom_storage_context_->BindStorageArea(storage_key, std::nullopt, namespace_id,
+                                        std::move(receiver), std::move(handle),
+                                        base::DoNothing());
+}
+
+std::optional<blink::StorageKey> StoragePartitionImpl::CalculateStorageKey(
+    const url::Origin& origin,
+    const base::UnguessableToken* nonce) {
+  if (!blink::StorageKey::IsThirdPartyStoragePartitioningEnabled()) {
+    return std::nullopt;
+  }
+
+  NavigationOrDocumentHandle* handle =
+      url_loader_network_observers_.current_context().navigation_or_document();
+  if (!handle) {
+    return std::nullopt;
+  }
+  FrameTreeNode* node = handle->GetFrameTreeNode();
+  if (!node) {
+    return std::nullopt;
+  }
+  RenderFrameHostImpl* frame_host = node->current_frame_host();
+  if (!frame_host) {
+    return std::nullopt;
+  }
+
+  return frame_host->CalculateStorageKey(origin, nonce);
+}
+
+GlobalRenderFrameHostId
+StoragePartitionImpl::GetRenderFrameHostIdFromNetworkContext() {
+  URLLoaderNetworkContext context =
+      url_loader_network_observers_.current_context();
+
+  // `navigation_or_document()` can be null for `kServiceWorkerContext`.
+  RenderFrameHost* render_frame_host =
+      context.navigation_or_document()
+          ? context.navigation_or_document()->GetDocument()
+          : nullptr;
+
+  // It can pass empty GlobalRenderFrameHostId() when the context type is
+  // not `kRenderFrameHostContext`.
+  return render_frame_host ? render_frame_host->GetGlobalId()
+                           : GlobalRenderFrameHostId();
+}
+
+StoragePartitionImpl::URLLoaderNetworkContext::URLLoaderNetworkContext(
+    GlobalRenderFrameHostId render_frame_host_id)
+    : type_(Type::kRenderFrameHostContext) {
+  auto* render_frame_host = RenderFrameHostImpl::FromID(render_frame_host_id);
+  if (!render_frame_host) {
+=======
 void StoragePartitionImpl::
     ProvisionallyBindUnboundLocalTrustTokenFulfillerIfSupportedBySystem() {
   if (local_trust_token_fulfiller_)
+>>>>>>> chromium
     return;
 
 #if defined(OS_ANDROID)

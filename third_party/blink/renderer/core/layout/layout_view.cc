@@ -23,6 +23,11 @@
 
 #include <inttypes.h>
 
+<<<<<<< HEAD
+#include "base/debug/dump_without_crashing.h"
+#include "base/time/time.h"
+=======
+>>>>>>> chromium
 #include "build/build_config.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/scroll/scrollbar_mode.mojom-blink.h"
@@ -414,8 +419,11 @@ void LayoutView::MapLocalToAncestor(const LayoutBoxModelObject* ancestor,
                                                    mode);
     } else {
       DCHECK(!ancestor);
-      if (mode & kApplyRemoteMainFrameTransform)
-        GetFrameView()->MapLocalToRemoteMainFrame(transform_state);
+      if (mode &
+          (kApplyRemoteMainFrameTransform | kApplyRemoteViewportTransform)) {
+        GetFrameView()->MapLocalToRemoteMainFrame(
+            transform_state, mode & kApplyRemoteViewportTransform);
+      }
     }
   }
 }
@@ -437,8 +445,17 @@ void LayoutView::MapAncestorToLocal(const LayoutBoxModelObject* ancestor,
       DCHECK(!ancestor);
       // Note that MapLocalToRemoteMainFrame is correct here because
       // transform_state will be set to kUnapplyInverseTransformDirection.
+<<<<<<< HEAD
+      if ((mode &
+           (kApplyRemoteMainFrameTransform | kApplyRemoteViewportTransform)) &&
+          GetFrame()->IsLocalRoot()) {
+        GetFrameView()->MapLocalToRemoteMainFrame(
+            transform_state, mode & kApplyRemoteViewportTransform);
+      }
+=======
       if (mode & kApplyRemoteMainFrameTransform)
         GetFrameView()->MapLocalToRemoteMainFrame(transform_state);
+>>>>>>> chromium
     }
   } else {
     DCHECK(this == ancestor || !ancestor);
@@ -529,8 +546,14 @@ bool LayoutView::MapToVisualRectInAncestorSpaceInternal(
     PhysicalRect rect = PhysicalRect::EnclosingRect(
         transform_state.LastPlanarQuad().BoundingBox());
     bool retval = GetFrameView()->MapToVisualRectInRemoteRootFrame(
+<<<<<<< HEAD
+        rect, !(visual_rect_flags & kDontApplyMainFrameOverflowClip),
+        visual_rect_flags & kVisualRectApplyRemoteViewportTransform);
+    transform_state.SetQuad(gfx::QuadF(gfx::RectF(rect)));
+=======
         rect, !(visual_rect_flags & kDontApplyMainFrameOverflowClip));
     transform_state.SetQuad(FloatQuad(FloatRect(rect)));
+>>>>>>> chromium
     return retval;
   }
 
@@ -602,9 +625,53 @@ PhysicalRect LayoutView::ViewRect() const {
   NOT_DESTROYED();
   if (ShouldUsePrintingLayout())
     return PhysicalRect(PhysicalOffset(), Size());
+<<<<<<< HEAD
+  }
+
+  if (!frame_view_)
+    return PhysicalRect();
+
+  // TODO(bokan): This shouldn't be just for the outermost main frame, we
+  // should do it for all frames. crbug.com/1311518.
+  if (frame_view_->GetFrame().IsOutermostMainFrame()) {
+    if (auto* transition = ViewTransitionUtils::GetTransition(GetDocument());
+        transition && transition->IsRootTransitioning()) {
+      // If we're capturing a transition snapshot, the root transition
+      // needs to produce the snapshot at a known stable size, excluding
+      // all insetting UI like mobile URL bars and virtual keyboards.
+
+      // This adjustment should always be an expansion of the current
+      // viewport.
+
+      // TODO(https://crbug.com/1495157): The snapshot size can be smaller (by
+      // one pixel) than the frame on mobile viewport. Investigate why. Consider
+      // adding `<meta name="viewport" content="width=device-width">` to the
+      // HTML if this occurs.
+      if (transition->GetSnapshotRootSize().width() <
+              frame_view_->Size().width() ||
+          transition->GetSnapshotRootSize().height() <
+              frame_view_->Size().height()) {
+        // TODO(https://issues.chromium.org/362991812) This can happen on
+        // ChromeOS devices in portrait mode, and we need to investigate why.
+        base::debug::DumpWithoutCrashing();
+
+        transition->SkipTransitionSoon();
+        return PhysicalRect(PhysicalOffset(),
+                            PhysicalSize(frame_view_->Size()));
+      }
+
+      return PhysicalRect(
+          PhysicalOffset(transition->GetFrameToSnapshotRootOffset()),
+          PhysicalSize(transition->GetSnapshotRootSize()));
+    }
+  }
+
+  return PhysicalRect(PhysicalOffset(), PhysicalSize(frame_view_->Size()));
+=======
   if (frame_view_)
     return PhysicalRect(PhysicalOffset(), PhysicalSize(frame_view_->Size()));
   return PhysicalRect();
+>>>>>>> chromium
 }
 
 PhysicalRect LayoutView::OverflowClipRect(

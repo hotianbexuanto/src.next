@@ -669,3 +669,424 @@ IN_PROC_BROWSER_TEST_F(ChromeBackForwardCacheBrowserTest,
               ::testing::ElementsAre(expected_url_b_active_title,
                                      expected_url_a_cached_title));
 }
+<<<<<<< HEAD
+
+class ChromeBackForwardCacheBrowserWithEmbedTestBase
+    : public ChromeBackForwardCacheBrowserTest {
+ public:
+  ChromeBackForwardCacheBrowserWithEmbedTestBase() = default;
+  ~ChromeBackForwardCacheBrowserWithEmbedTestBase() override = default;
+
+  static std::string GetSrcAttributeForTag(const std::string_view& tag) {
+    return tag == "embed" ? "src" : "data";
+  }
+
+  void SetUpOnMainThread() override {
+    ChromeBackForwardCacheBrowserTest::SetUpOnMainThread();
+    ASSERT_TRUE(embedded_test_server()->Start());
+  }
+
+ protected:
+  void ExpectBlocklistedFeature(
+      blink::scheduler::WebSchedulerTrackedFeature feature,
+      base::Location location) {
+    content::FetchHistogramsFromChildProcesses();
+    base::HistogramBase::Sample32 sample = base::HistogramBase::Sample32(feature);
+    base::Bucket expected_blocklisted(sample, 1);
+
+    EXPECT_THAT(histogram_tester_->GetAllSamples(
+                    "BackForwardCache.HistoryNavigationOutcome."
+                    "BlocklistedFeature"),
+                testing::Contains(expected_blocklisted))
+        << location.ToString();
+
+    EXPECT_THAT(histogram_tester_->GetAllSamples(
+                    "BackForwardCache.AllSites.HistoryNavigationOutcome."
+                    "BlocklistedFeature"),
+                testing::Contains(expected_blocklisted))
+        << location.ToString();
+  }
+};
+
+class ChromeBackForwardCacheBrowserWithEmbedTest
+    : public ChromeBackForwardCacheBrowserWithEmbedTestBase,
+      public ::testing::WithParamInterface<std::string_view> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ChromeBackForwardCacheBrowserWithEmbedTest,
+    testing::ValuesIn(kChromeBackForwardCacheBrowserWithEmbedTestValues),
+    [](const testing::TestParamInfo<std::string_view>& i) {
+      return std::string(i.param);
+    });
+
+#if BUILDFLAG(ENABLE_PDF)
+class ChromeBackForwardCacheBrowserWithEmbedPdfTest
+    : public ChromeBackForwardCacheBrowserWithEmbedTestBase,
+      public ::testing::WithParamInterface<std::tuple<std::string_view, bool>> {
+ public:
+  void SetUpOnMainThread() override {
+    ChromeBackForwardCacheBrowserWithEmbedTestBase::SetUpOnMainThread();
+
+    if (UseOopif()) {
+      factory_ = std::make_unique<pdf::TestPdfViewerStreamManagerFactory>();
+    }
+  }
+
+  const std::string_view& html_tag() const { return std::get<0>(GetParam()); }
+
+  bool UseOopif() const { return std::get<1>(GetParam()); }
+
+  pdf::TestPdfViewerStreamManager* GetTestPdfViewerStreamManager(
+      content::WebContents* contents) {
+    CHECK(UseOopif());
+    return factory_->GetTestPdfViewerStreamManager(contents);
+  }
+
+  std::vector<base::test::FeatureRefAndParams> GetEnabledFeaturesAndParams()
+      const override {
+    std::vector<base::test::FeatureRefAndParams> enabled =
+        ChromeBackForwardCacheBrowserWithEmbedTestBase::
+            GetEnabledFeaturesAndParams();
+    if (UseOopif()) {
+      enabled.push_back({chrome_pdf::features::kPdfOopif, {}});
+    }
+    return enabled;
+  }
+
+  std::vector<base::test::FeatureRef> GetDisabledFeatures() const override {
+    std::vector<base::test::FeatureRef> disabled =
+        ChromeBackForwardCacheBrowserWithEmbedTestBase::GetDisabledFeatures();
+    if (!UseOopif()) {
+      disabled.push_back(chrome_pdf::features::kPdfOopif);
+    }
+    return disabled;
+  }
+
+  void ExpectNotRestoredReason(base::Location location) {
+    // Reasons to fail caching pages embedding the PDF viewer. For OOPIF PDF
+    // viewer, caching is disabled because it's contains a plugin. For GuestView
+    // PDF viewer, the PDF viewer contains an inner WebContents. These values
+    // should be kept in sync with BackForwardCacheMetrics::NotRestoredReason.
+    static constexpr uint8_t kReasonBlocklistedFeatures = 7;
+    static constexpr uint8_t kReasonHaveInnerContents = 32;
+
+    content::FetchHistogramsFromChildProcesses();
+    base::HistogramBase::Sample32 sample = base::HistogramBase::Sample32(
+        UseOopif() ? kReasonBlocklistedFeatures : kReasonHaveInnerContents);
+    base::Bucket expected_not_restored(sample, 1);
+
+    EXPECT_THAT(histogram_tester_->GetAllSamples(
+                    "BackForwardCache.HistoryNavigationOutcome."
+                    "NotRestoredReason"),
+                testing::Contains(expected_not_restored))
+        << location.ToString();
+
+    EXPECT_THAT(histogram_tester_->GetAllSamples(
+                    "BackForwardCache.AllSites.HistoryNavigationOutcome."
+                    "NotRestoredReason"),
+                testing::Contains(expected_not_restored))
+        << location.ToString();
+  }
+
+ private:
+  // `factory_` is necessary to create a `pdf::TestPdfViewerStreamManager`
+  // instance whenever a PDF loads.
+  std::unique_ptr<pdf::TestPdfViewerStreamManagerFactory> factory_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ChromeBackForwardCacheBrowserWithEmbedPdfTest,
+    testing::Combine(
+        testing::ValuesIn(kChromeBackForwardCacheBrowserWithEmbedTestValues),
+        testing::Bool()),
+    ChromeBackForwardCacheBrowserWithEmbedPdfTestPassToString());
+#endif  // BUILDFLAG(ENABLE_PDF)
+
+// TODO(crbug.com/40285326): This fails with the field trial testing config.
+class ChromeBackForwardCacheBrowserWithEmbedTestNoTestingConfig
+    : public ChromeBackForwardCacheBrowserWithEmbedTest {
+ public:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    ChromeBackForwardCacheBrowserWithEmbedTest::SetUpCommandLine(command_line);
+    command_line->AppendSwitch("disable-field-trial-config");
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ChromeBackForwardCacheBrowserWithEmbedTestNoTestingConfig,
+    testing::ValuesIn(kChromeBackForwardCacheBrowserWithEmbedTestValues),
+    [](const testing::TestParamInfo<std::string_view>& i) {
+      return std::string(i.param);
+    });
+
+#if BUILDFLAG(ENABLE_PDF)
+class ChromeBackForwardCacheBrowserWithEmbedPdfTestNoTestingConfig
+    : public ChromeBackForwardCacheBrowserWithEmbedPdfTest {
+ public:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    ChromeBackForwardCacheBrowserWithEmbedPdfTest::SetUpCommandLine(
+        command_line);
+    command_line->AppendSwitch("disable-field-trial-config");
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ChromeBackForwardCacheBrowserWithEmbedPdfTestNoTestingConfig,
+    testing::Combine(
+        testing::ValuesIn(kChromeBackForwardCacheBrowserWithEmbedTestValues),
+        testing::Bool()),
+    ChromeBackForwardCacheBrowserWithEmbedPdfTestPassToString());
+#endif  // BUILDFLAG(ENABLE_PDF)
+
+IN_PROC_BROWSER_TEST_P(
+    ChromeBackForwardCacheBrowserWithEmbedTestNoTestingConfig,
+    DoesNotCachePageWithEmbeddedPlugin) {
+  const auto tag = GetParam();
+  const auto page_with_plugin =
+      base::StrCat({"/back_forward_cache/page_with_", tag, "_plugin.html"});
+
+  // Navigate to A, a page with embedded Pepper plugin.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(),
+      embedded_test_server()->GetURL("a.com", page_with_plugin)));
+  content::RenderFrameHostWrapper rfh_a(current_frame_host());
+
+  // Navigate to B.
+  bool will_change_rfh =
+      rfh_a->ShouldChangeRenderFrameHostOnSameSiteNavigation();
+
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", "/title2.html")));
+
+  // Verify A is NOT stored in the BackForwardCache.
+  if (will_change_rfh) {
+    EXPECT_TRUE(rfh_a.WaitUntilRenderFrameDeleted());
+  } else {
+    EXPECT_NE(rfh_a->GetLifecycleState(),
+              content::RenderFrameHost::LifecycleState::kInBackForwardCache);
+  }
+
+  // Navigate back to A.
+  ASSERT_TRUE(content::HistoryGoBack(web_contents()));
+  // Verify A is not restored from BackForwardCache due to |kContainsPlugins|.
+  ExpectBlocklistedFeature(
+      blink::scheduler::WebSchedulerTrackedFeature::kContainsPlugins,
+      FROM_HERE);
+}
+
+#if BUILDFLAG(ENABLE_PDF)
+IN_PROC_BROWSER_TEST_P(
+    ChromeBackForwardCacheBrowserWithEmbedPdfTestNoTestingConfig,
+    DoesNotCachePageWithEmbeddedPdf) {
+  const auto tag = html_tag();
+  const auto page_with_pdf =
+      base::StrCat({"/back_forward_cache/page_with_", tag, "_pdf.html"});
+
+  // Navigate to A, a page with embedded PDF.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", page_with_pdf)));
+  if (UseOopif()) {
+    ASSERT_TRUE(GetTestPdfViewerStreamManager(web_contents())
+                    ->WaitUntilPdfLoadedInFirstChild());
+  } else {
+    pdf_extension_test_util::EnsurePDFHasLoadedOptions options{
+        .pdf_element = std::string(tag)};
+    ASSERT_TRUE(pdf_extension_test_util::EnsurePDFHasLoadedWithOptions(
+        web_contents(), options));
+  }
+  content::RenderFrameHostWrapper rfh_a(current_frame_host());
+
+  // Navigate to B.
+  bool will_change_rfh =
+      rfh_a->ShouldChangeRenderFrameHostOnSameSiteNavigation();
+
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", "/title2.html")));
+
+  // Verify A is NOT stored in the BackForwardCache.
+  if (will_change_rfh) {
+    EXPECT_TRUE(rfh_a.WaitUntilRenderFrameDeleted());
+  } else {
+    EXPECT_NE(rfh_a->GetLifecycleState(),
+              content::RenderFrameHost::LifecycleState::kInBackForwardCache);
+  }
+
+  // Navigate back to A.
+  ASSERT_TRUE(content::HistoryGoBack(web_contents()));
+
+  // Verify A is not restored from BackForwardCache.
+  ExpectNotRestoredReason(FROM_HERE);
+}
+
+// Flaky: crbug.com/40935990
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_DoesNotCachePageWithEmbeddedPdfAppendedOnPageLoaded \
+  DISABLED_DoesNotCachePageWithEmbeddedPdfAppendedOnPageLoaded
+#else
+#define MAYBE_DoesNotCachePageWithEmbeddedPdfAppendedOnPageLoaded \
+  DoesNotCachePageWithEmbeddedPdfAppendedOnPageLoaded
+#endif
+IN_PROC_BROWSER_TEST_P(ChromeBackForwardCacheBrowserWithEmbedPdfTest,
+                       MAYBE_DoesNotCachePageWithEmbeddedPdfAppendedOnPageLoaded) {
+  const auto tag = html_tag();
+
+  // Navigate to A.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", "/title1.html")));
+  content::RenderFrameHostWrapper rfh_a(current_frame_host());
+  //  Embed a PDF into A, and wait until PDF is loaded.
+  EXPECT_EQ("success",
+            content::EvalJs(rfh_a.get(), content::JsReplace(
+                                             R"(
+    new Promise(async resolve => {
+      let el = document.createElement($1);
+      el.type = 'application/pdf';
+      el[$2] = '/pdf/test.pdf';
+      el.onload = e => resolve("success");
+      document.body.append(el);
+    });
+  )",
+                                             tag, GetSrcAttributeForTag(tag))));
+  if (UseOopif()) {
+    // Wait for the PDF to fully load.
+    ASSERT_TRUE(GetTestPdfViewerStreamManager(web_contents())
+                    ->WaitUntilPdfLoadedInFirstChild());
+  }
+
+  // Navigate to B.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", "/title2.html")));
+
+  // Verify A is NOT stored in the BackForwardCache.
+  if (content::WillSameSiteNavigationChangeRenderFrameHosts(
+          /*is_main_frame=*/true)) {
+    EXPECT_TRUE(rfh_a.WaitUntilRenderFrameDeleted());
+  } else {
+    EXPECT_NE(rfh_a->GetLifecycleState(),
+              content::RenderFrameHost::LifecycleState::kInBackForwardCache);
+  }
+
+  //  Navigate back to A.
+  ASSERT_TRUE(content::HistoryGoBack(web_contents()));
+
+  // Verify A is not restored from BackForwardCache.
+  ExpectNotRestoredReason(FROM_HERE);
+}
+#endif  // BUILDFLAG(ENABLE_PDF)
+
+IN_PROC_BROWSER_TEST_P(ChromeBackForwardCacheBrowserWithEmbedTest,
+                       DoesCachePageWithEmbeddedHtml) {
+  const auto tag = GetParam();
+  const auto page_with_html =
+      base::StrCat({"/back_forward_cache/page_with_", tag, "_html.html"});
+
+  // Navigate to A, a page with embedded HTML.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", page_with_html)));
+  content::RenderFrameHostWrapper rfh_a(current_frame_host());
+
+  // Navigate to B.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", "/title2.html")));
+
+  // Verify A is stored in the BackForwardCache.
+  EXPECT_EQ(rfh_a->GetLifecycleState(),
+            content::RenderFrameHost::LifecycleState::kInBackForwardCache);
+}
+
+#if BUILDFLAG(ENABLE_PDF)
+// Flaky: crbug.com/40935990
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_DoesNotCachePageWithEmbeddedHtmlMutatedIntoPdf \
+  DISABLED_DoesNotCachePageWithEmbeddedHtmlMutatedIntoPdf
+#else
+#define MAYBE_DoesNotCachePageWithEmbeddedHtmlMutatedIntoPdf \
+  DoesNotCachePageWithEmbeddedHtmlMutatedIntoPdf
+#endif
+IN_PROC_BROWSER_TEST_P(ChromeBackForwardCacheBrowserWithEmbedPdfTest,
+                       MAYBE_DoesNotCachePageWithEmbeddedHtmlMutatedIntoPdf) {
+  const auto tag = html_tag();
+  const auto page_with_html =
+      base::StrCat({"/back_forward_cache/page_with_", tag, "_html.html"});
+
+  // Navigate to A, a page with embedded HTML.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", page_with_html)));
+  content::RenderFrameHostWrapper rfh_a(current_frame_host());
+  //  Mutate the embed into PDF, and wait until PDF is loaded.
+  EXPECT_EQ("success",
+            content::EvalJs(rfh_a.get(), content::JsReplace(
+                                             R"(
+    new Promise(async resolve => {
+      let el = document.getElementById($1);
+      el.type = 'application/pdf';
+      el[$2] = '/pdf/test.pdf';
+      el.onload = e => resolve("success");
+    });
+  )",
+                                             tag, GetSrcAttributeForTag(tag))));
+  if (UseOopif()) {
+    // Wait for the PDF to fully load.
+    ASSERT_TRUE(GetTestPdfViewerStreamManager(web_contents())
+                    ->WaitUntilPdfLoadedInFirstChild());
+  }
+
+  bool will_change_rfh =
+      rfh_a->ShouldChangeRenderFrameHostOnSameSiteNavigation();
+  // Navigate to B.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", "/title2.html")));
+
+  // Verify A is NOT stored in the BackForwardCache.
+  if (will_change_rfh) {
+    EXPECT_TRUE(rfh_a.WaitUntilRenderFrameDeleted());
+  } else {
+    EXPECT_NE(rfh_a->GetLifecycleState(),
+              content::RenderFrameHost::LifecycleState::kInBackForwardCache);
+  }
+
+  // Navigate back to A.
+  ASSERT_TRUE(content::HistoryGoBack(web_contents()));
+
+  // Verify A is not restored from BackForwardCache.
+  ExpectNotRestoredReason(FROM_HERE);
+}
+
+IN_PROC_BROWSER_TEST_P(ChromeBackForwardCacheBrowserWithEmbedPdfTest,
+                       DoesCachePageWithEmbeddedPdfMutatedIntoHtml) {
+  const auto tag = html_tag();
+  const auto page_with_pdf =
+      base::StrCat({"/back_forward_cache/page_with_", tag, "_pdf.html"});
+
+  // Navigate to A, a page with embedded PDF.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", page_with_pdf)));
+  content::RenderFrameHostWrapper rfh_a(current_frame_host());
+  //  Mutate the embed into HTML, and wait until HTML is loaded.
+  EXPECT_EQ("success",
+            content::EvalJs(rfh_a.get(), content::JsReplace(
+                                             R"(
+    new Promise(async resolve => {
+      let el = document.getElementById($1);
+      el.type = 'text/html';
+      el[$2] = '/title1.html';
+      el.onload = e => resolve("success");
+    });
+  )",
+                                             tag, GetSrcAttributeForTag(tag))));
+
+  // Navigate to B.
+  ASSERT_TRUE(content::NavigateToURL(
+      web_contents(), embedded_test_server()->GetURL("a.com", "/title2.html")));
+
+  // Verify A is stored in the BackForwardCache.
+  EXPECT_EQ(rfh_a->GetLifecycleState(),
+            content::RenderFrameHost::LifecycleState::kInBackForwardCache);
+}
+#endif  // BUILDFLAG(ENABLE_PDF)
+=======
+>>>>>>> chromium

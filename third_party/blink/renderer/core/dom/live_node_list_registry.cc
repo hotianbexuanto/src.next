@@ -4,6 +4,13 @@
 
 #include "third_party/blink/renderer/core/dom/live_node_list_registry.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+
+#include "base/containers/contains.h"
+#include "base/not_fatal_until.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/live_node_list_base.h"
 
@@ -23,8 +30,13 @@ void LiveNodeListRegistry::Add(const LiveNodeListBase* list,
 void LiveNodeListRegistry::Remove(const LiveNodeListBase* list,
                                   NodeListInvalidationType type) {
   Entry entry = {list, MaskForInvalidationType(type)};
+<<<<<<< HEAD
+  auto it = std::ranges::find(data_, entry);
+  CHECK(it != data_.end(), base::NotFatalUntil::M130);
+=======
   auto* it = std::find(data_.begin(), data_.end(), entry);
   DCHECK(it != data_.end());
+>>>>>>> chromium
   data_.erase(it);
   data_.ShrinkToReasonableCapacity();
   RecomputeMask();

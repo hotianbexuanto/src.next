@@ -28,8 +28,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+<<<<<<< HEAD
+=======
 #include "third_party/blink/public/web/web_associated_url_loader.h"
 
+>>>>>>> chromium
 #include <memory>
 
 #include "base/cxx17_backports.h"
@@ -99,8 +102,13 @@ class WebAssociatedURLLoaderTest : public testing::Test,
         "visible_iframe.html",
         "zero_sized_iframe.html",
     };
+<<<<<<< HEAD
+    for (const auto*& iframe_support_file : iframe_support_files) {
+      RegisterMockedUrl(url_root, iframe_support_file);
+=======
     for (size_t i = 0; i < base::size(iframe_support_files); ++i) {
       RegisterMockedUrl(url_root, iframe_support_files[i]);
+>>>>>>> chromium
     }
 
     frame_test_helpers::LoadFrame(MainFrame(), url.GetString().Utf8().c_str());

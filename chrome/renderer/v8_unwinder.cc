@@ -8,6 +8,20 @@
 #include <memory>
 #include <utility>
 
+<<<<<<< HEAD
+#include "base/check_op.h"
+#include "base/profiler/register_context_registers.h"
+#include "build/build_config.h"
+#include "v8/include/v8-isolate.h"
+
+#if defined(ARCH_CPU_ARM_FAMILY) && defined(ARCH_CPU_32_BITS)
+// V8 requires the embedder to establish the architecture define.
+#define V8_TARGET_ARCH_ARM 1
+#include "v8/include/v8-unwinder-state.h"
+#endif
+
+=======
+>>>>>>> chromium
 namespace {
 
 class V8Module : public base::ModuleCache::Module {

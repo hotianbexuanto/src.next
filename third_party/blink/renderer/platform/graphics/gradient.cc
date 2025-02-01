@@ -126,6 +126,100 @@ void Gradient::FillSkiaStops(ColorBuffer& colors, OffsetBuffer& pos) const {
   }
 }
 
+<<<<<<< HEAD
+SkGradientShader::Interpolation Gradient::ResolveSkInterpolation() const {
+  using sk_colorspace = SkGradientShader::Interpolation::ColorSpace;
+  using sk_hue_method = SkGradientShader::Interpolation::HueMethod;
+  SkGradientShader::Interpolation sk_interpolation;
+
+  bool has_non_legacy_color = false;
+  switch (color_space_interpolation_space_) {
+    case Color::ColorSpace::kXYZD65:
+    case Color::ColorSpace::kXYZD50:
+    case Color::ColorSpace::kSRGBLinear:
+      sk_interpolation.fColorSpace = sk_colorspace::kSRGBLinear;
+      break;
+    case Color::ColorSpace::kLab:
+      sk_interpolation.fColorSpace = sk_colorspace::kLab;
+      break;
+    case Color::ColorSpace::kOklab:
+      sk_interpolation.fColorSpace = Color::IsBakedGamutMappingEnabled()
+                                         ? sk_colorspace::kOKLabGamutMap
+                                         : sk_colorspace::kOKLab;
+      break;
+    case Color::ColorSpace::kLch:
+      sk_interpolation.fColorSpace = sk_colorspace::kLCH;
+      break;
+    case Color::ColorSpace::kOklch:
+      sk_interpolation.fColorSpace = Color::IsBakedGamutMappingEnabled()
+                                         ? sk_colorspace::kOKLCHGamutMap
+                                         : sk_colorspace::kOKLCH;
+      break;
+    case Color::ColorSpace::kSRGB:
+    case Color::ColorSpace::kSRGBLegacy:
+      sk_interpolation.fColorSpace = sk_colorspace::kSRGB;
+      break;
+    case Color::ColorSpace::kHSL:
+      sk_interpolation.fColorSpace = sk_colorspace::kHSL;
+      break;
+    case Color::ColorSpace::kHWB:
+      sk_interpolation.fColorSpace = sk_colorspace::kHWB;
+      break;
+    case Color::ColorSpace::kNone:
+      for (const auto& stop : stops_) {
+        if (!Color::IsLegacyColorSpace(stop.color.GetColorSpace())) {
+          has_non_legacy_color = true;
+        }
+      }
+      if (has_non_legacy_color) {
+        // If no colorspace is provided and the gradient is not entirely
+        // composed of legacy colors, Oklab is the default interpolation space.
+        sk_interpolation.fColorSpace = Color::IsBakedGamutMappingEnabled()
+                                           ? sk_colorspace::kOKLabGamutMap
+                                           : sk_colorspace::kOKLab;
+      } else {
+        // TODO(crbug.com/1379462): This should be kSRGB.
+        sk_interpolation.fColorSpace = sk_colorspace::kDestination;
+      }
+      break;
+    case Color::ColorSpace::kDisplayP3:
+      sk_interpolation.fColorSpace = sk_colorspace::kDisplayP3;
+      break;
+    case Color::ColorSpace::kA98RGB:
+      sk_interpolation.fColorSpace = sk_colorspace::kA98RGB;
+      break;
+    case Color::ColorSpace::kProPhotoRGB:
+      sk_interpolation.fColorSpace = sk_colorspace::kProphotoRGB;
+      break;
+    case Color::ColorSpace::kRec2020:
+      sk_interpolation.fColorSpace = sk_colorspace::kRec2020;
+      break;
+  }
+
+  switch (hue_interpolation_method_) {
+    case Color::HueInterpolationMethod::kLonger:
+      sk_interpolation.fHueMethod = sk_hue_method::kLonger;
+      break;
+    case Color::HueInterpolationMethod::kIncreasing:
+      sk_interpolation.fHueMethod = sk_hue_method::kIncreasing;
+      break;
+    case Color::HueInterpolationMethod::kDecreasing:
+      sk_interpolation.fHueMethod = sk_hue_method::kDecreasing;
+      break;
+    default:
+      sk_interpolation.fHueMethod = sk_hue_method::kShorter;
+  }
+
+  sk_interpolation.fInPremul =
+      (color_interpolation_ == ColorInterpolation::kPremultiplied)
+          ? SkGradientShader::Interpolation::InPremul::kYes
+          : SkGradientShader::Interpolation::InPremul::kNo;
+
+  return sk_interpolation;
+}
+
+=======
+>>>>>>> chromium
 sk_sp<PaintShader> Gradient::CreateShaderInternal(
     const SkMatrix& local_matrix) const {
   SortStopsIfNecessary();

@@ -42,6 +42,9 @@ class Extension;
 class ExtensionActionRunner : public content::WebContentsObserver,
                               public ExtensionRegistryObserver {
  public:
+<<<<<<< HEAD
+  class TestObserver : public base::CheckedObserver {
+=======
   enum class PageAccess {
     RUN_ON_CLICK,
     RUN_ON_SITE,
@@ -49,8 +52,9 @@ class ExtensionActionRunner : public content::WebContentsObserver,
   };
 
   class TestObserver {
+>>>>>>> chromium
    public:
-    virtual void OnBlockedActionAdded() = 0;
+    virtual void OnBlockedActionAdded() {}
   };
 
   explicit ExtensionActionRunner(content::WebContents* web_contents);
@@ -100,9 +104,12 @@ class ExtensionActionRunner : public content::WebContentsObserver,
       std::unique_ptr<ToolbarActionsBarBubbleDelegate::CloseAction> action) {
     default_bubble_close_action_for_testing_ = std::move(action);
   }
+<<<<<<< HEAD
+=======
   void set_observer_for_testing(TestObserver* observer) {
     test_observer_ = observer;
   }
+>>>>>>> chromium
 
   // Handles mojom::LocalFrameHost::RequestScriptInjectionPermission(). It
   // replies back with |callback|.
@@ -130,6 +137,9 @@ class ExtensionActionRunner : public content::WebContentsObserver,
     pending_scripts_.erase(extension.id());
   }
 #endif  // defined(UNIT_TEST)
+
+  void AddObserver(TestObserver* observer);
+  void RemoveObserver(TestObserver* observer);
 
  private:
   struct PendingScript {
@@ -253,7 +263,11 @@ class ExtensionActionRunner : public content::WebContentsObserver,
   std::unique_ptr<ToolbarActionsBarBubbleDelegate::CloseAction>
       default_bubble_close_action_for_testing_;
 
+<<<<<<< HEAD
+  base::ObserverList<TestObserver> test_observers_;
+=======
   TestObserver* test_observer_;
+>>>>>>> chromium
 
   base::ScopedObservation<ExtensionRegistry, ExtensionRegistryObserver>
       extension_registry_observation_{this};

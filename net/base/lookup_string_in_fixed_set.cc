@@ -5,6 +5,11 @@
 #include "net/base/lookup_string_in_fixed_set.h"
 
 #include "base/check.h"
+<<<<<<< HEAD
+#include "base/compiler_specific.h"
+#include "base/containers/span.h"
+=======
+>>>>>>> chromium
 
 namespace net {
 
@@ -15,12 +20,38 @@ namespace {
 // nullptr, if there are no remaining offsets.
 //
 // Returns true if an offset could be read; false otherwise.
+<<<<<<< HEAD
+inline bool GetNextOffset(base::span<const uint8_t>* bytes,
+                          base::span<const uint8_t>* offset_bytes) {
+  if (bytes->empty()) {
+=======
 inline bool GetNextOffset(const unsigned char** pos,
                           const unsigned char** offset) {
   if (*pos == nullptr)
+>>>>>>> chromium
     return false;
 
   size_t bytes_consumed;
+<<<<<<< HEAD
+  switch ((*bytes)[0] & 0x60) {
+    case 0x60:  // Read three byte offset
+      *offset_bytes = offset_bytes->subspan(static_cast<size_t>(
+          (((*bytes)[0] & 0x1F) << 16) | ((*bytes)[1] << 8) | (*bytes)[2]));
+      bytes_consumed = 3;
+      break;
+    case 0x40:  // Read two byte offset
+      *offset_bytes = offset_bytes->subspan(
+          static_cast<size_t>((((*bytes)[0] & 0x1F) << 8) | (*bytes)[1]));
+      bytes_consumed = 2;
+      break;
+    default:
+      *offset_bytes =
+          offset_bytes->subspan(static_cast<size_t>((*bytes)[0] & 0x3F));
+      bytes_consumed = 1;
+  }
+  if ((*bytes)[0] & 0x80) {
+    *bytes = base::span<const uint8_t>();
+=======
   switch (**pos & 0x60) {
     case 0x60:  // Read three byte offset
       *offset += (((*pos)[0] & 0x1F) << 16) | ((*pos)[1] << 8) | (*pos)[2];
@@ -36,6 +67,7 @@ inline bool GetNextOffset(const unsigned char** pos,
   }
   if ((**pos & 0x80) != 0) {
     *pos = nullptr;
+>>>>>>> chromium
   } else {
     *pos += bytes_consumed;
   }
@@ -101,9 +133,15 @@ bool FixedSetIncrementalLookup::Advance(char input) {
         // If this is not the last character in the label, the next byte should
         // be interpreted as a character or return value. Otherwise, the next
         // byte should be interpreted as a list of child node offsets.
+<<<<<<< HEAD
+        bytes_ = bytes_.subspan<1>();
+        DCHECK(!bytes_.empty());
+        bytes_starts_with_label_character_ = !is_last_char_in_label;
+=======
         ++pos_;
         DCHECK(pos_ < end_);
         pos_is_label_character_ = !is_last_char_in_label;
+>>>>>>> chromium
         return true;
       }
     } else {
@@ -132,9 +170,15 @@ bool FixedSetIncrementalLookup::Advance(char input) {
           // should be interpreted as a character or return value. Otherwise,
           // the next byte should be interpreted as a list of child node
           // offsets.
+<<<<<<< HEAD
+          bytes_ = offset_bytes.subspan<1>();
+          DCHECK(!bytes_.empty());
+          bytes_starts_with_label_character_ = !is_last_char_in_label;
+=======
           pos_ = offset + 1;
           DCHECK(pos_ < end_);
           pos_is_label_character_ = !is_last_char_in_label;
+>>>>>>> chromium
           return true;
         }
       }
@@ -183,12 +227,17 @@ int LookupStringInFixedSet(const unsigned char* graph,
                            size_t key_length) {
   // Do an incremental lookup until either the end of the graph is reached, or
   // until every character in |key| is consumed.
+<<<<<<< HEAD
+  FixedSetIncrementalLookup lookup(graph);
+  const char* key_end = UNSAFE_TODO(key + key_length);
+=======
   FixedSetIncrementalLookup lookup(graph, length);
   const char* key_end = key + key_length;
+>>>>>>> chromium
   while (key != key_end) {
     if (!lookup.Advance(*key))
       return kDafsaNotFound;
-    key++;
+    UNSAFE_TODO(key++);
   }
   // The entire input was consumed without reaching the end of the graph. Return
   // the result code (if present) for the current position, or kDafsaNotFound.

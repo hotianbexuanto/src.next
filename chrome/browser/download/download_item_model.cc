@@ -63,7 +63,7 @@ namespace {
 // DownloadItem, and the lifetime of the model is shorter than the DownloadItem.
 class DownloadItemModelData : public base::SupportsUserData::Data {
  public:
-  ~DownloadItemModelData() override {}
+  ~DownloadItemModelData() override = default;
 
   // Get the DownloadItemModelData object for |download|. Returns NULL if
   // there's no model data.
@@ -212,6 +212,10 @@ int64_t DownloadItemModel::GetCompletedBytes() const {
 int64_t DownloadItemModel::GetTotalBytes() const {
   return download_->AllDataSaved() ? download_->GetReceivedBytes()
                                    : download_->GetTotalBytes();
+}
+
+int64_t DownloadItemModel::GetUploadedBytes() const {
+  return download_->GetUploadedBytes();
 }
 
 // TODO(asanka,rdsmith): Once 'open' moves exclusively to the
@@ -574,7 +578,37 @@ void DownloadItemModel::OpenUsingPlatformHandler() {
   RecordDownloadOpenMethod(DOWNLOAD_OPEN_METHOD_USER_PLATFORM);
 }
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+std::optional<DownloadCommands::Command>
+DownloadItemModel::MaybeGetMediaAppAction() const {
+  std::string mime_type = GetMimeType();
+
+  if (mime_type == "application/pdf") {
+    return DownloadCommands::EDIT_WITH_MEDIA_APP;
+  }
+
+  if (base::StartsWith(mime_type, "audio/", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(mime_type, "video/", base::CompareCase::SENSITIVE)) {
+    return DownloadCommands::OPEN_WITH_MEDIA_APP;
+  }
+
+  return std::nullopt;
+}
+
+void DownloadItemModel::OpenUsingMediaApp() {
+  ash::SystemAppLaunchParams params;
+  params.launch_paths.push_back(GetFullPath());
+  ash::LaunchSystemWebAppAsync(profile(), ash::SystemWebAppType::MEDIA, params);
+
+  RecordDownloadOpen(DOWNLOAD_OPEN_METHOD_MEDIA_APP, GetMimeType());
+}
+#endif
+
+#if !BUILDFLAG(IS_ANDROID)
+=======
 #if !defined(OS_ANDROID)
+>>>>>>> chromium
 bool DownloadItemModel::IsCommandEnabled(
     const DownloadCommands* download_commands,
     DownloadCommands::Command command) const {
@@ -813,14 +847,52 @@ bool DownloadItemModel::IsExtensionDownload() const {
 
 #if BUILDFLAG(FULL_SAFE_BROWSING)
 void DownloadItemModel::CompleteSafeBrowsingScan() {
+<<<<<<< HEAD
+  if (download_->IsSavePackageDownload()) {
+    download_->OnAsyncScanningCompleted(
+        download::DOWNLOAD_DANGER_TYPE_USER_VALIDATED);
+    enterprise_connectors::RunSavePackageScanningCallback(download_, true);
+  } else {
+    ChromeDownloadManagerDelegate::SafeBrowsingState* state =
+        static_cast<ChromeDownloadManagerDelegate::SafeBrowsingState*>(
+            download_->GetUserData(
+                &ChromeDownloadManagerDelegate::SafeBrowsingState::
+                    kSafeBrowsingUserDataKey));
+    state->CompleteDownload();
+  }
+}
+
+void DownloadItemModel::ReviewScanningVerdict(
+    content::WebContents* web_contents) {
+#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+  auto command_callback =
+      [](std::unique_ptr<DownloadItemModel> model,
+         std::unique_ptr<DownloadCommands> download_commands,
+         DownloadCommands::Command command) {
+        model->ExecuteCommand(download_commands.get(), command);
+      };
+  enterprise_connectors::ShowDownloadReviewDialog(
+      GetFileNameToReportUser().LossyDisplayName(), profile(), download_,
+      web_contents,
+      base::BindOnce(
+          command_callback, std::make_unique<DownloadItemModel>(download_),
+          std::make_unique<DownloadCommands>(DownloadUIModel::GetWeakPtr()),
+          DownloadCommands::KEEP),
+      base::BindOnce(
+          command_callback, std::make_unique<DownloadItemModel>(download_),
+          std::make_unique<DownloadCommands>(DownloadUIModel::GetWeakPtr()),
+          DownloadCommands::DISCARD));
+#endif  // BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+=======
   ChromeDownloadManagerDelegate::SafeBrowsingState* state =
       static_cast<ChromeDownloadManagerDelegate::SafeBrowsingState*>(
           download_->GetUserData(
               &ChromeDownloadManagerDelegate::SafeBrowsingState::
                   kSafeBrowsingUserDataKey));
   state->CompleteDownload();
+>>>>>>> chromium
 }
-#endif
+#endif  // BUILDFLAG(FULL_SAFE_BROWSING)
 
 bool DownloadItemModel::ShouldShowDropdown() const {
   // We don't show the dropdown for dangerous file types or for files

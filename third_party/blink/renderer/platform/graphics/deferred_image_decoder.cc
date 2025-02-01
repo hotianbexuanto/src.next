@@ -200,8 +200,13 @@ sk_sp<PaintImageGenerator> DeferredImageDecoder::CreateGenerator() {
   if (image_is_high_bit_depth_)
     info = info.makeColorType(kRGBA_F16_SkColorType);
 
+<<<<<<< HEAD
+  std::vector<FrameMetadata> frames(frame_data_.size());
+  for (wtf_size_t i = 0; i < frame_data_.size(); ++i) {
+=======
   WebVector<FrameMetadata> frames(frame_data_.size());
   for (size_t i = 0; i < frame_data_.size(); ++i) {
+>>>>>>> chromium
     frames[i].complete = frame_data_[i].is_received_;
     frames[i].duration = FrameDurationAtIndex(i);
   }
@@ -244,6 +249,10 @@ sk_sp<PaintImageGenerator> DeferredImageDecoder::CreateGenerator() {
     RecordByteSizeAndWhetherIncrementalDecode(
         image_type, incremental_decode_needed_.value(), image_byte_size);
   }
+<<<<<<< HEAD
+  std::vector<FrameMetadata> frames;
+=======
+>>>>>>> chromium
 
   return generator;
 }

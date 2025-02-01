@@ -128,9 +128,133 @@ bool ExtensionsBrowserClient::IsScreenshotRestricted(
   return false;
 }
 
-bool ExtensionsBrowserClient::IsValidTabId(content::BrowserContext* context,
-                                           int tab_id) const {
+bool ExtensionsBrowserClient::IsValidTabId(
+    content::BrowserContext* browser_context,
+    int tab_id,
+    bool include_incognito,
+    content::WebContents** web_contents) const {
   return false;
 }
 
+<<<<<<< HEAD
+ScriptExecutor* ExtensionsBrowserClient::GetScriptExecutorForTab(
+    content::WebContents& web_contents) {
+  return nullptr;
+}
+
+void ExtensionsBrowserClient::NotifyExtensionApiTabExecuteScript(
+    content::BrowserContext* context,
+    const ExtensionId& extension_id,
+    const std::string& code) const {}
+
+bool ExtensionsBrowserClient::IsExtensionTelemetryServiceEnabled(
+    content::BrowserContext* context) const {
+  return false;
+}
+
+void ExtensionsBrowserClient::NotifyExtensionApiDeclarativeNetRequest(
+    content::BrowserContext* context,
+    const ExtensionId& extension_id,
+    const std::vector<api::declarative_net_request::Rule>& rules) const {}
+
+void ExtensionsBrowserClient::
+    NotifyExtensionDeclarativeNetRequestRedirectAction(
+        content::BrowserContext* context,
+        const ExtensionId& extension_id,
+        const GURL& request_url,
+        const GURL& redirect_url) const {}
+
+bool ExtensionsBrowserClient::IsUsbDeviceAllowedByPolicy(
+    content::BrowserContext* context,
+    const ExtensionId& extension_id,
+    int vendor_id,
+    int product_id) const {
+  return false;
+}
+
+void ExtensionsBrowserClient::GetFavicon(
+    content::BrowserContext* browser_context,
+    const Extension* extension,
+    const GURL& url,
+    base::CancelableTaskTracker* tracker,
+    base::OnceCallback<void(scoped_refptr<base::RefCountedMemory> bitmap_data)>
+        callback) const {}
+
+std::vector<content::BrowserContext*>
+ExtensionsBrowserClient::GetRelatedContextsForExtension(
+    content::BrowserContext* browser_context,
+    const Extension& extension) const {
+  return {browser_context};
+}
+
+void ExtensionsBrowserClient::AddAdditionalAllowedHosts(
+    const PermissionSet& desired_permissions,
+    PermissionSet* granted_permissions) const {}
+
+void ExtensionsBrowserClient::AddAPIActionToActivityLog(
+    content::BrowserContext* browser_context,
+    const ExtensionId& extension_id,
+    const std::string& call_name,
+    base::Value::List args,
+    const std::string& extra) {}
+
+void ExtensionsBrowserClient::AddEventToActivityLog(
+    content::BrowserContext* context,
+    const ExtensionId& extension_id,
+    const std::string& call_name,
+    base::Value::List args,
+    const std::string& extra) {}
+
+void ExtensionsBrowserClient::AddDOMActionToActivityLog(
+    content::BrowserContext* browser_context,
+    const ExtensionId& extension_id,
+    const std::string& call_name,
+    base::Value::List args,
+    const GURL& url,
+    const std::u16string& url_title,
+    int call_type) {}
+
+void ExtensionsBrowserClient::GetWebViewStoragePartitionConfig(
+    content::BrowserContext* browser_context,
+    content::SiteInstance* owner_site_instance,
+    const std::string& partition_name,
+    bool in_memory,
+    base::OnceCallback<void(std::optional<content::StoragePartitionConfig>)>
+        callback) {
+  const GURL& owner_site_url = owner_site_instance->GetSiteURL();
+  auto partition_config = content::StoragePartitionConfig::Create(
+      browser_context, owner_site_url.host(), partition_name, in_memory);
+
+  if (owner_site_url.SchemeIs(extensions::kExtensionScheme)) {
+    const auto& owner_config = owner_site_instance->GetStoragePartitionConfig();
+#if DCHECK_IS_ON()
+    if (browser_context->IsOffTheRecord()) {
+      DCHECK(owner_config.in_memory());
+    }
+#endif
+    if (!owner_config.is_default()) {
+      partition_config.set_fallback_to_partition_domain_for_blob_urls(
+          owner_config.in_memory()
+              ? content::StoragePartitionConfig::FallbackMode::
+                    kFallbackPartitionInMemory
+              : content::StoragePartitionConfig::FallbackMode::
+                    kFallbackPartitionOnDisk);
+      DCHECK_EQ(owner_config,
+                partition_config.GetFallbackForBlobUrls().value());
+    }
+  }
+  std::move(callback).Run(partition_config);
+}
+
+void ExtensionsBrowserClient::CreatePasswordReuseDetectionManager(
+    content::WebContents* web_contents) const {}
+
+media_device_salt::MediaDeviceSaltService*
+ExtensionsBrowserClient::GetMediaDeviceSaltService(
+    content::BrowserContext* context) {
+  return nullptr;
+}
+
+=======
+>>>>>>> chromium
 }  // namespace extensions

@@ -45,21 +45,28 @@ inline bool HasSameAttributes(const Vector<Attribute>& attributes,
 
 ShareableElementData*
 ElementDataCache::CachedShareableElementDataWithAttributes(
+<<<<<<< HEAD
+    const StringImpl* tag_name,
+    const Vector<Attribute, kAttributePrealloc>& attributes) {
+  DCHECK(!attributes.empty());
+=======
     const Vector<Attribute>& attributes) {
   DCHECK(!attributes.IsEmpty());
+>>>>>>> chromium
 
+  unsigned hash = WTF::HashInts(tag_name->GetHash(), AttributeHash(attributes));
   ShareableElementDataCache::ValueType* it =
-      shareable_element_data_cache_.insert(AttributeHash(attributes), nullptr)
+      shareable_element_data_cache_.insert(hash, std::pair(nullptr, nullptr))
           .stored_value;
 
   // FIXME: This prevents sharing when there's a hash collision.
-  if (it->value && !HasSameAttributes(attributes, *it->value))
-    return ShareableElementData::CreateWithAttributes(attributes);
+  if (it->value.second == nullptr || it->value.first != tag_name ||
+      !HasSameAttributes(attributes, *it->value.second)) {
+    it->value.first = tag_name;
+    it->value.second = ShareableElementData::CreateWithAttributes(attributes);
+  }
 
-  if (!it->value)
-    it->value = ShareableElementData::CreateWithAttributes(attributes);
-
-  return it->value.Get();
+  return it->value.second.Get();
 }
 
 ElementDataCache::ElementDataCache() = default;

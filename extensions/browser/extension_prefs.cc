@@ -7,13 +7,24 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <iterator>
 #include <utility>
 
+<<<<<<< HEAD
+#include "base/check.h"
+#include "base/check_op.h"
+#include "base/containers/contains.h"
+#include "base/containers/flat_set.h"
+#include "base/json/values_util.h"
+#include "base/observer_list.h"
+#include "base/stl_util.h"
+=======
 #include "base/containers/contains.h"
 #include "base/containers/cxx20_erase.h"
 #include "base/macros.h"
 #include "base/metrics/histogram_macros.h"
+>>>>>>> chromium
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
@@ -21,7 +32,11 @@
 #include "base/time/clock.h"
 #include "base/time/default_clock.h"
 #include "base/trace_event/trace_event.h"
+<<<<<<< HEAD
+#include "base/values.h"
+=======
 #include "base/util/values/values_util.h"
+>>>>>>> chromium
 #include "build/build_config.h"
 #include "components/content_settings/core/common/content_settings.h"
 #include "components/crx_file/id_util.h"
@@ -32,12 +47,14 @@
 #include "extensions/browser/blocklist_state.h"
 #include "extensions/browser/disable_reason.h"
 #include "extensions/browser/event_router.h"
+#include "extensions/browser/extension_pref_names.h"
 #include "extensions/browser/extension_pref_store.h"
 #include "extensions/browser/extension_prefs_factory.h"
 #include "extensions/browser/extension_prefs_observer.h"
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/extension_util.h"
 #include "extensions/browser/install_flag.h"
+#include "extensions/browser/install_prefs_helper.h"
 #include "extensions/browser/pref_names.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/manifest.h"
@@ -96,7 +113,9 @@ constexpr const char kPrefBlocklistAcknowledged[] = "ack_blacklist";
 // run of this profile.
 constexpr const char kPrefExternalInstallFirstRun[] = "external_first_run";
 
-// A bitmask of all the reasons an extension is disabled.
+// A list of all the reasons an extension is disabled. This used to be a
+// bitflag, but `MaybeMigrateDisableReasonsBitflagToList()` will convert it to a
+// list if it's still a bitflag.
 constexpr const char kPrefDisableReasons[] = "disable_reasons";
 
 // The key for a serialized Time value indicating the start of the day (from the
@@ -169,12 +188,21 @@ constexpr const char kPrefManifestPermissions[] = "manifest_permissions";
 constexpr const char kPrefExplicitHosts[] = "explicit_host";
 constexpr const char kPrefScriptableHosts[] = "scriptable_host";
 
+<<<<<<< HEAD
+// A preference that indicates when an extension was installed/updated.
+// TODO(anunoy): DEPRECATED! Remove after M113.
+// Use kPrefLastUpdateTime instead.
+constexpr const char kPrefDeprecatedInstallTime[] = "install_time";
+=======
 // A preference that indicates when an extension was installed.
 constexpr const char kPrefInstallTime[] = "install_time";
+>>>>>>> chromium
 
 // A preference which saves the creation flags for extensions.
 constexpr const char kPrefCreationFlags[] = "creation_flags";
 
+<<<<<<< HEAD
+=======
 // A preference that indicates whether the extension was installed from the
 // Chrome Web Store.
 constexpr const char kPrefFromWebStore[] = "from_webstore";
@@ -191,14 +219,12 @@ constexpr const char kPrefWasInstalledByDefault[] = "was_installed_by_default";
 // OEM app.
 constexpr const char kPrefWasInstalledByOem[] = "was_installed_by_oem";
 
+>>>>>>> chromium
 // Key for Geometry Cache preference.
 constexpr const char kPrefGeometryCache[] = "geometry_cache";
 
 // A preference that indicates when an extension is last launched.
 constexpr const char kPrefLastLaunchTime[] = "last_launch_time";
-
-// An installation parameter bundled with an extension.
-constexpr const char kPrefInstallParam[] = "install_parameter";
 
 // A list of installed ids and a signature.
 constexpr const char kInstallSignature[] = "extensions.install_signature";
@@ -277,6 +303,42 @@ bool CheckPrefType(PrefType pref_type, const base::Value* value) {
   }
 }
 
+<<<<<<< HEAD
+base::Value::List BitflagToList(int bit_flag) {
+  base::Value::List list;
+  for (int i = 0; i < 32; ++i) {
+    int val = (1 << i);
+    if (bit_flag & val) {
+      list.Append(val);
+    }
+  }
+  return list;
+}
+
+// Serializes |time| as a string value mapped to |key| in |dictionary|.
+void SaveTime(prefs::DictionaryValueUpdate* dictionary,
+              const char* key,
+              const base::Time& time) {
+  if (!dictionary)
+    return;
+
+  dictionary->Set(key, base::TimeToValue(time));
+}
+
+// The opposite of SaveTime. If |key| is not found, this returns an empty Time
+// (is_null() will return true).
+base::Time ReadTime(const base::Value::Dict* dictionary, const char* key) {
+  if (!dictionary)
+    return base::Time();
+
+  if (const base::Value* time_value = dictionary->FindByDottedPath(key))
+    return base::ValueToTime(time_value).value_or(base::Time());
+
+  return base::Time();
+}
+
+=======
+>>>>>>> chromium
 // Provider of write access to a dictionary storing extension prefs.
 class ScopedExtensionPrefUpdate : public prefs::ScopedDictionaryPrefUpdate {
  public:
@@ -949,9 +1011,26 @@ bool ExtensionPrefs::DidExtensionEscalatePermissions(
          HasDisableReason(extension_id, disable_reason::DISABLE_REMOTE_INSTALL);
 }
 
+<<<<<<< HEAD
+int ExtensionPrefs::GetDisableReasons(const ExtensionId& extension_id) const {
+  const base::flat_set<int> reasons_set =
+      ReadDisableReasonsFromPrefs(extension_id);
+  int bitflag = 0;
+  for (int reason : reasons_set) {
+    bitflag |= reason;
+  }
+  return bitflag;
+}
+
+base::flat_set<int> ExtensionPrefs::GetDisableReasons(
+    DisableReasonRawManipulationPasskey,
+    const ExtensionId& extension_id) const {
+  return ReadDisableReasonsFromPrefs(extension_id);
+=======
 int ExtensionPrefs::GetDisableReasons(const std::string& extension_id) const {
   return GetBitMapPrefBits(extension_id, kPrefDisableReasons,
                            disable_reason::DISABLE_NONE);
+>>>>>>> chromium
 }
 
 int ExtensionPrefs::GetBitMapPrefBits(const std::string& extension_id,
@@ -973,19 +1052,112 @@ bool ExtensionPrefs::HasDisableReason(
 void ExtensionPrefs::AddDisableReason(
     const std::string& extension_id,
     disable_reason::DisableReason disable_reason) {
-  AddDisableReasons(extension_id, disable_reason);
+  AddDisableReasons(extension_id, {disable_reason});
 }
 
+<<<<<<< HEAD
+void ExtensionPrefs::AddDisableReasons(
+    const ExtensionId& extension_id,
+    const DisableReasonSet& disable_reasons) {
+  auto passkey = DisableReasonRawManipulationPasskey();
+  AddDisableReasons(passkey, extension_id, disable_reasons);
+}
+
+void ExtensionPrefs::AddDisableReasons(
+    DisableReasonRawManipulationPasskey,
+    const ExtensionId& extension_id,
+    const base::flat_set<int>& incoming_reasons) {
+  DCHECK(!DoesExtensionHaveState(extension_id, Extension::ENABLED) ||
+         blocklist_prefs::IsExtensionBlocklisted(extension_id, this));
+  CHECK(!incoming_reasons.empty());
+  CHECK(!incoming_reasons.contains(disable_reason::DISABLE_UNKNOWN))
+      << "Can not add DISABLE_UNKNOWN to the disable reasons list.";
+
+  const base::flat_set<int> current_reasons =
+      ReadDisableReasonsFromPrefs(extension_id);
+  const base::flat_set<int> new_reasons =
+      base::STLSetUnion<base::flat_set<int>>(current_reasons, incoming_reasons);
+
+  if (new_reasons == current_reasons) {
+    return;
+  }
+
+  WriteDisableReasonsToPrefs(extension_id, new_reasons);
+  NotifyDisableReasonsChanged(extension_id);
+=======
 void ExtensionPrefs::AddDisableReasons(const std::string& extension_id,
                                        int disable_reasons) {
   DCHECK(!DoesExtensionHaveState(extension_id, Extension::ENABLED) ||
          IsExtensionBlocklisted(extension_id));
   ModifyDisableReasons(extension_id, disable_reasons, BIT_MAP_PREF_ADD);
+>>>>>>> chromium
 }
 
 void ExtensionPrefs::RemoveDisableReason(
     const std::string& extension_id,
     disable_reason::DisableReason disable_reason) {
+<<<<<<< HEAD
+  CHECK_NE(disable_reason, disable_reason::DISABLE_NONE);
+
+  base::flat_set<int> current_reasons =
+      ReadDisableReasonsFromPrefs(extension_id);
+
+  if (!current_reasons.contains(disable_reason)) {
+    return;
+  }
+
+  const int removed = current_reasons.erase(disable_reason);
+  DCHECK_GT(removed, 0);
+
+  WriteDisableReasonsToPrefs(extension_id, current_reasons);
+  NotifyDisableReasonsChanged(extension_id);
+}
+
+void ExtensionPrefs::ReplaceDisableReasons(
+    const ExtensionId& extension_id,
+    const DisableReasonSet& disable_reasons) {
+  auto passkey = DisableReasonRawManipulationPasskey();
+  ReplaceDisableReasons(passkey, extension_id, disable_reasons);
+}
+
+void ExtensionPrefs::ReplaceDisableReasons(
+    DisableReasonRawManipulationPasskey,
+    const ExtensionId& extension_id,
+    const base::flat_set<int>& disable_reasons) {
+  const base::flat_set<int> current_disable_reasons =
+      ReadDisableReasonsFromPrefs(extension_id);
+  if (current_disable_reasons == disable_reasons) {
+    return;
+  }
+
+  WriteDisableReasonsToPrefs(extension_id, disable_reasons);
+  NotifyDisableReasonsChanged(extension_id);
+}
+
+void ExtensionPrefs::ClearDisableReasons(const ExtensionId& extension_id) {
+  const base::flat_set<int> current_disable_reasons =
+      ReadDisableReasonsFromPrefs(extension_id);
+
+  if (current_disable_reasons.empty()) {
+    return;
+  }
+
+  WriteDisableReasonsToPrefs(extension_id, {});
+  NotifyDisableReasonsChanged(extension_id);
+}
+
+void ExtensionPrefs::ClearInapplicableDisableReasonsForComponentExtension(
+    const ExtensionId& component_extension_id) {
+  const DisableReasonSet kAllowDisableReasons = {
+      disable_reason::DISABLE_RELOAD,
+      disable_reason::DISABLE_UNSUPPORTED_REQUIREMENT,
+      disable_reason::DISABLE_CORRUPTED, disable_reason::DISABLE_REINSTALL};
+
+  // TODO(crbug.com/372186532): Remove this conversion code after
+  // GetDisableReasons() is migrated to return a `DisableReasonSet`.
+  const DisableReasonSet current_disable_reasons =
+      BitflagToIntegerSet(GetDisableReasons(component_extension_id));
+=======
   ModifyDisableReasons(extension_id, disable_reason, BIT_MAP_PREF_REMOVE);
 }
 
@@ -1013,10 +1185,16 @@ void ExtensionPrefs::ClearInapplicableDisableReasonsForComponentExtension(
   int allowed_disable_reasons = kAllowDisableReasons;
   if (component_extension_id == extension_misc::kCameraAppId)
     allowed_disable_reasons |= disable_reason::DISABLE_BLOCKED_BY_POLICY;
+>>>>>>> chromium
 
   // Some disable reasons incorrectly cause component extensions to never
   // activate on load. See https://crbug.com/946839 for more details on why we
   // do this.
+<<<<<<< HEAD
+  ReplaceDisableReasons(component_extension_id,
+                        base::STLSetIntersection<DisableReasonSet>(
+                            current_disable_reasons, kAllowDisableReasons));
+=======
   ModifyDisableReasons(
       component_extension_id,
       allowed_disable_reasons & GetDisableReasons(component_extension_id),
@@ -1038,6 +1216,7 @@ void ExtensionPrefs::ModifyDisableReasons(const std::string& extension_id,
 
   for (auto& observer : observer_list_)
     observer.OnExtensionDisableReasonsChanged(extension_id, new_value);
+>>>>>>> chromium
 }
 
 void ExtensionPrefs::ModifyBitMapPrefBits(const std::string& extension_id,
@@ -1432,20 +1611,46 @@ void ExtensionPrefs::SetExtensionEnabled(const std::string& extension_id) {
   UpdateExtensionPref(extension_id, kPrefState,
                       std::make_unique<base::Value>(Extension::ENABLED));
   extension_pref_value_map_->SetExtensionState(extension_id, true);
+<<<<<<< HEAD
+  UpdateExtensionPref(extension_id, kPrefDisableReasons, std::nullopt);
+  for (auto& observer : observer_list_) {
+=======
   UpdateExtensionPref(extension_id, kPrefDisableReasons, nullptr);
   for (auto& observer : observer_list_)
+>>>>>>> chromium
     observer.OnExtensionStateChanged(extension_id, true);
+  }
 }
 
+<<<<<<< HEAD
+void ExtensionPrefs::SetExtensionDisabled(
+    const ExtensionId& extension_id,
+    const DisableReasonSet& disable_reasons) {
+  auto passkey = DisableReasonRawManipulationPasskey();
+  SetExtensionDisabled(passkey, extension_id, disable_reasons);
+}
+
+void ExtensionPrefs::SetExtensionDisabled(
+    DisableReasonRawManipulationPasskey,
+    const ExtensionId& extension_id,
+    const base::flat_set<int>& disable_reasons) {
+=======
 void ExtensionPrefs::SetExtensionDisabled(const std::string& extension_id,
                                           int disable_reasons) {
+>>>>>>> chromium
   UpdateExtensionPref(extension_id, kPrefState,
                       std::make_unique<base::Value>(Extension::DISABLED));
   extension_pref_value_map_->SetExtensionState(extension_id, false);
+<<<<<<< HEAD
+  WriteDisableReasonsToPrefs(extension_id, disable_reasons);
+  for (auto& observer : observer_list_) {
+=======
   UpdateExtensionPref(extension_id, kPrefDisableReasons,
                       std::make_unique<base::Value>(disable_reasons));
   for (auto& observer : observer_list_)
+>>>>>>> chromium
     observer.OnExtensionStateChanged(extension_id, false);
+  }
 }
 
 void ExtensionPrefs::SetExtensionBlocklistState(const std::string& extension_id,
@@ -1740,6 +1945,9 @@ ExtensionPrefs::GetAllDelayedInstallInfo() const {
   return extensions_info;
 }
 
+<<<<<<< HEAD
+int ExtensionPrefs::GetCreationFlags(const ExtensionId& extension_id) const {
+=======
 bool ExtensionPrefs::IsFromWebStore(
     const std::string& extension_id) const {
   const base::DictionaryValue* dictionary = GetExtensionPref(extension_id);
@@ -1759,18 +1967,26 @@ bool ExtensionPrefs::IsFromBookmark(
 }
 
 int ExtensionPrefs::GetCreationFlags(const std::string& extension_id) const {
+>>>>>>> chromium
   int creation_flags = Extension::NO_FLAGS;
   if (!ReadPrefAsInteger(extension_id, kPrefCreationFlags, &creation_flags)) {
     // Since kPrefCreationFlags was added later, it will be missing for
     // previously installed extensions.
+<<<<<<< HEAD
+    if (IsFromWebStore(this, extension_id)) {
+=======
     if (IsFromBookmark(extension_id))
       creation_flags |= Extension::FROM_BOOKMARK;
     if (IsFromWebStore(extension_id))
+>>>>>>> chromium
       creation_flags |= Extension::FROM_WEBSTORE;
-    if (WasInstalledByDefault(extension_id))
+    }
+    if (WasInstalledByDefault(this, extension_id)) {
       creation_flags |= Extension::WAS_INSTALLED_BY_DEFAULT;
-    if (WasInstalledByOem(extension_id))
+    }
+    if (WasInstalledByOem(this, extension_id)) {
       creation_flags |= Extension::WAS_INSTALLED_BY_OEM;
+    }
   }
   return creation_flags;
 }
@@ -1785,6 +2001,9 @@ int ExtensionPrefs::GetDelayedInstallCreationFlags(
   return creation_flags;
 }
 
+<<<<<<< HEAD
+bool ExtensionPrefs::DoNotSync(const ExtensionId& extension_id) const {
+=======
 bool ExtensionPrefs::WasInstalledByDefault(
     const std::string& extension_id) const {
   const base::DictionaryValue* dictionary = GetExtensionPref(extension_id);
@@ -1820,6 +2039,7 @@ base::Time ExtensionPrefs::GetInstallTime(
 }
 
 bool ExtensionPrefs::DoNotSync(const std::string& extension_id) const {
+>>>>>>> chromium
   bool do_not_sync;
   if (!ReadPrefAsBoolean(extension_id, kPrefDoNotSync, &do_not_sync))
     return false;
@@ -1982,7 +2202,14 @@ void ExtensionPrefs::DecrementPref(const PrefMap& pref) {
 void ExtensionPrefs::GetExtensions(ExtensionIdList* out) const {
   CHECK(out);
 
+<<<<<<< HEAD
+  const ExtensionsInfo infos = GetInstalledExtensionsInfo();
+  result.reserve(infos.size());
+  std::ranges::transform(infos, std::back_inserter(result),
+                         [](const auto& info) { return info.extension_id; });
+=======
   std::unique_ptr<ExtensionsInfo> extensions_info(GetInstalledExtensionsInfo());
+>>>>>>> chromium
 
   for (size_t i = 0; i < extensions_info->size(); ++i) {
     ExtensionInfo* info = extensions_info->at(i).get();
@@ -1996,6 +2223,73 @@ void ExtensionPrefs::AddObserver(ExtensionPrefsObserver* observer) {
 
 void ExtensionPrefs::RemoveObserver(ExtensionPrefsObserver* observer) {
   observer_list_.RemoveObserver(observer);
+}
+
+void ExtensionPrefs::NotifyDisableReasonsChanged(
+    const ExtensionId& extension_id) {
+  int disable_reasons = GetDisableReasons(extension_id);
+  for (auto& observer : observer_list_) {
+    observer.OnExtensionDisableReasonsChanged(extension_id, disable_reasons);
+  }
+}
+
+base::flat_set<int> ExtensionPrefs::ReadDisableReasonsFromPrefs(
+    const ExtensionId& extension_id) const {
+  const base::Value::List* disable_reasons_list =
+      ReadPrefAsList(extension_id, kPrefDisableReasons);
+  base::flat_set<int> result;
+
+  if (!disable_reasons_list) {
+    return result;
+  }
+
+  for (const base::Value& value : *disable_reasons_list) {
+    if (!value.is_int()) {
+      continue;
+    }
+
+    int reason = value.GetInt();
+    result.insert(reason);
+  }
+
+  return result;
+}
+
+void ExtensionPrefs::WriteDisableReasonsToPrefs(
+    const ExtensionId& extension_id,
+    const base::flat_set<int>& disable_reasons) {
+  // TODO(crbug.com/372186532) This assertion is temporary. Many callers do
+  // this:
+  //
+  // int reasons = GetDisableReasons(extension_id);
+  // ... modify reasons ...
+  // ReplaceDisableReasons(extension_id, reasons);
+  // ... OR ...
+  // SetExtensionDisabled(extension_id, reasons);
+  //
+  // Currently, GetDisableReasons() returns unknown disable reasons, without
+  // collapsing them to DISABLE_UNKNOWN. So, this is not a problem.
+  //
+  // Once GetDisableReasons() starts returning DISABLE_UNKNOWN, this assertion
+  // should be removed. We handle the case when DISABLE_UNKNOWN is passed here
+  // by getting all unknown reasons from the prefs and adding them back to the
+  // set before writing it to the prefs.
+  CHECK(!disable_reasons.contains(disable_reason::DISABLE_UNKNOWN))
+      << "Can not add DISABLE_UNKNOWN to the disable reasons list.";
+
+  base::Value::List to_write;
+
+  for (int value : disable_reasons) {
+    to_write.Append(value);
+  }
+
+  if (to_write.empty()) {
+    UpdateExtensionPref(extension_id, kPrefDisableReasons, std::nullopt);
+    return;
+  }
+
+  UpdateExtensionPref(extension_id, kPrefDisableReasons,
+                      base::Value(std::move(to_write)));
 }
 
 void ExtensionPrefs::InitPrefStore() {
@@ -2294,6 +2588,8 @@ ExtensionPrefs::ExtensionPrefs(
   MigrateYoutubeOffBookmarkApps();
 
   MigrateDeprecatedDisableReasons();
+
+  MaybeMigrateDisableReasonsBitflagToList();
 }
 
 AppSorting* ExtensionPrefs::app_sorting() const {
@@ -2341,6 +2637,19 @@ void ExtensionPrefs::RegisterProfilePrefs(
 #endif
 
   registry->RegisterBooleanPref(pref_names::kBlockExternalExtensions, false);
+<<<<<<< HEAD
+  registry->RegisterIntegerPref(pref_names::kExtensionUnpublishedAvailability,
+                                0);
+  registry->RegisterListPref(pref_names::kExtensionInstallTypeBlocklist);
+  registry->RegisterBooleanPref(
+      kMV2DeprecationWarningAcknowledgedGloballyPref.name, false);
+  registry->RegisterBooleanPref(
+      kMV2DeprecationDisabledAcknowledgedGloballyPref.name, false);
+  registry->RegisterBooleanPref(
+      kMV2DeprecationUnsupportedAcknowledgedGloballyPref.name, false);
+  registry->RegisterStringPref(pref_names::kGlobalShortcutsUuid, std::string());
+=======
+>>>>>>> chromium
 }
 
 template <class ExtensionIdContainer>
@@ -2447,7 +2756,7 @@ void ExtensionPrefs::PopulateExtensionInfoPrefs(
   std::string path = MakePathRelative(install_directory_, extension->path());
   extension_dict->SetString(kPrefPath, path);
   if (!install_parameter.empty()) {
-    extension_dict->SetString(kPrefInstallParam, install_parameter);
+    extension_dict->SetString(kPrefInstallParameter, install_parameter);
   }
   // We store prefs about LOAD extensions, but don't cache their manifest
   // since it may change on disk.
@@ -2471,7 +2780,11 @@ void ExtensionPrefs::InitExtensionControlledPrefs(
   for (const auto& info : extensions_info) {
     const ExtensionId& extension_id = info->extension_id;
 
+<<<<<<< HEAD
+    base::Time install_time = GetLastUpdateTime(this, extension_id);
+=======
     base::Time install_time = GetInstallTime(extension_id);
+>>>>>>> chromium
     bool is_enabled = !IsExtensionDisabled(extension_id);
     bool is_incognito_enabled = IsIncognitoEnabled(extension_id);
     extension_pref_value_map_->RegisterExtension(
@@ -2576,24 +2889,98 @@ void ExtensionPrefs::FinishExtensionInfoPrefs(
 void ExtensionPrefs::MigrateDeprecatedDisableReasons() {
   std::unique_ptr<ExtensionsInfo> extensions_info(GetInstalledExtensionsInfo());
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+  // Perform a post-Lacros cleanup by clearing the old Ash keeplist enforcement.
+  // TODO(crbug.com/380780352): Delete this after the stepping stone and then
+  // remove DEPRECATED_DISABLE_NOT_ASH_KEEPLISTED from the disable_reason enum.
+  for (const auto& info : extensions_info) {
+    const ExtensionId& extension_id = info.extension_id;
+    // TODO(crbug.com/372186532): Remove this conversion code after
+    // GetDisableReasons() is migrated to return a `DisableReasonSet`.
+    const int disable_reasons_legacy_bitflag = GetDisableReasons(extension_id);
+    DisableReasonSet disable_reasons =
+        BitflagToIntegerSet(disable_reasons_legacy_bitflag);
+
+    if (!disable_reasons.contains(
+            disable_reason::DEPRECATED_DISABLE_NOT_ASH_KEEPLISTED)) {
+=======
   for (const auto& info : *extensions_info) {
     const ExtensionId& extension_id = info->extension_id;
     int disable_reasons = GetDisableReasons(extension_id);
     if ((disable_reasons &
          disable_reason::DEPRECATED_DISABLE_UNKNOWN_FROM_SYNC) == 0)
+>>>>>>> chromium
       continue;
-    disable_reasons &= ~disable_reason::DEPRECATED_DISABLE_UNKNOWN_FROM_SYNC;
-    if (disable_reasons == 0) {
+    }
+    disable_reasons.erase(
+        disable_reason::DEPRECATED_DISABLE_NOT_ASH_KEEPLISTED);
+    if (disable_reasons.empty() && IsExtensionDisabled(extension_id)) {
+      SetExtensionEnabled(extension_id);
+    } else {
+      ReplaceDisableReasons(extension_id, disable_reasons);
+    }
+  }
+#endif
+
+  for (const auto& info : extensions_info) {
+    const ExtensionId& extension_id = info.extension_id;
+    // TODO(crbug.com/372186532): Remove this conversion code after
+    // GetDisableReasons() is migrated to return a `DisableReasonSet`.
+    const int disable_reasons_legacy_bitflag = GetDisableReasons(extension_id);
+    DisableReasonSet disable_reasons =
+        BitflagToIntegerSet(disable_reasons_legacy_bitflag);
+
+    if (!disable_reasons.contains(
+            disable_reason::DEPRECATED_DISABLE_UNKNOWN_FROM_SYNC)) {
+      continue;
+    }
+
+    disable_reasons.erase(disable_reason::DEPRECATED_DISABLE_UNKNOWN_FROM_SYNC);
+
+    if (disable_reasons.empty()) {
       // We don't know exactly why the extension was disabled, but we don't
       // want to just suddenly re-enable it. Default to disabling it by the
       // user (which was most likely for coming in from sync, and is
       // reversible).
-      disable_reasons = disable_reason::DISABLE_USER_ACTION;
+      disable_reasons = {disable_reason::DISABLE_USER_ACTION};
     }
     ReplaceDisableReasons(extension_id, disable_reasons);
   }
 }
 
+<<<<<<< HEAD
+void ExtensionPrefs::MaybeMigrateDisableReasonsBitflagToList() {
+  const ExtensionsInfo extensions_info = GetInstalledExtensionsInfo();
+
+  for (const ExtensionInfo& info : extensions_info) {
+    const ExtensionId& extension_id = info.extension_id;
+
+    // We try to get the disable reasons as an integer. If it succeeds, it means
+    // that the bitflag to list migration has not been done yet.
+    int disable_reasons = -1;
+    if (!ReadPrefAsInteger(extension_id, kPrefDisableReasons,
+                           &disable_reasons)) {
+      // Either the migration is complete, or there are no disable reasons.
+      // Nothing to migrate in both the cases.
+      continue;
+    }
+
+    ScopedExtensionPrefUpdate update(prefs_, extension_id);
+
+    if (disable_reasons == disable_reason::DISABLE_NONE) {
+      // Ideally, this shouldn't happen as we always clear the preference when
+      // all disable reasons are removed. If we still reach here, we should
+      // clear the preference.
+      update->Remove(kPrefDisableReasons);
+      continue;
+    }
+
+    base::Value::List disable_reasons_list = BitflagToList(disable_reasons);
+    update->Set(kPrefDisableReasons,
+                base::Value(std::move(disable_reasons_list)));
+  }
+=======
 void ExtensionPrefs::MigrateYoutubeOffBookmarkApps() {
   const base::DictionaryValue* extensions_dictionary =
       prefs_->GetDictionary(pref_names::kExtensions);
@@ -2612,6 +2999,7 @@ void ExtensionPrefs::MigrateYoutubeOffBookmarkApps() {
   ScopedExtensionPrefUpdate update(prefs_, extension_misc::kYoutubeAppId);
   creation_flags &= ~Extension::FROM_BOOKMARK;
   update->SetInteger(kPrefCreationFlags, creation_flags);
+>>>>>>> chromium
 }
 
 void ExtensionPrefs::MigrateObsoleteExtensionPrefs() {
@@ -2720,7 +3108,11 @@ void ExtensionPrefs::MigrateToNewExternalUninstallPref() {
   for (const auto& id : uninstalled_ids) {
     base::Value::ListView list = current_ids->GetList();
     auto existing_entry =
+<<<<<<< HEAD
+        std::ranges::find_if(current_ids, [&id](const base::Value& value) {
+=======
         std::find_if(list.begin(), list.end(), [&id](const base::Value& value) {
+>>>>>>> chromium
           return value.is_string() && value.GetString() == id;
         });
     if (existing_entry == list.end())
@@ -2731,12 +3123,20 @@ void ExtensionPrefs::MigrateToNewExternalUninstallPref() {
 }
 
 bool ExtensionPrefs::ShouldInstallObsoleteComponentExtension(
+<<<<<<< HEAD
+    const ExtensionId& extension_id) {
+  ScopedListPrefUpdate update(prefs_, pref_names::kDeletedComponentExtensions);
+  base::Value::List& current_ids = update.Get();
+  auto existing_entry = std::ranges::find_if(
+      current_ids, [&extension_id](const base::Value& value) {
+=======
     const std::string& extension_id) {
   ListPrefUpdate update(prefs_, pref_names::kDeletedComponentExtensions);
   base::Value* current_ids = update.Get();
   base::Value::ListView list = current_ids->GetList();
   auto existing_entry = std::find_if(
       list.begin(), list.end(), [&extension_id](const base::Value& value) {
+>>>>>>> chromium
         return value.is_string() && value.GetString() == extension_id;
       });
   return (existing_entry == list.end());
@@ -2745,11 +3145,18 @@ bool ExtensionPrefs::ShouldInstallObsoleteComponentExtension(
 void ExtensionPrefs::MarkObsoleteComponentExtensionAsRemoved(
     const std::string& extension_id,
     const ManifestLocation location) {
+<<<<<<< HEAD
+  ScopedListPrefUpdate update(prefs_, pref_names::kDeletedComponentExtensions);
+  base::Value::List& current_ids = update.Get();
+  auto existing_entry = std::ranges::find_if(
+      current_ids, [&extension_id](const base::Value& value) {
+=======
   ListPrefUpdate update(prefs_, pref_names::kDeletedComponentExtensions);
   base::Value* current_ids = update.Get();
   base::Value::ListView list = current_ids->GetList();
   auto existing_entry = std::find_if(
       list.begin(), list.end(), [&extension_id](const base::Value& value) {
+>>>>>>> chromium
         return value.is_string() && value.GetString() == extension_id;
       });
   // This should only be called once per extension.

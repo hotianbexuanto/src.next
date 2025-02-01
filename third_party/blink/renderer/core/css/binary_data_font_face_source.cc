@@ -44,8 +44,16 @@ scoped_refptr<SimpleFontData> BinaryDataFontFaceSource::CreateFontData(
           font_description.IsSyntheticItalic(),
           font_description.GetFontSelectionRequest(),
           font_selection_capabilities, font_description.FontOpticalSizing(),
+<<<<<<< HEAD
+          font_description.TextRendering(),
+          font_description.ResolveFontFeatures(),
+          font_description.Orientation(), font_description.VariationSettings(),
+          font_description.GetFontPalette()),
+      MakeGarbageCollected<CustomFontData>());
+=======
           font_description.Orientation(), font_description.VariationSettings()),
       CustomFontData::Create());
+>>>>>>> chromium
 }
 
 }  // namespace blink

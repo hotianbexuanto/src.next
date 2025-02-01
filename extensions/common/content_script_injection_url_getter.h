@@ -5,9 +5,14 @@
 #ifndef EXTENSIONS_COMMON_CONTENT_SCRIPT_INJECTION_URL_GETTER_H_
 #define EXTENSIONS_COMMON_CONTENT_SCRIPT_INJECTION_URL_GETTER_H_
 
+<<<<<<< HEAD
+#include "extensions/common/frame_context_data.h"
+#include "extensions/common/mojom/match_origin_as_fallback.mojom-forward.h"
+=======
 #include <memory>
 
 #include "extensions/common/script_constants.h"
+>>>>>>> chromium
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -42,7 +47,7 @@ class ContentScriptInjectionUrlGetter {
 
   static GURL Get(const FrameAdapter& frame,
                   const GURL& document_url,
-                  MatchOriginAsFallbackBehavior match_origin_as_fallback,
+                  mojom::MatchOriginAsFallbackBehavior match_origin_as_fallback,
                   bool allow_inaccessible_parents);
 };
 

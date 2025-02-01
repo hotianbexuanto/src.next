@@ -342,6 +342,19 @@ void ThemeHelperMac::LoadSystemColors() {
   base::span<SkColor> values = writable_color_map_.GetMemoryAsSpan<SkColor>(
       blink::kMacSystemColorIDCount * blink::kMacSystemColorSchemeCount);
 
+<<<<<<< HEAD
+  [[NSAppearance appearanceNamed:NSAppearanceNameAqua]
+      performAsCurrentDrawingAppearance:^{
+        LoadSystemColorsForCurrentAppearance(
+            values.first<blink::kMacSystemColorIDCount>());
+      }];
+  [[NSAppearance appearanceNamed:NSAppearanceNameDarkAqua]
+      performAsCurrentDrawingAppearance:^{
+        LoadSystemColorsForCurrentAppearance(
+            values.subspan<blink::kMacSystemColorIDCount,
+                           blink::kMacSystemColorIDCount>());
+      }];
+=======
   NSAppearance* savedAppearance;
   if (@available(macOS 10.14, *)) {
     savedAppearance = [NSAppearance currentAppearance];
@@ -367,6 +380,7 @@ void ThemeHelperMac::LoadSystemColors() {
 
   if (@available(macOS 10.14, *))
     [NSAppearance setCurrentAppearance:savedAppearance];
+>>>>>>> chromium
 }
 
 void ThemeHelperMac::Observe(int type,

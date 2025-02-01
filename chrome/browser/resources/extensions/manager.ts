@@ -25,6 +25,26 @@ import './toolbar.js';
 import './kiosk_dialog.js';
 // </if>
 
+<<<<<<< HEAD
+import {CrContainerShadowMixinLit} from 'chrome://resources/cr_elements/cr_container_shadow_mixin_lit.js';
+import {getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
+import type {CrViewManagerElement} from 'chrome://resources/cr_elements/cr_view_manager/cr_view_manager.js';
+import {I18nMixinLit} from 'chrome://resources/cr_elements/i18n_mixin_lit.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
+import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+
+import type {ActivityLogExtensionPlaceholder} from './activity_log/activity_log.js';
+import type {ExtensionsDetailViewElement} from './detail_view.js';
+import type {ExtensionsItemListElement} from './item_list.js';
+import {TOAST_DURATION_MS} from './item_util.js';
+import {getCss} from './manager.css.js';
+import {getHtml} from './manager.html.js';
+import type {PageState} from './navigation_helper.js';
+import {Dialog, navigation, Page} from './navigation_helper.js';
+=======
 import {assert, assertNotReached} from 'chrome://resources/js/assert.m.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.m.js';
 import {html, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
@@ -36,6 +56,7 @@ import {ExtensionsDetailViewElement} from './detail_view.js';
 import {KioskBrowserProxyImpl} from './kiosk_browser_proxy.js';
 // </if>
 import {Dialog, navigation, Page, PageState} from './navigation_helper.js';
+>>>>>>> chromium
 import {Service} from './service.js';
 
 /**
@@ -78,7 +99,16 @@ interface ExtensionsManagerElement {
   };
 }
 
+<<<<<<< HEAD
+// TODO(crbug.com/40270029): Always show a top shadow for the DETAILS, ERRORS and
+// SITE_PERMISSIONS_ALL_SITES pages.
+const ExtensionsManagerElementBase =
+    I18nMixinLit(CrContainerShadowMixinLit(CrLitElement));
+
+export class ExtensionsManagerElement extends ExtensionsManagerElementBase {
+=======
 class ExtensionsManagerElement extends PolymerElement {
+>>>>>>> chromium
   static get is() {
     return 'extensions-manager';
   }
@@ -339,6 +369,17 @@ class ExtensionsManagerElement extends PolymerElement {
           this.updateItem_(listId, currentIndex, eventData.extensionInfo);
         } else {
           this.addItem_(listId, eventData.extensionInfo);
+        }
+
+        // This is likely to trigger multiple times (one for each extension
+        // that's disabled. That's fine; we'll only show the toast for the first
+        // one, since we check first if it's open.
+        const toastManager = getToastManager();
+        if (this.showUnsupportedDeveloperExtensionDisabledToast_(
+                eventData.event_type, eventData.extensionInfo) &&
+            !toastManager.isToastOpen) {
+          toastManager.duration = TOAST_DURATION_MS;
+          toastManager.show(this.i18n('itemUnsupportedDeveloperModeToast'));
         }
         break;
       case EventType.UNINSTALLED:
@@ -645,6 +686,28 @@ class ExtensionsManagerElement extends PolymerElement {
     this.installWarnings_ = null;
     this.showInstallWarningsDialog_ = false;
   }
+<<<<<<< HEAD
+
+  /**
+   * Show a toast when an unpacked extension becomes disabled when the user is
+   * not in developer mode.
+   */
+  private showUnsupportedDeveloperExtensionDisabledToast_(
+      eventType: chrome.developerPrivate.EventType,
+      extensionInfo: chrome.developerPrivate.ExtensionInfo): boolean {
+    if (eventType !== chrome.developerPrivate.EventType.UNLOADED) {
+      return false;
+    }
+
+    return !this.inDevMode &&
+        extensionInfo.state ===
+        chrome.developerPrivate.ExtensionState.DISABLED &&
+        extensionInfo.location === chrome.developerPrivate.Location.UNPACKED &&
+        extensionInfo.disableReasons.unsupportedDeveloperExtension;
+  }
+}
+=======
+>>>>>>> chromium
 
   // <if expr="chromeos">
   private onKioskTap_() {

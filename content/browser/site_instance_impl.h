@@ -497,6 +497,44 @@ class CONTENT_EXPORT SiteInstanceImpl final : public SiteInstance,
   // GetRelatedSiteInstance (overridden from SiteInstance).
   scoped_refptr<SiteInstanceImpl> GetRelatedSiteInstanceImpl(
       const UrlInfo& url_info);
+<<<<<<< HEAD
+
+  // Returns a SiteInstance in the same SiteInstanceGroup as `this` if possible.
+  // This function may return an existing SiteInstance (possibly in a different
+  // group), or create a SiteInstance in `site_instance_group_`.
+  scoped_refptr<SiteInstanceImpl> GetMaybeGroupRelatedSiteInstanceImpl(
+      const UrlInfo& url_info);
+
+  // This function is used during navigation to get a SiteInstance in the same
+  // CoopRelatedGroup. If the provided `url_info` matches one of the existing
+  // BrowsingInstance of that group, a new or already existing SiteInstance in
+  // that BrowsingInstance, will be picked. Therefore returning the same
+  // SiteInstance is possible, if called with perfectly matching `url_info`.
+  scoped_refptr<SiteInstanceImpl> GetCoopRelatedSiteInstanceImpl(
+      const UrlInfo& url_info);
+
+  bool IsSameSiteWithURLInfo(const UrlInfo& url_info);
+
+  // Returns an AgentSchedulingGroupHost, or creates one if
+  // `site_instance_group_` doesn't have one.
+  AgentSchedulingGroupHost& GetOrCreateAgentSchedulingGroup();
+
+  // Set the group this SiteInstance belongs in.
+  void SetSiteInstanceGroup(SiteInstanceGroup* group);
+
+  // Resets the `site_instance_group_` refptr, and must be called when its
+  // RenderProcessHost goes away. `site_instance_group_` can be reassigned later
+  // as needed.
+  void ResetSiteInstanceGroup();
+
+  // SiteInstance implementation.
+  SiteInstanceId GetId() override;
+  BrowsingInstanceId GetBrowsingInstanceId() override;
+  bool HasProcess() override;
+  RenderProcessHost* GetProcess() override;
+  RenderProcessHost* GetOrCreateProcess() override;
+  SiteInstanceGroupId GetSiteInstanceGroupId() override;
+=======
   bool IsSameSiteWithURLInfo(const UrlInfo& url_info);
 
   // SiteInstance interface overrides.
@@ -504,6 +542,7 @@ class CONTENT_EXPORT SiteInstanceImpl final : public SiteInstance,
   int32_t GetBrowsingInstanceId() override;
   bool HasProcess() override;
   RenderProcessHost* GetProcess() override;
+>>>>>>> chromium
   BrowserContext* GetBrowserContext() override;
   const GURL& GetSiteURL() override;
   scoped_refptr<SiteInstance> GetRelatedSiteInstance(const GURL& url) override;
@@ -706,18 +745,23 @@ class CONTENT_EXPORT SiteInstanceImpl final : public SiteInstance,
   // that, unlike active_frame_count, this does not count pending RFHs.
   void DecrementRelatedActiveContentsCount();
 
+<<<<<<< HEAD
+  // Whether GetOrCreateProcess() method (when it needs to find a new process to
+=======
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
 
   // Whether GetProcess() method (when it needs to find a new process to
+>>>>>>> chromium
   // associate with the current SiteInstanceImpl) can return a spare process.
   bool CanAssociateWithSpareProcess();
 
   // Has no effect if the SiteInstanceImpl already has a |process_|.
-  // Otherwise, prevents GetProcess() from associating this SiteInstanceImpl
-  // with the spare RenderProcessHost - instead GetProcess will either need to
-  // create a new, not-yet-initialized/spawned RenderProcessHost or will need to
-  // reuse one of existing RenderProcessHosts.
+  // Otherwise, prevents GetOrCreateProcess() from associating this
+  // SiteInstanceImpl with the spare RenderProcessHost - instead
+  // GetOrCreateProcess will either need to create a new,
+  // not-yet-initialized/spawned RenderProcessHost or will need to reuse one of
+  // existing RenderProcessHosts.
   //
   // See also:
   // - https://crbug.com/840409.
@@ -899,6 +943,12 @@ class CONTENT_EXPORT SiteInstanceImpl final : public SiteInstance,
   // BrowsingInstance to which this SiteInstance belongs.
   scoped_refptr<BrowsingInstance> browsing_instance_;
 
+<<<<<<< HEAD
+  // Describes the desired behavior when GetOrCreateProcess() method needs to
+  // find a new process to associate with the current SiteInstanceImpl.  If
+  // |false|, then prevents the spare RenderProcessHost from being taken and
+  // stored in |process_|.
+=======
   // Current RenderProcessHost that is rendering pages for this SiteInstance,
   // and AgentSchedulingGroupHost (within the process) this SiteInstance belongs
   // to. Since AgentSchedulingGroupHost is associated with a specific
@@ -914,6 +964,7 @@ class CONTENT_EXPORT SiteInstanceImpl final : public SiteInstance,
   // process to associate with the current SiteInstanceImpl.  If |false|, then
   // prevents the spare RenderProcessHost from being taken and stored in
   // |process_|.
+>>>>>>> chromium
   bool can_associate_with_spare_process_;
 
   // The SiteInfo that this SiteInstance is rendering pages for.

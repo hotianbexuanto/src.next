@@ -32,8 +32,17 @@ scoped_refptr<const Extension> CreateExtension(const std::string& id) {
 
 class ExtensionMigratorTest : public ExtensionServiceTestBase {
  public:
+<<<<<<< HEAD
+  ExtensionMigratorTest() = default;
+
+  ExtensionMigratorTest(const ExtensionMigratorTest&) = delete;
+  ExtensionMigratorTest& operator=(const ExtensionMigratorTest&) = delete;
+
+  ~ExtensionMigratorTest() override = default;
+=======
   ExtensionMigratorTest() {}
   ~ExtensionMigratorTest() override {}
+>>>>>>> chromium
 
  protected:
   void InitWithExistingProfile() {

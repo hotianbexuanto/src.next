@@ -17,9 +17,15 @@ namespace external_intents {
 namespace {
 
 // Array of features exposed through the Java ExternalIntentsFeatures API.
+<<<<<<< HEAD
+const base::Feature* const kFeaturesExposedToJava[] = {
+    &kExternalNavigationDebugLogs, &kBlockFrameRenavigations,
+    &kBlockIntentsToSelf, &kTrustedClientGestureBypass};
+=======
 const base::Feature* kFeaturesExposedToJava[] = {
     &kIntentBlockExternalFormRedirectsNoGesture,
 };
+>>>>>>> chromium
 
 }  // namespace
 

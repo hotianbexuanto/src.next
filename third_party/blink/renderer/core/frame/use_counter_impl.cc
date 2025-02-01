@@ -26,7 +26,12 @@
 #include "third_party/blink/renderer/core/frame/use_counter_impl.h"
 
 #include "base/metrics/histogram_macros.h"
+<<<<<<< HEAD
+#include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink.h"
+#include "third_party/blink/public/common/scheme_registry.h"
+=======
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink.h"
+>>>>>>> chromium
 #include "third_party/blink/public/mojom/use_counter/use_counter_feature.mojom-blink.h"
 #include "third_party/blink/renderer/core/css/css_style_sheet.h"
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
@@ -197,6 +202,27 @@ void UseCounterImpl::Count(WebFeature web_feature,
         source_frame);
 }
 
+<<<<<<< HEAD
+void UseCounterImpl::CountWebDXFeature(WebDXFeature web_feature,
+                                       const LocalFrame* source_frame) {
+  // PageVisits is reserved as a scaling factor.
+  DCHECK_NE(web_feature, WebDXFeature::kPageVisits);
+  DCHECK_LE(web_feature, WebDXFeature::kMaxValue);
+
+  Count({mojom::blink::UseCounterFeatureType::kWebDXFeature,
+         static_cast<uint32_t>(web_feature)},
+        source_frame);
+}
+
+void UseCounterImpl::CountPermissionsPolicyUsage(
+    network::mojom::PermissionsPolicyFeature feature,
+    PermissionsPolicyUsageType usage_type,
+    const LocalFrame& source_frame) {
+  DCHECK_NE(network::mojom::PermissionsPolicyFeature::kNotFound, feature);
+
+  Count({ToFeatureType(usage_type), static_cast<uint32_t>(feature)},
+        &source_frame);
+=======
 void UseCounterImpl::CountPermissionsPolicyViolation(
     mojom::blink::PermissionsPolicyFeature feature,
     const LocalFrame& source_frame) {
@@ -205,6 +231,7 @@ void UseCounterImpl::CountPermissionsPolicyViolation(
       {mojom::blink::UseCounterFeatureType::kPermissionsPolicyViolationEnforce,
        static_cast<uint32_t>(feature)},
       &source_frame);
+>>>>>>> chromium
 }
 
 void UseCounterImpl::NotifyFeatureCounted(WebFeature feature) {

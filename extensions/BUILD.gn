@@ -9,10 +9,36 @@ import("//tools/grit/grit_rule.gni")
 import("//tools/grit/repack.gni")
 import("//ui/base/ui_features.gni")
 
+<<<<<<< HEAD
+assert(enable_extensions_core)
+
+# If enable_extensions is true then enable_guest_view must also be true.
+assert(!enable_extensions || enable_guest_view)
+
+if (is_component_build) {
+  component("extensions") {
+    visibility = [
+      "//extensions/common:common_constants",
+      "//extensions/common:export",
+      "//extensions/common:extension_features",
+    ]
+    public_deps = [
+      "//extensions/common:constants_impl",
+      "//extensions/common:export_impl",
+    ]
+  }
+}
+
+# Used by targets that compile into the implementation.
+config("component_implementation") {
+  defines = [ "EXTENSIONS_COMPONENT_IMPLEMENTATION" ]
+}
+=======
 assert(enable_extensions)
 assert(
     !(enable_autofill_assistant_api && is_official_build),
     "The AutofillAssistant Extension API must be disabled in official builds.")
+>>>>>>> chromium
 
 group("extensions_resources") {
   public_deps = [

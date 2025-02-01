@@ -11,6 +11,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+<<<<<<< HEAD
+#include <bit>
+#include <concepts>
+=======
+>>>>>>> chromium
 #include <type_traits>
 
 #include "base/check.h"
@@ -24,6 +29,36 @@
 namespace base {
 namespace bits {
 
+<<<<<<< HEAD
+// We want to migrate all users of these functions to use the unsigned type
+// versions of the functions, but until they are all moved over, create a
+// concept that captures all the types that must be supported for compatibility
+// but that we want to remove.
+//
+// TODO(crbug.com/40256225): Switch uses to supported functions and
+// remove.
+template <typename T>
+concept SignedIntegerDeprecatedDoNotUse =
+    std::integral<T> && !UnsignedInteger<T>;
+
+// Round down |size| to a multiple of alignment, which must be a power of two.
+template <typename T>
+  requires UnsignedInteger<T>
+inline constexpr T AlignDown(T size, T alignment) {
+  DCHECK(std::has_single_bit(alignment));
+  return size & ~(alignment - 1);
+}
+
+// Round down |size| to a multiple of alignment, which must be a power of two.
+// DEPRECATED; use the UnsignedInteger version.
+//
+// TODO(crbug.com/40256225): Switch uses and remove.
+template <typename T>
+inline constexpr auto AlignDownDeprecatedDoNotUse(T size, T alignment) {
+  using U = std::make_unsigned_t<T>;
+  DCHECK(std::has_single_bit(static_cast<U>(alignment)));
+  return static_cast<U>(size) & ~static_cast<U>(alignment - 1);
+=======
 // Returns true iff |value| is a power of 2.
 template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
 constexpr bool IsPowerOfTwo(T value) {
@@ -40,6 +75,7 @@ constexpr bool IsPowerOfTwo(T value) {
 inline constexpr size_t AlignDown(size_t size, size_t alignment) {
   DCHECK(IsPowerOfTwo(alignment));
   return size & ~(alignment - 1);
+>>>>>>> chromium
 }
 
 // Move |ptr| back to the previous multiple of alignment, which must be a power
@@ -51,9 +87,29 @@ inline T* AlignDown(T* ptr, size_t alignment) {
 }
 
 // Round up |size| to a multiple of alignment, which must be a power of two.
+<<<<<<< HEAD
+template <typename T>
+  requires UnsignedInteger<T>
+inline constexpr T AlignUp(T size, T alignment) {
+  DCHECK(std::has_single_bit(alignment));
+  return (size + alignment - 1) & ~(alignment - 1);
+}
+
+// Round up |size| to a multiple of alignment, which must be a power of two.
+// DEPRECATED; use the UnsignedInteger version.
+//
+// TODO(crbug.com/40256225): Switch uses and remove.
+template <typename T>
+  requires SignedIntegerDeprecatedDoNotUse<T>
+inline constexpr T AlignUpDeprecatedDoNotUse(T size, T alignment) {
+  using U = std::make_unsigned_t<T>;
+  DCHECK(std::has_single_bit(static_cast<U>(alignment)));
+  return static_cast<U>(size + alignment - 1) & ~static_cast<U>(alignment - 1);
+=======
 inline constexpr size_t AlignUp(size_t size, size_t alignment) {
   DCHECK(IsPowerOfTwo(alignment));
   return (size + alignment - 1) & ~(alignment - 1);
+>>>>>>> chromium
 }
 
 // Advance |ptr| to the next multiple of alignment, which must be a power of

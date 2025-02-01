@@ -103,7 +103,17 @@ class ChildProcessLauncherHelper :
 #endif
       mojo::OutgoingInvitation mojo_invitation,
       const mojo::ProcessErrorCallback& process_error_callback,
+<<<<<<< HEAD
+      std::unique_ptr<ChildProcessLauncherFileData> file_data,
+      scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+          histogram_memory_region,
+      scoped_refptr<base::RefCountedData<base::ReadOnlySharedMemoryRegion>>
+          tracing_config_memory_region,
+      scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+          tracing_output_memory_region);
+=======
       std::map<std::string, base::FilePath> files_to_preload);
+>>>>>>> chromium
 
   // The methods below are defined in the order they are called.
 
@@ -252,6 +262,35 @@ class ChildProcessLauncherHelper :
 #if defined(OS_FUCHSIA)
   std::unique_ptr<sandbox::policy::SandboxPolicyFuchsia> sandbox_policy_;
 #endif
+<<<<<<< HEAD
+
+#if BUILDFLAG(IS_WIN)
+  // Only valid if the host process has logging enabled.
+  base::win::ScopedHandle log_handle_;
+#endif
+
+  // Histogram shared memory region. Ownership of the memory region object is
+  // shared with the process host which runs, and is destroyed, asynchronously.
+  scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+      histogram_memory_region_;
+
+  // Startup tracing config shared memory region. Ownership of the memory region
+  // object is shared with the process host which runs, and is destroyed,
+  // asynchronously.
+  scoped_refptr<base::RefCountedData<base::ReadOnlySharedMemoryRegion>>
+      tracing_config_memory_region_;
+
+  // Startup tracing output shared memory region. Ownership of the memory region
+  // object is shared with the process host which runs, and is destroyed,
+  // asynchronously.
+  scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+      tracing_output_memory_region_;
+
+  // Creation time of the helper, used for metrics.
+  // TODO(crbug.com/40287847): Remove when parallel launching is finished.
+  base::TimeTicks init_start_time_;
+=======
+>>>>>>> chromium
 };
 
 }  // namespace internal

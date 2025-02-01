@@ -8,24 +8,47 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
 
+<<<<<<< HEAD
+import org.jni_zero.CalledByNative;
+
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
+import org.chromium.build.BuildConfig;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.base.annotations.CalledByNative;
+>>>>>>> chromium
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
+<<<<<<< HEAD
+/** Helper methods to deal with threading related tasks. */
+@NullMarked
+=======
 /**
  * Helper methods to deal with threading related tasks.
  */
+>>>>>>> chromium
 public class ThreadUtils {
 
     private static final Object sLock = new Object();
 
     private static boolean sWillOverride;
 
+<<<<<<< HEAD
+    private static volatile @Nullable Handler sUiThreadHandler;
+
+    private static @Nullable Throwable sUiThreadInitializer;
+    private static boolean sThreadAssertsDisabledForTesting;
+    private static @Nullable Thread sInstrumentationThreadForTesting;
+=======
     private static Handler sUiThreadHandler;
 
     private static boolean sThreadAssertsDisabled;
+>>>>>>> chromium
 
     /**
      * A helper object to ensure that interactions with a particular object only happens on a
@@ -64,7 +87,21 @@ public class ThreadUtils {
      * </pre>
      */
     public static class ThreadChecker {
+<<<<<<< HEAD
+        private @Nullable Thread mThread;
+
+        public ThreadChecker() {
+            resetThreadId();
+        }
+
+        public void resetThreadId() {
+            if (BuildConfig.ENABLE_ASSERTS) {
+                mThread = Thread.currentThread();
+            }
+        }
+=======
         private final long mThreadId = Process.myTid();
+>>>>>>> chromium
 
         /**
          * Asserts that the current thread is the same as the one the ThreadChecker was constructed
@@ -114,6 +151,11 @@ public class ThreadUtils {
         if (createdHandler) {
             TraceEvent.onUiThreadReady();
         }
+<<<<<<< HEAD
+        setUiThread(Looper.getMainLooper());
+        assert sUiThreadHandler != null;
+=======
+>>>>>>> chromium
         return sUiThreadHandler;
     }
 
@@ -176,6 +218,10 @@ public class ThreadUtils {
      * @return The result of the callable
      * @throws ExecutionException c's exception
      */
+<<<<<<< HEAD
+    public static <T extends @Nullable Object> T runOnUiThreadBlocking(Callable<T> c) {
+        return PostTask.runSynchronously(TaskTraits.UI_DEFAULT, c);
+=======
     @Deprecated
     public static <T> T runOnUiThreadBlocking(Callable<T> c) throws ExecutionException {
         FutureTask<T> task = new FutureTask<T>(c);
@@ -185,6 +231,7 @@ public class ThreadUtils {
         } catch (InterruptedException e) {
             throw new RuntimeException("Interrupted waiting for callable", e);
         }
+>>>>>>> chromium
     }
 
     /**
@@ -199,6 +246,10 @@ public class ThreadUtils {
      * @param task The FutureTask to run
      * @return The queried task (to aid inline construction)
      */
+<<<<<<< HEAD
+    public static <T extends @Nullable Object> FutureTask<T> runOnUiThread(FutureTask<T> task) {
+        PostTask.runOrPostTask(TaskTraits.UI_DEFAULT, task);
+=======
     @Deprecated
     public static <T> FutureTask<T> runOnUiThread(FutureTask<T> task) {
         if (runningOnUiThread()) {
@@ -206,6 +257,7 @@ public class ThreadUtils {
         } else {
             postOnUiThread(task);
         }
+>>>>>>> chromium
         return task;
     }
 
@@ -258,9 +310,14 @@ public class ThreadUtils {
      * @param task The FutureTask to run
      * @return The queried task (to aid inline construction)
      */
+<<<<<<< HEAD
+    public static <T extends @Nullable Object> FutureTask<T> postOnUiThread(FutureTask<T> task) {
+        PostTask.postTask(TaskTraits.UI_DEFAULT, task);
+=======
     @Deprecated
     public static <T> FutureTask<T> postOnUiThread(FutureTask<T> task) {
         getUiThreadHandler().post(task);
+>>>>>>> chromium
         return task;
     }
 

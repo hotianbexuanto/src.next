@@ -4,6 +4,7 @@
 
 #include "chrome/browser/extensions/extension_action_runner.h"
 
+#include <algorithm>
 #include <memory>
 #include <tuple>
 
@@ -13,10 +14,16 @@
 #include "base/containers/contains.h"
 #include "base/location.h"
 #include "base/metrics/histogram_macros.h"
+<<<<<<< HEAD
+#include "base/task/single_thread_task_runner.h"
+#include "chrome/browser/extensions/api/side_panel/side_panel_service.h"
+#include "chrome/browser/extensions/extension_action_dispatcher.h"
+=======
 #include "base/single_thread_task_runner.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "chrome/browser/extensions/active_tab_permission_granter.h"
 #include "chrome/browser/extensions/api/extension_action/extension_action_api.h"
+>>>>>>> chromium
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/extensions/permissions_updater.h"
 #include "chrome/browser/extensions/scripting_permissions_modifier.h"
@@ -66,8 +73,7 @@ ExtensionActionRunner::ExtensionActionRunner(content::WebContents* web_contents)
       num_page_requests_(0),
       browser_context_(web_contents->GetBrowserContext()),
       was_used_on_page_(false),
-      ignore_active_tab_granted_(false),
-      test_observer_(nullptr) {
+      ignore_active_tab_granted_(false) {
   CHECK(web_contents);
   extension_registry_observation_.Observe(
       ExtensionRegistry::Get(browser_context_));
@@ -128,10 +134,24 @@ ExtensionAction::ShowAction ExtensionActionRunner::RunAction(
   return ExtensionAction::ACTION_NONE;
 }
 
+<<<<<<< HEAD
+// TODO(crbug.com/40883928): Consider moving this to SitePermissionsHelper since
+// it's more about permissions than running an action.
+void ExtensionActionRunner::GrantTabPermissions(
+    const std::vector<const Extension*>& extensions) {
+  SitePermissionsHelper permissions_helper(
+      Profile::FromBrowserContext(browser_context_));
+  bool refresh_required = std::ranges::any_of(
+      extensions, [this, &permissions_helper](const Extension* extension) {
+        return permissions_helper.PageNeedsRefreshToRun(
+            GetBlockedActions(extension->id()));
+      });
+=======
 void ExtensionActionRunner::HandlePageAccessModified(const Extension* extension,
                                                      PageAccess current_access,
                                                      PageAccess new_access) {
   DCHECK_NE(current_access, new_access);
+>>>>>>> chromium
 
   // If we are restricting page access, just change permissions.
   if (new_access == PageAccess::RUN_ON_CLICK) {
@@ -139,7 +159,20 @@ void ExtensionActionRunner::HandlePageAccessModified(const Extension* extension,
     return;
   }
 
+<<<<<<< HEAD
+  // Every extension that was granted tab permission should currently have
+  // "on click" site access, but extension actions are still blocked as page
+  // hasn't been refreshed yet.
+  const GURL& url = web_contents()->GetLastCommittedURL();
+  auto* permissions_manager = PermissionsManager::Get(browser_context_);
+  DCHECK(std::ranges::all_of(
+      extensions, [url, &permissions_manager](const Extension* extension) {
+        return permissions_manager->GetUserSiteAccess(*extension, url) ==
+               PermissionsManager::UserSiteAccess::kOnClick;
+      }));
+=======
   int blocked_actions = GetBlockedActions(extension);
+>>>>>>> chromium
 
   // Refresh the page if there are pending actions which mandate a refresh.
   if (blocked_actions & kRefreshRequiredActionsMask) {
@@ -173,8 +206,14 @@ void ExtensionActionRunner::OnWebRequestBlocked(const Extension* extension) {
   if (inserted)
     NotifyChange(extension);
 
+<<<<<<< HEAD
+  for (TestObserver& observer : test_observers_) {
+    observer.OnBlockedActionAdded();
+  }
+=======
   if (test_observer_)
     test_observer_->OnBlockedActionAdded();
+>>>>>>> chromium
 }
 
 int ExtensionActionRunner::GetBlockedActions(const Extension* extension) {
@@ -255,8 +294,14 @@ void ExtensionActionRunner::RequestScriptInjection(
 
   was_used_on_page_ = true;
 
+<<<<<<< HEAD
+  for (TestObserver& observer : test_observers_) {
+    observer.OnBlockedActionAdded();
+  }
+=======
   if (test_observer_)
     test_observer_->OnBlockedActionAdded();
+>>>>>>> chromium
 }
 
 void ExtensionActionRunner::RunPendingScriptsForExtension(
@@ -324,6 +369,14 @@ void ExtensionActionRunner::OnRequestScriptInjectionPermission(
       // "no"). Just let the request fizzle and die.
       break;
   }
+}
+
+void ExtensionActionRunner::AddObserver(TestObserver* observer) {
+  test_observers_.AddObserver(observer);
+}
+
+void ExtensionActionRunner::RemoveObserver(TestObserver* observer) {
+  test_observers_.RemoveObserver(observer);
 }
 
 void ExtensionActionRunner::NotifyChange(const Extension* extension) {

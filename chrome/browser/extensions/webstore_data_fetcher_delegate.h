@@ -50,7 +50,7 @@ class WebstoreDataFetcherDelegate {
   static const char kInvalidWebstoreResponseError[];
 
  protected:
-  virtual ~WebstoreDataFetcherDelegate() {}
+  virtual ~WebstoreDataFetcherDelegate() = default;
 };
 
 }  // namespace extensions

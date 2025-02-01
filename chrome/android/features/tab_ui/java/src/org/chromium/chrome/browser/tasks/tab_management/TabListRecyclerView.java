@@ -36,12 +36,21 @@ import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+<<<<<<< HEAD
+import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.chrome.browser.tab_ui.RecyclerViewPosition;
+import org.chromium.chrome.browser.tabmodel.TabModel;
+import org.chromium.chrome.tab_ui.R;
+import org.chromium.ui.animation.RunOnNextLayout;
+import org.chromium.ui.animation.RunOnNextLayoutDelegate;
+=======
 import org.chromium.base.Log;
 import org.chromium.chrome.browser.flags.CachedFeatureFlags;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.ui.interpolators.BakedBezierInterpolator;
+>>>>>>> chromium
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 import org.chromium.ui.resources.dynamics.DynamicResourceLoader;
 import org.chromium.ui.resources.dynamics.ViewResourceAdapter;
@@ -114,6 +123,12 @@ class TabListRecyclerView
         }
     }
 
+<<<<<<< HEAD
+    void setupCustomItemAnimator() {
+        if (mTabListItemAnimator == null) {
+            mTabListItemAnimator = new TabListItemAnimator();
+            setItemAnimator(mTabListItemAnimator);
+=======
     // TODO(crbug.com/1076538, crbug.com/1095948): Use this ItemAnimator instead of
     // |mOriginalAnimator|, when crbug.com/1095948 has a real fix.
     @SuppressWarnings("unused")
@@ -281,6 +296,7 @@ class TabListRecyclerView
             } else if (scrollOffset > 0) {
                 setShadowVisibility(true);
             }
+>>>>>>> chromium
         }
     }
 
@@ -289,7 +305,21 @@ class TabListRecyclerView
     }
 
     /**
+<<<<<<< HEAD
+     * Returns a boolean indicating whether any animator in {@link TabListItemAnimator} is running.
+     */
+    @NonNull
+    ObservableSupplier<Boolean> getIsAnimatorRunningSupplier() {
+        return mTabListItemAnimator.getIsAnimatorRunningSupplier();
+    }
+
+    /**
+     * @param tabIndex The index in the RecyclerView of the tab.
+     * @param tabId The tab ID of the tab.
+     * @return The {@link Rect} of the thumbnail of the tab in global coordinates.
+=======
      * @return The ID for registering and using the dynamic resource in compositor.
+>>>>>>> chromium
      */
     int getResourceId() {
         return mResourceId;

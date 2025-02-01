@@ -35,6 +35,7 @@
 // https://chromium.googlesource.com/chromium/src/+/HEAD/docs/wmax_tokens.md
 #pragma clang max_tokens_here 980000
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -42,6 +43,12 @@
 #include "base/containers/contains.h"
 #include "base/debug/dump_without_crashing.h"
 #include "base/metrics/histogram_functions.h"
+<<<<<<< HEAD
+#include "base/not_fatal_until.h"
+#include "base/notreached.h"
+#include "base/task/single_thread_task_runner.h"
+=======
+>>>>>>> chromium
 #include "base/time/time.h"
 #include "cc/input/overscroll_behavior.h"
 #include "cc/input/scroll_snap_data.h"
@@ -53,7 +60,11 @@
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/cpp/web_sandbox_flags.h"
+<<<<<<< HEAD
+#include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink-forward.h"
+=======
 #include "services/network/public/mojom/ip_address_space.mojom-blink.h"
+>>>>>>> chromium
 #include "services/network/public/mojom/trust_tokens.mojom-blink.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
@@ -66,6 +77,11 @@
 #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink.h"
 #include "third_party/blink/public/mojom/page_state/page_state.mojom-blink.h"
+<<<<<<< HEAD
+#include "third_party/blink/public/mojom/permissions/permission_status.mojom-blink-forward.h"
+#include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/public/platform/web_content_settings_client.h"
@@ -117,6 +133,7 @@
 #include "third_party/blink/renderer/core/dom/attr.h"
 #include "third_party/blink/renderer/core/dom/beforeunload_event_listener.h"
 #include "third_party/blink/renderer/core/dom/cdata_section.h"
+#include "third_party/blink/renderer/core/dom/column_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/comment.h"
 #include "third_party/blink/renderer/core/dom/context_features.h"
 #include "third_party/blink/renderer/core/dom/document_data.h"
@@ -139,7 +156,11 @@
 #include "third_party/blink/renderer/core/dom/live_node_list.h"
 #include "third_party/blink/renderer/core/dom/mutation_observer.h"
 #include "third_party/blink/renderer/core/dom/node_child_removal_tracker.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/dom/node_cloning_data.h"
+=======
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/node_iterator.h"
 #include "third_party/blink/renderer/core/dom/node_lists_node_data.h"
 #include "third_party/blink/renderer/core/dom/node_rare_data.h"
@@ -158,6 +179,7 @@
 #include "third_party/blink/renderer/core/dom/visited_link_state.h"
 #include "third_party/blink/renderer/core/dom/whitespace_attacher.h"
 #include "third_party/blink/renderer/core/dom/xml_document.h"
+#include "third_party/blink/renderer/core/editing/drag_caret.h"
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/editing/markers/document_marker_controller.h"
@@ -171,6 +193,12 @@
 #include "third_party/blink/renderer/core/events/visual_viewport_resize_event.h"
 #include "third_party/blink/renderer/core/events/visual_viewport_scroll_event.h"
 #include "third_party/blink/renderer/core/execution_context/window_agent.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/fetch/fetch_later_util.h"
+#include "third_party/blink/renderer/core/fragment_directive/fragment_directive.h"
+#include "third_party/blink/renderer/core/fragment_directive/text_fragment_handler.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/dom_timer.h"
 #include "third_party/blink/renderer/core/frame/dom_visual_viewport.h"
@@ -202,6 +230,7 @@
 #include "third_party/blink/renderer/core/html/forms/form_controller.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
+#include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/html_all_collection.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
 #include "third_party/blink/renderer/core/html/html_base_element.h"
@@ -342,6 +371,7 @@
 #include "third_party/blink/renderer/platform/wtf/text/character_names.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_buffer.h"
 #include "third_party/blink/renderer/platform/wtf/text/text_encoding_registry.h"
+#include "third_party/blink/renderer/platform/wtf/text/utf16.h"
 
 #ifndef NDEBUG
 using WeakDocumentSet = blink::HeapHashSet<blink::WeakMember<blink::Document>>;
@@ -628,6 +658,58 @@ ExplicitlySetAttrElementsMap* Document::GetExplicitlySetAttrElementsMap(
   return add_result.stored_value->value;
 }
 
+<<<<<<< HEAD
+bool Document::HasExplicitlySetAttrElements(const Element* element) const {
+  auto it = element_explicitly_set_attr_elements_map_.find(element);
+  if (it == element_explicitly_set_attr_elements_map_.end()) {
+    return false;
+  }
+  return !it->value->empty();
+}
+
+void Document::MoveElementExplicitlySetAttrElementsMapToNewDocument(
+    const Element* element,
+    Document& new_document) {
+  DCHECK(element);
+  auto it = element_explicitly_set_attr_elements_map_.find(element);
+  if (it != element_explicitly_set_attr_elements_map_.end()) {
+    new_document.element_explicitly_set_attr_elements_map_.insert(element,
+                                                                  it->value);
+    element_explicitly_set_attr_elements_map_.erase(it);
+  }
+}
+
+CachedAttrAssociatedElementsMap* Document::GetCachedAttrAssociatedElementsMap(
+    Element* element) {
+  DCHECK(element);
+  DCHECK(element->GetDocument() == this);
+  auto add_result =
+      element_cached_attr_associated_elements_map_.insert(element, nullptr);
+  if (add_result.is_new_entry) {
+    add_result.stored_value->value =
+        MakeGarbageCollected<CachedAttrAssociatedElementsMap>();
+  }
+  return add_result.stored_value->value.Get();
+}
+
+void Document::MoveElementCachedAttrAssociatedElementsMapToNewDocument(
+    Element* element,
+    Document& new_document) {
+  DCHECK(element);
+  auto it = element_cached_attr_associated_elements_map_.find(element);
+  if (it != element_cached_attr_associated_elements_map_.end()) {
+    new_document.element_cached_attr_associated_elements_map_.insert(element,
+                                                                     it->value);
+    element_cached_attr_associated_elements_map_.erase(it);
+  }
+}
+
+UnloadEventTimingInfo::UnloadEventTimingInfo(
+    scoped_refptr<SecurityOrigin> new_document_origin)
+    : new_document_origin(std::move(new_document_origin)) {}
+
+=======
+>>>>>>> chromium
 Document* Document::Create(Document& document) {
   Document* new_document = MakeGarbageCollected<Document>(
       DocumentInit::Create()
@@ -647,8 +729,12 @@ Document::Document(const DocumentInit& initializer,
       TreeScope(*this),
       is_initial_empty_document_(initializer.IsInitialEmptyDocument()),
       is_prerendering_(initializer.IsPrerendering()),
+<<<<<<< HEAD
+      is_for_discard_(initializer.IsForDiscard()),
+=======
       evaluate_media_queries_on_style_recalc_(false),
       pending_sheet_layout_(kNoLayoutWithPendingSheets),
+>>>>>>> chromium
       dom_window_(initializer.GetWindow()),
       execution_context_(initializer.GetExecutionContext()),
       context_features_(ContextFeatures::DefaultSwitch()),
@@ -765,6 +851,19 @@ Document::Document(const DocumentInit& initializer,
     fetcher_ = FrameFetchContext::CreateFetcherForCommittedDocument(
         *GetFrame()->Loader().GetDocumentLoader(), *this);
     cookie_jar_ = MakeGarbageCollected<CookieJar>(this);
+<<<<<<< HEAD
+    if (IsInMainFrame() && GetPage()->IsPartitionedPopin()) {
+      CountUse(WebFeature::kPartitionedPopin_Opened);
+    }
+    is_vertical_scroll_enforced_ =
+        RuntimeEnabledFeatures::ExperimentalPoliciesEnabled() &&
+        !frame->IsOutermostMainFrame() &&
+        !dom_window_->IsFeatureEnabled(
+            network::mojom::PermissionsPolicyFeature::kVerticalScroll);
+    cached_top_frame_site_for_visited_links_ =
+        net::SchemefulSite(TopFrameOrigin()->ToUrlOrigin());
+=======
+>>>>>>> chromium
   } else {
     // We disable fetches for frame-less Documents.
     // See https://crbug.com/961614 for details.
@@ -820,6 +919,13 @@ Document::Document(const DocumentInit& initializer,
 
   UpdateThemeColorCache();
 
+  if (GetFrame() && IsFetchLaterUseDeferredFetchPolicyEnabled()) {
+    if (auto* owner = DynamicTo<HTMLFrameOwnerElement>(GetFrame()->Owner());
+        owner) {
+      owner->MaybeClearDeferredFetchPolicy();
+    }
+  }
+
   // The parent's parser should be suspended together with all the other
   // objects, else this new Document would have a new ExecutionContext which
   // suspended state would not match the one from the parent, and could start
@@ -860,7 +966,7 @@ Range* Document::CreateRangeAdjustedToTreeScope(const TreeScope& tree_scope,
 
 SelectorQueryCache& Document::GetSelectorQueryCache() {
   if (!selector_query_cache_)
-    selector_query_cache_ = std::make_unique<SelectorQueryCache>();
+    selector_query_cache_ = MakeGarbageCollected<SelectorQueryCache>();
   return *selector_query_cache_;
 }
 
@@ -1458,6 +1564,58 @@ void Document::SetContent(const String& content) {
   close();
 }
 
+<<<<<<< HEAD
+using AllowState = blink::Document::DeclarativeShadowRootAllowState;
+void Document::SetContentFromDOMParser(const String& content) {
+  if (contentType() == "text/html" && IsA<HTMLDocument>(this)) {
+    auto* body = MakeGarbageCollected<HTMLBodyElement>(*this);
+    HTMLFragmentParsingBehaviorSet parser_behavior(
+        {HTMLFragmentParsingBehavior::kStripInitialWhitespaceForBody});
+    if (declarative_shadow_root_allow_state_ == AllowState::kAllow) {
+      parser_behavior.Put(HTMLFragmentParsingBehavior::kIncludeShadowRoots);
+    }
+    // The default for html parsing is quirks mode. This is normally set during
+    // parsing, but not for the fast path, so it needs to be set here. If the
+    // fast-path parser fails, the full parser will adjust the mode
+    // appropriately.
+    SetCompatibilityMode(kQuirksMode);
+    // Set the state so that the attribute cache is enabled for fragments.
+    // TODO(sesse): Should we do this also for the non-fastpath parser?
+    SetParsingState(kParsing);
+    const bool success = TryParsingHTMLFragment(content, *this, *body, *body,
+                                                kAllowScriptingContent,
+                                                parser_behavior, nullptr);
+    SetParsingState(kFinishedParsing);
+    if (success) {
+      body->ParserFinishedBuildingDocumentFragment(
+          ShouldNotifyInsertedNodes::kNotify);
+      // When DCHECK is enabled, use SetContent() and verify fast-path
+      // content matches. This effectively means the results of the fast-path
+      // parser aren't used with DCHECK enabled, but it provides a way to
+      // catch problems.
+#if DCHECK_IS_ON()
+      SetContent(content);
+      DCHECK(this->body());
+      DCHECK_EQ(CreateMarkup(body), CreateMarkup(this->body()))
+          << " supplied value " << content;
+      DCHECK(body->isEqualNode(this->body()));
+#else
+      auto* html = MakeGarbageCollected<HTMLHtmlElement>(*this);
+      auto* head = MakeGarbageCollected<HTMLHeadElement>(*this);
+      html->AppendChild(head);
+      AppendChild(html);
+      // Append `body` last so that the newly created children of `body` only
+      // get one InsertedInto().
+      html->AppendChild(body);
+#endif
+      return;
+    }
+  }
+  SetContent(content);
+}
+
+=======
+>>>>>>> chromium
 String Document::SuggestedMIMEType() const {
   if (IsA<XMLDocument>(this)) {
     if (IsXHTMLDocument())
@@ -1952,12 +2110,39 @@ static void AssertNodeClean(const Node& node) {
 }
 
 static void AssertLayoutTreeUpdatedForPseudoElements(const Element& element) {
+<<<<<<< HEAD
+  WTF::Vector<PseudoId> pseudo_ids = {kPseudoIdFirstLetter,
+                                      kPseudoIdCheckMark,
+                                      kPseudoIdBefore,
+                                      kPseudoIdAfter,
+                                      kPseudoIdPickerIcon,
+                                      kPseudoIdMarker,
+                                      kPseudoIdBackdrop,
+                                      kPseudoIdScrollMarkerGroupBefore,
+                                      kPseudoIdScrollMarkerGroupAfter,
+                                      kPseudoIdScrollButtonBlockStart,
+                                      kPseudoIdScrollButtonInlineStart,
+                                      kPseudoIdScrollButtonInlineEnd,
+                                      kPseudoIdScrollButtonBlockEnd,
+                                      kPseudoIdScrollMarker};
+=======
   WTF::Vector<PseudoId> pseudo_ids = {kPseudoIdFirstLetter, kPseudoIdBefore,
                                       kPseudoIdAfter, kPseudoIdMarker,
                                       kPseudoIdBackdrop};
+>>>>>>> chromium
   for (auto pseudo_id : pseudo_ids) {
-    if (auto* pseudo_element = element.GetPseudoElement(pseudo_id))
+    if (const PseudoElement* pseudo_element =
+            element.GetPseudoElement(pseudo_id)) {
       AssertNodeClean(*pseudo_element);
+      AssertLayoutTreeUpdatedForPseudoElements(*pseudo_element);
+    }
+  }
+  if (const ColumnPseudoElementsVector* columns =
+          element.GetColumnPseudoElements()) {
+    for (const ColumnPseudoElement* column : *columns) {
+      AssertNodeClean(*column);
+      AssertLayoutTreeUpdatedForPseudoElements(*column);
+    }
   }
 }
 
@@ -2109,7 +2294,17 @@ void Document::UpdateStyleAndLayoutTreeForThisDocument() {
     View()->MarkOrthogonalWritingModeRootsForLayout();
   }
 
+<<<<<<< HEAD
+  if (GetFrame()->IsMainFrame() &&
+      RuntimeEnabledFeatures::UpdateComplexSafaAreaConstraintsEnabled()) {
+    GetViewportData().SetHasComplexSafaAreaConstraint(
+        style_engine.HasComplexSafaAreaConstraints());
+  }
+
+  rendering_had_begun_for_last_style_update_ = RenderingHasBegun();
+=======
   NotifyLayoutTreeOfSubtreeChanges();
+>>>>>>> chromium
 
   if (focused_element_ && !focused_element_->IsFocusable())
     ClearFocusedElementSoon();
@@ -2822,14 +3017,7 @@ void Document::Shutdown() {
   GetStyleEngine().DidDetach();
 
   GetFrame()->GetEventHandlerRegistry().DocumentDetached(*this);
-
-  // Signal destruction to mutation observers.
-  synchronous_mutation_observer_set_.ForEachObserver(
-      [](SynchronousMutationObserver* observer) {
-        observer->ContextDestroyed();
-        observer->ObserverSetWillBeCleared();
-      });
-  synchronous_mutation_observer_set_.Clear();
+  GetFrame()->Selection().ContextDestroyed();
 
   cookie_jar_ = nullptr;  // Not accessible after navigated away.
   fetcher_->ClearContext();
@@ -2913,9 +3101,13 @@ void Document::AddAXContext(AXContext* context) {
 }
 
 void Document::RemoveAXContext(AXContext* context) {
+<<<<<<< HEAD
+  auto iter = std::ranges::find(ax_contexts_, context);
+=======
   auto** iter =
       std::find_if(ax_contexts_.begin(), ax_contexts_.end(),
                    [&context](const auto& item) { return item == context; });
+>>>>>>> chromium
   if (iter != ax_contexts_.end())
     ax_contexts_.erase(iter);
   if (ax_contexts_.size() == 0) {
@@ -4113,6 +4305,18 @@ void Document::UpdateBaseURL() {
          Traversal<HTMLAnchorElement>::StartsAfter(*this))
       anchor.InvalidateCachedVisitedLinkHash();
   }
+<<<<<<< HEAD
+
+  for (HTMLScriptElement& script :
+       Traversal<HTMLScriptElement>::DescendantsOf(*this)) {
+    script.Loader()->DocumentBaseURLChanged();
+  }
+
+  if (auto* document_rules = DocumentSpeculationRules::FromIfExists(*this)) {
+    document_rules->DocumentBaseURLChanged();
+  }
+=======
+>>>>>>> chromium
 }
 
 KURL Document::FallbackBaseURL() const {
@@ -4596,10 +4800,69 @@ void Document::LayoutViewportWasResized() {
   if (!HasViewportUnits())
     return;
   GetStyleResolver().SetResizedForViewportUnits();
+<<<<<<< HEAD
+  GetStyleEngine().MarkViewportUnitDirty(ViewportUnitFlag::kStatic);
+  GetStyleEngine().MarkViewportUnitDirty(ViewportUnitFlag::kDynamic);
+}
+
+void Document::DynamicViewportUnitsChanged() {
+  MediaQueryAffectingValueChanged(MediaValueChange::kDynamicViewport);
+  if (media_query_matcher_)
+    media_query_matcher_->DynamicViewportChanged();
+  if (!HasDynamicViewportUnits())
+    return;
+  GetStyleResolver().SetResizedForViewportUnits();
+  GetStyleEngine().MarkViewportUnitDirty(ViewportUnitFlag::kDynamic);
+}
+
+// For changing :active and :hover we want to traverse the flat tree
+// ancestors of an element, except we don't want to cross from the
+// popover of an appearance:base <select> into the <select> (or any of
+// its ancestors).
+//
+// This reimplements TraversalParent<FlatTreeTraversal> with that slight
+// variation so that we can do traversals this way in a bunch of places.
+class FlatTreeTraversalParentElementExceptSelectPopover {
+ public:
+  using Traversal = FlatTreeTraversal;
+  using TraversalNodeType = Element;
+  static TraversalNodeType* Next(const TraversalNodeType& node) {
+    if (RuntimeEnabledFeatures::CustomizableSelectEnabled() &&
+        HTMLSelectElement::IsPopoverForAppearanceBase(&node)) {
+      return nullptr;
+    }
+    return Traversal::ParentElement(node);
+  }
+};
+
+using InclusiveAncestorsForActiveOrHover = TraversalRange<
+    TraversalIterator<FlatTreeTraversalParentElementExceptSelectPopover>>;
+
+void EmitDidChangeHoverElement(Document& document, Element* new_hover_element) {
+  LocalFrame* local_frame = document.GetFrame();
+  if (!local_frame) {
+    return;
+  }
+
+  WebLinkPreviewTriggerer* triggerer =
+      local_frame->GetOrCreateLinkPreviewTriggerer();
+  if (!triggerer) {
+    return;
+  }
+
+  WebElement web_element = WebElement(DynamicTo<Element>(new_hover_element));
+  triggerer->DidChangeHoverElement(web_element);
+}
+
+void Document::SetHoverElement(Element* new_hover_element) {
+  EmitDidChangeHoverElement(*this, new_hover_element);
+
+=======
   SetNeedsStyleRecalcForViewportUnits();
 }
 
 void Document::SetHoverElement(Element* new_hover_element) {
+>>>>>>> chromium
   hover_element_ = new_hover_element;
 }
 
@@ -5062,10 +5325,6 @@ void Document::DidMoveTreeToNewDocument(const Node& root) {
     for (Range* range : ranges)
       range->UpdateOwnerDocumentIfNeeded();
   }
-  synchronous_mutation_observer_set_.ForEachObserver(
-      [&](SynchronousMutationObserver* observer) {
-        observer->DidMoveTreeToNewDocument(root);
-      });
 }
 
 void Document::NodeChildrenWillBeRemoved(ContainerNode& container) {
@@ -5081,10 +5340,19 @@ void Document::NodeChildrenWillBeRemoved(ContainerNode& container) {
       ni->NodeWillBeRemoved(n);
   }
 
-  synchronous_mutation_observer_set_.ForEachObserver(
-      [&](SynchronousMutationObserver* observer) {
-        observer->NodeChildrenWillBeRemoved(container);
-      });
+  if (LocalFrame* frame = GetFrame()) {
+    // TODO(dbaron): Could this also be inside the IsActiveDocument test?
+    frame->Selection().NodeChildrenWillBeRemoved(container);
+    if (container.isConnected()) {
+      frame->GetEventHandler().NodeChildrenWillBeRemoved(container);
+    }
+  }
+
+  if (container.InActiveDocument()) {
+    if (Page* page = GetPage()) {
+      page->GetDragCaret().NodeChildrenWillBeRemoved(container);
+    }
+  }
 
   if (ContainsShadowTree()) {
     for (Node& n : NodeTraversal::ChildrenOf(container))
@@ -5096,16 +5364,39 @@ void Document::NodeWillBeRemoved(Node& n) {
   for (NodeIterator* ni : node_iterators_)
     ni->NodeWillBeRemoved(n);
 
+<<<<<<< HEAD
+  // We want to run the normal Range reset code when we're not in the middle of
+  // `moveBefore()`, or when we *are* but when range preservation is disabled
+  // (it is by default).
+  if (!StatePreservingAtomicMoveInProgress() ||
+      !RuntimeEnabledFeatures::AtomicMoveRangePreservationEnabled()) {
+    for (Range* range : ranges_) {
+      range->NodeWillBeRemoved(n);
+      if (range == sequential_focus_navigation_starting_point_) {
+        range->FixupRemovedNodeAcrossShadowBoundary(n);
+      }
+    }
+=======
   for (Range* range : ranges_) {
     range->NodeWillBeRemoved(n);
     if (range == sequential_focus_navigation_starting_point_)
       range->FixupRemovedNodeAcrossShadowBoundary(n);
+>>>>>>> chromium
   }
 
-  synchronous_mutation_observer_set_.ForEachObserver(
-      [&](SynchronousMutationObserver* observer) {
-        observer->NodeWillBeRemoved(n);
-      });
+  if (LocalFrame* frame = GetFrame()) {
+    // TODO(dbaron): Could this also be inside the IsActiveDocument test?
+    frame->Selection().NodeWillBeRemoved(n);
+    if (n.isConnected()) {
+      frame->GetEventHandler().NodeWillBeRemoved(n);
+    }
+  }
+
+  if (n.InActiveDocument()) {
+    if (Page* page = GetPage()) {
+      page->GetDragCaret().NodeWillBeRemoved(n);
+    }
+  }
 
   if (ContainsShadowTree())
     n.CheckSlotChangeBeforeRemoved();
@@ -5115,6 +5406,46 @@ void Document::NodeWillBeRemoved(Node& n) {
 }
 
 void Document::NotifyUpdateCharacterData(CharacterData* character_data,
+<<<<<<< HEAD
+                                         const TextDiffRange& diff) {
+  Markers().DidUpdateCharacterData(character_data, diff.offset, diff.old_size,
+                                   diff.new_size);
+  if (LocalFrame* frame = GetFrame()) {
+    frame->Selection().DidUpdateCharacterData(character_data, diff.offset,
+                                              diff.old_size, diff.new_size);
+  }
+}
+
+void Document::NotifyChangeChildren(
+    const ContainerNode& container,
+    const ContainerNode::ChildrenChange& change) {
+  if (LocalFrameView* frame_view = View()) {
+    if (FragmentAnchor* anchor = frame_view->GetFragmentAnchor()) {
+      anchor->NewContentMayBeAvailable();
+    }
+  }
+
+  if (LocalFrame* frame = GetFrame()) {
+    frame->Selection().DidChangeChildren(change);
+  }
+}
+
+void Document::NotifyAttributeChanged(const Element& element,
+                                      const QualifiedName& name,
+                                      const AtomicString& old_value,
+                                      const AtomicString& new_value) {
+  // There are other attributes (not to mention style changes) that could
+  // potentially make more content available to the fragment anchor but
+  // this is a best effort heuristic, based on commonly seen patterns in the
+  // wild, so isn't meant to be comprehensive.
+  if (name == html_names::kHiddenAttr) {
+    if (LocalFrameView* frame_view = View()) {
+      if (FragmentAnchor* anchor = frame_view->GetFragmentAnchor()) {
+        anchor->NewContentMayBeAvailable();
+      }
+    }
+  }
+=======
                                          unsigned offset,
                                          unsigned old_length,
                                          unsigned new_length) {
@@ -5130,11 +5461,25 @@ void Document::NotifyChangeChildren(const ContainerNode& container) {
       [&](SynchronousMutationObserver* observer) {
         observer->DidChangeChildren(container);
       });
+>>>>>>> chromium
 }
 
 void Document::DidInsertText(const CharacterData& text,
                              unsigned offset,
                              unsigned length) {
+  // Note that the current callers of DidInsertText call it *only* for
+  // the cases that are needed for adjusting Range boundary points.  It
+  // is not called by CharacterData::setData or
+  // CharacterData::appendData.  If other code is added here, the calls
+  // to DidInsertText may need to be fixed.
+  //
+  // Document::NotifyUpdateCharacterData gets the complete set of
+  // notifications.
+  //
+  // TODO(dbaron): It may be worth removing DidInsertText/DidRemoveText
+  // in favor of NotifyUpdateCharacterData, but it's also possible the
+  // separation may be faster.
+
   for (Range* range : ranges_)
     range->DidInsertText(text, offset, length);
 }
@@ -5156,11 +5501,10 @@ void Document::DidMergeTextNodes(const Text& merged_node,
       range->DidMergeTextNodes(node_to_be_removed_with_index, old_length);
   }
 
-  synchronous_mutation_observer_set_.ForEachObserver(
-      [&](SynchronousMutationObserver* observer) {
-        observer->DidMergeTextNodes(merged_node, node_to_be_removed_with_index,
-                                    old_length);
-      });
+  if (LocalFrame* frame = GetFrame()) {
+    frame->Selection().DidMergeTextNodes(
+        merged_node, node_to_be_removed_with_index, old_length);
+  }
 
   // FIXME: This should update markers for spelling and grammar checking.
 }
@@ -5169,10 +5513,9 @@ void Document::DidSplitTextNode(const Text& old_node) {
   for (Range* range : ranges_)
     range->DidSplitTextNode(old_node);
 
-  synchronous_mutation_observer_set_.ForEachObserver(
-      [&](SynchronousMutationObserver* observer) {
-        observer->DidSplitTextNode(old_node);
-      });
+  if (LocalFrame* frame = GetFrame()) {
+    frame->Selection().DidSplitTextNode(old_node);
+  }
 
   // FIXME: This should update markers for spelling and grammar checking.
 }
@@ -5245,6 +5588,41 @@ void Document::EnqueueOverscrollEventForNode(Node* target,
   scripted_animation_controller_->EnqueuePerFrameEvent(overscroll_event);
 }
 
+<<<<<<< HEAD
+void Document::EnqueueScrollSnapChangeEvent(Node* target,
+                                            Member<Node>& block_target,
+                                            Member<Node>& inline_target) {
+  Event* scrollsnapchange_event = SnapEvent::Create(
+      event_type_names::kScrollsnapchange,
+      (target->IsDocumentNode() ? Event::Bubbles::kYes : Event::Bubbles::kNo),
+      block_target, inline_target);
+  scrollsnapchange_event->SetTarget(target);
+  scripted_animation_controller_->EnqueuePerFrameEvent(scrollsnapchange_event);
+}
+
+void Document::EnqueueScrollSnapChangingEvent(Node* target,
+                                              Member<Node>& block_target,
+                                              Member<Node>& inline_target) {
+  Event* scrollsnapchanging_event = SnapEvent::Create(
+      event_type_names::kScrollsnapchanging,
+      (target->IsDocumentNode() ? Event::Bubbles::kYes : Event::Bubbles::kNo),
+      block_target, inline_target);
+  scrollsnapchanging_event->SetTarget(target);
+  scripted_animation_controller_->EnqueuePerFrameEvent(
+      scrollsnapchanging_event);
+}
+
+void Document::EnqueueMoveEvent() {
+  CHECK(RuntimeEnabledFeatures::WindowOnMoveEventEnabled());
+
+  Event* event = Event::Create(event_type_names::kMove);
+  event->SetTarget(domWindow());
+  // TODO(crbug.com/379542213): This requires spec work.
+  scripted_animation_controller_->EnqueuePerFrameEvent(event);
+}
+
+=======
+>>>>>>> chromium
 void Document::EnqueueResizeEvent() {
   Event* event = Event::Create(event_type_names::kResize);
   event->SetTarget(domWindow());
@@ -6053,8 +6431,12 @@ static bool IsValidNameNonASCII(const LChar* characters, unsigned length) {
 static bool IsValidNameNonASCII(const UChar* characters, unsigned length) {
   for (unsigned i = 0; i < length;) {
     bool first = i == 0;
+<<<<<<< HEAD
+    UChar32 c = CodePointAtAndNext(characters, i);
+=======
     UChar32 c;
     U16_NEXT(characters, i, length, c);  // Increments i.
+>>>>>>> chromium
     if (first ? !IsValidNameStart(c) : !IsValidNamePart(c))
       return false;
   }
@@ -6131,9 +6513,14 @@ static ParseQualifiedNameResult ParseQualifiedNameInternal(
   bool saw_colon = false;
   unsigned colon_pos = 0;
 
+<<<<<<< HEAD
+  for (size_t i = 0; i < characters.size();) {
+    UChar32 c = CodePointAtAndNext(characters, i);
+=======
   for (unsigned i = 0; i < length;) {
     UChar32 c;
     U16_NEXT(characters, i, length, c);
+>>>>>>> chromium
     if (c == ':') {
       if (saw_colon)
         return ParseQualifiedNameResult(kQNMultipleColons);
@@ -6643,9 +7030,30 @@ void Document::FinishedParsing() {
     // the window load event too early.  To avoid this we force the styles to be
     // up to date before calling FrameLoader::finishedParsing().  See
     // https://bugs.webkit.org/show_bug.cgi?id=36864 starting around comment 35.
+<<<<<<< HEAD
+    if (!is_initial_empty_document_ && HaveRenderBlockingStylesheetsLoaded()) {
+      // The is_initial_empty_document_ flag is only true when the document is
+      // initialized, but then it is synchronously loaded and the flag goes out
+      // of sync. Loader()->HasLoadedNonInitialEmptyDocument() is more correct.
+      // Keeping both for now behind a flag so that it's finch-testable.
+      if (GetFrame()->IsMainFrame() ||
+          Loader()->HasLoadedNonInitialEmptyDocument() ||
+          !base::FeatureList::IsEnabled(
+              blink::features::
+                  kAvoidForcedLayoutOnInitialEmptyDocumentInSubframe)) {
+        UpdateStyleAndLayoutTree();
+        if (base::FeatureList::IsEnabled(
+                features::kPrerender2EarlyDocumentLifecycleUpdate) &&
+            IsPrerendering() && GetFrame()->IsLocalRoot() &&
+            GetPage()->ShouldPreparePaintTreeOnPrerender()) {
+          View()->DryRunPaintingForPrerender();
+        }
+      }
+=======
     if (!is_initial_empty_document_ &&
         GetStyleEngine().HaveRenderBlockingStylesheetsLoaded()) {
       UpdateStyleAndLayoutTree();
+>>>>>>> chromium
     }
 
     BeginLifecycleUpdatesIfRenderingReady();
@@ -6805,7 +7213,31 @@ absl::optional<Color> Document::ThemeColor() {
       return color;
     }
   }
+<<<<<<< HEAD
+  return std::nullopt;
+}
+
+void Document::UpdateApplicationTitle() {
+  auto* root_element = documentElement();
+  if (!root_element) {
+    return;
+  }
+
+  for (HTMLMetaElement& meta_element :
+       Traversal<HTMLMetaElement>::DescendantsOf(*root_element)) {
+    if (EqualIgnoringASCIICase(meta_element.GetName(), "application-title")) {
+      GetFrame()->GetLocalFrameHostRemote().UpdateApplicationTitle(
+          meta_element.Content().GetString());
+      return;
+    }
+  }
+
+  // Handle case of meta tag being removed by setting application title to empty
+  // string.
+  GetFrame()->GetLocalFrameHostRemote().UpdateApplicationTitle(g_empty_string);
+=======
   return absl::nullopt;
+>>>>>>> chromium
 }
 
 void Document::ColorSchemeMetaChanged() {
@@ -7117,6 +7549,39 @@ void Document::HideAllPopupsUntil(const HTMLPopupElement* endpoint) {
          popup_element_stack_.back() != endpoint) {
     popup_element_stack_.back()->hide();
   }
+<<<<<<< HEAD
+  if (!PopoverAutoStack().empty()) {
+    return PopoverAutoStack().back();
+  }
+  return nullptr;
+}
+void Document::SetPopoverPointerdownTarget(const HTMLElement* popover) {
+  DCHECK(!popover || popover->HasPopoverAttribute());
+  popover_pointerdown_target_ = popover;
+}
+
+void Document::SetCustomizableSelectMousedownLocation(
+    std::optional<gfx::PointF> point) {
+  customizable_select_mousedown_location_ = point;
+}
+
+const HTMLDialogElement* Document::DialogPointerdownTarget() const {
+  CHECK(RuntimeEnabledFeatures::HTMLDialogLightDismissEnabled());
+  return dialog_pointerdown_target_.Get();
+}
+
+void Document::SetDialogPointerdownTarget(const HTMLDialogElement* dialog) {
+  CHECK(RuntimeEnabledFeatures::HTMLDialogLightDismissEnabled());
+  DCHECK(!dialog || dialog->IsOpen());
+  dialog_pointerdown_target_ = dialog;
+=======
+>>>>>>> chromium
+}
+
+void Document::SetKeyboardInterestTargetElement(Element* element) {
+  CHECK(RuntimeEnabledFeatures::HTMLInterestTargetAttributeEnabled());
+  CHECK(!element || element->interestTargetElement());
+  keyboard_interest_target_element_ = element;
 }
 
 void Document::exitPointerLock() {
@@ -7322,10 +7787,10 @@ void Document::UpdateActiveState(bool is_active,
     // The oldActiveElement layoutObject is null, dropped on :active by setting
     // display: none, for instance. We still need to clear the ActiveChain as
     // the mouse is released.
-    for (Element* element = old_active_element; element;
-         element = FlatTreeTraversal::ParentElement(*element)) {
-      element->SetActive(false);
-      user_action_elements_.SetInActiveChain(element, false);
+    for (Element& element :
+         InclusiveAncestorsForActiveOrHover(old_active_element)) {
+      element.SetActive(false);
+      user_action_elements_.SetInActiveChain(&element, false);
     }
     SetActiveElement(nullptr);
   } else {
@@ -7334,9 +7799,9 @@ void Document::UpdateActiveState(bool is_active,
         !new_active_element->IsDisabledFormControl() && is_active) {
       // We are setting the :active chain and freezing it. If future moves
       // happen, they will need to reference this chain.
-      for (Element* element = new_active_element; element;
-           element = FlatTreeTraversal::ParentElement(*element)) {
-        user_action_elements_.SetInActiveChain(element, true);
+      for (Element& element :
+           InclusiveAncestorsForActiveOrHover(new_active_element)) {
+        user_action_elements_.SetInActiveChain(&element, true);
       }
       SetActiveElement(new_active_element);
     }
@@ -7356,10 +7821,10 @@ void Document::UpdateActiveState(bool is_active,
   // is down and if this is a mouse move event, we want to restrict changes in
   // :active to only apply to elements that are in the :active chain that we
   // froze at the time the mouse went down.
-  for (Element* curr = new_element; curr;
-       curr = FlatTreeTraversal::ParentElement(*curr)) {
-    if (update_active_chain || curr->InActiveChain())
-      curr->SetActive(true);
+  for (Element& curr : InclusiveAncestorsForActiveOrHover(new_element)) {
+    if (update_active_chain || curr.InActiveChain()) {
+      curr.SetActive(true);
+    }
   }
 }
 
@@ -7376,6 +7841,12 @@ void Document::UpdateHoverState(Element* inner_element_in_document) {
   // Update our current hover element.
   SetHoverElement(new_hover_element);
 
+<<<<<<< HEAD
+  using ElementVector = HeapVector<Member<Element>, 64>;
+  using ElementSpan = base::span<Member<Element>>;
+  ElementVector elements_to_remove_from_chain;
+  ElementVector elements_to_add_to_chain;
+=======
   if (old_hover_element == new_hover_element)
     return;
 
@@ -7387,36 +7858,62 @@ void Document::UpdateHoverState(Element* inner_element_in_document) {
     if (auto* element = DynamicTo<Element>(ancestor))
       ancestor_element = element;
   }
+>>>>>>> chromium
 
-  HeapVector<Member<Element>, 32> elements_to_remove_from_chain;
-  HeapVector<Member<Element>, 32> elements_to_add_to_hover_chain;
-
-  // The old hover path only needs to be cleared up to (and not including) the
-  // common ancestor;
-  //
   // TODO(emilio): old_hover_element may be disconnected from the tree already.
   if (old_hover_element && old_hover_element->isConnected()) {
-    for (Element* curr = old_hover_element; curr && curr != ancestor_element;
-         curr = FlatTreeTraversal::ParentElement(*curr)) {
-      elements_to_remove_from_chain.push_back(curr);
+    for (Element& curr :
+         InclusiveAncestorsForActiveOrHover(old_hover_element)) {
+      elements_to_remove_from_chain.push_back(&curr);
     }
   }
 
   // Now set the hover state for our new object up to the root.
-  for (Element* curr = new_hover_element; curr;
-       curr = FlatTreeTraversal::ParentElement(*curr)) {
-    elements_to_add_to_hover_chain.push_back(curr);
+  for (Element& curr : InclusiveAncestorsForActiveOrHover(new_hover_element)) {
+    elements_to_add_to_chain.push_back(&curr);
   }
 
-  for (Element* element : elements_to_remove_from_chain)
-    element->SetHovered(false);
+  // The old hover path only needs to be cleared up to (and not including) the
+  // common ancestor.
+  //
+  // No need to notify elements that aren't changing because they're in both
+  // chains.  Find the index that starts the part of chains where they're the
+  // same.
+  wtf_size_t remove_size = elements_to_remove_from_chain.size();
+  wtf_size_t add_size = elements_to_add_to_chain.size();
+  wtf_size_t remove_index;
+  wtf_size_t add_index;
+  if (remove_size > add_size) {
+    add_index = 0;
+    remove_index = remove_size - add_size;
+  } else {
+    remove_index = 0;
+    add_index = add_size - remove_size;
+  }
+  while (add_index < add_size) {
+    if (elements_to_remove_from_chain[remove_index] ==
+        elements_to_add_to_chain[add_index]) {
+      break;
+    }
+    ++add_index;
+    ++remove_index;
+  }
 
-  bool saw_common_ancestor = false;
-  for (Element* element : elements_to_add_to_hover_chain) {
-    if (element == ancestor_element)
-      saw_common_ancestor = true;
-    if (!saw_common_ancestor || element == hover_element_)
+  for (Element* element :
+       ElementSpan(elements_to_remove_from_chain).first(remove_index)) {
+    element->SetHovered(false);
+  }
+
+  for (Element* element :
+       ElementSpan(elements_to_add_to_chain).first(add_index)) {
+    element->SetHovered(true);
+  }
+
+  for (Element* element :
+       ElementSpan(elements_to_add_to_chain).subspan(add_index)) {
+    if (element == hover_element_) {
       element->SetHovered(true);
+    }
   }
 }
 
@@ -7804,9 +8301,21 @@ PropertyRegistry& Document::EnsurePropertyRegistry() {
 }
 
 DocumentResourceCoordinator* Document::GetResourceCoordinator() {
+<<<<<<< HEAD
+  // `resource_coordinator_` is cleared in Shutdown() and must not be recreated
+  // afterwards, when the Document is no longer active. If `is_for_discard_` do
+  // not instantiate a resource coordinator.
+  if (!resource_coordinator_ && IsActive() && !is_for_discard_) {
+    CHECK(GetFrame(), base::NotFatalUntil::M135);
+    if (auto* frame = GetFrame()) {
+      resource_coordinator_ = DocumentResourceCoordinator::MaybeCreate(
+          frame->GetBrowserInterfaceBroker());
+    }
+=======
   if (!resource_coordinator_ && GetFrame()) {
     resource_coordinator_ = DocumentResourceCoordinator::MaybeCreate(
         GetFrame()->GetBrowserInterfaceBroker());
+>>>>>>> chromium
   }
   return resource_coordinator_.get();
 }
@@ -7867,7 +8376,20 @@ void Document::Trace(Visitor* visitor) const {
   visitor->Trace(lists_invalidated_at_document_);
   visitor->Trace(node_lists_);
   visitor->Trace(top_layer_elements_);
+<<<<<<< HEAD
+  visitor->Trace(top_layer_elements_pending_removal_);
+  visitor->Trace(popover_auto_stack_);
+  visitor->Trace(popover_hint_stack_);
+  visitor->Trace(popover_pointerdown_target_);
+  visitor->Trace(dialog_pointerdown_target_);
+  visitor->Trace(popovers_waiting_to_hide_);
+  visitor->Trace(all_open_popovers_);
+  visitor->Trace(all_open_dialogs_);
+  visitor->Trace(keyboard_interest_target_element_);
+  visitor->Trace(document_part_root_);
+=======
   visitor->Trace(popup_element_stack_);
+>>>>>>> chromium
   visitor->Trace(load_event_delay_timer_);
   visitor->Trace(plugin_loading_timer_);
   visitor->Trace(elem_sheet_);
@@ -7898,6 +8420,11 @@ void Document::Trace(Visitor* visitor) const {
   visitor->Trace(did_associate_form_controls_timer_);
   visitor->Trace(user_action_elements_);
   visitor->Trace(svg_extensions_);
+<<<<<<< HEAD
+  visitor->Trace(selector_query_cache_);
+  visitor->Trace(layout_view_);
+=======
+>>>>>>> chromium
   visitor->Trace(document_animations_);
   visitor->Trace(timeline_);
   visitor->Trace(pending_animations_);
@@ -7915,7 +8442,6 @@ void Document::Trace(Visitor* visitor) const {
   visitor->Trace(computed_node_mapping_);
   visitor->Trace(mime_handler_view_before_unload_event_listener_);
   visitor->Trace(cookie_jar_);
-  visitor->Trace(synchronous_mutation_observer_set_);
   visitor->Trace(fragment_directive_);
   visitor->Trace(element_explicitly_set_attr_elements_map_);
   visitor->Trace(display_lock_document_state_);
@@ -7965,8 +8491,10 @@ bool Document::IsFocusAllowed() const {
   CountUse(uma_type);
   if (!RuntimeEnabledFeatures::BlockingFocusWithoutUserActivationEnabled())
     return true;
-  return GetExecutionContext()->IsFeatureEnabled(
-      mojom::blink::PermissionsPolicyFeature::kFocusWithoutUserActivation);
+  return GetFrame()->AllowFocusDuringFocusAdvance() ||
+         GetExecutionContext()->IsFeatureEnabled(
+             network::mojom::PermissionsPolicyFeature::
+                 kFocusWithoutUserActivation);
 }
 
 LazyLoadImageObserver& Document::EnsureLazyLoadImageObserver() {
@@ -8154,11 +8682,26 @@ void Document::ClearUseCounterForTesting(mojom::WebFeature feature) {
     loader->GetUseCounter().ClearMeasurementForTesting(feature);
 }
 
+<<<<<<< HEAD
+void Document::ClearWebDXFeatureCounterForTesting(
+    mojom::blink::WebDXFeature feature) {
+  if (DocumentLoader* loader = Loader()) {
+    loader->GetUseCounter().ClearMeasurementForTesting(feature);
+  }
+}
+
+void Document::RenderBlockingResourceUnblocked() {
+  // Only HTML documents can ever be render-blocked by external resources.
+  // https://html.spec.whatwg.org/#allows-adding-render-blocking-elements
+  DCHECK(IsA<HTMLDocument>(this));
+  if (body())
+=======
 void Document::FontPreloadingFinishedOrTimedOut() {
   DCHECK(!font_preload_manager_->HasPendingRenderBlockingFonts());
   if (IsA<HTMLDocument>(this) && body()) {
     // For HTML, we resume only when we're past the body tag, so that we should
     // have something to paint now.
+>>>>>>> chromium
     BeginLifecycleUpdatesIfRenderingReady();
   } else if (!IsA<HTMLDocument>(this) && documentElement()) {
     // For non-HTML there is no body so resume as soon as font preloading is

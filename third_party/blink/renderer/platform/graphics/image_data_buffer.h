@@ -63,9 +63,12 @@ class PLATFORM_EXPORT ImageDataBuffer {
   size_t ComputeByteSize() const { return pixmap_.computeByteSize(); }
 
  private:
+<<<<<<< HEAD
+=======
   ImageDataBuffer(const IntSize&,
                   const unsigned char*,
                   const CanvasColorParams&);
+>>>>>>> chromium
   ImageDataBuffer(const SkPixmap&);
   ImageDataBuffer(scoped_refptr<StaticBitmapImage>);
 

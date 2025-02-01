@@ -65,7 +65,7 @@ TEST_F(SharedModuleManifestTest, ExportAllowlistAll) {
 }
 
 TEST_F(SharedModuleManifestTest, ExportParseErrors) {
-  Testcase testcases[] = {
+  const Testcase testcases[] = {
       Testcase("shared_module_export_and_import.json",
                "Simultaneous 'import' and 'export' are not allowed."),
       Testcase("shared_module_export_not_dict.json",
@@ -80,7 +80,11 @@ TEST_F(SharedModuleManifestTest, ExportParseErrors) {
                "Error at key 'export.allowlist'. Type is invalid. Expected "
                "list, found string."),
   };
+<<<<<<< HEAD
+  RunTestcases(testcases, EXPECT_TYPE_ERROR);
+=======
   RunTestcases(testcases, base::size(testcases), EXPECT_TYPE_ERROR);
+>>>>>>> chromium
 }
 
 TEST_F(SharedModuleManifestTest, SharedModuleStaticFunctions) {
@@ -119,7 +123,7 @@ TEST_F(SharedModuleManifestTest, Import) {
 }
 
 TEST_F(SharedModuleManifestTest, ImportParseErrors) {
-  Testcase testcases[] = {
+  const Testcase testcases[] = {
       Testcase("shared_module_import_not_list.json",
                "Error at key 'import'. Type is invalid. Expected list, found "
                "dictionary."),
@@ -128,7 +132,11 @@ TEST_F(SharedModuleManifestTest, ImportParseErrors) {
       Testcase("shared_module_import_invalid_version.json",
                "Invalid value for 'import[0].minimum_version'."),
   };
+<<<<<<< HEAD
+  RunTestcases(testcases, EXPECT_TYPE_ERROR);
+=======
   RunTestcases(testcases, base::size(testcases), EXPECT_TYPE_ERROR);
+>>>>>>> chromium
 }
 
 }  // namespace extensions

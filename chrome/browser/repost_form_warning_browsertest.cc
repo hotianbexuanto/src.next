@@ -22,8 +22,17 @@ using web_modal::WebContentsModalDialogManager;
 
 class RepostFormWarningTest : public DialogBrowserTest {
  public:
+<<<<<<< HEAD
+  RepostFormWarningTest() = default;
+
+  RepostFormWarningTest(const RepostFormWarningTest&) = delete;
+  RepostFormWarningTest& operator=(const RepostFormWarningTest&) = delete;
+
+  ~RepostFormWarningTest() override = default;
+=======
   RepostFormWarningTest() {}
   ~RepostFormWarningTest() override {}
+>>>>>>> chromium
 
   // BrowserTestBase:
   void SetUpOnMainThread() override;

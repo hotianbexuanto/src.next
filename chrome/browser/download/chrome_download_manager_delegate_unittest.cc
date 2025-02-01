@@ -71,10 +71,6 @@
 
 #if defined(OS_ANDROID)
 #include "chrome/browser/download/download_prompt_status.h"
-#include "components/infobars/content/content_infobar_manager.h"
-#include "components/infobars/core/infobar.h"
-#include "components/infobars/core/infobar_delegate.h"
-#include "components/infobars/core/infobar_manager.h"
 #endif
 
 using download::DownloadItem;
@@ -101,7 +97,17 @@ namespace {
 
 class MockWebContentsDelegate : public content::WebContentsDelegate {
  public:
+<<<<<<< HEAD
+  ~MockWebContentsDelegate() override = default;
+  MOCK_METHOD(void,
+              CanDownload,
+              (const GURL&,
+               const std::string&,
+               base::OnceCallback<void(bool)> callback),
+              (override));
+=======
   ~MockWebContentsDelegate() override {}
+>>>>>>> chromium
 };
 
 ACTION_P3(ScheduleCallback3, result0, result1, result2) {
@@ -143,7 +149,7 @@ class TestChromeDownloadManagerDelegate : public ChromeDownloadManagerDelegate {
                              ReturnArg<1>()));
   }
 
-  ~TestChromeDownloadManagerDelegate() override {}
+  ~TestChromeDownloadManagerDelegate() override = default;
 
   // The concrete implementation talks to the ExtensionDownloadsEventRouter to
   // dispatch a OnDeterminingFilename event. While we would like to test this as
@@ -738,6 +744,114 @@ TEST_F(ChromeDownloadManagerDelegateTest, BlockedByPolicy) {
   VerifyAndClearExpectations();
 }
 
+<<<<<<< HEAD
+TEST_F(ChromeDownloadManagerDelegateTest, NoSafetyChecksNotBlockedByPolicy) {
+  const GURL kUrl("http://example.com/foo");
+  const std::string kTargetDisposition("attachment; filename=\"foo.txt\"");
+
+  std::unique_ptr<download::MockDownloadItem> download_item =
+      CreateActiveDownloadItem(0);
+  EXPECT_CALL(*download_item, GetURL()).WillRepeatedly(ReturnRef(kUrl));
+  EXPECT_CALL(*download_item, GetContentDisposition())
+      .WillRepeatedly(Return(kTargetDisposition));
+  EXPECT_CALL(*download_item, RequireSafetyChecks())
+      .WillRepeatedly(Return(false));
+
+  base::FilePath kExpectedPath = GetPathInDownloadDir("bar.txt");
+
+
+  EXPECT_CALL(*delegate(), MockReserveVirtualPath(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(PathValidationResult::CONFLICT),
+                      ReturnArg<1>()));
+  EXPECT_CALL(*delegate(),
+              RequestConfirmation_(
+                  _, _, DownloadConfirmationReason::TARGET_CONFLICT, _))
+      .WillOnce(
+          WithArg<3>(ScheduleCallback2(DownloadConfirmationResult::CONFIRMED,
+                                       ui::SelectedFileInfo(kExpectedPath))));
+
+  pref_service()->SetInteger(
+      policy::policy_prefs::kDownloadRestrictions,
+      static_cast<int>(policy::DownloadRestriction::ALL_FILES));
+
+  download::DownloadTargetInfo target_info =
+      DetermineDownloadTarget(download_item.get());
+  EXPECT_EQ(download::DOWNLOAD_INTERRUPT_REASON_NONE,
+            target_info.interrupt_reason);
+
+  VerifyAndClearExpectations();
+}
+
+#if BUILDFLAG(IS_ANDROID)
+TEST_F(ChromeDownloadManagerDelegateTest, InterceptDownloadByOfflinePages) {
+  const GURL kUrl("http://example.com/foo");
+  std::string mime_type = "text/html";
+  bool should_intercept = delegate()->InterceptDownloadIfApplicable(
+      kUrl, "", "", mime_type, "", 10, false /*is_transient*/, nullptr);
+  EXPECT_TRUE(should_intercept);
+
+  should_intercept = delegate()->InterceptDownloadIfApplicable(
+      kUrl, "", "", mime_type, "", 10, true /*is_transient*/, nullptr);
+  EXPECT_FALSE(should_intercept);
+
+  should_intercept = delegate()->InterceptDownloadIfApplicable(
+      kUrl, "", "attachment" /*content_disposition*/, mime_type, "", 10,
+      false /*is_transient*/, nullptr);
+  EXPECT_FALSE(should_intercept);
+}
+
+namespace {
+class TestDownloadMessageBridge : public DownloadMessageBridge {
+ public:
+  TestDownloadMessageBridge() = default;
+
+  TestDownloadMessageBridge(const TestDownloadMessageBridge&) = delete;
+  TestDownloadMessageBridge& operator=(const TestDownloadMessageBridge&) =
+      delete;
+
+  void ShowUnsupportedDownloadMessage(
+      content::WebContents* web_contents) override {
+    message_shown_count_++;
+  }
+
+  // Returns the number of times ShowUnsupportedDownloadMessage has been called.
+  int GetMessageShownCount() { return message_shown_count_; }
+
+ private:
+  int message_shown_count_;
+};
+
+}  // namespace
+
+TEST_F(ChromeDownloadManagerDelegateTest, InterceptDownloadForAutomotive) {
+  if (!base::android::BuildInfo::GetInstance()->is_automotive()) {
+    GTEST_SKIP() << "This test should only run on automotive.";
+  }
+  base::HistogramTester histograms;
+
+  TestDownloadMessageBridge* message_bridge = new TestDownloadMessageBridge();
+  delegate()->SetDownloadMessageBridgeForTesting(
+      static_cast<DownloadMessageBridge*>(message_bridge));
+
+  const GURL kUrl("http://example.com/foo");
+  std::string mime_type = "image/png";
+  bool should_intercept = delegate()->InterceptDownloadIfApplicable(
+      kUrl, "", "", mime_type, "", 10, false /*is_transient*/, nullptr);
+  EXPECT_FALSE(should_intercept);
+
+  mime_type = "application/pdf";
+  should_intercept = delegate()->InterceptDownloadIfApplicable(
+      kUrl, "", "", mime_type, "", 10, false /*is_transient*/, nullptr);
+  EXPECT_TRUE(should_intercept);
+  histograms.ExpectUniqueSample("Download.Blocked.ContentType.Automotive",
+                                download::DownloadContent::kPdf, 1);
+
+  EXPECT_EQ(1, message_bridge->GetMessageShownCount());
+}
+#endif
+
+=======
+>>>>>>> chromium
 TEST_F(ChromeDownloadManagerDelegateTest,
        BlockedAsActiveContent_HttpsTargetOk) {
   // Active content download blocking ought not occur when the chain is secure.
@@ -1674,6 +1788,8 @@ TEST_F(ChromeDownloadManagerDelegateTestWithSafeBrowsing,
 
 namespace {
 
+<<<<<<< HEAD
+=======
 class AndroidDownloadInfobarCounter
     : public infobars::InfoBarManager::Observer {
  public:
@@ -1706,6 +1822,7 @@ class AndroidDownloadInfobarCounter
   int infobar_count_ = 0;
 };
 
+>>>>>>> chromium
 class TestDownloadDialogBridge : public DownloadDialogBridge {
  public:
   TestDownloadDialogBridge() = default;

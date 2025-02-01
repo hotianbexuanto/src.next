@@ -109,6 +109,69 @@ class TabGridViewBinder {
             tabTitleView.setContentDescription(
                     view.getResources().getString(R.string.accessibility_tabstrip_tab, title));
         } else if (TabProperties.IS_SELECTED == propertyKey) {
+<<<<<<< HEAD
+            updateColor(
+                    view,
+                    model.get(TabProperties.IS_INCOGNITO),
+                    model.get(TabProperties.IS_SELECTED));
+            updateFavicon(view, model);
+        } else if (TabProperties.FAVICON_FETCHER == propertyKey) {
+            updateFavicon(view, model);
+        } else if (TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER == propertyKey) {
+            @Nullable
+            TabGroupColorViewProvider provider =
+                    model.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER);
+            FrameLayout container =
+                    (FrameLayout) view.fastFindViewById(R.id.tab_group_color_view_container);
+            TabCardViewBinderUtils.updateTabGroupColorView(container, provider);
+        } else if (TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
+            TextResolver contentDescriptionTextResolver =
+                    model.get(TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER);
+            CharSequence contentDescriptionString =
+                    TabCardViewBinderUtils.resolveNullSafe(
+                            contentDescriptionTextResolver, view.getContext());
+            view.setContentDescription(contentDescriptionString);
+        } else if (TabProperties.GRID_CARD_SIZE == propertyKey) {
+            final Size cardSize = model.get(TabProperties.GRID_CARD_SIZE);
+            int height = cardSize.getHeight();
+            int width = cardSize.getWidth();
+            var layoutParams = view.getLayoutParams();
+            boolean sizeChanged =
+                    view.getMinimumHeight() != height
+                            || view.getMinimumWidth() != width
+                            || layoutParams.height != height
+                            || layoutParams.width != width;
+            if (sizeChanged) {
+                // Only update if the size changed to avoid needless layout requests which are
+                // expensive. A noop is likely to happen if the view gets recycled and re-bound as
+                // all the tab cards have the same size.
+                view.setMinimumHeight(height);
+                view.setMinimumWidth(width);
+                layoutParams.height = height;
+                layoutParams.width = width;
+                view.setLayoutParams(layoutParams);
+            }
+            // If the size changed we always need to update. Otherwise we only need to update if the
+            // current thumbnail is a placeholder and we were waiting on a thumbnail.
+            updateThumbnail(view, model, /* onlyUpdateIfPlaceholder= */ !sizeChanged);
+        } else if (TabProperties.THUMBNAIL_FETCHER == propertyKey) {
+            updateThumbnail(view, model, /* onlyUpdateIfPlaceholder= */ false);
+        } else if (TabProperties.TAB_ACTION_BUTTON_DATA == propertyKey) {
+            @Nullable TabActionButtonData data = model.get(TabProperties.TAB_ACTION_BUTTON_DATA);
+            @Nullable
+            TabActionListener tabActionListener = data == null ? null : data.tabActionListener;
+            setNullableClickListener(
+                    tabActionListener, view.fastFindViewById(R.id.action_button), model);
+
+            boolean showOverflowButton =
+                    data == null ? false : data.type == TabActionButtonType.OVERFLOW;
+            ((TabGridView) view).setTabActionButtonDrawable(showOverflowButton);
+        } else if (TabProperties.TAB_CLICK_LISTENER == propertyKey) {
+            setNullableClickListener(model.get(TabProperties.TAB_CLICK_LISTENER), view, model);
+        } else if (TabProperties.TAB_LONG_CLICK_LISTENER == propertyKey) {
+            setNullableLongClickListener(
+                    model.get(TabProperties.TAB_LONG_CLICK_LISTENER), view, model);
+=======
             if (TabUiThemeProvider.themeRefactorEnabled()) {
                 updateColor(view, model.get(TabProperties.IS_INCOGNITO),
                         model.get(TabProperties.IS_SELECTED));
@@ -156,6 +219,7 @@ class TabGridViewBinder {
             updateThumbnail(view, model);
         } else if (TabProperties.CONTENT_DESCRIPTION_STRING == propertyKey) {
             view.setContentDescription(model.get(TabProperties.CONTENT_DESCRIPTION_STRING));
+>>>>>>> chromium
         }
     }
 
@@ -278,6 +342,34 @@ class TabGridViewBinder {
                 LargeMessageCardView.showPriceDropTooltip(
                         priceCardView.findViewById(R.id.current_price));
             }
+<<<<<<< HEAD
+        } else if (TabProperties.ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
+            TextResolver actionButtonDescriptionTextResolver =
+                    model.get(TabProperties.ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER);
+            CharSequence actionButtonDescriptionString =
+                    actionButtonDescriptionTextResolver == null
+                            ? null
+                            : actionButtonDescriptionTextResolver.resolve(view.getContext());
+            view.fastFindViewById(R.id.action_button)
+                    .setContentDescription(actionButtonDescriptionString);
+        } else if (TabProperties.QUICK_DELETE_ANIMATION_STATUS == propertyKey) {
+            ((TabGridView) view)
+                    .hideTabGridCardViewForQuickDelete(
+                            model.get(TabProperties.QUICK_DELETE_ANIMATION_STATUS),
+                            model.get(TabProperties.IS_INCOGNITO));
+        } else if (TabProperties.VISIBILITY == propertyKey) {
+            view.setVisibility(model.get(TabProperties.VISIBILITY));
+        } else if (TabProperties.IS_SELECTED == propertyKey
+                || TabProperties.TAB_ACTION_BUTTON_DATA == propertyKey) {
+            ((TabGridView) view)
+                    .setTabActionButtonTint(
+                            TabUiThemeProvider.getActionButtonTintList(
+                                    view.getContext(),
+                                    model.get(TabProperties.IS_INCOGNITO),
+                                    model.get(TabProperties.IS_SELECTED)));
+        } else if (TabProperties.TAB_CARD_LABEL_DATA == propertyKey) {
+            updateTabCardLabel(view, model.get(TabProperties.TAB_CARD_LABEL_DATA));
+=======
         } else if (TabProperties.PAGE_INFO_LISTENER == propertyKey) {
             TabListMediator.TabActionListener listener =
                     model.get(TabProperties.PAGE_INFO_LISTENER);
@@ -304,6 +396,7 @@ class TabGridViewBinder {
             view.fastFindViewById(R.id.action_button)
                     .setContentDescription(
                             model.get(TabProperties.CLOSE_BUTTON_DESCRIPTION_STRING));
+>>>>>>> chromium
         }
     }
 

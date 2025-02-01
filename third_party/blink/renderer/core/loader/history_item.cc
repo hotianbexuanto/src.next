@@ -25,9 +25,18 @@
 
 #include "third_party/blink/renderer/core/loader/history_item.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
+<<<<<<< HEAD
+#include "base/containers/span.h"
+#include "third_party/blink/public/common/page_state/page_state.h"
+#include "third_party/blink/public/common/page_state/page_state_serialization.h"
+#include "third_party/blink/public/platform/web_http_body.h"
+#include "third_party/blink/public/platform/web_url_request_util.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_script_value.h"
 #include "third_party/blink/renderer/core/html/forms/form_controller.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_request.h"
@@ -173,4 +182,100 @@ void HistoryItem::Trace(Visitor* visitor) const {
   visitor->Trace(document_state_);
 }
 
+<<<<<<< HEAD
+PageState HistoryItem::ToPageState() const {
+  ExplodedPageState state;
+  state.referenced_files = GetReferencedFilePathsForSerialization();
+
+  state.top.url_string = WebString::ToOptionalString16(UrlString());
+  state.top.referrer = WebString::ToOptionalString16(GetReferrer());
+  state.top.referrer_policy = GetReferrerPolicy();
+  state.top.target = WebString::ToOptionalString16(Target());
+  if (StateObject()) {
+    state.top.state_object =
+        WebString::ToOptionalString16(StateObject()->ToWireString());
+  }
+  state.top.scroll_restoration_type = ScrollRestorationType();
+
+  ScrollAnchorData anchor;
+  if (const auto& scroll_and_view_state = GetViewState()) {
+    // TODO(crbug.com/1274078): Are these conversions from blink scroll offset
+    // to gfx::PointF and gfx::Point correct?
+    state.top.visual_viewport_scroll_offset = gfx::PointAtOffsetFromOrigin(
+        scroll_and_view_state->visual_viewport_scroll_offset_);
+    state.top.scroll_offset = gfx::ToFlooredPoint(
+        gfx::PointAtOffsetFromOrigin(scroll_and_view_state->scroll_offset_));
+    state.top.page_scale_factor = scroll_and_view_state->page_scale_factor_;
+    state.top.did_save_scroll_or_scale_state = true;
+    anchor = scroll_and_view_state->scroll_anchor_data_;
+  } else {
+    state.top.visual_viewport_scroll_offset = gfx::PointF();
+    state.top.scroll_offset = gfx::Point();
+    state.top.page_scale_factor = 0;
+    state.top.did_save_scroll_or_scale_state = false;
+  }
+
+  state.top.scroll_anchor_selector =
+      WebString::ToOptionalString16(anchor.selector_);
+  state.top.scroll_anchor_offset = anchor.offset_;
+  state.top.scroll_anchor_simhash = anchor.simhash_;
+
+  state.top.item_sequence_number = ItemSequenceNumber();
+  state.top.document_sequence_number = DocumentSequenceNumber();
+
+  state.top.document_state = ToOptionalString16Vector(GetDocumentState());
+
+  state.top.http_body.http_content_type =
+      WebString::ToOptionalString16(FormContentType());
+  WebHTTPBody http_body(FormData());
+  if (!http_body.IsNull()) {
+    state.top.http_body.request_body =
+        blink::GetRequestBodyForWebHTTPBody(http_body);
+    state.top.http_body.contains_passwords = http_body.ContainsPasswordData();
+  }
+
+  state.top.navigation_api_key =
+      WebString::ToOptionalString16(GetNavigationApiKey());
+  state.top.navigation_api_id =
+      WebString::ToOptionalString16(GetNavigationApiId());
+  if (GetNavigationApiState()) {
+    state.top.navigation_api_state =
+        WebString::ToOptionalString16(GetNavigationApiState()->ToWireString());
+  }
+
+  std::string encoded_data;
+  EncodePageState(state, &encoded_data);
+  return PageState::CreateFromEncodedData(encoded_data);
+}
+
+std::vector<std::optional<std::u16string>>
+HistoryItem::GetReferencedFilePathsForSerialization() const {
+  HashSet<String> file_paths;
+
+  // These additional paths are presumably used by PageState so the browser can
+  // grant the renderer access to referenced files during session restore. This
+  // logic dates to https://crrev.com/db4a9b4108635b3678c3f9fd5bdd1f98001db216,
+  // and it is not entirely clear if it is still needed.
+  const EncodedFormData* form_data = FormData();
+  if (form_data) {
+    for (const FormDataElement& element : form_data->Elements()) {
+      if (element.type_ == FormDataElement::kEncodedFile) {
+        file_paths.insert(element.filename_);
+      }
+    }
+  }
+
+  for (const String& path : GetReferencedFilePaths()) {
+    file_paths.insert(path);
+  }
+
+  std::vector<std::optional<std::u16string>> result;
+  result.reserve(file_paths.size());
+  std::ranges::transform(file_paths, std::back_inserter(result),
+                         WebString::ToOptionalString16);
+  return result;
+}
+
+=======
+>>>>>>> chromium
 }  // namespace blink

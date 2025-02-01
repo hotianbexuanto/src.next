@@ -186,6 +186,11 @@ static void JNI_TraceEvent_StartAsync(JNIEnv* env,
       TRACE_EVENT_FLAG_JAVA_STRING_LITERALS | TRACE_EVENT_FLAG_COPY);
 }
 
+<<<<<<< HEAD
+static void JNI_TraceEvent_FinishAsync(JNIEnv* env, jlong jid) {
+  TRACE_EVENT_END(internal::kJavaTraceCategory,
+                  perfetto::Track(static_cast<uint64_t>(jid)));
+=======
 static void JNI_TraceEvent_FinishAsync(JNIEnv* env,
                                        const JavaParamRef<jstring>& jname,
                                        jlong jid) {
@@ -193,6 +198,7 @@ static void JNI_TraceEvent_FinishAsync(JNIEnv* env,
   TRACE_EVENT_NESTABLE_ASYNC_END_WITH_FLAGS0(
       internal::kJavaTraceCategory, converter.name(), TRACE_ID_LOCAL(jid),
       TRACE_EVENT_FLAG_JAVA_STRING_LITERALS | TRACE_EVENT_FLAG_COPY);
+>>>>>>> chromium
 }
 
 }  // namespace android

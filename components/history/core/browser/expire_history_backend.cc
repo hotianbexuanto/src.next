@@ -21,7 +21,11 @@
 #include "base/location.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/numerics/safe_conversions.h"
+<<<<<<< HEAD
+#include "base/task/sequenced_task_runner.h"
+=======
 #include "base/sequenced_task_runner.h"
+>>>>>>> chromium
 #include "build/build_config.h"
 #include "components/favicon/core/favicon_database.h"
 #include "components/history/core/browser/history_backend_client.h"
@@ -263,10 +267,15 @@ void ExpireHistoryBackend::ExpireHistoryForTimes(
   // `times` must be in reverse chronological order and have no
   // duplicates, i.e. each member must be earlier than the one before
   // it.
+<<<<<<< HEAD
+  DCHECK(std::ranges::adjacent_find(times, std::less_equal<base::Time>()) ==
+         times.end());
+=======
   DCHECK(
       std::adjacent_find(
           times.begin(), times.end(), std::less_equal<base::Time>()) ==
       times.end());
+>>>>>>> chromium
 
   if (!main_db_)
     return;

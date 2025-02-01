@@ -54,7 +54,7 @@ ChromeExtensionTestNotificationObserver::
     : ExtensionTestNotificationObserver(context), browser_(nullptr) {}
 
 ChromeExtensionTestNotificationObserver::
-    ~ChromeExtensionTestNotificationObserver() {}
+    ~ChromeExtensionTestNotificationObserver() = default;
 
 content::BrowserContext*
 ChromeExtensionTestNotificationObserver::GetBrowserContext() {

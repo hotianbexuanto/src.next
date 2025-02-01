@@ -20,7 +20,6 @@ import android.os.SystemClock;
 import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 import androidx.browser.customtabs.CustomTabsIntent;
-import androidx.browser.customtabs.CustomTabsSessionToken;
 import androidx.browser.customtabs.TrustedWebUtils;
 
 import org.chromium.base.ApplicationStatus;
@@ -35,6 +34,7 @@ import org.chromium.chrome.browser.app.video_tutorials.VideoTutorialShareHelper;
 import org.chromium.chrome.browser.attribution_reporting.AttributionIntentHandler;
 import org.chromium.chrome.browser.attribution_reporting.AttributionIntentHandlerFactory;
 import org.chromium.chrome.browser.browserservices.SessionDataHolder;
+import org.chromium.chrome.browser.browserservices.intents.SessionHolder;
 import org.chromium.chrome.browser.browserservices.ui.splashscreen.trustedwebactivity.TwaSplashController;
 import org.chromium.chrome.browser.customtabs.CustomTabActivity;
 import org.chromium.chrome.browser.customtabs.CustomTabIntentDataProvider;
@@ -141,9 +141,9 @@ public class LaunchIntentDispatcher implements IntentHandler.IntentHandlerDelega
     }
 
     /**
-     * Figure out how to route the Intent.  Because this is on the critical path to startup, please
-     * avoid making the pathway any more complicated than it already is.  Make sure that anything
-     * you add _absolutely has_ to be here.
+     * Figure out how to route the Intent. Because this is on the critical path to startup, please
+     * avoid making the pathway any more complicated than it already is. Make sure that anything you
+     * add _absolutely has_ to be here.
      */
     private @Action int dispatch() {
         // Read partner browser customizations information asynchronously.
@@ -198,8 +198,12 @@ public class LaunchIntentDispatcher implements IntentHandler.IntentHandlerDelega
         }
 
         // Check if we should push the user through First Run.
+<<<<<<< HEAD
+        if (FirstRunFlowSequencer.launch(mActivity, mIntent)) {
+=======
         if (FirstRunFlowSequencer.launch(mActivity, mIntent, false /* requiresBroadcast */,
                     false /* preferLightweightFre */)) {
+>>>>>>> chromium
             return Action.FINISH_ACTIVITY;
         }
 
@@ -212,8 +216,27 @@ public class LaunchIntentDispatcher implements IntentHandler.IntentHandlerDelega
         return dispatchToTabbedActivity();
     }
 
+<<<<<<< HEAD
+    @SuppressWarnings(value = "UnsafeImplicitIntentLaunch")
+    private boolean processWebSearchIntent(Intent intent) {
+        if (intent == null) return false;
+
+        String query = null;
+        final String action = intent.getAction();
+        if (Intent.ACTION_SEARCH.equals(action)
+                || MediaStore.INTENT_ACTION_MEDIA_SEARCH.equals(action)) {
+            query = IntentUtils.safeGetStringExtra(intent, SearchManager.QUERY);
+        }
+        if (TextUtils.isEmpty(query)) return false;
+
+        // Only the ChromeLauncherActivity can handle search intents. Drop the intent and abort the
+        // launch.
+        if (!(mActivity instanceof ChromeLauncherActivity)) return true;
+
+=======
     @Override
     public void processWebSearchIntent(String query) {
+>>>>>>> chromium
         Intent searchIntent = new Intent(Intent.ACTION_WEB_SEARCH);
         searchIntent.putExtra(SearchManager.QUERY, query);
 
@@ -366,9 +389,21 @@ public class LaunchIntentDispatcher implements IntentHandler.IntentHandlerDelega
      * Handles launching a {@link CustomTabActivity}, which will sit on top of a client's activity
      * in the same task.
      */
+<<<<<<< HEAD
+    private boolean launchCustomTabActivity() {
+        CustomTabsConnection.getInstance()
+                .onHandledIntent(SessionHolder.getSessionHolderFromIntent(mIntent), mIntent);
+
+        boolean isCustomTab = true;
+        if (IntentHandler.shouldIgnoreIntent(mIntent, mActivity, isCustomTab)) {
+            return false;
+        }
+
+=======
     private void launchCustomTabActivity() {
         CustomTabsConnection.getInstance().onHandledIntent(
                 CustomTabsSessionToken.getSessionTokenFromIntent(mIntent), mIntent);
+>>>>>>> chromium
         if (!clearTopIntentsForCustomTabsEnabled(mIntent)) {
             // The old way of delivering intents relies on calling the activity directly via a
             // static reference. It doesn't allow using CLEAR_TOP, and also doesn't work when an

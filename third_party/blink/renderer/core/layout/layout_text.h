@@ -409,7 +409,7 @@ class CORE_EXPORT LayoutText : public LayoutObject {
 
   void InvalidateSubtreeLayoutForFontUpdates() override;
 
-  void DetachAbstractInlineTextBoxesIfNeeded();
+  void DetachAxHooksIfNeeded();
 
   // Returns the logical location of the first line box, and the logical height
   // of the LayoutText.
@@ -573,8 +573,14 @@ class CORE_EXPORT LayoutText : public LayoutObject {
   unsigned is_text_fragment_ : 1;
 
  private:
+<<<<<<< HEAD
+  ContentCaptureManager* GetOrResetContentCaptureManager();
+  void DetachAxHooks();
+  void ClearBlockFlowCachedData(const LayoutBlockFlow* block_flow);
+=======
   ContentCaptureManager* GetContentCaptureManager();
   void DetachAbstractInlineTextBoxes();
+>>>>>>> chromium
 
   // Used for LayoutNG with accessibility. True if inline fragments are
   // associated to |NGAbstractInlineTextBox|.
@@ -616,6 +622,17 @@ inline wtf_size_t LayoutText::FirstInlineFragmentItemIndex() const {
   return first_fragment_item_index_;
 }
 
+<<<<<<< HEAD
+inline void LayoutText::DetachAxHooksIfNeeded() {
+  if (has_abstract_inline_text_box_) [[unlikely]] {
+    DetachAxHooks();
+  }
+  if (!IsInLayoutNGInlineFormattingContext()) {
+    return;
+  }
+
+  ClearBlockFlowCachedData(FragmentItemsContainer());
+=======
 inline UChar LayoutText::UncheckedCharacterAt(unsigned i) const {
   SECURITY_DCHECK(i < TextLength());
   return Is8Bit() ? Characters8()[i] : Characters16()[i];
@@ -648,6 +665,7 @@ inline float LayoutText::HyphenWidth(const Font& font,
 inline void LayoutText::DetachAbstractInlineTextBoxesIfNeeded() {
   if (UNLIKELY(has_abstract_inline_text_box_))
     DetachAbstractInlineTextBoxes();
+>>>>>>> chromium
 }
 
 template <>

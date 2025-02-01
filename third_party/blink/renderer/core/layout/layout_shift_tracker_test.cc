@@ -247,6 +247,119 @@ TEST_F(LayoutShiftTrackerSimTest, ZoomLevelChange) {
   EXPECT_FLOAT_EQ(0.0, layout_shift_tracker.Score());
 }
 
+<<<<<<< HEAD
+class LayoutShiftTrackerNavigationTest : public LayoutShiftTrackerSimTest {
+ protected:
+  void RunTest(bool is_browser_initiated);
+};
+
+void LayoutShiftTrackerNavigationTest::RunTest(bool is_browser_initiated) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+  main_resource.Complete(R"HTML(
+    <style>
+      body { margin: 0; height: 1500px; }
+      #box {
+        left: 0px;
+        top: 0px;
+        width: 400px;
+        height: 600px;
+        background: yellow;
+        position: absolute;
+      }
+    </style>
+    <div id="box"></div>
+    <script>
+      box.addEventListener("mouseup", (e) => {
+        window.location.hash = '#a';
+        e.preventDefault();
+      });
+      window.addEventListener('hashchange', () => {
+        const shouldShow = window.location.hash === '#a';
+        if (shouldShow)
+          box.style.top = "100px";
+        else
+          box.style.top = "0px";
+      });
+    </script>
+  )HTML");
+
+  Compositor().BeginFrame();
+  test::RunPendingTasks();
+
+  auto* main_frame = To<LocalFrame>(WebView().GetPage()->MainFrame());
+  Persistent<HistoryItem> item1 =
+      main_frame->Loader().GetDocumentLoader()->GetHistoryItem();
+
+  WebMouseEvent event1(WebInputEvent::Type::kMouseDown, gfx::PointF(),
+                       gfx::PointF(), WebPointerProperties::Button::kLeft, 0,
+                       WebInputEvent::Modifiers::kLeftButtonDown,
+                       base::TimeTicks::Now());
+  WebMouseEvent event2(WebInputEvent::Type::kMouseUp, gfx::PointF(),
+                       gfx::PointF(), WebPointerProperties::Button::kLeft, 1,
+                       WebInputEvent::Modifiers::kLeftButtonDown,
+                       base::TimeTicks::Now());
+
+  // Coordinates inside #box.
+  event1.SetPositionInWidget(50, 150);
+  event2.SetPositionInWidget(50, 160);
+
+  WebView().MainFrameWidget()->HandleInputEvent(
+      WebCoalescedInputEvent(event1, ui::LatencyInfo()));
+  WebView().MainFrameWidget()->HandleInputEvent(
+      WebCoalescedInputEvent(event2, ui::LatencyInfo()));
+
+  Compositor().BeginFrame();
+  test::RunPendingTasks();
+  LayoutShiftTracker& layout_shift_tracker =
+      MainFrame().GetFrameView()->GetLayoutShiftTracker();
+  layout_shift_tracker.ResetTimerForTesting();
+
+  Persistent<HistoryItem> item2 =
+      main_frame->Loader().GetDocumentLoader()->GetHistoryItem();
+
+  main_frame->Loader().GetDocumentLoader()->CommitSameDocumentNavigation(
+      item1->Url(), WebFrameLoadType::kBackForward, item1.Get(),
+      ClientRedirectPolicy::kNotClientRedirect,
+      /*has_transient_user_activation=*/false, /*initiator_origin=*/nullptr,
+      /*is_synchronously_committed=*/false, /*source_element=*/nullptr,
+      mojom::blink::TriggeringEventInfo::kNotFromEvent, is_browser_initiated,
+      /*has_ua_visual_transition,=*/false,
+      /*soft_navigation_heuristics_task_id=*/std::nullopt,
+      /*should_skip_screenshot=*/false);
+
+  Compositor().BeginFrame();
+  test::RunPendingTasks();
+
+  WindowPerformance& perf = *DOMWindowPerformance::performance(Window());
+  auto entries =
+      perf.getBufferedEntriesByType(performance_entry_names::kLayoutShift);
+  EXPECT_EQ(1u, entries.size());
+  LayoutShift* shift = static_cast<LayoutShift*>(entries.front().Get());
+  // region fraction 50%, distance fraction 1/8
+  const double expected_shift_value = 0.5 * 0.125;
+  const double expected_cls_score =
+      is_browser_initiated ? 0 : expected_shift_value;
+
+  // Set hadRecentInput to be true for browser initiated history navigation,
+  // and the layout shift score will be 0.
+  EXPECT_EQ(is_browser_initiated, shift->hadRecentInput());
+  EXPECT_FLOAT_EQ(expected_shift_value, shift->value());
+  EXPECT_FLOAT_EQ(expected_cls_score, layout_shift_tracker.Score());
+}
+
+TEST_F(LayoutShiftTrackerNavigationTest,
+       BrowserInitiatedSameDocumentHistoryNavigation) {
+  RunTest(true /* is_browser_initiated */);
+}
+
+TEST_F(LayoutShiftTrackerNavigationTest,
+       RendererInitiatedSameDocumentHistoryNavigation) {
+  RunTest(false /* is_browser_initiated */);
+}
+
+=======
+>>>>>>> chromium
 class LayoutShiftTrackerPointerdownTest : public LayoutShiftTrackerSimTest {
  protected:
   void RunTest(WebInputEvent::Type completion_type, bool expect_exclusion);
@@ -724,10 +837,11 @@ TEST_F(LayoutShiftTrackerTest, StableCompositingChanges) {
     // - add/remove a cc::Layer when there is already a PaintLayer
     // - add/remove a cc::Layer and a PaintLayer together
 
-    static const char* states[] = {"", "pl", "pl tr", "pl", "", "tr", ""};
+    static const std::array<const char*, 7> states = {"", "pl", "pl tr", "pl",
+                                                      "", "tr", ""};
     element->setAttribute(html_names::kClassAttr, AtomicString(states[state]));
     UpdateAllLifecyclePhasesForTest();
-    return ++state < sizeof states / sizeof *states;
+    return ++state < states.size();
   };
   while (advance()) {
   }

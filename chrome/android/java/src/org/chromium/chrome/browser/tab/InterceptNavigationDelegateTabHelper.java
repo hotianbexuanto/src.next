@@ -18,16 +18,14 @@ public class InterceptNavigationDelegateTabHelper implements UserData {
     private final InterceptNavigationDelegateClientImpl mInterceptNavigationDelegateClient;
 
     public static void createForTab(Tab tab) {
+<<<<<<< HEAD
+        tab.getUserDataHost()
+                .setUserData(USER_DATA_KEY, new InterceptNavigationDelegateTabHelper(tab));
+=======
         assert get(tab) == null;
         tab.getUserDataHost().setUserData(
                 USER_DATA_KEY, new InterceptNavigationDelegateTabHelper(tab));
-    }
-
-    public static InterceptNavigationDelegateImpl get(Tab tab) {
-        InterceptNavigationDelegateTabHelper helper =
-                tab.getUserDataHost().getUserData(USER_DATA_KEY);
-        if (helper == null) return null;
-        return helper.mInterceptNavigationDelegate;
+>>>>>>> chromium
     }
 
     InterceptNavigationDelegateTabHelper(Tab tab) {

@@ -2,10 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
 
 #include "build/build_config.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/css/css_length_resolver.h"
+#include "third_party/blink/renderer/core/css/css_value_clamping_utils.h"
+=======
 #include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/css_value_pool.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/size_assertions.h"
@@ -120,7 +130,30 @@ double CSSNumericLiteralValue::ComputeDotsPerPixel() const {
 double CSSNumericLiteralValue::ComputeLengthPx(
     const CSSToLengthConversionData& conversion_data) const {
   DCHECK(IsLength());
+<<<<<<< HEAD
+  return length_resolver.ZoomedComputedPixels(num_, GetType());
+}
+
+int CSSNumericLiteralValue::ComputeInteger() const {
+  DCHECK(IsNumber());
+  return ClampTo<int>(num_);
+}
+
+double CSSNumericLiteralValue::ComputeNumber() const {
+  DCHECK(IsNumber() || IsPercentage());
+  if (IsPercentage()) {
+    return ClampTo<double>(num_ / 100.0);
+  } else {
+    return ClampTo<double>(num_);
+  }
+}
+
+double CSSNumericLiteralValue::ComputePercentage() const {
+  DCHECK(IsPercentage());
+  return CSSValueClampingUtils::ClampDouble(num_);
+=======
   return conversion_data.ZoomedComputedPixels(num_, GetType());
+>>>>>>> chromium
 }
 
 bool CSSNumericLiteralValue::AccumulateLengthArray(CSSLengthArray& length_array,
@@ -247,8 +280,13 @@ String CSSNumericLiteralValue::CustomCSSText() const {
         int int_value = value;
         const char* unit_type = UnitTypeToString(GetType());
         builder.AppendNumber(int_value);
+<<<<<<< HEAD
+        builder.Append(StringView(unit_type));
+        text = builder.ReleaseString();
+=======
         builder.Append(unit_type, strlen(unit_type));
         text = builder.ToString();
+>>>>>>> chromium
       }
     } break;
     default:

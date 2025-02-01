@@ -30,7 +30,10 @@
 #include "third_party/blink/renderer/core/layout/hit_test_cache.h"
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
+<<<<<<< HEAD
+=======
 #include "third_party/blink/renderer/core/layout/layout_state.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/scroll/scrollable_area.h"
 #include "third_party/blink/renderer/platform/graphics/overlay_scrollbar_clip_behavior.h"
 #include "third_party/blink/renderer/platform/heap/handle.h"
@@ -58,9 +61,14 @@ class ViewFragmentationContext;
 // about the different viewports.
 //
 // Because there is one LayoutView per rooted layout tree (or Frame), this class
+<<<<<<< HEAD
+// is used to add members shared by this tree.
+class CORE_EXPORT LayoutView : public LayoutBlockFlow {
+=======
 // is used to add members shared by this tree (e.g. m_layoutState or
 // m_layoutQuoteHead).
 class CORE_EXPORT LayoutView final : public LayoutBlockFlow {
+>>>>>>> chromium
  public:
   explicit LayoutView(Document*);
   ~LayoutView() override;

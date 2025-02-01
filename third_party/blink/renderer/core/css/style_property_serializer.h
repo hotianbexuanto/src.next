@@ -56,6 +56,15 @@ class StylePropertySerializer {
   String GetShorthandValue(const StylePropertyShorthand&,
                            String separator = " ") const;
   String ContainerValue() const;
+<<<<<<< HEAD
+  String TimelineValue(const StylePropertyShorthand&) const;
+  String ScrollTimelineValue() const;
+  String ViewTimelineValue() const;
+  String AnimationRangeShorthandValue() const;
+  String AnimationTriggerRangeShorthandValue() const;
+  String AnimationTriggerExitRangeShorthandValue() const;
+=======
+>>>>>>> chromium
   String FontValue() const;
   String FontVariantValue() const;
   bool AppendFontLonghandValueIfNotNormal(const CSSProperty&,
@@ -86,8 +95,7 @@ class StylePropertySerializer {
     STACK_ALLOCATED();
 
    public:
-    explicit PropertyValueForSerializer(
-        CSSPropertyValueSet::PropertyReference property)
+    explicit PropertyValueForSerializer(const CSSPropertyValue& property)
         : value_(&property.Value()),
           property_(CSSProperty::Get(property.Id())),
           is_important_(property.IsImportant()) {}

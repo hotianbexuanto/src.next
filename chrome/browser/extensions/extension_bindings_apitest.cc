@@ -64,8 +64,17 @@ void MouseUpInWebContents(content::WebContents* web_contents) {
 
 class ExtensionBindingsApiTest : public ExtensionApiTest {
  public:
+<<<<<<< HEAD
+  ExtensionBindingsApiTest() = default;
+
+  ExtensionBindingsApiTest(const ExtensionBindingsApiTest&) = delete;
+  ExtensionBindingsApiTest& operator=(const ExtensionBindingsApiTest&) = delete;
+
+  ~ExtensionBindingsApiTest() override = default;
+=======
   ExtensionBindingsApiTest() {}
   ~ExtensionBindingsApiTest() override {}
+>>>>>>> chromium
 
   void SetUpOnMainThread() override {
     ExtensionApiTest::SetUpOnMainThread();

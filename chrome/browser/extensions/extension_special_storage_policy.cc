@@ -341,9 +341,10 @@ void ExtensionSpecialStoragePolicy::NotifyCleared() {
 // SpecialCollection helper class
 //-----------------------------------------------------------------------------
 
-ExtensionSpecialStoragePolicy::SpecialCollection::SpecialCollection() {}
+ExtensionSpecialStoragePolicy::SpecialCollection::SpecialCollection() = default;
 
-ExtensionSpecialStoragePolicy::SpecialCollection::~SpecialCollection() {}
+ExtensionSpecialStoragePolicy::SpecialCollection::~SpecialCollection() =
+    default;
 
 bool ExtensionSpecialStoragePolicy::SpecialCollection::Contains(
     const GURL& origin) {

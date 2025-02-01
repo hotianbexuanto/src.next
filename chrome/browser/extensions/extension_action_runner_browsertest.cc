@@ -87,6 +87,11 @@ std::string GetValue(content::WebContents* web_contents) {
 
 }  // namespace
 
+<<<<<<< HEAD
+using ContextType = extensions::browser_test_util::ContextType;
+
+=======
+>>>>>>> chromium
 class ExtensionActionRunnerBrowserTest : public ExtensionBrowserTest {
  public:
   ExtensionActionRunnerBrowserTest() {}

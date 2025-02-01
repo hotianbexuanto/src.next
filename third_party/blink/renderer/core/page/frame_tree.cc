@@ -18,6 +18,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #include "third_party/blink/renderer/core/page/frame_tree.h"
 
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -249,8 +254,25 @@ Frame* FrameTree::FindFrameForNavigationInternal(const AtomicString& name,
   if (EqualIgnoringASCIICase(name, "_top"))
     return &Top();
 
+<<<<<<< HEAD
+  if (EqualIgnoringASCIICase(name, "_unfencedTop")) {
+    // In fenced frames, we set a flag that will later indicate to the browser
+    // that this is an _unfencedTop navigation, and return the current frame
+    // so that the renderer-side checks will succeed.
+    // TODO(crbug.com/1315802): Refactor MPArch _unfencedTop handling.
+    if (current_frame->IsInFencedFrameTree() && request != nullptr) {
+      request->SetIsUnfencedTopNavigation(true);
+      return current_frame;
+    }
+  }
+
+  if (EqualIgnoringASCIICase(name, "_parent")) {
+    return Parent() ? Parent() : current_frame;
+  }
+=======
   if (EqualIgnoringASCIICase(name, "_parent"))
     return Parent() ? Parent() : this_frame_.Get();
+>>>>>>> chromium
 
   // Since "_blank" should never be any frame's name, the following just amounts
   // to an optimization.

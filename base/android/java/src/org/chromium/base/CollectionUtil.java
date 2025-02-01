@@ -4,30 +4,29 @@
 
 package org.chromium.base;
 
-import android.util.Pair;
-
-import androidx.annotation.NonNull;
+import org.chromium.build.annotations.NullMarked;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-/**
- * Functions used for easier initialization of Java collections. Inspired by
- * functionality in com.google.common.collect in Guava but cherry-picked to
- * bare-minimum functionality to avoid bloat. (http://crbug.com/272790 provides
- * further details)
- */
+/** Helpers for working with collections that do not already exist in JDK / Guava. */
+@NullMarked
 public final class CollectionUtil {
     private CollectionUtil() {}
 
+<<<<<<< HEAD
+    public static int[] integerCollectionToIntArray(Collection<Integer> collection) {
+        int[] array = new int[collection.size()];
+        int index = 0;
+        for (int num : collection) {
+            array[index] = num;
+            index++;
+=======
     @SafeVarargs
     public static <E> HashSet<E> newHashSet(E... elements) {
         HashSet<E> set = new HashSet<E>(elements.length);
@@ -56,10 +55,13 @@ public final class CollectionUtil {
         int[] array = new int[list.size()];
         for (int i = 0; i < list.size(); i++) {
             array[i] = list.get(i);
+>>>>>>> chromium
         }
         return array;
     }
 
+<<<<<<< HEAD
+=======
     public static long[] longListToLongArray(@NonNull List<Long> list) {
         long[] array = new long[list.size()];
         for (int i = 0; i < list.size(); i++) {
@@ -84,11 +86,12 @@ public final class CollectionUtil {
         }
     }
 
+>>>>>>> chromium
     /**
      * Removes null entries from the given collection and then returns a list of strong references.
      *
-     * Note: This helper is relevant if you have a List<WeakReference<T>> or a Map with weak values.
-     * For Set<WeakReference<T>>, use Collections.newSetFromMap(new WeakHashMap()) instead.
+     * <p>Note: This helper is relevant if you have a List<WeakReference<T>> or a Map with weak
+     * values. For Set<WeakReference<T>>, use Collections.newSetFromMap(new WeakHashMap()) instead.
      *
      * @param weakRefs Collection to iterate.
      * @return List of strong references.

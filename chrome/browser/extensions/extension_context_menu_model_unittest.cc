@@ -134,7 +134,15 @@ class MenuBuilder {
         browser_(browser),
         menu_manager_(menu_manager),
         cur_id_(0) {}
+<<<<<<< HEAD
+
+  MenuBuilder(const MenuBuilder&) = delete;
+  MenuBuilder& operator=(const MenuBuilder&) = delete;
+
+  ~MenuBuilder() = default;
+=======
   ~MenuBuilder() {}
+>>>>>>> chromium
 
   std::unique_ptr<ExtensionContextMenuModel> BuildMenu() {
     return std::make_unique<ExtensionContextMenuModel>(
@@ -284,7 +292,7 @@ class ExtensionContextMenuModelTest : public ExtensionServiceTestBase {
   DISALLOW_COPY_AND_ASSIGN(ExtensionContextMenuModelTest);
 };
 
-ExtensionContextMenuModelTest::ExtensionContextMenuModelTest() {}
+ExtensionContextMenuModelTest::ExtensionContextMenuModelTest() = default;
 
 const Extension* ExtensionContextMenuModelTest::AddExtension(
     const std::string& name,

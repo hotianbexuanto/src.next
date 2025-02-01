@@ -69,9 +69,15 @@ struct ParameterPack {
   template <typename Type>
   static constexpr size_t IndexInPack() {
     size_t index = 0;
+<<<<<<< HEAD
+    for (bool value : {std::is_same_v<Type, Ts>...}) {
+      if (value) {
+=======
     for (bool value : {std::is_same<Type, Ts>::value...}) {
       if (value)
+>>>>>>> chromium
         return index;
+      }
       index++;
     }
     return pack_npos;

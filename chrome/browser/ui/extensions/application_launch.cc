@@ -16,7 +16,6 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
 #include "chrome/browser/apps/app_service/app_launch_params.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
@@ -94,9 +93,15 @@ class EnableViaDialogFlow : public ExtensionEnableFlowDelegate {
   // ExtensionEnableFlowDelegate overrides.
   void ExtensionEnableFlowFinished() override {
     const Extension* extension =
+<<<<<<< HEAD
+        registry_->enabled_extensions().GetByID(extension_id_);
+    if (!extension) {
+=======
         registry_->GetExtensionById(extension_id_, ExtensionRegistry::ENABLED);
     if (!extension)
+>>>>>>> chromium
       return;
+    }
     std::move(callback_).Run();
     delete this;
   }
@@ -115,8 +120,14 @@ class EnableViaDialogFlow : public ExtensionEnableFlowDelegate {
 
 const Extension* GetExtension(Profile* profile,
                               const apps::AppLaunchParams& params) {
+<<<<<<< HEAD
+  if (params.app_id.empty()) {
+    return nullptr;
+  }
+=======
   if (params.app_id.empty())
     return NULL;
+>>>>>>> chromium
   ExtensionRegistry* registry = ExtensionRegistry::Get(profile);
   return registry->GetExtensionById(
       params.app_id, ExtensionRegistry::ENABLED | ExtensionRegistry::DISABLED |
@@ -125,11 +136,17 @@ const Extension* GetExtension(Profile* profile,
 
 bool IsAllowedToOverrideURL(const extensions::Extension* extension,
                             const GURL& override_url) {
-  if (extension->web_extent().MatchesURL(override_url))
+  if (extension->web_extent().MatchesURL(override_url)) {
     return true;
+  }
 
+<<<<<<< HEAD
+  if (override_url.DeprecatedGetOriginAsURL() == extension->url()) {
+=======
   if (override_url.GetOrigin() == extension->url())
+>>>>>>> chromium
     return true;
+  }
 
   return false;
 }
@@ -166,14 +183,20 @@ ui::WindowShowState DetermineWindowShowState(
     extensions::LaunchContainer container,
     const Extension* extension) {
   if (!extension ||
+<<<<<<< HEAD
+      container != apps::LaunchContainer::kLaunchContainerWindow) {
+    return ui::mojom::WindowShowState::kDefault;
+  }
+=======
       container != extensions::LaunchContainer::kLaunchContainerWindow)
     return ui::SHOW_STATE_DEFAULT;
+>>>>>>> chromium
 
   if (chrome::IsRunningInForcedAppMode())
     return ui::SHOW_STATE_FULLSCREEN;
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  // In ash, LAUNCH_TYPE_FULLSCREEN launches in a maximized app window and
+#if BUILDFLAG(IS_CHROMEOS)
+  // In ChromeOS, LAUNCH_TYPE_FULLSCREEN launches in a maximized app window and
   // LAUNCH_TYPE_WINDOW launches in a default app window.
   extensions::LaunchType launch_type =
       extensions::GetLaunchType(ExtensionPrefs::Get(profile), extension);
@@ -216,9 +239,16 @@ WebContents* OpenApplicationTab(Profile* profile,
       extensions::GetLaunchType(ExtensionPrefs::Get(profile), extension);
   UMA_HISTOGRAM_ENUMERATION("Extensions.AppTabLaunchType", launch_type, 100);
 
+<<<<<<< HEAD
+  int add_type = AddTabTypes::ADD_ACTIVE;
+  if (launch_type == extensions::LAUNCH_TYPE_PINNED) {
+    add_type |= AddTabTypes::ADD_PINNED;
+  }
+=======
   int add_type = TabStripModel::ADD_ACTIVE;
   if (launch_type == extensions::LAUNCH_TYPE_PINNED)
     add_type |= TabStripModel::ADD_PINNED;
+>>>>>>> chromium
 
   ui::PageTransition transition = ui::PAGE_TRANSITION_AUTO_BOOKMARK;
   NavigateParams params(browser, url, transition);
@@ -254,9 +284,9 @@ WebContents* OpenApplicationTab(Profile* profile,
     contents = params.navigated_or_inserted_contents;
   }
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  // In ash, LAUNCH_FULLSCREEN launches in the OpenApplicationWindow function
-  // i.e. it should not reach here.
+#if BUILDFLAG(IS_CHROMEOS)
+  // In ChromeOS, LAUNCH_FULLSCREEN launches in the OpenApplicationWindow
+  // function i.e. it should not reach here.
   DCHECK(launch_type != extensions::LAUNCH_TYPE_FULLSCREEN);
 #else
   // TODO(skerner):  If we are already in full screen mode, and the user set the
@@ -265,9 +295,9 @@ WebContents* OpenApplicationTab(Profile* profile,
   // this case?
   if (launch_type == extensions::LAUNCH_TYPE_FULLSCREEN &&
       !browser->window()->IsFullscreen()) {
-    chrome::ToggleFullscreenMode(browser);
+    chrome::ToggleFullscreenMode(browser, /*user_initiated=*/false);
   }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // BUILDFLAG(IS_CHROMEOS)
   return contents;
 }
 
@@ -331,6 +361,62 @@ WebContents* OpenEnabledApplication(Profile* profile,
   return tab;
 }
 
+<<<<<<< HEAD
+WebContents* OpenEnabledApplication(Profile* profile,
+                                    const apps::AppLaunchParams& params) {
+  // `extension` is required.
+  const Extension* extension = GetExtension(profile, params);
+  if (!extension) {
+    return nullptr;
+  }
+
+  if (extensions::WebFileHandlers::SupportsWebFileHandlers(*extension)) {
+    // If the extension supports Web File Handlers, File Handlers are required.
+    auto* handlers = extensions::WebFileHandlers::GetFileHandlers(*extension);
+    if (!handlers) {
+      return nullptr;
+    }
+
+    // Support for multiple-clients in Web File Handlers. Launch if this is a
+    // for multiple-clients. Otherwise fallthrough to
+    // `OpenEnabledApplicationHelper`.
+    std::vector<apps::AppLaunchParams> app_launch_params_list =
+        CheckForMultiClientLaunchSupport(extension, profile, *handlers, params);
+
+    // If list isn't empty, then launch files for multiple-clients and return.
+    WebContents* web_contents = nullptr;
+    if (!app_launch_params_list.empty()) {
+      for (const auto& app_launch_params : app_launch_params_list) {
+        // Return the last web_contents to the caller. The web_contents is
+        // only currently used for Arc and therefore WFH doesn't need any of
+        // them. This code path can only be reached by Web File Handlers, not
+        // Arc.
+        web_contents = OpenEnabledApplicationHelper(profile, app_launch_params,
+                                                    *extension);
+      }
+      return web_contents;
+    }
+  }
+
+  // This is the default case. Alternatively, Web File Handlers could also reach
+  // this point if they have a single-client launch_type, which is the default.
+  return OpenEnabledApplicationHelper(profile, params, *extension);
+}
+
+Browser* FindBrowserForApp(Profile* profile, const std::string& app_id) {
+  for (Browser* browser : BrowserList::GetInstance()->OrderedByActivation()) {
+    std::string browser_app_id =
+        web_app::GetAppIdFromApplicationName(browser->app_name());
+    if (profile == browser->profile() && browser->is_type_app() &&
+        app_id == browser_app_id) {
+      return browser;
+    }
+  }
+  return nullptr;
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 WebContents* OpenApplication(Profile* profile, apps::AppLaunchParams&& params) {
@@ -426,8 +512,9 @@ WebContents* OpenApplicationWindow(Profile* profile,
 void OpenApplicationWithReenablePrompt(Profile* profile,
                                        apps::AppLaunchParams&& params) {
   const Extension* extension = GetExtension(profile, params);
-  if (!extension)
+  if (!extension) {
     return;
+  }
 
   ExtensionService* service =
       extensions::ExtensionSystem::Get(profile)->extension_service();

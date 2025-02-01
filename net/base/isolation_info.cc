@@ -112,9 +112,34 @@ IsolationInfo IsolationInfo::CreateForInternalRequest(
                        std::set<SchemefulSite>() /* party_context */);
 }
 
-IsolationInfo IsolationInfo::CreateTransient() {
+IsolationInfo IsolationInfo::CreateTransient(
+    const std::optional<base::UnguessableToken>& nonce) {
   url::Origin opaque_origin;
   return IsolationInfo(RequestType::kOther, opaque_origin, opaque_origin,
+<<<<<<< HEAD
+                       SiteForCookies(), /*nonce=*/nonce);
+}
+
+std::optional<IsolationInfo> IsolationInfo::Deserialize(
+    const std::string& serialized) {
+  proto::IsolationInfo proto;
+  if (!proto.ParseFromString(serialized))
+    return std::nullopt;
+
+  std::optional<url::Origin> top_frame_origin;
+  if (proto.has_top_frame_origin())
+    top_frame_origin = url::Origin::Create(GURL(proto.top_frame_origin()));
+
+  std::optional<url::Origin> frame_origin;
+  if (proto.has_frame_origin())
+    frame_origin = url::Origin::Create(GURL(proto.frame_origin()));
+
+  return IsolationInfo::CreateIfConsistent(
+      static_cast<RequestType>(proto.request_type()),
+      std::move(top_frame_origin), std::move(frame_origin),
+      SiteForCookies::FromUrl(GURL(proto.site_for_cookies())),
+      /*nonce=*/std::nullopt);
+=======
                        SiteForCookies(), false /* opaque_and_non_transient */,
                        absl::nullopt /* party_context */);
 }
@@ -124,6 +149,7 @@ IsolationInfo IsolationInfo::CreateOpaqueAndNonTransient() {
   return IsolationInfo(RequestType::kOther, opaque_origin, opaque_origin,
                        SiteForCookies(), true /* opaque_and_non_transient */,
                        absl::nullopt /* party_context */);
+>>>>>>> chromium
 }
 
 IsolationInfo IsolationInfo::Create(

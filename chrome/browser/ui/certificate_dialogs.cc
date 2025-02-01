@@ -123,8 +123,9 @@ Exporter::Exporter(content::WebContents* web_contents,
 Exporter::~Exporter() {
   // There may be pending file dialogs, we need to tell them that we've gone
   // away so they don't try and call back to us.
-  if (select_file_dialog_)
+  if (select_file_dialog_) {
     select_file_dialog_->ListenerDestroyed();
+  }
 }
 
 void Exporter::FileSelected(const base::FilePath& path,
@@ -133,8 +134,9 @@ void Exporter::FileSelected(const base::FilePath& path,
   std::string data;
   switch (index - 1) {
     case kBase64Chain:
-      for (const auto& cert : cert_chain_list_)
+      for (const auto& cert : cert_chain_list_) {
         data += GetBase64String(cert.get());
+      }
       break;
     case kDer:
       net::x509_util::GetDEREncoded(cert_chain_list_[0].get(), &data);
@@ -164,6 +166,27 @@ void Exporter::FileSelectionCanceled(void* params) {
   delete this;
 }
 
+<<<<<<< HEAD
+std::string Exporter::GetCMSString(size_t start, size_t end) const {
+  size_t size_hint = 64;
+  bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> stack(sk_CRYPTO_BUFFER_new_null());
+  for (size_t i = start; i < end; ++i) {
+    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert_chain_list_[i]))) {
+      return std::string();
+    }
+    size_hint += CRYPTO_BUFFER_len(cert_chain_list_[i].get());
+  }
+  bssl::ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), size_hint) ||
+      !PKCS7_bundle_raw_certificates(cbb.get(), stack.get())) {
+    return std::string();
+  }
+  return std::string(reinterpret_cast<const char*>(CBB_data(cbb.get())),
+                     CBB_len(cbb.get()));
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 void ShowCertSelectFileDialog(ui::SelectFileDialog* select_file_dialog,

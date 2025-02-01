@@ -11,11 +11,25 @@ import 'chrome://resources/cr_elements/shared_vars_css.m.js';
 import 'chrome://resources/polymer/v3_0/paper-styles/color.js';
 import './pack_dialog.js';
 
+<<<<<<< HEAD
+import {getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
+import type {CrToggleElement} from 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
+import type {CrToolbarElement} from 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
+import {I18nMixinLit} from 'chrome://resources/cr_elements/i18n_mixin_lit.js';
+import {listenOnce} from 'chrome://resources/js/util.js';
+import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+
+import {TOAST_DURATION_MS} from './item_util.js';
+import {getCss} from './toolbar.css.js';
+import {getHtml} from './toolbar.html.js';
+=======
 import {getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.m.js';
 import {I18nBehavior} from 'chrome://resources/js/i18n_behavior.m.js';
 import {listenOnce} from 'chrome://resources/js/util.m.js';
 import {IronA11yAnnouncer} from 'chrome://resources/polymer/v3_0/iron-a11y-announcer/iron-a11y-announcer.js';
 import {html, mixinBehaviors, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+>>>>>>> chromium
 
 export interface ToolbarDelegate {
   /**
@@ -158,7 +172,7 @@ class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
         .then((success) => {
           if (success) {
             const toastManager = getToastManager();
-            toastManager.duration = 3000;
+            toastManager.duration = TOAST_DURATION_MS;
             toastManager.show(this.i18n('toolbarLoadUnpackedDone'));
           }
         })
@@ -200,7 +214,7 @@ class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
         .then(
             () => {
               toastManager.hide();
-              toastManager.duration = 3000;
+              toastManager.duration = TOAST_DURATION_MS;
               toastManager.show(this.i18n('toolbarUpdateDone'));
               this.isUpdating_ = false;
             },

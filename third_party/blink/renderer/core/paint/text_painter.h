@@ -23,6 +23,19 @@ class CORE_EXPORT TextPainter : public TextPainterBase {
  public:
   TextPainter(GraphicsContext& context,
               const Font& font,
+<<<<<<< HEAD
+              std::optional<AffineTransform> rotation,
+              const gfx::Rect& visual_rect,
+              const LineRelativeOffset& text_origin,
+              bool horizontal)
+      : graphics_context_(context),
+        svg_context_paints_(svg_context_paints),
+        font_(font),
+        rotation_(rotation),
+        visual_rect_(visual_rect),
+        text_origin_(text_origin),
+        horizontal_(horizontal) {}
+=======
               const TextRun& run,
               const PhysicalOffset& text_origin,
               const PhysicalRect& text_frame_rect,
@@ -33,6 +46,7 @@ class CORE_EXPORT TextPainter : public TextPainterBase {
                         text_frame_rect,
                         horizontal),
         run_(run) {}
+>>>>>>> chromium
   ~TextPainter() = default;
 
   void SetCombinedText(LayoutTextCombine* combined_text) {
@@ -48,6 +62,46 @@ class CORE_EXPORT TextPainter : public TextPainterBase {
              const TextPaintStyle&,
              DOMNodeId node_id);
 
+<<<<<<< HEAD
+  void PaintSelectedText(const TextFragmentPaintInfo& fragment_paint_info,
+                         unsigned selection_start,
+                         unsigned selection_end,
+                         const TextPaintStyle& text_style,
+                         const TextPaintStyle& selection_style,
+                         const LineRelativeRect& selection_rect,
+                         DOMNodeId node_id,
+                         const AutoDarkMode& auto_dark_mode);
+
+  void PaintDecorationLine(const TextDecorationInfo& decoration_info,
+                           const Color& line_color,
+                           const TextFragmentPaintInfo* fragment_paint_info);
+
+  SvgTextPaintState& SetSvgState(const LayoutSVGInlineText&,
+                                 const ComputedStyle&,
+                                 StyleVariant style_variant,
+                                 PaintFlags paint_flags);
+  SvgTextPaintState& SetSvgState(const LayoutSVGInlineText& svg_inline_text,
+                                 const ComputedStyle& style,
+                                 Color text_match_color);
+  SvgTextPaintState* GetSvgState();
+
+  static Color TextColorForWhiteBackground(Color);
+
+  static TextPaintStyle TextPaintingStyle(const Document&,
+                                          const ComputedStyle&,
+                                          const PaintInfo&);
+
+  void SetEmphasisMark(const AtomicString&, TextEmphasisPosition);
+
+  gfx::RectF VisualRectInLocalSpace() const;
+
+ protected:
+  const Font& font() const { return font_; }
+  const LineRelativeOffset& text_origin() const { return text_origin_; }
+  const AtomicString& emphasis_mark() const { return emphasis_mark_; }
+  int emphasis_mark_offset() const { return emphasis_mark_offset_; }
+  GraphicsContext& graphics_context() const { return graphics_context_; }
+=======
   void PaintDecorationsExceptLineThrough(const TextDecorationOffsetBase&,
                                          TextDecorationInfo&,
                                          const PaintInfo&,
@@ -58,6 +112,7 @@ class CORE_EXPORT TextPainter : public TextPainterBase {
                                        const PaintInfo&,
                                        const Vector<AppliedTextDecoration>&,
                                        const TextPaintStyle&);
+>>>>>>> chromium
 
  private:
   template <PaintInternalStep step>
@@ -72,8 +127,21 @@ class CORE_EXPORT TextPainter : public TextPainterBase {
                      unsigned truncation_point,
                      DOMNodeId node_id);
 
+<<<<<<< HEAD
+  GraphicsContext& graphics_context_;
+  const SvgContextPaints* svg_context_paints_;
+  const Font& font_;
+  std::optional<AffineTransform> rotation_;
+  const gfx::Rect visual_rect_;
+  const LineRelativeOffset text_origin_;
+  const bool horizontal_;
+  std::optional<SvgTextPaintState> svg_text_paint_state_;
+  AtomicString emphasis_mark_;
+  int emphasis_mark_offset_ = 0;
+=======
   const TextRun& run_;
   LayoutTextCombine* combined_text_ = nullptr;
+>>>>>>> chromium
 };
 
 }  // namespace blink

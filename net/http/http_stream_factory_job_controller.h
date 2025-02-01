@@ -271,9 +271,33 @@ class HttpStreamFactory::JobController
   // Returns true if QUIC is allowed for |host|.
   bool IsQuicAllowedForHost(const std::string& host);
 
+<<<<<<< HEAD
+  int GetJobCount() const {
+    return (main_job_ ? 1 : 0) + (alternative_job_ ? 1 : 0) +
+           (dns_alpn_h3_job_ ? 1 : 0);
+  }
+
+  // Called when the request needs to use the HttpStreamPool instead of `this`.
+  // Call site of Start() should destroy the current HttpStreamRequest and
+  // switch to the HttpStreamPool. `this` will be destroyed when `request_` is
+  // destroyed.
+  void SwitchToHttpStreamPool();
+
+  // Called when `this` asked the HttpStreamPool to handle a preconnect and
+  // the preconnect completed. Used to notify the factory of completion.
+  void OnPoolPreconnectsComplete(int rv);
+
+  // Used to call HttpStreamRequest::OnSwitchesToHttpStreamPool() later.
+  void CallOnSwitchesToHttpStreamPool(HttpStreamPoolRequestInfo request_info);
+
+  const raw_ptr<HttpStreamFactory> factory_;
+  const raw_ptr<HttpNetworkSession> session_;
+  const raw_ptr<JobFactory> job_factory_;
+=======
   HttpStreamFactory* factory_;
   HttpNetworkSession* session_;
   JobFactory* job_factory_;
+>>>>>>> chromium
 
   // Request will be handed out to factory once created. This just keeps an
   // reference and is safe as |request_| will notify |this| JobController

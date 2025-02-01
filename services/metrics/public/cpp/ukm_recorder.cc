@@ -54,6 +54,70 @@ ukm::SourceId UkmRecorder::GetSourceIdForWebApkManifestUrl(
 }
 
 // static
+<<<<<<< HEAD
+ukm::SourceId UkmRecorder::GetSourceIdForRedirectUrl(
+    base::PassKey<content::BtmNavigationHandle>,
+    const GURL& redirect_url) {
+  return UkmRecorder::GetSourceIdFromScopeImpl(redirect_url,
+                                               SourceIdType::REDIRECT_ID);
+}
+
+// static
+ukm::SourceId UkmRecorder::GetSourceIdForDipsSite(
+    base::PassKey<content::BtmServiceImpl>,
+    const std::string& site) {
+  // Use REDIRECT_ID because DIPS sites are bounce trackers that redirected the
+  // user (see go/dips). This method is used for background reporting of such
+  // sites, so there's no RenderFrameHost to get a SourceId from, or even a full
+  // URL to report on -- only the eTLD+1 stored by the DIPS Service.
+  DCHECK(net::IsCanonicalizedHostCompliant(site)) << "Invalid site: " << site;
+  return UkmRecorder::GetSourceIdFromScopeImpl(GURL("http://" + site),
+                                               SourceIdType::REDIRECT_ID);
+}
+
+// static
+ukm::SourceId UkmRecorder::GetSourceIdForChromeOSWebsiteURL(
+    base::PassKey<apps::WebsiteMetrics>,
+    const GURL& redirect_url) {
+  return UkmRecorder::GetSourceIdFromScopeImpl(
+      redirect_url, SourceIdType::CHROMEOS_WEBSITE_ID);
+}
+
+// static
+ukm::SourceId UkmRecorder::GetSourceIdForExtensionUrl(
+    base::PassKey<extensions::ExtensionMessagePort>,
+    const GURL& extension_url) {
+  // UkmRecorderImpl will verify the extension URL (and the corresponding
+  // extension) prior to emitting the record.
+  return UkmRecorder::GetSourceIdFromScopeImpl(extension_url,
+                                               SourceIdType::EXTENSION_ID);
+}
+
+// static
+ukm::SourceId UkmRecorder::GetSourceIdForExtensionUrl(
+    base::PassKey<extensions::ManifestV2ExperimentManager>,
+    const GURL& extension_url) {
+  // UkmRecorderImpl will verify the extension URL (and the corresponding
+  // extension) prior to emitting the record.
+  return UkmRecorder::GetSourceIdFromScopeImpl(extension_url,
+                                               SourceIdType::EXTENSION_ID);
+}
+
+// static
+ukm::SourceId UkmRecorder::GetSourceIdForNotificationPermission(
+    base::PassKey<ChromePermissionsClient>,
+    const GURL& origin) {
+  return UkmRecorder::GetSourceIdFromScopeImpl(origin,
+                                               SourceIdType::NOTIFICATION_ID);
+}
+
+// static
+ukm::SourceId UkmRecorder::GetSourceIdForNotificationEvent(
+    base::PassKey<PlatformNotificationServiceImpl>,
+    const GURL& origin) {
+  return UkmRecorder::GetSourceIdFromScopeImpl(origin,
+                                               SourceIdType::NOTIFICATION_ID);
+=======
 ukm::SourceId UkmRecorder::GetSourceIdForDesktopWebAppStartUrl(
     const GURL& start_url) {
   ukm::SourceId source_id =
@@ -63,6 +127,7 @@ ukm::SourceId UkmRecorder::GetSourceIdForDesktopWebAppStartUrl(
   ukm::UkmRecorder* ukm_recorder = ukm::UkmRecorder::Get();
   ukm_recorder->UpdateSourceURL(source_id, start_url);
   return source_id;
+>>>>>>> chromium
 }
 
 void UkmRecorder::RecordOtherURL(ukm::SourceIdObj source_id, const GURL& url) {

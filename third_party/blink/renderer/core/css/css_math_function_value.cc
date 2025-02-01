@@ -80,7 +80,66 @@ double CSSMathFunctionValue::ComputeLengthPx(
   // |CSSToLengthConversionData| only resolves relative length units, but not
   // percentages.
   DCHECK_EQ(kCalcLength, expression_->Category());
+<<<<<<< HEAD
+  DCHECK(!expression_->HasPercentage());
+  return ClampToPermittedRange(expression_->ComputeLengthPx(length_resolver));
+}
+
+int CSSMathFunctionValue::ComputeInteger(
+    const CSSLengthResolver& length_resolver) const {
+  // |CSSToLengthConversionData| only resolves relative length units, but not
+  // percentages.
+  DCHECK_EQ(kCalcNumber, expression_->Category());
+  DCHECK(!expression_->HasPercentage());
+  return ClampTo<int>(
+      ClampToPermittedRange(expression_->ComputeNumber(length_resolver)));
+}
+
+double CSSMathFunctionValue::ComputeNumber(
+    const CSSLengthResolver& length_resolver) const {
+  if (expression_->Category() == kCalcNumber) {
+    // |CSSToLengthConversionData| only resolves relative length units, but not
+    // percentages.
+    DCHECK(!expression_->HasPercentage());
+  } else {
+    DCHECK_EQ(expression_->Category(), kCalcPercent);
+  }
+  double value =
+      ClampToPermittedRange(expression_->ComputeNumber(length_resolver));
+  if (expression_->Category() == kCalcPercent) {
+    value /= 100.0;
+  }
+  return std::isnan(value) ? 0.0 : value;
+}
+
+double CSSMathFunctionValue::ComputePercentage(
+    const CSSLengthResolver& length_resolver) const {
+  // |CSSToLengthConversionData| only resolves relative length units, but not
+  // percentages.
+  DCHECK_EQ(kCalcPercent, expression_->Category());
+  double value =
+      ClampToPermittedRange(expression_->ComputeNumber(length_resolver));
+  return std::isnan(value) ? 0.0 : value;
+}
+
+double CSSMathFunctionValue::ComputeValueInCanonicalUnit(
+    const CSSLengthResolver& length_resolver) const {
+  // Don't use it for mix of length and percentage or similar,
+  // as it would compute 10px + 10% to 20.
+  DCHECK(IsResolvableBeforeLayout());
+  std::optional<double> optional_value =
+      expression_->ComputeValueInCanonicalUnit(length_resolver);
+  DCHECK(optional_value.has_value());
+  double value = ClampToPermittedRange(optional_value.value());
+  return std::isnan(value) ? 0.0 : value;
+}
+
+double CSSMathFunctionValue::ComputeDotsPerPixel() const {
+  DCHECK_EQ(kCalcResolution, expression_->Category());
+  return ClampToPermittedRange(*expression_->ComputeValueInCanonicalUnit());
+=======
   return ClampToPermittedRange(expression_->ComputeLengthPx(conversion_data));
+>>>>>>> chromium
 }
 
 bool CSSMathFunctionValue::AccumulateLengthArray(CSSLengthArray& length_array,
@@ -122,12 +181,15 @@ double CSSMathFunctionValue::ClampToPermittedRange(double value) const {
   return IsNonNegative() && value < 0 ? 0 : value;
 }
 
+<<<<<<< HEAD
+=======
 bool CSSMathFunctionValue::IsZero() const {
   if (expression_->ResolvedUnitType() == UnitType::kUnknown)
     return false;
   return expression_->IsZero();
 }
 
+>>>>>>> chromium
 bool CSSMathFunctionValue::IsPx() const {
   // TODO(crbug.com/979895): This is the result of refactoring, which might be
   // an existing bug. Fix it if necessary.

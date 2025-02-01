@@ -27,6 +27,7 @@ import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.IntDef;
+import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.DrawableCompat;
@@ -35,12 +36,17 @@ import androidx.core.widget.ImageViewCompat;
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.Callback;
 import org.chromium.chrome.tab_ui.R;
+<<<<<<< HEAD
+import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
+=======
 import org.chromium.components.browser_ui.widget.animation.Interpolators;
 import org.chromium.components.browser_ui.widget.scrim.ScrimCoordinator;
+>>>>>>> chromium
 import org.chromium.components.browser_ui.widget.scrim.ScrimProperties;
 import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.interpolators.BakedBezierInterpolator;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.ui.widget.ButtonCompat;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -73,12 +79,18 @@ public class TabGridDialogView extends FrameLayout {
     private View mAnimationCardView;
     private View mItemView;
     private View mUngroupBar;
+    private TextView mUngroupBarTextView;
+    private ButtonCompat mSendFeedbackButton;
     private ViewGroup mSnackBarContainer;
     private ViewGroup mParent;
+<<<<<<< HEAD
+    private ImageView mHairline;
+=======
     private TextView mUngroupBarTextView;
+>>>>>>> chromium
     private RelativeLayout mDialogContainerView;
     private PropertyModel mScrimPropertyModel;
-    private ScrimCoordinator mScrimCoordinator;
+    private ScrimManager mScrimManager;
     private FrameLayout.LayoutParams mContainerParams;
     private ViewTreeObserver.OnGlobalLayoutListener mParentGlobalLayoutListener;
     private Animator mCurrentDialogAnimator;
@@ -94,6 +106,11 @@ public class TabGridDialogView extends FrameLayout {
     private Map<View, Integer> mAccessibilityImportanceMap = new HashMap<>();
     private int mSideMargin;
     private int mTopMargin;
+<<<<<<< HEAD
+    private int mBottomMargin;
+    private int mAppHeaderHeight;
+=======
+>>>>>>> chromium
     private int mOrientation;
     private int mParentHeight;
     private int mParentWidth;
@@ -167,6 +184,11 @@ public class TabGridDialogView extends FrameLayout {
         mDialogContainerView.setLayoutParams(mContainerParams);
         mUngroupBar = findViewById(R.id.dialog_ungroup_bar);
         mUngroupBarTextView = mUngroupBar.findViewById(R.id.dialog_ungroup_bar_text);
+<<<<<<< HEAD
+        mSendFeedbackButton = findViewById(R.id.send_feedback_button);
+        mAnimationClip = findViewById(R.id.dialog_animation_clip);
+=======
+>>>>>>> chromium
         mBackgroundFrame = findViewById(R.id.dialog_frame);
         mBackgroundFrame.setLayoutParams(mContainerParams);
         mAnimationCardView = findViewById(R.id.dialog_animation_card_view);
@@ -201,6 +223,60 @@ public class TabGridDialogView extends FrameLayout {
             }
         });
 
+<<<<<<< HEAD
+        final int screenHeightPx =
+                ViewUtils.dpToPx(
+                        getContext(),
+                        getContext().getResources().getConfiguration().screenHeightDp);
+        final float mDialogInitYPos = mDialogContainerView.getY();
+        mYTranslateAnimation =
+                ObjectAnimator.ofFloat(
+                        mDialogContainerView, View.TRANSLATION_Y, mDialogInitYPos, screenHeightPx);
+        mYTranslateAnimation.setInterpolator(Interpolators.EMPHASIZED_ACCELERATE);
+        mYTranslateAnimation.setDuration(Y_TRANSLATE_DURATION_MS);
+        mYTranslateAnimation.addListener(
+                new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        updateItemViewAlpha();
+                        mDialogContainerView.setY(mDialogInitYPos);
+                    }
+                });
+
+        mShowDialogAnimationListener =
+                new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        mCurrentDialogAnimator = null;
+                        mDialogContainerView.requestFocus();
+                        mDialogContainerView.sendAccessibilityEvent(
+                                AccessibilityEvent.TYPE_VIEW_FOCUSED);
+                        // TODO(crbug.com/40138401): Move clear/restore accessibility importance
+                        // logic to ScrimView so that it can be shared by all components using
+                        // ScrimView.
+                        clearBackgroundViewAccessibilityImportance();
+                        mSendFeedbackButton.setAlpha(1f);
+                    }
+                };
+        mHideDialogAnimationListener =
+                new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationStart(Animator animator) {
+                        mSendFeedbackButton.setAlpha(0f);
+                    }
+
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        setVisibility(View.GONE);
+                        mCurrentDialogAnimator = null;
+                        mDialogContainerView.clearFocus();
+                        restoreBackgroundViewAccessibilityImportance();
+                        if (mVisibilityListener != null) {
+                            mVisibilityListener.finishedHidingDialogView();
+                        }
+                    }
+                };
+=======
         mShowDialogAnimationListener = new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
@@ -221,6 +297,7 @@ public class TabGridDialogView extends FrameLayout {
                 restoreBackgroundViewAccessibilityImportance();
             }
         };
+>>>>>>> chromium
 
         mUngroupBarShow = ObjectAnimator.ofFloat(mUngroupBar, View.ALPHA, 0f, 1f);
         mUngroupBarShow.setDuration(DIALOG_UNGROUP_ALPHA_ANIMATION_DURATION);
@@ -320,7 +397,7 @@ public class TabGridDialogView extends FrameLayout {
         updateAnimationCardView(mItemView);
 
         // Calculate dialog size.
-        int dialogHeight = mParentHeight - 2 * mTopMargin;
+        int dialogHeight = mParentHeight - mTopMargin - mBottomMargin;
         int dialogWidth = mParentWidth - 2 * mSideMargin;
 
         // Calculate position and size info about the original tab grid card.
@@ -548,6 +625,16 @@ public class TabGridDialogView extends FrameLayout {
                 mAnimationCardView.bringToFront();
             }
 
+<<<<<<< HEAD
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        // At the end of the hiding animation, reset the alpha of animation related
+                        // views to 0.
+                        mBackgroundFrame.setAlpha(0f);
+                        mAnimationCardView.setAlpha(0f);
+                    }
+                });
+=======
             @Override
             public void onAnimationEnd(Animator animation) {
                 // At the end of the hiding animation, reset the alpha of animation related views to
@@ -556,6 +643,7 @@ public class TabGridDialogView extends FrameLayout {
                 mAnimationCardView.setAlpha(0f);
             }
         });
+>>>>>>> chromium
 
         // During the whole dialog hiding animation, the frame background scales down and moves so
         // that it looks like the dialog zooms in and becomes the card.
@@ -610,10 +698,32 @@ public class TabGridDialogView extends FrameLayout {
             mTopMargin =
                     (int) mContext.getResources().getDimension(R.dimen.tab_grid_dialog_top_margin);
         } else {
+<<<<<<< HEAD
+            sideMargin = clampMargin(Math.round(mParentWidth * 0.1f), minMargin, maxMargin);
+            topMargin = clampMargin(minMargin + mAppHeaderHeight, minMargin, maxMargin);
+        }
+        int bottomMargin;
+        if (mSendFeedbackButton.getVisibility() == View.VISIBLE) {
+            int minBottomMarginWithFab =
+                    res.getDimensionPixelSize(R.dimen.tab_grid_dialog_min_bottom_margin_with_fab);
+            bottomMargin = Math.max(topMargin, minBottomMarginWithFab);
+        } else {
+            bottomMargin = topMargin;
+        }
+
+        if (mSideMargin != sideMargin || mTopMargin != topMargin || mBottomMargin != bottomMargin) {
+            mSideMargin = sideMargin;
+            mTopMargin = topMargin;
+            mBottomMargin = bottomMargin;
+            mContainerParams.setMargins(mSideMargin, mTopMargin, mSideMargin, mBottomMargin);
+            // Set params to force requestLayout() to reflect margin immediately.
+            mDialogContainerView.setLayoutParams(mContainerParams);
+=======
             mSideMargin =
                     (int) mContext.getResources().getDimension(R.dimen.tab_grid_dialog_top_margin);
             mTopMargin =
                     (int) mContext.getResources().getDimension(R.dimen.tab_grid_dialog_side_margin);
+>>>>>>> chromium
         }
         mContainerParams.setMargins(mSideMargin, mTopMargin, mSideMargin, mTopMargin);
         mOrientation = orientation;
@@ -672,6 +782,15 @@ public class TabGridDialogView extends FrameLayout {
      * @param scrimClickRunnable The {@link Runnable} that runs when scrim view is clicked.
      */
     void setScrimClickRunnable(Runnable scrimClickRunnable) {
+<<<<<<< HEAD
+        mScrimPropertyModel =
+                new PropertyModel.Builder(ScrimProperties.ALL_KEYS)
+                        .with(ScrimProperties.ANCHOR_VIEW, mDialogContainerView)
+                        .with(ScrimProperties.AFFECTS_STATUS_BAR, true)
+                        .with(ScrimProperties.CLICK_DELEGATE, scrimClickRunnable)
+                        .with(ScrimProperties.AFFECTS_NAVIGATION_BAR, true)
+                        .build();
+=======
         mScrimPropertyModel = new PropertyModel.Builder(ScrimProperties.ALL_KEYS)
                                       .with(ScrimProperties.ANCHOR_VIEW, mDialogContainerView)
                                       .with(ScrimProperties.SHOW_IN_FRONT_OF_ANCHOR_VIEW, false)
@@ -680,10 +799,11 @@ public class TabGridDialogView extends FrameLayout {
                                       .with(ScrimProperties.CLICK_DELEGATE, scrimClickRunnable)
                                       .with(ScrimProperties.AFFECTS_NAVIGATION_BAR, true)
                                       .build();
+>>>>>>> chromium
     }
 
-    void setupScrimCoordinator(ScrimCoordinator scrimCoordinator) {
-        mScrimCoordinator = scrimCoordinator;
+    void setupScrimManager(ScrimManager scrimManager) {
+        mScrimManager = scrimManager;
     }
 
     /**
@@ -704,16 +824,20 @@ public class TabGridDialogView extends FrameLayout {
         recyclerView.setVisibility(View.VISIBLE);
     }
 
+<<<<<<< HEAD
+    /** Show {@link PopupWindow} for dialog with animation. */
+=======
     /**
      * Show {@link PopupWindow} for dialog with animation.
      */
+>>>>>>> chromium
     void showDialog() {
         if (mCurrentDialogAnimator != null && mCurrentDialogAnimator != mShowDialogAnimation) {
             mCurrentDialogAnimator.end();
         }
         mCurrentDialogAnimator = mShowDialogAnimation;
-        assert mScrimCoordinator != null && mScrimPropertyModel != null;
-        mScrimCoordinator.showScrim(mScrimPropertyModel);
+        assert mScrimManager != null && mScrimPropertyModel != null;
+        mScrimManager.showScrim(mScrimPropertyModel);
         setVisibility(View.VISIBLE);
         mShowDialogAnimation.start();
     }
@@ -724,12 +848,28 @@ public class TabGridDialogView extends FrameLayout {
     void hideDialog() {
         // Skip the hideDialog call caused by initializing the dialog visibility as false.
         if (getVisibility() != VISIBLE) return;
+<<<<<<< HEAD
+
+        assert mScrimManager != null && mScrimPropertyModel != null;
+=======
         assert mScrimCoordinator != null && mScrimPropertyModel != null;
+>>>>>>> chromium
         if (mCurrentDialogAnimator != null && mCurrentDialogAnimator != mHideDialogAnimation) {
             mCurrentDialogAnimator.end();
         }
         mCurrentDialogAnimator = mHideDialogAnimation;
+<<<<<<< HEAD
+        if (mScrimManager.isShowingScrim()) {
+            if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(mContext)) {
+                mScrimManager.hideScrim(
+                        mScrimPropertyModel, /* animate= */ true, SCRIM_FADE_DURATION_MS);
+            } else {
+                mScrimManager.hideScrim(mScrimPropertyModel, /* animate= */ true);
+            }
+        }
+=======
         mScrimCoordinator.hideScrim(true);
+>>>>>>> chromium
         mHideDialogAnimation.start();
     }
 
@@ -822,7 +962,38 @@ public class TabGridDialogView extends FrameLayout {
         return mSnackBarContainer;
     }
 
+<<<<<<< HEAD
+    /**
+     * Update the visibility of the send feedback button, its alpha may still be overridden during
+     * animations.
+     */
+    void setSendFeedbackVisible(boolean visible) {
+        mSendFeedbackButton.setVisibility(visible ? View.VISIBLE : View.GONE);
+        updateDialogWithOrientation(mOrientation);
+    }
+
+    /** Sets an {@link Runnable} to be invoked when the feedback button is clicked. */
+    void setSendFeedbackRunnable(@Nullable Runnable r) {
+        mSendFeedbackButton.setOnClickListener(
+                unused -> {
+                    if (r == null) return;
+
+                    r.run();
+                });
+    }
+
+    void setBindingToken(Integer bindingToken) {
+        assert mBindingToken == null || bindingToken == null;
+        mBindingToken = bindingToken;
+    }
+
+    Integer getBindingToken() {
+        return mBindingToken;
+    }
+
+=======
     @VisibleForTesting
+>>>>>>> chromium
     Animator getCurrentDialogAnimatorForTesting() {
         return mCurrentDialogAnimator;
     }
@@ -870,5 +1041,21 @@ public class TabGridDialogView extends FrameLayout {
     @VisibleForTesting
     static void setSourceRectCallbackForTesting(Callback<RectF> callback) {
         sSourceRectCallbackForTesting = callback;
+<<<<<<< HEAD
+        ResettersForTesting.register(() -> sSourceRectCallbackForTesting = null);
+    }
+
+    ScrimManager getScrimManagerForTesting() {
+        return mScrimManager;
+    }
+
+    VisibilityListener getVisibilityListenerForTesting() {
+        return mVisibilityListener;
+    }
+
+    int getAppHeaderHeightForTesting() {
+        return mAppHeaderHeight;
+=======
+>>>>>>> chromium
     }
 }

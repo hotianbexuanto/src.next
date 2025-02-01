@@ -35,7 +35,11 @@
 #include "third_party/blink/renderer/core/loader/resource/image_resource.h"
 #include "third_party/blink/renderer/core/loader/resource/link_prefetch_resource.h"
 #include "third_party/blink/renderer/core/loader/resource/script_resource.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/page/page.h"
+=======
 #include "third_party/blink/renderer/core/loader/subresource_integrity_helper.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/core/script/modulator.h"
 #include "third_party/blink/renderer/core/script/script_loader.h"
@@ -45,6 +49,7 @@
 #include "third_party/blink/renderer/platform/loader/fetch/raw_resource.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loader_options.h"
+#include "third_party/blink/renderer/platform/loader/integrity_report.h"
 #include "third_party/blink/renderer/platform/loader/link_header.h"
 #include "third_party/blink/renderer/platform/loader/subresource_integrity.h"
 #include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
@@ -351,11 +356,8 @@ Resource* PreloadHelper::PreloadIfNeeded(
       resource_type == ResourceType::kCSSStyleSheet) {
     if (!integrity_attr.IsEmpty()) {
       IntegrityMetadataSet metadata_set;
-      SubresourceIntegrity::ParseIntegrityAttribute(
-          integrity_attr,
-          SubresourceIntegrityHelper::GetFeatures(
-              document.GetExecutionContext()),
-          metadata_set);
+      SubresourceIntegrity::ParseIntegrityAttribute(integrity_attr,
+                                                    metadata_set);
       link_fetch_params.SetIntegrityMetadata(metadata_set);
       link_fetch_params.MutableResourceRequest().SetFetchIntegrity(
           integrity_attr);
@@ -477,6 +479,20 @@ void PreloadHelper::ModulePreloadIfNeeded(
   // Step 8. "Let integrity metadata be the value of the integrity attribute, if
   // it is specified, or the empty string otherwise." [spec text]
   IntegrityMetadataSet integrity_metadata;
+<<<<<<< HEAD
+  String integrity_value = params.integrity;
+  if (!integrity_value.empty()) {
+    IntegrityReport integrity_report;
+    SubresourceIntegrity::ParseIntegrityAttribute(
+        params.integrity, integrity_metadata, &integrity_report);
+    integrity_report.SendReports(document.GetExecutionContext());
+  } else if (integrity_value.IsNull()) {
+    // Step 10. "If el does not have an integrity attribute, then set integrity
+    // metadata to the result of resolving a module integrity metadata with url
+    // and settings object." [spec text]
+    integrity_value = modulator->GetIntegrityMetadataString(params.href);
+    integrity_metadata = modulator->GetIntegrityMetadata(params.href);
+=======
   if (!params.integrity.IsEmpty()) {
     SubresourceIntegrity::IntegrityFeatures integrity_features =
         SubresourceIntegrityHelper::GetFeatures(document.GetExecutionContext());
@@ -485,6 +501,7 @@ void PreloadHelper::ModulePreloadIfNeeded(
         params.integrity, integrity_features, integrity_metadata, &report_info);
     SubresourceIntegrityHelper::DoReport(*document.GetExecutionContext(),
                                          report_info);
+>>>>>>> chromium
   }
 
   // Step 9. "Let referrer policy be the current state of the element's

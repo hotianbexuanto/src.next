@@ -135,7 +135,7 @@ void SetRuntimeFeatureCommand(bool enable_blink_features,
 class DownloadFramePolicyBrowserTest
     : public subresource_filter::SubresourceFilterBrowserTest {
  public:
-  ~DownloadFramePolicyBrowserTest() override {}
+  ~DownloadFramePolicyBrowserTest() override = default;
 
   void SetUpOnMainThread() override {
     host_resolver()->AddRule("*", "127.0.0.1");

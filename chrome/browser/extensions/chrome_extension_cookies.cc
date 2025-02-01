@@ -16,6 +16,12 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/cookie_store_factory.h"
 #include "extensions/common/constants.h"
+<<<<<<< HEAD
+#include "net/cookies/cookie_partition_key_collection.h"
+#include "net/extras/sqlite/cookie_crypto_delegate.h"
+#include "net/first_party_sets/first_party_set_metadata.h"
+=======
+>>>>>>> chromium
 #include "services/network/cookie_manager.h"
 #include "services/network/restricted_cookie_manager.h"
 
@@ -116,8 +122,15 @@ void ChromeExtensionCookies::IOData::CreateRestrictedCookieManager(
   restricted_cookie_managers_.Add(
       std::make_unique<network::RestrictedCookieManager>(
           network::mojom::RestrictedCookieManagerRole::SCRIPT,
+<<<<<<< HEAD
+          GetOrCreateCookieStore(), network_cookie_settings_, origin,
+          isolation_info,
+          /*cookie_setting_overrides=*/net::CookieSettingOverrides(),
+          /*devtools_cookie_setting_overrides=*/net::CookieSettingOverrides(),
+=======
           GetOrCreateCookieStore(), &network_cookie_settings_, origin,
           isolation_info,
+>>>>>>> chromium
           /* null cookies_observer disables logging */
           mojo::NullRemote()),
       std::move(receiver));

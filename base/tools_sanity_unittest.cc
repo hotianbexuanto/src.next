@@ -1,7 +1,18 @@
 // Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+<<<<<<< HEAD
+
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
+#pragma allow_unsafe_buffers
+#endif
+
+#include <array>
+
+=======
 //
+>>>>>>> chromium
 // This file contains intentional memory errors, some of which may lead to
 // crashes if the test is ran without special memory testing tools. We use these
 // errors to verify the sanity of the tools.
@@ -13,6 +24,11 @@
 #include "base/debug/asan_invalid_access.h"
 #include "base/debug/profiler.h"
 #include "base/logging.h"
+<<<<<<< HEAD
+#include "base/memory/raw_ptr.h"
+#include "base/notreached.h"
+=======
+>>>>>>> chromium
 #include "base/sanitizer_buildflags.h"
 #include "base/third_party/dynamic_annotations/dynamic_annotations.h"
 #include "base/threading/thread.h"
@@ -38,7 +54,11 @@ const base::subtle::Atomic32 kMagicValue = 42;
 #define HARMFUL_ACCESS_IS_NOOP
 #endif
 
+<<<<<<< HEAD
+void DoReadUninitializedValue(volatile char* ptr) {
+=======
 void DoReadUninitializedValue(char *ptr) {
+>>>>>>> chromium
   // Comparison with 64 is to prevent clang from optimizing away the
   // jump -- valgrind only catches jumps and conditional moves, but clang uses
   // the borrow flag if the condition is just `*ptr == '\0'`.  We no longer
@@ -50,36 +70,39 @@ void DoReadUninitializedValue(char *ptr) {
   }
 }
 
+<<<<<<< HEAD
+void ReadUninitializedValue(volatile char* ptr) {
+=======
 void ReadUninitializedValue(char *ptr) {
+>>>>>>> chromium
 #if defined(MEMORY_SANITIZER)
-  EXPECT_DEATH(DoReadUninitializedValue(ptr),
-               "use-of-uninitialized-value");
+  EXPECT_DEATH(DoReadUninitializedValue(ptr), "use-of-uninitialized-value");
 #else
   DoReadUninitializedValue(ptr);
 #endif
 }
 
 #ifndef HARMFUL_ACCESS_IS_NOOP
-void ReadValueOutOfArrayBoundsLeft(char *ptr) {
+void ReadValueOutOfArrayBoundsLeft(char* ptr) {
   char c = ptr[-2];
   VLOG(1) << "Reading a byte out of bounds: " << c;
 }
 
-void ReadValueOutOfArrayBoundsRight(char *ptr, size_t size) {
+void ReadValueOutOfArrayBoundsRight(char* ptr, size_t size) {
   char c = ptr[size + 1];
   VLOG(1) << "Reading a byte out of bounds: " << c;
 }
 
-void WriteValueOutOfArrayBoundsLeft(char *ptr) {
+void WriteValueOutOfArrayBoundsLeft(char* ptr) {
   ptr[-1] = kMagicValue;
 }
 
-void WriteValueOutOfArrayBoundsRight(char *ptr, size_t size) {
+void WriteValueOutOfArrayBoundsRight(char* ptr, size_t size) {
   ptr[size] = kMagicValue;
 }
 #endif  // HARMFUL_ACCESS_IS_NOOP
 
-void MakeSomeErrors(char *ptr, size_t size) {
+void MakeSomeErrors(char* ptr, size_t size) {
   ReadUninitializedValue(ptr);
 
   HARMFUL_ACCESS(ReadValueOutOfArrayBoundsLeft(ptr),
@@ -98,7 +121,7 @@ void MakeSomeErrors(char *ptr, size_t size) {
 TEST(ToolsSanityTest, MemoryLeak) {
   // Without the |volatile|, clang optimizes away the next two lines.
   int* volatile leak = new int[256];  // Leak some memory intentionally.
-  leak[4] = 1;  // Make sure the allocated memory is used.
+  leak[4] = 1;                        // Make sure the allocated memory is used.
 }
 
 // The following tests pass with Clang r170392, but not r172454, which
@@ -119,7 +142,7 @@ TEST(ToolsSanityTest, MemoryLeak) {
 TEST(ToolsSanityTest, AccessesToNewMemory) {
   char* foo = new char[16];
   MakeSomeErrors(foo, 16);
-  delete [] foo;
+  delete[] foo;
   // Use after delete.
   HARMFUL_ACCESS(foo[5] = 0, "heap-use-after-free");
 }
@@ -148,6 +171,22 @@ TEST(ToolsSanityTest, AccessesToStack) {
 
 #if defined(ADDRESS_SANITIZER)
 
+<<<<<<< HEAD
+// alloc_dealloc_mismatch defaults to
+// !SANITIZER_MAC && !SANITIZER_WINDOWS && !SANITIZER_ANDROID,
+// in the sanitizer runtime upstream.
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
+    BUILDFLAG(IS_FUCHSIA)
+#define MAYBE_SingleElementDeletedWithBraces \
+  DISABLED_SingleElementDeletedWithBraces
+#define MAYBE_ArrayDeletedWithoutBraces DISABLED_ArrayDeletedWithoutBraces
+#else
+#define MAYBE_ArrayDeletedWithoutBraces ArrayDeletedWithoutBraces
+#define MAYBE_SingleElementDeletedWithBraces SingleElementDeletedWithBraces
+#endif  // defined(ADDRESS_SANITIZER)
+
+=======
+>>>>>>> chromium
 static int* allocateArray() {
   // Clang warns about the mismatched new[]/delete if they occur in the same
   // function.
@@ -158,7 +197,14 @@ static int* allocateArray() {
 TEST(ToolsSanityTest, MAYBE_ArrayDeletedWithoutBraces) {
   // Without the |volatile|, clang optimizes away the next two lines.
   int* volatile foo = allocateArray();
+<<<<<<< HEAD
+  HARMFUL_ACCESS(delete foo, "alloc-dealloc-mismatch");
+  // Under ASan the crash happens in the process spawned by HARMFUL_ACCESS,
+  // need to free the memory in the parent.
+  delete[] foo;
+=======
   delete foo;
+>>>>>>> chromium
 }
 #endif
 
@@ -173,23 +219,31 @@ static int* allocateScalar() {
 TEST(ToolsSanityTest, MAYBE_SingleElementDeletedWithBraces) {
   // Without the |volatile|, clang optimizes away the next two lines.
   int* volatile foo = allocateScalar();
+<<<<<<< HEAD
+  (void)foo;
+  HARMFUL_ACCESS(delete[] foo, "alloc-dealloc-mismatch");
+  // Under ASan the crash happens in the process spawned by HARMFUL_ACCESS,
+  // need to free the memory in the parent.
+  delete foo;
+=======
   (void) foo;
   delete [] foo;
+>>>>>>> chromium
 }
 #endif
 
 TEST(ToolsSanityTest, DISABLED_AddressSanitizerNullDerefCrashTest) {
   // Intentionally crash to make sure AddressSanitizer is running.
   // This test should not be ran on bots.
-  int* volatile zero = NULL;
+  int* volatile zero = nullptr;
   *zero = 0;
 }
 
 TEST(ToolsSanityTest, DISABLED_AddressSanitizerLocalOOBCrashTest) {
   // Intentionally crash to make sure AddressSanitizer is instrumenting
   // the local variables.
-  // This test should not be ran on bots.
-  int array[5];
+  // This test should not be run on bots.
+  int array[5];  // Must not use std::array, lest hardening catch this first.
   // Work around the OOB warning reported by Clang.
   int* volatile access = &array[5];
   *access = 43;
@@ -243,7 +297,7 @@ namespace {
 // the wildcarded suppressions.
 class TOOLS_SANITY_TEST_CONCURRENT_THREAD : public PlatformThread::Delegate {
  public:
-  explicit TOOLS_SANITY_TEST_CONCURRENT_THREAD(bool *value) : value_(value) {}
+  explicit TOOLS_SANITY_TEST_CONCURRENT_THREAD(bool* value) : value_(value) {}
   ~TOOLS_SANITY_TEST_CONCURRENT_THREAD() override = default;
   void ThreadMain() override {
     *value_ = true;
@@ -253,13 +307,14 @@ class TOOLS_SANITY_TEST_CONCURRENT_THREAD : public PlatformThread::Delegate {
     // lock/unlock's inside thread creation code in pure-happens-before mode...
     PlatformThread::Sleep(TimeDelta::FromMilliseconds(100));
   }
+
  private:
   bool *value_;
 };
 
 class ReleaseStoreThread : public PlatformThread::Delegate {
  public:
-  explicit ReleaseStoreThread(base::subtle::Atomic32 *value) : value_(value) {}
+  explicit ReleaseStoreThread(base::subtle::Atomic32* value) : value_(value) {}
   ~ReleaseStoreThread() override = default;
   void ThreadMain() override {
     base::subtle::Release_Store(value_, kMagicValue);
@@ -269,24 +324,26 @@ class ReleaseStoreThread : public PlatformThread::Delegate {
     // lock/unlock's inside thread creation code in pure-happens-before mode...
     PlatformThread::Sleep(TimeDelta::FromMilliseconds(100));
   }
+
  private:
   base::subtle::Atomic32 *value_;
 };
 
 class AcquireLoadThread : public PlatformThread::Delegate {
  public:
-  explicit AcquireLoadThread(base::subtle::Atomic32 *value) : value_(value) {}
+  explicit AcquireLoadThread(base::subtle::Atomic32* value) : value_(value) {}
   ~AcquireLoadThread() override = default;
   void ThreadMain() override {
     // Wait for the other thread to make Release_Store
     PlatformThread::Sleep(TimeDelta::FromMilliseconds(100));
     base::subtle::Acquire_Load(value_);
   }
+
  private:
   base::subtle::Atomic32 *value_;
 };
 
-void RunInParallel(PlatformThread::Delegate *d1, PlatformThread::Delegate *d2) {
+void RunInParallel(PlatformThread::Delegate* d1, PlatformThread::Delegate* d2) {
   PlatformThreadHandle a;
   PlatformThreadHandle b;
   PlatformThread::Create(0, d1, &a);
@@ -297,13 +354,13 @@ void RunInParallel(PlatformThread::Delegate *d1, PlatformThread::Delegate *d2) {
 
 #if defined(THREAD_SANITIZER)
 void DataRace() {
-  bool *shared = new bool(false);
+  bool* shared = new bool(false);
   TOOLS_SANITY_TEST_CONCURRENT_THREAD thread1(shared), thread2(shared);
   RunInParallel(&thread1, &thread2);
   EXPECT_TRUE(*shared);
   delete shared;
   // We're in a death test - crash.
-  CHECK(0);
+  NOTREACHED();
 }
 #endif
 
@@ -319,7 +376,12 @@ TEST(ToolsSanityTest, DataRace) {
 
 TEST(ToolsSanityTest, AnnotateBenignRace) {
   bool shared = false;
+<<<<<<< HEAD
+  ABSL_ANNOTATE_BENIGN_RACE(&shared,
+                            "Intentional race - make sure doesn't show up");
+=======
   ANNOTATE_BENIGN_RACE(&shared, "Intentional race - make sure doesn't show up");
+>>>>>>> chromium
   TOOLS_SANITY_TEST_CONCURRENT_THREAD thread1(&shared), thread2(&shared);
   RunInParallel(&thread1, &thread2);
   EXPECT_TRUE(shared);
@@ -350,35 +412,41 @@ TEST(ToolsSanityTest, AtomicsAreIgnored) {
 #if defined(CFI_ERROR_MSG)
 class A {
  public:
-  A(): n_(0) {}
+  A() : n_(0) {}
   virtual void f() { n_++; }
+
  protected:
   int n_;
 };
 
-class B: public A {
+class B : public A {
  public:
   void f() override { n_--; }
 };
 
-class C: public B {
+class C : public B {
  public:
   void f() override { n_ += 2; }
 };
 
-NOINLINE void KillVptrAndCall(A *obj) {
-  *reinterpret_cast<void **>(obj) = 0;
+NOINLINE void KillVptrAndCall(A* obj) {
+  *reinterpret_cast<void**>(obj) = 0;
   obj->f();
 }
 
 TEST(ToolsSanityTest, BadVirtualCallNull) {
   A a;
   B b;
-  EXPECT_DEATH({ KillVptrAndCall(&a); KillVptrAndCall(&b); }, CFI_ERROR_MSG);
+  EXPECT_DEATH(
+      {
+        KillVptrAndCall(&a);
+        KillVptrAndCall(&b);
+      },
+      CFI_ERROR_MSG);
 }
 
-NOINLINE void OverwriteVptrAndCall(B *obj, A *vptr) {
-  *reinterpret_cast<void **>(obj) = *reinterpret_cast<void **>(vptr);
+NOINLINE void OverwriteVptrAndCall(B* obj, A* vptr) {
+  *reinterpret_cast<void**>(obj) = *reinterpret_cast<void**>(vptr);
   obj->f();
 }
 
@@ -386,8 +454,12 @@ TEST(ToolsSanityTest, BadVirtualCallWrongType) {
   A a;
   B b;
   C c;
-  EXPECT_DEATH({ OverwriteVptrAndCall(&b, &a); OverwriteVptrAndCall(&b, &c); },
-               CFI_ERROR_MSG);
+  EXPECT_DEATH(
+      {
+        OverwriteVptrAndCall(&b, &a);
+        OverwriteVptrAndCall(&b, &c);
+      },
+      CFI_ERROR_MSG);
 }
 
 // TODO(pcc): remove CFI_CAST_CHECK, see https://crbug.com/626794.

@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #include "net/http/http_cache.h"
 
 #include <stdint.h>
@@ -46,6 +51,7 @@
 #include "net/cert/cert_status_flags.h"
 #include "net/cert/x509_certificate.h"
 #include "net/disk_cache/disk_cache.h"
+#include "net/disk_cache/memory_entry_data_hints.h"
 #include "net/http/http_byte_range.h"
 #include "net/http/http_cache_transaction.h"
 #include "net/http/http_request_headers.h"
@@ -11762,6 +11768,8 @@ TEST_F(HttpCacheTest, NetworkBytesRange) {
   RemoveMockTransaction(&kRangeGET_TransactionOK);
 }
 
+<<<<<<< HEAD
+=======
 class HttpCachePrefetchValidationTest : public TestWithTaskEnvironment {
  protected:
   static const int kNumSecondsPerMinute = 60;
@@ -11872,6 +11880,7 @@ TEST_F(HttpCachePrefetchValidationTest, ValidateOnDelayedSecondPrefetch) {
   EXPECT_FALSE(TransactionRequiredNetwork(LOAD_NORMAL));
 }
 
+>>>>>>> chromium
 TEST_F(HttpCacheTest, StaleContentNotUsedWhenLoadFlagNotSet) {
   MockHttpCache cache;
 
@@ -13091,4 +13100,137 @@ TEST_F(HttpCacheTest, DnsAliasesRevalidation) {
   EXPECT_THAT(response.dns_aliases, testing::ElementsAre("alias3", "alias4"));
 }
 
+<<<<<<< HEAD
+using HttpCacheFirstPartySetsBypassCacheTest = HttpCacheTest;
+
+TEST_F(HttpCacheFirstPartySetsBypassCacheTest, ShouldBypassNoId) {
+  MockHttpCache cache;
+  HttpResponseInfo response;
+  ScopedMockTransaction transaction(kSimpleGET_Transaction);
+
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+  EXPECT_FALSE(response.was_cached);
+
+  transaction.fps_cache_filter = {5};
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+  EXPECT_FALSE(response.was_cached);
+}
+
+TEST_F(HttpCacheFirstPartySetsBypassCacheTest, ShouldBypassIdTooSmall) {
+  MockHttpCache cache;
+  HttpResponseInfo response;
+  ScopedMockTransaction transaction(kSimpleGET_Transaction);
+  const int64_t kBrowserRunId = 4;
+  transaction.browser_run_id = {kBrowserRunId};
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+  EXPECT_FALSE(response.was_cached);
+  EXPECT_TRUE(response.browser_run_id.has_value());
+  EXPECT_EQ(kBrowserRunId, response.browser_run_id.value());
+
+  transaction.fps_cache_filter = {5};
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+  EXPECT_FALSE(response.was_cached);
+}
+
+TEST_F(HttpCacheFirstPartySetsBypassCacheTest, ShouldNotBypass) {
+  MockHttpCache cache;
+  HttpResponseInfo response;
+  ScopedMockTransaction transaction(kSimpleGET_Transaction);
+  const int64_t kBrowserRunId = 5;
+  transaction.browser_run_id = {kBrowserRunId};
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+  EXPECT_FALSE(response.was_cached);
+  EXPECT_TRUE(response.browser_run_id.has_value());
+  EXPECT_EQ(kBrowserRunId, response.browser_run_id.value());
+
+  transaction.fps_cache_filter = {5};
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+  EXPECT_TRUE(response.was_cached);
+}
+
+TEST_F(HttpCacheFirstPartySetsBypassCacheTest, ShouldNotBypassNoFilter) {
+  MockHttpCache cache;
+  HttpResponseInfo response;
+  ScopedMockTransaction transaction(kSimpleGET_Transaction);
+
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+  EXPECT_FALSE(response.was_cached);
+
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+  EXPECT_TRUE(response.was_cached);
+}
+
+TEST_F(HttpCacheTest, SecurityHeadersAreCopiedToConditionalizedResponse) {
+  MockHttpCache cache;
+  HttpResponseInfo response;
+  ScopedMockTransaction transaction(kSimpleGET_Transaction);
+
+  static const Response kNetResponse1 = {
+      "HTTP/1.1 200 OK",
+      "Date: Fri, 12 Jun 2009 21:46:42 GMT\n"
+      "Server: server1\n"
+      "Last-Modified: Wed, 06 Feb 2008 22:38:21 GMT\n"
+      "Cross-Origin-Resource-Policy: cross-origin\n",
+      "body1"};
+
+  static const Response kNetResponse2 = {
+      "HTTP/1.1 304 Not Modified",
+      "Date: Wed, 22 Jul 2009 03:15:26 GMT\n"
+      "Server: server2\n"
+      "Last-Modified: Wed, 06 Feb 2008 22:38:21 GMT\n",
+      ""};
+
+  kNetResponse1.AssignTo(&transaction);
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+
+  // On the second request, the cache is revalidated.
+  const char kExtraRequestHeaders[] =
+      "If-Modified-Since: Wed, 06 Feb 2008 22:38:21 GMT\r\n";
+  transaction.request_headers = kExtraRequestHeaders;
+  kNetResponse2.AssignTo(&transaction);
+  RunTransactionTestWithResponseInfo(cache.http_cache(), transaction,
+                                     &response);
+
+  // Verify that the CORP header was carried over to the response.
+  EXPECT_EQ(
+      response.headers->GetNormalizedHeader("Cross-Origin-Resource-Policy"),
+      "cross-origin");
+
+  EXPECT_EQ(304, response.headers->response_code());
+}
+
+// This test verifies that the PrioritizeCaching flag is not set by default.
+TEST_F(HttpCacheTest, PrioritizeCachingFlagNotSetByDefault) {
+  MockHttpCache cache;
+  ScopedMockTransaction transaction(kSimpleGET_Transaction);
+  MockHttpRequest request(transaction);
+  RunTransactionTestWithRequest(cache.http_cache(), transaction, request,
+                                nullptr);
+  EXPECT_EQ(cache.backend()->GetEntryInMemoryData(request.CacheKey()), 0);
+}
+
+// This test verifies that the PrioritizeCaching flag is set for main frame
+// navigation requests.
+TEST_F(HttpCacheTest, PrioritizeCachingFlagSetForMainFrameNavigationRequest) {
+  MockHttpCache cache;
+  ScopedMockTransaction transaction(kSimpleGET_Transaction);
+  MockHttpRequest request(transaction);
+  request.is_main_frame_navigation = true;
+  RunTransactionTestWithRequest(cache.http_cache(), transaction, request,
+                                nullptr);
+  EXPECT_EQ(cache.backend()->GetEntryInMemoryData(request.CacheKey()),
+            HINT_HIGH_PRIORITY);
+}
+
+=======
+>>>>>>> chromium
 }  // namespace net

@@ -62,7 +62,15 @@ struct HostPermissionsMetricsTestParams {
 
 class InstalledLoaderUnitTest : public ExtensionServiceTestBase {
  public:
+<<<<<<< HEAD
+  InstalledLoaderUnitTest() = default;
+
+  InstalledLoaderUnitTest(const InstalledLoaderUnitTest&) = delete;
+  InstalledLoaderUnitTest& operator=(const InstalledLoaderUnitTest&) = delete;
+
+=======
   InstalledLoaderUnitTest() {}
+>>>>>>> chromium
   ~InstalledLoaderUnitTest() override = default;
 
   void SetUp() override {

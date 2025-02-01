@@ -34,7 +34,7 @@ class ExtensionActionTestHelper {
       Browser* browser,
       bool is_real_window = true);
 
-  virtual ~ExtensionActionTestHelper() {}
+  virtual ~ExtensionActionTestHelper() = default;
 
   // Returns the number of browser action buttons in the window toolbar.
   virtual int NumberOfBrowserActions() = 0;
@@ -113,10 +113,14 @@ class ExtensionActionTestHelper {
       const extensions::ExtensionId& id) = 0;
 
  protected:
+<<<<<<< HEAD
+  ExtensionActionTestHelper() = default;
+=======
   ExtensionActionTestHelper() {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ExtensionActionTestHelper);
+>>>>>>> chromium
 };
 
 #endif  // CHROME_BROWSER_UI_EXTENSIONS_EXTENSION_ACTION_TEST_HELPER_H_

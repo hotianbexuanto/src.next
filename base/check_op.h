@@ -149,6 +149,30 @@ class CheckOpResult {
 // macro is used in an 'if' clause such as:
 // if (a == 1)
 //   CHECK_EQ(2, a);
+<<<<<<< HEAD
+#define CHECK_OP_FUNCTION_IMPL(check_failure_function, name, op, val1, val2, \
+                               ...)                                          \
+  switch (0)                                                                 \
+  case 0:                                                                    \
+  default:                                                                   \
+    if (char* const message_on_fail = ::logging::Check##name##Impl(          \
+            (val1), (val2), #val1 " " #op " " #val2);                        \
+        !message_on_fail)                                                    \
+      ;                                                                      \
+    else                                                                     \
+      check_failure_function(message_on_fail __VA_OPT__(, ) __VA_ARGS__)
+
+#if !CHECK_WILL_STREAM()
+
+// Discard log strings to reduce code bloat.
+#define CHECK_OP_INTERNAL_IMPL(name, op, val1, val2) CHECK((val1)op(val2))
+
+#else
+
+#define CHECK_OP_INTERNAL_IMPL(name, op, val1, val2)                       \
+  CHECK_OP_FUNCTION_IMPL(::logging::CheckNoreturnError::CheckOp, name, op, \
+                         val1, val2)
+=======
 #define CHECK_OP(name, op, val1, val2)                                    \
   switch (0)                                                              \
   case 0:                                                                 \
@@ -160,8 +184,15 @@ class CheckOpResult {
     else                                                                  \
       ::logging::CheckError::CheckOp(__FILE__, __LINE__, &true_if_passed) \
           .stream()
+>>>>>>> chromium
 
 #endif
+
+#define CHECK_OP(name, op, val1, val2, ...)                                \
+  BASE_IF(BASE_IS_EMPTY(__VA_ARGS__),                                      \
+          CHECK_OP_INTERNAL_IMPL(name, op, val1, val2),                    \
+          CHECK_OP_FUNCTION_IMPL(::logging::CheckError::CheckOp, name, op, \
+                                 val1, val2, __VA_ARGS__))
 
 // The second overload avoids address-taking of static members for
 // fundamental types.

@@ -5,6 +5,12 @@
 #include "third_party/blink/public/web/web_frame.h"
 
 #include <algorithm>
+<<<<<<< HEAD
+
+#include "base/containers/to_vector.h"
+#include "third_party/blink/public/mojom/frame/frame_replication_state.mojom.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/public/mojom/frame/tree_scope_type.mojom-blink.h"
 #include "third_party/blink/public/mojom/scroll/scrollbar_mode.mojom-blink.h"
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom-blink.h"
@@ -32,6 +38,28 @@ bool WebFrame::Swap(WebFrame* frame) {
   return ToCoreFrame(*this)->Swap(frame);
 }
 
+<<<<<<< HEAD
+bool WebFrame::Swap(
+    WebRemoteFrame* frame,
+    CrossVariantMojoAssociatedRemote<mojom::blink::RemoteFrameHostInterfaceBase>
+        remote_frame_host,
+    CrossVariantMojoAssociatedReceiver<mojom::blink::RemoteFrameInterfaceBase>
+        remote_frame_receiver,
+    blink::mojom::FrameReplicationStatePtr replicated_state,
+    const std::optional<base::UnguessableToken>& devtools_frame_token) {
+  bool res = ToCoreFrame(*this)->Swap(frame, std::move(remote_frame_host),
+                                      std::move(remote_frame_receiver),
+                                      devtools_frame_token);
+  if (!res)
+    return false;
+
+  To<WebRemoteFrameImpl>(frame)->SetReplicatedState(
+      std::move(replicated_state));
+  return true;
+}
+
+=======
+>>>>>>> chromium
 void WebFrame::Detach() {
   ToCoreFrame(*this)->Detach(FrameDetachType::kRemove);
 }
@@ -45,10 +73,10 @@ mojom::blink::InsecureRequestPolicy WebFrame::GetInsecureRequestPolicy() const {
   return ToCoreFrame(*this)->GetSecurityContext()->GetInsecureRequestPolicy();
 }
 
-WebVector<unsigned> WebFrame::GetInsecureRequestToUpgrade() const {
+std::vector<unsigned> WebFrame::GetInsecureRequestToUpgrade() const {
   const SecurityContext::InsecureNavigationsSet& set =
       ToCoreFrame(*this)->GetSecurityContext()->InsecureNavigationsToUpgrade();
-  return SecurityContext::SerializeInsecureNavigationSet(set);
+  return base::ToVector(SecurityContext::SerializeInsecureNavigationSet(set));
 }
 
 WebFrame* WebFrame::Opener() const {

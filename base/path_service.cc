@@ -45,7 +45,16 @@ typedef std::unordered_map<int, FilePath> PathMap;
 // providers claim overlapping keys.
 struct Provider {
   PathService::ProviderFunc func;
+<<<<<<< HEAD
+  // This field is not a raw_ptr<> because would cause the class to have a
+  // nontrivial destructor, causing several cascading compile errors. The
+  // pointer cannot dangle because all Providers are either in statically-
+  // allocated memory (globals), or allocated in RegisterProvider and
+  // never freed.
+  RAW_PTR_EXCLUSION struct Provider* next;
+=======
   struct Provider* next;
+>>>>>>> chromium
 #ifndef NDEBUG
   int key_start;
   int key_end;
@@ -71,28 +80,42 @@ Provider base_provider_win = {
 };
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_MAC)
+Provider base_provider_mac = {PathProviderMac, &base_provider,
+=======
 #if defined(OS_APPLE)
 Provider base_provider_mac = {
   PathProviderMac,
   &base_provider,
+>>>>>>> chromium
 #ifndef NDEBUG
-  PATH_MAC_START,
-  PATH_MAC_END,
+                              PATH_MAC_START, PATH_MAC_END,
 #endif
-  true
-};
+                              true};
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_IOS)
+Provider base_provider_ios = {PathProviderIOS, &base_provider,
+#ifndef NDEBUG
+                              PATH_IOS_START, PATH_IOS_END,
+#endif
+                              true};
+#endif
+
+#if BUILDFLAG(IS_ANDROID)
+Provider base_provider_android = {PathProviderAndroid, &base_provider,
+=======
 #if defined(OS_ANDROID)
 Provider base_provider_android = {
   PathProviderAndroid,
   &base_provider,
+>>>>>>> chromium
 #ifndef NDEBUG
-  PATH_ANDROID_START,
-  PATH_ANDROID_END,
+                                  PATH_ANDROID_START, PATH_ANDROID_END,
 #endif
-  true
-};
+                                  true};
 #endif
 
 #if defined(OS_FUCHSIA)
@@ -116,9 +139,17 @@ Provider base_provider_posix = {
 };
 #endif
 
-
 struct PathData {
   Lock lock;
+<<<<<<< HEAD
+  PathMap cache;                // Cache mappings from path key to path value.
+  PathMap overrides;            // Track path overrides.
+  raw_ptr<Provider> providers;  // Linked list of path service providers.
+  bool cache_disabled = false;  // Don't use cache if true;
+
+  PathData() {
+#if BUILDFLAG(IS_WIN)
+=======
   PathMap cache;        // Cache mappings from path key to path value.
   PathMap overrides;    // Track path overrides.
   Provider* providers;  // Linked list of path service providers.
@@ -126,6 +157,7 @@ struct PathData {
 
   PathData() : cache_disabled(false) {
 #if defined(OS_WIN)
+>>>>>>> chromium
     providers = &base_provider_win;
 #elif defined(OS_APPLE)
     providers = &base_provider_mac;
@@ -147,8 +179,9 @@ static PathData* GetPathData() {
 // Tries to find |key| in the cache.
 bool LockedGetFromCache(int key, const PathData* path_data, FilePath* result)
     EXCLUSIVE_LOCKS_REQUIRED(path_data->lock) {
-  if (path_data->cache_disabled)
+  if (path_data->cache_disabled) {
     return false;
+  }
   // check for a cached version
   auto it = path_data->cache.find(key);
   if (it != path_data->cache.end()) {
@@ -164,8 +197,9 @@ bool LockedGetFromOverrides(int key, PathData* path_data, FilePath* result)
   // check for an overridden version.
   PathMap::const_iterator it = path_data->overrides.find(key);
   if (it != path_data->overrides.end()) {
-    if (!path_data->cache_disabled)
+    if (!path_data->cache_disabled) {
       path_data->cache[key] = it->second;
+    }
     *result = it->second;
     return true;
   }
@@ -184,18 +218,26 @@ bool PathService::Get(int key, FilePath* result) {
   DCHECK(result);
   DCHECK_GE(key, DIR_CURRENT);
 
+<<<<<<< HEAD
+  // Special case the current directory because it can never be cached.
+  if (key == DIR_CURRENT) {
+=======
   // special case the current directory because it can never be cached
   if (key == DIR_CURRENT)
+>>>>>>> chromium
     return GetCurrentDirectory(result);
+  }
 
   Provider* provider = nullptr;
   {
     AutoLock scoped_lock(path_data->lock);
-    if (LockedGetFromCache(key, path_data, result))
+    if (LockedGetFromCache(key, path_data, result)) {
       return true;
+    }
 
-    if (LockedGetFromOverrides(key, path_data, result))
+    if (LockedGetFromOverrides(key, path_data, result)) {
       return true;
+    }
 
     // Get the beginning of the list while it is still locked.
     provider = path_data->providers;
@@ -206,26 +248,30 @@ bool PathService::Get(int key, FilePath* result) {
   // Iterating does not need the lock because only the list head might be
   // modified on another thread.
   while (provider) {
-    if (provider->func(key, &path))
+    if (provider->func(key, &path)) {
       break;
+    }
     DCHECK(path.empty()) << "provider should not have modified path";
     provider = provider->next;
   }
 
-  if (path.empty())
+  if (path.empty()) {
     return false;
+  }
 
   if (path.ReferencesParent()) {
     // Make sure path service never returns a path with ".." in it.
     path = MakeAbsoluteFilePath(path);
-    if (path.empty())
+    if (path.empty()) {
       return false;
+    }
   }
   *result = path;
 
   AutoLock scoped_lock(path_data->lock);
-  if (!path_data->cache_disabled)
+  if (!path_data->cache_disabled) {
     path_data->cache[key] = path;
+  }
 
   return true;
 }
@@ -267,8 +313,9 @@ bool PathService::OverrideAndCreateIfNeeded(int key,
   // We need to have an absolute path.
   if (!is_absolute) {
     file_path = MakeAbsoluteFilePath(file_path);
-    if (file_path.empty())
+    if (file_path.empty()) {
       return false;
+    }
   }
   DCHECK(file_path.IsAbsolute());
 
@@ -290,8 +337,9 @@ bool PathService::RemoveOverrideForTests(int key) {
 
   AutoLock scoped_lock(path_data->lock);
 
-  if (path_data->overrides.find(key) == path_data->overrides.end())
+  if (path_data->overrides.find(key) == path_data->overrides.end()) {
     return false;
+  }
 
   // Clear the cache now. Some of its entries could have depended on the value
   // we are going to remove, and are now out of sync.
@@ -313,7 +361,8 @@ bool PathService::IsOverriddenForTests(int key) {
 }
 
 // static
-void PathService::RegisterProvider(ProviderFunc func, int key_start,
+void PathService::RegisterProvider(ProviderFunc func,
+                                   int key_start,
                                    int key_end) {
   PathData* path_data = GetPathData();
   DCHECK(path_data);
@@ -332,10 +381,10 @@ void PathService::RegisterProvider(ProviderFunc func, int key_start,
   AutoLock scoped_lock(path_data->lock);
 
 #ifndef NDEBUG
-  Provider *iter = path_data->providers;
+  Provider* iter = path_data->providers;
   while (iter) {
-    DCHECK(key_start >= iter->key_end || key_end <= iter->key_start) <<
-      "path provider collision";
+    DCHECK(key_start >= iter->key_end || key_end <= iter->key_start)
+        << "path provider collision";
     iter = iter->next;
   }
 #endif

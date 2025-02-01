@@ -136,9 +136,17 @@ TEST_F(FrameLoaderTest, PolicyContainerIsStoredOnCommitNavigation) {
           SharedBuffer::Create(), url);
   MockPolicyContainerHost mock_policy_container_host;
   params->policy_container = std::make_unique<WebPolicyContainer>(
+<<<<<<< HEAD
+      WebPolicyContainerPolicies{
+          network::mojom::CrossOriginEmbedderPolicyValue::kNone,
+          network::mojom::ReferrerPolicy::kAlways,
+          std::vector<WebContentSecurityPolicy>(),
+      },
+=======
       WebPolicyContainerPolicies{network::mojom::ReferrerPolicy::kAlways,
                                  network::mojom::IPAddressSpace::kPublic,
                                  WebVector<WebContentSecurityPolicy>()},
+>>>>>>> chromium
       mock_policy_container_host.BindNewEndpointAndPassDedicatedRemote());
   LocalFrame* local_frame =
       To<LocalFrame>(web_view_impl->GetPage()->MainFrame());

@@ -20,7 +20,15 @@ class RecentlyAudibleHelperTest : public testing::Test {
  public:
   RecentlyAudibleHelperTest() = default;
 
+<<<<<<< HEAD
+  RecentlyAudibleHelperTest(const RecentlyAudibleHelperTest&) = delete;
+  RecentlyAudibleHelperTest& operator=(const RecentlyAudibleHelperTest&) =
+      delete;
+
+  ~RecentlyAudibleHelperTest() override = default;
+=======
   ~RecentlyAudibleHelperTest() override {}
+>>>>>>> chromium
 
   void SetUp() override {
     test_web_contents_factory_ =

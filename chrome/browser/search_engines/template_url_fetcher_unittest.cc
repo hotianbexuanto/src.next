@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include <array>
 #include <memory>
 #include <string>
 #include <utility>
@@ -51,7 +52,15 @@ class TestTemplateUrlFetcher : public TemplateURLFetcher {
       const base::RepeatingClosure& request_completed_callback)
       : TemplateURLFetcher(template_url_service),
         callback_(request_completed_callback) {}
+<<<<<<< HEAD
+
+  TestTemplateUrlFetcher(const TestTemplateUrlFetcher&) = delete;
+  TestTemplateUrlFetcher& operator=(const TestTemplateUrlFetcher&) = delete;
+
+  ~TestTemplateUrlFetcher() override = default;
+=======
   ~TestTemplateUrlFetcher() override {}
+>>>>>>> chromium
 
  protected:
   void RequestCompleted(RequestDelegate* request) override {
@@ -218,16 +227,17 @@ TEST_F(TemplateURLFetcherTest, DuplicatesThrownAway) {
   StartDownload(keyword, osdd_file_name, true);
   EXPECT_EQ(0, requests_completed());
 
-  struct {
+  struct TestCases {
     std::string description;
     std::string osdd_file_name;
     std::u16string keyword;
-  } test_cases[] = {
+  };
+  auto test_cases = std::to_array<TestCases>({
       {"Duplicate osdd url with autodetected provider.", osdd_file_name,
        keyword + u"1"},
       {"Duplicate keyword with autodetected provider.", osdd_file_name + "1",
        keyword},
-  };
+  });
 
   for (size_t i = 0; i < base::size(test_cases); ++i) {
     StartDownload(test_cases[i].keyword, test_cases[i].osdd_file_name, false);

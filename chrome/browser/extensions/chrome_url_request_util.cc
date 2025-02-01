@@ -53,9 +53,24 @@ void DetermineCharset(const std::string& mime_type,
   }
 }
 
+bool IsHtmlMimeType(std::string_view mime_type) {
+  return base::EqualsCaseInsensitiveASCII(mime_type, "text/html") ||
+         base::EqualsCaseInsensitiveASCII(mime_type, "text/css");
+}
+
+bool IsJavaScriptMimeType(std::string_view mime_type) {
+  return base::EqualsCaseInsensitiveASCII(mime_type, "text/javascript") ||
+         base::EqualsCaseInsensitiveASCII(mime_type, "application/javascript");
+}
+
 scoped_refptr<base::RefCountedMemory> GetResource(
     int resource_id,
+<<<<<<< HEAD
+    const extensions::ExtensionId& extension_id,
+    const std::string_view mime_type) {
+=======
     const std::string& extension_id) {
+>>>>>>> chromium
   const ui::ResourceBundle& rb = ui::ResourceBundle::GetSharedInstance();
   scoped_refptr<base::RefCountedMemory> bytes =
       rb.LoadDataResourceBytes(resource_id);
@@ -66,12 +81,25 @@ scoped_refptr<base::RefCountedMemory> GetResource(
                 ->GetTemplateReplacementsForExtension(extension_id)
           : nullptr;
 
+<<<<<<< HEAD
+  std::string temp_str;
+  if (replacements && IsHtmlMimeType(mime_type)) {
+    temp_str = ui::ReplaceTemplateExpressions(base::as_string_view(*bytes),
+                                              *replacements);
+    DCHECK(!temp_str.empty());
+    return base::MakeRefCounted<base::RefCountedString>(std::move(temp_str));
+  } else if (replacements && IsJavaScriptMimeType(mime_type)) {
+    CHECK(ui::ReplaceTemplateExpressionsInJS(base::as_string_view(*bytes),
+                                             *replacements, &temp_str));
+    return base::MakeRefCounted<base::RefCountedString>(std::move(temp_str));
+=======
   if (replacements) {
     base::StringPiece input(reinterpret_cast<const char*>(bytes->front()),
                             bytes->size());
     std::string temp_str = ui::ReplaceTemplateExpressions(input, *replacements);
     DCHECK(!temp_str.empty());
     return base::RefCountedString::TakeString(&temp_str);
+>>>>>>> chromium
   } else {
     return bytes;
   }
@@ -108,8 +136,6 @@ class ResourceBundleFileLoader : public network::mojom::URLLoader {
   // load, so priority, and pausing is not currently implemented.
   void SetPriority(net::RequestPriority priority,
                    int32_t intra_priority_value) override {}
-  void PauseReadingBodyFromNet() override {}
-  void ResumeReadingBodyFromNet() override {}
 
  private:
   explicit ResourceBundleFileLoader(
@@ -129,7 +155,6 @@ class ResourceBundleFileLoader : public network::mojom::URLLoader {
         &ResourceBundleFileLoader::OnReceiverError, base::Unretained(this)));
     client_.set_disconnect_handler(base::BindOnce(
         &ResourceBundleFileLoader::OnMojoDisconnect, base::Unretained(this)));
-    auto data = GetResource(resource_id, request.url.host());
 
     std::string* read_mime_type = new std::string;
     base::ThreadPool::PostTaskAndReplyWithResult(
@@ -137,11 +162,12 @@ class ResourceBundleFileLoader : public network::mojom::URLLoader {
         base::BindOnce(&net::GetMimeTypeFromFile, filename,
                        base::Unretained(read_mime_type)),
         base::BindOnce(&ResourceBundleFileLoader::OnMimeTypeRead,
-                       weak_factory_.GetWeakPtr(), std::move(data),
-                       base::Owned(read_mime_type)));
+                       weak_factory_.GetWeakPtr(), resource_id,
+                       request.url.host(), base::Owned(read_mime_type)));
   }
 
-  void OnMimeTypeRead(scoped_refptr<base::RefCountedMemory> data,
+  void OnMimeTypeRead(int resource_id,
+                      const extensions::ExtensionId& extension_id,
                       std::string* read_mime_type,
                       bool read_result) {
     if (!client_) {
@@ -151,6 +177,8 @@ class ResourceBundleFileLoader : public network::mojom::URLLoader {
       // so wait for the |receiver_| disconnect to destroy us.
       return;
     }
+
+    auto data = GetResource(resource_id, extension_id, *read_mime_type);
 
     auto head = network::mojom::URLResponseHead::New();
     head->request_start = base::TimeTicks::Now();

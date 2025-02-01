@@ -4,7 +4,15 @@
 
 #include "net/base/network_isolation_key.h"
 
+<<<<<<< HEAD
+#include <array>
+#include <optional>
+
+#include "base/test/scoped_feature_list.h"
+#include "base/unguessable_token.h"
+=======
 #include "base/cxx17_backports.h"
+>>>>>>> chromium
 #include "base/values.h"
 #include "net/base/schemeful_site.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -55,7 +63,7 @@ TEST(NetworkIsolationKeyTest, OpaqueOriginKey) {
 
 TEST(NetworkIsolationKeyTest, Operators) {
   // These are in ascending order.
-  const NetworkIsolationKey kKeys[] = {
+  const auto kKeys = std::to_array<NetworkIsolationKey>({
       NetworkIsolationKey(),
       // Site with unique origins are still sorted by scheme, so data is before
       // file, and file before http.
@@ -69,7 +77,15 @@ TEST(NetworkIsolationKeyTest, Operators) {
                           SchemefulSite(GURL("http://b.test/"))),
       NetworkIsolationKey(SchemefulSite(GURL("https://a.test/")),
                           SchemefulSite(GURL("https://a.test/"))),
+<<<<<<< HEAD
+      NetworkIsolationKey(SchemefulSite(GURL("https://a.test/")),
+                          SchemefulSite(GURL("https://a.test/")), nonce1),
+      NetworkIsolationKey(SchemefulSite(GURL("https://a.test/")),
+                          SchemefulSite(GURL("https://a.test/")), nonce2),
+  });
+=======
   };
+>>>>>>> chromium
 
   for (size_t first = 0; first < base::size(kKeys); ++first) {
     NetworkIsolationKey key1 = kKeys[first];

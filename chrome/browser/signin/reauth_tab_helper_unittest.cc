@@ -4,6 +4,11 @@
 
 #include "chrome/browser/signin/reauth_tab_helper.h"
 
+<<<<<<< HEAD
+#include "base/memory/raw_ptr.h"
+#include "base/run_loop.h"
+=======
+>>>>>>> chromium
 #include "base/test/mock_callback.h"
 #include "chrome/browser/signin/reauth_result.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
@@ -74,7 +79,13 @@ TEST_P(ReauthTabHelperTest, MultipleNavigationReauth) {
   auto simulator = content::NavigationSimulator::CreateBrowserInitiated(
       reauth_url(), web_contents());
   simulator->Start();
+<<<<<<< HEAD
+  base::RunLoop().RunUntilIdle();
+  simulator->Redirect(
+      reauth_url().DeprecatedGetOriginAsURL().Resolve("/login"));
+=======
   simulator->Redirect(reauth_url().GetOrigin().Resolve("/login"));
+>>>>>>> chromium
   simulator->Commit();
 
   auto simulator2 = content::NavigationSimulator::CreateRendererInitiated(
@@ -91,6 +102,7 @@ TEST_P(ReauthTabHelperTest, MultipleNavigationReauthThroughExternalOrigin) {
   auto simulator = content::NavigationSimulator::CreateBrowserInitiated(
       reauth_url(), web_contents());
   simulator->Start();
+  base::RunLoop().RunUntilIdle();
   simulator->Redirect(GURL("https://other-identity-provider.com/login"));
   simulator->Commit();
 
@@ -127,6 +139,7 @@ TEST_P(ReauthTabHelperTest, NavigationToExternalOriginFailed) {
   auto simulator = content::NavigationSimulator::CreateBrowserInitiated(
       reauth_url(), web_contents());
   simulator->Start();
+  base::RunLoop().RunUntilIdle();
   simulator->Redirect(GURL("https://other-identity-provider.com/login"));
   simulator->Fail(net::ERR_TIMED_OUT);
   simulator->CommitErrorPage();

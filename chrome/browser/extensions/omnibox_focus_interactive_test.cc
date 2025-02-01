@@ -2,7 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#include <algorithm>
+#include <string_view>
+
+=======
 #include "base/ranges/algorithm.h"
+>>>>>>> chromium
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
@@ -399,6 +405,18 @@ IN_PROC_BROWSER_TEST_F(OmniboxFocusInteractiveTest, TabFocusStealingFromOopif) {
       }
   )";
   GURL subframe_url = https_server.GetURL("/title1.html");
+<<<<<<< HEAD
+  // The NTP might be in the process of navigating or adding its other
+  // subframes - this is why the test doesn't use TestNavigationObserver, but
+  // instead waits for the frame's onload event.
+  ASSERT_EQ("Frame injected successfully",
+            content::EvalJs(web_contents,
+                            content::JsReplace(kFrameInjectionScriptTemplate,
+                                               subframe_url)));
+  const auto frames =
+      CollectAllRenderFrameHosts(web_contents->GetPrimaryPage());
+  const auto it = std::ranges::find(
+=======
   {
     // The NTP might be in the process of navigating or adding its other
     // subframes - this is why the test doesn't use TestNavigationObserver, but
@@ -412,6 +430,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxFocusInteractiveTest, TabFocusStealingFromOopif) {
   }
   const auto frames = web_contents->GetAllFrames();
   const auto it = base::ranges::find(
+>>>>>>> chromium
       frames, subframe_url, &content::RenderFrameHost::GetLastCommittedURL);
   ASSERT_NE(it, frames.cend());
   content::RenderFrameHost* subframe = *it;
@@ -423,7 +442,8 @@ IN_PROC_BROWSER_TEST_F(OmniboxFocusInteractiveTest, TabFocusStealingFromOopif) {
   content::RenderFrameHost* main_frame = web_contents->GetMainFrame();
   EXPECT_NE(subframe->GetLastCommittedURL().scheme(),
             main_frame->GetLastCommittedURL().scheme());
-  EXPECT_NE(subframe->GetProcess()->GetID(), main_frame->GetProcess()->GetID());
+  EXPECT_NE(subframe->GetProcess()->GetDeprecatedID(),
+            main_frame->GetProcess()->GetDeprecatedID());
 
   // Trigger a subframe-initiated navigation of the main frame.
   const char kLinkClickingScriptTemplate[] = R"(

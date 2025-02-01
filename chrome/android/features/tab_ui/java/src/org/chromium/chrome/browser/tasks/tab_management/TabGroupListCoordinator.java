@@ -28,6 +28,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
+import org.chromium.chrome.browser.tab.TabFavicon;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncFeatures;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
 import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider;
@@ -67,8 +68,9 @@ public class TabGroupListCoordinator {
     }
 
     private final TabGroupListView mView;
-
     private final SimpleRecyclerViewAdapter mSimpleRecyclerViewAdapter;
+    private final TabListFaviconProvider mTabListFaviconProvider;
+
     private TabGroupListMediator mTabGroupListMediator;
     private @Nullable EdgeToEdgePadAdjuster mEdgeToEdgePadAdjuster;
 
@@ -119,7 +121,14 @@ public class TabGroupListCoordinator {
         mView.setRecyclerViewAdapter(mSimpleRecyclerViewAdapter);
 
         Profile profile = profileProvider.getOriginalProfile();
-        FaviconResolver faviconResolver = buildFaviconResolver(context, profile);
+        mTabListFaviconProvider =
+                new TabListFaviconProvider(
+                        context,
+                        /* isTabStrip= */ false,
+                        R.dimen.default_favicon_corner_radius,
+                        TabFavicon::getBitmap);
+        FaviconResolver faviconResolver =
+                buildFaviconResolver(context, profile, mTabListFaviconProvider);
         @Nullable TabGroupSyncService tabGroupSyncService = null;
         if (TabGroupSyncFeatures.isTabGroupSyncEnabled(profile)) {
             tabGroupSyncService = TabGroupSyncServiceFactory.getForProfile(profile);
@@ -134,7 +143,7 @@ public class TabGroupListCoordinator {
         IdentityManager identityManager =
                 IdentityServicesProvider.get().getIdentityManager(profile);
         ActionConfirmationManager actionConfirmationManager =
-                new ActionConfirmationManager(profile, context, filter, modalDialogManager);
+                new ActionConfirmationManager(profile, context, modalDialogManager);
         SyncService syncService = SyncServiceFactory.getForProfile(profile);
 
         mTabGroupListMediator =
@@ -161,10 +170,8 @@ public class TabGroupListCoordinator {
     }
 
     @VisibleForTesting
-    static FaviconResolver buildFaviconResolver(Context context, Profile profile) {
-        TabListFaviconProvider fallbackProvider =
-                new TabListFaviconProvider(
-                        context, /* isTabStrip= */ false, R.dimen.default_favicon_corner_radius);
+    static FaviconResolver buildFaviconResolver(
+            Context context, Profile profile, TabListFaviconProvider fallbackProvider) {
         return (GURL url, Callback<Drawable> callback) -> {
             if (UrlUtilities.isInternalScheme(url)) {
                 callback.onResult(
@@ -185,12 +192,14 @@ public class TabGroupListCoordinator {
             Callback<Drawable> callback) {
         Resources resources = context.getResources();
         int faviconSizePixels = resources.getDimensionPixelSize(R.dimen.tab_grid_favicon_size);
+        FaviconHelper faviconHelper = new FaviconHelper();
         FaviconImageCallback faviconImageCallback =
-                (Bitmap bitmap, GURL ignored) ->
-                        onForeignFavicon(context, fallbackProvider, callback, bitmap);
-        new FaviconHelper()
-                .getForeignFaviconImageForURL(
-                        profile, url, faviconSizePixels, faviconImageCallback);
+                (Bitmap bitmap, GURL ignored) -> {
+                    onForeignFavicon(context, fallbackProvider, callback, bitmap);
+                    faviconHelper.destroy();
+                };
+        faviconHelper.getForeignFaviconImageForURL(
+                profile, url, faviconSizePixels, faviconImageCallback);
     }
 
     private static void onForeignFavicon(
@@ -226,5 +235,6 @@ public class TabGroupListCoordinator {
             mEdgeToEdgePadAdjuster.destroy();
             mEdgeToEdgePadAdjuster = null;
         }
+        mTabListFaviconProvider.destroy();
     }
 }

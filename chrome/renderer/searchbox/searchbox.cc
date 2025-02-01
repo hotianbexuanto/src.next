@@ -72,8 +72,7 @@ SearchBoxIconURLHelper::SearchBoxIconURLHelper(const SearchBox* search_box)
     : search_box_(search_box) {
 }
 
-SearchBoxIconURLHelper::~SearchBoxIconURLHelper() {
-}
+SearchBoxIconURLHelper::~SearchBoxIconURLHelper() = default;
 
 int SearchBoxIconURLHelper::GetMainFrameID() const {
   return search_box_->render_frame()->GetRoutingID();

@@ -26,6 +26,10 @@
 
 #include "third_party/blink/renderer/core/css/css_value.h"
 
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/css/css_alternate_value.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/css_axis_value.h"
 #include "third_party/blink/renderer/core/css/css_basic_shape_values.h"
 #include "third_party/blink/renderer/core/css/css_border_image_slice_value.h"
@@ -72,9 +76,15 @@
 #include "third_party/blink/renderer/core/css/css_reflect_value.h"
 #include "third_party/blink/renderer/core/css/css_revert_value.h"
 #include "third_party/blink/renderer/core/css/css_shadow_value.h"
+#include "third_party/blink/renderer/core/css/css_shape_value.h"
 #include "third_party/blink/renderer/core/css/css_string_value.h"
 #include "third_party/blink/renderer/core/css/css_timing_function_value.h"
 #include "third_party/blink/renderer/core/css/css_unicode_range_value.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/css/css_unparsed_declaration_value.h"
+#include "third_party/blink/renderer/core/css/css_unresolved_color_value.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/css_unset_value.h"
 #include "third_party/blink/renderer/core/css/css_uri_value.h"
 #include "third_party/blink/renderer/core/css/css_value_list.h"
@@ -96,6 +106,10 @@ CSSValue* CSSValue::Create(const Length& value, float zoom) {
     case Length::kMinContent:
     case Length::kMaxContent:
     case Length::kFillAvailable:
+<<<<<<< HEAD
+    case Length::kStretch:
+=======
+>>>>>>> chromium
     case Length::kFitContent:
     case Length::kExtendToZoom:
       return CSSIdentifierValue::Create(value);
@@ -181,6 +195,14 @@ bool CSSValue::operator==(const CSSValue& other) const {
                                                                     other);
       case kColorClass:
         return CompareCSSValues<cssvalue::CSSColor>(*this, other);
+<<<<<<< HEAD
+      case kColorMixClass:
+        return CompareCSSValues<cssvalue::CSSColorMixValue>(*this, other);
+      case kUnresolvedColorClass:
+        return CompareCSSValues<cssvalue::CSSUnresolvedColorValue>(*this,
+                                                                   other);
+=======
+>>>>>>> chromium
       case kCounterClass:
         return CompareCSSValues<cssvalue::CSSCounterValue>(*this, other);
       case kCursorImageClass:
@@ -233,6 +255,8 @@ bool CSSValue::operator==(const CSSValue& other) const {
                                                                      other);
       case kPathClass:
         return CompareCSSValues<cssvalue::CSSPathValue>(*this, other);
+      case kShapeClass:
+        return CompareCSSValues<cssvalue::CSSShapeValue>(*this, other);
       case kNumericLiteralClass:
         return CompareCSSValues<CSSNumericLiteralValue>(*this, other);
       case kMathFunctionClass:
@@ -315,6 +339,13 @@ String CSSValue::CssText() const {
       return To<cssvalue::CSSBorderImageSliceValue>(this)->CustomCSSText();
     case kColorClass:
       return To<cssvalue::CSSColor>(this)->CustomCSSText();
+<<<<<<< HEAD
+    case kColorMixClass:
+      return To<cssvalue::CSSColorMixValue>(this)->CustomCSSText();
+    case kUnresolvedColorClass:
+      return To<cssvalue::CSSUnresolvedColorValue>(this)->CustomCSSText();
+=======
+>>>>>>> chromium
     case kCounterClass:
       return To<cssvalue::CSSCounterValue>(this)->CustomCSSText();
     case kCursorImageClass:
@@ -365,6 +396,8 @@ String CSSValue::CssText() const {
       return To<cssvalue::CSSGridTemplateAreasValue>(this)->CustomCSSText();
     case kPathClass:
       return To<cssvalue::CSSPathValue>(this)->CustomCSSText();
+    case kShapeClass:
+      return To<cssvalue::CSSShapeValue>(this)->CustomCSSText();
     case kNumericLiteralClass:
       return To<CSSNumericLiteralValue>(this)->CustomCSSText();
     case kMathFunctionClass:
@@ -427,6 +460,122 @@ String CSSValue::CssText() const {
 
 void CSSValue::FinalizeGarbageCollectedObject() {
   switch (GetClassType()) {
+<<<<<<< HEAD
+    case kColorClass:
+      return WTF::HashInts(GetClassType(),
+                           To<cssvalue::CSSColor>(this)->CustomHash());
+    case kCSSContentDistributionClass:
+      return WTF::HashInts(
+          GetClassType(),
+          To<cssvalue::CSSContentDistributionValue>(this)->CustomHash());
+    case kCustomIdentClass:
+      return WTF::HashInts(GetClassType(),
+                           To<CSSCustomIdentValue>(this)->CustomHash());
+    case kIdentifierClass:
+      return WTF::HashInts(GetClassType(),
+                           To<CSSIdentifierValue>(this)->CustomHash());
+    case kNumericLiteralClass:
+      return WTF::HashInts(GetClassType(),
+                           To<CSSNumericLiteralValue>(this)->CustomHash());
+    case kPathClass:
+      return WTF::HashInts(GetClassType(),
+                           To<cssvalue::CSSPathValue>(this)->CustomHash());
+    case kStringClass:
+      return WTF::HashInts(GetClassType(),
+                           To<CSSStringValue>(this)->CustomHash());
+    case kUnparsedDeclarationClass:
+      return WTF::HashInts(GetClassType(),
+                           To<CSSUnparsedDeclarationValue>(this)->CustomHash());
+    case kValueListClass:
+      return WTF::HashInts(GetClassType(),
+                           To<CSSValueList>(this)->CustomHash());
+    case kValuePairClass:
+      return WTF::HashInts(GetClassType(),
+                           To<CSSValuePair>(this)->CustomHash());
+    // These don't have any values.
+    case kInheritedClass:
+    case kInitialClass:
+    case kUnsetClass:
+    case kRevertClass:
+    case kRevertLayerClass:
+      return WTF::HashInt(GetClassType());
+    case kMathFunctionClass:
+    case kScopedKeywordClass:
+    case kColorMixClass:
+    case kCounterClass:
+    case kQuadClass:
+    case kURIClass:
+    case kLightDarkValuePairClass:
+    case kScrollClass:
+    case kViewClass:
+    case kRatioClass:
+    case kRelativeColorClass:
+    case kBasicShapeCircleClass:
+    case kBasicShapeEllipseClass:
+    case kBasicShapePolygonClass:
+    case kBasicShapeInsetClass:
+    case kBasicShapeRectClass:
+    case kBasicShapeXYWHClass:
+    case kImageClass:
+    case kCursorImageClass:
+    case kCrossfadeClass:
+    case kPaintClass:
+    case kLinearGradientClass:
+    case kRadialGradientClass:
+    case kConicGradientClass:
+    case kConstantGradientClass:
+    case kLinearTimingFunctionClass:
+    case kCubicBezierTimingFunctionClass:
+    case kStepsTimingFunctionClass:
+    case kBorderImageSliceClass:
+    case kDynamicRangeLimitMixClass:
+    case kFontFeatureClass:
+    case kFontFaceSrcClass:
+    case kFontFamilyClass:
+    case kFontStyleRangeClass:
+    case kFontVariationClass:
+    case kAlternateClass:
+    case kReflectClass:
+    case kShadowClass:
+    case kShapeClass:
+    case kUnicodeRangeClass:
+    case kGridTemplateAreasClass:
+    case kPaletteMixClass:
+    case kRayClass:
+    case kPendingSubstitutionValueClass:
+    case kPendingSystemFontValueClass:
+    case kInvalidVariableValueClass:
+    case kCyclicVariableValueClass:
+    case kFlipRevertClass:
+    case kLayoutFunctionClass:
+    case kKeyframeShorthandClass:
+    case kInitialColorValueClass:
+    case kImageSetOptionClass:
+    case kImageSetTypeClass:
+    case kRepeatStyleClass:
+    case kFunctionClass:
+    case kImageSetClass:
+    case kGridLineNamesClass:
+    case kGridAutoRepeatClass:
+    case kGridIntegerRepeatClass:
+    case kAxisClass:
+    case kRepeatClass:
+    case kUnresolvedColorClass:
+      // For rare or complicated CSSValue types, we simply use the pointer value
+      // as hash; it will definitely give false negatives, but those are fine.
+      // The lower 32 bits should be fine, as we live inside a 4G Oilpan cage
+      // anyway.
+      return static_cast<unsigned>(reinterpret_cast<uintptr_t>(this));
+  }
+}
+
+const CSSValue& CSSValue::PopulateWithTreeScope(
+    const TreeScope* tree_scope) const {
+  switch (GetClassType()) {
+    case kScopedKeywordClass:
+      return To<cssvalue::CSSScopedKeywordValue>(this)->PopulateWithTreeScope(
+          tree_scope);
+=======
     case kAxisClass:
       To<cssvalue::CSSAxisValue>(this)->~CSSAxisValue();
       return;
@@ -450,6 +599,7 @@ void CSSValue::FinalizeGarbageCollectedObject() {
     case kColorClass:
       To<cssvalue::CSSColor>(this)->~CSSColor();
       return;
+>>>>>>> chromium
     case kCounterClass:
       To<cssvalue::CSSCounterValue>(this)->~CSSCounterValue();
       return;
@@ -642,6 +792,15 @@ void CSSValue::Trace(Visitor* visitor) const {
     case kColorClass:
       To<cssvalue::CSSColor>(this)->TraceAfterDispatch(visitor);
       return;
+<<<<<<< HEAD
+    case kColorMixClass:
+      To<cssvalue::CSSColorMixValue>(this)->TraceAfterDispatch(visitor);
+      return;
+    case kUnresolvedColorClass:
+      To<cssvalue::CSSUnresolvedColorValue>(this)->TraceAfterDispatch(visitor);
+      return;
+=======
+>>>>>>> chromium
     case kCounterClass:
       To<cssvalue::CSSCounterValue>(this)->TraceAfterDispatch(visitor);
       return;
@@ -718,6 +877,9 @@ void CSSValue::Trace(Visitor* visitor) const {
       return;
     case kPathClass:
       To<cssvalue::CSSPathValue>(this)->TraceAfterDispatch(visitor);
+      return;
+    case kShapeClass:
+      To<cssvalue::CSSShapeValue>(this)->TraceAfterDispatch(visitor);
       return;
     case kNumericLiteralClass:
       To<CSSNumericLiteralValue>(this)->TraceAfterDispatch(visitor);
@@ -809,4 +971,169 @@ void CSSValue::Trace(Visitor* visitor) const {
   NOTREACHED();
 }
 
+<<<<<<< HEAD
+#if DCHECK_IS_ON()
+String CSSValue::ClassTypeToString() const {
+  switch (GetClassType()) {
+    case kNumericLiteralClass:
+      return "NumericLiteralClass";
+    case kMathFunctionClass:
+      return "MathFunctionClass";
+    case kIdentifierClass:
+      return "IdentifierClass";
+    case kScopedKeywordClass:
+      return "ScopedKeywordClass";
+    case kColorClass:
+      return "ColorClass";
+    case kColorMixClass:
+      return "ColorMixClass";
+    case kUnresolvedColorClass:
+      return "UnresolvedColorClass";
+    case kCounterClass:
+      return "CounterClass";
+    case kQuadClass:
+      return "QuadClass";
+    case kCustomIdentClass:
+      return "CustomIdentClass";
+    case kStringClass:
+      return "StringClass";
+    case kURIClass:
+      return "URIClass";
+    case kValuePairClass:
+      return "ValuePairClass";
+    case kLightDarkValuePairClass:
+      return "LightDarkValuePairClass";
+    case kScrollClass:
+      return "ScrollClass";
+    case kViewClass:
+      return "ViewClass";
+    case kRatioClass:
+      return "RatioClass";
+    case kBasicShapeCircleClass:
+      return "BasicShapeCircleClass";
+    case kBasicShapeEllipseClass:
+      return "BasicShapeEllipseClass";
+    case kBasicShapePolygonClass:
+      return "BasicShapePolygonClass";
+    case kBasicShapeInsetClass:
+      return "BasicShapeInsetClass";
+    case kBasicShapeRectClass:
+      return "BasicShapeRectClass";
+    case kBasicShapeXYWHClass:
+      return "BasicShapeXYWHClass";
+    case kImageClass:
+      return "ImageClass";
+    case kCursorImageClass:
+      return "CursorImageClass";
+    case kCrossfadeClass:
+      return "CrossfadeClass";
+    case kPaintClass:
+      return "PaintClass";
+    case kLinearGradientClass:
+      return "LinearGradientClass";
+    case kRadialGradientClass:
+      return "RadialGradientClass";
+    case kConicGradientClass:
+      return "ConicGradientClass";
+    case kConstantGradientClass:
+      return "ConstantGradientClass";
+    case kLinearTimingFunctionClass:
+      return "LinearTimingFunctionClass";
+    case kCubicBezierTimingFunctionClass:
+      return "CubicBezierTimingFunctionClass";
+    case kStepsTimingFunctionClass:
+      return "StepsTimingFunctionClass";
+    case kBorderImageSliceClass:
+      return "BorderImageSliceClass";
+    case kFontFeatureClass:
+      return "FontFeatureClass";
+    case kFontFaceSrcClass:
+      return "FontFaceSrcClass";
+    case kFontFamilyClass:
+      return "FontFamilyClass";
+    case kFontStyleRangeClass:
+      return "FontStyleRangeClass";
+    case kFontVariationClass:
+      return "FontVariationClass";
+    case kAlternateClass:
+      return "AlternateClass";
+    case kInheritedClass:
+      return "InheritedClass";
+    case kInitialClass:
+      return "InitialClass";
+    case kUnsetClass:
+      return "UnsetClass";
+    case kRevertClass:
+      return "RevertClass";
+    case kRevertLayerClass:
+      return "RevertLayerClass";
+    case kReflectClass:
+      return "ReflectClass";
+    case kShadowClass:
+      return "ShadowClass";
+    case kUnicodeRangeClass:
+      return "UnicodeRangeClass";
+    case kGridTemplateAreasClass:
+      return "GridTemplateAreasClass";
+    case kPathClass:
+      return "PathClass";
+    case kRayClass:
+      return "RayClass";
+    case kShapeClass:
+      return "ShapeClass";
+    case kUnparsedDeclarationClass:
+      return "UnparsedDeclarationClass";
+    case kPendingSubstitutionValueClass:
+      return "PendingSubstitutionValueClass";
+    case kPendingSystemFontValueClass:
+      return "PendingSystemFontValueClass";
+    case kInvalidVariableValueClass:
+      return "InvalidVariableValueClass";
+    case kCyclicVariableValueClass:
+      return "CyclicVariableValueClass";
+    case kFlipRevertClass:
+      return "FlipRevertClass";
+    case kLayoutFunctionClass:
+      return "LayoutFunctionClass";
+    case kCSSContentDistributionClass:
+      return "CSSContentDistributionClass";
+    case kKeyframeShorthandClass:
+      return "KeyframeShorthandClass";
+    case kInitialColorValueClass:
+      return "InitialColorValueClass";
+    case kImageSetOptionClass:
+      return "ImageSetOptionClass";
+    case kImageSetTypeClass:
+      return "ImageSetTypeClass";
+    case kValueListClass:
+      return "ValueListClass";
+    case kFunctionClass:
+      return "FunctionClass";
+    case kImageSetClass:
+      return "ImageSetClass";
+    case kGridLineNamesClass:
+      return "GridLineNamesClass";
+    case kGridAutoRepeatClass:
+      return "GridAutoRepeatClass";
+    case kGridIntegerRepeatClass:
+      return "GridIntegerRepeatClass";
+    case kRepeatClass:
+      return "RepeatClass";
+    case kAxisClass:
+      return "AxisClass";
+    case kRelativeColorClass:
+      return "kRelativeColorClass";
+    case kDynamicRangeLimitMixClass:
+      return "kDynamicRangeLimitMixClass";
+    case kPaletteMixClass:
+      return "kPaletteMixClass";
+    case kRepeatStyleClass:
+      return "kRepeatStyleClass";
+  }
+  NOTREACHED();
+}
+#endif
+
+=======
+>>>>>>> chromium
 }  // namespace blink

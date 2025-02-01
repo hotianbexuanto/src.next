@@ -799,6 +799,58 @@ void LocalFrameMojoHandler::JavaScriptExecuteRequestForTests(
   if (has_user_gesture)
     NotifyUserActivation(mojom::blink::UserActivationNotificationType::kTest);
 
+<<<<<<< HEAD
+  v8::Isolate* isolate = ToIsolate(frame_);
+  ScriptState* script_state =
+      (world_id == DOMWrapperWorld::kMainWorldId)
+          ? ToScriptStateForMainWorld(frame_)
+          : ToScriptState(frame_, *DOMWrapperWorld::EnsureIsolatedWorld(
+                                      isolate, world_id));
+  ScriptState::Scope script_state_scope(script_state);
+
+  // `kDoNotSanitize` is used because this is only for tests and some tests
+  // need `kDoNotSanitize` for dynamic imports.
+  ClassicScript* script = ClassicScript::CreateUnspecifiedScript(
+      javascript, ScriptSourceLocationType::kUnknown,
+      SanitizeScriptErrors::kDoNotSanitize);
+
+  const auto policy =
+      honor_js_content_settings
+          ? ExecuteScriptPolicy::kDoNotExecuteScriptWhenScriptsDisabled
+          : ExecuteScriptPolicy::kExecuteScriptWhenScriptsDisabled;
+  ScriptEvaluationResult result =
+      script->RunScriptOnScriptStateAndReturnValue(script_state, policy);
+
+  auto* handler = MakeGarbageCollected<JavaScriptExecuteRequestForTestsHandler>(
+      std::move(callback));
+  v8::Local<v8::Value> error;
+  switch (result.GetResultType()) {
+    case ScriptEvaluationResult::ResultType::kSuccess: {
+      v8::Local<v8::Value> value = result.GetSuccessValue();
+      if (resolve_promises && !value.IsEmpty() && value->IsPromise()) {
+        auto promise = ScriptPromise<IDLAny>::FromV8Promise(
+            script_state->GetIsolate(), value.As<v8::Promise>());
+        promise.Then(script_state,
+                     handler->CreateResolveCallback(script_state, frame_),
+                     handler->CreateRejectCallback(script_state, frame_));
+      } else {
+        handler->SendSuccess(script_state, value);
+      }
+      return;
+    }
+
+    case ScriptEvaluationResult::ResultType::kException:
+      error = result.GetExceptionForClassicForTesting();
+      break;
+
+    case ScriptEvaluationResult::ResultType::kAborted:
+      error = v8::String::NewFromUtf8Literal(isolate, "Script aborted");
+      break;
+
+    case ScriptEvaluationResult::ResultType::kNotRun:
+      error = v8::String::NewFromUtf8Literal(isolate, "Script not run");
+      break;
+=======
   v8::HandleScope handle_scope(V8PerIsolateData::MainThreadIsolate());
   v8::Local<v8::Value> result;
   if (world_id == DOMWrapperWorld::kMainWorldId) {
@@ -825,6 +877,7 @@ void LocalFrameMojoHandler::JavaScriptExecuteRequestForTests(
         GetJavaScriptExecutionResult(result, frame_, converter.get()));
   } else {
     std::move(callback).Run({});
+>>>>>>> chromium
   }
 }
 
@@ -1176,10 +1229,109 @@ void LocalFrameMojoHandler::UpdateBrowserControlsState(
                                                               current, animate);
 }
 
+<<<<<<< HEAD
+void LocalFrameMojoHandler::Discard() {
+  frame_->Discard();
+}
+
+void LocalFrameMojoHandler::FinalizeNavigationConfidence(
+    double randomized_trigger_rate,
+    mojom::blink::ConfidenceLevel confidence) {
+  frame_->SetNavigationConfidence(randomized_trigger_rate, confidence);
+}
+
+void LocalFrameMojoHandler::SetV8CompileHints(
+    base::ReadOnlySharedMemoryRegion data) {
+  CHECK(base::FeatureList::IsEnabled(blink::features::kConsumeCompileHints));
+  Page* page = GetPage();
+  if (page == nullptr) {
+    return;
+  }
+  base::ReadOnlySharedMemoryMapping mapping = data.Map();
+  if (!mapping.IsValid()) {
+    return;
+  }
+  base::span<const int64_t> memory = mapping.GetMemoryAsSpan<int64_t>();
+  if (memory.empty()) {
+    return;
+  }
+
+  page->GetV8CrowdsourcedCompileHintsConsumer().SetData(memory);
+}
+
+void LocalFrameMojoHandler::SnapshotDocumentForViewTransition(
+    const blink::ViewTransitionToken& transition_token,
+    mojom::blink::PageSwapEventParamsPtr params,
+    SnapshotDocumentForViewTransitionCallback callback) {
+  ViewTransitionSupplement::SnapshotDocumentForNavigation(
+      *frame_->GetDocument(), transition_token, std::move(params),
+      std::move(callback));
+}
+
+void LocalFrameMojoHandler::NotifyViewTransitionAbortedToOldDocument() {
+  if (auto* transition =
+          ViewTransitionUtils::GetOutgoingCrossDocumentTransition(
+              *frame_->GetDocument())) {
+    transition->SkipTransition();
+  }
+}
+
+void LocalFrameMojoHandler::DispatchPageSwap(
+    mojom::blink::PageSwapEventParamsPtr params) {
+  auto* page_swap_event = MakeGarbageCollected<PageSwapEvent>(
+      *frame_->GetDocument(), std::move(params), nullptr);
+  frame_->GetDocument()->domWindow()->DispatchEvent(*page_swap_event);
+}
+
+void LocalFrameMojoHandler::AddResourceTimingEntryForFailedSubframeNavigation(
+    const FrameToken& subframe_token,
+    const KURL& initial_url,
+    base::TimeTicks start_time,
+    base::TimeTicks redirect_time,
+    base::TimeTicks request_start,
+    base::TimeTicks response_start,
+    uint32_t response_code,
+    const WTF::String& mime_type,
+    network::mojom::blink::LoadTimingInfoPtr load_timing_info,
+    net::HttpConnectionInfo connection_info,
+    const WTF::String& alpn_negotiated_protocol,
+    bool is_secure_transport,
+    bool is_validated,
+    const WTF::String& normalized_server_timing,
+    const network::URLLoaderCompletionStatus& completion_status) {
+  Frame* subframe = Frame::ResolveFrame(subframe_token);
+  if (!subframe || !subframe->Owner()) {
+    return;
+  }
+
+  ResourceResponse response;
+  response.SetAlpnNegotiatedProtocol(AtomicString(alpn_negotiated_protocol));
+  response.SetConnectionInfo(connection_info);
+  response.SetConnectionReused(load_timing_info->socket_reused);
+  response.SetTimingAllowPassed(true);
+  response.SetIsValidated(is_validated);
+  response.SetDecodedBodyLength(completion_status.decoded_body_length);
+  response.SetEncodedBodyLength(completion_status.encoded_body_length);
+  response.SetEncodedDataLength(completion_status.encoded_data_length);
+  response.SetHttpStatusCode(response_code);
+  if (!normalized_server_timing.empty()) {
+    response.SetHttpHeaderField(http_names::kServerTiming,
+                                AtomicString(normalized_server_timing));
+  }
+
+  mojom::blink::ResourceTimingInfoPtr info =
+      CreateResourceTimingInfo(start_time, initial_url, &response);
+  info->response_end = completion_status.completion_time;
+  info->last_redirect_end_time = redirect_time;
+  info->is_secure_transport = is_secure_transport;
+  info->timing = std::move(load_timing_info);
+  subframe->Owner()->AddResourceTiming(std::move(info));
+=======
 void LocalFrameMojoHandler::DispatchBeforeUnload(
     bool is_reload,
     mojom::blink::LocalFrame::BeforeUnloadCallback callback) {
   BeforeUnload(is_reload, std::move(callback));
+>>>>>>> chromium
 }
 
 void LocalFrameMojoHandler::RequestFullscreenVideoElement() {

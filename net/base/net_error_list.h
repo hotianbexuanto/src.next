@@ -127,6 +127,19 @@ NET_ERROR(BLOCKED_BY_CSP, -30)
 // The request was blocked because of no H/2 or QUIC session.
 NET_ERROR(H2_OR_QUIC_REQUIRED, -31)
 
+<<<<<<< HEAD
+// The request was blocked by CORB or ORB.
+NET_ERROR(BLOCKED_BY_ORB, -32)
+
+// The request was blocked because it originated from a frame that has disabled
+// network access.
+NET_ERROR(NETWORK_ACCESS_REVOKED, -33)
+
+// The request was blocked by fingerprinting protections.
+NET_ERROR(BLOCKED_BY_FINGERPRINTING_PROTECTION, -34)
+
+=======
+>>>>>>> chromium
 // A connection was closed (corresponding to a TCP FIN).
 NET_ERROR(CONNECTION_CLOSED, -100)
 

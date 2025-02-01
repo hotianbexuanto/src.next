@@ -10,12 +10,20 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.TransactionTooLargeException;
 
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+
 import java.util.Collections;
 import java.util.List;
 
+<<<<<<< HEAD
+/** This class provides Android PackageManager related utility methods. */
+@NullMarked
+=======
 /**
  * This class provides Android PackageManager related utility methods.
  */
+>>>>>>> chromium
 public class PackageManagerUtils {
     private static final String TAG = "PackageManagerUtils";
     private static final String SAMPLE_URL = "http://";
@@ -30,7 +38,7 @@ public class PackageManagerUtils {
      * @param flags The PackageManager flags to pass to resolveActivity().
      * @return       ResolveInfo of the Activity that will handle the Intent, or null if it failed.
      */
-    public static ResolveInfo resolveActivity(Intent intent, int flags) {
+    public static @Nullable ResolveInfo resolveActivity(Intent intent, int flags) {
         // On KitKat, calling PackageManager#resolveActivity() causes disk reads and
         // writes. Temporarily allow this while resolving the intent.
         try (StrictModeContext ignored = StrictModeContext.allowDiskWrites()) {
@@ -78,8 +86,13 @@ public class PackageManagerUtils {
     /**
      * @return Default ResolveInfo to handle a VIEW intent for a url.
      */
+<<<<<<< HEAD
+    public static @Nullable ResolveInfo resolveDefaultWebBrowserActivity() {
+        return resolveActivity(BROWSER_INTENT, PackageManager.MATCH_DEFAULT_ONLY);
+=======
     public static ResolveInfo resolveDefaultWebBrowserActivity() {
         return resolveActivity(getQueryInstalledBrowsersIntent(), 0);
+>>>>>>> chromium
     }
 
     /**

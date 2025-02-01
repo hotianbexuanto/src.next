@@ -34,6 +34,10 @@ class DiceTabHelper : public content::WebContentsUserData<DiceTabHelper>,
 
   const GURL& signin_url() const { return signin_url_; }
 
+  void SetAccessPoint(signin_metrics::AccessPoint access_point) {
+    state_.signin_access_point = access_point;
+  }
+
   // Initializes the DiceTabHelper for a new signin flow. Must be called once
   // per signin flow happening in the tab, when the signin URL is being loaded.
   void InitializeSigninFlow(const GURL& signin_url,
@@ -66,6 +70,37 @@ class DiceTabHelper : public content::WebContentsUserData<DiceTabHelper>,
   // kNotStarted: there is no sync signin flow in progress.
   enum class SyncSigninFlowStatus { kNotStarted, kStarted };
 
+<<<<<<< HEAD
+  struct ResetableState {
+    ResetableState();
+    ~ResetableState();
+    ResetableState(const ResetableState& other) = delete;
+    ResetableState& operator=(const ResetableState& other) = delete;
+
+    ResetableState(ResetableState&& other);
+    ResetableState& operator=(ResetableState&& other);
+
+    GURL redirect_url;
+    GURL signin_url;
+    EnableSyncCallback enable_sync_callback;
+    OnSigninHeaderReceived on_signin_header_received_callback;
+    ShowSigninErrorCallback show_signin_error_callback;
+
+    // By default the access point refers to web signin, as after a reset the
+    // user may sign in again in the same tab.
+    signin_metrics::AccessPoint signin_access_point =
+        signin_metrics::AccessPoint::kWebSignin;
+
+    signin_metrics::PromoAction signin_promo_action =
+        signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO;
+    signin_metrics::Reason signin_reason =
+        signin_metrics::Reason::kUnknownReason;
+    SyncSigninFlowStatus sync_signin_flow_status =
+        SyncSigninFlowStatus::kNotStarted;
+  };
+
+=======
+>>>>>>> chromium
   // content::WebContentsObserver:
   void DidStartNavigation(
       content::NavigationHandle* navigation_handle) override;

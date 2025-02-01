@@ -6,7 +6,11 @@
 
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
+=======
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/frame_paint_timing.h"
@@ -65,9 +69,12 @@ void FramePainter::PaintContents(GraphicsContext& context,
          DocumentLifecycle::kCompositingAssignmentsClean);
 
   FramePaintTiming frame_paint_timing(context, &GetFrameView().GetFrame());
+<<<<<<< HEAD
+=======
   DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT_WITH_CATEGORIES(
       "devtools.timeline,rail", "Paint", inspector_paint_event::Data,
       layout_view, PhysicalRect(cull_rect.Rect()), nullptr);
+>>>>>>> chromium
 
   bool is_top_level_painter = !in_paint_contents_;
   in_paint_contents_ = true;

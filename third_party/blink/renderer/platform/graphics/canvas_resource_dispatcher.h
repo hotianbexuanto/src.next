@@ -19,6 +19,11 @@
 #include "third_party/blink/renderer/platform/geometry/int_size.h"
 #include "third_party/blink/renderer/platform/graphics/resource_id_traits.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/platform/timer.h"
+#include "ui/gfx/geometry/size.h"
+=======
+>>>>>>> chromium
 
 namespace blink {
 
@@ -27,7 +32,10 @@ class CanvasResource;
 class CanvasResourceDispatcherClient {
  public:
   virtual bool BeginFrame() = 0;
+<<<<<<< HEAD
+=======
   virtual void SetFilterQualityInResource(SkFilterQuality filter_quality) = 0;
+>>>>>>> chromium
 };
 
 class PLATFORM_EXPORT CanvasResourceDispatcher
@@ -43,27 +51,62 @@ class PLATFORM_EXPORT CanvasResourceDispatcher
     kInvalidPlaceholderCanvasId = -1,
   };
 
+<<<<<<< HEAD
+  enum class AnimationState {
+    // Animation should be active, and use the real sync signal from viz.
+    kActive,
+
+    // Animation should be active, but should use a synthetic sync signal.  This
+    // is useful when viz won't provide us with one.
+    kActiveWithSyntheticTiming,
+
+    // Animation should be suspended.
+    kSuspended,
+  };
+
+  // `task_runner` is the task runner this object is associated with and
+  // executes on. `agent_group_scheduler_compositor_task_runner` is the
+  // compositor task runner for the associated canvas element.
+  CanvasResourceDispatcher(
+      CanvasResourceDispatcherClient*,
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+      scoped_refptr<base::SingleThreadTaskRunner>
+          agent_group_scheduler_compositor_task_runner,
+      uint32_t client_id,
+      uint32_t sink_id,
+      int placeholder_canvas_id,
+      const gfx::Size&);
+=======
   CanvasResourceDispatcher(CanvasResourceDispatcherClient*,
                            uint32_t client_id,
                            uint32_t sink_id,
                            int placeholder_canvas_id,
                            const IntSize&);
+>>>>>>> chromium
 
   ~CanvasResourceDispatcher() override;
   void SetNeedsBeginFrame(bool);
-  void SetSuspendAnimation(bool);
+  void SetAnimationState(AnimationState animation_state);
+  AnimationState GetAnimationStateForTesting() const {
+    return animation_state_;
+  }
   bool NeedsBeginFrame() const { return needs_begin_frame_; }
+<<<<<<< HEAD
+  bool IsAnimationSuspended() const {
+    return animation_state_ == AnimationState::kSuspended;
+  }
+  void DispatchFrame(scoped_refptr<CanvasResource>&&,
+=======
   bool IsAnimationSuspended() const { return suspend_animation_; }
   void DispatchFrame(scoped_refptr<CanvasResource>,
+>>>>>>> chromium
                      base::TimeTicks commit_start_time,
                      const SkIRect& damage_rect,
-                     bool needs_vertical_flip,
                      bool is_opaque);
   void ReclaimResource(viz::ResourceId);
   void DispatchFrameSync(scoped_refptr<CanvasResource>,
                          base::TimeTicks commit_start_time,
                          const SkIRect& damage_rect,
-                         bool needs_vertical_flip,
                          bool is_opaque);
   void ReplaceBeginFrameAck(const viz::BeginFrameArgs& args) {
     current_begin_frame_ack_ = viz::BeginFrameAck(args, true);
@@ -83,11 +126,15 @@ class PLATFORM_EXPORT CanvasResourceDispatcher
   void OnCompositorFrameTransitionDirectiveProcessed(
       uint32_t sequence_id) final {}
 
+<<<<<<< HEAD
+  void SetFilterQuality(cc::PaintFlags::FilterQuality filter_quality);
+=======
   void DidAllocateSharedBitmap(base::ReadOnlySharedMemoryRegion region,
                                const gpu::Mailbox& id);
   void DidDeleteSharedBitmap(const gpu::Mailbox& id);
 
   void SetFilterQuality(SkFilterQuality filter_quality);
+>>>>>>> chromium
   void SetPlaceholderCanvasDispatcher(int placeholder_canvas_id);
 
  private:
@@ -100,9 +147,11 @@ class PLATFORM_EXPORT CanvasResourceDispatcher
   bool PrepareFrame(scoped_refptr<CanvasResource>,
                     base::TimeTicks commit_start_time,
                     const SkIRect& damage_rect,
-                    bool needs_vertical_flip,
                     bool is_opaque,
                     viz::CompositorFrame* frame);
+
+  // Timer callback for synthetic OnBeginFrames.
+  void OnFakeFrameTimer(TimerBase* timer);
 
   // Surface-related
   viz::ParentLocalSurfaceIdAllocator parent_local_surface_id_allocator_;
@@ -110,11 +159,15 @@ class PLATFORM_EXPORT CanvasResourceDispatcher
 
   IntSize size_;
   bool change_size_for_next_commit_;
-  bool suspend_animation_ = false;
+  AnimationState animation_state_ = AnimationState::kActive;
   bool needs_begin_frame_ = false;
   int pending_compositor_frames_ = 0;
 
-  void SetNeedsBeginFrameInternal();
+  // Make sure that we're are / are not requesting `OnBeginFrame` callbacks and
+  // are / are not generating synthetic OBFs via timer based on whether we need
+  // a begin frame source or not.  It's okay to call this regardless if the
+  // state has actually changed or not.
+  void UpdateBeginFrameSource();
 
   bool VerifyImageSize(const IntSize);
   void PostImageToPlaceholderIfNotBlocked(scoped_refptr<CanvasResource>,
@@ -148,6 +201,8 @@ class PLATFORM_EXPORT CanvasResourceDispatcher
   CanvasResourceDispatcherClient* client_;
 
   std::unique_ptr<power_scheduler::PowerModeVoter> animation_power_mode_voter_;
+
+  TaskRunnerTimer<CanvasResourceDispatcher> fake_frame_timer_;
 
   base::WeakPtrFactory<CanvasResourceDispatcher> weak_ptr_factory_{this};
 };

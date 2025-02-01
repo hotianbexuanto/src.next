@@ -213,4 +213,155 @@ IN_PROC_BROWSER_TEST_F(BrowserTabStripModelDelegateWithEmbeddedServerTest,
   VerifyMute(incognito_browser, /*isMuted=*/false);
 }
 
+<<<<<<< HEAD
+class BrowserTabStripModelDelegateVariantTest
+    : public BrowserTabStripModelDelegateTest,
+      public testing::WithParamInterface<bool> {
+ public:
+  BrowserTabStripModelDelegateVariantTest() {
+    std::vector<base::test::FeatureRef> saved_tab_group_features = {
+        tab_groups::kTabGroupsSaveV2,
+    };
+    if (IsSavedTabGroupsV2()) {
+      feature_list_.InitWithFeatures(saved_tab_group_features, {});
+    } else {
+      feature_list_.InitWithFeatures({}, saved_tab_group_features);
+    }
+  }
+
+  bool IsSavedTabGroupsV2() { return GetParam(); }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// Tests that bulk actions will close tab groups without destruction.
+IN_PROC_BROWSER_TEST_P(BrowserTabStripModelDelegateVariantTest,
+                       BulkCloseToRightWithTabGroups) {
+  std::unique_ptr<TabStripModelDelegate> delegate =
+      std::make_unique<BrowserTabStripModelDelegate>(browser());
+
+  GURL url1("chrome://version");
+  GURL url2("chrome://about");
+  GURL url3("chrome://terms");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
+  ASSERT_TRUE(AddTabAtIndex(1, url2, ui::PAGE_TRANSITION_LINK));
+  ASSERT_TRUE(AddTabAtIndex(2, url3, ui::PAGE_TRANSITION_LINK));
+
+  auto* tab_strip_model = browser()->tab_strip_model();
+  tab_strip_model->AddToNewGroup({1});
+  tab_strip_model->AddToNewGroup({2});
+
+  BrowserList* browser_list = BrowserList::GetInstance();
+
+  // Precondition: there's currently one browser with three tabs in two
+  // groups.
+  EXPECT_EQ(browser_list->size(), 1u);
+  EXPECT_EQ(browser()->tab_strip_model()->count(), 3);
+  EXPECT_EQ(browser()->tab_strip_model()->GetActiveWebContents()->GetURL(),
+            url3);
+  EXPECT_EQ(browser()->tab_strip_model()->group_model()->ListTabGroups().size(),
+            2u);
+
+  auto* sync_service = tab_groups::SavedTabGroupUtils::GetServiceForProfile(
+      browser()->profile());
+  EXPECT_NE(sync_service, nullptr);
+
+  if (IsSavedTabGroupsV2()) {
+    auto groups = sync_service->GetAllGroups();
+    EXPECT_EQ(groups.size(), 2u);
+    for (auto group : groups) {
+      // Group is open
+      EXPECT_TRUE(group.local_group_id().has_value());
+    }
+  }
+
+  // Execute command on first tab to close all tabs to the right.
+  tab_strip_model->ExecuteContextMenuCommand(
+      0, TabStripModel::ContextMenuCommand::CommandCloseTabsToRight);
+
+  // Now there are is only one tab and groups are minimized.
+  EXPECT_EQ(browser()->tab_strip_model()->count(), 1);
+  EXPECT_EQ(browser()->tab_strip_model()->GetActiveWebContents()->GetURL(),
+            url1);
+  EXPECT_EQ(browser()->tab_strip_model()->group_model()->ListTabGroups().size(),
+            0u);
+
+  if (IsSavedTabGroupsV2()) {
+    auto groups = sync_service->GetAllGroups();
+    EXPECT_EQ(groups.size(), 2u);
+    for (auto group : groups) {
+      // Group is not open
+      EXPECT_FALSE(group.local_group_id().has_value());
+    }
+  }
+}
+
+IN_PROC_BROWSER_TEST_P(BrowserTabStripModelDelegateVariantTest,
+                       BulkCloseOtherWithTabGroups) {
+  std::unique_ptr<TabStripModelDelegate> delegate =
+      std::make_unique<BrowserTabStripModelDelegate>(browser());
+
+  GURL url1("chrome://version");
+  GURL url2("chrome://about");
+  GURL url3("chrome://terms");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
+  ASSERT_TRUE(AddTabAtIndex(1, url2, ui::PAGE_TRANSITION_LINK));
+  ASSERT_TRUE(AddTabAtIndex(2, url3, ui::PAGE_TRANSITION_LINK));
+
+  auto* tab_strip_model = browser()->tab_strip_model();
+  tab_strip_model->AddToNewGroup({1});
+  tab_strip_model->AddToNewGroup({2});
+
+  BrowserList* browser_list = BrowserList::GetInstance();
+
+  // Precondition: there's currently one browser with three tabs in two
+  // groups.
+  EXPECT_EQ(browser_list->size(), 1u);
+  EXPECT_EQ(browser()->tab_strip_model()->count(), 3);
+  EXPECT_EQ(browser()->tab_strip_model()->GetActiveWebContents()->GetURL(),
+            url3);
+  EXPECT_EQ(browser()->tab_strip_model()->group_model()->ListTabGroups().size(),
+            2u);
+
+  auto* sync_service = tab_groups::SavedTabGroupUtils::GetServiceForProfile(
+      browser()->profile());
+  EXPECT_NE(sync_service, nullptr);
+
+  if (IsSavedTabGroupsV2()) {
+    auto groups = sync_service->GetAllGroups();
+    EXPECT_EQ(groups.size(), 2u);
+    for (auto group : groups) {
+      // Group is open
+      EXPECT_TRUE(group.local_group_id().has_value());
+    }
+  }
+
+  // Execute command on first tab to close all tabs to the right.
+  tab_strip_model->ExecuteContextMenuCommand(
+      1, TabStripModel::ContextMenuCommand::CommandCloseOtherTabs);
+
+  // Now there are is only one tab and groups are minimized.
+  EXPECT_EQ(browser()->tab_strip_model()->count(), 1);
+  EXPECT_EQ(browser()->tab_strip_model()->GetActiveWebContents()->GetURL(),
+            url2);
+  EXPECT_EQ(browser()->tab_strip_model()->group_model()->ListTabGroups().size(),
+            1u);
+
+  if (IsSavedTabGroupsV2()) {
+    auto groups = sync_service->GetAllGroups();
+    EXPECT_EQ(groups.size(), 2u);
+    // Other group is not open
+    EXPECT_FALSE(groups.at(0).local_group_id().has_value());
+    // Current group is open
+    EXPECT_TRUE(groups.at(1).local_group_id().has_value());
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         BrowserTabStripModelDelegateVariantTest,
+                         testing::Bool());
+
+=======
+>>>>>>> chromium
 }  // namespace chrome

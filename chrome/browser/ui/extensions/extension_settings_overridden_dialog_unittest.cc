@@ -49,9 +49,20 @@ class ExtensionSettingsOverriddenDialogUnitTest
   const extensions::Extension* AddExtension(
       const char* name = "alpha",
       extensions::mojom::ManifestLocation location =
+<<<<<<< HEAD
+          extensions::mojom::ManifestLocation::kInternal,
+      bool include_extra_perms = true) {
+    extensions::ExtensionBuilder builder(name);
+    builder.SetLocation(location);
+    if (include_extra_perms) {
+      builder.AddAPIPermission("storage");
+    }
+    scoped_refptr<const extensions::Extension> extension = builder.Build();
+=======
           extensions::mojom::ManifestLocation::kInternal) {
     scoped_refptr<const extensions::Extension> extension =
         extensions::ExtensionBuilder(name).SetLocation(location).Build();
+>>>>>>> chromium
     service()->AddExtension(extension.get());
 
     // Make sure RegisterClient calls for storage are finished to avoid flaky

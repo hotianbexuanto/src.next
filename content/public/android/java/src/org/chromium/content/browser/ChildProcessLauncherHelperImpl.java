@@ -4,6 +4,8 @@
 
 package org.chromium.content.browser;
 
+import static org.chromium.build.NullUtil.assumeNonNull;
+
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
@@ -36,7 +38,13 @@ import org.chromium.base.process_launcher.ChildProcessConstants;
 import org.chromium.base.process_launcher.ChildProcessLauncher;
 import org.chromium.base.process_launcher.FileDescriptorInfo;
 import org.chromium.base.task.PostTask;
+<<<<<<< HEAD
+import org.chromium.base.task.TaskTraits;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.build.BuildConfig;
+>>>>>>> chromium
 import org.chromium.content.app.SandboxedProcessService;
 import org.chromium.content.common.ContentSwitchUtils;
 import org.chromium.content_public.browser.ChildProcessImportance;
@@ -57,6 +65,7 @@ import java.util.Map;
  * Each public or jni methods should have explicit documentation on what threads they are called.
  */
 @JNINamespace("content::internal")
+@NullMarked
 public final class ChildProcessLauncherHelperImpl {
     private static final String TAG = "ChildProcLH";
 
@@ -78,42 +87,51 @@ public final class ChildProcessLauncherHelperImpl {
     private static boolean sCheckedServiceGroupImportance;
 
     // A warmed-up connection to a sandboxed service.
-    private static SpareChildConnection sSpareSandboxedConnection;
-
-    // A warmed-up connection to a privileged service (network service).
-    private static SpareChildConnection sSparePrivilegedConntection;
+    private static @Nullable SpareChildConnection sSpareSandboxedConnection;
 
     // Allocator used for sandboxed services.
-    private static ChildConnectionAllocator sSandboxedChildConnectionAllocator;
-    private static ChildProcessRanking sSandboxedChildConnectionRanking;
+    private static @Nullable ChildConnectionAllocator sSandboxedChildConnectionAllocator;
+    private static @Nullable ChildProcessRanking sSandboxedChildConnectionRanking;
 
     // Map from PID to ChildProcessLauncherHelper.
     private static final Map<Integer, ChildProcessLauncherHelperImpl> sLauncherByPid =
             new HashMap<>();
 
     // Allocator used for non-sandboxed services.
-    private static ChildConnectionAllocator sPrivilegedChildConnectionAllocator;
+    private static @Nullable ChildConnectionAllocator sPrivilegedChildConnectionAllocator;
 
     // Used by tests to override the default sandboxed service allocator settings.
-    private static ChildConnectionAllocator.ConnectionFactory sSandboxedServiceFactoryForTesting;
+    private static ChildConnectionAllocator.@Nullable ConnectionFactory
+            sSandboxedServiceFactoryForTesting;
     private static int sSandboxedServicesCountForTesting = -1;
+<<<<<<< HEAD
+    private static @Nullable String sSandboxedServicesNameForTesting;
+    private static boolean sSkipDelayForReducePriorityOnBackgroundForTesting;
+=======
     private static String sSandboxedServicesNameForTesting;
+>>>>>>> chromium
 
-    private static BindingManager sBindingManager;
+    private static @Nullable BindingManager sBindingManager;
 
     // Whether the main application is currently brought to the foreground.
     private static boolean sApplicationInForegroundOnUiThread;
 
+<<<<<<< HEAD
+    // Set on UI thread only, but null-checked on launcher thread as well.
+    private static ApplicationStatus.@Nullable ApplicationStateListener sAppStateListener;
+
+=======
+>>>>>>> chromium
     // TODO(boliu): These are only set for sandboxed renderer processes. Generalize them for
     // all types of processes.
-    private final ChildProcessRanking mRanking;
-    private final BindingManager mBindingManager;
+    private final @Nullable ChildProcessRanking mRanking;
+    private final @Nullable BindingManager mBindingManager;
 
     // Whether the created process should be sandboxed.
     private final boolean mSandboxed;
 
     // The type of process as determined by the command line.
-    private final String mProcessType;
+    private final @Nullable String mProcessType;
 
     // Whether the process can use warmed up connection.
     private final boolean mCanUseWarmUpConnection;
@@ -125,15 +143,29 @@ public final class ChildProcessLauncherHelperImpl {
     private static final String TRACE_EARLY_JAVA_IN_CHILD_SWITCH =
             "--" + EarlyTraceEvent.TRACE_EARLY_JAVA_IN_CHILD_SWITCH;
 
+<<<<<<< HEAD
+    // The first known App Zygote PID. If the app zygote gets restarted, the new bundles from it
+    // are not sent further for simplicity. Accessed only on LauncherThread.
+    private static int sZygotePid;
+
+    // The bundle with RELRO FD. For sending to child processes, including the ones that did not
+    // announce whether they inherit from the app zygote. Declared as volatile to allow sending it
+    // from different threads.
+    private static volatile @Nullable Bundle sZygoteBundle;
+
+    private static boolean sIgnoreMainFrameVisibilityForImportance;
+
+=======
+>>>>>>> chromium
     private final ChildProcessLauncher.Delegate mLauncherDelegate =
             new ChildProcessLauncher.Delegate() {
                 @Override
-                public ChildProcessConnection getBoundConnection(
+                public @Nullable ChildProcessConnection getBoundConnection(
                         ChildConnectionAllocator connectionAllocator,
                         ChildProcessConnection.ServiceCallback serviceCallback) {
                     if (!mCanUseWarmUpConnection) return null;
                     SpareChildConnection spareConnection =
-                            mSandboxed ? sSpareSandboxedConnection : sSparePrivilegedConntection;
+                            mSandboxed ? sSpareSandboxedConnection : null;
                     if (spareConnection == null) return null;
                     return spareConnection.getConnection(connectionAllocator, serviceCallback);
                 }
@@ -197,6 +229,87 @@ public final class ChildProcessLauncherHelperImpl {
                 }
             };
 
+<<<<<<< HEAD
+    /**
+     * Called for every new child connection. Receives a possibly null bundle inherited from the App
+     * Zygote. Sends the bundle to existing processes that did not have usable bundles or sends
+     * a previously memoized bundle to the new child.
+     *
+     * @param connection the connection to the new child
+     * @param zygoteBundle the bundle received from the child process, null means that either the
+     *                     process did not inherit from the app zygote or the app zygote did not
+     *                     produce a usable RELRO region.
+     */
+    private static void distributeZygoteInfo(
+            ChildProcessConnection connection, @Nullable Bundle zygoteBundle) {
+        if (LibraryLoader.mainProcessIntendsToProvideRelroFd()) return;
+
+        if (!connection.hasUsableZygoteInfo()) {
+            Log.d(TAG, "Connection likely not created from app zygote");
+            sendPreviouslySeenZygoteBundle(connection);
+            return;
+        }
+
+        // If the process was created from the app zygote, but failed to generate the the zygote
+        // bundle - ignore it.
+        if (zygoteBundle == null) {
+            return;
+        }
+
+        if (sZygotePid != 0) {
+            Log.d(TAG, "Zygote was seen before with a usable RELRO bundle.");
+            onObtainedUsableZygoteBundle(connection);
+            return;
+        }
+
+        Log.d(TAG, "Encountered the first usable RELRO bundle.");
+        sZygotePid = connection.getZygotePid();
+        sZygoteBundle = zygoteBundle;
+
+        // Use the RELRO FD in the current process. Some nontrivial CPU cycles are consumed because
+        // it needs an mmap+memcmp(5 megs)+mmap+munmap. This happens on the process launcher thread,
+        // will work correctly on any thread.
+        LibraryLoader.getInstance().getMediator().takeSharedRelrosFromBundle(zygoteBundle);
+
+        // Use the RELRO FD for all processes launched up to now. Non-blocking 'oneway' IPCs are
+        // used. The CPU time costs in the child process are the same.
+        sendPreviouslySeenZygoteBundleToExistingConnections(connection.getPid());
+    }
+
+    private static void onObtainedUsableZygoteBundle(ChildProcessConnection connection) {
+        if (sZygotePid != connection.getZygotePid()) {
+            Log.d(TAG, "Zygote restarted.");
+            return;
+        }
+        // TODO(pasko): To avoid accumulating open file descriptors close the received RELRO FD
+        // if it cannot be used.
+    }
+
+    private static void sendPreviouslySeenZygoteBundle(ChildProcessConnection connection) {
+        if (sZygotePid != 0 && sZygoteBundle != null) {
+            connection.consumeZygoteBundle(sZygoteBundle);
+        }
+    }
+
+    private static void sendPreviouslySeenZygoteBundleToExistingConnections(int pid) {
+        assumeNonNull(sZygoteBundle);
+        for (var entry : sLauncherByPid.entrySet()) {
+            int otherPid = entry.getKey();
+            if (pid != otherPid) {
+                ChildProcessConnection otherConnection =
+                        assumeNonNull(entry.getValue().mLauncher.getConnection());
+                if (otherConnection.getZygotePid() == 0) {
+                    // The Zygote PID for each connection must be finalized before the launcher
+                    // thread starts processing the zygote info. Zygote PID being 0 guarantees that
+                    // the zygote did not produce the RELRO region.
+                    otherConnection.consumeZygoteBundle(sZygoteBundle);
+                }
+            }
+        }
+    }
+
+=======
+>>>>>>> chromium
     private final ChildProcessLauncher mLauncher;
 
     private long mNativeChildProcessLauncherHelper;
@@ -213,7 +326,7 @@ public final class ChildProcessLauncherHelperImpl {
     private int mReverseRankWhenConnectionLost;
 
     @CalledByNative
-    private static FileDescriptorInfo makeFdInfo(
+    private static @Nullable FileDescriptorInfo makeFdInfo(
             int id, int fd, boolean autoClose, long offset, long size) {
         assert LauncherThread.runningOnLauncherThread();
         ParcelFileDescriptor pFd;
@@ -288,6 +401,16 @@ public final class ChildProcessLauncherHelperImpl {
     /**
      * @see {@link ChildProcessLauncherHelper#warmUp(Context)}.
      */
+<<<<<<< HEAD
+    public static void warmUpOnAnyThread(final Context context) {
+        LauncherThread.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        warmUpOnLauncherThread(context);
+                    }
+                });
+=======
     public static void warmUp(final Context context, boolean sandboxed) {
         assert ThreadUtils.runningOnUiThread();
         LauncherThread.post(new Runnable() {
@@ -296,23 +419,17 @@ public final class ChildProcessLauncherHelperImpl {
                 warmUpOnLauncherThread(context, sandboxed);
             }
         });
+>>>>>>> chromium
     }
 
-    private static void warmUpOnLauncherThread(Context context, boolean sandboxed) {
-        SpareChildConnection spareConnection =
-                sandboxed ? sSpareSandboxedConnection : sSparePrivilegedConntection;
-        if (spareConnection != null && !spareConnection.isEmpty()) {
+    private static void warmUpOnLauncherThread(Context context) {
+        if (sSpareSandboxedConnection != null && !sSpareSandboxedConnection.isEmpty()) {
             return;
         }
 
         Bundle serviceBundle = populateServiceBundle(new Bundle());
-        ChildConnectionAllocator allocator = getConnectionAllocator(context, sandboxed);
-        if (sandboxed) {
-            sSpareSandboxedConnection = new SpareChildConnection(context, allocator, serviceBundle);
-        } else {
-            sSparePrivilegedConntection =
-                    new SpareChildConnection(context, allocator, serviceBundle);
-        }
+        ChildConnectionAllocator allocator = getConnectionAllocator(context, /* sandboxed= */ true);
+        sSpareSandboxedConnection = new SpareChildConnection(context, allocator, serviceBundle);
     }
 
     /**
@@ -320,6 +437,32 @@ public final class ChildProcessLauncherHelperImpl {
      */
     public static void startModerateBindingManagement(final Context context) {
         assert ThreadUtils.runningOnUiThread();
+<<<<<<< HEAD
+        LauncherThread.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        assumeNonNull(sSandboxedChildConnectionRanking);
+                        ChildConnectionAllocator allocator =
+                                getConnectionAllocator(context, /* sandboxed= */ true);
+                        if (ChildProcessConnection.supportVariableConnections()) {
+                            sBindingManager =
+                                    new BindingManager(
+                                            context,
+                                            BindingManager.NO_MAX_SIZE,
+                                            sSandboxedChildConnectionRanking);
+                        } else {
+                            sBindingManager =
+                                    new BindingManager(
+                                            context,
+                                            allocator.getMaxNumberOfAllocations(),
+                                            sSandboxedChildConnectionRanking);
+                        }
+                        ChildProcessConnectionMetrics.getInstance()
+                                .setBindingManager(sBindingManager);
+                    }
+                });
+=======
         LauncherThread.post(new Runnable() {
             @Override
             public void run() {
@@ -355,14 +498,55 @@ public final class ChildProcessLauncherHelperImpl {
                     break;
             }
         });
+>>>>>>> chromium
     }
 
     private static void onSentToBackground() {
         assert ThreadUtils.runningOnUiThread();
         sApplicationInForegroundOnUiThread = false;
+<<<<<<< HEAD
+        int delay =
+                sSkipDelayForReducePriorityOnBackgroundForTesting
+                        ? 0
+                        : REDUCE_PRIORITY_ON_BACKGROUND_DELAY_MS;
+        LauncherThread.postDelayed(sDelayedBackgroundTask, delay);
+        LauncherThread.post(
+                () -> {
+                    if (sBindingManager != null) sBindingManager.onSentToBackground();
+                });
+    }
+
+    private static void onSentToBackgroundOnLauncherThreadAfterDelay() {
+        assert LauncherThread.runningOnLauncherThread();
+        for (ChildProcessLauncherHelperImpl helper : sLauncherByPid.values()) {
+            if (!helper.mReducePriorityOnBackground) continue;
+            helper.reducePriorityOnBackgroundOnLauncherThread();
+        }
+    }
+
+    private void reducePriorityOnBackgroundOnLauncherThread() {
+        assert LauncherThread.runningOnLauncherThread();
+        if (mDroppedStrongBingingDueToBackgrounding) return;
+        ChildProcessConnection connection = assumeNonNull(mLauncher.getConnection());
+        if (!connection.isConnected()) return;
+        if (connection.isStrongBindingBound()) {
+            connection.removeStrongBinding();
+            mDroppedStrongBingingDueToBackgrounding = true;
+        }
+    }
+
+    private void raisePriorityOnForegroundOnLauncherThread() {
+        assert LauncherThread.runningOnLauncherThread();
+        if (!mDroppedStrongBingingDueToBackgrounding) return;
+        ChildProcessConnection connection = assumeNonNull(mLauncher.getConnection());
+        if (!connection.isConnected()) return;
+        connection.addStrongBinding();
+        mDroppedStrongBingingDueToBackgrounding = false;
+=======
         LauncherThread.post(() -> {
             if (sBindingManager != null) sBindingManager.onSentToBackground();
         });
+>>>>>>> chromium
     }
 
     private static void onBroughtToForeground() {
@@ -382,6 +566,17 @@ public final class ChildProcessLauncherHelperImpl {
         sSandboxedServicesNameForTesting = serviceName;
     }
 
+<<<<<<< HEAD
+    public static void setSkipDelayForReducePriorityOnBackgroundForTesting() {
+        sSkipDelayForReducePriorityOnBackgroundForTesting = true;
+    }
+
+    public static void setIgnoreMainFrameVisibilityForImportance() {
+        sIgnoreMainFrameVisibilityForImportance = true;
+    }
+
+=======
+>>>>>>> chromium
     @VisibleForTesting
     static ChildConnectionAllocator getConnectionAllocator(Context context, boolean sandboxed) {
         assert LauncherThread.runningOnLauncherThread();
@@ -391,12 +586,23 @@ public final class ChildProcessLauncherHelperImpl {
 
         if (!sandboxed) {
             if (sPrivilegedChildConnectionAllocator == null) {
+                boolean fallbackToNextSlot =
+                        ContentFeatureMap.isEnabled(ContentFeatures.ANDROID_FALLBACK_TO_NEXT_SLOT);
                 sPrivilegedChildConnectionAllocator =
                         ChildConnectionAllocator.create(context, LauncherThread.getHandler(), null,
                                 ChildProcessCreationParamsImpl.getPackageNameForPrivilegedService(),
                                 ChildProcessCreationParamsImpl.getPrivilegedServicesName(),
+<<<<<<< HEAD
+                                NUM_PRIVILEGED_SERVICES_KEY,
+                                bindToCaller,
+                                bindAsExternalService,
+                                /* useStrongBinding= */ true,
+                                fallbackToNextSlot,
+                                sandboxed);
+=======
                                 NUM_PRIVILEGED_SERVICES_KEY, bindToCaller, bindAsExternalService,
                                 true /* useStrongBinding */);
+>>>>>>> chromium
             }
             return sPrivilegedChildConnectionAllocator;
         }
@@ -408,6 +614,17 @@ public final class ChildProcessLauncherHelperImpl {
                     "Create a new ChildConnectionAllocator with package name = %s,"
                             + " sandboxed = true",
                     packageName);
+<<<<<<< HEAD
+            Runnable freeSlotRunnable =
+                    () -> {
+                        assumeNonNull(sSandboxedChildConnectionRanking);
+                        ChildProcessConnection lowestRank =
+                                sSandboxedChildConnectionRanking.getLowestRankedConnection();
+                        if (lowestRank != null) {
+                            lowestRank.kill();
+                        }
+                    };
+=======
             Runnable freeSlotRunnable = () -> {
                 ChildProcessConnection lowestRank =
                         sSandboxedChildConnectionRanking.getLowestRankedConnection();
@@ -415,6 +632,7 @@ public final class ChildProcessLauncherHelperImpl {
                     lowestRank.kill();
                 }
             };
+>>>>>>> chromium
 
             ChildConnectionAllocator connectionAllocator = null;
             if (sSandboxedServicesCountForTesting != -1) {
@@ -423,6 +641,44 @@ public final class ChildProcessLauncherHelperImpl {
                         ? sSandboxedServicesNameForTesting
                         : SandboxedProcessService.class.getName();
                 connectionAllocator =
+<<<<<<< HEAD
+                        ChildConnectionAllocator.createFixedForTesting(
+                                freeSlotRunnable,
+                                packageName,
+                                serviceName,
+                                sSandboxedServicesCountForTesting,
+                                bindToCaller,
+                                bindAsExternalService,
+                                /* useStrongBinding= */ false,
+                                /* fallbackToNextSlot= */ false,
+                                sandboxed);
+            } else if (ChildProcessConnection.supportVariableConnections()) {
+                connectionAllocator =
+                        ChildConnectionAllocator.createVariableSize(
+                                context,
+                                LauncherThread.getHandler(),
+                                freeSlotRunnable,
+                                packageName,
+                                ChildProcessCreationParamsImpl.getSandboxedServicesName(),
+                                bindToCaller,
+                                bindAsExternalService,
+                                /* useStrongBinding= */ false,
+                                sandboxed);
+            } else {
+                connectionAllocator =
+                        ChildConnectionAllocator.create(
+                                context,
+                                LauncherThread.getHandler(),
+                                freeSlotRunnable,
+                                packageName,
+                                ChildProcessCreationParamsImpl.getSandboxedServicesName(),
+                                NUM_SANDBOXED_SERVICES_KEY,
+                                bindToCaller,
+                                bindAsExternalService,
+                                /* useStrongBinding= */ false,
+                                /* fallbackToNextSlot= */ false,
+                                sandboxed);
+=======
                         ChildConnectionAllocator.createFixedForTesting(freeSlotRunnable,
                                 packageName, serviceName, sSandboxedServicesCountForTesting,
                                 bindToCaller, bindAsExternalService, false /* useStrongBinding */);
@@ -437,6 +693,7 @@ public final class ChildProcessLauncherHelperImpl {
                         ChildProcessCreationParamsImpl.getSandboxedServicesName(),
                         NUM_SANDBOXED_SERVICES_KEY, bindToCaller, bindAsExternalService,
                         false /* useStrongBinding */);
+>>>>>>> chromium
             }
             if (sSandboxedServiceFactoryForTesting != null) {
                 connectionAllocator.setConnectionFactoryForTesting(
@@ -446,16 +703,34 @@ public final class ChildProcessLauncherHelperImpl {
             if (ChildProcessConnection.supportVariableConnections()) {
                 sSandboxedChildConnectionRanking = new ChildProcessRanking();
             } else {
+<<<<<<< HEAD
+                sSandboxedChildConnectionRanking =
+                        new ChildProcessRanking(
+                                sSandboxedChildConnectionAllocator.getMaxNumberOfAllocations());
+=======
                 sSandboxedChildConnectionRanking = new ChildProcessRanking(
                         sSandboxedChildConnectionAllocator.getNumberOfServices());
+>>>>>>> chromium
             }
         }
         return sSandboxedChildConnectionAllocator;
     }
 
+<<<<<<< HEAD
+    private ChildProcessLauncherHelperImpl(
+            long nativePointer,
+            String[] commandLine,
+            FileDescriptorInfo[] filesToBeMapped,
+            boolean sandboxed,
+            boolean reducePriorityOnBackground,
+            boolean canUseWarmUpConnection,
+            @Nullable IBinder binderCallback,
+            @Nullable IBinder binderBox) {
+=======
     private ChildProcessLauncherHelperImpl(long nativePointer, String[] commandLine,
             FileDescriptorInfo[] filesToBeMapped, boolean sandboxed, boolean canUseWarmUpConnection,
             IBinder binderCallback) {
+>>>>>>> chromium
         assert LauncherThread.runningOnLauncherThread();
 
         mNativeChildProcessLauncherHelper = nativePointer;
@@ -482,7 +757,11 @@ public final class ChildProcessLauncherHelperImpl {
     }
 
     private void start() {
+<<<<<<< HEAD
+        mLauncher.start(/* setupConnection= */ true, /* queueIfNoFreeConnection= */ true);
+=======
         mLauncher.start(true /* doSetupConnection */, true /* queueIfNoFreeConnection */);
+>>>>>>> chromium
         mStartTimeMs = System.currentTimeMillis();
     }
 
@@ -544,12 +823,21 @@ public final class ChildProcessLauncherHelperImpl {
             return;
         }
 
-        ChildProcessConnection connection = mLauncher.getConnection();
+        ChildProcessConnection connection = assumeNonNull(mLauncher.getConnection());
         if (ChildProcessCreationParamsImpl.getIgnoreVisibilityForImportance()) {
             visible = false;
             boostForPendingViews = false;
         }
 
+<<<<<<< HEAD
+        boolean shouldUseMainFrameVisibility = !sIgnoreMainFrameVisibilityForImportance;
+        boolean isVisibleMainFrame = visible && frameDepth == 0;
+        @ChildProcessImportance int newEffectiveImportance;
+
+        if ((shouldUseMainFrameVisibility && isVisibleMainFrame)
+                || importance == ChildProcessImportance.IMPORTANT
+                || hasMediaStream) {
+=======
         boolean mediaRendererHasModerate = ContentFeatureList.isEnabled(
                 ContentFeatureList.BACKGROUND_MEDIA_RENDERER_HAS_MODERATE_BINDING);
 
@@ -557,6 +845,7 @@ public final class ChildProcessLauncherHelperImpl {
         int newEffectiveImportance;
         if ((visible && frameDepth == 0) || importance == ChildProcessImportance.IMPORTANT
                 || (hasMediaStream && !mediaRendererHasModerate)) {
+>>>>>>> chromium
             newEffectiveImportance = ChildProcessImportance.IMPORTANT;
         } else if ((visible && frameDepth > 0 && intersectsViewport) || boostForPendingViews
                 || importance == ChildProcessImportance.MODERATE
@@ -635,7 +924,8 @@ public final class ChildProcessLauncherHelperImpl {
     }
 
     /**
-     * Dumps the stack of the child process with |pid|  without crashing it.
+     * Dumps the stack of the child process with |pid| without crashing it.
+     *
      * @param pid Process id of the child process.
      */
     @CalledByNative
@@ -643,7 +933,7 @@ public final class ChildProcessLauncherHelperImpl {
         assert LauncherThread.runningOnLauncherThread();
         ChildProcessLauncherHelperImpl launcher = getByPid(pid);
         if (launcher != null) {
-            ChildProcessConnection connection = launcher.mLauncher.getConnection();
+            ChildProcessConnection connection = assumeNonNull(launcher.mLauncher.getConnection());
             connection.dumpProcessStack();
         }
     }
@@ -658,7 +948,7 @@ public final class ChildProcessLauncherHelperImpl {
         return bundle;
     }
 
-    private static ChildProcessLauncherHelperImpl getByPid(int pid) {
+    private static @Nullable ChildProcessLauncherHelperImpl getByPid(int pid) {
         return sLauncherByPid.get(pid);
     }
 
@@ -727,7 +1017,7 @@ public final class ChildProcessLauncherHelperImpl {
     }
 
     @VisibleForTesting
-    public ChildProcessConnection getChildProcessConnection() {
+    public @Nullable ChildProcessConnection getChildProcessConnection() {
         return mLauncher.getConnection();
     }
 
@@ -736,11 +1026,16 @@ public final class ChildProcessLauncherHelperImpl {
         return mLauncher.getConnectionAllocator();
     }
 
+<<<<<<< HEAD
+    public static @Nullable ChildProcessConnection getWarmUpConnectionForTesting() {
+        return sSpareSandboxedConnection == null ? null : sSpareSandboxedConnection.getConnection();
+=======
     @VisibleForTesting
     public static ChildProcessConnection getWarmUpConnectionForTesting(boolean sandboxed) {
         SpareChildConnection connection =
                 sandboxed ? sSpareSandboxedConnection : sSparePrivilegedConntection;
         return connection == null ? null : connection.getConnection();
+>>>>>>> chromium
     }
 
     @NativeMethods

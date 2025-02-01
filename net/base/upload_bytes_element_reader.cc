@@ -5,6 +5,7 @@
 #include "net/base/upload_bytes_element_reader.h"
 
 #include "base/check_op.h"
+#include "base/numerics/safe_conversions.h"
 #include "net/base/io_buffer.h"
 #include "net/base/net_errors.h"
 
@@ -41,10 +42,19 @@ bool UploadBytesElementReader::IsInMemory() const {
 int UploadBytesElementReader::Read(IOBuffer* buf,
                                    int buf_length,
                                    CompletionOnceCallback callback) {
+<<<<<<< HEAD
+  base::span<const uint8_t> bytes_to_read =
+      bytes_.subspan(offset_, std::min(static_cast<size_t>(BytesRemaining()),
+                                       base::checked_cast<size_t>(buf_length)));
+  if (!bytes_to_read.empty()) {
+    buf->span().copy_prefix_from(bytes_to_read);
+  }
+=======
   DCHECK_LT(0, buf_length);
 
   const int num_bytes_to_read = static_cast<int>(
       std::min(BytesRemaining(), static_cast<uint64_t>(buf_length)));
+>>>>>>> chromium
 
   // Check if we have anything to copy first, because we are getting
   // the address of an element in |bytes_| and that will throw an

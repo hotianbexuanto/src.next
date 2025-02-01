@@ -5,6 +5,7 @@
 #include "components/error_page/content/browser/net_error_auto_reloader.h"
 
 #include <algorithm>
+#include <array>
 
 #include "base/callback.h"
 #include "base/logging.h"
@@ -58,12 +59,25 @@ bool ShouldAutoReload(content::NavigationHandle* handle) {
 }
 
 base::TimeDelta GetNextReloadDelay(size_t reload_count) {
+<<<<<<< HEAD
+  constexpr static const auto kDelays = std::to_array<base::TimeDelta>({
+      base::Seconds(1),
+      base::Seconds(5),
+      base::Seconds(30),
+      base::Minutes(1),
+      base::Minutes(5),
+      base::Minutes(10),
+      base::Minutes(30),
+  });
+  return kDelays[std::min(reload_count, std::size(kDelays) - 1)];
+=======
   static constexpr base::TimeDelta kDelays[] = {
       base::TimeDelta::FromSeconds(1),  base::TimeDelta::FromSeconds(5),
       base::TimeDelta::FromSeconds(30), base::TimeDelta::FromMinutes(1),
       base::TimeDelta::FromMinutes(5),  base::TimeDelta::FromMinutes(10),
       base::TimeDelta::FromMinutes(30)};
   return kDelays[std::min(reload_count, base::size(kDelays) - 1)];
+>>>>>>> chromium
 }
 
 // Helper to block a navigation that would result in re-committing the same

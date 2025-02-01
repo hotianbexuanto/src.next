@@ -46,6 +46,9 @@ class BoxDecorationData {
   bool ShouldPaintBackground() const { return should_paint_background_; }
   bool ShouldPaintBorder() const { return should_paint_border_; }
   bool ShouldPaintShadow() const { return should_paint_shadow_; }
+  bool ShouldPaintGapDecorations() const {
+    return should_paint_gap_decorations_;
+  }
 
   BackgroundBleedAvoidance GetBackgroundBleedAvoidance() const {
     if (!bleed_avoidance_)
@@ -55,7 +58,7 @@ class BoxDecorationData {
 
   bool ShouldPaint() const {
     return HasAppearance() || ShouldPaintBackground() || ShouldPaintBorder() ||
-           ShouldPaintShadow();
+           ShouldPaintShadow() || ShouldPaintGapDecorations();
   }
 
   // This is not cached because the caller is unlikely to call this repeatedly.
@@ -87,8 +90,29 @@ class BoxDecorationData {
         should_paint_background_(ComputeShouldPaintBackground()),
         should_paint_border_(
             ComputeShouldPaintBorder(has_non_collapsed_border_decoration)),
-        should_paint_shadow_(ComputeShouldPaintShadow()) {}
+        should_paint_shadow_(ComputeShouldPaintShadow()),
+        should_paint_gap_decorations_(ComputeShouldPaintGapDecorations()) {}
 
+<<<<<<< HEAD
+  // For BackgroundOnly() and BorderOnly().
+  BoxDecorationData(const BoxDecorationData& data,
+                    bool should_paint_background,
+                    bool should_paint_border)
+      : paint_info_(data.paint_info_),
+        layout_box_(data.layout_box_),
+        style_(data.style_),
+        has_appearance_(false),
+        should_paint_background_(should_paint_background),
+        should_paint_border_(should_paint_border),
+        should_paint_shadow_(false),
+        should_paint_gap_decorations_(false) {
+    DCHECK(!data.has_appearance_);
+    DCHECK(!data.should_paint_shadow_);
+    DCHECK(!data.should_paint_gap_decorations_);
+  }
+
+=======
+>>>>>>> chromium
   bool ComputeShouldPaintBackground() const {
     if (!style_.HasBackground())
       return false;
@@ -111,6 +135,10 @@ class BoxDecorationData {
     return !is_painting_scrolling_background_ && style_.BoxShadow();
   }
 
+  bool ComputeShouldPaintGapDecorations() const {
+    return style_.HasColumnRule();
+  }
+
   bool BorderObscuresBackgroundEdge() const;
   BackgroundBleedAvoidance ComputeBleedAvoidance() const;
 
@@ -124,6 +152,7 @@ class BoxDecorationData {
   const bool should_paint_background_;
   const bool should_paint_border_;
   const bool should_paint_shadow_;
+  const bool should_paint_gap_decorations_;
   // This is lazily initialized.
   mutable absl::optional<BackgroundBleedAvoidance> bleed_avoidance_;
 };

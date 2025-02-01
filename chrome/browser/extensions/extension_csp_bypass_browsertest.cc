@@ -32,7 +32,7 @@ bool WasFrameWithScriptLoaded(content::RenderFrameHost* rfh) {
 
 class ExtensionCSPBypassTest : public ExtensionBrowserTest {
  public:
-  ExtensionCSPBypassTest() {}
+  ExtensionCSPBypassTest() = default;
 
   void SetUpOnMainThread() override {
     host_resolver()->AddRule("same-origin.com", "127.0.0.1");

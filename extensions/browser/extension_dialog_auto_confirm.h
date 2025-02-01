@@ -7,8 +7,11 @@
 
 #include <string>
 
+<<<<<<< HEAD
+=======
 #include "base/auto_reset.h"
 #include "base/macros.h"
+>>>>>>> chromium
 
 namespace extensions {
 

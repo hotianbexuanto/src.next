@@ -37,6 +37,90 @@ DiceTabHelper* GetDiceTabHelperFromWebContents(content::WebContents* contents) {
   return DiceTabHelper::FromWebContents(contents);
 }
 
+<<<<<<< HEAD
+// Should Sign in to Chrome for all access points when Uno is enabled. Except
+// for Web Signin where we first check the user choice first on whether to
+// automatically sign in or not.
+void AttemptChromeSignin(CoreAccountId account_id,
+                         Profile& profile,
+                         signin_metrics::AccessPoint access_point) {
+  CHECK(!account_id.empty());
+
+  // For the non-ExplicitBrowserSignin equivalent counterpart, the code takes
+  // care of in `SigninManager::UpdateUnconsentedPrimaryAccount()`.
+  if (!switches::IsExplicitBrowserSigninUIOnDesktopEnabled()) {
+    return;
+  }
+
+  // Do not sign in if the access point is unknown.
+  if (access_point == signin_metrics::AccessPoint::kUnknown) {
+    return;
+  }
+
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(&profile);
+  if (access_point == signin_metrics::AccessPoint::kWebSignin) {
+    if (switches::IsExplicitBrowserSigninUIOnDesktopEnabled()) {
+      AccountInfo account_info =
+          identity_manager->FindExtendedAccountInfoByAccountId(account_id);
+      // If the user did not choose the signin choice, do not proceed with a
+      // sign in from a Web Signin.
+      if (SigninPrefs(*profile.GetPrefs())
+              .GetChromeSigninInterceptionUserChoice(account_info.gaia) !=
+          ChromeSigninUserChoice::kSignin) {
+        return;
+      }
+
+      // Proceed with the access point as the choice remembered.
+      access_point = signin_metrics::AccessPoint::kSigninChoiceRemembered;
+    }
+  }
+
+  // This access point should only be used as a result of a non Uno flow.
+  CHECK_NE(signin_metrics::AccessPoint::kDesktopSigninManager, access_point);
+
+  if (!identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
+    base::UmaHistogramEnumeration("Signin.SigninManager.SigninAccessPoint",
+                                  access_point);
+    identity_manager->GetPrimaryAccountMutator()->SetPrimaryAccount(
+        account_id, signin::ConsentLevel::kSignin, access_point);
+  }
+}
+
+}  // namespace
+
+// static
+std::unique_ptr<ProcessDiceHeaderDelegateImpl>
+ProcessDiceHeaderDelegateImpl::Create(content::WebContents* web_contents) {
+  bool is_sync_signin_tab = false;
+  signin_metrics::AccessPoint access_point =
+      signin_metrics::AccessPoint::kUnknown;
+  signin_metrics::PromoAction promo_action =
+      signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO;
+  GURL redirect_url;
+  EnableSyncCallback enable_sync_callback;
+  OnSigninHeaderReceived on_signin_header_received;
+  ShowSigninErrorCallback show_signin_error_callback;
+
+  DiceTabHelper* tab_helper = DiceTabHelper::FromWebContents(web_contents);
+  if (tab_helper) {
+    is_sync_signin_tab = tab_helper->IsSyncSigninInProgress();
+    redirect_url = tab_helper->redirect_url();
+    access_point = tab_helper->signin_access_point();
+    promo_action = tab_helper->signin_promo_action();
+    // `show_signin_error_callback` may be null if the `DiceTabHelper` was reset
+    // after completion of a signin flow.
+    show_signin_error_callback =
+        std::move(tab_helper->GetShowSigninErrorCallback());
+    if (is_sync_signin_tab) {
+      enable_sync_callback = tab_helper->GetEnableSyncCallback();
+    }
+
+    on_signin_header_received = tab_helper->GetOnSigninHeaderReceived();
+
+  } else {
+    access_point = signin_metrics::AccessPoint::kWebSignin;
+=======
 }  // namespace
 
 ProcessDiceHeaderDelegateImpl::ProcessDiceHeaderDelegateImpl(
@@ -57,6 +141,7 @@ ProcessDiceHeaderDelegateImpl::ProcessDiceHeaderDelegateImpl(
     access_point_ = tab_helper->signin_access_point();
     promo_action_ = tab_helper->signin_promo_action();
     reason_ = tab_helper->signin_reason();
+>>>>>>> chromium
   }
 }
 

@@ -8,8 +8,8 @@
 #define CONTENT_PUBLIC_COMMON_CONTENT_SWITCHES_H_
 
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "content/common/content_export.h"
+#include "content/public/common/buildflags.h"
 #include "media/media_buildflags.h"
 
 namespace switches {
@@ -155,6 +155,9 @@ CONTENT_EXPORT extern const char kJavaScriptFlags[];
 CONTENT_EXPORT extern const char kJavaScriptHarmony[];
 CONTENT_EXPORT extern const char kEnableUnsafeFastJSCalls[];
 CONTENT_EXPORT extern const char kLaunchAsBrowser[];
+#if BUILDFLAG(LOAD_WEBUI_FROM_DISK)
+CONTENT_EXPORT extern const char kLoadWebUIfromDisk[];
+#endif  // BUILDFLAG(LOAD_WEBUI_FROM_DISK)
 CONTENT_EXPORT extern const char kLogGpuControlListDecisions[];
 CONTENT_EXPORT extern const char kLoggingLevel[];
 CONTENT_EXPORT extern const char kLogFile[];
@@ -214,6 +217,15 @@ CONTENT_EXPORT extern const char kTrustableWebBundleFileUrl[];
 CONTENT_EXPORT extern const char kUseFakeCodecForPeerConnection[];
 CONTENT_EXPORT extern const char kUseFakeUIForMediaStream[];
 CONTENT_EXPORT extern const char kVideoImageTextureTarget[];
+<<<<<<< HEAD
+#if BUILDFLAG(IS_WIN)
+CONTENT_EXPORT extern const char kUseFontDataManager[];
+#endif
+#if BUILDFLAG(IS_ANDROID) && BUILDFLAG(INCLUDE_BOTH_V8_SNAPSHOTS)
+CONTENT_EXPORT extern const char kUseContextSnapshotSwitch[];
+#endif
+=======
+>>>>>>> chromium
 CONTENT_EXPORT extern const char kUseMobileUserAgent[];
 CONTENT_EXPORT extern const char kUseMockCertVerifierForTesting[];
 extern const char kUtilityCmdPrefix[];
@@ -221,7 +233,12 @@ CONTENT_EXPORT extern const char kUtilityProcess[];
 CONTENT_EXPORT extern const char kUtilityStartupDialog[];
 CONTENT_EXPORT extern const char kUtilitySubType[];
 CONTENT_EXPORT extern const char kV8CacheOptions[];
+<<<<<<< HEAD
+CONTENT_EXPORT extern const char kDisallowV8FeatureFlagOverrides[];
+CONTENT_EXPORT extern const char kVerifyPixels[];
+=======
 CONTENT_EXPORT extern const char kValidateInputEventStream[];
+>>>>>>> chromium
 CONTENT_EXPORT extern const char kWaitForDebuggerChildren[];
 CONTENT_EXPORT extern const char kWebglAntialiasingMode[];
 CONTENT_EXPORT extern const char kWebglMSAASampleCount[];
@@ -266,9 +283,17 @@ CONTENT_EXPORT extern const char kRemoteDebuggingSocketName[];
 CONTENT_EXPORT extern const char kRendererWaitForJavaDebugger[];
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_IOS)
+CONTENT_EXPORT extern const char kPreventResizingContentsForTesting[];
+#endif
+
+#if BUILDFLAG(IS_LINUX)
+=======
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
 #if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+>>>>>>> chromium
 CONTENT_EXPORT extern const char kEnableSpeechDispatcher[];
 #endif
 

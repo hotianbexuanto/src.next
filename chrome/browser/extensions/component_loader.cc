@@ -47,6 +47,7 @@
 #include "extensions/common/manifest_constants.h"
 #include "pdf/buildflags.h"
 #include "printing/buildflags/buildflags.h"
+#include "ui/accessibility/accessibility_features.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/resource/resource_bundle.h"
 
@@ -56,15 +57,22 @@
 #include "ash/constants/ash_switches.h"
 #include "ash/keyboard/ui/grit/keyboard_resources.h"
 #include "base/system/sys_info.h"
+<<<<<<< HEAD
+#include "chromeos/constants/chromeos_features.h"
+=======
 #include "chrome/browser/ash/file_manager/app_id.h"
+>>>>>>> chromium
 #include "components/user_manager/user_manager.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/browser/storage_partition.h"
 #include "extensions/browser/extensions_browser_client.h"
 #include "extensions/common/switches.h"
 #include "storage/browser/file_system/file_system_context.h"
+<<<<<<< HEAD
+=======
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/chromeos/devicetype_utils.h"
+>>>>>>> chromium
 #include "ui/file_manager/grit/file_manager_resources.h"
 #endif
 
@@ -320,8 +328,13 @@ void ComponentLoader::AddHangoutServicesExtension() {
 #endif  // BUILDFLAG(ENABLE_HANGOUT_SERVICES_EXTENSION)
 
 void ComponentLoader::AddNetworkSpeechSynthesisExtension() {
-  Add(IDR_NETWORK_SPEECH_SYNTHESIS_MANIFEST,
-      base::FilePath(FILE_PATH_LITERAL("network_speech_synthesis")));
+  if (::features::IsExtensionManifestV3NetworkSpeechSynthesisEnabled()) {
+    Add(IDR_NETWORK_SPEECH_SYNTHESIS_MANIFEST_MV3,
+        base::FilePath(FILE_PATH_LITERAL("network_speech_synthesis/mv3")));
+  } else {
+    Add(IDR_NETWORK_SPEECH_SYNTHESIS_MANIFEST,
+        base::FilePath(FILE_PATH_LITERAL("network_speech_synthesis")));
+  }
 }
 
 void ComponentLoader::AddWithNameAndDescription(
@@ -475,9 +488,15 @@ void ComponentLoader::AddDefaultComponentExtensions(
 
   if (!skip_session_components) {
     AddWebStoreApp();
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+    AddChromeApp();
+#endif  // BUILDFLAG(IS_CHROMEOS)
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
     AddChromeApp();
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 #if BUILDFLAG(ENABLE_PDF)
     Add(pdf_extension_util::GetManifest(),
         base::FilePath(FILE_PATH_LITERAL("pdf")));

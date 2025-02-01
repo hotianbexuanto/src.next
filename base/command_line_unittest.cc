@@ -4,6 +4,7 @@
 
 #include "base/command_line.h"
 
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -78,8 +79,8 @@ TEST(CommandLineTest, CommandLineConstructor) {
   EXPECT_EQ("", cl.GetSwitchValueASCII("foo"));
   EXPECT_EQ("", cl.GetSwitchValueASCII("bar"));
   EXPECT_EQ("", cl.GetSwitchValueASCII("cruller"));
-  EXPECT_EQ("--dog=canine --cat=feline", cl.GetSwitchValueASCII(
-      "other-switches"));
+  EXPECT_EQ("--dog=canine --cat=feline",
+            cl.GetSwitchValueASCII("other-switches"));
   EXPECT_EQ("45--output-rotation", cl.GetSwitchValueASCII("input-translation"));
 
   const CommandLine::StringVector& args = cl.GetArgs();
@@ -141,8 +142,8 @@ TEST(CommandLineTest, CommandLineFromString) {
   EXPECT_EQ("", cl.GetSwitchValueASCII("foo"));
   EXPECT_EQ("", cl.GetSwitchValueASCII("bar"));
   EXPECT_EQ("", cl.GetSwitchValueASCII("cruller"));
-  EXPECT_EQ("--dog=canine --cat=feline", cl.GetSwitchValueASCII(
-      "other-switches"));
+  EXPECT_EQ("--dog=canine --cat=feline",
+            cl.GetSwitchValueASCII("other-switches"));
   EXPECT_EQ("45--output-rotation", cl.GetSwitchValueASCII("input-translation"));
   EXPECT_EQ(kTricky, cl.GetSwitchValueNative("quotes"));
 
@@ -399,12 +400,77 @@ TEST(CommandLineTest, Copy) {
   CommandLine assigned = *initial;
   CommandLine::SwitchMap switch_map = initial->GetSwitches();
   initial.reset();
-  for (const auto& pair : switch_map)
+  for (const auto& pair : switch_map) {
     EXPECT_TRUE(copy_constructed.HasSwitch(pair.first));
-  for (const auto& pair : switch_map)
+  }
+  for (const auto& pair : switch_map) {
     EXPECT_TRUE(assigned.HasSwitch(pair.first));
+  }
 }
 
+<<<<<<< HEAD
+TEST(CommandLineTest, CopySwitches) {
+  CommandLine source(CommandLine::NO_PROGRAM);
+  source.AppendSwitch("a");
+  source.AppendSwitch("bbbb");
+  source.AppendSwitch("c");
+  EXPECT_THAT(source.argv(), testing::ElementsAre(FILE_PATH_LITERAL(""),
+                                                  FILE_PATH_LITERAL("--a"),
+                                                  FILE_PATH_LITERAL("--bbbb"),
+                                                  FILE_PATH_LITERAL("--c")));
+
+  CommandLine cl(CommandLine::NO_PROGRAM);
+  EXPECT_THAT(cl.argv(), testing::ElementsAre(FILE_PATH_LITERAL("")));
+
+  cl.CopySwitchesFrom(source, {});
+  EXPECT_THAT(cl.argv(), testing::ElementsAre(FILE_PATH_LITERAL("")));
+
+  static const char* const kSwitchesToCopy[] = {"a", "nosuch", "c"};
+  cl.CopySwitchesFrom(source, kSwitchesToCopy);
+  EXPECT_THAT(cl.argv(), testing::ElementsAre(FILE_PATH_LITERAL(""),
+                                              FILE_PATH_LITERAL("--a"),
+                                              FILE_PATH_LITERAL("--c")));
+}
+
+TEST(CommandLineTest, Move) {
+  static constexpr std::string_view kSwitches[] = {
+      "a",
+      "bbbbbbbbb",
+      "c",
+  };
+  constexpr static const auto kArgs =
+      std::to_array<CommandLine::StringViewType>({
+          FILE_PATH_LITERAL("beebop"),
+          FILE_PATH_LITERAL("alouie"),
+      });
+  CommandLine initial(CommandLine::NO_PROGRAM);
+  for (auto a_switch : kSwitches) {
+    initial.AppendSwitch(a_switch);
+  }
+  for (auto an_arg : kArgs) {
+    initial.AppendArgNative(an_arg);
+  }
+
+  // Move construct and verify.
+  CommandLine move_constructed(std::move(initial));
+  initial = CommandLine(CommandLine::NO_PROGRAM);
+  for (auto a_switch : kSwitches) {
+    EXPECT_TRUE(move_constructed.HasSwitch(a_switch));
+  }
+  EXPECT_THAT(move_constructed.GetArgs(),
+              ::testing::ElementsAre(kArgs[0], kArgs[1]));
+
+  // Move assign and verify
+  initial = std::move(move_constructed);
+  move_constructed = CommandLine(CommandLine::NO_PROGRAM);
+  for (auto a_switch : kSwitches) {
+    EXPECT_TRUE(initial.HasSwitch(a_switch));
+  }
+  EXPECT_THAT(initial.GetArgs(), ::testing::ElementsAre(kArgs[0], kArgs[1]));
+}
+
+=======
+>>>>>>> chromium
 TEST(CommandLineTest, PrependSimpleWrapper) {
   CommandLine cl(FilePath(FILE_PATH_LITERAL("Program")));
   cl.AppendSwitch("a");

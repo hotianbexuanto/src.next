@@ -26,7 +26,7 @@ class IdentityManagerFactory : public BrowserContextKeyedServiceFactory {
         signin::IdentityManager* identity_manager) {}
 
    protected:
-    ~Observer() override {}
+    ~Observer() override = default;
   };
 
   static signin::IdentityManager* GetForProfile(Profile* profile);

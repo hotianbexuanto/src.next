@@ -51,9 +51,14 @@
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/drive/file_system_util.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
+<<<<<<< HEAD
+#include "chrome/browser/ui/webui/ash/cloud_upload/cloud_upload_util.h"
+#include "chromeos/ash/components/dbus/cros_disks/cros_disks_client.h"
+=======
 #include "chromeos/dbus/cros_disks/cros_disks_client.h"
 #elif BUILDFLAG(IS_CHROMEOS_LACROS)
 #include "chrome/common/chrome_paths_lacros.h"
+>>>>>>> chromium
 #endif
 
 #if defined(OS_WIN)
@@ -270,7 +275,7 @@ DownloadPrefs::DownloadPrefs(Profile* profile) : profile_(profile) {
   }
 }
 
-DownloadPrefs::~DownloadPrefs() {}
+DownloadPrefs::~DownloadPrefs() = default;
 
 // static
 void DownloadPrefs::RegisterProfilePrefs(
@@ -554,6 +559,9 @@ base::FilePath DownloadPrefs::SanitizeDownloadTargetPath(
   if (skip_sanitize_download_target_path_for_testing_)
     return path;
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+=======
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   // TODO(https://crbug.com/1148848): Sort out path sanitization for Lacros.
   // This will require refactoring the ash-only code below so it can be shared.
@@ -590,6 +598,7 @@ base::FilePath DownloadPrefs::SanitizeDownloadTargetPath(
   // Otherwise, return the safe default.
   return default_downloads_path;
 #elif BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   base::FilePath migrated_drive_path;
   // Managed prefs may force a legacy Drive path as the download path. Ensure
   // the path is valid when DriveFS is enabled.

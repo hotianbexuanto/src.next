@@ -43,7 +43,15 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/frame/universal_global_scope.h"
+#include "third_party/blink/renderer/core/frame/use_counter_impl.h"
+#include "third_party/blink/renderer/core/frame/window_event_handlers.h"
+#include "third_party/blink/renderer/core/frame/window_or_worker_global_scope.h"
+#include "third_party/blink/renderer/core/html/closewatcher/close_watcher.h"
+=======
 #include "third_party/blink/renderer/core/geometry/dom_rect.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/scroll/scrollable_area.h"
 #include "third_party/blink/renderer/platform/heap/handle.h"
@@ -84,8 +92,12 @@ class SourceLocation;
 class StyleMedia;
 class TrustedTypePolicyFactory;
 class V8FrameRequestCallback;
+<<<<<<< HEAD
+struct WebPictureInPictureWindowOptions;
+=======
 class V8IdleRequestCallback;
 class V8VoidFunction;
+>>>>>>> chromium
 class WindowAgent;
 
 enum PageTransitionEventPersistence {
@@ -97,6 +109,12 @@ enum PageTransitionEventPersistence {
 // please ping dcheng@chromium.org first. You probably don't want to do that.
 class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
                                          public ExecutionContext,
+<<<<<<< HEAD
+                                         public WindowOrWorkerGlobalScope,
+                                         public UniversalGlobalScope,
+                                         public WindowEventHandlers,
+=======
+>>>>>>> chromium
                                          public Supplementable<LocalDOMWindow> {
   USING_PRE_FINALIZER(LocalDOMWindow, Dispose);
 
@@ -171,9 +189,15 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   }
   ScriptWrappable* ToScriptWrappable() final { return this; }
   void ReportPermissionsPolicyViolation(
-      mojom::blink::PermissionsPolicyFeature,
+      network::mojom::PermissionsPolicyFeature,
       mojom::blink::PolicyDisposition,
       const String& message = g_empty_string) const final;
+  void ReportPotentialPermissionsPolicyViolation(
+      network::mojom::PermissionsPolicyFeature,
+      mojom::blink::PolicyDisposition,
+      const std::optional<String>& reporting_endpoint,
+      const String& message = g_empty_string,
+      const String& allow_attribute = g_empty_string) const final;
   void ReportDocumentPolicyViolation(
       mojom::blink::DocumentPolicyFeature,
       mojom::blink::PolicyDisposition,
@@ -193,7 +217,26 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
 
   // Count |feature| only when this window is associated with a cross-site
   // iframe. A "site" is a scheme and registrable domain.
+<<<<<<< HEAD
+  void CountUseOnlyInCrossSiteIframe(mojom::blink::WebFeature feature) override;
+
+  // Count permissions policy feature usage through use counter.
+  void CountPermissionsPolicyUsage(
+      network::mojom::PermissionsPolicyFeature feature,
+      UseCounterImpl::PermissionsPolicyUsageType type);
+
+  // Checks if navigation to Javascript URL is allowed. This check should run
+  // before any action is taken (e.g. creating new window) for all
+  // same-origin navigations.
+  String CheckAndGetJavascriptUrl(
+      const DOMWrapperWorld* world,
+      const KURL& url,
+      Element* element,
+      network::mojom::CSPDisposition csp_disposition =
+          network::mojom::CSPDisposition::CHECK);
+=======
   void CountUseOnlyInCrossSiteIframe(mojom::blink::WebFeature feature);
+>>>>>>> chromium
 
   Document* InstallNewDocument(const DocumentInit&);
 
@@ -309,6 +352,8 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   int webkitRequestAnimationFrame(V8FrameRequestCallback*);
   void cancelAnimationFrame(int id);
 
+<<<<<<< HEAD
+=======
   // https://html.spec.whatwg.org/C/#windoworworkerglobalscope-mixin
   void queueMicrotask(V8VoidFunction*);
 
@@ -316,6 +361,7 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   const Vector<String>& originPolicyIds() const;
   void SetOriginPolicyIds(const Vector<String>&);
 
+>>>>>>> chromium
   // https://html.spec.whatwg.org/C/#dom-originagentcluster
   bool originAgentCluster() const;
 
@@ -335,8 +381,11 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   void releaseEvents() {}
   External* external();
 
+<<<<<<< HEAD
+=======
   bool isSecureContext() const;
 
+>>>>>>> chromium
   DEFINE_ATTRIBUTE_EVENT_LISTENER(search, kSearch)
 
   DEFINE_ATTRIBUTE_EVENT_LISTENER(orientationchange, kOrientationchange)
@@ -387,7 +436,13 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   void EnqueueDocumentEvent(Event&, TaskType);
   void EnqueueNonPersistedPageshowEvent();
   void EnqueueHashchangeEvent(const String& old_url, const String& new_url);
+<<<<<<< HEAD
+  void DispatchPopstateEvent(scoped_refptr<SerializedScriptValue>,
+                             scheduler::TaskAttributionInfo* parent_task,
+                             bool has_ua_visual_transition);
+=======
   void EnqueuePopstateEvent(scoped_refptr<SerializedScriptValue>);
+>>>>>>> chromium
   void DispatchWindowLoadEvent();
   void DocumentWasClosed();
   void StatePopped(scoped_refptr<SerializedScriptValue>);

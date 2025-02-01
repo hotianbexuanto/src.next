@@ -103,8 +103,14 @@ static CSSValuePair* BuildSerializablePositionOffset(CSSValue* offset,
     side = default_side;
     amount = CSSNumericLiteralValue::Create(
         50, CSSPrimitiveValue::UnitType::kPercentage);
+<<<<<<< HEAD
+  } else if (!amount ||
+             (amount->IsLength() && amount->GetValueIfKnown() == 0.0)) {
+    if (side == CSSValueID::kRight || side == CSSValueID::kBottom) {
+=======
   } else if (!amount || (amount->IsLength() && amount->IsZero())) {
     if (side == CSSValueID::kRight || side == CSSValueID::kBottom)
+>>>>>>> chromium
       amount = CSSNumericLiteralValue::Create(
           100, CSSPrimitiveValue::UnitType::kPercentage);
     else

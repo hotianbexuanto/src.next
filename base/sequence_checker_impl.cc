@@ -8,7 +8,10 @@
 
 #include "base/check.h"
 #include "base/debug/stack_trace.h"
+<<<<<<< HEAD
+=======
 #include "base/memory/ptr_util.h"
+>>>>>>> chromium
 #include "base/sequence_token.h"
 #include "base/threading/thread_checker.h"
 #include "base/threading/thread_checker_impl.h"
@@ -99,9 +102,39 @@ void SequenceCheckerImpl::DetachFromSequence() {
   core_.reset();
 }
 
+<<<<<<< HEAD
+void SequenceCheckerImpl::EnsureAssigned() const {
+  // Use `thread_ref_` to determine if this checker is already bound, as it is
+  // always set when bound (unlike `sequence_token_` and `locks_` which may be
+  // cleared by `CalledOnValidSequence()` while this checker is still bound).
+  if (!thread_ref_.is_null()) {
+    return;
+  }
+
+  if (g_log_stack) {
+    bound_at_ = std::make_unique<debug::StackTrace>(size_t{10});
+  }
+
+  sequence_token_ = internal::SequenceToken::GetForCurrentThread();
+
+#if DCHECK_IS_ON()
+  // Copy all held locks to `locks_`, except `&lock_` (this is an implementation
+  // detail of `SequenceCheckerImpl` and doesn't provide mutual exclusion
+  // guarantees to the caller).
+  DCHECK(locks_.empty());
+  std::ranges::remove_copy(subtle::GetTrackedLocksHeldByCurrentThread(),
+                           std::back_inserter(locks_),
+                           reinterpret_cast<uintptr_t>(&lock_));
+#endif  // DCHECK_IS_ON()
+
+  DCHECK(sequence_token_.IsValid());
+  thread_ref_ = PlatformThread::CurrentRef();
+  DCHECK(!thread_ref_.is_null());
+=======
 // static
 bool SequenceCheckerImpl::HasThreadLocalStorageBeenDestroyed() {
   return ThreadLocalStorage::HasBeenDestroyed();
+>>>>>>> chromium
 }
 
 }  // namespace base

@@ -54,6 +54,9 @@ const void* ReadRelPtr(const int32_t* relptr) {
 std::string BundleUtils::ResolveLibraryPath(const std::string& library_name,
                                             const std::string& split_name) {
   JNIEnv* env = AttachCurrentThread();
+<<<<<<< HEAD
+  return Java_BundleUtils_getNativeLibraryPath(env, library_name, split_name);
+=======
   ScopedJavaLocalRef<jstring> java_path = Java_BundleUtils_getNativeLibraryPath(
       env, ConvertUTF8ToJavaString(env, library_name),
       ConvertUTF8ToJavaString(env, split_name));
@@ -62,11 +65,12 @@ std::string BundleUtils::ResolveLibraryPath(const std::string& library_name,
     return std::string();
   }
   return ConvertJavaStringToUTF8(env, java_path);
+>>>>>>> chromium
 }
 
 // static
 bool BundleUtils::IsBundle() {
-  return Java_BundleUtils_isBundleForNative(AttachCurrentThread());
+  return Java_BundleUtils_isBundle(AttachCurrentThread());
 }
 
 // static
@@ -96,6 +100,14 @@ void* BundleUtils::DlOpenModuleLibraryPartition(const std::string& library_name,
 
       DCHECK(android_dlopen_ext != nullptr);
       return android_dlopen_ext(library_path.c_str(), RTLD_LOCAL, &info);
+<<<<<<< HEAD
+#else
+      // When targeting pre-N, such as for Cronet, android_dlopen_ext() might
+      // not be available on the system.
+      NOTREACHED() << "android_dlopen_ext not available";
+#endif
+=======
+>>>>>>> chromium
     }
   }
 

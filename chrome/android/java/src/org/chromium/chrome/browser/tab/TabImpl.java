@@ -6,16 +6,31 @@ package org.chromium.chrome.browser.tab;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Context;
 import android.graphics.Rect;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.View.OnAttachStateChangeListener;
 import android.view.accessibility.AccessibilityEvent;
+<<<<<<< HEAD
+import android.view.autofill.AutofillManager;
+import android.view.autofill.AutofillValue;
+=======
+>>>>>>> chromium
 
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
+<<<<<<< HEAD
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
+
+import org.chromium.base.Callback;
+import org.chromium.base.CommandLine;
+=======
+>>>>>>> chromium
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.base.ObserverList;
@@ -47,8 +62,17 @@ import org.chromium.chrome.browser.tab.state.CriticalPersistedTabData;
 import org.chromium.chrome.browser.ui.TabObscuringHandler;
 import org.chromium.chrome.browser.ui.native_page.FrozenNativePage;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.ui.native_page.NativePage.SmoothTransitionDelegate;
+import org.chromium.components.autofill.AutofillFeatures;
+import org.chromium.components.autofill.AutofillProvider;
+import org.chromium.components.autofill.AutofillProviderUMA;
+import org.chromium.components.autofill.AutofillSelectionActionMenuDelegate;
+import org.chromium.components.autofill.AutofillSelectionMenuItemHelper;
+=======
 import org.chromium.chrome.browser.version.ChromeVersionInfo;
 import org.chromium.chrome.browser.vr.VrModuleProvider;
+>>>>>>> chromium
 import org.chromium.components.dom_distiller.core.DomDistillerUrlUtils;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.view.ContentView;
@@ -72,6 +96,18 @@ import java.nio.ByteBuffer;
  * Implementation of the interface {@link Tab}. Contains and manages a {@link ContentView}.
  * This class is not intended to be extended.
  */
+<<<<<<< HEAD
+class TabImpl implements Tab {
+    /** Used for logging. */
+    private static final String TAG = "Tab";
+
+    private static final String BACKGROUND_COLOR_CHANGE_PRE_OPTIMIZATION_HISTOGRAM =
+            "Android.Tab.BackgroundColorChange.PreOptimization";
+    private static final String BACKGROUND_COLOR_CHANGE_HISTOGRAM =
+            "Android.Tab.BackgroundColorChange";
+    private static final String UMA_AUTOFILL_THIRD_PARTY_MODE_DISABLED_PROVIDER =
+            "Autofill.ThirdPartyModeDisabled.Provider";
+=======
 public class TabImpl implements Tab, TabObscuringHandler.Observer {
     private static final long INVALID_TIMESTAMP = -1;
 
@@ -79,6 +115,7 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
     private static final String TAG = "Tab";
 
     private static final String PRODUCT_VERSION = ChromeVersionInfo.getProductVersion();
+>>>>>>> chromium
 
     private static final String REQUEST_DESKTOP_ENABLED_PARAM = "enabled";
 
@@ -167,6 +204,9 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
      */
     private boolean mIsHidden = true;
 
+    /** Called when the current window's occlusion changes. */
+    private final Callback<Boolean> mOcclusionCallback = (v) -> updateWebContentsVisibility();
+
     /**
      * Importance of the WebContents currently attached to this tab. Note the key difference from
      * |mIsHidden| is that a tab is hidden when the application is hidden, but the importance is
@@ -212,12 +252,73 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
     private boolean mUserForcedUserAgent;
 
     /**
+<<<<<<< HEAD
+     * Navigation state of the WebContents as returned by nativeGetContentsStateAsByteBuffer(),
+     * stored to be inflated on demand using unfreezeContents(). If this is not null, there is no
+     * WebContents around. Upon tab switch WebContents will be unfrozen and the variable will be set
+     * to null.
+     */
+    private WebContentsState mWebContentsState;
+
+    /** Title of the ContentViews webpage. */
+    private String mTitle;
+
+    /** URL of the page currently loading. Used as a fall-back in case tab restore fails. */
+    private GURL mUrl;
+
+    private long mLastNavigationCommittedTimestampMillis = INVALID_TIMESTAMP;
+
+    /**
+     * Saves how this tab was initially launched so that we can record metrics on how the tab was
+     * created. This is different than {@link Tab#getLaunchType()}, since {@link
+     * Tab#getLaunchType()} will be overridden to "FROM_RESTORE" during tab restoration.
+     */
+    private @TabLaunchType int mTabLaunchTypeAtCreation;
+
+    /**
+     * Variables used to track native page creation prior to mNativePage assignment. Avoids the case
+     * where native pages can unintentionally re-create themselves by calling {@link
+     * NativePage#onStateChange} during the creation process.
+     */
+    private boolean mIsAlreadyCreatingNativePage;
+
+    private String mPendingNativePageHost;
+
+    private SmoothTransitionDelegate mNativePageSmoothTransitionDelegate;
+
+    /**
+     * Notified when the content sensitivity changes, and sets the content sensitivity property on
+     * the {@link TabState}.
+     */
+    private SensitiveContentClient.Observer mSensitiveContentClientObserver;
+
+    /** Tracks the origin of a background color change. */
+    @IntDef({
+        BackgroundColorChangeOrigin.WEB_BACKGROUND_COLOR_CHANGE,
+        BackgroundColorChangeOrigin.CUSTOM_VIEW_SET,
+        BackgroundColorChangeOrigin.NATIVE_PAGE_SHOWN,
+        BackgroundColorChangeOrigin.BG_COLOR_UPDATE_AFTER_HIDING_NATIVE_PAGE
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface BackgroundColorChangeOrigin {
+        int WEB_BACKGROUND_COLOR_CHANGE = 0;
+        int CUSTOM_VIEW_SET = 1;
+        int NATIVE_PAGE_SHOWN = 2;
+        int BG_COLOR_UPDATE_AFTER_HIDING_NATIVE_PAGE = 3;
+        int NUM_ENTRIES = 4;
+    }
+
+    /**
+     * Creates an instance of a {@link TabImpl}. Package-private. Use {@link TabBuilder} to create
+     * an instance.
+=======
      * Creates an instance of a {@link TabImpl}.
      *
      * This constructor can be called before the native library has been loaded, so any additions
      * must be vetted for library calls.
      *
      * Package-private. Use {@link TabBuilder} to create an instance.
+>>>>>>> chromium
      *
      * @param id The id this tab should be identified with.
      * @param incognito Whether or not this tab is incognito.
@@ -388,10 +489,16 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
 
     @CalledByNative
     @Override
+<<<<<<< HEAD
+    public @JniType("std::u16string") String getTitle() {
+        if (TextUtils.isEmpty(mTitle)) updateTitle();
+        return mTitle;
+=======
     // TODO(crbug.com/1113834) migrate getTitle() to CriticalPersistedTabData.from(tab).getTitle()
     public String getTitle() {
         if (CriticalPersistedTabData.from(this).getTitle() == null) updateTitle();
         return CriticalPersistedTabData.from(this).getTitle();
+>>>>>>> chromium
     }
 
     Context getThemedApplicationContext() {
@@ -468,7 +575,65 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
     }
 
     @Override
+<<<<<<< HEAD
+    public boolean isDetached() {
+        assert !checkAttached() == mIsDetached
+                : "Activity/Window attachment does not match Tab.mIsDetached == " + mIsDetached;
+        return mIsDetached;
+    }
+
+    private void updateIsDetached(WindowAndroid window) {
+        // HiddenTabHolder relies on isDetached() being true to determine whether the tab is
+        // a background tab during initWebContents() before invoking ReparentingTask#detach().
+        // In this scenario, the tab owns its own WindowAndroid and has no activity attachment.
+        // We must check this as an additional condition to detachment for this case to continue
+        // to work. See https://crbug.com/1501849.
+        mIsDetached = window == null || !windowHasActivity(window);
+        updateWebContentsVisibility();
+    }
+
+    private boolean checkAttached() {
+        // getWindowAndroid() cannot be null (see updateWindowAndroid()) so this is effectively
+        // checking to ensure whether the WebContents has a window and the tab is attached to an
+        // activity.
+        boolean hasActivity = getWindowAndroid() != null && windowHasActivity(getWindowAndroid());
+        WebContents webContents = getWebContents();
+        return webContents == null
+                ? !mIsDetached && hasActivity
+                : (webContents.getTopLevelNativeWindow() != null && hasActivity);
+    }
+
+    private boolean windowHasActivity(WindowAndroid window) {
+        return ContextUtils.activityFromContext(window.getContext().get()) != null;
+    }
+
+    /**
+     * The parent tab for the current tab is set and the DelegateFactory is updated if it is not set
+     * already. This happens only if the tab has been detached and the parent has not been set yet,
+     * for example, for the spare tab before loading url.
+     * @param parent The tab that caused this tab to be opened.
+     */
+    @Override
+    public void reparentTab(Tab parent) {
+        // When parent is null, no action is taken since it is the same as the default setting (no
+        // parent).
+        if (parent != null) {
+            mParentId = parent.getId();
+
+            // Update the DelegateFactory if it is not already set, since it is associated with the
+            // parent tab.
+            if (mDelegateFactory == null) {
+                mDelegateFactory = ((TabImpl) parent).getDelegateFactory();
+                setDelegateFactory(mDelegateFactory);
+            }
+        }
+    }
+
+    @Override
+    public LoadUrlResult loadUrl(LoadUrlParams params) {
+=======
     public int loadUrl(LoadUrlParams params) {
+>>>>>>> chromium
         try {
             TraceEvent.begin("Tab.loadUrl");
             // TODO(tedchoc): When showing the android NTP, delay the call to
@@ -549,11 +714,26 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
             initWebContents(webContents);
             loadUrl(mPendingLoadParams);
             mPendingLoadParams = null;
-            return true;
+        } else {
+            restoreIfNeeded(caller);
         }
 
+        // If we are trying to share a tab, and it has never been loaded, then it will not have its
+        // physical backing size set, which means it will never produce any frames. In this case,
+        // set the physical backing size to an estimate of what it would be if it were shown.
+        if (caller == TabLoadIfNeededCaller.MEDIA_CAPTURE_PICKER && !hasBacking()) {
+            var display = mWindowAndroid.getDisplay();
+            int width = (int) (mWebContents.getWidth() * display.getDipScale());
+            int height = (int) (mWebContents.getHeight() * display.getDipScale());
+            TabImplJni.get()
+                    .onPhysicalBackingSizeChanged(mNativeTabAndroid, mWebContents, width, height);
+        }
+
+<<<<<<< HEAD
+=======
         switchUserAgentIfNeeded();
         restoreIfNeeded();
+>>>>>>> chromium
         return true;
     }
 
@@ -645,6 +825,19 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
         return mIsDestroyed;
     }
 
+    private void updateWebContentsVisibility() {
+        var webContents = getWebContents();
+        if (webContents == null) return;
+        if (mIsHidden) {
+            webContents.updateWebContentsVisibility(Visibility.HIDDEN);
+        } else if (!mIsDetached && mWindowAndroid.getOcclusionSupplier().get()) {
+            // If we are not attached to a window, occlusion does not make sense.
+            webContents.updateWebContentsVisibility(Visibility.OCCLUDED);
+        } else {
+            webContents.updateWebContentsVisibility(Visibility.VISIBLE);
+        }
+    }
+
     @Override
     public final void show(@TabSelectionType int type) {
         try {
@@ -657,7 +850,24 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
 
             loadIfNeeded();
 
+<<<<<<< HEAD
+            // TODO(crbug.com/40199376): We should provide a timestamp that apporoximates the input
+            // event timestamp. When presenting a Tablet UI, StripLayoutTab.handleClick does
+            // receive a timestamp. When presenting a Phone UI
+            // TabGridViewBinder.bindClosableTabProperties is called by Android.View.performClick,
+            // and does not receive the event timestamp. This currently triggers an animation in
+            // TabSwitcherLayout.startHidingImpl which lasts around 300ms.
+            // TabSwitcherLayout.doneHiding runs after the animation, actually triggering this tab
+            // change.
+            //
+            // We should also consider merging the TabImpl and WebContents onShow into a single Jni
+            // call.
+            TabImplJni.get().onShow(mNativeTabAndroid);
+
+            updateWebContentsVisibility();
+=======
             if (getWebContents() != null) getWebContents().onShow();
+>>>>>>> chromium
 
             // If the NativePage was frozen while in the background (see NativePageAssassin),
             // recreate the NativePage now.
@@ -688,11 +898,30 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
     public final void hide(@TabHidingType int type) {
         try {
             TraceEvent.begin("Tab.hide");
+
+            if (ChromeFeatureList.isEnabled(
+                    ChromeFeatureList
+                            .ANDROID_DISCONNECT_FILE_CHOOSER_ON_TAB_DEACTIVATE_KILL_SWITCH)) {
+                WebContents webContents = getWebContents();
+                // File select related dialogs typical does not have indication on which origin or
+                // tab made the request. So to avoid security issues from user confusion, if a tab
+                // changes makes this no longer the active tab, then disconnect any file select
+                // dialogs. Notably only want to do this for tab change, but not (as an example)
+                // for hiding the activity.
+                if (type == TabHidingType.CHANGED_TABS && webContents != null) {
+                    webContents.disconnectFileSelectListenerIfAny();
+                }
+            }
+
             if (isHidden()) return;
             mIsHidden = true;
             updateInteractableState();
+<<<<<<< HEAD
+            updateWebContentsVisibility();
+=======
 
             if (getWebContents() != null) getWebContents().onHide();
+>>>>>>> chromium
 
             // Allow this tab's NativePage to be frozen if it stays hidden for a while.
             NativePageAssassin.getInstance().tabHidden(this);
@@ -739,6 +968,10 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
 
         TabImportanceManager.tabDestroyed(this);
 
+        if (mWindowAndroid != null) {
+            mWindowAndroid.getOcclusionSupplier().removeObserver(mOcclusionCallback);
+        }
+
         // Destroys the native tab after destroying the ContentView but before destroying the
         // InfoBarContainer. The native tab should be destroyed before the infobar container as
         // destroying the native tab cleanups up any remaining infobars. The infobar container
@@ -750,16 +983,17 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
     }
 
     /**
-     * WARNING: This method is deprecated. Consider other ways such as passing the dependencies
-     *          to the constructor, rather than accessing ChromeActivity from Tab and using getters.
-     * @return {@link ChromeActivity} that currently contains this {@link Tab} in its
-     *         {@link TabModel}.
+     * WARNING: This method is deprecated. Consider other ways such as passing the dependencies to
+     * the constructor, rather than accessing ChromeActivity from Tab and using getters.
+     *
+     * @return {@link ChromeActivity} that currently contains this {@link Tab} in its {@link
+     *     TabModel}.
      */
     @Deprecated
-    ChromeActivity<?> getActivity() {
+    ChromeActivity getActivity() {
         if (getWindowAndroid() == null) return null;
         Activity activity = ContextUtils.activityFromContext(getWindowAndroid().getContext().get());
-        if (activity instanceof ChromeActivity) return (ChromeActivity<?>) activity;
+        if (activity instanceof ChromeActivity) return (ChromeActivity) activity;
         return null;
     }
 
@@ -989,9 +1223,23 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
     void updateWindowAndroid(WindowAndroid windowAndroid) {
         // TODO(yusufo): mWindowAndroid can never be null until crbug.com/657007 is fixed.
         assert windowAndroid != null;
+
+        if (mWindowAndroid != null) {
+            mWindowAndroid.getOcclusionSupplier().removeObserver(mOcclusionCallback);
+        }
+
         mWindowAndroid = windowAndroid;
         WebContents webContents = getWebContents();
         if (webContents != null) webContents.setTopLevelNativeWindow(mWindowAndroid);
+<<<<<<< HEAD
+
+        windowAndroid.getOcclusionSupplier().addObserver(mOcclusionCallback);
+
+        // updateIsDetached will also update the web contents visibility if the
+        // occlusion has changed.
+        updateIsDetached(windowAndroid);
+=======
+>>>>>>> chromium
     }
 
     TabDelegateFactory getDelegateFactory() {
@@ -1032,6 +1280,60 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
         }
     }
 
+<<<<<<< HEAD
+    void handleBackForwardTransitionUiChanged() {
+        if (isDestroyed()) return;
+
+        for (TabObserver observer : mObservers) {
+            observer.didBackForwardTransitionAnimationChange(this);
+        }
+
+        // Start the cross-fade animation after the invoking animation is done.
+        switch (getWebContents().getCurrentBackForwardTransitionStage()) {
+            case AnimationStage.NONE:
+                // Native animator is destroy before animation is done.
+                // Non-null nativePageSmoothTransitionDelegate means the page is transiting to
+                // a native page; otherwise, it possibly means transiting from a native page to
+                // another page.
+                if (mNativePageSmoothTransitionDelegate != null) {
+                    mNativePageSmoothTransitionDelegate.cancel();
+                    mNativePageSmoothTransitionDelegate = null;
+                } else if (isNativePage()) {
+                    // May reach this if a navigation is committed in the mid of gesture.
+                    getView().setAlpha(1f);
+                }
+                return;
+            case AnimationStage.OTHER:
+                if (isNativePage()) {
+                    // A transition is starting. Hide the Java view to present that.
+                    // Wait until the content/ draws the transition.
+                    CompositorViewHolder viewHolder =
+                            getActivity().getCompositorViewHolderSupplier().get();
+                    viewHolder.requestRender(() -> getView().setAlpha(0f));
+                }
+                return;
+            case AnimationStage.WAITING_FOR_EMBEDDER_CONTENT_FOR_COMMITTED_ENTRY:
+                if (mNativePageSmoothTransitionDelegate != null) {
+                    // Navigating back to native pages.
+                    mNativePageSmoothTransitionDelegate.start(
+                            () -> {
+                                if (isDestroyed()) return;
+                                getWebContents().onContentForNavigationEntryShown();
+                                notifyContentChanged();
+                            });
+                    mNativePageSmoothTransitionDelegate = null;
+                } else if (isNativePage()) { // Navigation from native page was cancelled.
+                    if (getView().getAlpha() != 1f) {
+                        // This means the content/ is waiting for the NTP to be fully visible.
+                        getView().setAlpha(1f);
+                        getView().post(getWebContents()::onContentForNavigationEntryShown);
+                    }
+                }
+        }
+    }
+
+=======
+>>>>>>> chromium
     // Forwarded from TabWebContentsObserver.
 
     /**
@@ -1261,6 +1563,20 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
             // Blink and break rendered result (see http://crbug.com/340987).
             webContents.setSize(original.width(), original.height());
 
+<<<<<<< HEAD
+                    if (bounds != null) {
+                        assert mNativeTabAndroid != 0;
+                        TabImplJni.get()
+                                .onPhysicalBackingSizeChanged(
+                                        mNativeTabAndroid,
+                                        webContents,
+                                        bounds.right,
+                                        bounds.bottom);
+                    }
+                    initWebContents(webContents);
+                    updateWebContentsVisibility();
+                });
+=======
             if (bounds != null) {
                 assert mNativeTabAndroid != 0;
                 TabImplJni.get().onPhysicalBackingSizeChanged(
@@ -1269,6 +1585,7 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
             initWebContents(webContents);
             webContents.onShow();
         });
+>>>>>>> chromium
 
         if (didStartLoad) {
             // Simulate the PAGE_LOAD_STARTED notification that we did not get.
@@ -1326,11 +1643,11 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
     /**
      * Initializes the {@link WebContents}. Completes the browser content components initialization
      * around a native WebContents pointer.
-     * <p>
-     * {@link #getNativePage()} will still return the {@link NativePage} if there is one.
-     * All initialization that needs to reoccur after a web contents swap should be added here.
-     * <p />
-     * NOTE: If you attempt to pass a native WebContents that does not have the same incognito
+     *
+     * <p>{@link #getNativePage()} will still return the {@link NativePage} if there is one. All
+     * initialization that needs to reoccur after a web contents swap should be added here.
+     *
+     * <p>NOTE: If you attempt to pass a native WebContents that does not have the same incognito
      * state as this tab this call will fail.
      *
      * @param webContents The WebContents object that will initialize all the browser components.
@@ -1374,6 +1691,23 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
             mWebContents.notifyRendererPreferenceUpdate();
             TabHelpers.initWebContentsHelpers(this);
             notifyContentChanged();
+<<<<<<< HEAD
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
+                    && ChromeFeatureList.isEnabled(SensitiveContentFeatures.SENSITIVE_CONTENT)
+                    && ChromeFeatureList.isEnabled(
+                            SensitiveContentFeatures.SENSITIVE_CONTENT_WHILE_SWITCHING_TABS)) {
+                mSensitiveContentClientObserver = this::setTabHasSensitiveContent;
+                // Adding the observation has to happen after the native `initWebContents`, so that
+                // the {@link SensitiveContentClient} is properly initialized.
+                SensitiveContentClient sensitiveContentClient =
+                        SensitiveContentClient.fromWebContents(webContents);
+                sensitiveContentClient.addObserver(mSensitiveContentClientObserver);
+                sensitiveContentClient.restoreContentSensitivityFromTabState(
+                        getTabHasSensitiveContent());
+            }
+=======
+>>>>>>> chromium
         } finally {
             TraceEvent.end("ChromeTab.initWebContents");
         }
@@ -1542,6 +1876,90 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
         return restored;
     }
 
+<<<<<<< HEAD
+    /**
+     * Initializes the {@link AutofillProvider} so that it can provide a ViewStructure for the given
+     * WebContents. If the provider existed already, it's only assigned the new WebContents.
+     *
+     * @param newWebContents The webcontents to prepare the provider for.
+     * @return true if the the provider is available for the given WebContents.
+     */
+    private boolean prepareAutofillProvider(WebContents newWebContents) {
+        assert isInitialized();
+        if (!providesAutofillStructure()) {
+            maybeLogAutofillProviderDoesntUseVirtualStructureMetric();
+            mAutofillProvider = null;
+            return false; // Autofill provider can't be prepared.
+        }
+        if (mAutofillProvider != null) {
+            // Provider already existed. Swapping contents suffices.
+            mAutofillProvider.setWebContents(newWebContents);
+        } else {
+            mAutofillProvider =
+                    new AutofillProvider(
+                            getContext(),
+                            mContentView,
+                            newWebContents,
+                            getContext().getString(R.string.app_name));
+            TabImplJni.get().initializeAutofillIfNecessary(mNativeTabAndroid);
+        }
+        addAutofillItemsToSelectionActionMenu(newWebContents);
+        return true;
+    }
+
+    private void maybeLogAutofillProviderDoesntUseVirtualStructureMetric() {
+        if (!ChromeFeatureList.isEnabled(
+                AutofillFeatures.AUTOFILL_VIRTUAL_VIEW_STRUCTURE_ANDROID)) {
+            return;
+        }
+        AutofillManager manager =
+                ContextUtils.getApplicationContext().getSystemService(AutofillManager.class);
+        if (manager == null) {
+            return;
+        }
+        if (!manager.isAutofillSupported()) {
+            // If Android Autofill is not supported, the metric shouldn't be logged because it tells
+            // about cases when 3P mode could be used, but it isn't used.
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ComponentName componentName = null;
+            try {
+                componentName = manager.getAutofillServiceComponentName();
+            } catch (Exception e) {
+                // The exception is com.android.internal.util.SyncResultReceiver.TimeoutException,
+                // can't handle it because:
+                // - The exception isn't public in the Android API.
+                // - Different Android versions handle it differently.
+                // The generic Exception is used to catch various cases. (See: crbug.com/1186406)
+            }
+            if (componentName != null) {
+                RecordHistogram.recordEnumeratedHistogram(
+                        UMA_AUTOFILL_THIRD_PARTY_MODE_DISABLED_PROVIDER,
+                        AutofillProviderUMA.getCurrentProvider(componentName.getPackageName()),
+                        AutofillProviderUMA.Provider.MAX_VALUE);
+            }
+        }
+    }
+
+    private void addAutofillItemsToSelectionActionMenu(WebContents webContents) {
+        assert webContents != null;
+        assert mAutofillProvider != null;
+        SelectionPopupController controller = SelectionPopupController.fromWebContents(webContents);
+        if (controller == null) {
+            return;
+        }
+        AutofillSelectionActionMenuDelegate selectionActionMenuDelegate =
+                new AutofillSelectionActionMenuDelegate();
+        selectionActionMenuDelegate.setAutofillSelectionMenuItemHelper(
+                new AutofillSelectionMenuItemHelper(
+                        ContextUtils.getApplicationContext(), mAutofillProvider));
+        controller.setSelectionActionMenuDelegate(selectionActionMenuDelegate);
+    }
+
+=======
+>>>>>>> chromium
     @CalledByNative
     @Override
     public boolean isCustomTab() {
@@ -1549,6 +1967,125 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
         return activity != null && activity.isCustomTab();
     }
 
+<<<<<<< HEAD
+    @Override
+    public long getTimestampMillis() {
+        return mTimestampMillis;
+    }
+
+    @Override
+    public void setTimestampMillis(long timestampMillis) {
+        mTimestampMillis = timestampMillis;
+        for (TabObserver tabObserver : mObservers) {
+            tabObserver.onTimestampChanged(this, timestampMillis);
+        }
+    }
+
+    /**
+     * @return parent identifier for the {@link Tab}
+     */
+    @Override
+    public int getParentId() {
+        return mParentId;
+    }
+
+    @Override
+    public void setParentId(int parentId) {
+        mParentId = parentId;
+    }
+
+    @Override
+    public int getRootId() {
+        return mRootId;
+    }
+
+    @Override
+    public void setRootId(int rootId) {
+        if (mRootId == rootId || isDestroyed()) return;
+        mRootId = rootId;
+        for (TabObserver observer : mObservers) {
+            observer.onRootIdChanged(this, rootId);
+        }
+    }
+
+    @Override
+    public @Nullable Token getTabGroupId() {
+        return mTabGroupId;
+    }
+
+    @Override
+    public void setTabGroupId(@Nullable Token tabGroupId) {
+        assert tabGroupId == null || !tabGroupId.isZero() : "A TabGroupId token must be non-zero.";
+        if (Objects.equals(mTabGroupId, tabGroupId) || isDestroyed()) return;
+        mTabGroupId = tabGroupId;
+        for (TabObserver observer : mObservers) {
+            observer.onTabGroupIdChanged(this, tabGroupId);
+        }
+    }
+
+    @Override
+    @CalledByNative
+    public @TabUserAgent int getUserAgent() {
+        return mUserAgent;
+    }
+
+    @Override
+    public void setUserAgent(@TabUserAgent int userAgent) {
+        mUserAgent = userAgent;
+    }
+
+    @Override
+    public WebContentsState getWebContentsState() {
+        return mWebContentsState;
+    }
+
+    @VisibleForTesting
+    void setWebContentsState(WebContentsState webContentsState) {
+        mWebContentsState = webContentsState;
+    }
+
+    @VisibleForTesting
+    void setAutofillProvider(AutofillProvider autofillProvider) {
+        mAutofillProvider = autofillProvider;
+    }
+
+    @VisibleForTesting
+    boolean hasBacking() {
+        return !TabImplJni.get().isPhysicalBackingSizeEmpty(mNativeTabAndroid, mWebContents);
+    }
+
+    @VisibleForTesting
+    protected void setTitle(String title) {
+        mTitle = title;
+    }
+
+    public void setTimestampMillisForTesting(long timestamp) {
+        mTimestampMillis = timestamp;
+    }
+
+    @Override
+    public long getLastNavigationCommittedTimestampMillis() {
+        return mLastNavigationCommittedTimestampMillis;
+    }
+
+    /**
+     * Set the last hidden timestamp.
+     *
+     * @param lastNavigationCommittedTimestampMillis The timestamp when the tab was last interacted.
+     */
+    @VisibleForTesting
+    public void setLastNavigationCommittedTimestampMillis(
+            long lastNavigationCommittedTimestampMillis) {
+        mLastNavigationCommittedTimestampMillis = lastNavigationCommittedTimestampMillis;
+    }
+
+    @Override
+    public @TabLaunchType int getTabLaunchTypeAtCreation() {
+        return mTabLaunchTypeAtCreation;
+    }
+
+=======
+>>>>>>> chromium
     /**
      * Throws a RuntimeException. Useful for testing crash reports with obfuscated Java stacktraces.
      */
@@ -1592,6 +2129,22 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
     private final void destroyWebContents(boolean deleteNativeWebContents) {
         if (mWebContents == null) return;
 
+<<<<<<< HEAD
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
+                && ChromeFeatureList.isEnabled(SensitiveContentFeatures.SENSITIVE_CONTENT)
+                && ChromeFeatureList.isEnabled(
+                        SensitiveContentFeatures.SENSITIVE_CONTENT_WHILE_SWITCHING_TABS)) {
+            SensitiveContentClient.fromWebContents(mWebContents)
+                    .removeObserver(mSensitiveContentClientObserver);
+        }
+
+        if (mAutofillProvider != null) {
+            mAutofillProvider.destroy();
+            mAutofillProvider = null;
+        }
+
+=======
+>>>>>>> chromium
         mContentView.removeOnAttachStateChangeListener(mAttachStateChangeListener);
         mContentView = null;
         updateInteractableState();
@@ -1669,8 +2222,73 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
         }
         boolean usingDesktopUserAgent =
                 getWebContents().getNavigationController().getUseDesktopUserAgent();
+<<<<<<< HEAD
+        TabUtils.switchUserAgent(this, /* switchToDesktop= */ !usingDesktopUserAgent, caller);
+    }
+
+    /** Sets the TabLaunchType for tabs launched with an unset launch type. */
+    @Override
+    public void setTabLaunchType(@TabLaunchType int launchType) {
+        assert mLaunchType == TabLaunchType.UNSET;
+        mLaunchType = launchType;
+    }
+
+    @Override
+    public boolean isDisplayingBackForwardAnimation() {
+        if (getWebContents() == null) return false;
+        return getWebContents().getCurrentBackForwardTransitionStage() != AnimationStage.NONE;
+    }
+
+    /**
+     * Forces a resize of the web contents view to accommodate for browser controls immediately.
+     *
+     * <p>This is used to force the resize to happen at the same time as the controls are requested
+     * to show (potentially animate) so that web content can be adapted to the controls sooner.
+     */
+    public void willShowBrowserControls() {
+        assert mWebContents != null;
+        boolean hasViewTransitionOptIn = mWebContents.hasViewTransitionOptIn();
+        for (TabObserver observer : mObservers) {
+            observer.onWillShowBrowserControls(this, hasViewTransitionOptIn);
+        }
+    }
+
+    @CalledByNative
+    @Override
+    public boolean isTrustedWebActivity() {
+        if (getWebContents() == null) return false;
+        return mWebContentsDelegate.isTrustedWebActivity(getWebContents());
+    }
+
+    @Override
+    public boolean shouldEnableEmbeddedMediaExperience() {
+        if (mWebContentsDelegate == null) return false;
+        return mWebContentsDelegate.shouldEnableEmbeddedMediaExperience();
+    }
+
+    @Override
+    public boolean getTabHasSensitiveContent() {
+        return mTabHasSensitiveContent;
+    }
+
+    @Override
+    public void setTabHasSensitiveContent(boolean contentIsSensitive) {
+        if (mTabHasSensitiveContent == contentIsSensitive || isDestroyed()) return;
+        mTabHasSensitiveContent = contentIsSensitive;
+        for (TabObserver observer : mObservers) {
+            observer.onTabContentSensitivityChanged(this, contentIsSensitive);
+        }
+    }
+
+    @Override
+    public void onTabRestoredFromArchivedTabModel() {
+        for (TabObserver observer : mObservers) {
+            observer.onTabUnarchived(this);
+        }
+=======
         TabUtils.switchUserAgent(this, /* switchToDesktop */ !usingDesktopUserAgent,
                 /* forcedByUser */ false);
+>>>>>>> chromium
     }
 
     @NativeMethods
@@ -1686,10 +2304,30 @@ public class TabImpl implements Tab, TabObscuringHandler.Observer {
                 ContextMenuPopulatorFactory contextMenuPopulatorFactory);
         void destroyWebContents(long nativeTabAndroid);
         void releaseWebContents(long nativeTabAndroid);
+<<<<<<< HEAD
+
+        boolean isPhysicalBackingSizeEmpty(long nativeTabAndroid, WebContents webContents);
+
+        void onPhysicalBackingSizeChanged(
+                long nativeTabAndroid, WebContents webContents, int width, int height);
+
+        void setActiveNavigationEntryTitleForUrl(
+                long nativeTabAndroid,
+                @JniType("std::string") String url,
+                @JniType("std::u16string") String title);
+
+=======
         void onPhysicalBackingSizeChanged(
                 long nativeTabAndroid, WebContents webContents, int width, int height);
         void setActiveNavigationEntryTitleForUrl(long nativeTabAndroid, String url, String title);
+>>>>>>> chromium
         void loadOriginalImage(long nativeTabAndroid);
         boolean handleNonNavigationAboutURL(GURL url);
+    }
+
+    @VisibleForTesting
+    @ChildProcessImportance
+    int getImportance() {
+        return mImportance;
     }
 }

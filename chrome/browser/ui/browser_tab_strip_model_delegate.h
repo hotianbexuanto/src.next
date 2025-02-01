@@ -51,6 +51,24 @@ class BrowserTabStripModelDelegate : public TabStripModelDelegate {
   bool ShouldRunUnloadListenerBeforeClosing(
       content::WebContents* contents) override;
   bool ShouldDisplayFavicon(content::WebContents* contents) const override;
+<<<<<<< HEAD
+  bool CanReload() const override;
+  void AddToReadLater(content::WebContents* web_contents) override;
+  bool SupportsReadLater() override;
+  bool IsForWebApp() override;
+  void CopyURL(content::WebContents* web_contents) override;
+  void GoBack(content::WebContents* web_contents) override;
+  bool CanGoBack(content::WebContents* web_contents) override;
+  bool IsNormalWindow() override;
+  BrowserWindowInterface* GetBrowserWindowInterface() override;
+  void OnGroupsDestruction(const std::vector<tab_groups::TabGroupId>& group_ids,
+                           base::OnceCallback<void()> close_callback,
+                           bool delete_groups) override;
+  void OnRemovingAllTabsFromGroups(
+      const std::vector<tab_groups::TabGroupId>& group_ids,
+      base::OnceCallback<void()> callback) override;
+=======
+>>>>>>> chromium
 
   void CloseFrame();
 

@@ -4,6 +4,7 @@
 
 #include "chrome/browser/download/android/download_manager_service.h"
 
+#include <algorithm>
 #include <memory>
 
 #include "base/android/callback_android.h"
@@ -13,7 +14,10 @@
 #include "base/containers/contains.h"
 #include "base/location.h"
 #include "base/metrics/field_trial_params.h"
+<<<<<<< HEAD
+=======
 #include "base/single_thread_task_runner.h"
+>>>>>>> chromium
 #include "base/strings/string_number_conversions.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "base/time/default_clock.h"
@@ -66,10 +70,6 @@ namespace {
 
 // The remaining time for a download item if it cannot be calculated.
 constexpr int64_t kUnknownRemainingTime = -1;
-
-// Finch flag for controlling auto resumption limit.
-int kDefaultAutoResumptionLimit = 5;
-const char kAutoResumptionLimitParamName[] = "AutoResumptionLimit";
 
 bool ShouldShowDownloadItem(download::DownloadItem* item) {
   return !item->IsTemporary() && !item->IsTransient();
@@ -213,7 +213,7 @@ DownloadManagerService::DownloadActionParams::DownloadActionParams(
 DownloadManagerService::DownloadManagerService()
     : is_manager_initialized_(false), is_pending_downloads_loaded_(false) {}
 
-DownloadManagerService::~DownloadManagerService() {}
+DownloadManagerService::~DownloadManagerService() = default;
 
 void DownloadManagerService::Init(JNIEnv* env,
                                   jobject obj,
@@ -689,8 +689,13 @@ void DownloadManagerService::OnPendingDownloadsLoaded() {
   is_pending_downloads_loaded_ = true;
 
   auto result =
+<<<<<<< HEAD
+      std::ranges::find_if_not(coordinators_, &ProfileKey::IsOffTheRecord,
+                               &Coordinators::value_type::first);
+=======
       std::find_if(coordinators_.begin(), coordinators_.end(),
                    [](const auto& it) { return !it.first->IsOffTheRecord(); });
+>>>>>>> chromium
   CHECK(result != coordinators_.end())
       << "A non-OffTheRecord coordinator should exist when "
          "OnPendingDownloadsLoaded is triggered.";
@@ -854,15 +859,4 @@ jboolean JNI_DownloadManagerService_IsSupportedMimeType(
     const JavaParamRef<jstring>& jmime_type) {
   std::string mime_type = ConvertJavaStringToUTF8(env, jmime_type);
   return blink::IsSupportedMimeType(mime_type);
-}
-
-// static
-jint JNI_DownloadManagerService_GetAutoResumptionLimit(JNIEnv* env) {
-  std::string value = base::GetFieldTrialParamValueByFeature(
-      chrome::android::kDownloadAutoResumptionThrottling,
-      kAutoResumptionLimitParamName);
-  int auto_resumption_limit;
-  return base::StringToInt(value, &auto_resumption_limit)
-             ? auto_resumption_limit
-             : kDefaultAutoResumptionLimit;
 }

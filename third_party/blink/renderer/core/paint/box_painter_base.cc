@@ -7,7 +7,6 @@
 #include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/css/background_color_paint_image_generator.h"
 #include "third_party/blink/renderer/core/dom/document.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
 #include "third_party/blink/renderer/core/layout/layout_progress.h"
@@ -75,6 +74,170 @@ void ApplySpreadToShadowShape(FloatRoundedRect& shadow_shape, float spread) {
   shadow_shape.ConstrainRadii();
 }
 
+<<<<<<< HEAD
+Node* GeneratingNode(Node* node) {
+  return node && node->IsPseudoElement() ? node->ParentOrShadowHostNode()
+                                         : node;
+}
+
+BackgroundColorPaintImageGenerator* GetBackgroundColorPaintImageGenerator(
+    const Document& document) {
+  if (!RuntimeEnabledFeatures::CompositeBGColorAnimationEnabled())
+    return nullptr;
+
+  return document.GetFrame()->GetBackgroundColorPaintImageGenerator();
+}
+
+void SetHasNativeBackgroundPainter(Node* node, bool state) {
+  Element* element = DynamicTo<Element>(node);
+  if (!element)
+    return;
+
+  ElementAnimations* element_animations = element->GetElementAnimations();
+  DCHECK(element_animations || !state);
+  if (element_animations) {
+    element_animations->SetCompositedBackgroundColorStatus(
+        state ? CompositedPaintStatus::kComposited
+              : CompositedPaintStatus::kNotComposited);
+  }
+}
+
+Animation* GetCompositableBackgroundColorAnimation(Node* node) {
+  Element* element = DynamicTo<Element>(node);
+  if (!element) {
+    return nullptr;
+  }
+
+  BackgroundColorPaintImageGenerator* generator =
+      GetBackgroundColorPaintImageGenerator(node->GetDocument());
+  // The generator can be null in testing environment.
+  if (!generator) {
+    return nullptr;
+  }
+
+  Animation* animation = generator->GetAnimationIfCompositable(element);
+  if (!animation) {
+    return nullptr;
+  }
+
+  if (animation->CheckCanStartAnimationOnCompositor(nullptr) !=
+      CompositorAnimations::kNoFailure) {
+    return nullptr;
+  }
+
+  return animation;
+}
+
+void DowngradeBackgroundColorAnimation(Node* node) {
+  Element* element = To<Element>(node);
+  ElementAnimations* element_animations = element->GetElementAnimations();
+  for (auto& entry : element_animations->Animations()) {
+    Animation& animation = *entry.key;
+    if (animation.GetNativePaintWorkletReasons() &
+        static_cast<Animation::NativePaintWorkletReasons>(
+            Animation::NativePaintWorkletProperties::
+                kBackgroundColorPaintWorklet)) {
+      if (animation.HasActiveAnimationsOnCompositor()) {
+        animation.SetCompositorPending(
+            Animation::CompositorPendingReason::kPendingDowngrade);
+      }
+    }
+  }
+}
+
+CompositedPaintStatus CompositedBackgroundColorStatus(Node* node) {
+  Element* element = DynamicTo<Element>(node);
+  if (!element)
+    return CompositedPaintStatus::kNotComposited;
+
+  ElementAnimations* element_animations = element->GetElementAnimations();
+  DCHECK(element_animations);
+  return element_animations->CompositedBackgroundColorStatus();
+}
+
+void ClipToBorderEdge(GraphicsContext& context,
+                      const FloatRoundedRect& border,
+                      bool has_border_radius,
+                      bool has_opaque_background) {
+  FloatRoundedRect rect_to_clip_out = border;
+
+  // If the box is opaque, it is unnecessary to clip it out. However,
+  // doing so saves time when painting the shadow. On the other hand, it
+  // introduces subpixel gaps along the corners / edges. Those are avoided
+  // by insetting the clipping path by one CSS pixel.
+  if (has_opaque_background) {
+    rect_to_clip_out.Inset(1);
+  }
+
+  if (has_border_radius) {
+    if (!rect_to_clip_out.IsEmpty()) {
+      context.ClipOutRoundedRect(rect_to_clip_out);
+    }
+  } else {
+    if (!rect_to_clip_out.IsEmpty()) {
+      context.ClipOut(rect_to_clip_out.Rect());
+    }
+  }
+}
+
+void ClipToSides(GraphicsContext& context,
+                 const FloatRoundedRect& border,
+                 const ShadowData& shadow,
+                 PhysicalBoxSides sides_to_include) {
+  // Create a "pseudo-infinite" clip rectangle that should be large enough to
+  // contain shadows on all four sides, including blur. Clip to the original
+  // box for the sides that are excluded in this fragment.
+  gfx::OutsetsF shadow_outsets = shadow.RectOutsets();
+  // If an edge is not included, then reset the outset on that edge.
+  if (!sides_to_include.left) {
+    shadow_outsets.set_left(0);
+  }
+  if (!sides_to_include.top) {
+    shadow_outsets.set_top(0);
+  }
+  if (!sides_to_include.right) {
+    shadow_outsets.set_right(0);
+  }
+  if (!sides_to_include.bottom) {
+    shadow_outsets.set_bottom(0);
+  }
+  gfx::RectF keep = border.Rect();
+  keep.Outset(shadow_outsets);
+  context.Clip(keep);
+}
+
+void AdjustRectForSideClipping(gfx::RectF& rect,
+                               const ShadowData& shadow,
+                               PhysicalBoxSides sides_to_include) {
+  if (!sides_to_include.left) {
+    float extend_by = std::max(shadow.X(), 0.0f) + shadow.Blur();
+    rect.Offset(-extend_by, 0);
+    rect.set_width(rect.width() + extend_by);
+  }
+  if (!sides_to_include.top) {
+    float extend_by = std::max(shadow.Y(), 0.0f) + shadow.Blur();
+    rect.Offset(0, -extend_by);
+    rect.set_height(rect.height() + extend_by);
+  }
+  if (!sides_to_include.right) {
+    float shrink_by = std::min(shadow.X(), 0.0f) - shadow.Blur();
+    rect.set_width(rect.width() - shrink_by);
+  }
+  if (!sides_to_include.bottom) {
+    float shrink_by = std::min(shadow.Y(), 0.0f) - shadow.Blur();
+    rect.set_height(rect.height() - shrink_by);
+  }
+}
+
+// A box-shadow is always obscured by the box geometry regardless of its color,
+// if the shadow has an offset of zero, no blur and no spread. In that case it
+// will have no visual effect and can be skipped.
+bool ShadowIsFullyObscured(const ShadowData& shadow) {
+  return shadow.Offset().IsZero() && shadow.Blur() == 0 && shadow.Spread() == 0;
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 void BoxPainterBase::PaintNormalBoxShadow(const PaintInfo& info,
@@ -336,7 +499,12 @@ BoxPainterBase::FillLayerInfo::FillLayerInfo(
     RespectImageOrientationEnum respect_image_orientation,
     PhysicalBoxSides sides_to_include,
     bool is_inline,
+<<<<<<< HEAD
+    bool is_painting_background_in_contents_space,
+    PaintFlags paint_flags)
+=======
     bool is_painting_scrolling_background)
+>>>>>>> chromium
     : image(layer.GetImage()),
       color(bg_color),
       respect_image_orientation(respect_image_orientation),
@@ -383,7 +551,13 @@ BoxPainterBase::FillLayerInfo::FillLayerInfo(
   should_paint_image = image && image->CanRender();
   bool composite_bgcolor_animation =
       RuntimeEnabledFeatures::CompositeBGColorAnimationEnabled() &&
+<<<<<<< HEAD
+      style.HasCurrentBackgroundColorAnimation() &&
+      layer.GetType() == EFillLayerType::kBackground &&
+      !(PaintFlag::kPlacedElement & paint_flags);
+=======
       style.HasCurrentBackgroundColorAnimation();
+>>>>>>> chromium
   // When background color animation is running on the compositor thread, we
   // need to trigger repaint even if the background is transparent to collect
   // artifacts in order to run the animation on the compositor.
@@ -593,6 +767,54 @@ bool PaintBGColorWithPaintWorklet(const Document* document,
                                   GraphicsContext& context) {
   if (!info.should_paint_color_with_paint_worklet_image)
     return false;
+<<<<<<< HEAD
+
+  CompositedPaintStatus status = CompositedBackgroundColorStatus(node);
+  Animation* animation = nullptr;
+  switch (status) {
+    case CompositedPaintStatus::kNoAnimation:
+    case CompositedPaintStatus::kNotComposited:
+      // Once an animation has been downgraded to run on the main thread, it
+      // cannot restart on the compositor without a pending animation update.
+      return false;
+
+    case CompositedPaintStatus::kNeedsRepaint:
+    case CompositedPaintStatus::kComposited:
+      animation = GetCompositableBackgroundColorAnimation(node);
+      if (animation) {
+        SetHasNativeBackgroundPainter(node, true);
+      } else {
+        SetHasNativeBackgroundPainter(node, false);
+        // Typically, this branch is only reached for the kNeedsRepaint case;
+        // however, it can occur if a blur filter is introduced to an ancestor
+        // of the element being animated, which breaks eligibility for
+        // compositing.
+        if (status == CompositedPaintStatus::kComposited) {
+          // TODO(kevers): Investigate if fallback to main in this degenerate
+          // case can occur too late to prevent a rendering glitch.
+          DowngradeBackgroundColorAnimation(node);
+        }
+        return false;
+      }
+      break;
+  }
+
+  scoped_refptr<Image> paint_worklet_image =
+      GetBGColorPaintWorkletImage(document, node, dest_rect.Rect().size());
+  // We can fail to create a paint worklet image if missing a generator, which
+  // is possible in a testing environment; however, in this case we won't have
+  // a compositable animation and would have bailed earlier. At this stage,
+  // image creation must succeed.
+  CHECK(paint_worklet_image) << "Failed to create paint worklet image";
+  gfx::RectF src_rect(dest_rect.Rect().size());
+  context.DrawImageRRect(
+      *paint_worklet_image, Image::kSyncDecode, ImageAutoDarkMode::Disabled(),
+      ImagePaintTimingInfo(
+          /* image_may_be_lcp_candidate */ false,
+          /* report_paint_timing */ false),
+      dest_rect, src_rect, SkBlendMode::kSrcOver, kRespectImageOrientation);
+  animation->OnPaintWorkletImageCreated();
+=======
   scoped_refptr<Image> paint_worklet_image =
       GetBGColorPaintWorkletImage(document, node, dest_rect.Rect().Size());
   if (!paint_worklet_image)
@@ -601,6 +823,7 @@ bool PaintBGColorWithPaintWorklet(const Document* document,
   context.DrawImageRRect(paint_worklet_image.get(), Image::kSyncDecode,
                          dest_rect, src_rect,
                          node && node->ComputedStyleRef().DisableForceDark());
+>>>>>>> chromium
   return true;
 }
 
@@ -900,7 +1123,12 @@ void BoxPainterBase::PaintFillLayer(const PaintInfo& paint_info,
 
   const FillLayerInfo info =
       GetFillLayerInfo(color, bg_layer, bleed_avoidance,
+<<<<<<< HEAD
+                       paint_info.IsPaintingBackgroundInContentsSpace(),
+                       paint_info.GetPaintFlags());
+=======
                        IsPaintingScrollingBackground(paint_info));
+>>>>>>> chromium
   // If we're not actually going to paint anything, abort early.
   if (!info.should_paint_image && !info.should_paint_color)
     return;
@@ -1077,8 +1305,9 @@ bool BoxPainterBase::ShouldSkipPaintUnderInvalidationChecking(
 
   // We always paint a MediaSliderPart using the latest data (buffered ranges,
   // current time and duration) which may be different from the cached data.
-  if (box.StyleRef().EffectiveAppearance() == kMediaSliderPart)
+  if (box.StyleRef().EffectiveAppearance() == AppearanceValue::kMediaSlider) {
     return true;
+  }
 
   // We paint an indeterminate progress based on the position calculated from
   // the animation progress. Harmless under-invalidatoin may happen during a

@@ -14,11 +14,20 @@ import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
 import org.chromium.chrome.browser.toolbar.R;
+<<<<<<< HEAD
+import org.chromium.components.browser_ui.widget.BrowserUiListMenuUtils;
+import org.chromium.ui.listmenu.BasicListMenu;
+import org.chromium.ui.listmenu.ListMenu;
+import org.chromium.ui.listmenu.ListMenuButton;
+import org.chromium.ui.listmenu.ListMenuDelegate;
+import org.chromium.ui.listmenu.ListMenuItemProperties;
+=======
 import org.chromium.components.browser_ui.widget.listmenu.BasicListMenu;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenu;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenuButton;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenuButtonDelegate;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenuItemProperties;
+>>>>>>> chromium
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.widget.RectProvider;
 import org.chromium.ui.widget.ViewRectProvider;
@@ -65,6 +74,19 @@ public class AdaptiveButtonActionMenuCoordinator {
         int verticalPadding = context.getResources().getDimensionPixelOffset(
                 R.dimen.adaptive_button_menu_vertical_padding);
         ListView listView = mListMenu.getListView();
+<<<<<<< HEAD
+        listView.setPaddingRelative(
+                listView.getPaddingStart(),
+                verticalPadding,
+                listView.getPaddingEnd(),
+                verticalPadding);
+        ListMenuDelegate delegate =
+                new ListMenuDelegate() {
+                    @Override
+                    public ListMenu getListMenu() {
+                        return mListMenu;
+                    }
+=======
         listView.setPaddingRelative(listView.getPaddingStart(), verticalPadding,
                 listView.getPaddingEnd(), verticalPadding);
         ListMenuButtonDelegate delegate = new ListMenuButtonDelegate() {
@@ -72,6 +94,7 @@ public class AdaptiveButtonActionMenuCoordinator {
             public ListMenu getListMenu() {
                 return mListMenu;
             }
+>>>>>>> chromium
 
             @Override
             public RectProvider getRectProvider(View listMenuButton) {
@@ -86,8 +109,17 @@ public class AdaptiveButtonActionMenuCoordinator {
     @VisibleForTesting
     public ModelList buildMenuItems() {
         ModelList itemList = new ModelList();
+<<<<<<< HEAD
+        itemList.add(
+                BrowserUiListMenuUtils.buildMenuListItem(
+                        R.string.adaptive_toolbar_menu_edit_shortcut,
+                        R.id.customize_adaptive_button_menu_id,
+                        /* startIconId= */ 0,
+                        /* enabled= */ true));
+=======
         itemList.add(BasicListMenu.buildMenuListItem(R.string.adaptive_toolbar_menu_edit_shortcut,
                 R.id.customize_adaptive_button_menu_id, /*iconId=*/0, /*enabled=*/true));
+>>>>>>> chromium
         return itemList;
     }
 

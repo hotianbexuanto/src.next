@@ -4,7 +4,6 @@ privacy, security, and platform integration. This document goes through the
 following aspects:
 - Basic functionality and execution flow
 - Embedding of the component
-- Differences between Chrome and WebLayer intent launching
 - Opportunities for code health improvements in the component
 
 # Basic functionality
@@ -93,6 +92,8 @@ InterceptNavigationDelegateImpl.
 
 There are two interfaces that the embedder must implement in order to embed the
 component: InterceptNavigationDelegateClient and ExternalNavigationDelegate.
+<<<<<<< HEAD
+=======
 Again, //weblayer's implementation of these interfaces provides a good starting
 point to follow. //chrome's implementations are significantly more complex for
 several reasons: handling of differences between Chrome browser and Chrome
@@ -123,6 +124,7 @@ implementations of the above-mentioned interfaces:
 
 There are almost certainly further smaller differences, but those are the major
 highlights.
+>>>>>>> chromium
 
 # Opportunities for Code Health Improvements
 - For historical reasons, there is overlap between the

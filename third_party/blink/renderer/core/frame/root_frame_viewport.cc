@@ -4,8 +4,16 @@
 
 #include "third_party/blink/renderer/core/frame/root_frame_viewport.h"
 
+<<<<<<< HEAD
+#include "base/barrier_callback.h"
+#include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
+#include "base/task/single_thread_task_runner.h"
+#include "cc/input/scroll_snap_data.h"
+=======
 #include "base/barrier_closure.h"
 #include "base/callback_helpers.h"
+>>>>>>> chromium
 #include "cc/input/snap_selection_strategy.h"
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
@@ -286,7 +294,8 @@ void RootFrameViewport::SetScrollOffset(
     const ScrollOffset& offset,
     mojom::blink::ScrollType scroll_type,
     mojom::blink::ScrollBehavior scroll_behavior,
-    ScrollCallback on_finish) {
+    ScrollCallback on_finish,
+    bool targeted_scroll) {
   UpdateScrollAnimator();
 
   if (scroll_behavior == mojom::blink::ScrollBehavior::kAuto)
@@ -671,6 +680,14 @@ void RootFrameViewport::SetSnapContainerDataNeedsUpdate(bool needs_update) {
   LayoutViewport().SetSnapContainerDataNeedsUpdate(needs_update);
 }
 
+<<<<<<< HEAD
+std::optional<cc::SnapPositionData> RootFrameViewport::GetSnapPosition(
+    const cc::SnapSelectionStrategy& strategy) const {
+  return LayoutViewport().GetSnapPosition(strategy);
+}
+
+std::optional<gfx::PointF> RootFrameViewport::GetSnapPositionAndSetTarget(
+=======
 bool RootFrameViewport::NeedsResnap() const {
   return LayoutViewport().NeedsResnap();
 }
@@ -680,6 +697,7 @@ void RootFrameViewport::SetNeedsResnap(bool needs_resnap) {
 }
 
 absl::optional<FloatPoint> RootFrameViewport::GetSnapPositionAndSetTarget(
+>>>>>>> chromium
     const cc::SnapSelectionStrategy& strategy) {
   return LayoutViewport().GetSnapPositionAndSetTarget(strategy);
 }

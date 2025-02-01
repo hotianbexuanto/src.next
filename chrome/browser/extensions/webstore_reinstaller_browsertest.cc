@@ -32,6 +32,17 @@ const char kCrxFilename[] = "extension.crx";
 class WebstoreReinstallerBrowserTest : public WebstoreInstallerTest {
  public:
   WebstoreReinstallerBrowserTest()
+<<<<<<< HEAD
+      : WebstoreInstallerTest(kWebstoreDomain,
+                              kTestDataPath,
+                              kCrxFilename,
+                              kAppDomain,
+                              kNonAppDomain) {
+    scoped_feature_list_.InitAndDisableFeature(
+        extensions_features::kUseItemSnippetsAPI);
+  }
+  ~WebstoreReinstallerBrowserTest() override = default;
+=======
       : WebstoreInstallerTest(
             kWebstoreDomain,
             kTestDataPath,
@@ -39,6 +50,7 @@ class WebstoreReinstallerBrowserTest : public WebstoreInstallerTest {
             kAppDomain,
             kNonAppDomain) {}
   ~WebstoreReinstallerBrowserTest() override {}
+>>>>>>> chromium
 
   void OnInstallCompletion(base::OnceClosure quit_closure,
                            bool success,

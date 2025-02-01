@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 
+#include <string_view>
 #include <utility>
 
 #include "base/auto_reset.h"
@@ -32,7 +33,214 @@
 
 namespace blink {
 
+<<<<<<< HEAD
+// Forwards calls from BodyDataReceived() to DecodedBodyDataReceived().
+class DecodedBodyLoader : public StaticDataNavigationBodyLoader {
+ public:
+  void StartLoadingBody(Client* client) override {
+    client_ = std::make_unique<DecodedDataPassthroughClient>(client);
+    StaticDataNavigationBodyLoader::StartLoadingBody(client_.get());
+  }
+
+ private:
+  class DecodedDataPassthroughClient : public WebNavigationBodyLoader::Client {
+   public:
+    explicit DecodedDataPassthroughClient(Client* client) : client_(client) {}
+
+    void BodyDataReceived(base::span<const char> data) override {
+      client_->DecodedBodyDataReceived(
+          String(base::as_bytes(data)).UpperASCII(),
+          WebEncodingData{.encoding = "utf-8"}, base::SpanOrSize(data));
+    }
+
+    void DecodedBodyDataReceived(
+        const WebString& data,
+        const WebEncodingData& encoding_data,
+        base::SpanOrSize<const char> encoded_data) override {
+      client_->DecodedBodyDataReceived(data, encoding_data, encoded_data);
+    }
+
+    void BodyLoadingFinished(base::TimeTicks completion_time,
+                             int64_t total_encoded_data_length,
+                             int64_t total_encoded_body_length,
+                             int64_t total_decoded_body_length,
+                             const std::optional<WebURLError>& error) override {
+      client_->BodyLoadingFinished(completion_time, total_encoded_data_length,
+                                   total_encoded_body_length,
+                                   total_decoded_body_length, error);
+    }
+
+   private:
+    Client* client_;
+  };
+
+  std::unique_ptr<DecodedDataPassthroughClient> client_;
+};
+
+class BodyLoaderTestDelegate : public URLLoaderTestDelegate {
+ public:
+  explicit BodyLoaderTestDelegate(
+      std::unique_ptr<StaticDataNavigationBodyLoader> body_loader)
+      : body_loader_(std::move(body_loader)),
+        body_loader_raw_(body_loader_.get()) {}
+
+  // URLLoaderTestDelegate overrides:
+  bool FillNavigationParamsResponse(WebNavigationParams* params) override {
+    params->response = WebURLResponse(params->url);
+    params->response.SetMimeType("text/html");
+    params->response.SetHttpStatusCode(200);
+    params->body_loader = std::move(body_loader_);
+    return true;
+  }
+
+  void Write(std::string_view data) {
+    body_loader_raw_->Write(base::span(data));
+  }
+
+  void Finish() { body_loader_raw_->Finish(); }
+
+ private:
+  std::unique_ptr<StaticDataNavigationBodyLoader> body_loader_;
+  StaticDataNavigationBodyLoader* body_loader_raw_;
+};
+
+// This struct contains the three elements of the :visited links
+// triple-parititon key for storage and comparison in this test.
+struct TestVisitedLink {
+  GURL link_url;
+  net::SchemefulSite top_level_site;
+  url::Origin frame_origin;
+
+  friend bool operator<(const TestVisitedLink& lhs,
+                        const TestVisitedLink& rhs) {
+    return std::tie(lhs.link_url, lhs.frame_origin, lhs.top_level_site) <
+           std::tie(rhs.link_url, rhs.frame_origin, rhs.top_level_site);
+  }
+};
+
+// To test (1) the abiltity to obtain and store the per-origin salt used in
+// partitioning visited links and (2) the ability of VisitedLinkState to query
+// for partitioned visited links using those salts, we need to override the
+// Platform::Current() used in this test. Our platform will obtain and store the
+// per-origin salt values locally in `salts_` and mock out calls to the
+// partitioned hashtable stored in VisitedLinkReader via
+// `partitioned_hashtable_`.
+class VisitedLinkPlatform : public TestingPlatformSupport {
+ public:
+  // An override which stores our per-origin salts locally.
+  void AddOrUpdateVisitedLinkSalt(const url::Origin& origin,
+                                  uint64_t salt) override {
+    salts_[origin] = salt;
+  }
+
+  // An override which returns the mock-fingerprint associated with the provided
+  // unpartitioned link. In our mock code, we convert to an origin for ease of
+  // comparison in a limited test environment, but in the production code,
+  // comparison is still made via URL. If an entry is not found in the
+  // mock-hashtable, 0, or the null fingerprint is returned.
+  uint64_t VisitedLinkHash(std::string_view canonical_url) override {
+    // Then we check whether our mock-hashtable has an entry for the provided
+    // visited link.
+    const url::Origin origin = url::Origin::Create(GURL(canonical_url));
+    auto it = unpartitioned_hashtable_.find(origin);
+    if (it != unpartitioned_hashtable_.end()) {
+      return it->second;
+    }
+    // We do not have a corresponding entry in mock_hashtable_.
+    return 0;
+  }
+
+  // An override which returns the mock-fingerprint associated with the provided
+  // partitioned visited link. If an entry is not found in the mock-hashtable,
+  // 0, the null fingerprint value is returned.
+  uint64_t PartitionedVisitedLinkFingerprint(
+      std::string_view canonical_link_url,
+      const net::SchemefulSite& top_level_site,
+      const WebSecurityOrigin& frame_origin) override {
+    // First we mock a salt check, as VisitedLinkReader will return the null
+    // fingerprint if we have not obtained a corresponding per-origin salt.
+    if (!GetVisitedLinkSaltForOrigin(frame_origin).has_value()) {
+      return 0;
+    }
+
+    // Then we check whether our mock-hashtable has an entry for the provided
+    // visited link.
+    const TestVisitedLink link = {GURL(canonical_link_url), top_level_site,
+                                  url::Origin(frame_origin)};
+    auto it = partitioned_hashtable_.find(link);
+    if (it != partitioned_hashtable_.end()) {
+      return it->second;
+    }
+    // We do not have a corresponding entry in mock_hashtable_.
+    return 0;
+  }
+
+  // Override which returns true as long as a non-null fingerprint is provided.
+  bool IsLinkVisited(uint64_t link_hash) override { return link_hash != 0; }
+
+  // Test cases can query whether we obtained a salt for a specific origin.
+  std::optional<uint64_t> GetVisitedLinkSaltForOrigin(
+      const url::Origin& origin) {
+    auto it = salts_.find(origin);
+    if (it != salts_.end()) {
+      return it->second;
+    }
+    // We do not have a corresponding salt for this origin.
+    return std::nullopt;
+  }
+
+  void AddPartitionedVisitedLinkToMockHashtable(const KURL& link_url,
+                                                const KURL& top_level_url,
+                                                const KURL& frame_url) {
+    uint64_t mock_fingerprint = base::RandUint64();
+    // Zero represents the null fingerprint in our production code, and when we
+    // actually generate hashed fingerprints, producing a 0 is not possible.
+    // However, in the mocked environment, we could generate a random 0, so we
+    // should re-generate the random fingerprint if that occurs.
+    while (mock_fingerprint == 0) {
+      mock_fingerprint = base::RandUint64();
+    }
+    const TestVisitedLink link = {GURL(link_url),
+                                  net::SchemefulSite(GURL(top_level_url)),
+                                  url::Origin::Create(GURL(frame_url))};
+    partitioned_hashtable_.insert({link, mock_fingerprint});
+  }
+
+  void AddUnpartitionedVisitedLinkToMockHashtable(const KURL& url) {
+    uint64_t mock_fingerprint = base::RandUint64();
+    // Zero represents the null fingerprint in our production code, and when we
+    // actually generate hashed fingerprints, producing a 0 is not possible.
+    // However, in the mocked environment, we could generate a random 0, so we
+    // should re-generate the random fingerprint if that occurs.
+    while (mock_fingerprint == 0) {
+      mock_fingerprint = base::RandUint64();
+    }
+    unpartitioned_hashtable_.insert(
+        {url::Origin::Create(GURL(url)), mock_fingerprint});
+  }
+
+ private:
+  std::map<url::Origin, uint64_t> salts_;
+  std::map<TestVisitedLink, uint64_t> partitioned_hashtable_;
+  std::map<url::Origin, uint64_t> unpartitioned_hashtable_;
+};
+
+enum TestMode {
+  kUnpartitionedStorageAndLinks,
+  kUnpartitionedStoragePartitionedNoSelfLinks,
+  kUnpartitionedStorageParttionedWithSelfLinks,
+  kUnpartitionedStoragePartitionedLinksBothEnabled,
+  kPartitionedStorageUnpartitionedLinks,
+  kPartitionedStorageAndLinksNoSelfLinks,
+  kPartitionedStorageAndLinksWithSelfLinks,
+  kPartitionedAllEnabled
+};
+
+class DocumentLoaderTest : public testing::Test,
+                           public ::testing::WithParamInterface<TestMode> {
+=======
 class DocumentLoaderTest : public testing::Test {
+>>>>>>> chromium
  protected:
   void SetUp() override {
     web_view_helper_.Initialize();
@@ -108,8 +316,14 @@ TEST_F(DocumentLoaderTest, MultiChunkNoReentrancy) {
                         int data_length) override {
       EXPECT_EQ(34, data_length) << "foo.html was not served in a single chunk";
       // Chunk the reply into one byte chunks.
+<<<<<<< HEAD
+      for (; !data.empty(); data = data.subspan<1>()) {
+        original_client->DidReceiveDataForTesting(data.first<1>());
+      }
+=======
       for (int i = 0; i < data_length; ++i)
         original_client->DidReceiveData(&data[i], 1);
+>>>>>>> chromium
     }
   } delegate;
 
@@ -180,7 +394,11 @@ TEST_F(DocumentLoaderTest, MultiChunkWithReentrancy) {
 
     void DispatchOneByte() {
       char c = data_.TakeFirst();
+<<<<<<< HEAD
+      body_loader_->Write(base::span_from_ref(c));
+=======
       body_loader_->Write(&c, 1);
+>>>>>>> chromium
     }
 
     bool ServedReentrantly() const { return served_reentrantly_; }
@@ -278,7 +496,11 @@ TEST_F(DocumentLoaderSimTest, FramePolicyIntegrityOnNavigationCommit) {
   auto* child_window = child_frame->GetFrame()->DomWindow();
 
   EXPECT_TRUE(child_window->IsFeatureEnabled(
+<<<<<<< HEAD
+      network::mojom::PermissionsPolicyFeature::kPayment));
+=======
       blink::mojom::blink::PermissionsPolicyFeature::kPayment));
+>>>>>>> chromium
 }
 
 TEST_F(DocumentLoaderTest, CommitsDeferredOnSameOriginNavigation) {

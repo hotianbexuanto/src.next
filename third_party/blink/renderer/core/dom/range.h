@@ -213,6 +213,21 @@ class CORE_EXPORT Range final : public AbstractRange {
   RangeBoundaryPoint start_;
   RangeBoundaryPoint end_;
 
+<<<<<<< HEAD
+  // This tracks how the range updates the selection:
+  // If kAll, set selection to have the same start and end as range.
+  // If kStartOnly, set selection to have the same start as range.
+  // If kEndOnly, set selection to have the same end as range.
+  enum class UpdateSelectionBehavior {
+    kAll,
+    kStartOnly,
+    kEndOnly,
+  };
+  UpdateSelectionBehavior update_selection_behavior_ =
+      UpdateSelectionBehavior::kAll;
+
+=======
+>>>>>>> chromium
   friend class RangeUpdateScope;
 };
 

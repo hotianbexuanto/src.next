@@ -7,11 +7,17 @@
 
 #include <stddef.h>
 
+#include <algorithm>
 #include <vector>
 
 #include "base/check.h"
 #include "base/containers/contains.h"
+<<<<<<< HEAD
+#include "base/memory/raw_ptr.h"
+#include "base/scoped_observation_traits.h"
+=======
 #include "base/ranges/algorithm.h"
+>>>>>>> chromium
 
 namespace base {
 
@@ -66,8 +72,13 @@ class ScopedMultiSourceObservation {
 
   // Remove the object passed to the constructor as an observer from |source|.
   void RemoveObservation(Source* source) {
+<<<<<<< HEAD
+    auto it = std::ranges::find(sources_, source);
+    CHECK(it != sources_.end());
+=======
     auto it = base::ranges::find(sources_, source);
     DCHECK(it != sources_.end());
+>>>>>>> chromium
     sources_.erase(it);
     (source->*RemoveObsFn)(observer_);
   }

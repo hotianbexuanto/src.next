@@ -26,8 +26,8 @@ namespace about_flags {
 
 namespace {
 
-using Sample = base::HistogramBase::Sample;
-using SwitchToIdMap = std::map<std::string, Sample>;
+using Sample32 = base::HistogramBase::Sample32;
+using SwitchToIdMap = std::map<std::string, Sample32>;
 
 // Get all associated switches corresponding to defined about_flags.cc entries.
 std::set<std::string> GetAllPublicSwitchesAndFeaturesForTesting() {
@@ -130,11 +130,18 @@ TEST(AboutFlagsTest, RecentUnexpireFlagsArePresent) {
 // Test that ScopedFeatureEntries restores existing feature entries on
 // destruction.
 TEST(AboutFlagsTest, ScopedFeatureEntriesRestoresFeatureEntries) {
+<<<<<<< HEAD
+  const base::span<const flags_ui::FeatureEntry> old_entries =
+      testing::GetFeatureEntries();
+  EXPECT_FALSE(old_entries.empty());
+  const char* first_feature_name = old_entries[0].internal_name;
+=======
   size_t orig_num_features;
   const flags_ui::FeatureEntry* cur_entries =
       testing::GetFeatureEntries(&orig_num_features);
   EXPECT_GT(orig_num_features, 0U);
   const char* first_feature_name = cur_entries[0].internal_name;
+>>>>>>> chromium
   {
     const base::Feature kTestFeature1{"FeatureName1",
                                       base::FEATURE_ENABLED_BY_DEFAULT};
@@ -157,9 +164,9 @@ class AboutFlagsHistogramTest : public ::testing::Test {
   // This is a helper function to check that all IDs in enum LoginCustomFlags in
   // histograms.xml are unique.
   void SetSwitchToHistogramIdMapping(const std::string& switch_name,
-                                     const Sample switch_histogram_id,
-                                     std::map<std::string, Sample>* out_map) {
-    const std::pair<std::map<std::string, Sample>::iterator, bool> status =
+                                     const Sample32 switch_histogram_id,
+                                     std::map<std::string, Sample32>* out_map) {
+    const std::pair<std::map<std::string, Sample32>::iterator, bool> status =
         out_map->insert(std::make_pair(switch_name, switch_histogram_id));
     if (!status.second) {
       EXPECT_TRUE(status.first->second == switch_histogram_id)
@@ -172,7 +179,7 @@ class AboutFlagsHistogramTest : public ::testing::Test {
   // This method generates a hint for the user for what string should be added
   // to the enum LoginCustomFlags to make in consistent.
   std::string GetHistogramEnumEntryText(const std::string& switch_name,
-                                        Sample value) {
+                                        Sample32 value) {
     return base::StringPrintf(
         "<int value=\"%d\" label=\"%s\"/>", value, switch_name.c_str());
   }
@@ -202,7 +209,7 @@ TEST_F(AboutFlagsHistogramTest, CheckHistograms) {
                                     &histograms_xml_switches_ids);
       continue;
     }
-    const Sample uma_id = flags_ui::GetSwitchUMAId(entry.second);
+    const Sample32 uma_id = flags_ui::GetSwitchUMAId(entry.second);
     EXPECT_EQ(uma_id, entry.first)
         << "tools/metrics/histograms/enums.xml enum LoginCustomFlags "
            "entry '"
@@ -219,7 +226,7 @@ TEST_F(AboutFlagsHistogramTest, CheckHistograms) {
     // Skip empty placeholders.
     if (flag.empty())
       continue;
-    const Sample uma_id = flags_ui::GetSwitchUMAId(flag);
+    const Sample32 uma_id = flags_ui::GetSwitchUMAId(flag);
     EXPECT_NE(flags_ui::testing::kBadSwitchFormatHistogramId, uma_id)
         << "Command-line switch '" << flag
         << "' from about_flags.cc has UMA ID equal to reserved value "

@@ -259,6 +259,277 @@ TEST(RuleSetTest, findBestRuleSetAndAdd_PartPseudoElements) {
   ASSERT_EQ(2u, rules->size());
 }
 
+<<<<<<< HEAD
+TEST(RuleSetTest, findBestRuleSetAndAdd_ShadowPseudoAfterPart) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules("::part(p)::file-selector-button { }");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  const base::span<const RuleData> rules = rule_set.UAShadowPseudoElementRules(
+      shadow_element_names::kPseudoFileUploadButton);
+  ASSERT_EQ(1u, rules.size());
+  const base::span<const RuleData> part_rules = rule_set.PartPseudoRules();
+  ASSERT_EQ(0u, part_rules.size());
+}
+
+TEST(RuleSetTest, findBestRuleSetAndAdd_IsSingleArg) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules(":is(.a) { }");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  base::span<const RuleData> rules = rule_set.ClassRules(AtomicString("a"));
+  ASSERT_FALSE(rules.empty());
+  ASSERT_EQ(1u, rules.size());
+}
+
+TEST(RuleSetTest, findBestRuleSetAndAdd_WhereSingleArg) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules(":where(.a) { }");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  base::span<const RuleData> rules = rule_set.ClassRules(AtomicString("a"));
+  ASSERT_FALSE(rules.empty());
+  ASSERT_EQ(1u, rules.size());
+}
+
+TEST(RuleSetTest, findBestRuleSetAndAdd_WhereSingleArgNested) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules(":where(:is(.a)) { }");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  base::span<const RuleData> rules = rule_set.ClassRules(AtomicString("a"));
+  ASSERT_FALSE(rules.empty());
+  ASSERT_EQ(1u, rules.size());
+}
+
+TEST(RuleSetTest, findBestRuleSetAndAdd_IsMultiArg) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules(":is(.a, .b) { }");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  const base::span<const RuleData> rules = rule_set.UniversalRules();
+  ASSERT_EQ(1u, rules.size());
+}
+
+TEST(RuleSetTest, findBestRuleSetAndAdd_WhereMultiArg) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules(":where(.a, .b) { }");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  const base::span<const RuleData> rules = rule_set.UniversalRules();
+  ASSERT_EQ(1u, rules.size());
+}
+
+static void AddManyAttributeRules(base::test::ScopedFeatureList& feature_list,
+                                  css_test_helpers::TestStyleSheet& sheet) {
+  // Create more than 50 rules, in order to trigger building the Aho-Corasick
+  // tree.
+  for (int i = 0; i < 100; ++i) {
+    char buf[256];
+    snprintf(buf, sizeof(buf), "[attr=\"value%d\"] {}", i);
+    sheet.AddCSSRules(buf);
+  }
+}
+
+TEST(RuleSetTest, LargeNumberOfAttributeRules) {
+  test::TaskEnvironment task_environment;
+  base::test::ScopedFeatureList feature_list;
+  css_test_helpers::TestStyleSheet sheet;
+  AddManyAttributeRules(feature_list, sheet);
+
+  sheet.AddCSSRules("[otherattr=\"value\"] {}");
+
+  RuleSet& rule_set = sheet.GetRuleSet();
+  base::span<const RuleData> list = rule_set.AttrRules(AtomicString("attr"));
+  ASSERT_FALSE(list.empty());
+
+  EXPECT_TRUE(rule_set.CanIgnoreEntireList(list, AtomicString("attr"),
+                                           AtomicString("notfound")));
+  EXPECT_FALSE(rule_set.CanIgnoreEntireList(list, AtomicString("attr"),
+                                            AtomicString("value20")));
+  EXPECT_FALSE(rule_set.CanIgnoreEntireList(list, AtomicString("attr"),
+                                            AtomicString("VALUE20")));
+
+  // A false positive that we expect (value20 is a substring, even though
+  // the rule said = and not =*, so we need to check the entire set).
+  EXPECT_FALSE(rule_set.CanIgnoreEntireList(list, AtomicString("attr"),
+                                            AtomicString("--value20--")));
+
+  // One rule is not enough to build a tree, so we will not mass-reject
+  // anything on otherattr.
+  base::span<const RuleData> list2 =
+      rule_set.AttrRules(AtomicString("otherattr"));
+  EXPECT_FALSE(rule_set.CanIgnoreEntireList(list2, AtomicString("otherattr"),
+                                            AtomicString("notfound")));
+}
+
+TEST(RuleSetTest, LargeNumberOfAttributeRulesWithEmpty) {
+  test::TaskEnvironment task_environment;
+  base::test::ScopedFeatureList feature_list;
+  css_test_helpers::TestStyleSheet sheet;
+  AddManyAttributeRules(feature_list, sheet);
+
+  sheet.AddCSSRules("[attr=\"\"] {}");
+
+  RuleSet& rule_set = sheet.GetRuleSet();
+  base::span<const RuleData> list = rule_set.AttrRules(AtomicString("attr"));
+  ASSERT_FALSE(list.empty());
+  EXPECT_TRUE(rule_set.CanIgnoreEntireList(list, AtomicString("attr"),
+                                           AtomicString("notfound")));
+  EXPECT_FALSE(
+      rule_set.CanIgnoreEntireList(list, AtomicString("attr"), g_empty_atom));
+}
+
+TEST(RuleSetTest, LargeNumberOfAttributeRulesWithCatchAll) {
+  test::TaskEnvironment task_environment;
+  base::test::ScopedFeatureList feature_list;
+  css_test_helpers::TestStyleSheet sheet;
+  AddManyAttributeRules(feature_list, sheet);
+
+  // This should match everything, so we cannot reject anything.
+  sheet.AddCSSRules("[attr] {}");
+
+  RuleSet& rule_set = sheet.GetRuleSet();
+
+  base::span<const RuleData> list = rule_set.AttrRules(AtomicString("attr"));
+  ASSERT_FALSE(list.empty());
+  EXPECT_FALSE(rule_set.CanIgnoreEntireList(list, AtomicString("attr"),
+                                            AtomicString("notfound")));
+  EXPECT_FALSE(
+      rule_set.CanIgnoreEntireList(list, AtomicString("attr"), g_empty_atom));
+}
+
+TEST(RuleSetTest, LargeNumberOfAttributeRulesWithCatchAll2) {
+  test::TaskEnvironment task_environment;
+  base::test::ScopedFeatureList feature_list;
+  css_test_helpers::TestStyleSheet sheet;
+  AddManyAttributeRules(feature_list, sheet);
+
+  // This should _also_ match everything, so we cannot reject anything.
+  sheet.AddCSSRules("[attr^=\"\"] {}");
+
+  RuleSet& rule_set = sheet.GetRuleSet();
+
+  base::span<const RuleData> list = rule_set.AttrRules(AtomicString("attr"));
+  ASSERT_FALSE(list.empty());
+  EXPECT_FALSE(rule_set.CanIgnoreEntireList(list, AtomicString("attr"),
+                                            AtomicString("notfound")));
+  EXPECT_FALSE(
+      rule_set.CanIgnoreEntireList(list, AtomicString("attr"), g_empty_atom));
+}
+
+#if DCHECK_IS_ON()  // Requires all_rules_, to find back the rules we add.
+
+// Parse the given selector, buckets it and returns which of the constituent
+// simple selectors were marked as covered by that bucketing. Note the the
+// result value is stored in the order the selector is stored, which means
+// that the order of the compound selectors are reversed (see comment in
+// CSSSelectorParser::ConsumeComplexSelector()).
+//
+// A single selector may produce more than one RuleData, since visited-dependent
+// rules are added to the RuleSet twice. The `rule_index` parameter can used
+// to specify which of the added RuleData objects we want to produce bucket-
+// coverage information from.
+std::deque<bool> CoveredByBucketing(const String& selector_text,
+                                    wtf_size_t rule_index = 0) {
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules(selector_text + " { }");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  const HeapVector<RuleData>& rules = rule_set.AllRulesForTest();
+  EXPECT_LT(rule_index, rules.size());
+  if (rule_index >= rules.size()) {
+    return {};
+  } else {
+    const CSSSelector* selector = &rules[rule_index].Selector();
+
+    std::deque<bool> covered;
+    while (selector) {
+      covered.push_back(selector->IsCoveredByBucketing());
+      selector = selector->NextSimpleSelector();
+    }
+    return covered;
+  }
+}
+
+wtf_size_t RuleCount(const String& selector_text) {
+  css_test_helpers::TestStyleSheet sheet;
+  sheet.AddCSSRules(selector_text + " { }");
+  return sheet.GetRuleSet().AllRulesForTest().size();
+}
+
+TEST(RuleSetTest, IsCoveredByBucketing) {
+  test::TaskEnvironment task_environment;
+  // Base cases.
+  EXPECT_THAT(CoveredByBucketing(".c"), ElementsAreArray({true}));
+  EXPECT_THAT(CoveredByBucketing("#id.c"), ElementsAreArray({true, false}));
+  EXPECT_THAT(CoveredByBucketing(".c .c.c"),
+              ElementsAreArray({true, true, false}));
+  EXPECT_THAT(
+      CoveredByBucketing(".a.b.c"),
+      ElementsAreArray(
+          {false, false, true}));  // See findBestRuleSetAndAdd_ThreeClasses.
+  EXPECT_THAT(CoveredByBucketing(".c > [attr]"),
+              ElementsAreArray({false, false}));
+  EXPECT_THAT(CoveredByBucketing("*"), ElementsAreArray({true}));
+
+  // Tag namespacing (including universal selector).
+  EXPECT_THAT(CoveredByBucketing("div"), ElementsAreArray({true}));
+  EXPECT_THAT(CoveredByBucketing("*|div"), ElementsAreArray({true}));
+  EXPECT_THAT(
+      CoveredByBucketing("@namespace ns \"http://example.org\";\nns|div"),
+      ElementsAreArray({false}));
+  EXPECT_THAT(CoveredByBucketing("@namespace \"http://example.org\";\ndiv"),
+              ElementsAreArray({false}));
+  EXPECT_THAT(CoveredByBucketing("@namespace \"http://example.org\";\n*"),
+              ElementsAreArray({false}));
+
+  // Attribute selectors.
+  EXPECT_THAT(CoveredByBucketing("[attr]"), ElementsAreArray({false}));
+  EXPECT_THAT(CoveredByBucketing("div[attr]"),
+              ElementsAreArray({false, false}));
+
+  // Link pseudo-class behavior due to visited multi-bucketing.
+  EXPECT_THAT(CoveredByBucketing(":any-link"), ElementsAreArray({true}));
+  EXPECT_THAT(CoveredByBucketing(":visited:link"),
+              ElementsAreArray({false, false}));
+  EXPECT_THAT(CoveredByBucketing(":visited:any-link"),
+              ElementsAreArray({false, false}));
+  EXPECT_THAT(CoveredByBucketing(":any-link:visited"),
+              ElementsAreArray({false, false}));
+
+  // The second rule added by visited-dependent selectors must not have the
+  // covered-by-bucketing flag set.
+  EXPECT_THAT(CoveredByBucketing(":visited", /* rule_index */ 1u),
+              ElementsAreArray({false}));
+  EXPECT_THAT(CoveredByBucketing(":link", /* rule_index */ 1u),
+              ElementsAreArray({false}));
+
+  // Some more pseudos.
+  EXPECT_THAT(CoveredByBucketing(":focus"), ElementsAreArray({true}));
+  EXPECT_THAT(CoveredByBucketing(":focus-visible"), ElementsAreArray({true}));
+  EXPECT_THAT(CoveredByBucketing(":host"), ElementsAreArray({false}));
+}
+
+TEST(RuleSetTest, VisitedDependentRuleCount) {
+  test::TaskEnvironment task_environment;
+  EXPECT_EQ(2u, RuleCount(":link"));
+  EXPECT_EQ(2u, RuleCount(":visited"));
+  // Not visited-dependent:
+  EXPECT_EQ(1u, RuleCount("#a"));
+  EXPECT_EQ(1u, RuleCount(":any-link"));
+}
+
+#endif  // DCHECK_IS_ON()
+
+=======
+>>>>>>> chromium
 TEST(RuleSetTest, SelectorIndexLimit) {
   // It's not feasible to run this test for a large number of bits. If the
   // number of bits have increased to a large number, consider removing this
@@ -331,4 +602,513 @@ TEST(RuleSetTest, RuleCountNotIncreasedByInvalidRuleData) {
   EXPECT_EQ(1u, rule_set->RuleCount());
 }
 
+<<<<<<< HEAD
+TEST(RuleSetTest, NoStyleScope) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules("#b {}");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  base::span<const RuleData> rules = rule_set.IdRules(AtomicString("b"));
+  ASSERT_EQ(1u, rules.size());
+  EXPECT_EQ(0u, rule_set.ScopeIntervals().size());
+}
+
+TEST(RuleSetTest, StyleScope) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules("@scope (.a) { #b {} }");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  base::span<const RuleData> rules = rule_set.IdRules(AtomicString("b"));
+  ASSERT_EQ(1u, rules.size());
+  EXPECT_EQ(1u, rule_set.ScopeIntervals().size());
+}
+
+TEST(RuleSetTest, NestedStyleScope) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+
+  sheet.AddCSSRules(R"CSS(
+    @scope (.a) {
+      #a {}
+      @scope (.b) {
+        #b {}
+      }
+    }
+  )CSS");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  base::span<const RuleData> a_rules = rule_set.IdRules(AtomicString("a"));
+  base::span<const RuleData> b_rules = rule_set.IdRules(AtomicString("b"));
+
+  ASSERT_EQ(1u, a_rules.size());
+  ASSERT_EQ(1u, b_rules.size());
+
+  ASSERT_EQ(2u, rule_set.ScopeIntervals().size());
+
+  EXPECT_EQ(a_rules.front().GetPosition(),
+            rule_set.ScopeIntervals()[0].start_position);
+  const StyleScope* a_rule_scope = rule_set.ScopeIntervals()[0].value;
+
+  EXPECT_EQ(b_rules.front().GetPosition(),
+            rule_set.ScopeIntervals()[1].start_position);
+  const StyleScope* b_rule_scope = rule_set.ScopeIntervals()[1].value;
+
+  EXPECT_NE(nullptr, a_rule_scope);
+  EXPECT_EQ(nullptr, a_rule_scope->Parent());
+
+  EXPECT_NE(nullptr, b_rule_scope);
+  EXPECT_EQ(a_rule_scope, b_rule_scope->Parent());
+
+  EXPECT_NE(nullptr, b_rule_scope->Parent());
+  EXPECT_EQ(nullptr, b_rule_scope->Parent()->Parent());
+}
+
+TEST(RuleSetTest, SingleScope) {
+  test::TaskEnvironment task_environment;
+  {
+    css_test_helpers::TestStyleSheet sheet;
+    sheet.AddCSSRules(R"CSS(
+      @scope {
+        div { color: green; }
+      }
+    )CSS");
+    EXPECT_TRUE(sheet.GetRuleSet().SingleScope());
+  }
+
+  {
+    css_test_helpers::TestStyleSheet sheet;
+    sheet.AddCSSRules(R"CSS(
+      @scope {
+        div { color: green; }
+        div { color: red; }
+        div { color: blue; }
+      }
+    )CSS");
+    EXPECT_TRUE(sheet.GetRuleSet().SingleScope());
+  }
+
+  {
+    css_test_helpers::TestStyleSheet sheet;
+    sheet.AddCSSRules(R"CSS(
+      @scope (.a) {
+        div { color: green; }
+      }
+    )CSS");
+    EXPECT_TRUE(sheet.GetRuleSet().SingleScope());
+  }
+
+  {
+    css_test_helpers::TestStyleSheet sheet;
+    sheet.AddCSSRules(R"CSS(
+      @scope (.a) {
+        div { color: green; }
+      }
+      div { color: red; }
+    )CSS");
+    EXPECT_FALSE(sheet.GetRuleSet().SingleScope());
+  }
+
+  {
+    css_test_helpers::TestStyleSheet sheet;
+    sheet.AddCSSRules(R"CSS(
+      div { color: red; }
+      @scope (.a) {
+        div { color: green; }
+      }
+    )CSS");
+    EXPECT_FALSE(sheet.GetRuleSet().SingleScope());
+  }
+
+  {
+    css_test_helpers::TestStyleSheet sheet;
+    sheet.AddCSSRules(R"CSS(
+      @scope {
+        div { color: green; }
+      }
+      div { color: red; }
+    )CSS");
+    EXPECT_FALSE(sheet.GetRuleSet().SingleScope());
+  }
+
+  {
+    css_test_helpers::TestStyleSheet sheet;
+    sheet.AddCSSRules(R"CSS(
+      div { color: red; }
+      @scope {
+        div { color: green; }
+      }
+    )CSS");
+    EXPECT_FALSE(sheet.GetRuleSet().SingleScope());
+  }
+}
+
+TEST(RuleSetTest, ParentPseudoBucketing_Single) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+  sheet.AddCSSRules(R"CSS(
+    .a {
+      & {
+        color: green;
+      }
+    }
+  )CSS");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  EXPECT_EQ(0u, rule_set.UniversalRules().size());
+  EXPECT_EQ(2u, rule_set.ClassRules(AtomicString("a")).size());
+}
+
+TEST(RuleSetTest, ParentPseudoBucketing_Multiple) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+  sheet.AddCSSRules(R"CSS(
+    .a, .b {
+      & {
+        color: green;
+      }
+    }
+  )CSS");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  EXPECT_EQ(1u, rule_set.UniversalRules().size());
+  EXPECT_EQ(1u, rule_set.ClassRules(AtomicString("a")).size());
+  EXPECT_EQ(1u, rule_set.ClassRules(AtomicString("b")).size());
+}
+
+TEST(RuleSetTest, ScopePseudoBucketing_Single) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+  sheet.AddCSSRules(R"CSS(
+    @scope (.a) {
+      :scope {
+        color: green;
+      }
+    }
+  )CSS");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  EXPECT_EQ(0u, rule_set.UniversalRules().size());
+  EXPECT_EQ(1u, rule_set.ClassRules(AtomicString("a")).size());
+}
+
+TEST(RuleSetTest, ScopePseudoBucketing_Multiple) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+  sheet.AddCSSRules(R"CSS(
+    @scope (.a, .b) {
+      :scope {
+        color: green;
+      }
+    }
+  )CSS");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  EXPECT_EQ(1u, rule_set.UniversalRules().size());
+  EXPECT_EQ(0u, rule_set.ClassRules(AtomicString("a")).size());
+  EXPECT_EQ(0u, rule_set.ClassRules(AtomicString("b")).size());
+}
+
+TEST(RuleSetTest, ScopePseudoBucketing_WhereIs) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+  sheet.AddCSSRules(R"CSS(
+    @scope (.a) {
+      :where(:scope) {
+        color: green;
+      }
+      :is(:scope) {
+        color: green;
+      }
+    }
+  )CSS");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  EXPECT_EQ(0u, rule_set.UniversalRules().size());
+  EXPECT_EQ(2u, rule_set.ClassRules(AtomicString("a")).size());
+}
+
+TEST(RuleSetTest, ScopePseudoBucketing_WhereIsMultiple) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+  sheet.AddCSSRules(R"CSS(
+    @scope (.a, .b) {
+      :where(:scope) {
+        color: green;
+      }
+      :is(:scope) {
+        color: green;
+      }
+    }
+  )CSS");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  EXPECT_EQ(2u, rule_set.UniversalRules().size());
+  EXPECT_EQ(0u, rule_set.ClassRules(AtomicString("a")).size());
+  EXPECT_EQ(0u, rule_set.ClassRules(AtomicString("b")).size());
+}
+
+TEST(RuleSetTest, ScopePseudoBucketing_Implicit) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+  sheet.AddCSSRules(R"CSS(
+    @scope {
+      :scope {
+        color: green;
+      }
+    }
+  )CSS");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  EXPECT_EQ(1u, rule_set.UniversalRules().size());
+}
+
+TEST(RuleSetTest, ScopePseudoBucketing_NestedDeclarations) {
+  test::TaskEnvironment task_environment;
+  css_test_helpers::TestStyleSheet sheet;
+  sheet.AddCSSRules(R"CSS(
+    .a {
+      @scope (&) {
+        color: green; /* Matches like :where(:scope) */
+      }
+    }
+  )CSS");
+  RuleSet& rule_set = sheet.GetRuleSet();
+  EXPECT_EQ(0u, rule_set.UniversalRules().size());
+  EXPECT_EQ(2u, rule_set.ClassRules(AtomicString("a")).size());
+}
+
+class RuleSetCascadeLayerTest : public SimTest {
+ public:
+  using LayerName = StyleRuleBase::LayerName;
+
+ protected:
+  const RuleSet& GetRuleSet() {
+    RuleSet& rule_set =
+        To<HTMLStyleElement>(GetDocument().QuerySelector(AtomicString("style")))
+            ->sheet()
+            ->Contents()
+            ->EnsureRuleSet(MediaQueryEvaluator(GetDocument().GetFrame()));
+    rule_set.CompactRulesIfNeeded();
+    return rule_set;
+  }
+
+  const CascadeLayer* GetLayerByRule(const RuleData& rule) {
+    return GetRuleSet().GetLayerForTest(rule);
+  }
+
+  const CascadeLayer* GetLayerByName(const LayerName name) {
+    return const_cast<CascadeLayer*>(ImplicitOuterLayer())
+        ->GetOrAddSubLayer(name);
+  }
+
+  const CascadeLayer* ImplicitOuterLayer() {
+    return GetRuleSet().implicit_outer_layer_.Get();
+  }
+
+  const RuleData& GetIdRule(const char* key) {
+    return GetRuleSet().IdRules(AtomicString(key)).front();
+  }
+
+  const CascadeLayer* GetLayerByIdRule(const char* key) {
+    return GetLayerByRule(GetIdRule(key));
+  }
+
+  String LayersToString() {
+    return GetRuleSet().CascadeLayers().ToStringForTesting();
+  }
+};
+
+TEST_F(RuleSetCascadeLayerTest, NoLayer) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+  main_resource.Complete(R"HTML(
+    <!doctype html>
+    <style>
+      #no-layers { }
+    </style>
+  )HTML");
+
+  EXPECT_FALSE(GetRuleSet().HasCascadeLayers());
+  EXPECT_FALSE(ImplicitOuterLayer());
+}
+
+TEST_F(RuleSetCascadeLayerTest, Basic) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+  main_resource.Complete(R"HTML(
+    <!doctype html>
+    <style>
+      #zero { }
+      @layer foo {
+        #one { }
+        #two { }
+        @layer bar {
+          #three { }
+          #four { }
+        }
+        #five { }
+      }
+      #six { }
+    </style>
+  )HTML");
+
+  EXPECT_EQ("foo,foo.bar", LayersToString());
+
+  EXPECT_EQ(ImplicitOuterLayer(), GetLayerByIdRule("zero"));
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("foo")})),
+            GetLayerByIdRule("one"));
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("foo")})),
+            GetLayerByIdRule("two"));
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("bar")})),
+      GetLayerByIdRule("three"));
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("bar")})),
+      GetLayerByIdRule("four"));
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("foo")})),
+            GetLayerByIdRule("five"));
+  EXPECT_EQ(ImplicitOuterLayer(), GetLayerByIdRule("six"));
+}
+
+TEST_F(RuleSetCascadeLayerTest, NestingAndFlatListName) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+  main_resource.Complete(R"HTML(
+    <!doctype html>
+    <style>
+      @layer foo {
+        @layer bar {
+          #zero { }
+          #one { }
+        }
+      }
+      @layer foo.bar {
+        #two { }
+        #three { }
+      }
+    </style>
+  )HTML");
+
+  EXPECT_EQ("foo,foo.bar", LayersToString());
+
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("bar")})),
+      GetLayerByIdRule("zero"));
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("bar")})),
+      GetLayerByIdRule("one"));
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("bar")})),
+      GetLayerByIdRule("two"));
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("bar")})),
+      GetLayerByIdRule("three"));
+}
+
+TEST_F(RuleSetCascadeLayerTest, LayerStatementOrdering) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  LoadURL("https://example.com/");
+  main_resource.Complete(R"HTML(
+    <!doctype html>
+    <style>
+      @layer foo, bar, foo.baz;
+      @layer bar {
+        #zero { }
+      }
+      @layer foo {
+        #one { }
+        @layer baz {
+          #two { }
+        }
+      }
+    </style>
+  )HTML");
+
+  EXPECT_EQ("foo,foo.baz,bar", LayersToString());
+
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("bar")})),
+            GetLayerByIdRule("zero"));
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("foo")})),
+            GetLayerByIdRule("one"));
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("baz")})),
+      GetLayerByIdRule("two"));
+}
+
+TEST_F(RuleSetCascadeLayerTest, LayeredImport) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  SimSubresourceRequest sub_resource("https://example.com/sheet.css",
+                                     "text/css");
+
+  LoadURL("https://example.com/");
+  main_resource.Complete(R"HTML(
+    <!doctype html>
+    <style>
+      @import url(/sheet.css) layer(foo);
+      @layer foo.bar {
+        #two { }
+        #three { }
+      }
+    </style>
+  )HTML");
+  sub_resource.Complete(R"CSS(
+    #zero { }
+    @layer bar {
+      #one { }
+    }
+  )CSS");
+
+  test::RunPendingTasks();
+
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("foo")})),
+            GetLayerByIdRule("zero"));
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("bar")})),
+      GetLayerByIdRule("one"));
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("bar")})),
+      GetLayerByIdRule("two"));
+  EXPECT_EQ(
+      GetLayerByName(LayerName({AtomicString("foo"), AtomicString("bar")})),
+      GetLayerByIdRule("three"));
+}
+
+TEST_F(RuleSetCascadeLayerTest, LayerStatementsBeforeAndAfterImport) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  SimSubresourceRequest sub_resource("https://example.com/sheet.css",
+                                     "text/css");
+
+  LoadURL("https://example.com/");
+  main_resource.Complete(R"HTML(
+    <!doctype html>
+    <style>
+      @layer foo, bar;
+      @import url(/sheet.css) layer(bar);
+      @layer baz, bar, foo;
+      @layer foo {
+        #two { }
+        #three { }
+      }
+      @layer baz {
+        #four { }
+      }
+    </style>
+  )HTML");
+  sub_resource.Complete(R"CSS(
+    #zero { }
+    #one { }
+  )CSS");
+
+  test::RunPendingTasks();
+
+  EXPECT_EQ("foo,bar,baz", LayersToString());
+
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("bar")})),
+            GetLayerByIdRule("zero"));
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("bar")})),
+            GetLayerByIdRule("one"));
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("foo")})),
+            GetLayerByIdRule("two"));
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("foo")})),
+            GetLayerByIdRule("three"));
+  EXPECT_EQ(GetLayerByName(LayerName({AtomicString("baz")})),
+            GetLayerByIdRule("four"));
+}
+
+=======
+>>>>>>> chromium
 }  // namespace blink

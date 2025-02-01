@@ -46,6 +46,12 @@ bool PathProviderPosix(int key, FilePath* result) {
       }
       *result = bin_dir;
       return true;
+<<<<<<< HEAD
+#elif BUILDFLAG(IS_FREEBSD)
+      int name[] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
+      std::optional<std::string> bin_dir = StringSysctl(name, std::size(name));
+      if (!bin_dir.has_value() || bin_dir.value().length() <= 1) {
+=======
 #elif defined(OS_FREEBSD)
       int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
       char bin_dir[PATH_MAX + 1];
@@ -54,6 +60,7 @@ bool PathProviderPosix(int key, FilePath* result) {
       // including the string terminator.
       int error = sysctl(name, 4, bin_dir, &length, NULL, 0);
       if (error < 0 || length <= 1) {
+>>>>>>> chromium
         NOTREACHED() << "Unable to resolve path.";
         return false;
       }
@@ -70,10 +77,11 @@ bool PathProviderPosix(int key, FilePath* result) {
 #elif defined(OS_OPENBSD) || defined(OS_AIX)
       // There is currently no way to get the executable path on OpenBSD
       char* cpath;
-      if ((cpath = getenv("CHROME_EXE_PATH")) != NULL)
+      if ((cpath = getenv("CHROME_EXE_PATH")) != NULL) {
         *result = FilePath(cpath);
-      else
+      } else {
         *result = FilePath("/usr/local/chrome/chrome");
+      }
       return true;
 #endif
     }

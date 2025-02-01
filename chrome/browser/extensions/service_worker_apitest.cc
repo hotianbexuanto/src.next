@@ -277,6 +277,17 @@ class ServiceWorkerBasedBackgroundTest : public ServiceWorkerTest {
     return running_worker_id;
   }
 
+<<<<<<< HEAD
+bool ServiceWorkerBasedBackgroundTest::ExtensionHasRenderProcessHost(
+    const ExtensionId& extension_id) {
+  ProcessMap* process_map = ProcessMap::Get(browser()->profile());
+  content::RenderProcessHost::iterator it =
+      content::RenderProcessHost::AllHostsIterator();
+  while (!it.IsAtEnd()) {
+    if (process_map->Contains(extension_id,
+                              it.GetCurrentValue()->GetDeprecatedID())) {
+      return true;
+=======
   bool ExtensionHasRenderProcessHost(const ExtensionId& extension_id) {
     ProcessMap* process_map = ProcessMap::Get(browser()->profile());
     content::RenderProcessHost::iterator it =
@@ -286,6 +297,7 @@ class ServiceWorkerBasedBackgroundTest : public ServiceWorkerTest {
         return true;
       }
       it.Advance();
+>>>>>>> chromium
     }
     return false;
   }
@@ -315,7 +327,17 @@ class ServiceWorkerBasedBackgroundTrunkTest
 class ServiceWorkerBasedBackgroundTestWithNotification
     : public ServiceWorkerBasedBackgroundTest {
  public:
+<<<<<<< HEAD
+  ServiceWorkerBasedBackgroundTestWithNotification() = default;
+
+  ServiceWorkerBasedBackgroundTestWithNotification(
+      const ServiceWorkerBasedBackgroundTestWithNotification&) = delete;
+  ServiceWorkerBasedBackgroundTestWithNotification& operator=(
+      const ServiceWorkerBasedBackgroundTestWithNotification&) = delete;
+
+=======
   ServiceWorkerBasedBackgroundTestWithNotification() {}
+>>>>>>> chromium
   ~ServiceWorkerBasedBackgroundTestWithNotification() override = default;
 
   void SetUpOnMainThread() override {
@@ -908,8 +930,19 @@ IN_PROC_BROWSER_TEST_F(ServiceWorkerBasedBackgroundTest,
 
 class ServiceWorkerBackgroundSyncTest : public ServiceWorkerTest {
  public:
+<<<<<<< HEAD
+  ServiceWorkerBackgroundSyncTest() = default;
+
+  ServiceWorkerBackgroundSyncTest(const ServiceWorkerBackgroundSyncTest&) =
+      delete;
+  ServiceWorkerBackgroundSyncTest& operator=(
+      const ServiceWorkerBackgroundSyncTest&) = delete;
+
+  ~ServiceWorkerBackgroundSyncTest() override = default;
+=======
   ServiceWorkerBackgroundSyncTest() {}
   ~ServiceWorkerBackgroundSyncTest() override {}
+>>>>>>> chromium
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     // ServiceWorkerRegistration.sync requires experimental flag.
@@ -935,7 +968,7 @@ class ServiceWorkerPushMessagingTest : public ServiceWorkerTest {
         gcm_driver_(nullptr),
         push_service_(nullptr) {}
 
-  ~ServiceWorkerPushMessagingTest() override {}
+  ~ServiceWorkerPushMessagingTest() override = default;
 
   void GrantNotificationPermissionForTest(const GURL& url) {
     NotificationPermissionContext::UpdatePermission(profile(), url.GetOrigin(),
@@ -993,7 +1026,17 @@ class ServiceWorkerPushMessagingTest : public ServiceWorkerTest {
 class ServiceWorkerLazyBackgroundTest : public ServiceWorkerTest {
  public:
   ServiceWorkerLazyBackgroundTest() = default;
+<<<<<<< HEAD
+
+  ServiceWorkerLazyBackgroundTest(const ServiceWorkerLazyBackgroundTest&) =
+      delete;
+  ServiceWorkerLazyBackgroundTest& operator=(
+      const ServiceWorkerLazyBackgroundTest&) = delete;
+
+  ~ServiceWorkerLazyBackgroundTest() override = default;
+=======
   ~ServiceWorkerLazyBackgroundTest() override {}
+>>>>>>> chromium
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     ServiceWorkerTest::SetUpCommandLine(command_line);

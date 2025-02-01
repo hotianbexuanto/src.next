@@ -5,6 +5,11 @@
 #include "net/base/io_buffer.h"
 
 #include "base/check_op.h"
+<<<<<<< HEAD
+#include "base/compiler_specific.h"
+#include "base/containers/heap_array.h"
+=======
+>>>>>>> chromium
 #include "base/numerics/safe_math.h"
 
 namespace net {
@@ -95,7 +100,7 @@ void DrainableIOBuffer::SetOffset(int bytes) {
   DCHECK_GE(bytes, 0);
   DCHECK_LE(bytes, size_);
   used_ = bytes;
-  data_ = base_->data() + used_;
+  data_ = UNSAFE_TODO(base_->data() + used_);
 }
 
 DrainableIOBuffer::~DrainableIOBuffer() {
@@ -124,7 +129,12 @@ void GrowableIOBuffer::set_offset(int offset) {
   DCHECK_GE(offset, 0);
   DCHECK_LE(offset, capacity_);
   offset_ = offset;
+<<<<<<< HEAD
+  data_ = UNSAFE_TODO(real_data_.get() + offset);
+  size_ = capacity_ - offset;
+=======
   data_ = real_data_.get() + offset;
+>>>>>>> chromium
 }
 
 int GrowableIOBuffer::RemainingCapacity() {
@@ -150,9 +160,16 @@ PickledIOBuffer::~PickledIOBuffer() {
   data_ = nullptr;
 }
 
+<<<<<<< HEAD
+WrappedIOBuffer::WrappedIOBuffer(base::span<const char> data)
+    // SAFETY: const cast does not affect size.
+    : IOBuffer(UNSAFE_BUFFERS(
+          base::span(const_cast<char*>(data.data()), data.size()))) {}
+=======
 WrappedIOBuffer::WrappedIOBuffer(const char* data)
     : IOBuffer(const_cast<char*>(data)) {
 }
+>>>>>>> chromium
 
 WrappedIOBuffer::~WrappedIOBuffer() {
   data_ = nullptr;

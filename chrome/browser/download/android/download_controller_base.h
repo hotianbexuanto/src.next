@@ -93,7 +93,7 @@ class DownloadControllerBase : public download::DownloadItem::Observer,
   virtual void AboutToResumeDownload(download::DownloadItem* download_item) = 0;
 
  protected:
-  ~DownloadControllerBase() override {}
+  ~DownloadControllerBase() override = default;
   static DownloadControllerBase* download_controller_;
 };
 

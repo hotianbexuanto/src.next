@@ -4,9 +4,12 @@
 
 package org.chromium.chrome.browser.tasks.tab_management;
 
+<<<<<<< HEAD
+=======
 import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.CONTEXT_MENU_OPEN_NEW_TAB_IN_GROUP_ITEM_FIRST;
 
 import android.content.Context;
+>>>>>>> chromium
 import android.os.Build;
 import android.text.TextUtils;
 
@@ -18,6 +21,8 @@ import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.flags.BooleanCachedFieldTrialParameter;
 import org.chromium.chrome.browser.flags.CachedFeatureFlags;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+<<<<<<< HEAD
+=======
 import org.chromium.chrome.browser.flags.DoubleCachedFieldTrialParameter;
 import org.chromium.chrome.browser.flags.IntCachedFieldTrialParameter;
 import org.chromium.chrome.browser.flags.StringCachedFieldTrialParameter;
@@ -26,6 +31,7 @@ import org.chromium.chrome.browser.tasks.ConditionalTabStripUtils;
 import org.chromium.chrome.browser.tasks.ReturnToChromeExperimentsUtil;
 import org.chromium.chrome.features.start_surface.StartSurfaceConfiguration;
 import org.chromium.ui.base.DeviceFormFactor;
+>>>>>>> chromium
 
 import java.util.Random;
 
@@ -33,7 +39,11 @@ import java.util.Random;
  * A class to handle the state of flags for tab_management.
  */
 public class TabUiFeatureUtilities {
+<<<<<<< HEAD
+    private static final Set<String> TAB_TEARING_OEM_ALLOWLIST = Set.of("samsung");
+=======
     private static final String TAG = "TabFeatureUtilities";
+>>>>>>> chromium
 
     // Field trial parameters:
     private static final String SKIP_SLOW_ZOOMING_PARAM = "skip-slow-zooming";
@@ -101,6 +111,15 @@ public class TabUiFeatureUtilities {
         sTabManagementModuleSupportedForTesting = enabled;
     }
 
+<<<<<<< HEAD
+    /** Returns whether the Grid Tab Switcher UI should use list mode. */
+    public static boolean shouldUseListMode() {
+        if (ChromeFeatureList.sDisableListTabSwitcher.isEnabled()) {
+            return false;
+        }
+        // Low-end forces list mode.
+        return SysUtils.isLowEndDevice() || ChromeFeatureList.sForceListTabSwitcher.isEnabled();
+=======
     /**
      * @return Whether the tab management module is supported.
      */
@@ -125,6 +144,7 @@ public class TabUiFeatureUtilities {
         // Having Tab Groups or Start implies Grid Tab Switcher.
         return isTabManagementModuleSupported() || isTabGroupsAndroidEnabled(context)
                 || ReturnToChromeExperimentsUtil.isStartSurfaceHomepageEnabled();
+>>>>>>> chromium
     }
 
     /**
@@ -151,6 +171,17 @@ public class TabUiFeatureUtilities {
                 && CachedFeatureFlags.isEnabled(ChromeFeatureList.TAB_GROUPS_CONTINUATION_ANDROID);
     }
 
+<<<<<<< HEAD
+    /** Returns whether drag drop from tab strip to create new instance is enabled. */
+    public static boolean isTabDragToCreateInstanceSupported() {
+        // TODO(crbug/328511660): Add OS version check once available.
+        return doesOEMSupportDragToCreateInstance() || !isTabDragAsWindowEnabled();
+    }
+
+    /** Returns whether device OEM is allow-listed for tab tearing */
+    public static boolean doesOEMSupportDragToCreateInstance() {
+        return TAB_TEARING_OEM_ALLOWLIST.contains(Build.MANUFACTURER.toLowerCase(Locale.US));
+=======
     /**
      * @return Whether the conditional tab strip feature is enabled and available for use.
      */
@@ -224,5 +255,6 @@ public class TabUiFeatureUtilities {
 
         return sharedPreferencesManager.readBoolean(
                 CONTEXT_MENU_OPEN_NEW_TAB_IN_GROUP_ITEM_FIRST, false);
+>>>>>>> chromium
     }
 }

@@ -9,7 +9,11 @@
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+#include "base/logging.h"
+=======
 #include "base/macros.h"
+>>>>>>> chromium
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
@@ -22,6 +26,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/common/pref_names.h"
+#include "components/autofill/core/common/autofill_prefs.h"
 #include "components/language/core/browser/language_prefs.h"
 #include "components/language/core/browser/pref_names.h"
 #include "components/prefs/pref_service.h"
@@ -30,6 +35,7 @@
 #include "media/media_buildflags.h"
 #include "third_party/blink/public/common/peerconnection/webrtc_ip_handling_policy.h"
 #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
+#include "third_party/blink/public/mojom/peerconnection/webrtc_ip_handling_policy.mojom.h"
 #include "third_party/blink/public/public_buildflags.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/ui_base_features.h"
@@ -127,18 +133,51 @@ void UpdateFromSystemSettings(blink::RendererPreferences* prefs,
       pref_service->GetBoolean(prefs::kEnableDoNotTrack);
   prefs->enable_encrypted_media =
       pref_service->GetBoolean(prefs::kEnableEncryptedMedia);
+<<<<<<< HEAD
+
+#if BUILDFLAG(IS_ANDROID)
+  prefs->uses_platform_autofill = pref_service->GetBoolean(
+      autofill::prefs::kAutofillUsingVirtualViewStructure);
+#else  // if !BUILDFLAG(IS_ANDROID)
+=======
   prefs->webrtc_ip_handling_policy = std::string();
 #if !defined(OS_ANDROID)
+>>>>>>> chromium
   prefs->caret_browsing_enabled =
       pref_service->GetBoolean(prefs::kCaretBrowsingEnabled);
   content::BrowserAccessibilityState::GetInstance()->SetCaretBrowsingState(
       prefs->caret_browsing_enabled);
 #endif
 
-  if (prefs->webrtc_ip_handling_policy.empty()) {
-    prefs->webrtc_ip_handling_policy =
-        pref_service->GetString(prefs::kWebRTCIPHandlingPolicy);
+  prefs->webrtc_ip_handling_policy = blink::ToWebRTCIPHandlingPolicy(
+      pref_service->GetString(prefs::kWebRTCIPHandlingPolicy));
+
+  const base::Value::List& webrtc_ip_handling_urls =
+      pref_service->GetList(prefs::kWebRTCIPHandlingUrl);
+  for (const base::Value& entry : webrtc_ip_handling_urls) {
+    const base::Value::Dict& dict = entry.GetDict();
+    const std::string* url = dict.FindString("url");
+    if (!url) {
+      DVLOG(1) << "Malformed WebRtcIPHandlingUrl entry: Missing 'url' value.";
+      continue;
+    }
+    ContentSettingsPattern pattern = ContentSettingsPattern::FromString(*url);
+    if (!pattern.IsValid()) {
+      DVLOG(1)
+          << "Malformed WebRtcIPHandlingUrl entry: Invalid pattern found: '"
+          << *url << "'.";
+      continue;
+    }
+    const std::string* handling = dict.FindString("handling");
+    if (!handling) {
+      DVLOG(1)
+          << "Malformed WebRtcIPHandlingUrl entry: Missing 'handling' value.";
+      continue;
+    }
+    prefs->webrtc_ip_handling_urls.push_back(
+        {pattern, blink::ToWebRTCIPHandlingPolicy(*handling)});
   }
+
   std::string webrtc_udp_port_range =
       pref_service->GetString(prefs::kWebRTCUDPPortRange);
   ParsePortRange(webrtc_udp_port_range, &prefs->webrtc_udp_min_port,

@@ -7,14 +7,23 @@ package org.chromium.base;
 import android.text.TextUtils;
 import android.util.Patterns;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+=======
 import org.chromium.base.annotations.UsedByReflection;
+>>>>>>> chromium
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+<<<<<<< HEAD
+/** Provides public methods for detecting and eliding sensitive PII. */
+@NullMarked
+=======
 /**
  * Provides public methods for detecting and eliding sensitive PII.
  */
+>>>>>>> chromium
 public class PiiElider {
     private static final String EMAIL_ELISION = "XXX@EMAIL.ELIDED";
 

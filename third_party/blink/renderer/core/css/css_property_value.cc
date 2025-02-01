@@ -29,13 +29,17 @@
 namespace blink {
 
 struct SameSizeAsCSSPropertyValue {
-  uint32_t bitfields;
   void* property;
+  uint32_t bitfields;
   Member<void*> value;
 };
 
 ASSERT_SIZE(CSSPropertyValue, SameSizeAsCSSPropertyValue);
 
+<<<<<<< HEAD
+CSSPropertyID CSSPropertyValue::ShorthandID() const {
+  if (!is_set_from_shorthand_) {
+=======
 CSSPropertyValueMetadata::CSSPropertyValueMetadata(
     const CSSPropertyName& name,
     bool is_set_from_shorthand,
@@ -53,6 +57,7 @@ CSSPropertyValueMetadata::CSSPropertyValueMetadata(
 
 CSSPropertyID CSSPropertyValueMetadata::ShorthandID() const {
   if (!is_set_from_shorthand_)
+>>>>>>> chromium
     return CSSPropertyID::kInvalid;
 
   Vector<StylePropertyShorthand, 4> shorthands;
@@ -63,12 +68,17 @@ CSSPropertyID CSSPropertyValueMetadata::ShorthandID() const {
   return shorthands.at(index_in_shorthands_vector_).id();
 }
 
+<<<<<<< HEAD
+CSSPropertyName CSSPropertyValue::Name() const {
+  if (PropertyID() != CSSPropertyID::kVariable) {
+=======
 CSSPropertyID CSSPropertyValueMetadata::PropertyID() const {
   return ConvertToCSSPropertyID(property_id_);
 }
 
 CSSPropertyName CSSPropertyValueMetadata::Name() const {
   if (PropertyID() != CSSPropertyID::kVariable)
+>>>>>>> chromium
     return CSSPropertyName(PropertyID());
   return CSSPropertyName(custom_name_);
 }

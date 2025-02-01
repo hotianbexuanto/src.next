@@ -383,7 +383,32 @@ void FrameFetchContext::PrepareRequest(
     request.SetPreviewsState(request_previews_state);
   }
 
+<<<<<<< HEAD
+  // If the original request included the attribute to opt-in to shared storage,
+  // then update eligibility for the current (possibly redirected) request. Note
+  // that if the original request didn't opt-in, then the original request and
+  // any subsequent redirects are ineligible for shared storage writing by
+  // response header.
+  if (request.GetSharedStorageWritableOptedIn()) {
+    auto* policy = GetPermissionsPolicy();
+    request.SetSharedStorageWritableEligible(
+        policy &&
+        request.IsFeatureEnabledForSubresourceRequestAssumingOptIn(
+            policy, network::mojom::PermissionsPolicyFeature::kSharedStorage,
+            SecurityOrigin::Create(request.Url())->ToUrlOrigin()));
+  }
+
+  request.SetSharedDictionaryWriterEnabled(
+      RuntimeEnabledFeatures::CompressionDictionaryTransportEnabled(
+          GetExecutionContext()));
+
+  if (!minimal_prep) {
+    WillSendRequest(request);
+  }
+  GetLocalFrameClient()->DispatchFinalizeRequest(request);
+=======
   GetLocalFrameClient()->DispatchWillSendRequest(request);
+>>>>>>> chromium
   FrameScheduler* frame_scheduler = GetFrame()->GetFrameScheduler();
   if (!for_redirect && frame_scheduler) {
     virtual_time_pauser = frame_scheduler->CreateWebScopedVirtualTimePauser(
@@ -512,8 +537,60 @@ void FrameFetchContext::PopulateResourceRequest(
   if (!GetResourceFetcherProperties().IsDetached())
     probe::SetDevToolsIds(Probe(), request, options.initiator_info);
 
+<<<<<<< HEAD
+bool FrameFetchContext::StartSpeculativeImageDecode(
+    Resource* resource,
+    base::OnceClosure callback) {
+  CHECK(resource->GetType() == ResourceType::kImage);
+  if (!document_ || !document_->GetFrame()) {
+    return false;
+  }
+  ImageResource* image_resource = To<ImageResource>(resource);
+  Image* image = image_resource->GetContent()->GetImage();
+  if (IsA<SVGImage>(image)) {
+    return false;
+  }
+  if (!image_resource->GetContent()->CanBeSpeculativelyDecoded()) {
+    return false;
+  }
+  PaintImage paint_image = image->PaintImageForCurrentFrame();
+  if (paint_image) {
+    SkM44 matrix;
+    gfx::Size image_size(image->width(), image->height());
+    gfx::SizeF content_size(image_resource->GetContent()->MaxSize());
+    // If LayoutImage has zero size, it might be waiting for intrinsic size
+    // info, so decode to the image intrinsic size; otherwise scale to content.
+    if (!content_size.IsZero()) {
+      if (content_size.IsEmpty()) {
+        // If one dimension is zero, preserve aspect ratio.
+        if (content_size.width() == 0.) {
+          content_size.set_width(image_size.width() *
+                                 (content_size.height() / image_size.height()));
+        } else {
+          content_size.set_height(image_size.height() *
+                                  (content_size.width() / image_size.width()));
+        }
+      }
+      matrix.setScale(content_size.width() / image_size.width(),
+                      content_size.height() / image_size.height());
+    }
+    cc::DrawImage draw_image(
+        paint_image, /*use_dark_mode=*/false,
+        SkIRect::MakeWH(image_size.width(), image_size.height()),
+        static_cast<cc::PaintFlags::FilterQuality>(
+            image_resource->GetContent()->MaxInterpolationQuality()),
+        matrix, PaintImage::kDefaultFrameIndex);
+    document_->GetFrame()->GetChromeClient().RequestDecode(
+        document_->GetFrame(), draw_image,
+        WTF::BindOnce([](base::OnceClosure cb, bool) { std::move(cb).Run(); },
+                      std::move(callback)));
+    return true;
+  }
+  return false;
+=======
   ModifyRequestForCSP(request);
   AddClientHintsIfNecessary(hints_preferences, resource_width, request);
+>>>>>>> chromium
 }
 
 bool FrameFetchContext::IsPrerendering() const {
@@ -741,6 +818,19 @@ const PermissionsPolicy* FrameFetchContext::GetPermissionsPolicy() const {
                          ->GetSecurityContext()
                          .GetPermissionsPolicy()
                    : nullptr;
+}
+
+HashSet<HashAlgorithm> FrameFetchContext::CSPHashesToReport() const {
+  return GetContentSecurityPolicy()->HashesToReport();
+}
+
+void FrameFetchContext::AddCSPHashReport(
+    const String& url,
+    const HashMap<HashAlgorithm, String>& integrity_hashes) {
+  LocalFrame* frame = document_->GetFrame();
+  CHECK(frame);
+  GetContentSecurityPolicy()->AddHashReportIfNeeded(frame, url,
+                                                    integrity_hashes);
 }
 
 const ClientHintsPreferences FrameFetchContext::GetClientHintsPreferences()

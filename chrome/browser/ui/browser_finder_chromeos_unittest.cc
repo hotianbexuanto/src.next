@@ -17,14 +17,21 @@
 #include "components/account_id/account_id.h"
 #include "components/user_manager/scoped_user_manager.h"
 #include "components/user_manager/user.h"
+#include "google_apis/gaia/gaia_id.h"
 #include "ui/base/ui_base_features.h"
 
 namespace test {
 
 namespace {
 
+<<<<<<< HEAD
+constexpr char kTestAccount1[] = "user1@test.com";
+constexpr char kTestAccount2[] = "user2@test.com";
+constexpr char kFakeGaia2[] = "fakegaia2";
+=======
 const char kTestAccount1[] = "user1@test.com";
 const char kTestAccount2[] = "user2@test.com";
+>>>>>>> chromium
 
 }  // namespace
 
@@ -49,8 +56,9 @@ class BrowserFinderChromeOSTest : public BrowserWithTestWindowTest {
   }
 
   ash::MultiUserWindowManager* GetMultiUserWindowManager() {
-    if (!MultiUserWindowManagerHelper::GetInstance())
+    if (!MultiUserWindowManagerHelper::GetInstance()) {
       MultiUserWindowManagerHelper::CreateInstanceForTest(test_account_id1_);
+    }
     return MultiUserWindowManagerHelper::GetWindowManager();
   }
 
@@ -62,7 +70,13 @@ class BrowserFinderChromeOSTest : public BrowserWithTestWindowTest {
     test_account_id1_ = AccountId::FromUserEmail(kTestAccount1);
     test_account_id2_ = AccountId::FromUserEmail(kTestAccount2);
     BrowserWithTestWindowTest::SetUp();
+<<<<<<< HEAD
+    // Create secondary user/profile.
+    LogIn(kTestAccount2, GaiaId(kFakeGaia2));
+    second_profile_ = CreateProfile(kTestAccount2);
+=======
     second_profile_ = CreateMultiUserProfile(test_account_id2_);
+>>>>>>> chromium
   }
 
   void TearDown() override {
@@ -70,8 +84,25 @@ class BrowserFinderChromeOSTest : public BrowserWithTestWindowTest {
     BrowserWithTestWindowTest::TearDown();
   }
 
+<<<<<<< HEAD
+  // BrowserWithTestWindow:
+  std::optional<std::string> GetDefaultProfileName() override {
+    return kTestAccount1;
+  }
+
+  TestingProfile* CreateProfile(const std::string& profile_name) override {
+    auto* profile = BrowserWithTestWindowTest::CreateProfile(profile_name);
+    auto* user = user_manager()->FindUserAndModify(
+        AccountId::FromUserEmail(profile_name));
+    ash::ProfileHelper::Get()->SetUserToProfileMappingForTesting(user, profile);
+    // Force creation of MultiProfileSupport.
+    GetMultiUserWindowManager();
+    MultiProfileSupport::GetInstanceForTest()->AddUser(profile);
+    return profile;
+=======
   TestingProfile* CreateProfile() override {
     return CreateMultiUserProfile(test_account_id1_);
+>>>>>>> chromium
   }
 
   TestingProfile* second_profile_;

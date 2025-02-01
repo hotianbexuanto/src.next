@@ -5,7 +5,7 @@
 #include "content/public/common/content_switches.h"
 
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
+#include "content/public/common/buildflags.h"
 #include "media/media_buildflags.h"
 
 namespace switches {
@@ -390,6 +390,10 @@ const char kEnablePreciseMemoryInfo[] = "enable-precise-memory-info";
 // Set options to cache V8 data. (none, code, or default)
 const char kV8CacheOptions[] = "v8-cache-options";
 
+// Disallows overriding of v8 feature flags.
+const char kDisallowV8FeatureFlagOverrides[] =
+    "disallow-v8-feature-flag-overrides";
+
 // If true the ServiceProcessLauncher is used to launch services. This allows
 // for service binaries to be loaded rather than using the utility process. This
 // is only useful for tests.
@@ -546,7 +550,19 @@ const char kJavaScriptFlags[]               = "js-flags";
 // Flag to launch tests in the browser process.
 const char kLaunchAsBrowser[] = "as-browser";
 
+<<<<<<< HEAD
+#if BUILDFLAG(LOAD_WEBUI_FROM_DISK)
+// Flag used to load WebUI files directly from disk instead of pak files. Meant
+// to be used during local development only (requires a local checkout and
+// build), and only works if used along with the GN load_webui_from_disk=true GN
+// flag.
+const char kLoadWebUIfromDisk[] = "load-webui-from-disk";
+#endif  // BUILDFLAG(LOAD_WEBUI_FROM_DISK)
+
+// Logs GPU control list decisions when enforcing blocklist rules.
+=======
 // Logs GPU control list decisions when enforcing blacklist rules.
+>>>>>>> chromium
 const char kLogGpuControlListDecisions[]    = "log-gpu-control-list-decisions";
 
 // Sets the minimum log level. Valid values are from 0 to 3:
@@ -804,6 +820,15 @@ const char kUseFakeCodecForPeerConnection[] =
 // streams (e.g. WebRTC). Works with --use-fake-device-for-media-stream.
 const char kUseFakeUIForMediaStream[]     = "use-fake-ui-for-media-stream";
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_WIN)
+// This will replace the existing font manager with FontDataManager in the
+// renderer.
+const char kUseFontDataManager[] = "use-font-data-manager";
+#endif
+
+=======
+>>>>>>> chromium
 // Texture target for CHROMIUM_image backed video frame textures.
 const char kVideoImageTextureTarget[] = "video-image-texture-target";
 
@@ -869,6 +894,8 @@ const char kWebOtpBackendAuto[] = "web-otp-backend-auto";
 // ignores this switch on its stable and beta channels.
 const char kDisableWebRtcEncryption[]      = "disable-webrtc-encryption";
 
+<<<<<<< HEAD
+=======
 // Disables HW decode acceleration for WebRTC.
 const char kDisableWebRtcHWDecoding[]       = "disable-webrtc-hw-decoding";
 
@@ -891,6 +918,7 @@ const char kEnableWebRtcSrtpEncryptedHeaders[] =
 const char kEnforceWebRtcIPPermissionCheck[] =
     "enforce-webrtc-ip-permission-check";
 
+>>>>>>> chromium
 // Override WebRTC IP handling policy to mimic the behavior when WebRTC IP
 // handling policy is specified in Preferences.
 const char kForceWebRtcIPHandlingPolicy[] = "force-webrtc-ip-handling-policy";
@@ -978,9 +1006,26 @@ const char kEnableAggressiveDOMStorageFlushing[] =
 // Enable indication that browser is controlled by automation.
 const char kEnableAutomation[] = "enable-automation";
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_IOS)
+// For mobile devices, tests should include a viewport meta tag to specify page
+// dimension adjustments. Omitting the tag can lead to automatic resizing to
+// the standard mobile fallback size (980), which results in content shrinking
+// as it first expands to 980, then scales down to 800 to fit the screen, as
+// observed in the issue at https://crrev.com/c/4615623.
+// This flag is intended for use in tests that do not include a viewport meta
+// tag. When enabled, it ensures the viewport size matches the standard mobile
+// fallback size, thereby helping to prevent content resizing in such tests.
+const char kPreventResizingContentsForTesting[] =
+    "prevent-resizing-contents-for-testing";
+#endif
+
+#if BUILDFLAG(IS_LINUX)
+=======
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
 #if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+>>>>>>> chromium
 // Allows sending text-to-speech requests to speech-dispatcher, a common
 // Linux speech service. Because it's buggy, the user must explicitly
 // enable it so that visiting a random webpage can't cause instability.

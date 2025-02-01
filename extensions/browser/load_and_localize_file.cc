@@ -4,6 +4,12 @@
 
 #include "extensions/browser/load_and_localize_file.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+
+#include "base/task/single_thread_task_runner.h"
+=======
+>>>>>>> chromium
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "base/threading/scoped_blocking_call.h"
@@ -95,7 +101,7 @@ void LoadAndLocalizeResources(const Extension& extension,
                               bool localize_file,
                               LoadAndLocalizeResourcesCallback callback) {
   DCHECK(!resources.empty());
-  DCHECK(base::ranges::all_of(resources, [](const ExtensionResource& resource) {
+  DCHECK(std::ranges::all_of(resources, [](const ExtensionResource& resource) {
     return !resource.extension_root().empty() &&
            !resource.relative_path().empty();
   }));

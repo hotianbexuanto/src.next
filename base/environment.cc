@@ -22,9 +22,15 @@ namespace {
 
 class EnvironmentImpl : public Environment {
  public:
+<<<<<<< HEAD
+  bool GetVar(std::string_view variable_name, std::string* result) override {
+    if (GetVarImpl(variable_name, result)) {
+=======
   bool GetVar(StringPiece variable_name, std::string* result) override {
     if (GetVarImpl(variable_name, result))
+>>>>>>> chromium
       return true;
+    }
 
     // Some commonly used variable names are uppercase while others
     // are lowercase, which is inconsistent. Let's try to be helpful
@@ -32,12 +38,13 @@ class EnvironmentImpl : public Environment {
     // I.e. HTTP_PROXY may be http_proxy for some users/systems.
     char first_char = variable_name[0];
     std::string alternate_case_var;
-    if (IsAsciiLower(first_char))
+    if (IsAsciiLower(first_char)) {
       alternate_case_var = ToUpperASCII(variable_name);
-    else if (IsAsciiUpper(first_char))
+    } else if (IsAsciiUpper(first_char)) {
       alternate_case_var = ToLowerASCII(variable_name);
-    else
+    } else {
       return false;
+    }
     return GetVarImpl(alternate_case_var, result);
   }
 
@@ -64,13 +71,21 @@ class EnvironmentImpl : public Environment {
       *result = WideToUTF8(value.get());
     }
     return true;
+<<<<<<< HEAD
+#elif BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
+    const char* env_value = getenv(std::string(variable_name).c_str());
+    if (!env_value) {
+=======
 #elif defined(OS_POSIX) || defined(OS_FUCHSIA)
     const char* env_value = getenv(variable_name.data());
     if (!env_value)
+>>>>>>> chromium
       return false;
+    }
     // Note that the variable may be defined but empty.
-    if (result)
+    if (result) {
       *result = env_value;
+    }
     return true;
 #endif
   }

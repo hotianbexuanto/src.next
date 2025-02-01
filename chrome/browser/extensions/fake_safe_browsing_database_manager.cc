@@ -29,8 +29,12 @@ FakeSafeBrowsingDatabaseManager::FakeSafeBrowsingDatabaseManager(bool enabled)
           content::GetIOThreadTaskRunner({})),
       enabled_(enabled) {}
 
+<<<<<<< HEAD
+FakeSafeBrowsingDatabaseManager::~FakeSafeBrowsingDatabaseManager() = default;
+=======
 FakeSafeBrowsingDatabaseManager::~FakeSafeBrowsingDatabaseManager() {
 }
+>>>>>>> chromium
 
 FakeSafeBrowsingDatabaseManager& FakeSafeBrowsingDatabaseManager::Enable() {
   enabled_ = true;

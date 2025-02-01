@@ -215,7 +215,8 @@ bool HttpServerProperties::SupportsRequestPriority(
       GetAlternativeServiceInfos(server, network_isolation_key);
   for (const AlternativeServiceInfo& alternative_service_info :
        alternative_service_info_vector) {
-    if (alternative_service_info.alternative_service().protocol == kProtoQUIC) {
+    if (alternative_service_info.alternative_service().protocol ==
+        NextProto::kProtoQUIC) {
       return true;
     }
   }
@@ -277,7 +278,7 @@ void HttpServerProperties::SetHttp2AlternativeService(
     const NetworkIsolationKey& network_isolation_key,
     const AlternativeService& alternative_service,
     base::Time expiration) {
-  DCHECK_EQ(alternative_service.protocol, kProtoHTTP2);
+  DCHECK_EQ(alternative_service.protocol, NextProto::kProtoHTTP2);
 
   SetAlternativeServices(
       origin, network_isolation_key,
@@ -292,7 +293,7 @@ void HttpServerProperties::SetQuicAlternativeService(
     const AlternativeService& alternative_service,
     base::Time expiration,
     const quic::ParsedQuicVersionVector& advertised_versions) {
-  DCHECK(alternative_service.protocol == kProtoQUIC);
+  DCHECK(alternative_service.protocol == NextProto::kProtoQUIC);
 
   SetAlternativeServices(
       origin, network_isolation_key,
@@ -689,7 +690,7 @@ void HttpServerProperties::MaybeForceHTTP11Internal(
   DCHECK_NE(server.scheme(), url::kWssScheme);
   if (RequiresHTTP11(std::move(server), network_isolation_key)) {
     ssl_config->alpn_protos.clear();
-    ssl_config->alpn_protos.push_back(kProtoHTTP11);
+    ssl_config->alpn_protos.push_back(NextProto::kProtoHTTP11);
   }
 }
 
@@ -723,12 +724,12 @@ HttpServerProperties::GetAlternativeServiceInfosInternal(
       }
       // If the alternative service is equivalent to the origin (same host, same
       // port, and both TCP), skip it.
-      if (host_port_pair.Equals(alternative_service.host_port_pair()) &&
-          alternative_service.protocol == kProtoHTTP2) {
+      if (host_port_pair.Equals(alternative_service.GetHostPortPair()) &&
+          alternative_service.protocol == NextProto::kProtoHTTP2) {
         ++it;
         continue;
       }
-      if (alternative_service.protocol == kProtoQUIC) {
+      if (alternative_service.protocol == NextProto::kProtoQUIC) {
         valid_alternative_service_infos.push_back(
             AlternativeServiceInfo::CreateQuicAlternativeServiceInfo(
                 alternative_service, it->expiration(),
@@ -778,7 +779,7 @@ HttpServerProperties::GetAlternativeServiceInfosInternal(
       ++it;
       continue;
     }
-    if (alternative_service.protocol == kProtoQUIC) {
+    if (alternative_service.protocol == NextProto::kProtoQUIC) {
       valid_alternative_service_infos.push_back(
           AlternativeServiceInfo::CreateQuicAlternativeServiceInfo(
               alternative_service, it->expiration(),

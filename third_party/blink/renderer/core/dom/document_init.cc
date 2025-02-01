@@ -247,6 +247,10 @@ DocumentInit& DocumentInit::WithWebBundleClaimedUrl(
   return *this;
 }
 
+bool DocumentInit::IsForDiscard() const {
+  return is_for_discard_;
+}
+
 DocumentInit& DocumentInit::WithUkmSourceId(ukm::SourceId ukm_source_id) {
   ukm_source_id_ = ukm_source_id;
   return *this;

@@ -8,7 +8,11 @@
 
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
+<<<<<<< HEAD
+#include "components/input/render_widget_host_input_event_router.h"
+=======
 #include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "content/browser/renderer_host/frame_tree.h"
 #include "content/browser/renderer_host/render_widget_host_impl.h"
 #include "content/browser/renderer_host/render_widget_host_input_event_router.h"
@@ -853,8 +857,13 @@ IN_PROC_BROWSER_TEST_F(PointerLockBrowserTestWithOptions,
 #endif
 
 #if defined(USE_AURA)
+<<<<<<< HEAD
+// TODO(crbug.com/40635377): Remove failure test when fully implemented
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
+=======
 // TODO(https://crbug.com/982379): Remove failure test when fully implemented
 #if defined(OS_WIN) || BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 #define MAYBE_ChangeUnadjustedMovementFailure \
   DISABLED_ChangeUnadjustedMovementFailure
 #else

@@ -79,6 +79,7 @@
 #include "third_party/blink/renderer/platform/text/text_break_iterator.h"
 #include "third_party/blink/renderer/platform/text/text_run_iterator.h"
 #include "third_party/blink/renderer/platform/wtf/size_assertions.h"
+#include "third_party/blink/renderer/platform/wtf/text/character_visitor.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_buffer.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
@@ -252,6 +253,15 @@ void LayoutText::StyleDidChange(StyleDifference diff,
 void LayoutText::RemoveAndDestroyTextBoxes() {
   NOT_DESTROYED();
   if (!DocumentBeingDestroyed()) {
+<<<<<<< HEAD
+    if (Parent()) {
+      Parent()->DirtyLinesFromChangedChild(this);
+    }
+    if (FirstInlineFragmentItemIndex()) {
+      DetachAxHooksIfNeeded();
+      FragmentItems::LayoutObjectWillBeDestroyed(*this);
+      ClearFirstInlineFragmentItemIndex();
+=======
     if (FirstTextBox()) {
       if (IsBR()) {
         RootInlineBox* next = FirstTextBox()->Root().NextRootBox();
@@ -268,9 +278,10 @@ void LayoutText::RemoveAndDestroyTextBoxes() {
         NGFragmentItems::LayoutObjectWillBeDestroyed(*this);
         ClearFirstInlineFragmentItemIndex();
       }
+>>>>>>> chromium
     }
   } else if (FirstInlineFragmentItemIndex()) {
-    DetachAbstractInlineTextBoxesIfNeeded();
+    DetachAxHooksIfNeeded();
     ClearFirstInlineFragmentItemIndex();
   }
   DeleteTextBoxes();
@@ -311,12 +322,16 @@ void LayoutText::RemoveTextBox(InlineTextBox* box) {
 
 void LayoutText::DeleteTextBoxes() {
   NOT_DESTROYED();
+<<<<<<< HEAD
+  DetachAxHooksIfNeeded();
+=======
   if (!IsInLayoutNGInlineFormattingContext())
     return MutableTextBoxes().DeleteLineBoxes();
   DetachAbstractInlineTextBoxesIfNeeded();
+>>>>>>> chromium
 }
 
-void LayoutText::DetachAbstractInlineTextBoxes() {
+void LayoutText::DetachAxHooks() {
   NOT_DESTROYED();
   // TODO(layout-dev): Because We should call |WillDestroy()| once for
   // associated fragments, when you reuse fragments, you should construct
@@ -325,15 +340,28 @@ void LayoutText::DetachAbstractInlineTextBoxes() {
   has_abstract_inline_text_box_ = false;
   // TODO(yosin): Make sure we call this function within valid containg block
   // of |this|.
+<<<<<<< HEAD
+  InlineCursor cursor;
+  for (cursor.MoveTo(*this); cursor; cursor.MoveToNextForSameLayoutObject()) {
+    AbstractInlineTextBox::WillDestroy(cursor);
+  }
+}
+
+void LayoutText::ClearBlockFlowCachedData(const LayoutBlockFlow* block_flow) {
+  if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
+    cache->ClearBlockFlowCachedData(FragmentItemsContainer());
+  }
+=======
   NGInlineCursor cursor;
   for (cursor.MoveTo(*this); cursor; cursor.MoveToNextForSameLayoutObject())
     NGAbstractInlineTextBox::WillDestroy(cursor);
+>>>>>>> chromium
 }
 
 void LayoutText::ClearFirstInlineFragmentItemIndex() {
   NOT_DESTROYED();
   CHECK(IsInLayoutNGInlineFormattingContext()) << *this;
-  DetachAbstractInlineTextBoxesIfNeeded();
+  DetachAxHooksIfNeeded();
   first_fragment_item_index_ = 0u;
 }
 
@@ -342,7 +370,20 @@ void LayoutText::SetFirstInlineFragmentItemIndex(wtf_size_t index) {
   CHECK(IsInLayoutNGInlineFormattingContext());
   // TODO(yosin): Call |NGAbstractInlineTextBox::WillDestroy()|.
   DCHECK_NE(index, 0u);
+<<<<<<< HEAD
+  DetachAxHooksIfNeeded();
+  // Changing the first fragment item index causes
+  // LayoutText::FirstAbstractInlineTextBox to return a box,
+  // so notify the AX object for this LayoutText that it might need to
+  // recompute its text child.
+  if (index > 0 && first_fragment_item_index_ == 0) {
+    if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
+      cache->TextChanged(this);
+    }
+  }
+=======
   DetachAbstractInlineTextBoxesIfNeeded();
+>>>>>>> chromium
   first_fragment_item_index_ = index;
 }
 
@@ -1688,6 +1729,13 @@ void LayoutText::ComputePreferredLogicalWidths(
 
 bool LayoutText::IsAllCollapsibleWhitespace() const {
   NOT_DESTROYED();
+<<<<<<< HEAD
+  const ComputedStyle& style = StyleRef();
+  return WTF::VisitCharacters(text_, [&style](auto chars) {
+    return std::ranges::all_of(
+        chars, [&style](auto ch) { return style.IsCollapsibleWhiteSpace(ch); });
+  });
+=======
   unsigned length = TextLength();
   if (Is8Bit()) {
     for (unsigned i = 0; i < length; ++i) {
@@ -1701,6 +1749,7 @@ bool LayoutText::IsAllCollapsibleWhitespace() const {
       return false;
   }
   return true;
+>>>>>>> chromium
 }
 
 bool LayoutText::ContainsOnlyWhitespace(unsigned from, unsigned len) const {

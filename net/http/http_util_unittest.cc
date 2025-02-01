@@ -2,7 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#include "net/http/http_util.h"
+
+=======
+>>>>>>> chromium
 #include <algorithm>
+#include <array>
 #include <limits>
 
 #include "base/cxx17_backports.h"
@@ -696,36 +702,47 @@ TEST(HttpUtilTest, AssembleRawHeaders) {
 
 // Test SpecForRequest().
 TEST(HttpUtilTest, RequestUrlSanitize) {
-  struct {
+  struct Tests {
     const char* const url;
     const char* const expected_spec;
-  } tests[] = {
-    { // Check that #hash is removed.
-      "http://www.google.com:78/foobar?query=1#hash",
-      "http://www.google.com:78/foobar?query=1",
-    },
-    { // The reference may itself contain # -- strip all of it.
-      "http://192.168.0.1?query=1#hash#10#11#13#14",
-      "http://192.168.0.1/?query=1",
-    },
-    { // Strip username/password.
-      "http://user:pass@google.com",
-      "http://google.com/",
-    },
-    { // https scheme
-      "https://www.google.com:78/foobar?query=1#hash",
-      "https://www.google.com:78/foobar?query=1",
-    },
-    { // WebSocket's ws scheme
-      "ws://www.google.com:78/foobar?query=1#hash",
-      "ws://www.google.com:78/foobar?query=1",
-    },
-    { // WebSocket's wss scheme
-      "wss://www.google.com:78/foobar?query=1#hash",
-      "wss://www.google.com:78/foobar?query=1",
-    }
   };
+<<<<<<< HEAD
+  auto tests = std::to_array<Tests>({
+      {
+          // Check that #hash is removed.
+          "http://www.google.com:78/foobar?query=1#hash",
+          "http://www.google.com:78/foobar?query=1",
+      },
+      {
+          // The reference may itself contain # -- strip all of it.
+          "http://192.168.0.1?query=1#hash#10#11#13#14",
+          "http://192.168.0.1/?query=1",
+      },
+      {
+          // Strip username/password.
+          "http://user:pass@google.com",
+          "http://google.com/",
+      },
+      {
+          // https scheme
+          "https://www.google.com:78/foobar?query=1#hash",
+          "https://www.google.com:78/foobar?query=1",
+      },
+      {
+          // WebSocket's ws scheme
+          "ws://www.google.com:78/foobar?query=1#hash",
+          "ws://www.google.com:78/foobar?query=1",
+      },
+      {
+          // WebSocket's wss scheme
+          "wss://www.google.com:78/foobar?query=1#hash",
+          "wss://www.google.com:78/foobar?query=1",
+      },
+  });
+  for (size_t i = 0; i < std::size(tests); ++i) {
+=======
   for (size_t i = 0; i < base::size(tests); ++i) {
+>>>>>>> chromium
     SCOPED_TRACE(i);
 
     GURL url(GURL(tests[i].url));
@@ -1077,10 +1094,30 @@ TEST(HttpUtilTest, ParseRetryAfterHeader) {
   base::Time later;
   EXPECT_TRUE(base::Time::FromUTCExploded(later_exploded, &later));
 
-  const struct {
+  struct Tests {
     const char* retry_after_string;
     bool expected_return_value;
     base::TimeDelta expected_retry_after;
+<<<<<<< HEAD
+  };
+  const auto tests = std::to_array<Tests>({
+      {"", false, base::TimeDelta()},
+      {"-3", false, base::TimeDelta()},
+      {"-2", false, base::TimeDelta()},
+      {"-1", false, base::TimeDelta()},
+      {"+0", false, base::TimeDelta()},
+      {"+1", false, base::TimeDelta()},
+      {"0", true, base::Seconds(0)},
+      {"1", true, base::Seconds(1)},
+      {"2", true, base::Seconds(2)},
+      {"3", true, base::Seconds(3)},
+      {"60", true, base::Seconds(60)},
+      {"3600", true, base::Seconds(3600)},
+      {"86400", true, base::Seconds(86400)},
+      {"Thu, 1 Jan 2015 12:34:56 GMT", true, later - now},
+      {"Mon, 1 Jan 1900 12:34:56 GMT", false, base::TimeDelta()},
+  });
+=======
   } tests[] = {{"", false, base::TimeDelta()},
                {"-3", false, base::TimeDelta()},
                {"-2", false, base::TimeDelta()},
@@ -1096,6 +1133,7 @@ TEST(HttpUtilTest, ParseRetryAfterHeader) {
                {"86400", true, base::TimeDelta::FromSeconds(86400)},
                {"Thu, 1 Jan 2015 12:34:56 GMT", true, later - now},
                {"Mon, 1 Jan 1900 12:34:56 GMT", false, base::TimeDelta()}};
+>>>>>>> chromium
 
   for (size_t i = 0; i < base::size(tests); ++i) {
     base::TimeDelta retry_after;

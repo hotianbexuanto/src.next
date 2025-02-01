@@ -26,6 +26,11 @@
 #include "third_party/blink/renderer/core/dom/decoded_data_document_parser.h"
 
 #include <memory>
+<<<<<<< HEAD
+
+#include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-shared.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/document_encoding_data.h"
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder.h"
@@ -67,7 +72,18 @@ void DecodedDataDocumentParser::AppendBytes(const char* data, size_t length) {
   if (IsDetached())
     return;
 
+<<<<<<< HEAD
+  String auto_detected_charset;
+  String decoded = decoder_->Decode(bytes, &auto_detected_charset);
+  if (!auto_detected_charset.empty()) {
+    GetDocument()->CountUse(WebFeature::kCharsetAutoDetection);
+    if (auto_detected_charset == "ISO-2022-JP") {
+      GetDocument()->CountUse(WebFeature::kCharsetAutoDetectionISO2022JP);
+    }
+  }
+=======
   String decoded = decoder_->Decode(data, length);
+>>>>>>> chromium
   UpdateDocument(decoded);
 }
 

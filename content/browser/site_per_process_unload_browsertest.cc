@@ -2,8 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+=======
 #include "content/browser/site_per_process_browsertest.h"
 
+>>>>>>> chromium
 #include <algorithm>
 #include <list>
 #include <memory>
@@ -15,8 +18,13 @@
 #include "base/json/json_reader.h"
 #include "base/location.h"
 #include "base/memory/ptr_util.h"
+<<<<<<< HEAD
+#include "base/memory/weak_ptr.h"
+#include "base/task/single_thread_task_runner.h"
+=======
 #include "base/run_loop.h"
 #include "base/single_thread_task_runner.h"
+>>>>>>> chromium
 #include "base/test/bind.h"
 #include "base/test/test_timeouts.h"
 #include "base/threading/thread_task_runner_handle.h"
@@ -456,6 +464,15 @@ IN_PROC_BROWSER_TEST_P(SitePerProcessBrowserTest,
   // https://html.spec.whatwg.org/multipage/browsing-the-web.html#unloading-documents
   //
   // In process B:
+<<<<<<< HEAD
+  auto B1 = std::ranges::find(messages, "B1");
+  auto B2 = std::ranges::find(messages, "B2");
+  EXPECT_LT(B1, B2);
+
+  // In process C:
+  auto C2 = std::ranges::find(messages, "C2");
+  auto C3 = std::ranges::find(messages, "C3");
+=======
   auto B1 = std::find(messages.begin(), messages.end(), "B1");
   auto B2 = std::find(messages.begin(), messages.end(), "B2");
   EXPECT_LT(B1, B2);
@@ -463,6 +480,7 @@ IN_PROC_BROWSER_TEST_P(SitePerProcessBrowserTest,
   // In process C:
   auto C2 = std::find(messages.begin(), messages.end(), "C2");
   auto C3 = std::find(messages.begin(), messages.end(), "C3");
+>>>>>>> chromium
   EXPECT_LT(C2, C3);
 
   // Make sure the processes are deleted at some point.
@@ -543,10 +561,17 @@ IN_PROC_BROWSER_TEST_P(SitePerProcessBrowserTest, Unload_ABAB) {
   EXPECT_FALSE(dom_message_queue.PopMessage(&message));
 
   EXPECT_THAT(messages, WhenSorted(ElementsAre("A1", "A2", "B1", "B2")));
+<<<<<<< HEAD
+  auto A1 = std::ranges::find(messages, "A1");
+  auto A2 = std::ranges::find(messages, "A2");
+  auto B1 = std::ranges::find(messages, "B1");
+  auto B2 = std::ranges::find(messages, "B2");
+=======
   auto A1 = std::find(messages.begin(), messages.end(), "A1");
   auto A2 = std::find(messages.begin(), messages.end(), "A2");
   auto B1 = std::find(messages.begin(), messages.end(), "B1");
   auto B2 = std::find(messages.begin(), messages.end(), "B2");
+>>>>>>> chromium
   EXPECT_LT(A1, A2);
   EXPECT_LT(B1, B2);
 

@@ -1082,6 +1082,25 @@ DownloadFileType::DangerLevel DownloadTargetDeterminer::GetDangerLevel(
     PriorVisitsToReferrer visits) const {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
+<<<<<<< HEAD
+  // User-initiated extension downloads from pref-whitelisted sources are not
+  // considered dangerous.
+  if (download_->HasUserGesture() &&
+      download_crx_util::IsTrustedExtensionDownload(GetProfile(), *download_)) {
+    return DownloadFileType::NOT_DANGEROUS;
+  }
+
+  DownloadFileType::DangerLevel danger_level =
+      safe_browsing::FileTypePolicies::GetInstance()->GetFileDangerLevel(
+          virtual_path_.BaseName(), download_->GetURL(),
+          GetProfile()->GetPrefs());
+  policy::DownloadRestriction download_restriction =
+      static_cast<policy::DownloadRestriction>(
+          GetProfile()->GetPrefs()->GetInteger(
+              policy::policy_prefs::kDownloadRestrictions));
+
+=======
+>>>>>>> chromium
   // If the user has has been prompted or will be, assume that the user has
   // approved the download. A programmatic download is considered safe unless it
   // contains malware.
@@ -1089,13 +1108,6 @@ DownloadFileType::DangerLevel DownloadTargetDeterminer::GetDangerLevel(
       confirmation_reason_ != DownloadConfirmationReason::NONE ||
       !download_->GetForcedFilePath().empty())
     return DownloadFileType::NOT_DANGEROUS;
-
-  // User-initiated extension downloads from pref-whitelisted sources are not
-  // considered dangerous.
-  if (download_->HasUserGesture() &&
-      download_crx_util::IsTrustedExtensionDownload(GetProfile(), *download_)) {
-    return DownloadFileType::NOT_DANGEROUS;
-  }
 
   // Anything the user has marked auto-open is OK if it's user-initiated.
   if (download_prefs_->IsAutoOpenEnabled(download_->GetURL(), virtual_path_) &&

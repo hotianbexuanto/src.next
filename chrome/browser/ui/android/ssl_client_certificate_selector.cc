@@ -3,7 +3,15 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ssl/ssl_client_certificate_selector.h"
+<<<<<<< HEAD
+
+#include <utility>
+
+#include "base/functional/callback.h"
+#include "base/no_destructor.h"
+=======
 #include "chrome/browser/vr/vr_tab_helper.h"
+>>>>>>> chromium
 #include "components/browser_ui/client_certificate/android/ssl_client_certificate_request.h"
 #include "content/public/browser/client_certificate_delegate.h"
 #include "net/ssl/ssl_private_key.h"
@@ -27,4 +35,11 @@ base::OnceClosure ShowSSLClientCertificateSelector(
       contents, cert_request_info, std::move(delegate));
 }
 
+<<<<<<< HEAD
+void SetShowSSLClientCertificateSelectorHookForTest(
+    ShowSSLClientCertificateSelectorTestingHook hook) {
+  GetShowSSLClientCertificateSelectorTestingHook() = std::move(hook);
+}
+=======
 }  // namespace chrome
+>>>>>>> chromium

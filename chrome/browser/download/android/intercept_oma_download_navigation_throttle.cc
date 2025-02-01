@@ -82,8 +82,9 @@ void InterceptOMADownloadNavigationThrottle::InterceptDownload() {
   headers->GetNormalizedHeader("content-disposition", &content_disposition);
   content::WebContents* web_contents = navigation_handle()->GetWebContents();
   int process_id =
-      web_contents ? web_contents->GetRenderViewHost()->GetProcess()->GetID()
-                   : 0;
+      web_contents
+          ? web_contents->GetRenderViewHost()->GetProcess()->GetDeprecatedID()
+          : 0;
   int routing_id =
       web_contents ? web_contents->GetRenderViewHost()->GetRoutingID() : 0;
 

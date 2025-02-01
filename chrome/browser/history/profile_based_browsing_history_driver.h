@@ -30,10 +30,14 @@ class ProfileBasedBrowsingHistoryDriver
   virtual Profile* GetProfile() = 0;
 
  protected:
+<<<<<<< HEAD
+  ProfileBasedBrowsingHistoryDriver() = default;
+=======
   ProfileBasedBrowsingHistoryDriver() {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ProfileBasedBrowsingHistoryDriver);
+>>>>>>> chromium
 };
 
 #endif  // CHROME_BROWSER_HISTORY_PROFILE_BASED_BROWSING_HISTORY_DRIVER_H_

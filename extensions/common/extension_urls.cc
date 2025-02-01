@@ -4,6 +4,13 @@
 
 #include "extensions/common/extension_urls.h"
 
+<<<<<<< HEAD
+#include <string_view>
+
+#include "base/auto_reset.h"
+#include "base/strings/escape.h"
+=======
+>>>>>>> chromium
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -37,12 +44,31 @@ GURL GetWebstoreLaunchURL() {
   return GURL(kChromeWebstoreBaseURL);
 }
 
+<<<<<<< HEAD
+GURL GetNewWebstoreLaunchURL() {
+  extensions::ExtensionsClient* client = extensions::ExtensionsClient::Get();
+  if (client)
+    return client->GetNewWebstoreBaseURL();
+  return GURL(kNewChromeWebstoreBaseURL);
+}
+
+GURL AppendUtmSource(const GURL& url, std::string_view utm_source_value) {
+  return net::AppendQueryParameter(url, "utm_source", utm_source_value);
+}
+
+GURL GetWebstoreExtensionsCategoryURL() {
+  GURL base_url = GetNewWebstoreLaunchURL();
+  CHECK_EQ(base_url.path_piece(), "/")
+      << "GURL::Resolve() won't work with a URL with a path.";
+  return base_url.Resolve("category/extensions");
+=======
 // TODO(csharrison,devlin): Migrate the following methods to return
 // GURLs.
 // TODO(devlin): Try to use GURL methods like Resolve instead of string
 // concatenation.
 std::string GetWebstoreExtensionsCategoryURL() {
   return GetWebstoreLaunchURL().spec() + "/category/extensions";
+>>>>>>> chromium
 }
 
 std::string GetWebstoreItemDetailURLPrefix() {

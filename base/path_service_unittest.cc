@@ -35,18 +35,34 @@ bool ReturnsValidPath(int dir_type) {
 #if defined(OS_POSIX)
   // If chromium has never been started on this account, the cache path may not
   // exist.
+<<<<<<< HEAD
+  if (key == DIR_CACHE) {
+=======
   if (dir_type == DIR_CACHE)
+>>>>>>> chromium
     check_path_exists = false;
+  }
 #endif
 #if defined(OS_LINUX) || defined(OS_CHROMEOS)
   // On the linux try-bots: a path is returned (e.g. /home/chrome-bot/Desktop),
   // but it doesn't exist.
+<<<<<<< HEAD
+  if (key == DIR_USER_DESKTOP) {
+=======
   if (dir_type == DIR_USER_DESKTOP)
+>>>>>>> chromium
     check_path_exists = false;
+  }
 #endif
+<<<<<<< HEAD
+#if BUILDFLAG(IS_WIN)
+  if (key == DIR_TASKBAR_PINS) {
+=======
 #if defined(OS_WIN)
   if (dir_type == DIR_TASKBAR_PINS)
+>>>>>>> chromium
     check_path_exists = false;
+  }
 #endif
 #if defined(OS_APPLE)
   if (dir_type != DIR_EXE && dir_type != DIR_MODULE && dir_type != FILE_EXE &&
@@ -129,6 +145,18 @@ TEST_F(PathServiceTest, Get) {
   for (int key = PATH_MAC_START + 1; key < PATH_MAC_END; ++key) {
     EXPECT_PRED1(ReturnsValidPath, key);
   }
+<<<<<<< HEAD
+#elif BUILDFLAG(IS_IOS)
+  for (int key = PATH_IOS_START + 1; key < PATH_IOS_END; ++key) {
+    EXPECT_PRED1(ReturnsValidPath, key);
+  }
+#elif BUILDFLAG(IS_ANDROID)
+  for (int key = PATH_ANDROID_START + 1; key < PATH_ANDROID_END; ++key) {
+    EXPECT_PRED1(ReturnsValidPath, key);
+  }
+#elif BUILDFLAG(IS_POSIX)
+  for (int key = PATH_POSIX_START + 1; key < PATH_POSIX_END; ++key) {
+=======
 #elif defined(OS_ANDROID)
   for (int key = PATH_ANDROID_START + 1; key < PATH_ANDROID_END;
        ++key) {
@@ -137,6 +165,7 @@ TEST_F(PathServiceTest, Get) {
 #elif defined(OS_POSIX)
   for (int key = PATH_POSIX_START + 1; key < PATH_POSIX_END;
        ++key) {
+>>>>>>> chromium
     EXPECT_PRED1(ReturnsValidPath, key);
   }
 #endif
@@ -176,15 +205,11 @@ TEST_F(PathServiceTest, Override) {
 
   FilePath fake_cache_dir2(temp_dir.GetPath().AppendASCII("cache2"));
   // PathService::OverrideAndCreateIfNeeded should obey the |create| parameter.
-  PathService::OverrideAndCreateIfNeeded(my_special_key,
-                                         fake_cache_dir2,
-                                         false,
+  PathService::OverrideAndCreateIfNeeded(my_special_key, fake_cache_dir2, false,
                                          false);
   EXPECT_FALSE(PathExists(fake_cache_dir2));
-  EXPECT_TRUE(PathService::OverrideAndCreateIfNeeded(my_special_key,
-                                                     fake_cache_dir2,
-                                                     false,
-                                                     true));
+  EXPECT_TRUE(PathService::OverrideAndCreateIfNeeded(
+      my_special_key, fake_cache_dir2, false, true));
   EXPECT_TRUE(PathExists(fake_cache_dir2));
 
 #if defined(OS_POSIX)
@@ -196,17 +221,21 @@ TEST_F(PathServiceTest, Override) {
   // This fails because MakeAbsoluteFilePath fails for non-existent files.
   // Earlier versions of Bionic libc don't fail for non-existent files, so
   // skip this check on Android.
+<<<<<<< HEAD
+  EXPECT_FALSE(PathService::OverrideAndCreateIfNeeded(
+      my_special_key, non_existent, false, false));
+#endif  // !BUILDFLAG(IS_ANDROID)
+=======
   EXPECT_FALSE(PathService::OverrideAndCreateIfNeeded(my_special_key,
                                                       non_existent,
                                                       false,
                                                       false));
 #endif
+>>>>>>> chromium
   // This works because indicating that |non_existent| is absolute skips the
   // internal MakeAbsoluteFilePath call.
-  EXPECT_TRUE(PathService::OverrideAndCreateIfNeeded(my_special_key,
-                                                     non_existent,
-                                                     true,
-                                                     false));
+  EXPECT_TRUE(PathService::OverrideAndCreateIfNeeded(
+      my_special_key, non_existent, true, false));
   // Check that the path has been overridden and no directory was created.
   EXPECT_FALSE(PathExists(non_existent));
   FilePath path;
@@ -265,48 +294,33 @@ TEST_F(PathServiceTest, GetProgramFiles) {
   FilePath programfiles_dir;
 #if defined(_WIN64)
   // 64-bit on 64-bit.
-  EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES,
-      &programfiles_dir));
+  EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES, &programfiles_dir));
+  EXPECT_EQ(programfiles_dir.value(), FILE_PATH_LITERAL("C:\\Program Files"));
+  EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILESX86, &programfiles_dir));
   EXPECT_EQ(programfiles_dir.value(),
-      FILE_PATH_LITERAL("C:\\Program Files"));
-  EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILESX86,
-      &programfiles_dir));
-  EXPECT_EQ(programfiles_dir.value(),
-      FILE_PATH_LITERAL("C:\\Program Files (x86)"));
-  EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES6432,
-      &programfiles_dir));
-  EXPECT_EQ(programfiles_dir.value(),
-      FILE_PATH_LITERAL("C:\\Program Files"));
+            FILE_PATH_LITERAL("C:\\Program Files (x86)"));
+  EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES6432, &programfiles_dir));
+  EXPECT_EQ(programfiles_dir.value(), FILE_PATH_LITERAL("C:\\Program Files"));
 #else
   if (base::win::OSInfo::GetInstance()->wow64_status() ==
       base::win::OSInfo::WOW64_ENABLED) {
     // 32-bit on 64-bit.
-    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES,
-        &programfiles_dir));
+    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES, &programfiles_dir));
     EXPECT_EQ(programfiles_dir.value(),
-        FILE_PATH_LITERAL("C:\\Program Files (x86)"));
-    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILESX86,
-        &programfiles_dir));
+              FILE_PATH_LITERAL("C:\\Program Files (x86)"));
+    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILESX86, &programfiles_dir));
     EXPECT_EQ(programfiles_dir.value(),
-        FILE_PATH_LITERAL("C:\\Program Files (x86)"));
-    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES6432,
-        &programfiles_dir));
-    EXPECT_EQ(programfiles_dir.value(),
-        FILE_PATH_LITERAL("C:\\Program Files"));
+              FILE_PATH_LITERAL("C:\\Program Files (x86)"));
+    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES6432, &programfiles_dir));
+    EXPECT_EQ(programfiles_dir.value(), FILE_PATH_LITERAL("C:\\Program Files"));
   } else {
     // 32-bit on 32-bit.
-    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES,
-        &programfiles_dir));
-    EXPECT_EQ(programfiles_dir.value(),
-        FILE_PATH_LITERAL("C:\\Program Files"));
-    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILESX86,
-        &programfiles_dir));
-    EXPECT_EQ(programfiles_dir.value(),
-        FILE_PATH_LITERAL("C:\\Program Files"));
-    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES6432,
-        &programfiles_dir));
-    EXPECT_EQ(programfiles_dir.value(),
-        FILE_PATH_LITERAL("C:\\Program Files"));
+    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES, &programfiles_dir));
+    EXPECT_EQ(programfiles_dir.value(), FILE_PATH_LITERAL("C:\\Program Files"));
+    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILESX86, &programfiles_dir));
+    EXPECT_EQ(programfiles_dir.value(), FILE_PATH_LITERAL("C:\\Program Files"));
+    EXPECT_TRUE(PathService::Get(DIR_PROGRAM_FILES6432, &programfiles_dir));
+    EXPECT_EQ(programfiles_dir.value(), FILE_PATH_LITERAL("C:\\Program Files"));
   }
 #endif
 }

@@ -51,7 +51,11 @@
 #include "extensions/common/manifest.h"
 #include "ui/base/l10n/l10n_util.h"
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 #include "ash/constants/ash_paths.h"
 #include "base/path_service.h"
 #include "chrome/browser/ash/app_mode/kiosk_app_external_loader.h"
@@ -62,10 +66,18 @@
 #include "chrome/browser/ash/policy/core/device_local_account.h"
 #include "chrome/browser/ash/policy/core/device_local_account_policy_service.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
+<<<<<<< HEAD
+#include "chrome/browser/chromeos/app_mode/kiosk_app_external_loader.h"
+#include "chrome/browser/chromeos/extensions/external_loader/device_local_account_external_policy_loader.h"
+#include "chromeos/ash/experiences/arc/arc_util.h"
+#include "chromeos/components/kiosk/kiosk_utils.h"
+#include "chromeos/components/mgs/managed_guest_session_utils.h"
+=======
 #include "chrome/browser/chromeos/extensions/device_local_account_external_policy_loader.h"
 #include "chrome/browser/chromeos/extensions/signin_screen_extensions_external_loader.h"
 #include "components/arc/arc_util.h"
 #include "extensions/common/constants.h"
+>>>>>>> chromium
 #else
 #include "chrome/browser/extensions/preinstalled_apps.h"
 #endif

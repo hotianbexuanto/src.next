@@ -82,6 +82,18 @@ void EmbeddedObjectPainter::PaintReplaced(const PaintInfo& paint_info,
       ScaleAlpha(Color::kWhite, kReplacementTextRoundedRectOpacity));
   context.FillPath(rounded_background_rect);
 
+<<<<<<< HEAD
+  gfx::RectF text_rect(gfx::PointF(), text_geometry);
+  text_rect.Offset(gfx::PointF(content_rect.Center()) -
+                   text_rect.CenterPoint());
+  context.SetFillColor(Color::FromSkColor(
+      ScaleAlpha(SK_ColorBLACK, kReplacementTextTextOpacity)));
+  context.DrawBidiText(
+      font, text_run,
+      text_rect.origin() +
+          gfx::Vector2dF(0, font_data->GetFontMetrics().Ascent()),
+      auto_dark_mode);
+=======
   FloatRect text_rect(FloatPoint(), text_geometry);
   text_rect.Move(FloatPoint(content_rect.Center()) - text_rect.Center());
   TextRunPaintInfo run_info(text_run);
@@ -89,6 +101,7 @@ void EmbeddedObjectPainter::PaintReplaced(const PaintInfo& paint_info,
   context.DrawBidiText(font, run_info,
                        text_rect.Location() +
                            FloatSize(0, font_data->GetFontMetrics().Ascent()));
+>>>>>>> chromium
 }
 
 }  // namespace blink

@@ -77,10 +77,17 @@ public class TabSwitcherDrawable extends TintedDrawable {
         if (!textString.isEmpty()) {
             mTextPaint.getTextBounds(textString, 0, textString.length(), mTextBounds);
 
+<<<<<<< HEAD
+            float textX = drawableBounds.width() / 2f;
+            float textY =
+                    (drawableBounds.height() + mTextBounds.bottom - mTextBounds.top) / 2f
+                            - mTextBounds.bottom;
+=======
             Rect drawableBounds = getBounds();
             int textX = drawableBounds.width() / 2;
             int textY = drawableBounds.height() / 2 + (mTextBounds.bottom - mTextBounds.top) / 2
                     - mTextBounds.bottom;
+>>>>>>> chromium
 
             canvas.drawText(textString, textX, textY, mTextPaint);
         }

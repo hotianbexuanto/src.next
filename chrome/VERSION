@@ -1,4 +1,11 @@
+<<<<<<< HEAD
+MAJOR=134
+MINOR=0
+BUILD=6992
+PATCH=1
+=======
 MAJOR=93
 MINOR=0
 BUILD=4577
 PATCH=25
+>>>>>>> chromium

@@ -46,8 +46,14 @@ namespace {
 // download that was sent to the UI.
 class TestDelegate : public DownloadUIController::Delegate {
  public:
+<<<<<<< HEAD
+  explicit TestDelegate(
+      base::WeakPtr<raw_ptr<download::DownloadItem>> receiver);
+  ~TestDelegate() override = default;
+=======
   explicit TestDelegate(base::WeakPtr<download::DownloadItem*> receiver);
   ~TestDelegate() override {}
+>>>>>>> chromium
 
  private:
   void OnNewDownloadReady(download::DownloadItem* item) override;
@@ -81,7 +87,7 @@ class TestDownloadCoreService : public DownloadCoreServiceImpl {
 TestDownloadCoreService::TestDownloadCoreService(Profile* profile)
     : DownloadCoreServiceImpl(profile) {}
 
-TestDownloadCoreService::~TestDownloadCoreService() {}
+TestDownloadCoreService::~TestDownloadCoreService() = default;
 
 DownloadHistory* TestDownloadCoreService::GetDownloadHistory() {
   return download_history_.get();

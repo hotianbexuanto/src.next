@@ -5,8 +5,11 @@
 package org.chromium.chrome.browser.download;
 
 import static org.mockito.ArgumentMatchers.any;
+<<<<<<< HEAD
+=======
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+>>>>>>> chromium
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -20,7 +23,6 @@ import android.app.Activity;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
@@ -32,11 +34,15 @@ import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLog;
 
+<<<<<<< HEAD
+import org.chromium.base.test.BaseRobolectricTestRunner;
+=======
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.JniMocker;
 import org.chromium.chrome.browser.download.dialogs.DownloadLaterDialogChoice;
 import org.chromium.chrome.browser.download.dialogs.DownloadLaterDialogCoordinator;
 import org.chromium.chrome.browser.download.dialogs.DownloadLaterDialogProperties;
+>>>>>>> chromium
 import org.chromium.chrome.browser.download.dialogs.DownloadLocationDialogCoordinator;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.preferences.Pref;
@@ -68,11 +74,15 @@ public class DownloadDialogBridgeUnitTest {
 
     private DownloadDialogBridge mBridge;
 
+<<<<<<< HEAD
+    @Mock private DownloadDialogBridge.Natives mNativeMock;
+=======
     @Rule
     public JniMocker mJniMocker = new JniMocker();
 
     @Rule
     public TestRule mFeaturesProcessor = new Features.JUnitProcessor();
+>>>>>>> chromium
 
     @Mock
     private DownloadDialogBridge.Natives mNativeMock;
@@ -98,7 +108,7 @@ public class DownloadDialogBridgeUnitTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         ShadowLog.stream = System.out;
-        mJniMocker.mock(DownloadDialogBridgeJni.TEST_HOOKS, mNativeMock);
+        DownloadDialogBridgeJni.setInstanceForTesting(mNativeMock);
         mActivity = Robolectric.buildActivity(Activity.class).setup().get();
         mBridge =
                 new DownloadDialogBridge(FAKE_NATIVE_HOLDER, mDownloadLaterDialog, mLocationDialog);
@@ -118,6 +128,8 @@ public class DownloadDialogBridgeUnitTest {
                 CONNECTION_TYPE, LOCATION_DIALOG_TYPE, SUGGESTED_PATH, true);
     }
 
+<<<<<<< HEAD
+=======
     private void locationDialogWillReturn(String newPath) {
         doAnswer(invocation -> {
             mBridge.onDownloadLocationDialogComplete(newPath);
@@ -127,6 +139,7 @@ public class DownloadDialogBridgeUnitTest {
                 .showDialog(any(), any(), eq(TOTAL_BYTES), anyInt(), eq(SUGGESTED_PATH));
     }
 
+>>>>>>> chromium
     @Test
     @Features.DisableFeatures({ChromeFeatureList.DOWNLOAD_LATER})
     public void testShowDialog_disableDownloadLater() {

@@ -67,6 +67,13 @@
 #include "third_party/blink/renderer/core/loader/preload_helper.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/core/permissions_policy/policy_helper.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/speculation_rules/speculation_rule_set.h"
+#include "third_party/blink/renderer/platform/allow_discouraged_type.h"
+#include "third_party/blink/renderer/platform/bindings/source_location.h"
+#include "third_party/blink/renderer/platform/exported/wrapped_resource_response.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/loader/fetch/client_hints_preferences.h"
 #include "third_party/blink/renderer/platform/loader/fetch/loader_freeze_mode.h"
@@ -103,7 +110,13 @@ class WebServiceWorkerNetworkProvider;
 
 namespace mojom {
 enum class CommitResult : int32_t;
+<<<<<<< HEAD
+}  // namespace mojom
+
+enum class FirePopstate { kYes, kNo };
+=======
 }
+>>>>>>> chromium
 
 // The DocumentLoader fetches a main resource and handles the result.
 // TODO(https://crbug.com/855189). This was originally structured to have a
@@ -164,6 +177,38 @@ class CORE_EXPORT DocumentLoader : public GarbageCollected<DocumentLoader>,
   void DidObserveLoadingBehavior(LoadingBehaviorFlag);
 
   // https://html.spec.whatwg.org/multipage/history.html#url-and-history-update-steps
+<<<<<<< HEAD
+  void RunURLAndHistoryUpdateSteps(const KURL&,
+                                   HistoryItem*,
+                                   mojom::blink::SameDocumentNavigationType,
+                                   scoped_refptr<SerializedScriptValue>,
+                                   WebFrameLoadType,
+                                   FirePopstate,
+                                   bool should_skip_screenshot,
+                                   bool is_browser_initiated = false,
+                                   bool is_synchronously_committed = true,
+                                   std::optional<scheduler::TaskAttributionId>
+                                       soft_navigation_heuristics_task_id =
+                                           std::nullopt);
+
+  // |is_synchronously_committed| is described in comment for
+  // CommitSameDocumentNavigation.
+  void UpdateForSameDocumentNavigation(
+      const KURL&,
+      HistoryItem*,
+      mojom::blink::SameDocumentNavigationType,
+      scoped_refptr<SerializedScriptValue>,
+      WebFrameLoadType,
+      FirePopstate,
+      const SecurityOrigin* initiator_origin,
+      bool is_browser_initiated,
+      bool is_synchronously_committed,
+      std::optional<scheduler::TaskAttributionId>
+          soft_navigation_heuristics_task_id,
+      bool has_transient_user_activation,
+      bool has_ua_visual_transition,
+      bool should_skip_screenshot);
+=======
   void RunURLAndHistoryUpdateSteps(
       const KURL&,
       SameDocumentNavigationSource same_document_navigation_source,
@@ -181,6 +226,7 @@ class CORE_EXPORT DocumentLoader : public GarbageCollected<DocumentLoader>,
                                        WebFrameLoadType,
                                        const SecurityOrigin* initiator_origin,
                                        bool is_synchronously_committed);
+>>>>>>> chromium
 
   const ResourceResponse& GetResponse() const { return response_; }
   bool IsClientRedirect() const { return is_client_redirect_; }
@@ -232,7 +278,15 @@ class CORE_EXPORT DocumentLoader : public GarbageCollected<DocumentLoader>,
       const SecurityOrigin* initiator_origin,
       bool is_synchronously_committed,
       mojom::blink::TriggeringEventInfo,
+<<<<<<< HEAD
+      bool is_browser_initiated,
+      bool has_ua_visual_transition,
+      std::optional<scheduler::TaskAttributionId>
+          soft_navigation_heuristics_task_id,
+      bool should_skip_screenshot);
+=======
       std::unique_ptr<WebDocumentLoader::ExtraData>);
+>>>>>>> chromium
 
   void SetDefersLoading(LoaderFreezeMode);
 
@@ -394,6 +448,12 @@ class CORE_EXPORT DocumentLoader : public GarbageCollected<DocumentLoader>,
   Member<MHTMLArchive> archive_;
 
  private:
+<<<<<<< HEAD
+  class BodyData;
+  class EncodedBodyData;
+
+=======
+>>>>>>> chromium
   Frame* CalculateOwnerFrame();
   scoped_refptr<SecurityOrigin> CalculateOrigin(Document* owner_document);
   void InitializeWindow(Document* owner_document);
@@ -415,7 +475,14 @@ class CORE_EXPORT DocumentLoader : public GarbageCollected<DocumentLoader>,
       const SecurityOrigin* initiator_origin,
       bool is_synchronously_committed,
       mojom::blink::TriggeringEventInfo,
+<<<<<<< HEAD
+      std::optional<scheduler::TaskAttributionId>
+          soft_navigation_heuristics_task_id,
+      bool has_ua_visual_transition,
+      bool should_skip_screenshot);
+=======
       std::unique_ptr<WebDocumentLoader::ExtraData>);
+>>>>>>> chromium
 
   // Use these method only where it's guaranteed that |m_frame| hasn't been
   // cleared.
@@ -437,7 +504,7 @@ class CORE_EXPORT DocumentLoader : public GarbageCollected<DocumentLoader>,
 
   // Process a redirect to update the redirect chain, current URL, referrer,
   // etc.
-  void HandleRedirect(WebNavigationParams::RedirectInfo& redirect);
+  void HandleRedirect(const WebNavigationParams::RedirectInfo& redirect);
   void HandleResponse();
 
   void InitializeEmptyResponse();
@@ -460,7 +527,7 @@ class CORE_EXPORT DocumentLoader : public GarbageCollected<DocumentLoader>,
                            const absl::optional<WebURLError>& error) override;
 
   void ApplyClientHintsConfig(
-      const WebVector<network::mojom::WebClientHintsType>&
+      const std::vector<network::mojom::WebClientHintsType>&
           enabled_client_hints);
 
   // For SignedExchangeSubresourcePrefetch feature. If the page was loaded from
@@ -639,8 +706,20 @@ class CORE_EXPORT DocumentLoader : public GarbageCollected<DocumentLoader>,
   // BrowsingContextGroup.
   bool is_cross_site_cross_browsing_context_group_ = false;
 
+<<<<<<< HEAD
+  // Whether the new document should start with sticky user activation, because
+  // the previously committed document did, and the navigation was same-site.
+  bool should_have_sticky_user_activation_ = false;
+
+  std::vector<WebHistoryItem> navigation_api_back_entries_
+      ALLOW_DISCOURAGED_TYPE("Matches WebNavigationParams");
+  std::vector<WebHistoryItem> navigation_api_forward_entries_
+      ALLOW_DISCOURAGED_TYPE("Matches WebNavigationParams");
+  Member<HistoryItem> navigation_api_previous_entry_;
+=======
   WebVector<WebHistoryItem> app_history_back_entries_;
   WebVector<WebHistoryItem> app_history_forward_entries_;
+>>>>>>> chromium
 
   // This is the interface that handles generated code cache
   // requests to fetch code cache when loading resources.

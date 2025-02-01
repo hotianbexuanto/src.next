@@ -2,9 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+
+#include "content/browser/gpu/gpu_data_manager_impl_private.h"
+
+#include "base/notreached.h"
+#include "build/build_config.h"
+
+#if BUILDFLAG(IS_WIN)
+#include <windows.h>
+
+=======
 #include "content/browser/gpu/gpu_data_manager_impl_private.h"
 
 #if defined(OS_WIN)
+>>>>>>> chromium
 #include <aclapi.h>
 #include <sddl.h>
 #include <windows.h>
@@ -33,7 +45,6 @@
 #include "base/version.h"
 #include "build/build_config.h"
 #include "build/chromecast_buildflags.h"
-#include "build/chromeos_buildflags.h"
 #include "cc/base/switches.h"
 #include "components/viz/common/features.h"
 #include "content/browser/gpu/gpu_memory_buffer_manager_singleton.h"
@@ -233,6 +244,8 @@ void EnableIntelShaderCache() {
 
 // Send UMA histograms about the enabled features and GPU properties.
 void UpdateFeatureStats(const gpu::GpuFeatureInfo& gpu_feature_info) {
+  constexpr char kGpuBlocklistHistogram[] = "GPU.BlocklistEntriesApplied";
+
   // Update applied entry stats.
   std::unique_ptr<gpu::GpuBlocklist> blocklist(gpu::GpuBlocklist::Create());
   DCHECK(blocklist.get() && blocklist->max_entry_id() > 0);
@@ -241,8 +254,7 @@ void UpdateFeatureStats(const gpu::GpuFeatureInfo& gpu_feature_info) {
   // was recorded in this histogram in order to have a convenient
   // denominator to compute blocklist percentages for the rest of the
   // entries.
-  UMA_HISTOGRAM_EXACT_LINEAR("GPU.BlocklistTestResultsPerEntry", 0,
-                             max_entry_id + 1);
+  base::UmaHistogramSparse(kGpuBlocklistHistogram, 0);
   if (!gpu_feature_info.applied_gpu_blocklist_entries.empty()) {
     std::vector<uint32_t> entry_ids = blocklist->GetEntryIDsFromIndices(
         gpu_feature_info.applied_gpu_blocklist_entries);
@@ -250,39 +262,59 @@ void UpdateFeatureStats(const gpu::GpuFeatureInfo& gpu_feature_info) {
               entry_ids.size());
     for (auto id : entry_ids) {
       DCHECK_GE(max_entry_id, id);
-      UMA_HISTOGRAM_EXACT_LINEAR("GPU.BlocklistTestResultsPerEntry", id,
-                                 max_entry_id + 1);
+      base::UmaHistogramSparse(kGpuBlocklistHistogram, id);
     }
   }
 
   // Update feature status stats.
   const base::CommandLine& command_line =
       *base::CommandLine::ForCurrentProcess();
-  const gpu::GpuFeatureType kGpuFeatures[] = {
+  const auto kGpuFeatures = std::to_array<gpu::GpuFeatureType>({
       gpu::GPU_FEATURE_TYPE_ACCELERATED_2D_CANVAS,
       gpu::GPU_FEATURE_TYPE_ACCELERATED_GL,
       gpu::GPU_FEATURE_TYPE_GPU_RASTERIZATION,
       gpu::GPU_FEATURE_TYPE_OOP_RASTERIZATION,
       gpu::GPU_FEATURE_TYPE_ACCELERATED_WEBGL,
+<<<<<<< HEAD
+      gpu::GPU_FEATURE_TYPE_ACCELERATED_WEBGL2,
+      gpu::GPU_FEATURE_TYPE_ACCELERATED_WEBGPU,
+  });
+  const auto kGpuBlocklistFeatureHistogramNames = std::to_array<std::string>({
+=======
       gpu::GPU_FEATURE_TYPE_ACCELERATED_WEBGL2};
   const std::string kGpuBlocklistFeatureHistogramNames[] = {
+>>>>>>> chromium
       "GPU.BlocklistFeatureTestResults.Accelerated2dCanvas",
       "GPU.BlocklistFeatureTestResults.GpuCompositing",
       "GPU.BlocklistFeatureTestResults.GpuRasterization",
       "GPU.BlocklistFeatureTestResults.OopRasterization",
       "GPU.BlocklistFeatureTestResults.Webgl",
+<<<<<<< HEAD
+      "GPU.BlocklistFeatureTestResults.Webgl2",
+      "GPU.BlocklistFeatureTestResults.Webgpu",
+  });
+  const auto kGpuFeatureUserFlags = std::to_array<bool>({
+=======
       "GPU.BlocklistFeatureTestResults.Webgl2"};
   const bool kGpuFeatureUserFlags[] = {
+>>>>>>> chromium
       command_line.HasSwitch(switches::kDisableAccelerated2dCanvas),
       command_line.HasSwitch(switches::kDisableGpu),
       command_line.HasSwitch(switches::kDisableGpuRasterization),
       command_line.HasSwitch(switches::kDisableOopRasterization),
       command_line.HasSwitch(switches::kDisableWebGL),
       (command_line.HasSwitch(switches::kDisableWebGL) ||
+<<<<<<< HEAD
+       command_line.HasSwitch(switches::kDisableWebGL2)),
+      !command_line.HasSwitch(switches::kEnableUnsafeWebGPU),
+  });
+  for (size_t i = 0; i < kGpuFeatures.size(); ++i) {
+=======
        command_line.HasSwitch(switches::kDisableWebGL2))};
   const size_t kNumFeatures =
       sizeof(kGpuFeatures) / sizeof(gpu::GpuFeatureType);
   for (size_t i = 0; i < kNumFeatures; ++i) {
+>>>>>>> chromium
     // We can't use UMA_HISTOGRAM_ENUMERATION here because the same name is
     // expected if the macro is used within a loop.
     gpu::GpuFeatureStatus value =
@@ -522,7 +554,11 @@ void GpuDataManagerImplPrivate::InitializeGpuModes() {
   // Android and Chrome OS can't switch to software compositing. If the GPU
   // process initialization fails or GPU process is too unstable then crash the
   // browser process to reset everything.
+<<<<<<< HEAD
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
+=======
 #if !defined(OS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   fallback_modes_.push_back(gpu::GpuMode::DISPLAY_COMPOSITOR);
   if (SwiftShaderAllowed())
     fallback_modes_.push_back(gpu::GpuMode::SWIFTSHADER);
@@ -536,6 +572,15 @@ void GpuDataManagerImplPrivate::InitializeGpuModes() {
 #if BUILDFLAG(IS_CAST_AUDIO_ONLY)
     fallback_modes_.clear();
     fallback_modes_.push_back(gpu::GpuMode::DISPLAY_COMPOSITOR);
+<<<<<<< HEAD
+#endif  // BUILDFLAG(IS_CAST_AUDIO_ONLY)
+#endif  // BUILDFLAG(IS_CASTOS)
+
+#if (BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CAST_ANDROID)) || \
+    BUILDFLAG(IS_CHROMEOS)
+    NOTREACHED() << "GPU acceleration is required on certain platforms!";
+=======
+>>>>>>> chromium
 #endif
 #elif defined(OS_ANDROID) || BUILDFLAG(IS_CHROMEOS_ASH)
     CHECK(false) << "GPU acceleration is required on certain platforms!";
@@ -1531,6 +1576,15 @@ GpuDataManagerImplPrivate::Are3DAPIsBlockedAtTime(const GURL& url,
   // Note: adjusting the policies in this code will almost certainly
   // require adjusting the associated unit tests.
   std::string domain = GetDomainFromURL(url);
+<<<<<<< HEAD
+  size_t losses_for_domain =
+      std::ranges::count(blocked_domains_, domain,
+                         [](const auto& entry) { return entry.second.domain; });
+  // Allow one context loss per domain, so block if there are two or more.
+  if (losses_for_domain > 1)
+    return DomainBlockStatus::kBlocked;
+=======
+>>>>>>> chromium
 
   {
     if (blocked_domains_.find(domain) != blocked_domains_.end()) {

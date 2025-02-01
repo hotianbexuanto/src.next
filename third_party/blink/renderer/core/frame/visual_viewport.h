@@ -180,8 +180,14 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   void SetScrollOffset(const ScrollOffset&,
                        mojom::blink::ScrollType,
                        mojom::blink::ScrollBehavior,
+<<<<<<< HEAD
+                       ScrollCallback on_finish,
+                       bool targeted_scroll = false) override;
+  bool SetScrollOffset(const ScrollOffset&,
+=======
                        ScrollCallback on_finish) override;
   void SetScrollOffset(const ScrollOffset&,
+>>>>>>> chromium
                        mojom::blink::ScrollType,
                        mojom::blink::ScrollBehavior =
                            mojom::blink::ScrollBehavior::kInstant) override;

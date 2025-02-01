@@ -441,6 +441,11 @@ TEST(ValuesTest, MoveAssignDictionary) {
   EXPECT_EQ(123, blank.FindKey("Int")->GetInt());
 }
 
+<<<<<<< HEAD
+TEST(ValuesTest, ConstructDictWithIterators) {
+  std::vector<std::pair<std::string, Value>> values;
+  values.emplace_back("Int", 123);
+=======
 TEST(ValuesTest, TakeDict) {
   // Prepare a dict with a value of each type.
   Value::DictStorage storage;
@@ -453,6 +458,7 @@ TEST(ValuesTest, TakeDict) {
   storage.emplace("list", Value::Type::LIST);
   storage.emplace("dict", Value::Type::DICTIONARY);
   Value value(std::move(storage));
+>>>>>>> chromium
 
   // Take ownership of the dict and make sure its contents are what we expect.
   auto dict = std::move(value).TakeDict();
@@ -622,7 +628,299 @@ TEST(ValuesTest, EraseListValueIf) {
   EXPECT_EQ(1u, value.EraseListValueIf([](const auto& val) { return true; }));
   EXPECT_TRUE(value.GetList().empty());
 
+<<<<<<< HEAD
+  // Use EnsureDict() to overwrite an existing non-dictionary value.
+  root.Set("bar", 3);
+  Value::Dict* bar_dict = root.EnsureDict("bar");
+  EXPECT_TRUE(bar_dict->empty());
+  bar_dict->Set("b", "c");
+
+  // Test that the above call created a "bar" entry.
+  bar_dict = root.FindDict("bar");
+  ASSERT_NE(nullptr, bar_dict);
+  std::string* b_string = bar_dict->FindString("b");
+  ASSERT_NE(nullptr, b_string);
+  EXPECT_EQ(*b_string, "c");
+}
+
+// Test all three behaviors of EnsureList() (Create a new list where no
+// matchining value exists, return an existing list, create a list overwriting
+// a value of another type).
+TEST(ValuesTest, DictEnsureList) {
+  Value::Dict root;
+
+  // This call should create a new list.
+  Value::List* foo_list = root.EnsureList("foo");
+  EXPECT_TRUE(foo_list->empty());
+  foo_list->Append("a");
+
+  // This call should retrieve the list created above, rather than creating a
+  // new one.
+  foo_list = root.EnsureList("foo");
+  ASSERT_EQ(1u, foo_list->size());
+  EXPECT_EQ((*foo_list)[0], Value("a"));
+
+  // Use EnsureList() to overwrite an existing non-list value.
+  root.Set("bar", 3);
+  Value::List* bar_list = root.EnsureList("bar");
+  EXPECT_TRUE(bar_list->empty());
+  bar_list->Append("b");
+
+  // Test that the above call created a "bar" entry.
+  bar_list = root.FindList("bar");
+  ASSERT_NE(nullptr, bar_list);
+  ASSERT_EQ(1u, bar_list->size());
+  EXPECT_EQ((*bar_list)[0], Value("b"));
+}
+
+// TODO(dcheng): Add more tests directly exercising the updated dictionary and
+// list APIs. For now, most of the updated APIs are tested indirectly via the
+// legacy APIs that are largely backed by the updated APIs.
+TEST(ValuesTest, DictFindByDottedPath) {
+  Value::Dict dict;
+
+  EXPECT_EQ(nullptr, dict.FindByDottedPath("a.b.c"));
+
+  Value::Dict& a_dict = dict.Set("a", Value::Dict())->GetDict();
+  EXPECT_EQ(nullptr, dict.FindByDottedPath("a.b.c"));
+
+  Value::Dict& b_dict = a_dict.Set("b", Value::Dict())->GetDict();
+  EXPECT_EQ(nullptr, dict.FindByDottedPath("a.b.c"));
+
+  b_dict.Set("c", true);
+  const Value* value = dict.FindByDottedPath("a.b.c");
+  ASSERT_NE(nullptr, value);
+  EXPECT_TRUE(value->GetBool());
+}
+
+TEST(ValuesTest, DictSetByDottedPath) {
+  Value::Dict dict;
+
+  Value* c = dict.SetByDottedPath("a.b.c", Value());
+  ASSERT_TRUE(c);
+
+  Value::Dict* a = dict.FindDict("a");
+  ASSERT_TRUE(a);
+  EXPECT_EQ(1U, a->size());
+
+  Value::Dict* b = a->FindDict("b");
+  ASSERT_TRUE(b);
+  EXPECT_EQ(1U, b->size());
+
+  EXPECT_EQ(c, b->Find("c"));
+}
+
+TEST(ValuesTest, RvalueDictSetByDottedPath) {
+  Value::Dict dict =
+      Value::Dict()
+          .SetByDottedPath("nested.dictionary.null", Value())
+          .SetByDottedPath("nested.dictionary.bool", false)
+          .SetByDottedPath("nested.dictionary.int", 42)
+          .SetByDottedPath("nested.dictionary.double", 1.2)
+          .SetByDottedPath("nested.dictionary.string", "value")
+          .SetByDottedPath("nested.dictionary.u16-string", u"u16-value")
+          .SetByDottedPath("nested.dictionary.std-string",
+                           std::string("std-value"))
+          .SetByDottedPath("nested.dictionary.blob", Value::BlobStorage({1, 2}))
+          .SetByDottedPath("nested.dictionary.list",
+                           Value::List().Append("value in list"))
+          .SetByDottedPath("nested.dictionary.dict",
+                           Value::Dict().Set("key", "value"));
+
+  Value::Dict expected =
+      Value::Dict()  //
+          .Set("nested",
+               base::Value::Dict()  //
+                   .Set("dictionary",
+                        base::Value::Dict()
+                            .Set("null", Value())
+                            .Set("bool", false)
+                            .Set("int", 42)
+                            .Set("double", 1.2)
+                            .Set("string", "value")
+                            .Set("u16-string", u"u16-value")
+                            .Set("std-string", std::string("std-value"))
+                            .Set("blob", Value::BlobStorage({1, 2}))
+                            .Set("list", Value::List().Append("value in list"))
+                            .Set("dict", Value::Dict().Set("key", "value"))));
+
+  EXPECT_EQ(dict, expected);
+}
+
+TEST(ValuesTest, DictSetWithDottedKey) {
+  Value::Dict dict;
+
+  Value* abc = dict.Set("a.b.c", Value());
+  ASSERT_TRUE(abc);
+
+  EXPECT_FALSE(dict.FindByDottedPath("a"));
+  EXPECT_FALSE(dict.FindByDottedPath("a.b"));
+  EXPECT_FALSE(dict.FindByDottedPath("a.b.c"));
+
+  EXPECT_EQ(abc, dict.Find("a.b.c"));
+}
+
+TEST(ValuesTest, ListFront) {
+  Value::List list;
+  const Value::List& const_list = list;
+
+  list.Append(1);
+  list.Append(2);
+  list.Append(3);
+
+  EXPECT_EQ(Value(1), list.front());
+  EXPECT_EQ(Value(1), const_list.front());
+}
+
+TEST(ValuesTest, ListFrontWhenEmpty) {
+  Value::List list;
+  const Value::List& const_list = list;
+
+  EXPECT_CHECK_DEATH(list.front());
+  EXPECT_CHECK_DEATH(const_list.front());
+}
+
+TEST(ValuesTest, ListBack) {
+  Value::List list;
+  const Value::List& const_list = list;
+
+  list.Append(1);
+  list.Append(2);
+  list.Append(3);
+
+  EXPECT_EQ(Value(3), list.back());
+  EXPECT_EQ(Value(3), const_list.back());
+}
+
+TEST(ValuesTest, ListBackWhenEmpty) {
+  Value::List list;
+  const Value::List& const_list = list;
+
+  EXPECT_CHECK_DEATH(list.back());
+  EXPECT_CHECK_DEATH(const_list.back());
+}
+
+TEST(ValuesTest, ListContains) {
+  Value::List list;
+  list.Append(false);
+  list.Append(1);
+  list.Append(2.3);
+  list.Append("banana");
+  Value::BlobStorage blob = {0xF, 0x0, 0x0, 0xB, 0xA, 0x2};
+  list.Append(Value(blob));
+  Value::Dict dict;
+  dict.Set("foo", "bar");
+  list.Append(dict.Clone());
+  Value::List list2;
+  list2.Append(99);
+  list.Append(list2.Clone());
+
+  EXPECT_TRUE(list.contains(false));
+  EXPECT_TRUE(list.contains(1));
+  EXPECT_TRUE(list.contains(2.3));
+  EXPECT_TRUE(list.contains("banana"));
+  EXPECT_TRUE(list.contains(std::string_view("banana")));
+  EXPECT_TRUE(list.contains(std::string("banana")));
+  EXPECT_TRUE(list.contains(blob));
+  EXPECT_TRUE(list.contains(dict));
+  EXPECT_TRUE(list.contains(list2));
+
+  EXPECT_FALSE(list.contains(true));
+  EXPECT_FALSE(list.contains(0));
+  EXPECT_FALSE(list.contains(4.5));
+  EXPECT_FALSE(list.contains("orange"));
+  EXPECT_FALSE(list.contains(Value::BlobStorage({1, 2, 3})));
+  EXPECT_FALSE(list.contains(Value::Dict()));
+  EXPECT_FALSE(list.contains(list));
+}
+
+TEST(ValuesTest, ListErase) {
+  Value::List list;
+  list.Append(1);
+  list.Append(2);
+  list.Append(3);
+
+  auto next_it = list.erase(list.begin() + 1);
+  ASSERT_EQ(2u, list.size());
+  EXPECT_EQ(list[0], Value(1));
+  EXPECT_EQ(list[1], Value(3));
+  EXPECT_EQ(*next_it, Value(3));
+  EXPECT_EQ(next_it + 1, list.end());
+}
+
+TEST(ValuesTest, ListEraseRange) {
+  Value::List list;
+  list.Append(1);
+  list.Append(2);
+  list.Append(3);
+  list.Append(4);
+
+  auto next_it = list.erase(list.begin() + 1, list.begin() + 3);
+  ASSERT_EQ(2u, list.size());
+  EXPECT_EQ(list[0], Value(1));
+  EXPECT_EQ(list[1], Value(4));
+  EXPECT_EQ(*next_it, Value(4));
+  EXPECT_EQ(next_it + 1, list.end());
+
+  next_it = list.erase(list.begin() + 1, list.begin() + 1);
+  ASSERT_EQ(2u, list.size());
+  EXPECT_EQ(list[0], Value(1));
+  EXPECT_EQ(list[1], Value(4));
+  EXPECT_EQ(*next_it, Value(4));
+  EXPECT_EQ(next_it + 1, list.end());
+
+  next_it = list.erase(list.begin() + 1, list.end());
+  ASSERT_EQ(1u, list.size());
+  EXPECT_EQ(list[0], Value(1));
+  EXPECT_EQ(next_it, list.end());
+
+  list.clear();
+  next_it = list.erase(list.begin(), list.begin());
+  ASSERT_EQ(0u, list.size());
+  EXPECT_EQ(next_it, list.begin());
+  EXPECT_EQ(next_it, list.end());
+}
+
+TEST(ValuesTest, ListEraseValue) {
+  Value::List list;
+  list.Append(1);
+  list.Append(2);
+  list.Append(2);
+  list.Append(3);
+
+  EXPECT_EQ(2u, list.EraseValue(Value(2)));
+  EXPECT_EQ(2u, list.size());
+  EXPECT_EQ(1, list[0]);
+  EXPECT_EQ(3, list[1]);
+
+  EXPECT_EQ(1u, list.EraseValue(Value(1)));
+  EXPECT_EQ(1u, list.size());
+  EXPECT_EQ(3, list[0]);
+
+  EXPECT_EQ(1u, list.EraseValue(Value(3)));
+  EXPECT_TRUE(list.empty());
+
+  EXPECT_EQ(0u, list.EraseValue(Value(3)));
+}
+
+TEST(ValuesTest, ListEraseIf) {
+  Value::List list;
+  list.Append(1);
+  list.Append(2);
+  list.Append(2);
+  list.Append(3);
+
+  EXPECT_EQ(3u, list.EraseIf([](const auto& val) { return val >= Value(2); }));
+  EXPECT_EQ(1u, list.size());
+  EXPECT_EQ(1, list[0]);
+
+  EXPECT_EQ(1u, list.EraseIf([](const auto& val) { return true; }));
+  EXPECT_TRUE(list.empty());
+
+  EXPECT_EQ(0u, list.EraseIf([](const auto& val) { return true; }));
+=======
   EXPECT_EQ(0u, value.EraseListValueIf([](const auto& val) { return true; }));
+>>>>>>> chromium
 }
 
 TEST(ValuesTest, ClearList) {
@@ -1104,8 +1402,13 @@ TEST(ValuesTest, SetStringKey) {
   dict.SetStringKey("hello_key", "hello world");
 
   std::string movable_value("movable_value");
+<<<<<<< HEAD
+  dict.Set("movable_key", std::move(movable_value));
+  ASSERT_TRUE(movable_value.empty());  // NOLINT(bugprone-use-after-move)
+=======
   dict.SetStringKey("movable_key", std::move(movable_value));
   ASSERT_TRUE(movable_value.empty());
+>>>>>>> chromium
 
   const std::string* value;
 
@@ -1421,8 +1724,14 @@ TEST(ValuesTest, List) {
   ASSERT_EQ("foo", string_value);
 
   // Try searching in the mixed list.
+<<<<<<< HEAD
+  ASSERT_TRUE(Contains(mixed_list, 42, &Value::GetIfInt));
+  ASSERT_FALSE(Contains(mixed_list, false, &Value::GetIfBool));
+}
+=======
   base::Value sought_value(42);
   base::Value not_found_value(false);
+>>>>>>> chromium
 
   ASSERT_TRUE(Contains(mixed_list->GetList(), sought_value));
   ASSERT_EQ(42, int_value);

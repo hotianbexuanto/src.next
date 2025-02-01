@@ -225,7 +225,18 @@ android_resources("java_resources") {
     "java/res/drawable-xxxhdpi/popup_bg_bottom.9.png",
     "java/res/drawable/modern_toolbar_text_box_background_with_primary_color.xml",
     "java/res/drawable/new_tab_icon.xml",
+<<<<<<< HEAD
+    "java/res/drawable/toolbar_button_highlight_layer_list.xml",
+    "java/res/drawable/toolbar_button_ripple.xml",
+    "java/res/drawable/toolbar_menu_button_ripple.xml",
+    "java/res/drawable/toolbar_on_bottom.xml",
+    "java/res/drawable/toolbar_on_top.xml",
+    "java/res/drawable/toolbar_position_bottom_to_top.xml",
+    "java/res/drawable/toolbar_position_state_animation.xml",
+    "java/res/drawable/toolbar_position_top_to_bottom.xml",
+=======
     "java/res/drawable/popup_bg_bottom_tinted.xml",
+>>>>>>> chromium
     "java/res/layout/adaptive_toolbar_header_preference.xml",
     "java/res/layout/bottom_control_container.xml",
     "java/res/layout/control_container.xml",
@@ -334,7 +345,17 @@ android_library("javatests") {
     "//chrome/test/android:chrome_java_test_support",
     "//components/browser_ui/settings/android:java",
     "//components/browser_ui/widget/android:java",
+<<<<<<< HEAD
+    "//components/embedder_support/android:util_java",
+    "//components/feature_engagement:feature_engagement_java",
+    "//components/prefs/android:java",
+    "//components/search_engines/android:java",
+    "//components/segmentation_platform/public/proto:segmentation_platform_proto_java",
+    "//components/user_prefs/android:java",
+    "//content/public/android:content_full_java",
+=======
     "//content/public/android:content_java",
+>>>>>>> chromium
     "//content/public/test/android:content_java_test_support",
     "//third_party/androidx:androidx_test_runner_java",
     "//third_party/hamcrest:hamcrest_library_java",

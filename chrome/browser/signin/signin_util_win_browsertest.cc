@@ -41,8 +41,13 @@ class SigninUIError;
 
 namespace {
 
+<<<<<<< HEAD
+class TestTurnSyncOnHelperDelegate : public TurnSyncOnHelper::Delegate {
+  ~TestTurnSyncOnHelperDelegate() override = default;
+=======
 class TestDiceTurnSyncOnHelperDelegate : public DiceTurnSyncOnHelper::Delegate {
   ~TestDiceTurnSyncOnHelperDelegate() override {}
+>>>>>>> chromium
 
   // DiceTurnSyncOnHelper::Delegate:
   void ShowLoginError(const SigninUIError& error) override {}

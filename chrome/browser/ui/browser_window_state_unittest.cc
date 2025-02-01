@@ -10,9 +10,7 @@
 #include "ui/base/ui_base_types.h"
 #include "ui/gfx/geometry/rect.h"
 
-namespace chrome {
-
-namespace internal {
+namespace chrome::internal {
 
 namespace {
 
@@ -84,6 +82,4 @@ TEST_F(BrowserWindowStateTest, WindowPositionOverridesShowState) {
   EXPECT_EQ(show_state_, ui::SHOW_STATE_NORMAL);
 }
 
-}  // namespace internal
-
-}  // namespace chrome
+}  // namespace chrome::internal

@@ -2,6 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
+=======
+>>>>>>> chromium
 #include "extensions/browser/user_script_loader.h"
 
 #include <stddef.h>
@@ -66,11 +74,16 @@ bool GetDeclarationValue(const base::StringPiece& line,
   if (index == base::StringPiece::npos)
     return false;
 
-  std::string temp(line.data() + index + prefix.length(),
-                   line.length() - index - prefix.length());
+  std::string_view temp = line.substr(index + prefix.length(),
+                                      line.length() - index - prefix.length());
 
+<<<<<<< HEAD
+  if (temp.empty() || !base::IsAsciiWhitespace(temp[0])) {
+=======
   if (temp.empty() || !base::IsUnicodeWhitespace(temp[0]))
+>>>>>>> chromium
     return false;
+  }
 
   base::TrimWhitespaceASCII(temp, base::TRIM_ALL, value);
   return true;
@@ -100,6 +113,23 @@ bool UserScriptLoader::ParseMetadataHeader(const base::StringPiece& script_text,
   size_t line_end = line_start;
   bool in_metadata = false;
 
+<<<<<<< HEAD
+  static constexpr std::string_view kUserScriptBegin("// ==UserScript==");
+  static constexpr std::string_view kUserScriptEng("// ==/UserScript==");
+  static constexpr std::string_view kNamespaceDeclaration("// @namespace");
+  static constexpr std::string_view kNameDeclaration("// @name");
+  static constexpr std::string_view kVersionDeclaration("// @version");
+  static constexpr std::string_view kDescriptionDeclaration("// @description");
+  static constexpr std::string_view kIncludeDeclaration("// @include");
+  static constexpr std::string_view kExcludeDeclaration("// @exclude");
+  static constexpr std::string_view kMatchDeclaration("// @match");
+  static constexpr std::string_view kExcludeMatchDeclaration(
+      "// @exclude_match");
+  static constexpr std::string_view kRunAtDeclaration("// @run-at");
+  static constexpr std::string_view kRunAtDocumentStartValue("document-start");
+  static constexpr std::string_view kRunAtDocumentEndValue("document-end");
+  static constexpr std::string_view kRunAtDocumentIdleValue("document-idle");
+=======
   static const base::StringPiece kUserScriptBegin("// ==UserScript==");
   static const base::StringPiece kUserScriptEng("// ==/UserScript==");
   static const base::StringPiece kNamespaceDeclaration("// @namespace");
@@ -114,6 +144,7 @@ bool UserScriptLoader::ParseMetadataHeader(const base::StringPiece& script_text,
   static const base::StringPiece kRunAtDocumentStartValue("document-start");
   static const base::StringPiece kRunAtDocumentEndValue("document-end");
   static const base::StringPiece kRunAtDocumentIdleValue("document-idle");
+>>>>>>> chromium
 
   while (line_start < script_text.length()) {
     line_end = script_text.find('\n', line_start);
@@ -420,7 +451,15 @@ void UserScriptLoader::OnScriptsLoaded(
   for (content::RenderProcessHost::iterator i(
            content::RenderProcessHost::AllHostsIterator());
        !i.IsAtEnd(); i.Advance()) {
+<<<<<<< HEAD
+    content::RenderProcessHost* process = i.GetCurrentValue();
+    SendUpdateResult update_result = SendUpdate(process, shared_memory_);
+    if (update_result == SendUpdateResult::kRendererHasBeenNotified) {
+      ids_of_newly_notified_processes.push_back(process->GetDeprecatedID());
+    }
+=======
     SendUpdate(i.GetCurrentValue(), shared_memory_);
+>>>>>>> chromium
   }
 
   for (auto& observer : observers_)
@@ -460,11 +499,17 @@ void UserScriptLoader::SendUpdate(
   // other extensions are injected into webviews.
   if (process->IsForGuestsOnly() &&
       !CanExecuteScriptEverywhere(browser_context_, host_id())) {
-    DCHECK(WebViewRendererState::GetInstance()->IsGuest(process->GetID()));
+    DCHECK(WebViewRendererState::GetInstance()->IsGuest(
+        process->GetDeprecatedID()));
 
     std::string owner_host;
     bool found_owner = WebViewRendererState::GetInstance()->GetOwnerInfo(
+<<<<<<< HEAD
+        process->GetDeprecatedID(), /*owner_process_id=*/nullptr, &owner_host);
+    DCHECK(found_owner);
+=======
         process->GetID(), /*owner_process_id=*/nullptr, &owner_host);
+>>>>>>> chromium
 
     DCHECK(found_owner);
     if (owner_host != host_id().id)

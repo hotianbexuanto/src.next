@@ -24,7 +24,15 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_MEDIA_QUERY_RESULT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_MEDIA_QUERY_RESULT_H_
 
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/core_export.h"
+#include "third_party/blink/renderer/core/css/media_list.h"
+#include "third_party/blink/renderer/platform/heap/member.h"
+#include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+#include "third_party/blink/renderer/platform/wtf/vector_traits.h"
+=======
 #include "third_party/blink/renderer/core/css/media_query_exp.h"
+>>>>>>> chromium
 
 namespace blink {
 

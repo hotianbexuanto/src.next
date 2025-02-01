@@ -366,7 +366,12 @@ unsigned CSSStyleSheet::insertRule(const String& rule_string,
   const auto* context =
       MakeGarbageCollected<CSSParserContext>(contents_->ParserContext(), this);
   StyleRuleBase* rule =
+<<<<<<< HEAD
+      CSSParser::ParseRule(context, contents_.Get(), CSSNestingType::kNone,
+                           /*parent_rule_for_nesting=*/nullptr, rule_string);
+=======
       CSSParser::ParseRule(context, contents_.Get(), rule_string);
+>>>>>>> chromium
 
   if (!rule) {
     exception_state.ThrowDOMException(

@@ -64,15 +64,28 @@ void ContextMenuHelper::ShowContextMenu(
   }
   Java_ContextMenuHelper_showContextMenu(
       env, java_obj_,
+<<<<<<< HEAD
+      context_menu::BuildJavaContextMenuParams(
+          context_menu_params_,
+          render_frame_host.GetProcess()->GetDeprecatedID(),
+          render_frame_host.GetFrameToken().value()),
+      render_frame_host.GetJavaRenderFrameHost(), view->GetContainerView(),
+=======
       context_menu::BuildJavaContextMenuParams(context_menu_params_),
       render_frame_host->GetJavaRenderFrameHost(), view->GetContainerView(),
+>>>>>>> chromium
       view->content_offset() * view->GetDipScale());
 }
 
 void ContextMenuHelper::OnContextMenuClosed(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& obj) {
+<<<<<<< HEAD
+  GetWebContents().NotifyContextMenuClosed(context_menu_params_.link_followed,
+                                           context_menu_params_.impression);
+=======
   web_contents_->NotifyContextMenuClosed(context_menu_params_.link_followed);
+>>>>>>> chromium
 }
 
 void ContextMenuHelper::SetPopulatorFactory(

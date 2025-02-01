@@ -179,6 +179,59 @@ NamedPropertySetterResult CSSStyleDeclaration::AnonymousNamedSetter(
   CSSPropertyID unresolved_property = CssPropertyInfo(execution_context, name);
   if (!IsValidCSSPropertyID(unresolved_property))
     return NamedPropertySetterResult::kDidNotIntercept;
+<<<<<<< HEAD
+  }
+  // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
+  // impact is understood.
+  SyncScrollAttemptHeuristic::DidSetStyle();
+  if (value->IsNumber()) {
+    double double_value = value.As<v8::Number>()->Value();
+    if (FastPathSetProperty(unresolved_property, double_value)) {
+      return NamedPropertySetterResult::kIntercepted;
+    }
+    // The fast path failed, e.g. because the property was a longhand,
+    // so let the normal string handling deal with it.
+  }
+  // We create the ExceptionState manually due to performance issues: adding
+  // [RaisesException] to the IDL causes the bindings layer to expensively
+  // create a std::string to set the ExceptionState's |property_name|
+  // argument, while we can use CSSProperty::GetPropertyName() here (see bug
+  // 829408).
+  ExceptionState exception_state(script_state->GetIsolate());
+  if (value->IsString()) {
+    // NativeValueTraits::ToBlinkStringView() (called implicitly on conversion)
+    // tries fairly hard to make an AtomicString out of the string,
+    // on the basis that we'd probably like cheaper compares down the line.
+    // However, for our purposes, we never really use that; we mostly tokenize
+    // it or parse it in some other way. So if it's short enough, we try to
+    // construct a simple StringView on our own.
+    const v8::Local<v8::String> string = value.As<v8::String>();
+    uint32_t length = string->Length();
+    if (length <= 128 && string->IsOneByte()) {
+      LChar buffer[128];
+      string->WriteOneByteV2(script_state->GetIsolate(), 0, length, buffer);
+      SetPropertyInternal(unresolved_property, String(),
+                          StringView(base::span(buffer).first(length)), false,
+                          execution_context->GetSecureContextMode(),
+                          exception_state);
+      if (exception_state.HadException()) {
+        return NamedPropertySetterResult::kIntercepted;
+      }
+      return NamedPropertySetterResult::kIntercepted;
+    }
+  }
+
+  // Perform a type conversion from ES value to
+  // IDL [LegacyNullToEmptyString] DOMString only after we've confirmed that
+  // the property name is a valid CSS attribute name (see bug 1310062).
+  auto&& string_value =
+      NativeValueTraits<IDLStringLegacyNullToEmptyString>::NativeValue(
+          script_state->GetIsolate(), value, exception_state);
+  if (exception_state.HadException()) [[unlikely]] {
+    return NamedPropertySetterResult::kIntercepted;
+  }
+  SetPropertyInternal(unresolved_property, String(), string_value, false,
+=======
   // We create the ExceptionState manually due to performance issues: adding
   // [RaisesException] to the IDL causes the bindings layer to expensively
   // create a std::string to set the ExceptionState's |property_name| argument,
@@ -189,6 +242,7 @@ NamedPropertySetterResult CSSStyleDeclaration::AnonymousNamedSetter(
       CSSProperty::Get(ResolveCSSPropertyID(unresolved_property))
           .GetPropertyName());
   SetPropertyInternal(unresolved_property, String(), value, false,
+>>>>>>> chromium
                       execution_context->GetSecureContextMode(),
                       exception_state);
   if (exception_state.HadException())

@@ -43,6 +43,11 @@ class KURL;
 class ExceptionState;
 class HistoryItem;
 class ScriptState;
+<<<<<<< HEAD
+class ScriptValue;
+class V8ScrollRestoration;
+=======
+>>>>>>> chromium
 
 // This class corresponds to the History interface.
 class CORE_EXPORT History final : public ScriptWrappable,

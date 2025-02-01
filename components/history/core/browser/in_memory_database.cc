@@ -13,8 +13,12 @@
 
 namespace history {
 
+<<<<<<< HEAD
+InMemoryDatabase::InMemoryDatabase() : db_(/*tag=*/"HistoryInMemoryDB") {}
+=======
 InMemoryDatabase::InMemoryDatabase()
     : db_({.exclusive_locking = true, .page_size = 4096, .cache_size = 500}) {}
+>>>>>>> chromium
 
 InMemoryDatabase::~InMemoryDatabase() = default;
 

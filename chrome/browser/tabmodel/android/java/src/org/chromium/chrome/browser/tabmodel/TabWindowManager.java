@@ -11,6 +11,8 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.NextTabPolicy.NextTabPolicySupplier;
 import org.chromium.ui.base.WindowAndroid;
 
+import java.util.Collection;
+
 /**
  * Manages multiple {@link TabModelSelector} instances, each owned by different {@link Activity}s.
  *
@@ -79,4 +81,27 @@ public interface TabWindowManager {
      * @return Specified {@link Tab} or {@code null} if the {@link Tab} is not found.
      */
     Tab getTabById(int tabId);
+<<<<<<< HEAD
+
+    /**
+     * Finds the {@link TabModelSelector} bound to an Activity instance of a given index.
+     *
+     * @param index The index of {@link TabModelSelector} to get.
+     * @return Specified {@link TabModelSelector} or {@code null} if not found.
+     */
+    TabModelSelector getTabModelSelectorById(int index);
+
+    /** Gets a Collection of all TabModelSelectors. */
+    Collection<TabModelSelector> getAllTabModelSelectors();
+
+    /** Returns whether the tab with the given id can safely be deleted. */
+    boolean canTabStateBeDeleted(int tabId);
+
+    /** Returns whether the tab with the given id can safely be deleted. */
+    boolean canTabThumbnailBeDeleted(int tabId);
+
+    /** Sets the given archived {@link TabModelSelector} singleton instance. */
+    void setArchivedTabModelSelector(TabModelSelector archivedTabModelSelector);
+=======
+>>>>>>> chromium
 }

@@ -84,12 +84,60 @@ public class ToggleTabStackButtonCoordinator {
 
         layoutStateProviderSupplier.onAvailable(
                 mCallbackController.makeCancelable(this::setLayoutStateProvider));
+<<<<<<< HEAD
+
+        mPageLoadObserver =
+                new CurrentTabObserver(
+                        activityTabSupplier,
+                        new EmptyTabObserver() {
+                            @Override
+                            public void onPageLoadFinished(Tab tab, GURL url) {
+                                handlePageLoadFinished();
+                            }
+                        },
+                        /* swapCallback= */ null);
+    }
+
+    /**
+     * Post native initializations.
+     *
+     * @param onClickListener OnClickListener for view.
+     * @param onLongClickListener OnLongClickListener for view.
+     * @param tabCountSupplier Supplier for current tab count to show in view.
+     * @param archivedTabCountSupplier Supplies the current archived tab count, used for displaying
+     *     the associated IPH.
+     * @param tabModelNotificationDotSupplier Supplies whether to show the notification dot on the
+     *     tab switcher button.
+     * @param archivedTabsIphShownCallback Callback for when the archived tabs iph is shown.
+     * @param archivedTabsIphDismissedCallback Callback for when the archived tabs iph is dismissed.
+     */
+    public void initializeWithNative(
+            OnClickListener onClickListener,
+            OnLongClickListener onLongClickListener,
+            ObservableSupplier<Integer> tabCountSupplier,
+            @Nullable ObservableSupplier<Integer> archivedTabCountSupplier,
+            ObservableSupplier<Boolean> tabModelNotificationDotSupplier,
+            @NonNull Runnable archivedTabsIphShownCallback,
+            @NonNull Runnable archivedTabsIphDismissedCallback) {
+        mToggleTabStackButton.setOnClickListener(onClickListener);
+        mToggleTabStackButton.setOnLongClickListener(onLongClickListener);
+        mToggleTabStackButton.setSuppliers(
+                tabCountSupplier, tabModelNotificationDotSupplier, mIsIncognitoSupplier);
+
+        mArchivedTabCountSupplier = archivedTabCountSupplier;
+        if (mArchivedTabCountSupplier != null) {
+            mArchivedTabCountSupplier.addObserver(mArchivedTabCountObserver);
+            mArchivedTabsIphShownCallback = archivedTabsIphShownCallback;
+            mArchivedTabsIphDismissedCallback = archivedTabsIphDismissedCallback;
+        }
+=======
         mPageLoadObserver = new CurrentTabObserver(activityTabSupplier, new EmptyTabObserver() {
             @Override
             public void onPageLoadFinished(Tab tab, GURL url) {
                 handlePageLoadFinished();
             }
         }, /*swapCallback=*/null);
+>>>>>>> chromium
     }
 
     /** Cleans up callbacks and observers. */
@@ -155,6 +203,66 @@ public class ToggleTabStackButtonCoordinator {
 
         HighlightParams params = new HighlightParams(HighlightShape.CIRCLE);
         params.setBoundsRespectPadding(true);
+<<<<<<< HEAD
+        IphCommandBuilder builder = null;
+        if (ChromeFeatureList.sTabStripIncognitoMigration.isEnabled()
+                && mTabModelSelectorSupplier.hasValue()) {
+            TabModelSelector selector = mTabModelSelectorSupplier.get();
+            // When in Incognito, show IPH to switch out.
+            if (selector.getCurrentModel().isIncognitoBranded()) {
+                builder =
+                        new IphCommandBuilder(
+                                mContext.getResources(),
+                                FeatureConstants.TAB_SWITCHER_BUTTON_SWITCH_INCOGNITO,
+                                R.string.iph_tab_switcher_switch_out_of_incognito_text,
+                                R.string
+                                        .iph_tab_switcher_switch_out_of_incognito_accessibility_text);
+            } else if (selector.getModel(true).getCount() > 0) {
+                // When in standard model with incognito tabs, show IPH to switch into incognito.
+                builder =
+                        new IphCommandBuilder(
+                                mContext.getResources(),
+                                FeatureConstants.TAB_SWITCHER_BUTTON_SWITCH_INCOGNITO,
+                                R.string.iph_tab_switcher_switch_into_incognito_text,
+                                R.string.iph_tab_switcher_switch_into_incognito_accessibility_text);
+            }
+        }
+
+        if (builder == null
+                && !mIsIncognitoSupplier.get()
+                && mPromoShownOneshotSupplier.hasValue()
+                && !mPromoShownOneshotSupplier.get()) {
+            builder =
+                    new IphCommandBuilder(
+                            mContext.getResources(),
+                            FeatureConstants.TAB_SWITCHER_BUTTON_FEATURE,
+                            R.string.iph_tab_switcher_text,
+                            R.string.iph_tab_switcher_accessibility_text);
+        }
+
+        if (builder != null) {
+            mUserEducationHelper.requestShowIph(
+                    builder.setAnchorView(mToggleTabStackButton)
+                            .setOnShowCallback(this::handleShowCallback)
+                            .setOnDismissCallback(this::handleDismissCallback)
+                            .setHighlightParams(params)
+                            .build());
+        }
+    }
+
+    /**
+     * Enables or disables the tab switcher ripple depending on whether we are in or out of the tab
+     * switcher mode.
+     */
+    private void updateTabSwitcherButtonRipple() {
+        Drawable drawable = mToggleTabStackButton.getBackground();
+        // drawable may not be a RippleDrawable if IPH is showing. Ignore that scenario since
+        // it is rare.
+        if (drawable instanceof RippleDrawable) {
+            // Force the ripple to end so the transition looks correct.
+            drawable.jumpToCurrentState();
+        }
+=======
         mUserEducationHelper.requestShowIPH(new IPHCommandBuilder(mContext.getResources(),
                 FeatureConstants.TAB_SWITCHER_BUTTON_FEATURE, R.string.iph_tab_switcher_text,
                 R.string.iph_tab_switcher_accessibility_text)
@@ -164,6 +272,7 @@ public class ToggleTabStackButtonCoordinator {
                                                             this::handleDismissCallback)
                                                     .setHighlightParams(params)
                                                     .build());
+>>>>>>> chromium
     }
 
     private void handleShowCallback() {

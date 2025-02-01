@@ -4,8 +4,15 @@
 
 #include "chrome/browser/extensions/extension_service_test_with_install.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+
+#include "base/files/file_util.h"
+#include "base/functional/bind.h"
+=======
 #include "base/bind.h"
 #include "base/files/file_util.h"
+>>>>>>> chromium
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/task_environment.h"
 #include "chrome/browser/extensions/chrome_test_extension_loader.h"
@@ -59,7 +66,7 @@ ExtensionServiceTestWithInstall::ExtensionServiceTestWithInstall(
           FeatureSwitch::prompt_for_external_extensions(),
           false) {}
 
-ExtensionServiceTestWithInstall::~ExtensionServiceTestWithInstall() {}
+ExtensionServiceTestWithInstall::~ExtensionServiceTestWithInstall() = default;
 
 void ExtensionServiceTestWithInstall::InitializeExtensionService(
     const ExtensionServiceInitParams& params) {
@@ -385,7 +392,11 @@ void ExtensionServiceTestWithInstall::OnExtensionUnloaded(
     UnloadedExtensionReason reason) {
   unloaded_id_ = extension->id();
   unloaded_reason_ = reason;
+<<<<<<< HEAD
+  auto i = std::ranges::find(loaded_extensions_, extension);
+=======
   auto i = std::find(loaded_.begin(), loaded_.end(), extension);
+>>>>>>> chromium
   // TODO(erikkay) fix so this can be an assert.  Right now the tests
   // are manually calling clear() on loaded_, so this isn't doable.
   if (i == loaded_.end())

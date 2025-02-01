@@ -13,7 +13,6 @@
 #include "base/memory/ref_counted.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "content/browser/browser_process_io_thread.h"
 #include "content/public/browser/browser_main_runner.h"
 #include "media/media_buildflags.h"
@@ -62,10 +61,13 @@ class SystemMessageWindowWin;
 #elif (defined(OS_LINUX) || defined(OS_CHROMEOS)) && defined(USE_UDEV)
 class DeviceMonitorLinux;
 #endif
+<<<<<<< HEAD
+=======
 class UserInputMonitor;
 #if defined(OS_MAC)
 class DeviceMonitorMac;
 #endif
+>>>>>>> chromium
 }  // namespace media
 
 namespace midi {
@@ -166,9 +168,6 @@ class CONTENT_EXPORT BrowserMainLoop {
   media::AudioSystem* audio_system() const { return audio_system_.get(); }
   MediaStreamManager* media_stream_manager() const {
     return media_stream_manager_.get();
-  }
-  media::UserInputMonitor* user_input_monitor() const {
-    return user_input_monitor_.get();
   }
   MediaKeysListenerManagerImpl* media_keys_listener_manager() const {
     return media_keys_listener_manager_.get();
@@ -345,9 +344,6 @@ class CONTENT_EXPORT BrowserMainLoop {
   // BEGIN Members initialized in |PostCreateThreads()| ------------------------
   // ***************************************************************************
   std::unique_ptr<MediaKeysListenerManagerImpl> media_keys_listener_manager_;
-
-  // |user_input_monitor_| has to outlive |audio_manager_|, so declared first.
-  std::unique_ptr<media::UserInputMonitor> user_input_monitor_;
 
   // Support for out-of-process Data Decoder.
   std::unique_ptr<data_decoder::ServiceProvider> data_decoder_service_provider_;

@@ -1880,7 +1880,7 @@ IN_PROC_BROWSER_TEST_F(StrictOriginIsolationTest, SubframesAreIsolated) {
   // Make sure we have three separate processes.
   FrameTreeNode* root = web_contents()->GetFrameTree()->root();
   RenderFrameHost* main_frame = root->current_frame_host();
-  int main_frame_id = main_frame->GetProcess()->GetID();
+  int main_frame_id = main_frame->GetProcess()->GetDeprecatedID();
   RenderFrameHost* child_frame0 = root->child_at(0)->current_frame_host();
   int child_frame0_id = child_frame0->GetProcess()->GetID();
   RenderFrameHost* child_frame1 = root->child_at(1)->current_frame_host();
@@ -1889,11 +1889,18 @@ IN_PROC_BROWSER_TEST_F(StrictOriginIsolationTest, SubframesAreIsolated) {
   int child_frame2_id = child_frame2->GetProcess()->GetID();
   RenderFrameHost* grandchild_frame0 =
       root->child_at(1)->child_at(0)->current_frame_host();
+<<<<<<< HEAD
+  EXPECT_NE(main_frame_id, child_frame0->GetProcess()->GetDeprecatedID());
+  EXPECT_NE(main_frame_id, child_frame1->GetProcess()->GetDeprecatedID());
+  EXPECT_EQ(main_frame_id, child_frame2->GetProcess()->GetDeprecatedID());
+  EXPECT_EQ(main_frame_id, grandchild_frame0->GetProcess()->GetDeprecatedID());
+=======
   int grandchild_frame0_id = grandchild_frame0->GetProcess()->GetID();
   EXPECT_NE(main_frame_id, child_frame0_id);
   EXPECT_NE(main_frame_id, child_frame1_id);
   EXPECT_EQ(main_frame_id, child_frame2_id);
   EXPECT_EQ(main_frame_id, grandchild_frame0_id);
+>>>>>>> chromium
 
   auto* policy = ChildProcessSecurityPolicyImpl::GetInstance();
   EXPECT_EQ(GetStrictProcessLockForHost("foo.com"),
@@ -1917,10 +1924,16 @@ IN_PROC_BROWSER_TEST_F(StrictOriginIsolationTest, SubframesAreIsolated) {
   // The old RenderFrameHost for subframe3 will no longer be valid, so get the
   // new one.
   child_frame2 = root->child_at(2)->current_frame_host();
+<<<<<<< HEAD
+  EXPECT_NE(main_frame->GetProcess()->GetDeprecatedID(),
+            child_frame2->GetProcess()->GetDeprecatedID());
+  EXPECT_EQ(expected_foo_lock, child_frame2->GetProcess()->GetProcessLock());
+=======
   EXPECT_NE(main_frame->GetProcess()->GetID(),
             child_frame2->GetProcess()->GetID());
   EXPECT_EQ(expected_foo_lock,
             policy->GetProcessLock(child_frame2->GetProcess()->GetID()));
+>>>>>>> chromium
 }
 
 IN_PROC_BROWSER_TEST_F(StrictOriginIsolationTest, MainframesAreIsolated) {
@@ -1930,7 +1943,12 @@ IN_PROC_BROWSER_TEST_F(StrictOriginIsolationTest, MainframesAreIsolated) {
   EXPECT_EQ(1u, web_contents()->GetAllFrames().size());
   auto* policy = ChildProcessSecurityPolicyImpl::GetInstance();
 
+<<<<<<< HEAD
+  auto foo_process_id =
+      web_contents()->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID();
+=======
   auto foo_process_id = web_contents()->GetMainFrame()->GetProcess()->GetID();
+>>>>>>> chromium
   SiteInstanceImpl* foo_site_instance = web_contents()->GetSiteInstance();
   EXPECT_EQ(expected_foo_lock, foo_site_instance->GetProcessLock());
   EXPECT_EQ(foo_site_instance->GetProcessLock(),
@@ -1940,8 +1958,16 @@ IN_PROC_BROWSER_TEST_F(StrictOriginIsolationTest, MainframesAreIsolated) {
       embedded_test_server()->GetURL("sub.foo.com", "/title1.html");
   const auto expected_sub_foo_lock = GetStrictProcessLock(sub_foo_url);
   EXPECT_TRUE(NavigateToURL(shell(), sub_foo_url));
+<<<<<<< HEAD
+  auto sub_foo_process_id = shell()
+                                ->web_contents()
+                                ->GetPrimaryMainFrame()
+                                ->GetProcess()
+                                ->GetDeprecatedID();
+=======
   auto sub_foo_process_id =
       shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
+>>>>>>> chromium
   SiteInstanceImpl* sub_foo_site_instance = web_contents()->GetSiteInstance();
   EXPECT_EQ(expected_sub_foo_lock, sub_foo_site_instance->GetProcessLock());
   EXPECT_EQ(sub_foo_site_instance->GetProcessLock(),
@@ -1956,8 +1982,16 @@ IN_PROC_BROWSER_TEST_F(StrictOriginIsolationTest, MainframesAreIsolated) {
       embedded_test_server()->GetURL("another.foo.com", "/title2.html"));
   const auto expected_another_foo_lock = GetStrictProcessLock(another_foo_url);
   EXPECT_TRUE(NavigateToURLFromRenderer(shell(), another_foo_url));
+<<<<<<< HEAD
+  auto another_foo_process_id = shell()
+                                    ->web_contents()
+                                    ->GetPrimaryMainFrame()
+                                    ->GetProcess()
+                                    ->GetDeprecatedID();
+=======
   auto another_foo_process_id =
       shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
+>>>>>>> chromium
   SiteInstanceImpl* another_foo_site_instance =
       web_contents()->GetSiteInstance();
   EXPECT_NE(another_foo_process_id, sub_foo_process_id);
@@ -2428,6 +2462,10 @@ IN_PROC_BROWSER_TEST_F(IsolatedOriginTest,
           root->current_frame_host()->GetSiteInstance());
   const SiteInstanceImpl* const newshell_site_instance_impl =
       static_cast<SiteInstanceImpl*>(
+<<<<<<< HEAD
+          new_shell->web_contents()->GetPrimaryMainFrame()->GetSiteInstance());
+  if (AreAllSitesIsolatedForTesting()) {
+=======
           new_shell->web_contents()->GetMainFrame()->GetSiteInstance());
   if (AreDefaultSiteInstancesEnabled()) {
     // When default SiteInstances are enabled, all sites that do not
@@ -2435,11 +2473,17 @@ IN_PROC_BROWSER_TEST_F(IsolatedOriginTest,
     EXPECT_EQ(newshell_site_instance_impl, root_site_instance_impl);
     EXPECT_TRUE(newshell_site_instance_impl->IsDefaultSiteInstance());
   } else {
+>>>>>>> chromium
     // At this point, the popup and the opener should still be in separate
     // SiteInstances.
     EXPECT_NE(newshell_site_instance_impl, root_site_instance_impl);
     EXPECT_FALSE(newshell_site_instance_impl->IsDefaultSiteInstance());
     EXPECT_FALSE(root_site_instance_impl->IsDefaultSiteInstance());
+  } else {
+    // Without full site isolation, all sites that do not require a dedicated
+    // process all end up in the same default SiteInstance.
+    EXPECT_EQ(newshell_site_instance_impl, root_site_instance_impl);
+    EXPECT_TRUE(newshell_site_instance_impl->IsDefaultSiteInstance());
   }
 
   // Simulate the isolated origin in the popup navigating to www.foo.com.
@@ -2915,8 +2959,14 @@ IN_PROC_BROWSER_TEST_F(
           web_contents()->GetBrowserContext(), hung_isolated_url,
           WebExposedIsolationInfo::CreateNonIsolated(),
           /* can_reuse_process= */ true);
+<<<<<<< HEAD
+  RenderProcessHost* sw_host = sw_site_instance->GetOrCreateProcess();
+  EXPECT_NE(new_shell->web_contents()->GetPrimaryMainFrame()->GetProcess(),
+            sw_host);
+=======
   RenderProcessHost* sw_host = sw_site_instance->GetProcess();
   EXPECT_NE(new_shell->web_contents()->GetMainFrame()->GetProcess(), sw_host);
+>>>>>>> chromium
 
   // Cancel the hung request and commit a real navigation to an isolated
   // origin. This should now end up in the ServiceWorker's process.
@@ -2986,7 +3036,7 @@ class StoragePartitonInterceptor
     mojo::PendingRemote<blink::mojom::DomStorageClient> unused_client;
     ignore_result(unused_client.InitWithNewPipeAndPassReceiver());
     mojo::ReceiverId receiver_id = storage_partition->BindDomStorage(
-        rph->GetID(), std::move(receiver), std::move(unused_client));
+        rph->GetDeprecatedID(), std::move(receiver), std::move(unused_client));
 
     // Now replace it with this object and keep a pointer to the real
     // implementation.
@@ -3246,8 +3296,8 @@ IN_PROC_BROWSER_TEST_F(IsolatedOriginLongListTest, Test) {
   // should stay in the same process, unless --site-per-process has also been
   // specified.
   if (!AreAllSitesIsolatedForTesting()) {
-    EXPECT_EQ(main_frame->GetProcess()->GetID(),
-              subframe3->GetProcess()->GetID());
+    EXPECT_EQ(main_frame->GetProcess()->GetDeprecatedID(),
+              subframe3->GetProcess()->GetDeprecatedID());
     if (AreStrictSiteInstancesEnabled()) {
       EXPECT_NE(main_frame->GetSiteInstance(), subframe3->GetSiteInstance());
     } else {
@@ -3257,13 +3307,14 @@ IN_PROC_BROWSER_TEST_F(IsolatedOriginLongListTest, Test) {
 
   // isolated.foo.com and foo999.com are on the list of origins to isolate -
   // they should be isolated from everything else.
-  EXPECT_NE(main_frame->GetProcess()->GetID(),
-            subframe1->GetProcess()->GetID());
+  EXPECT_NE(main_frame->GetProcess()->GetDeprecatedID(),
+            subframe1->GetProcess()->GetDeprecatedID());
   EXPECT_NE(main_frame->GetSiteInstance(), subframe1->GetSiteInstance());
-  EXPECT_NE(main_frame->GetProcess()->GetID(),
-            subframe2->GetProcess()->GetID());
+  EXPECT_NE(main_frame->GetProcess()->GetDeprecatedID(),
+            subframe2->GetProcess()->GetDeprecatedID());
   EXPECT_NE(main_frame->GetSiteInstance(), subframe2->GetSiteInstance());
-  EXPECT_NE(subframe1->GetProcess()->GetID(), subframe2->GetProcess()->GetID());
+  EXPECT_NE(subframe1->GetProcess()->GetDeprecatedID(),
+            subframe2->GetProcess()->GetDeprecatedID());
   EXPECT_NE(subframe1->GetSiteInstance(), subframe2->GetSiteInstance());
 }
 
@@ -3376,14 +3427,18 @@ IN_PROC_BROWSER_TEST_F(IsolatedOriginTest, AIsolatedCA) {
   EXPECT_EQ("www.foo.com", d->GetLastCommittedURL().host());
 
   // Verify that the isolated site is indeed isolated.
-  EXPECT_NE(b->GetProcess()->GetID(), a->GetProcess()->GetID());
-  EXPECT_NE(b->GetProcess()->GetID(), c->GetProcess()->GetID());
-  EXPECT_NE(b->GetProcess()->GetID(), d->GetProcess()->GetID());
+  EXPECT_NE(b->GetProcess()->GetDeprecatedID(),
+            a->GetProcess()->GetDeprecatedID());
+  EXPECT_NE(b->GetProcess()->GetDeprecatedID(),
+            c->GetProcess()->GetDeprecatedID());
+  EXPECT_NE(b->GetProcess()->GetDeprecatedID(),
+            d->GetProcess()->GetDeprecatedID());
 
   // Verify that same-origin a and d frames share a process.  This is
   // necessary for correctness - otherwise a and d wouldn't be able to
   // synchronously script each other.
-  EXPECT_EQ(a->GetProcess()->GetID(), d->GetProcess()->GetID());
+  EXPECT_EQ(a->GetProcess()->GetDeprecatedID(),
+            d->GetProcess()->GetDeprecatedID());
 
   // Verify that same-origin a and d frames can script each other.
   EXPECT_TRUE(ExecJs(a, "window.name = 'a';"));
@@ -3399,36 +3454,12 @@ IN_PROC_BROWSER_TEST_F(IsolatedOriginTest, AIsolatedCA) {
   if (AreAllSitesIsolatedForTesting()) {
     // All sites are isolated so we expect foo.com, isolated.foo.com and c.com
     // to all be in their own processes.
-    EXPECT_NE(a->GetProcess()->GetID(), b->GetProcess()->GetID());
-    EXPECT_NE(a->GetProcess()->GetID(), c->GetProcess()->GetID());
-    EXPECT_NE(b->GetProcess()->GetID(), c->GetProcess()->GetID());
-
-    EXPECT_NE(a->GetSiteInstance(), b->GetSiteInstance());
-    EXPECT_NE(a->GetSiteInstance(), c->GetSiteInstance());
-    EXPECT_EQ(a->GetSiteInstance(), d->GetSiteInstance());
-    EXPECT_NE(b->GetSiteInstance(), c->GetSiteInstance());
-
-    EXPECT_FALSE(HasDefaultSiteInstance(a));
-    EXPECT_FALSE(HasDefaultSiteInstance(b));
-    EXPECT_FALSE(HasDefaultSiteInstance(c));
-  } else if (AreDefaultSiteInstancesEnabled()) {
-    // All sites that are not isolated should be in the same default
-    // SiteInstance process.
-    EXPECT_NE(a->GetProcess()->GetID(), b->GetProcess()->GetID());
-    EXPECT_EQ(a->GetProcess()->GetID(), c->GetProcess()->GetID());
-
-    EXPECT_NE(a->GetSiteInstance(), b->GetSiteInstance());
-    EXPECT_EQ(a->GetSiteInstance(), c->GetSiteInstance());
-    EXPECT_EQ(a->GetSiteInstance(), d->GetSiteInstance());
-    EXPECT_NE(b->GetSiteInstance(), c->GetSiteInstance());
-
-    EXPECT_TRUE(HasDefaultSiteInstance(a));
-    EXPECT_FALSE(HasDefaultSiteInstance(b));
-  } else if (AreStrictSiteInstancesEnabled()) {
-    // All sites have their own SiteInstance and sites that are not isolated
-    // are all placed in the same process.
-    EXPECT_NE(a->GetProcess()->GetID(), b->GetProcess()->GetID());
-    EXPECT_EQ(a->GetProcess()->GetID(), c->GetProcess()->GetID());
+    EXPECT_NE(a->GetProcess()->GetDeprecatedID(),
+              b->GetProcess()->GetDeprecatedID());
+    EXPECT_NE(a->GetProcess()->GetDeprecatedID(),
+              c->GetProcess()->GetDeprecatedID());
+    EXPECT_NE(b->GetProcess()->GetDeprecatedID(),
+              c->GetProcess()->GetDeprecatedID());
 
     EXPECT_NE(a->GetSiteInstance(), b->GetSiteInstance());
     EXPECT_NE(a->GetSiteInstance(), c->GetSiteInstance());
@@ -3439,7 +3470,20 @@ IN_PROC_BROWSER_TEST_F(IsolatedOriginTest, AIsolatedCA) {
     EXPECT_FALSE(HasDefaultSiteInstance(b));
     EXPECT_FALSE(HasDefaultSiteInstance(c));
   } else {
-    FAIL() << "Unexpected process model configuration.";
+    // All sites that are not isolated should be in the same default
+    // SiteInstance process.
+    EXPECT_NE(a->GetProcess()->GetDeprecatedID(),
+              b->GetProcess()->GetDeprecatedID());
+    EXPECT_EQ(a->GetProcess()->GetDeprecatedID(),
+              c->GetProcess()->GetDeprecatedID());
+
+    EXPECT_NE(a->GetSiteInstance(), b->GetSiteInstance());
+    EXPECT_EQ(a->GetSiteInstance(), c->GetSiteInstance());
+    EXPECT_EQ(a->GetSiteInstance(), d->GetSiteInstance());
+    EXPECT_NE(b->GetSiteInstance(), c->GetSiteInstance());
+
+    EXPECT_TRUE(HasDefaultSiteInstance(a));
+    EXPECT_FALSE(HasDefaultSiteInstance(b));
   }
 }
 
@@ -3578,15 +3622,20 @@ IN_PROC_BROWSER_TEST_F(IsolatedOriginNoFlagOverrideTest,
   EXPECT_EQ("c.com", c2->GetLastCommittedURL().host());
 
   // Verify that the isolated site is indeed isolated.
-  EXPECT_NE(a->GetProcess()->GetID(), c1->GetProcess()->GetID());
-  EXPECT_NE(a->GetProcess()->GetID(), c2->GetProcess()->GetID());
-  EXPECT_NE(a->GetProcess()->GetID(), b->GetProcess()->GetID());
-  EXPECT_NE(a->GetProcess()->GetID(), d->GetProcess()->GetID());
+  EXPECT_NE(a->GetProcess()->GetDeprecatedID(),
+            c1->GetProcess()->GetDeprecatedID());
+  EXPECT_NE(a->GetProcess()->GetDeprecatedID(),
+            c2->GetProcess()->GetDeprecatedID());
+  EXPECT_NE(a->GetProcess()->GetDeprecatedID(),
+            b->GetProcess()->GetDeprecatedID());
+  EXPECT_NE(a->GetProcess()->GetDeprecatedID(),
+            d->GetProcess()->GetDeprecatedID());
 
   // Verify that same-origin c1 and c2 frames share a process.  This is
   // necessary for correctness - otherwise c1 and c2 wouldn't be able to
   // synchronously script each other.
-  EXPECT_EQ(c1->GetProcess()->GetID(), c2->GetProcess()->GetID());
+  EXPECT_EQ(c1->GetProcess()->GetDeprecatedID(),
+            c2->GetProcess()->GetDeprecatedID());
 
   // Verify that same-origin c1 and c2 frames can script each other.
   EXPECT_TRUE(ExecJs(c1, "window.name = 'c1';"));
@@ -3602,14 +3651,21 @@ IN_PROC_BROWSER_TEST_F(IsolatedOriginNoFlagOverrideTest,
   // number of renderer processes.  OTOH, consolidation might be undesirable
   // if we desire smaller renderer processes (even if it means more processes).
   if (!AreAllSitesIsolatedForTesting()) {
-    EXPECT_EQ(b->GetProcess()->GetID(), c1->GetProcess()->GetID());
-    EXPECT_EQ(b->GetProcess()->GetID(), c2->GetProcess()->GetID());
-    EXPECT_EQ(b->GetProcess()->GetID(), d->GetProcess()->GetID());
+    EXPECT_EQ(b->GetProcess()->GetDeprecatedID(),
+              c1->GetProcess()->GetDeprecatedID());
+    EXPECT_EQ(b->GetProcess()->GetDeprecatedID(),
+              c2->GetProcess()->GetDeprecatedID());
+    EXPECT_EQ(b->GetProcess()->GetDeprecatedID(),
+              d->GetProcess()->GetDeprecatedID());
   } else {
-    EXPECT_NE(b->GetProcess()->GetID(), c1->GetProcess()->GetID());
-    EXPECT_NE(b->GetProcess()->GetID(), c2->GetProcess()->GetID());
-    EXPECT_NE(b->GetProcess()->GetID(), d->GetProcess()->GetID());
-    EXPECT_EQ(c1->GetProcess()->GetID(), c2->GetProcess()->GetID());
+    EXPECT_NE(b->GetProcess()->GetDeprecatedID(),
+              c1->GetProcess()->GetDeprecatedID());
+    EXPECT_NE(b->GetProcess()->GetDeprecatedID(),
+              c2->GetProcess()->GetDeprecatedID());
+    EXPECT_NE(b->GetProcess()->GetDeprecatedID(),
+              d->GetProcess()->GetDeprecatedID());
+    EXPECT_EQ(c1->GetProcess()->GetDeprecatedID(),
+              c2->GetProcess()->GetDeprecatedID());
   }
 }
 
@@ -3793,6 +3849,34 @@ IN_PROC_BROWSER_TEST_F(DynamicIsolatedOriginTest, MainFrameNavigations) {
   // Do a renderer-initiated navigation in each of the existing three windows.
   // None of them should swap to a new process, since bar.com shouldn't be
   // isolated in those older BrowsingInstances.
+<<<<<<< HEAD
+  int old_process_id =
+      web_contents()->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID();
+  EXPECT_TRUE(NavigateToURLFromRenderer(shell(), bar_url));
+  EXPECT_EQ(
+      old_process_id,
+      web_contents()->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID());
+
+  old_process_id = shell2->web_contents()
+                       ->GetPrimaryMainFrame()
+                       ->GetProcess()
+                       ->GetDeprecatedID();
+  EXPECT_TRUE(NavigateToURLFromRenderer(shell2, bar_url));
+  EXPECT_EQ(old_process_id, shell2->web_contents()
+                                ->GetPrimaryMainFrame()
+                                ->GetProcess()
+                                ->GetDeprecatedID());
+
+  old_process_id = shell3->web_contents()
+                       ->GetPrimaryMainFrame()
+                       ->GetProcess()
+                       ->GetDeprecatedID();
+  EXPECT_TRUE(NavigateToURLFromRenderer(shell3, bar_url));
+  EXPECT_EQ(old_process_id, shell3->web_contents()
+                                ->GetPrimaryMainFrame()
+                                ->GetProcess()
+                                ->GetDeprecatedID());
+=======
   int old_process_id = web_contents()->GetMainFrame()->GetProcess()->GetID();
   EXPECT_TRUE(NavigateToURLFromRenderer(shell(), bar_url));
   EXPECT_EQ(old_process_id,
@@ -3809,12 +3893,35 @@ IN_PROC_BROWSER_TEST_F(DynamicIsolatedOriginTest, MainFrameNavigations) {
   EXPECT_TRUE(NavigateToURLFromRenderer(shell3, bar_url));
   EXPECT_EQ(old_process_id,
             shell3->web_contents()->GetMainFrame()->GetProcess()->GetID());
+>>>>>>> chromium
 
   // Now try the same in a new window and BrowsingInstance, and ensure that the
   // navigation to bar.com swaps processes in that case.
   Shell* shell4 = CreateBrowser();
   EXPECT_TRUE(NavigateToURL(shell4, foo_url));
 
+<<<<<<< HEAD
+  old_process_id = shell4->web_contents()
+                       ->GetPrimaryMainFrame()
+                       ->GetProcess()
+                       ->GetDeprecatedID();
+  EXPECT_TRUE(NavigateToURLFromRenderer(shell4, bar_url));
+  EXPECT_NE(old_process_id, shell4->web_contents()
+                                ->GetPrimaryMainFrame()
+                                ->GetProcess()
+                                ->GetDeprecatedID());
+
+  // Go back to foo.com in window 1, ensuring this stays in the same process.
+  {
+    old_process_id =
+        web_contents()->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID();
+    TestNavigationObserver back_observer(web_contents());
+    web_contents()->GetController().GoBack();
+    back_observer.Wait();
+    EXPECT_EQ(
+        old_process_id,
+        web_contents()->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID());
+=======
   old_process_id =
       shell4->web_contents()->GetMainFrame()->GetProcess()->GetID();
   EXPECT_TRUE(NavigateToURLFromRenderer(shell4, bar_url));
@@ -3829,10 +3936,24 @@ IN_PROC_BROWSER_TEST_F(DynamicIsolatedOriginTest, MainFrameNavigations) {
     back_observer.Wait();
     EXPECT_EQ(old_process_id,
               web_contents()->GetMainFrame()->GetProcess()->GetID());
+>>>>>>> chromium
   }
 
   // Go back to foo.com in window 4, ensuring this swaps processes.
   {
+<<<<<<< HEAD
+    old_process_id = shell4->web_contents()
+                         ->GetPrimaryMainFrame()
+                         ->GetProcess()
+                         ->GetDeprecatedID();
+    TestNavigationObserver back_observer(shell4->web_contents());
+    shell4->web_contents()->GetController().GoBack();
+    back_observer.Wait();
+    EXPECT_NE(old_process_id, shell4->web_contents()
+                                  ->GetPrimaryMainFrame()
+                                  ->GetProcess()
+                                  ->GetDeprecatedID());
+=======
     old_process_id =
         shell4->web_contents()->GetMainFrame()->GetProcess()->GetID();
     TestNavigationObserver back_observer(shell4->web_contents());
@@ -3840,6 +3961,7 @@ IN_PROC_BROWSER_TEST_F(DynamicIsolatedOriginTest, MainFrameNavigations) {
     back_observer.Wait();
     EXPECT_NE(old_process_id,
               shell4->web_contents()->GetMainFrame()->GetProcess()->GetID());
+>>>>>>> chromium
   }
 }
 
@@ -3875,7 +3997,7 @@ IN_PROC_BROWSER_TEST_F(DynamicIsolatedOriginTest, OldProcessCanAccessCookies) {
 
   // The new window's process should be locked to "foo.com".
   int isolated_foo_com_process_id =
-      second_root->current_frame_host()->GetProcess()->GetID();
+      second_root->current_frame_host()->GetProcess()->GetDeprecatedID();
   EXPECT_EQ(ProcessLockFromUrl("http://foo.com"),
             policy->GetProcessLock(isolated_foo_com_process_id));
 
@@ -3892,7 +4014,7 @@ IN_PROC_BROWSER_TEST_F(DynamicIsolatedOriginTest, OldProcessCanAccessCookies) {
       embedded_test_server()->GetURL("sub.foo.com", "/title1.html"));
   EXPECT_TRUE(NavigateToURLInSameBrowsingInstance(second_shell, sub_foo_url));
   EXPECT_EQ(isolated_foo_com_process_id,
-            second_root->current_frame_host()->GetProcess()->GetID());
+            second_root->current_frame_host()->GetProcess()->GetDeprecatedID());
 
   // Now, start isolating sub.foo.com.
   policy->AddFutureIsolatedOrigins({url::Origin::Create(sub_foo_url)},
@@ -3914,7 +4036,7 @@ IN_PROC_BROWSER_TEST_F(DynamicIsolatedOriginTest, OldProcessCanAccessCookies) {
       second_shell, embedded_test_server()->GetURL("bar.com", "/title2.html")));
   EXPECT_TRUE(NavigateToURL(second_shell, sub_foo_url));
   EXPECT_NE(isolated_foo_com_process_id,
-            second_root->current_frame_host()->GetProcess()->GetID());
+            second_root->current_frame_host()->GetProcess()->GetDeprecatedID());
   EXPECT_EQ(ProcessLockFromUrl("http://sub.foo.com"),
             policy->GetProcessLock(
                 second_root->current_frame_host()->GetProcess()->GetID()));
@@ -3947,11 +4069,23 @@ IN_PROC_BROWSER_TEST_F(DynamicIsolatedOriginTest, IsolatedSubdomain) {
   // purposes of process assignment, and we should swap processes.
   Shell* new_shell = CreateBrowser();
   EXPECT_TRUE(NavigateToURL(new_shell, foo_url));
+<<<<<<< HEAD
+  int initial_process_id = new_shell->web_contents()
+                               ->GetPrimaryMainFrame()
+                               ->GetProcess()
+                               ->GetDeprecatedID();
+  EXPECT_TRUE(NavigateToURLFromRenderer(new_shell, sub_foo_url));
+  EXPECT_NE(initial_process_id, new_shell->web_contents()
+                                    ->GetPrimaryMainFrame()
+                                    ->GetProcess()
+                                    ->GetDeprecatedID());
+=======
   int initial_process_id =
       new_shell->web_contents()->GetMainFrame()->GetProcess()->GetID();
   EXPECT_TRUE(NavigateToURLFromRenderer(new_shell, sub_foo_url));
   EXPECT_NE(initial_process_id,
             new_shell->web_contents()->GetMainFrame()->GetProcess()->GetID());
+>>>>>>> chromium
 
   // Repeat this, but now navigate a subframe on foo.com to sub.foo.com and
   // ensure that it is rendered in an OOPIF.
@@ -4049,7 +4183,8 @@ IN_PROC_BROWSER_TEST_F(DynamicIsolatedOriginTest,
 
   // The old foo.com process should still be able to access bar.com data,
   // since it isn't locked to a specific site.
-  int old_process_id = root->current_frame_host()->GetProcess()->GetID();
+  int old_process_id =
+      root->current_frame_host()->GetProcess()->GetDeprecatedID();
   EXPECT_TRUE(policy->CanAccessDataForOrigin(old_process_id,
                                              url::Origin::Create(bar_url)));
 
@@ -4819,14 +4954,30 @@ IN_PROC_BROWSER_TEST_F(WildcardOriginIsolationTest, MainFrameNavigation) {
   // (*) SiteInstances will be the same unless ProactivelySwapBrowsingInstances
   // is enabled for same-site navigations.
   EXPECT_TRUE(NavigateToURL(shell(), a_foo_url));
+<<<<<<< HEAD
+  int a_foo_pid = shell()
+                      ->web_contents()
+                      ->GetPrimaryMainFrame()
+                      ->GetProcess()
+                      ->GetDeprecatedID();
+=======
   int a_foo_pid =
       shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
+>>>>>>> chromium
   scoped_refptr<SiteInstance> a_foo_instance =
       shell()->web_contents()->GetMainFrame()->GetSiteInstance();
 
   EXPECT_TRUE(NavigateToURL(shell(), b_foo_url));
+<<<<<<< HEAD
+  int b_foo_pid = shell()
+                      ->web_contents()
+                      ->GetPrimaryMainFrame()
+                      ->GetProcess()
+                      ->GetDeprecatedID();
+=======
   int b_foo_pid =
       shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
+>>>>>>> chromium
   scoped_refptr<SiteInstance> b_foo_instance =
       shell()->web_contents()->GetMainFrame()->GetSiteInstance();
 
@@ -4840,14 +4991,30 @@ IN_PROC_BROWSER_TEST_F(WildcardOriginIsolationTest, MainFrameNavigation) {
   }
 
   EXPECT_TRUE(NavigateToURL(shell(), a_isolated_url));
+<<<<<<< HEAD
+  int a_isolated_pid = shell()
+                           ->web_contents()
+                           ->GetPrimaryMainFrame()
+                           ->GetProcess()
+                           ->GetDeprecatedID();
+=======
   int a_isolated_pid =
       shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
+>>>>>>> chromium
   scoped_refptr<SiteInstance> a_isolated_instance =
       shell()->web_contents()->GetMainFrame()->GetSiteInstance();
 
   EXPECT_TRUE(NavigateToURL(shell(), b_isolated_url));
+<<<<<<< HEAD
+  int b_isolated_pid = shell()
+                           ->web_contents()
+                           ->GetPrimaryMainFrame()
+                           ->GetProcess()
+                           ->GetDeprecatedID();
+=======
   int b_isolated_pid =
       shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
+>>>>>>> chromium
   scoped_refptr<SiteInstance> b_isolated_instance =
       shell()->web_contents()->GetMainFrame()->GetSiteInstance();
 
@@ -4862,12 +5029,31 @@ IN_PROC_BROWSER_TEST_F(WildcardOriginIsolationTest, MainFrameNavigation) {
   EXPECT_NE(a_isolated_instance, b_isolated_instance);
 
   EXPECT_TRUE(NavigateToURL(shell(), a_foo_url));
+<<<<<<< HEAD
+  a_foo_pid = shell()
+                  ->web_contents()
+                  ->GetPrimaryMainFrame()
+                  ->GetProcess()
+                  ->GetDeprecatedID();
+  a_foo_instance =
+      shell()->web_contents()->GetPrimaryMainFrame()->GetSiteInstance();
+
+  EXPECT_TRUE(NavigateToURL(shell(), b_foo_url));
+  b_foo_pid = shell()
+                  ->web_contents()
+                  ->GetPrimaryMainFrame()
+                  ->GetProcess()
+                  ->GetDeprecatedID();
+  b_foo_instance =
+      shell()->web_contents()->GetPrimaryMainFrame()->GetSiteInstance();
+=======
   a_foo_pid = shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
   a_foo_instance = shell()->web_contents()->GetMainFrame()->GetSiteInstance();
 
   EXPECT_TRUE(NavigateToURL(shell(), b_foo_url));
   b_foo_pid = shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
   b_foo_instance = shell()->web_contents()->GetMainFrame()->GetSiteInstance();
+>>>>>>> chromium
 
   // Navigating from the wildcard subdomain to the isolated subdomain should
   // produce a new pid.

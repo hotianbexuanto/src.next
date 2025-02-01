@@ -61,7 +61,20 @@ class ChromeExtensionsBrowserClient : public ExtensionsBrowserClient {
       content::BrowserContext* context) override;
   content::BrowserContext* GetOriginalContext(
       content::BrowserContext* context) override;
+<<<<<<< HEAD
+  content::BrowserContext* GetContextRedirectedToOriginal(
+      content::BrowserContext* context) override;
+  content::BrowserContext* GetContextOwnInstance(
+      content::BrowserContext* context) override;
+  content::BrowserContext* GetContextForOriginalOnly(
+      content::BrowserContext* context) override;
+  bool AreExtensionsDisabledForContext(
+      content::BrowserContext* context) override;
+#if BUILDFLAG(IS_CHROMEOS)
+  bool IsActiveContext(content::BrowserContext* browser_context) const override;
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   std::string GetUserIdHashFromContext(
       content::BrowserContext* context) override;
 #endif
@@ -143,7 +156,6 @@ class ChromeExtensionsBrowserClient : public ExtensionsBrowserClient {
                                        int* tab_id,
                                        int* window_id) override;
   KioskDelegate* GetKioskDelegate() override;
-  bool IsLockScreenContext(content::BrowserContext* context) override;
   std::string GetApplicationLocale() override;
   bool IsExtensionEnabled(const std::string& extension_id,
                           content::BrowserContext* context) const override;
@@ -164,8 +176,32 @@ class ChromeExtensionsBrowserClient : public ExtensionsBrowserClient {
   bool IsScreenshotRestricted(
       content::WebContents* web_contents) const override;
   bool IsValidTabId(content::BrowserContext* context,
+<<<<<<< HEAD
+                    int tab_id,
+                    bool include_incognito,
+                    content::WebContents** web_contents) const override;
+  bool IsExtensionTelemetryServiceEnabled(
+      content::BrowserContext* context) const override;
+  ScriptExecutor* GetScriptExecutorForTab(
+      content::WebContents& web_contents) override;
+  void NotifyExtensionApiTabExecuteScript(
+      content::BrowserContext* context,
+      const ExtensionId& extension_id,
+      const std::string& code) const override;
+  void NotifyExtensionApiDeclarativeNetRequest(
+      content::BrowserContext* context,
+      const ExtensionId& extension_id,
+      const std::vector<api::declarative_net_request::Rule>& rules)
+      const override;
+  void NotifyExtensionDeclarativeNetRequestRedirectAction(
+      content::BrowserContext* context,
+      const ExtensionId& extension_id,
+      const GURL& request_url,
+      const GURL& redirect_url) const override;
+=======
                     int tab_id) const override;
 
+>>>>>>> chromium
   static void set_did_chrome_update_for_testing(bool did_update);
 
   static void SetMediaRouterAccessLoggerForTesting(

@@ -56,8 +56,21 @@ class BrowserList {
   const_reverse_iterator begin_last_active() const {
     return last_active_browsers_.rbegin();
   }
+<<<<<<< HEAD
+  const_reverse_iterator end_browsers_ordered_by_activation() const {
+    return browsers_ordered_by_activation_.rend();
+  }
+
+  // Convenience method for iterating over browsers in activation order. I.e.
+  // the most recently used browser will be at the front of the list.
+  // Example:
+  // for (Browser* browser : BrowserList::GetInstance()->OrderedByActivation())
+  BrowsersOrderedByActivationRange OrderedByActivation() const {
+    return {raw_ref(*this)};
+=======
   const_reverse_iterator end_last_active() const {
     return last_active_browsers_.rend();
+>>>>>>> chromium
   }
 
   // Returns the set of browsers that are currently in the closing state.

@@ -209,11 +209,26 @@ void PaintComplexOutline(GraphicsContext& graphics_context,
     graphics_context.EndLayer();
 }
 
+<<<<<<< HEAD
+FloatRoundedRect::Radii GetFocusRingCornerRadii(
+    const ComputedStyle& style,
+    const PhysicalRect& reference_border_rect,
+    const LayoutObject::OutlineInfo& info) {
+  if (style.HasBorderRadius() &&
+      ((style.HasEffectiveAppearance() &&
+        style.EffectiveAppearance() == AppearanceValue::kBaseSelect) ||
+       style.HasAuthorBorderRadius())) {
+    auto radii = ComputeCornerRadii(style, reference_border_rect, info.offset);
+    radii.SetMinimumRadius(DefaultFocusRingCornerRadius(style));
+    return radii;
+  }
+=======
 void PaintSingleRectangleOutline(GraphicsContext& context,
                                  const IntRect& rect,
                                  const ComputedStyle& style,
                                  const Color& color) {
   DCHECK(!style.OutlineStyleIsAuto());
+>>>>>>> chromium
 
   IntRect offset_rect = rect;
   ApplyOutlineOffset(offset_rect, style.OutlineOffsetInt());
@@ -234,20 +249,20 @@ float GetFocusRingBorderRadius(const ComputedStyle& style) {
     // drawing the element.
     absl::optional<ui::NativeTheme::Part> part;
     switch (style.EffectiveAppearance()) {
-      case kCheckboxPart:
+      case AppearanceValue::kCheckbox:
         part = ui::NativeTheme::kCheckbox;
         break;
-      case kRadioPart:
+      case AppearanceValue::kRadio:
         part = ui::NativeTheme::kRadio;
         break;
-      case kPushButtonPart:
-      case kSquareButtonPart:
-      case kButtonPart:
+      case AppearanceValue::kPushButton:
+      case AppearanceValue::kSquareButton:
+      case AppearanceValue::kButton:
         part = ui::NativeTheme::kPushButton;
         break;
-      case kTextFieldPart:
-      case kTextAreaPart:
-      case kSearchFieldPart:
+      case AppearanceValue::kTextField:
+      case AppearanceValue::kTextArea:
+      case AppearanceValue::kSearchField:
         part = ui::NativeTheme::kTextField;
         break;
       default:

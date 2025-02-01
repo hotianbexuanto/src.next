@@ -31,7 +31,15 @@ class Rect;
 class BrowserLiveTabContext : public sessions::LiveTabContext {
  public:
   explicit BrowserLiveTabContext(Browser* browser) : browser_(browser) {}
+<<<<<<< HEAD
+
+  BrowserLiveTabContext(const BrowserLiveTabContext&) = delete;
+  BrowserLiveTabContext& operator=(const BrowserLiveTabContext&) = delete;
+
+  ~BrowserLiveTabContext() override = default;
+=======
   ~BrowserLiveTabContext() override {}
+>>>>>>> chromium
 
   // Overridden from LiveTabContext:
   void ShowBrowserWindow() override;

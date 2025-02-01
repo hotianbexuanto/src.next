@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include <array>
 #include <map>
 #include <string>
 
@@ -39,8 +40,7 @@ MockIconURLHelper::MockIconURLHelper() {
   rid_to_url_string_[3] = kUrlString3;
 }
 
-MockIconURLHelper::~MockIconURLHelper() {
-}
+MockIconURLHelper::~MockIconURLHelper() = default;
 
 int MockIconURLHelper::GetMainFrameID() const {
   return 137;
@@ -108,6 +108,29 @@ TEST(SearchBoxUtilTest, ParseFrameIdAndRestrictedIdSuccess) {
 }
 
 TEST(SearchBoxUtilTest, ParseFrameIdAndRestrictedIdFailure) {
+<<<<<<< HEAD
+  auto test_cases = std::to_array<const char*>({
+      "",
+      "    ",
+      "/",
+      "FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE/",
+      "/3",
+      "2a/3",
+      "FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE/3a",
+      " 2/3",
+      "FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE/ 3",
+      "FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE /3 ",
+      "23",
+      "2,3",
+      "-FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE/3",
+      "FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE/-3",
+      "FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE/3/1",
+      "blahblah",
+      "0xA/0x10",
+  });
+  for (size_t i = 0; i < std::size(test_cases); ++i) {
+    std::string frame_token;
+=======
   const char* test_cases[] = {
     "",
     "    ",
@@ -129,6 +152,7 @@ TEST(SearchBoxUtilTest, ParseFrameIdAndRestrictedIdFailure) {
   };
   for (size_t i = 0; i < base::size(test_cases); ++i) {
     int frame_id = -1;
+>>>>>>> chromium
     InstantRestrictedID rid = -1;
     EXPECT_FALSE(ParseFrameIdAndRestrictedId(test_cases[i], &frame_id, &rid))
         << " for test_cases[" << i << "]";
@@ -138,17 +162,30 @@ TEST(SearchBoxUtilTest, ParseFrameIdAndRestrictedIdFailure) {
 }
 
 TEST(SearchBoxUtilTest, ParseIconRestrictedUrlFaviconSuccess) {
-  struct {
+  struct TestCases {
     const char* transient_url_str;
     const char* expected_param_part;
     int expected_frame_id;
     InstantRestrictedID expected_rid;
+<<<<<<< HEAD
+  };
+  auto test_cases = std::to_array<TestCases>({
+      {"chrome-search://favicon/FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE/2", "",
+       "FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE", 2},
+      {"chrome-search://favicon/size/16@2x/1FFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE/4",
+       "size/16@2x/", "1FFFFFFFFFFFFFFDFFFFFFFFFFFFFFFE", 4},
+      {"chrome-search://favicon/iconurl/FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFA/10",
+       "iconurl/", "FFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFA", 10},
+  });
+  for (size_t i = 0; i < std::size(test_cases); ++i) {
+=======
   } test_cases[] = {
       {"chrome-search://favicon/1/2", "", 1, 2},
       {"chrome-search://favicon/size/16@2x/3/4", "size/16@2x/", 3, 4},
       {"chrome-search://favicon/iconurl/9/10", "iconurl/", 9, 10},
   };
   for (size_t i = 0; i < base::size(test_cases); ++i) {
+>>>>>>> chromium
     std::string param_part = "(unwritten)";
     int frame_id = -1;
     InstantRestrictedID rid = -1;
@@ -165,16 +202,22 @@ TEST(SearchBoxUtilTest, ParseIconRestrictedUrlFaviconSuccess) {
 }
 
 TEST(SearchBoxUtilTest, ParseIconRestrictedUrlFailure) {
-  struct {
+  struct TestCases {
     const char* transient_url_str;
-  } test_cases[] = {
+  };
+  auto test_cases = std::to_array<TestCases>({
       {"chrome-search://favicon/"},
       {"chrome-search://favicon/3/"},
       {"chrome-search://favicon/size/3/4"},
       {"chrome-search://favicon/largest/http://www.google.com"},
       {"chrome-search://favicon/size/16@2x/-1/10"},
+<<<<<<< HEAD
+  });
+  for (size_t i = 0; i < std::size(test_cases); ++i) {
+=======
   };
   for (size_t i = 0; i < base::size(test_cases); ++i) {
+>>>>>>> chromium
     std::string param_part = "(unwritten)";
     int frame_id = -1;
     InstantRestrictedID rid = -1;
@@ -188,11 +231,17 @@ TEST(SearchBoxUtilTest, ParseIconRestrictedUrlFailure) {
 }
 
 TEST(SearchBoxUtilTest, TranslateIconRestrictedUrlSuccess) {
-  struct {
+  struct TestCases {
     const char* transient_url_str;
     std::string expected_url_str;
+<<<<<<< HEAD
+  };
+  auto test_cases = std::to_array<TestCases>({
+      {"chrome-search://favicon/0123456789ABCDEF0123456789ABCDEF/1",
+=======
   } test_cases[] = {
       {"chrome-search://favicon/137/1",
+>>>>>>> chromium
        std::string("chrome-search://favicon/") + kUrlString1},
       {"chrome-search://favicon/", "chrome-search://favicon/"},
       {"chrome-search://favicon/314", "chrome-search://favicon/"},
@@ -202,7 +251,7 @@ TEST(SearchBoxUtilTest, TranslateIconRestrictedUrlSuccess) {
       {"chrome-search://favicon/invalidstuff", "chrome-search://favicon/"},
       {"chrome-search://favicon/size/16@2x/http://www.google.com",
        "chrome-search://favicon/"},
-  };
+  });
 
   MockIconURLHelper helper;
   for (size_t i = 0; i < base::size(test_cases); ++i) {

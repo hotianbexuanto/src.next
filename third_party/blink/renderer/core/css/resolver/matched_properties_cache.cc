@@ -30,6 +30,14 @@
 
 #include "third_party/blink/renderer/core/css/resolver/matched_properties_cache.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+#include <array>
+#include <utility>
+
+#include "base/types/zip.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
 #include "third_party/blink/renderer/core/css/properties/css_property_ref.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver_state.h"
@@ -132,6 +140,29 @@ bool CachedMatchedProperties::operator==(
     const MatchedPropertiesVector& properties) {
   if (properties.size() != matched_properties.size())
     return false;
+<<<<<<< HEAD
+  }
+
+  for (const auto [lookup_it, cached_it] :
+       base::zip(lookup_properties, matched_properties)) {
+    CSSPropertyValueSet* cached_properties = cached_it.first.Get();
+    DCHECK(!lookup_it.properties->ModifiedSinceHashing())
+        << "This should have been checked in AddMatchedProperties()";
+    if (cached_properties->ModifiedSinceHashing()) {
+      // These properties were mutated as some point after original
+      // insertion, so it is not safe to use them in the MPC
+      // (Equals() below would be comparing against the current state,
+      // not the state it had when the ComputedStyle in the cache
+      // was built). Note that this is very unlikely to actually
+      // happen in practice, since even getting here would also require
+      // a hash collision.
+      return false;
+    }
+    if (!lookup_it.properties->Equals(*cached_properties)) {
+      return false;
+    }
+    if (lookup_it.data_ != cached_it.second) {
+=======
   for (wtf_size_t i = 0; i < properties.size(); ++i) {
     if (properties[i].properties != matched_properties[i])
       return false;
@@ -143,6 +174,7 @@ bool CachedMatchedProperties::operator==(
       return false;
     if (properties[i].types_.valid_property_filter !=
         matched_properties_types[i].valid_property_filter)
+>>>>>>> chromium
       return false;
   }
   return true;
@@ -207,6 +239,22 @@ bool MatchedPropertiesCache::IsStyleCacheable(const ComputedStyle& style) {
     return false;
   if (style.HasContainerRelativeUnits())
     return false;
+<<<<<<< HEAD
+  }
+  if (builder.HasSiblingFunctions()) {
+    // The result of sibling-index() and sibling-count() depends on the
+    // element's position in the DOM.
+    return false;
+  }
+  // Avoiding cache for ::highlight styles, and the originating styles they are
+  // associated with, because the style depends on the highlight names involved
+  // and they're not cached.
+  if (builder.HasPseudoElementStyle(kPseudoIdHighlight) ||
+      builder.StyleType() == kPseudoIdHighlight) {
+    return false;
+  }
+=======
+>>>>>>> chromium
   return true;
 }
 

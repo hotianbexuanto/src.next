@@ -11,6 +11,7 @@
 #include "base/compiler_specific.h"
 #include "base/macros.h"
 #include "content/public/browser/javascript_dialog_manager.h"
+#include "content/public/browser/web_contents_observer.h"
 
 namespace javascript_dialogs {
 
@@ -30,7 +31,7 @@ class ChromeJavaScriptDialogExtraData {
 
 // A controller + model class for JavaScript alert, confirm, prompt, and
 // onbeforeunload dialog boxes.
-class AppModalDialogController {
+class AppModalDialogController : public content::WebContentsObserver {
  public:
   typedef std::map<void*, ChromeJavaScriptDialogExtraData> ExtraDataMap;
 
@@ -45,7 +46,15 @@ class AppModalDialogController {
       bool is_before_unload_dialog,
       bool is_reload,
       content::JavaScriptDialogManager::DialogClosedCallback callback);
+<<<<<<< HEAD
+
+  AppModalDialogController(const AppModalDialogController&) = delete;
+  AppModalDialogController& operator=(const AppModalDialogController&) = delete;
+
+  ~AppModalDialogController() override;
+=======
   ~AppModalDialogController();
+>>>>>>> chromium
 
   // Called by the AppModalDialogQueue to show this dialog.
   void ShowModalDialog();
@@ -81,7 +90,6 @@ class AppModalDialogController {
   // Accessors.
   std::u16string title() const { return title_; }
   AppModalDialogView* view() const { return view_; }
-  content::WebContents* web_contents() const { return web_contents_; }
   content::JavaScriptDialogType javascript_dialog_type() const {
     return javascript_dialog_type_;
   }
@@ -90,6 +98,9 @@ class AppModalDialogController {
   bool display_suppress_checkbox() const { return display_suppress_checkbox_; }
   bool is_before_unload_dialog() const { return is_before_unload_dialog_; }
   bool is_reload() const { return is_reload_; }
+
+  // content::WebContentsObserver overrides:
+  void WebContentsDestroyed() final;
 
  private:
   // Notifies the delegate with the result of the dialog.
@@ -109,14 +120,18 @@ class AppModalDialogController {
 
   // False if the dialog should no longer be shown, e.g. because the underlying
   // tab navigated away while the dialog was queued.
-  bool valid_;
+  bool valid_ = true;
 
   // The toolkit-specific implementation of the app modal dialog box. When
   // non-null, |view_| owns |this|.
+<<<<<<< HEAD
+  raw_ptr<AppModalDialogView> view_ = nullptr;
+=======
   AppModalDialogView* view_;
 
   // The WebContents that opened this dialog.
   content::WebContents* web_contents_;
+>>>>>>> chromium
 
   // A map of extra Chrome-only data associated with the delegate_. Can be
   // inspected via |extra_data_map_[web_contents_]|.

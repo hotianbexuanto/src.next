@@ -5,7 +5,13 @@
 #ifndef BASE_LAZY_INSTANCE_HELPERS_H_
 #define BASE_LAZY_INSTANCE_HELPERS_H_
 
+<<<<<<< HEAD
+#include <atomic>
+#include <cstdint>
+
+=======
 #include "base/atomicops.h"
+>>>>>>> chromium
 #include "base/base_export.h"
 #include "base/check.h"
 

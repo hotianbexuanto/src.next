@@ -7,6 +7,38 @@ package org.chromium.chrome.browser.omnibox.suggestions;
 import android.view.View;
 import android.view.ViewGroup;
 
+<<<<<<< HEAD
+import androidx.annotation.VisibleForTesting;
+
+import org.chromium.base.TraceEvent;
+import org.chromium.base.metrics.TimingMetric;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.chrome.browser.omnibox.OmniboxMetrics;
+import org.chromium.chrome.browser.omnibox.R;
+import org.chromium.chrome.browser.omnibox.suggestions.answer.AnswerSuggestionViewBinder;
+import org.chromium.chrome.browser.omnibox.suggestions.base.BaseSuggestionView;
+import org.chromium.chrome.browser.omnibox.suggestions.base.BaseSuggestionViewBinder;
+import org.chromium.chrome.browser.omnibox.suggestions.basic.SuggestionViewViewBinder;
+import org.chromium.chrome.browser.omnibox.suggestions.carousel.BaseCarouselSuggestionItemViewBuilder;
+import org.chromium.chrome.browser.omnibox.suggestions.carousel.BaseCarouselSuggestionViewBinder;
+import org.chromium.chrome.browser.omnibox.suggestions.editurl.EditUrlSuggestionView;
+import org.chromium.chrome.browser.omnibox.suggestions.editurl.EditUrlSuggestionViewBinder;
+import org.chromium.chrome.browser.omnibox.suggestions.entity.EntitySuggestionViewBinder;
+import org.chromium.chrome.browser.omnibox.suggestions.groupseparator.GroupSeparatorView;
+import org.chromium.chrome.browser.omnibox.suggestions.header.HeaderView;
+import org.chromium.chrome.browser.omnibox.suggestions.header.HeaderViewBinder;
+import org.chromium.chrome.browser.omnibox.suggestions.tail.TailSuggestionView;
+import org.chromium.chrome.browser.omnibox.suggestions.tail.TailSuggestionViewBinder;
+import org.chromium.components.omnibox.suggestions.OmniboxSuggestionUiType;
+import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
+
+/** ModelListAdapter for OmniboxSuggestionsDropdown (RecyclerView version). */
+@VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
+@NullMarked
+public class OmniboxSuggestionsDropdownAdapter extends SimpleRecyclerViewAdapter {
+    private int mNumSessionViewsCreated;
+    private int mNumSessionViewsBound;
+=======
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.RecyclerView.LayoutManager;
@@ -19,6 +51,7 @@ import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 class OmniboxSuggestionsDropdownAdapter extends SimpleRecyclerViewAdapter {
     private int mSelectedItem = RecyclerView.NO_POSITION;
     private LayoutManager mLayoutManager;
+>>>>>>> chromium
 
     OmniboxSuggestionsDropdownAdapter(ModelList data) {
         super(data);
@@ -104,4 +137,19 @@ class OmniboxSuggestionsDropdownAdapter extends SimpleRecyclerViewAdapter {
             return super.createView(parent, viewType);
         }
     }
+<<<<<<< HEAD
+
+    @Override
+    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        mNumSessionViewsCreated++;
+        return super.onCreateViewHolder(parent, viewType);
+    }
+
+    @Override
+    public void onBindViewHolder(ViewHolder holder, int position) {
+        mNumSessionViewsBound++;
+        super.onBindViewHolder(holder, position);
+    }
+=======
+>>>>>>> chromium
 }

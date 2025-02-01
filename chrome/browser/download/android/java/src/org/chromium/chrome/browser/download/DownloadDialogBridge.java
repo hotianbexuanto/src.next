@@ -9,9 +9,16 @@ import android.content.Context;
 
 import androidx.annotation.VisibleForTesting;
 
+<<<<<<< HEAD
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
+
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.download.DownloadLaterMetrics.DownloadLaterUiEvent;
+>>>>>>> chromium
 import org.chromium.chrome.browser.download.DownloadLocationDialogMetrics.DownloadLocationSuggestionEvent;
 import org.chromium.chrome.browser.download.dialogs.DownloadDateTimePickerDialog;
 import org.chromium.chrome.browser.download.dialogs.DownloadDateTimePickerDialogImpl;
@@ -99,9 +106,21 @@ public class DownloadDialogBridge
     }
 
     @CalledByNative
+<<<<<<< HEAD
+    private void showDialog(
+            WindowAndroid windowAndroid,
+            long totalBytes,
+            @ConnectionType int connectionType,
+            @DownloadLocationDialogType int dialogType,
+            @JniType("std::string") String suggestedPath,
+            Profile profile) {
+        mWindowAndroid = windowAndroid;
+        mProfile = profile;
+=======
     private void showDialog(WindowAndroid windowAndroid, long totalBytes,
             @ConnectionType int connectionType, @DownloadLocationDialogType int dialogType,
             String suggestedPath, boolean supportsLaterDialog) {
+>>>>>>> chromium
         Activity activity = windowAndroid.getActivity().get();
         if (activity == null) {
             onCancel();
@@ -354,6 +373,17 @@ public class DownloadDialogBridge
 
     @NativeMethods
     public interface Natives {
+<<<<<<< HEAD
+        void onComplete(
+                long nativeDownloadDialogBridge,
+                DownloadDialogBridge caller,
+                @JniType("std::string") String returnedPath);
+
+        void onCanceled(long nativeDownloadDialogBridge, DownloadDialogBridge caller);
+
+        void setDownloadAndSaveFileDefaultDirectory(
+                PrefService prefs, @JniType("std::string") String directory);
+=======
         void onComplete(long nativeDownloadDialogBridge, DownloadDialogBridge caller,
                 String returnedPath, boolean onWifi, long startTime);
         void onCanceled(long nativeDownloadDialogBridge, DownloadDialogBridge caller);
@@ -363,5 +393,6 @@ public class DownloadDialogBridge
         long getDownloadLaterMinFileSize();
         boolean shouldShowDateTimePicker();
         boolean isLocationDialogManaged();
+>>>>>>> chromium
     }
 }

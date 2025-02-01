@@ -4,9 +4,16 @@
 
 package org.chromium.components.embedder_support.util;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.url.GURL;
+
+=======
+>>>>>>> chromium
 /**
  * Java side version of chrome/common/url_constants.cc
  */
+@NullMarked
 public class UrlConstants {
     public static final String APP_INTENT_SCHEME = "android-app";
     public static final String BLOB_SCHEME = "blob";
@@ -89,6 +96,19 @@ public class UrlConstants {
     public static final String MY_ACTIVITY_URL_IN_HISTORY =
             "https://myactivity.google.com/myactivity/?utm_source=chrome_h";
 
+<<<<<<< HEAD
+    public static final String GOOGLE_SEARCH_HISTORY_URL_IN_QD =
+            "https://myactivity.google.com/product/search?utm_source=chrome_qd";
+
+    public static final String MY_ACTIVITY_URL_IN_QD =
+            "https://myactivity.google.com/myactivity?utm_source=chrome_qd";
+
+    public static final String GOOGLE_PRIVACY_POLICY = "https://policies.google.com/privacy";
+
+    public static final String GOOGLE_URL = "https://www.google.com/";
+
+=======
+>>>>>>> chromium
     public static final String EXPLORE_HOST = "explore";
     public static final String EXPLORE_URL = "chrome-native://explore/";
     public static final String CHROME_DINO_URL = "chrome://dino";

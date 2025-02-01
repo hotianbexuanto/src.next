@@ -150,6 +150,62 @@ scoped_refptr<StyleEnvironmentVariables> StyleEnvironmentVariables::Create(
   return obj;
 }
 
+<<<<<<< HEAD
+void StyleEnvironmentVariables::SetVariable(const AtomicString& name,
+                                            const String& value) {
+  data_.Set(name,
+            CSSVariableData::Create(value, false /* is_animation_tainted */,
+                                    false /* is_attr_tainted */,
+                                    false /* needs_variable_resolution */));
+  InvalidateVariable(name);
+}
+
+void StyleEnvironmentVariables::SetVariable(const AtomicString& name,
+                                            unsigned first_dimension,
+                                            unsigned second_dimension,
+                                            const String& value) {
+  base::CheckedNumeric<unsigned> first_dimension_size = first_dimension;
+  ++first_dimension_size;
+  if (!first_dimension_size.IsValid()) {
+    return;
+  }
+
+  base::CheckedNumeric<unsigned> second_dimension_size = second_dimension;
+  ++second_dimension_size;
+  if (!second_dimension_size.IsValid()) {
+    return;
+  }
+
+  CSSVariableData* variable_data = CSSVariableData::Create(
+      value, false /* is_animation_tainted */, false /* is_attr_tainted */,
+      false /* needs_variable_resolution */);
+
+  TwoDimensionVariableValues* values_to_set = nullptr;
+  auto it = two_dimension_data_.find(name);
+  if (it == two_dimension_data_.end()) {
+    auto result = two_dimension_data_.Set(name, TwoDimensionVariableValues());
+    values_to_set = &result.stored_value->value;
+  } else {
+    values_to_set = &it->value;
+  }
+
+  if (first_dimension_size.ValueOrDie() > values_to_set->size()) {
+    values_to_set->Grow(first_dimension_size.ValueOrDie());
+  }
+
+  if (second_dimension_size.ValueOrDie() >
+      (*values_to_set)[first_dimension].size()) {
+    (*values_to_set)[first_dimension].Grow(second_dimension_size.ValueOrDie());
+  }
+
+  (*values_to_set)[first_dimension][second_dimension] = variable_data;
+  InvalidateVariable(name);
+}
+
+void StyleEnvironmentVariables::SetVariable(UADefinedVariable variable,
+                                            const String& value) {
+  SetVariable(GetVariableName(variable, GetFeatureContext()), value);
+=======
 StyleEnvironmentVariables::~StyleEnvironmentVariables() {
   // Remove a reference to this instance from the parent.
   if (parent_) {
@@ -157,6 +213,7 @@ StyleEnvironmentVariables::~StyleEnvironmentVariables() {
     DCHECK(it != kNotFound);
     parent_->children_.EraseAt(it);
   }
+>>>>>>> chromium
 }
 
 void StyleEnvironmentVariables::SetVariable(
@@ -212,6 +269,10 @@ void StyleEnvironmentVariables::DetachFromParent() {
     parent_->children_.EraseAt(it);
 
   parent_ = nullptr;
+}
+
+String StyleEnvironmentVariables::FormatFloatPx(float value) {
+  return String::Format("%gpx", value);
 }
 
 String StyleEnvironmentVariables::FormatPx(int value) {

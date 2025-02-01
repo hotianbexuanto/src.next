@@ -4,7 +4,15 @@
 
 #include "third_party/blink/renderer/core/loader/loader_factory_for_frame.h"
 
+<<<<<<< HEAD
+#include "base/containers/adapters.h"
+#include "base/functional/bind.h"
+#include "base/memory/scoped_refptr.h"
+#include "base/numerics/safe_conversions.h"
+#include "base/task/single_thread_task_runner.h"
+=======
 #include "base/single_thread_task_runner.h"
+>>>>>>> chromium
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/network/public/mojom/url_loader_factory.mojom-blink.h"
@@ -27,6 +35,88 @@
 
 namespace blink {
 
+<<<<<<< HEAD
+namespace {
+
+// This class is used for loading resources with a custom URLLoaderFactory using
+// a BackgroundURLLoader.
+class BackgroundResourceFetchAssetsWithCustomLoaderFactory
+    : public WebBackgroundResourceFetchAssets {
+ public:
+  BackgroundResourceFetchAssetsWithCustomLoaderFactory(
+      std::unique_ptr<network::PendingSharedURLLoaderFactory>
+          pending_loader_factory,
+      scoped_refptr<WebBackgroundResourceFetchAssets> base_assets)
+      : pending_loader_factory_(std::move(pending_loader_factory)),
+        base_assets_(std::move(base_assets)) {}
+
+  BackgroundResourceFetchAssetsWithCustomLoaderFactory(
+      const BackgroundResourceFetchAssetsWithCustomLoaderFactory&) = delete;
+  BackgroundResourceFetchAssetsWithCustomLoaderFactory& operator=(
+      const BackgroundResourceFetchAssetsWithCustomLoaderFactory&) = delete;
+
+  const scoped_refptr<base::SequencedTaskRunner>& GetTaskRunner() override {
+    return base_assets_->GetTaskRunner();
+  }
+  scoped_refptr<network::SharedURLLoaderFactory> GetLoaderFactory() override {
+    CHECK(GetTaskRunner()->RunsTasksInCurrentSequence());
+    if (pending_loader_factory_) {
+      loader_factory_ = network::SharedURLLoaderFactory::Create(
+          std::move(pending_loader_factory_));
+      pending_loader_factory_.reset();
+      CHECK(loader_factory_);
+    }
+    return loader_factory_;
+  }
+  blink::URLLoaderThrottleProvider* GetThrottleProvider() override {
+    return base_assets_->GetThrottleProvider();
+  }
+  const blink::LocalFrameToken& GetLocalFrameToken() override {
+    return base_assets_->GetLocalFrameToken();
+  }
+
+ private:
+  ~BackgroundResourceFetchAssetsWithCustomLoaderFactory() override = default;
+
+  std::unique_ptr<network::PendingSharedURLLoaderFactory>
+      pending_loader_factory_;
+  scoped_refptr<network::SharedURLLoaderFactory> loader_factory_;
+  scoped_refptr<WebBackgroundResourceFetchAssets> base_assets_;
+};
+
+Vector<String>& CorsExemptHeaderList() {
+  DEFINE_STATIC_LOCAL(ThreadSpecific<Vector<String>>, cors_exempt_header_list,
+                      ());
+  return *cors_exempt_header_list;
+}
+
+Vector<std::unique_ptr<URLLoaderThrottle>> CreateThrottlesImpl(
+    URLLoaderThrottleProvider* throttle_provider,
+    const LocalFrameToken local_frame_token,
+    const network::ResourceRequest* network_request) {
+  if (!throttle_provider) {
+    return {};
+  }
+  CHECK(network_request);
+
+  return WTF::ToVector(base::RangeAsRvalues(
+      throttle_provider->CreateThrottles(local_frame_token, *network_request)));
+}
+
+}  // namespace
+
+// static
+void LoaderFactoryForFrame::SetCorsExemptHeaderList(
+    Vector<String> cors_exempt_header_list) {
+  CorsExemptHeaderList() = std::move(cors_exempt_header_list);
+}
+// static
+Vector<String> LoaderFactoryForFrame::GetCorsExemptHeaderList() {
+  return CorsExemptHeaderList();
+}
+
+=======
+>>>>>>> chromium
 LoaderFactoryForFrame::LoaderFactoryForFrame(DocumentLoader& document_loader,
                                              LocalDOMWindow& window)
     : document_loader_(document_loader),

@@ -41,6 +41,12 @@
 #include "components/history/core/browser/history_backend.h"
 #include "components/history/core/browser/history_database_params.h"
 #include "components/history/core/browser/history_db_task.h"
+<<<<<<< HEAD
+#include "components/history/core/browser/history_types.h"
+#include "components/history/core/browser/keyword_search_term.h"
+#include "components/history/core/browser/visit_delegate.h"
+=======
+>>>>>>> chromium
 #include "components/history/core/test/database_test_utils.h"
 #include "components/history/core/test/test_history_database.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -900,4 +906,393 @@ TEST_F(HistoryServiceTest, GetDomainDiversityBitmaskTest) {
   TestDomainMetricSet(res[4], -1, 1, 2);
   TestDomainMetricSet(res[5], -1, 1, 2);
 }
+<<<<<<< HEAD
+
+// Gets unique local and synced domains visited and the last visited domain
+// within a time range.
+TEST_F(HistoryServiceTest, GetUniqueDomainsVisited) {
+  base::Time base_time = base::Time::Now();
+  HistoryService* history = history_service_.get();
+  ASSERT_TRUE(history);
+
+  // Add local visits to history database at specific days back.
+  AddPageInThePast(history, "http://www.test1.com/", 1);
+  AddPageInThePast(history, "http://www.test2.com/test", 2);
+  AddPageInThePast(history, "http://www.test2.com/", 3);
+  AddPageInThePast(history, "http://www.test3.com/", 4);
+
+  // Add synced visits to history database at specific days back.
+  AddSyncedPageInThePast(history, "http://www.test3.com/", 3);
+  AddSyncedPageInThePast(history, "http://www.test4.com/", 5);
+
+  {
+    // DomainsVisitedResult should be empty when no domains in range.
+    base::test::TestFuture<DomainsVisitedResult> future;
+
+    history->GetUniqueDomainsVisited(
+        /*begin_time=*/base_time - base::Days(10),
+        /*end_time=*/base_time - base::Days(5), future.GetCallback(),
+        &tracker_);
+
+    DomainsVisitedResult result = future.Take();
+
+    EXPECT_EQ(0u, result.locally_visited_domains.size());
+    EXPECT_EQ(0u, result.all_visited_domains.size());
+  }
+
+  {
+    // DomainsVisitedResult should include unique domains in range in
+    // reverse-chronological order.
+    base::test::TestFuture<DomainsVisitedResult> future;
+
+    history->GetUniqueDomainsVisited(
+        /*begin_time=*/base_time - base::Days(2), /*end_time=*/base_time,
+        future.GetCallback(), &tracker_);
+
+    std::vector<std::string> expectedLocalResult({"test1.com", "test2.com"});
+    std::vector<std::string> expectedSyncedResult({"test1.com", "test2.com"});
+
+    DomainsVisitedResult result = future.Take();
+
+    EXPECT_EQ(expectedLocalResult, result.locally_visited_domains);
+    EXPECT_EQ(expectedSyncedResult, result.all_visited_domains);
+  }
+
+  {
+    // DomainsVisitedResult should not include duplicate domains in range.
+    base::test::TestFuture<DomainsVisitedResult> future;
+
+    history->GetUniqueDomainsVisited(
+        /*begin_time=*/base_time - base::Days(4), /*end_time=*/base_time,
+        future.GetCallback(), &tracker_);
+
+    std::vector<std::string> expectedLocalResult(
+        {"test1.com", "test2.com", "test3.com"});
+    std::vector<std::string> expectedSyncedResult(
+        {"test1.com", "test2.com", "test3.com"});
+
+    DomainsVisitedResult result = future.Take();
+
+    EXPECT_EQ(expectedLocalResult, result.locally_visited_domains);
+    EXPECT_EQ(expectedSyncedResult, result.all_visited_domains);
+  }
+
+  {
+    // local domains should not include synced visits in range.
+    base::test::TestFuture<DomainsVisitedResult> future;
+
+    history->GetUniqueDomainsVisited(
+        /*begin_time=*/base_time - base::Days(5), /*end_time=*/base_time,
+        future.GetCallback(), &tracker_);
+
+    std::vector<std::string> expectedLocalResult(
+        {"test1.com", "test2.com", "test3.com"});
+    std::vector<std::string> expectedSyncedResult(
+        {"test1.com", "test2.com", "test3.com", "test4.com"});
+
+    DomainsVisitedResult result = future.Take();
+
+    EXPECT_EQ(expectedLocalResult, result.locally_visited_domains);
+    EXPECT_EQ(expectedSyncedResult, result.all_visited_domains);
+  }
+}
+
+namespace {
+
+class AddSyncedVisitTask : public HistoryDBTask {
+ public:
+  AddSyncedVisitTask(base::RunLoop* run_loop,
+                     const GURL& url,
+                     const VisitRow& visit)
+      : run_loop_(run_loop), url_(url), visit_(visit) {}
+
+  AddSyncedVisitTask(const AddSyncedVisitTask&) = delete;
+  AddSyncedVisitTask& operator=(const AddSyncedVisitTask&) = delete;
+
+  ~AddSyncedVisitTask() override = default;
+
+  bool RunOnDBThread(HistoryBackend* backend, HistoryDatabase* db) override {
+    VisitID visit_id = backend->AddSyncedVisit(
+        url_, u"Title", /*hidden=*/false, visit_, std::nullopt, std::nullopt);
+    EXPECT_NE(visit_id, kInvalidVisitID);
+    LOG(ERROR) << "Added visit!";
+    return true;
+  }
+
+  void DoneRunOnMainThread() override { run_loop_->QuitWhenIdle(); }
+
+ private:
+  raw_ptr<base::RunLoop> run_loop_;
+
+  GURL url_;
+  VisitRow visit_;
+};
+
+}  // namespace
+
+TEST_F(HistoryServiceTest, GetDomainDiversityLocalVsSynced) {
+  HistoryService* history = history_service_.get();
+  ASSERT_TRUE(history);
+
+  base::Time query_time = base::Time::Now();
+
+  // Make sure `query_time` is at least some time past the midnight so that
+  // some domain visits can be inserted between `query_time` and midnight
+  // for testing.
+  query_time =
+      std::max(query_time.LocalMidnight() + base::Minutes(10), query_time);
+
+  // Add a local visit.
+  history->AddPage(GURL("https://www.local.com/"),
+                   GetTimeInThePast(query_time, /*days_back=*/1,
+                                    /*hours_since_midnight=*/12),
+                   0, 0, GURL(), history::RedirectList(),
+                   ui::PAGE_TRANSITION_LINK, history::SOURCE_BROWSED, false);
+
+  // Add a synced visit, as it would be created by HISTORY sync. The API to do
+  // this isn't exposed in HistoryService (only HistoryBackend).
+  {
+    VisitRow visit;
+    visit.visit_time = GetTimeInThePast(query_time, /*days_back=*/1,
+                                        /*hours_since_midnight=*/14);
+    visit.originator_cache_guid = "some_originator";
+    visit.transition = ui::PageTransitionFromInt(
+        ui::PAGE_TRANSITION_LINK | ui::PAGE_TRANSITION_CHAIN_START |
+        ui::PAGE_TRANSITION_CHAIN_END);
+    visit.is_known_to_sync = true;
+
+    base::RunLoop run_loop;
+    history->ScheduleDBTask(
+        FROM_HERE,
+        std::make_unique<AddSyncedVisitTask>(
+            &run_loop, GURL("https://www.synced.com/"), visit),
+        &tracker_);
+    run_loop.Run();
+  }
+
+  auto [local_res, all_res] = GetDomainDiversityHelper(
+      history, GetTimeInThePast(query_time, 1, 0), query_time,
+      history::kEnableLast1DayMetric, &tracker_);
+
+  ASSERT_EQ(1u, local_res.size());
+  ASSERT_EQ(1u, all_res.size());
+
+  // The "local" result should only count the local visit.
+  TestDomainMetricSet(local_res[0], 1, -1, -1);
+  // The "all" result should also include the synced visit.
+  TestDomainMetricSet(all_res[0], 2, -1, -1);
+}
+
+TEST_F(HistoryServiceTest, GetMostRecentVisitsForGurl) {
+  HistoryService* history = history_service_.get();
+  ASSERT_TRUE(history);
+
+  // Should not return older visits.
+  AddPageInThePast(history, "http://www.google.com/", 6);
+  // Should not return visits to a different URL.
+  AddPageInThePast(history, "http://www.not-google.com/", 1);
+  AddPageInThePast(history, "http://www.google.com/", 1);
+  // Should return visits in order of visit time.
+  AddPageInThePast(history, "http://www.google.com/", 3);
+  AddPageInThePast(history, "http://www.google.com/", 2);
+  // Should not return older visits.
+  AddPageInThePast(history, "http://www.google.com/", 6);
+
+  base::test::TestFuture<QueryURLResult> future;
+  history->GetMostRecentVisitsForGurl(GURL("http://www.google.com/"), 3,
+                                      future.GetCallback(), &tracker_);
+  const auto result = future.Take();
+  EXPECT_EQ(result.row.id(), 1);
+  EXPECT_THAT(result.visits,
+              testing::ElementsAre(
+                  testing::AllOf(testing::Field(&VisitRow::url_id, 1),
+                                 testing::Field(&VisitRow::visit_id, 3)),
+                  testing::AllOf(testing::Field(&VisitRow::url_id, 1),
+                                 testing::Field(&VisitRow::visit_id, 5)),
+                  testing::AllOf(testing::Field(&VisitRow::url_id, 1),
+                                 testing::Field(&VisitRow::visit_id, 4))));
+}
+
+// This class mocks the VisitDelegate in HistoryService to ensure that
+// partitioned visited links are not added immediately, but rather are posted to
+// the HistoryBackend before notifying the VisitDelegate.
+class OrderingHistoryServiceTest : public HistoryServiceTest {
+ public:
+  OrderingHistoryServiceTest() = default;
+  ~OrderingHistoryServiceTest() override = default;
+
+ protected:
+  friend class BackendDelegate;
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    history_dir_ = temp_dir_.GetPath().AppendASCII("HistoryServiceTest");
+    ASSERT_TRUE(base::CreateDirectory(history_dir_));
+
+    // Override the VisitDelegate with our mock instance.
+    std::unique_ptr<TestVisitDelegate> visit_delegate =
+        std::make_unique<TestVisitDelegate>();
+    // Wait for the AddVisitedLink task to post to the DB thread and contact the
+    // TestVisitDelegate on the main thread. The task will terminate
+    // the message loop when the build is done.
+    visit_delegate->set_add_complete_task(run_loop_.QuitClosure());
+    // Store a weak instance of the VisitDelegate so we can query it in tests.
+    weak_visit_delegate_ = visit_delegate->GetWeakPtr();
+
+    // Set up the HistoryService.
+    history_service_ = std::make_unique<history::HistoryService>(
+        nullptr, std::move(visit_delegate));
+    if (!history_service_->Init(
+            TestHistoryDatabaseParamsForPath(history_dir_))) {
+      history_service_.reset();
+      ADD_FAILURE();
+    }
+  }
+
+  base::RunLoop run_loop_;
+  base::WeakPtr<TestVisitDelegate> weak_visit_delegate_;
+};
+
+TEST_F(OrderingHistoryServiceTest, PartitionContextClicksByOpener) {
+  // Create the components required for our context click visited link. Context
+  // clicks have empty/invalid top-level URLs and valid opener URLs.
+  const GURL frame_url("https://local1.url");
+  const GURL top_level_url = GURL();
+  const GURL opener_url("https://local2.url");
+  const GURL link_url("http://google.com");
+  // Set mock numbers for our Context and nav_entry IDs.
+  const ContextID context_id1 = 1;
+  int nav_entry_id = 2;
+
+  // Prepare a mock `AddPage` request for the context click.
+  HistoryAddPageArgs request(link_url, base::Time::Now() - base::Seconds(1),
+                             context_id1, 0, std::nullopt, frame_url,
+                             /*redirects=*/{}, ui::PAGE_TRANSITION_LINK, false,
+                             SOURCE_BROWSED, false, true,
+                             /*is_ephemeral=*/false, std::nullopt,
+                             top_level_url,
+                             Opener(context_id1, nav_entry_id, opener_url));
+
+  // Simulate a user performing the context click.
+  history_service_->AddPage(request);
+
+  // Check that the visit delegate is not called immediately.
+  ASSERT_TRUE(weak_visit_delegate_);
+  EXPECT_FALSE(weak_visit_delegate_->visit_delegate_was_called());
+
+  // Wait for the visit delegate to resolve.
+  run_loop_.Run();
+
+  // Determine what VisitedLink should be in our mock hashtable.
+  VisitedLink expected_link = {link_url, net::SchemefulSite(opener_url),
+                               url::Origin::Create(frame_url)};
+  std::vector<VisitedLink> expected_links = {expected_link};
+
+  // Ensure that our VisitedLink has been added to the mock hashtable AND opener
+  // has replaced the empty top-level site.
+  ASSERT_TRUE(weak_visit_delegate_);
+  EXPECT_TRUE(weak_visit_delegate_->visit_delegate_was_called());
+  EXPECT_EQ(weak_visit_delegate_->get_added_links(), expected_links);
+}
+
+TEST_F(OrderingHistoryServiceTest, EnsureOpenerDoesntReplaceValidTopLevel) {
+  // Create the components required for a normal link click. In this test, we
+  // want to create a request with valid values for both `top_level_url` and
+  // `opener_url` to ensure that the opener does not replace a valid top-level
+  // for non-context link clicks.
+  const GURL frame_url("https://local1.url");
+  const GURL top_level_url("https://local2.url");
+  const GURL opener_url("https://local3.url");
+  const GURL link_url("http://google.com");
+  // Set mock numbers for our Context and nav_entry IDs.
+  const ContextID context_id1 = 1;
+  int nav_entry_id = 2;
+
+  // Prepare a mock `AddPage` request for the normal link click.
+  HistoryAddPageArgs request(link_url, base::Time::Now() - base::Seconds(1),
+                             context_id1, 0, std::nullopt, frame_url,
+                             /*redirects=*/{}, ui::PAGE_TRANSITION_LINK, false,
+                             SOURCE_BROWSED, false, true,
+                             /*is_ephemeral=*/false, std::nullopt,
+                             top_level_url,
+                             Opener(context_id1, nav_entry_id, opener_url));
+
+  // Simulate a user performing the normal link click.
+  history_service_->AddPage(request);
+
+  // Check that the visit delegate is not called immediately.
+  ASSERT_TRUE(weak_visit_delegate_);
+  EXPECT_FALSE(weak_visit_delegate_->visit_delegate_was_called());
+
+  // Wait for the visit delegate to resolve.
+  run_loop_.Run();
+
+  // Determine what VisitedLink should be in our mock hashtable.
+  VisitedLink expected_link = {link_url, net::SchemefulSite(top_level_url),
+                               url::Origin::Create(frame_url)};
+  std::vector<VisitedLink> expected_links = {expected_link};
+
+  // Ensure that our VisitedLink has been added to the mock hashtable AND opener
+  // HAS NOT replaced the valid top-level site.
+  ASSERT_TRUE(weak_visit_delegate_);
+  EXPECT_TRUE(weak_visit_delegate_->visit_delegate_was_called());
+  EXPECT_EQ(weak_visit_delegate_->get_added_links(), expected_links);
+}
+
+TEST_F(OrderingHistoryServiceTest, EnsureCorrectOrder) {
+  // Create the components required for our visited link.
+  const GURL frame_url("https://local1.url");
+  const GURL top_level_url("https://local2.url");
+  const GURL client_redirect_url("http://google.com");
+  base::Time visit_time = base::Time::Now() - base::Days(1);
+  const ContextID context_id1 = 1;
+
+  // Create a VisitedLinkRow containing the top-level site and frame origin.
+  VisitedLinkRow deleted_visited_link_row;
+  deleted_visited_link_row.top_level_url = top_level_url;
+  deleted_visited_link_row.frame_url = frame_url;
+
+  // Create a VisitedLink deletion notification for that same VisitedLink.
+  DeletedVisitedLink deleted_visited_link;
+  deleted_visited_link.link_url = client_redirect_url;
+  deleted_visited_link.visited_link_row = deleted_visited_link_row;
+
+  // Create a Visit deletion notification for that same VisitedLink and a mock
+  // corresponding Visit.
+  VisitRow deleted_visit_row = VisitRow();
+  deleted_visit_row.visit_time = visit_time;
+  DeletedVisit deleted_visit(deleted_visit_row, deleted_visited_link);
+  std::vector<DeletedVisit> deleted_visits = {deleted_visit};
+
+  // Prepare a mock `AddPage` request for the VisitedLink.
+  HistoryAddPageArgs request(
+      client_redirect_url, base::Time::Now() - base::Seconds(1), context_id1, 0,
+      std::nullopt, frame_url,
+      /*redirects=*/{}, ui::PAGE_TRANSITION_LINK, false, SOURCE_BROWSED, false,
+      true, /*is_ephemeral=*/false, std::nullopt, top_level_url);
+
+  // Simulate a user clicking on our VistedLink.
+  history_service_->AddPage(request);
+
+  // Check that the visit delegate is not called immediately.
+  ASSERT_TRUE(weak_visit_delegate_);
+  EXPECT_FALSE(weak_visit_delegate_->visit_delegate_was_called());
+
+  // Wait for the visit delegate to resolve.
+  run_loop_.Run();
+
+  // Determine what VisitedLink should be in our mock hashtable.
+  VisitedLink expected_link = {client_redirect_url,
+                               net::SchemefulSite(top_level_url),
+                               url::Origin::Create(frame_url)};
+  std::vector<VisitedLink> expected_links = {expected_link};
+
+  // Ensure that we have notified out visit delegate of the added link.
+  ASSERT_TRUE(weak_visit_delegate_);
+  EXPECT_TRUE(weak_visit_delegate_->visit_delegate_was_called());
+  EXPECT_EQ(weak_visit_delegate_->get_added_links(), expected_links);
+}
+
+=======
+>>>>>>> chromium
 }  // namespace history

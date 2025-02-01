@@ -115,7 +115,11 @@ const CSSValue* ConvertFontMetricOverrideValue(const CSSValue* parsed_value) {
 const CSSValue* ConvertSizeAdjustValue(const CSSValue* parsed_value) {
   // We store the initial value 100% as nullptr
   if (parsed_value &&
+<<<<<<< HEAD
+      To<CSSPrimitiveValue>(parsed_value)->GetValueIfKnown() == 100.0) {
+=======
       To<CSSPrimitiveValue>(parsed_value)->GetFloatValue() == 100.0f) {
+>>>>>>> chromium
     return nullptr;
   }
   return parsed_value;

@@ -51,6 +51,8 @@ class URLLoaderFactoryParamsHelper {
       network::mojom::ClientSecurityStatePtr client_security_state,
       mojo::PendingRemote<network::mojom::CrossOriginEmbedderPolicyReporter>
           coep_reporter,
+      mojo::PendingRemote<network::mojom::DocumentIsolationPolicyReporter>
+          dip_reporter,
       RenderProcessHost* process,
       network::mojom::TrustTokenRedemptionPolicy trust_token_redemption_policy,
       base::StringPiece debug_tag);
@@ -80,10 +82,35 @@ class URLLoaderFactoryParamsHelper {
       const net::IsolationInfo& isolation_info,
       mojo::PendingRemote<network::mojom::CrossOriginEmbedderPolicyReporter>
           coep_reporter,
+      mojo::PendingRemote<network::mojom::DocumentIsolationPolicyReporter>
+          dip_reporter,
       mojo::PendingRemote<network::mojom::URLLoaderNetworkServiceObserver>
           url_loader_network_observer,
       mojo::PendingRemote<network::mojom::DevToolsObserver> devtools_observer,
+<<<<<<< HEAD
+      network::mojom::ClientSecurityStatePtr client_security_state,
+      std::string_view debug_tag,
+      bool require_cross_site_request_for_cookies);
+
+  // Creates URLLoaderFactoryParams for Early Hints preload.
+  // When a redirect happens, a URLLoaderFactory created from the
+  // URLLoaderFactoryParams must be destroyed since some parameters are
+  // calculated from speculative state of `navigation_request`.
+  static network::mojom::URLLoaderFactoryParamsPtr CreateForEarlyHintsPreload(
+      RenderProcessHost* process,
+      const url::Origin& tentative_origin,
+      NavigationRequest& navigation_request,
+      const network::mojom::EarlyHints& early_hints,
+      mojo::PendingRemote<network::mojom::CookieAccessObserver> cookie_observer,
+      mojo::PendingRemote<network::mojom::TrustTokenAccessObserver>
+          trust_token_observer,
+      mojo::PendingRemote<network::mojom::SharedDictionaryAccessObserver>
+          shared_dictionary_observer,
+      mojo::PendingRemote<network::mojom::DeviceBoundSessionAccessObserver>
+          device_bound_session_observer);
+=======
       base::StringPiece debug_tag);
+>>>>>>> chromium
 
  private:
   // Only static methods.

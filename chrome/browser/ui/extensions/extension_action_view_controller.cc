@@ -42,6 +42,86 @@
 using extensions::ActionInfo;
 using extensions::CommandService;
 using extensions::ExtensionActionRunner;
+<<<<<<< HEAD
+using extensions::PermissionsManager;
+
+namespace {
+
+void RecordInvocationSource(
+    ToolbarActionViewController::InvocationSource source) {
+  base::UmaHistogramEnumeration("Extensions.Toolbar.InvocationSource", source);
+}
+
+// Computes hover card site access status based on:
+// 1. Extension wants site access: user site settings takes precedence
+// over the extension's site access.
+// 2. Extension does not want access: if all extensions are blocked display
+// such message because a) user could wrongly infer that an extension that
+// does not want access has access if we only show the blocked message for
+// extensions that want access; and b) it helps us work around tricky
+// calculations where we get into collisions between withheld and denied
+// permission. Otherwise, it should display "does not want access".
+ExtensionActionViewController::HoverCardState::SiteAccess
+GetHoverCardSiteAccessState(
+    extensions::PermissionsManager::UserSiteSetting site_setting,
+    extensions::SitePermissionsHelper::SiteInteraction site_interaction) {
+  switch (site_interaction) {
+    case extensions::SitePermissionsHelper::SiteInteraction::kGranted:
+      return site_setting == extensions::PermissionsManager::UserSiteSetting::
+                                 kGrantAllExtensions
+                 ? ExtensionActionViewController::HoverCardState::SiteAccess::
+                       kAllExtensionsAllowed
+                 : ExtensionActionViewController::HoverCardState::SiteAccess::
+                       kExtensionHasAccess;
+
+    case extensions::SitePermissionsHelper::SiteInteraction::kWithheld:
+    case extensions::SitePermissionsHelper::SiteInteraction::kActiveTab:
+      return site_setting == extensions::PermissionsManager::UserSiteSetting::
+                                 kBlockAllExtensions
+                 ? ExtensionActionViewController::HoverCardState::SiteAccess::
+                       kAllExtensionsBlocked
+                 : ExtensionActionViewController::HoverCardState::SiteAccess::
+                       kExtensionRequestsAccess;
+
+    case extensions::SitePermissionsHelper::SiteInteraction::kNone:
+      // kNone site interaction includes extensions that don't want access when
+      // user site setting is "block all extensions".
+      return site_setting == extensions::PermissionsManager::UserSiteSetting::
+                                 kBlockAllExtensions
+                 ? ExtensionActionViewController::HoverCardState::SiteAccess::
+                       kAllExtensionsBlocked
+                 : ExtensionActionViewController::HoverCardState::SiteAccess::
+                       kExtensionDoesNotWantAccess;
+  }
+}
+
+// Computes hover card policy status based on admin policy. Note that an
+// extension pinned by admin is also installed by admin. Thus, "pinned by admin"
+// has preference.
+ExtensionActionViewController::HoverCardState::AdminPolicy
+GetHoverCardPolicyState(Browser* browser,
+                        const extensions::ExtensionId& extension_id) {
+  auto* const model = ToolbarActionsModel::Get(browser->profile());
+  if (model->IsActionForcePinned(extension_id)) {
+    return ExtensionActionViewController::HoverCardState::AdminPolicy::
+        kPinnedByAdmin;
+  }
+
+  scoped_refptr<const extensions::Extension> extension =
+      extensions::ExtensionRegistry::Get(browser->profile())
+          ->enabled_extensions()
+          .GetByID(extension_id);
+  if (extensions::Manifest::IsPolicyLocation(extension->location())) {
+    return ExtensionActionViewController::HoverCardState::AdminPolicy::
+        kInstalledByAdmin;
+  }
+
+  return ExtensionActionViewController::HoverCardState::AdminPolicy::kNone;
+}
+
+}  // namespace
+=======
+>>>>>>> chromium
 
 // static
 std::unique_ptr<ExtensionActionViewController>
@@ -109,29 +189,38 @@ void ExtensionActionViewController::SetDelegate(
 gfx::Image ExtensionActionViewController::GetIcon(
     content::WebContents* web_contents,
     const gfx::Size& size) {
+<<<<<<< HEAD
+  if (!ExtensionIsValid()) {
+    return ui::ImageModel();
+  }
+=======
   if (!ExtensionIsValid())
     return gfx::Image();
+>>>>>>> chromium
 
   return gfx::Image(
       gfx::ImageSkia(GetIconImageSource(web_contents, size), size));
 }
 
 std::u16string ExtensionActionViewController::GetActionName() const {
-  if (!ExtensionIsValid())
+  if (!ExtensionIsValid()) {
     return std::u16string();
+  }
 
   return base::UTF8ToUTF16(extension_->name());
 }
 
 std::u16string ExtensionActionViewController::GetAccessibleName(
     content::WebContents* web_contents) const {
-  if (!ExtensionIsValid())
+  if (!ExtensionIsValid()) {
     return std::u16string();
+  }
 
   // GetAccessibleName() can (surprisingly) be called during browser
   // teardown. Handle this gracefully.
-  if (!web_contents)
+  if (!web_contents) {
     return base::UTF8ToUTF16(extension()->name());
+  }
 
   std::string title = extension_action()->GetTitle(
       sessions::SessionTabHelper::IdForTab(web_contents).id());
@@ -187,13 +276,22 @@ bool ExtensionActionViewController::IsShowingPopup() const {
 
 void ExtensionActionViewController::HidePopup() {
   if (IsShowingPopup()) {
+<<<<<<< HEAD
+    // Only call Close() on the popup if it's been shown; otherwise, the popup
+    // will be cleaned up in ShowPopup().
+    if (has_opened_popup_) {
+      popup_host_->Close();
+    }
+=======
     popup_host_->Close();
+>>>>>>> chromium
     // We need to do these actions synchronously (instead of closing and then
     // performing the rest of the cleanup in OnExtensionHostDestroyed()) because
     // the extension host may close asynchronously, and we need to keep the view
     // delegate up to date.
-    if (popup_host_)
+    if (popup_host_) {
       OnPopupClosed();
+    }
   }
 }
 
@@ -201,9 +299,17 @@ gfx::NativeView ExtensionActionViewController::GetPopupNativeView() {
   return popup_host_ ? popup_host_->view()->GetNativeView() : nullptr;
 }
 
+<<<<<<< HEAD
+ui::MenuModel* ExtensionActionViewController::GetContextMenu(
+    extensions::ExtensionContextMenuModel::ContextMenuSource
+        context_menu_source) {
+  if (!ExtensionIsValid()) {
+=======
 ui::MenuModel* ExtensionActionViewController::GetContextMenu() {
   if (!ExtensionIsValid())
+>>>>>>> chromium
     return nullptr;
+  }
 
   ToolbarActionViewController* const action =
       extensions_container_->GetActionForId(GetId());
@@ -225,10 +331,17 @@ void ExtensionActionViewController::OnContextMenuClosed() {
   extensions_container_->OnContextMenuClosed(this);
 }
 
+<<<<<<< HEAD
+void ExtensionActionViewController::ExecuteUserAction(InvocationSource source) {
+  if (!ExtensionIsValid()) {
+    return;
+  }
+=======
 bool ExtensionActionViewController::ExecuteAction(bool by_user,
                                                   InvocationSource source) {
   if (!ExtensionIsValid())
     return false;
+>>>>>>> chromium
 
   if (!IsEnabled(view_delegate_->GetCurrentWebContents())) {
     GetPreferredPopupViewController()
@@ -236,21 +349,70 @@ bool ExtensionActionViewController::ExecuteAction(bool by_user,
     return false;
   }
 
+<<<<<<< HEAD
+  content::WebContents* const web_contents =
+      view_delegate_->GetCurrentWebContents();
+  ExtensionActionRunner* action_runner =
+      ExtensionActionRunner::GetForWebContents(web_contents);
+  if (!action_runner) {
+    return;
+  }
+
+  RecordInvocationSource(source);
+
+  extensions_container_->CloseOverflowMenuIfOpen();
+
+  // This method is only called to execute an action by the user, so we can
+  // always grant tab permissions.
+  constexpr bool kGrantTabPermissions = true;
+  extensions::ExtensionAction::ShowAction action =
+      action_runner->RunAction(extension(), kGrantTabPermissions);
+
+  if (action == extensions::ExtensionAction::ShowAction::kShowPopup) {
+    constexpr bool kByUser = true;
+    GetPreferredPopupViewController()->TriggerPopup(
+        PopupShowAction::kShow, kByUser, ShowPopupCallback());
+  } else if (action ==
+             extensions::ExtensionAction::ShowAction::kToggleSidePanel) {
+    extensions::side_panel_util::ToggleExtensionSidePanel(browser_,
+                                                          extension()->id());
+  }
+}
+
+void ExtensionActionViewController::TriggerPopupForAPI(
+    ShowPopupCallback callback) {
+  RecordInvocationSource(InvocationSource::kApi);
+  // This method is called programmatically by an API; it should never be
+  // considered a user action.
+  constexpr bool kByUser = false;
+  TriggerPopup(PopupShowAction::kShow, kByUser, std::move(callback));
+=======
   base::UmaHistogramEnumeration("Extensions.Toolbar.InvocationSource", source);
   return ExecuteAction(SHOW_POPUP, by_user);
+>>>>>>> chromium
 }
 
 void ExtensionActionViewController::UpdateState() {
-  if (!ExtensionIsValid())
+  if (!ExtensionIsValid()) {
     return;
+  }
 
   view_delegate_->UpdateState();
 }
 
+<<<<<<< HEAD
+void ExtensionActionViewController::UpdateHoverCard(
+    ToolbarActionView* action_view,
+    ToolbarActionHoverCardUpdateType update_type) {
+  if (!ExtensionIsValid()) {
+    return;
+  }
+=======
 bool ExtensionActionViewController::ExecuteAction(PopupShowAction show_action,
                                                   bool grant_tab_permissions) {
   if (!ExtensionIsValid())
     return false;
+>>>>>>> chromium
 
   content::WebContents* web_contents = view_delegate_->GetCurrentWebContents();
   ExtensionActionRunner* action_runner =
@@ -271,8 +433,9 @@ bool ExtensionActionViewController::ExecuteAction(PopupShowAction show_action,
 }
 
 void ExtensionActionViewController::RegisterCommand() {
-  if (!ExtensionIsValid())
+  if (!ExtensionIsValid()) {
     return;
+  }
 
   platform_delegate_->RegisterCommand();
 }
@@ -288,8 +451,9 @@ void ExtensionActionViewController::InspectPopup() {
 void ExtensionActionViewController::OnIconUpdated() {
   // We update the view first, so that if the observer relies on its UI it can
   // be ready.
-  if (view_delegate_)
+  if (view_delegate_) {
     view_delegate_->UpdateState();
+  }
 }
 
 void ExtensionActionViewController::OnExtensionHostDestroyed(
@@ -337,8 +501,9 @@ bool ExtensionActionViewController::ExtensionIsValid() const {
 bool ExtensionActionViewController::GetExtensionCommand(
     extensions::Command* command) const {
   DCHECK(command);
-  if (!ExtensionIsValid())
+  if (!ExtensionIsValid()) {
     return false;
+  }
 
   CommandService* command_service = CommandService::Get(browser_->profile());
   return command_service->GetExtensionActionCommand(
@@ -347,8 +512,9 @@ bool ExtensionActionViewController::GetExtensionCommand(
 }
 
 bool ExtensionActionViewController::CanHandleAccelerators() const {
-  if (!ExtensionIsValid())
+  if (!ExtensionIsValid()) {
     return false;
+  }
 
 #if DCHECK_IS_ON()
   {
@@ -424,7 +590,14 @@ void ExtensionActionViewController::ShowPopup(
     PopupShowAction show_action) {
   // It's possible that the popup should be closed before it finishes opening
   // (since it can open asynchronously). Check before proceeding.
+<<<<<<< HEAD
+  if (!popup_host_) {
+    if (callback) {
+      std::move(callback).Run(nullptr);
+    }
+=======
   if (!popup_host_)
+>>>>>>> chromium
     return;
   platform_delegate_->ShowPopup(std::move(popup_host), grant_tab_permissions,
                                 show_action);

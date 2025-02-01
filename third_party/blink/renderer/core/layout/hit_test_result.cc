@@ -188,6 +188,14 @@ PositionWithAffinity HitTestResult::GetPosition() const {
         MostForwardCaretPosition(Position::FirstPositionInNode(*inner_node_)));
   }
 
+<<<<<<< HEAD
+  if (node->IsPseudoElement() && node->GetPseudoId() == kPseudoIdCheckMark) {
+    return PositionWithAffinity(
+        MostForwardCaretPosition(Position::FirstPositionInNode(*inner_node_)));
+  }
+
+=======
+>>>>>>> chromium
   return layout_object->PositionForPoint(LocalPoint());
 }
 
@@ -410,7 +418,26 @@ Image* HitTestResult::GetImage(const Node* node) {
     if (image->CachedImage() && !image->CachedImage()->ErrorOccurred())
       return image->CachedImage()->GetImage();
   }
+<<<<<<< HEAD
+  const LayoutObject* layout_object = node->GetLayoutObject();
+  if (!layout_object) {
+    return nullptr;
+  }
+  const LayoutImageResource* layout_image_resource = nullptr;
+  if (layout_object->IsImage()) {
+    layout_image_resource = To<LayoutImage>(layout_object)->ImageResource();
+  } else if (auto* svg_image = DynamicTo<LayoutSVGImage>(layout_object)) {
+    layout_image_resource = svg_image->ImageResource();
+  }
+  const ImageResourceContent* image_content =
+      layout_image_resource ? layout_image_resource->CachedImage() : nullptr;
+  if (image_content && !image_content->ErrorOccurred() &&
+      image_content->HasImage()) {
+    return image_content->GetImage();
+  }
+=======
 
+>>>>>>> chromium
   return nullptr;
 }
 

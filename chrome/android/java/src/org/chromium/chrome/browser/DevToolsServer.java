@@ -8,6 +8,13 @@ import android.content.pm.PackageManager;
 
 import androidx.annotation.IntDef;
 
+<<<<<<< HEAD
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
+
+=======
+>>>>>>> chromium
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.annotations.CalledByNative;
@@ -71,7 +78,13 @@ public class DevToolsServer {
 
     @NativeMethods
     interface Natives {
+<<<<<<< HEAD
+        long initRemoteDebugging(
+                DevToolsServer caller, @JniType("std::string") String socketNamePrefix);
+
+=======
         long initRemoteDebugging(DevToolsServer caller, String socketNamePrefix);
+>>>>>>> chromium
         void destroyRemoteDebugging(DevToolsServer caller, long devToolsServer);
         boolean isRemoteDebuggingEnabled(DevToolsServer caller, long devToolsServer);
         void setRemoteDebuggingEnabled(DevToolsServer caller, long devToolsServer, boolean enabled,

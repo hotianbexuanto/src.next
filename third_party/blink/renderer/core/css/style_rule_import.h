@@ -31,6 +31,7 @@
 namespace blink {
 
 class MediaQuerySet;
+class StyleScope;
 class StyleSheetContents;
 
 class StyleRuleImport : public StyleRuleBase {
@@ -38,7 +39,15 @@ class StyleRuleImport : public StyleRuleBase {
 
  public:
   StyleRuleImport(const String& href,
+<<<<<<< HEAD
+                  LayerName&& layer,
+                  const StyleScope*,
+                  bool supported,
+                  String supports,
+                  const MediaQuerySet*,
+=======
                   scoped_refptr<MediaQuerySet>,
+>>>>>>> chromium
                   OriginClean origin_clean);
   ~StyleRuleImport();
 
@@ -57,6 +66,18 @@ class StyleRuleImport : public StyleRuleBase {
 
   void RequestStyleSheet();
 
+<<<<<<< HEAD
+  bool IsLayered() const { return layer_.size(); }
+  const LayerName& GetLayerName() const { return layer_; }
+  String GetLayerNameAsString() const;
+
+  const StyleScope* GetScope() const { return scope_.Get(); }
+
+  bool IsSupported() const { return supported_; }
+  String GetSupportsString() const { return supports_string_; }
+
+=======
+>>>>>>> chromium
   void TraceAfterDispatch(blink::Visitor*) const;
 
  private:
@@ -95,7 +116,14 @@ class StyleRuleImport : public StyleRuleBase {
 
   Member<ImportedStyleSheetClient> style_sheet_client_;
   String str_href_;
+<<<<<<< HEAD
+  LayerName layer_;
+  Member<const StyleScope> scope_;
+  String supports_string_;
+  Member<const MediaQuerySet> media_queries_;
+=======
   scoped_refptr<MediaQuerySet> media_queries_;
+>>>>>>> chromium
   Member<StyleSheetContents> style_sheet_;
   bool loading_;
   // Whether the style sheet that has this import rule is origin-clean:

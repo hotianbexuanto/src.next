@@ -10,8 +10,11 @@ import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.MainDex;
 
+import org.chromium.build.annotations.NullMarked;
+
 import java.util.TimeZone;
 
+@NullMarked
 @JNINamespace("base::android")
 @MainDex
 class TimezoneUtils {

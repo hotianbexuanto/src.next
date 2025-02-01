@@ -581,4 +581,14 @@ public class TabUiThemeProvider {
     static boolean themeRefactorEnabled() {
         return CachedFeatureFlags.isEnabled(ChromeFeatureList.THEME_REFACTOR_ANDROID);
     }
+
+    /**
+     * Returns the color used for the shared tab notification bubble.
+     *
+     * @param context {@link Context} used to retrieve color.
+     * @return The color for the tab notification bubble.
+     */
+    public static @ColorInt int getTabBubbleFillColor(Context context) {
+        return MaterialColors.getColor(context, R.attr.colorPrimary, TAG);
+    }
 }

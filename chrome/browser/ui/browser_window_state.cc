@@ -11,7 +11,6 @@
 #include "base/command_line.h"
 #include "base/macros.h"
 #include "base/strings/string_number_conversions.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/browser/buildflags.h"
 #include "chrome/browser/defaults.h"
 #include "chrome/browser/profiles/profile.h"
@@ -80,7 +79,7 @@ class WindowPlacementPrefUpdate : public DictionaryPrefUpdate {
 std::string GetWindowName(const Browser* browser) {
   switch (browser->type()) {
     case Browser::TYPE_NORMAL:
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
     case Browser::TYPE_CUSTOM_TAB:
 #endif
       return prefs::kBrowserWindowPlacement;
@@ -102,16 +101,40 @@ std::unique_ptr<DictionaryPrefUpdate> GetWindowPlacementDictionaryReadWrite(
   if (prefs->FindPreference(window_name)) {
     return std::make_unique<DictionaryPrefUpdate>(prefs, window_name);
   }
+<<<<<<< HEAD
+
+  // The window placements for all apps are stored in a single dictionary
+  // preference, with per-window-name nested dictionaries, so need to make
+  // ScopedDictPrefUpdate and then find the relevant dictionary within it, based
+  // on window name.
+  scoped_update =
+      std::make_unique<ScopedDictPrefUpdate>(prefs, prefs::kAppWindowPlacement);
+  base::Value::Dict* this_app_dict =
+      (*scoped_update)->FindDictByDottedPath(window_name);
+  if (this_app_dict) {
+    return *this_app_dict;
+  }
+  return (*scoped_update)
+      ->SetByDottedPath(window_name, base::Value::Dict())
+      ->GetDict();
+=======
   return std::unique_ptr<DictionaryPrefUpdate>(
       new WindowPlacementPrefUpdate(prefs, window_name));
+>>>>>>> chromium
 }
 
 const base::DictionaryValue* GetWindowPlacementDictionaryReadOnly(
     const std::string& window_name,
     PrefService* prefs) {
   DCHECK(!window_name.empty());
+<<<<<<< HEAD
+  if (prefs->FindPreference(window_name)) {
+    return &prefs->GetDict(window_name);
+  }
+=======
   if (prefs->FindPreference(window_name))
     return prefs->GetDictionary(window_name);
+>>>>>>> chromium
 
   const base::DictionaryValue* app_windows =
       prefs->GetDictionary(prefs::kAppWindowPlacement);
@@ -145,14 +168,16 @@ void SaveWindowPlacement(const Browser* browser,
   // the session service. This function gets called during initial window
   // showing, and we don't want to bring in the session service this early.
   SessionServiceBase* service = GetAppropriateSessionServiceIfExisting(browser);
-  if (service)
+  if (service) {
     service->SetWindowBounds(browser->session_id(), bounds, show_state);
+  }
 }
 
 void SaveWindowWorkspace(const Browser* browser, const std::string& workspace) {
   SessionServiceBase* service = GetAppropriateSessionServiceIfExisting(browser);
-  if (service)
+  if (service) {
     service->SetWindowWorkspace(browser->session_id(), workspace);
+  }
 }
 
 void SaveWindowVisibleOnAllWorkspaces(const Browser* browser,

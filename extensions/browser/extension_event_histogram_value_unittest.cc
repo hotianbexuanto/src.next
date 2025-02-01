@@ -4,6 +4,7 @@
 
 #include "extensions/browser/extension_event_histogram_value.h"
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <string>
@@ -38,6 +39,12 @@ TEST(ExtensionEventHistogramValueTest, CheckEnums) {
   std::string file_contents;
   ASSERT_TRUE(base::ReadFileToString(event_histogram_value, &file_contents));
 
+<<<<<<< HEAD
+  auto to_remove = std::ranges::remove_if(file_contents, ::isspace);
+  file_contents.erase(to_remove.begin(), to_remove.end());
+
+=======
+>>>>>>> chromium
   for (const auto& entry : *enums) {
     // Check that the C++ file has a definition equal to the histogram file.
     // NOTE: For now, we do this in a simple, but reasonably effective, manner:

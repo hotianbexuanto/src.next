@@ -15,6 +15,10 @@
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/execution_context/execution_context.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
@@ -296,12 +300,56 @@ ScreenSpanning MediaValues::CalculateScreenSpanning(LocalFrame* frame) {
       return ScreenSpanning::kSingleFoldHorizontal;
   }
 
+<<<<<<< HEAD
+  std::vector<gfx::Rect> viewport_segments =
+      frame->GetWidgetForLocalRoot()->ViewportSegments();
+  WTF::HashSet<int> unique_x;
+  for (const auto& segment : viewport_segments) {
+    // HashSet can't have 0 as a key, so add 1 to all the values we see.
+    unique_x.insert(segment.x() + 1);
+  }
+
+  return static_cast<int>(unique_x.size());
+}
+
+int MediaValues::CalculateVerticalViewportSegments(LocalFrame* frame) {
+  if (!frame->GetWidgetForLocalRoot()) {
+    return 1;
+  }
+
+  std::vector<gfx::Rect> viewport_segments =
+      frame->GetWidgetForLocalRoot()->ViewportSegments();
+  WTF::HashSet<int> unique_y;
+  for (const auto& segment : viewport_segments) {
+    // HashSet can't have 0 as a key, so add 1 to all the values we see.
+    unique_y.insert(segment.y() + 1);
+  }
+
+  return static_cast<int>(unique_y.size());
+}
+
+mojom::blink::DevicePostureType MediaValues::CalculateDevicePosture(
+    LocalFrame* frame) {
+  return frame->GetDevicePosture();
+}
+
+Scripting MediaValues::CalculateScripting(LocalFrame* frame) {
+  DCHECK(frame);
+  DCHECK(frame->GetDocument());
+  if (!frame->GetDocument()->GetExecutionContext()->CanExecuteScripts(
+          kNotAboutToExecuteScript)) {
+    return Scripting::kNone;
+  }
+
+  return Scripting::kEnabled;
+=======
   return ScreenSpanning::kNone;
 }
 
 DevicePosture MediaValues::CalculateDevicePosture(LocalFrame* frame) {
   // TODO(darktears): Retrieve information from the host.
   return DevicePosture::kNoFold;
+>>>>>>> chromium
 }
 
 bool MediaValues::ComputeLengthImpl(double value,

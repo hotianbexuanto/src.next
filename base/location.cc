@@ -57,11 +57,13 @@ constexpr bool StrEndsWith(const char* name,
                            const char* expected) {
   const size_t name_len = StrLen(name);
   const size_t expected_len = StrLen(expected);
-  if (name_len != prefix_len + expected_len)
+  if (name_len != prefix_len + expected_len) {
     return false;
+  }
   for (size_t i = 0; i < expected_len; ++i) {
-    if (name[i + prefix_len] != expected[i])
+    if (name[i + prefix_len] != expected[i]) {
       return false;
+    }
   }
   return true;
 }
@@ -154,6 +156,13 @@ NOINLINE Location Location::Current() {
   return Location(nullptr, RETURN_ADDRESS());
 }
 #endif
+
+// static
+NOINLINE Location Location::CurrentWithoutFunctionName(const char* file_name,
+                                                       int line_number) {
+  return Location(nullptr, file_name + kStrippedPrefixLength, line_number,
+                  RETURN_ADDRESS());
+}
 
 //------------------------------------------------------------------------------
 NOINLINE const void* GetProgramCounter() {

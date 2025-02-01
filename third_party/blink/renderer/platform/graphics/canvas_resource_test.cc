@@ -24,10 +24,17 @@ namespace blink {
 
 TEST(CanvasResourceTest, PrepareTransferableResource_SharedBitmap) {
   scoped_refptr<CanvasResource> canvas_resource =
+<<<<<<< HEAD
+      CanvasResourceSharedBitmap::Create(
+          gfx::Size(10, 10), viz::SinglePlaneFormat::kRGBA_8888,
+          kPremul_SkAlphaType, gfx::ColorSpace::CreateSRGB(),
+          /*CanvasResourceProvider=*/nullptr, shared_image_interface_provider);
+=======
       CanvasResourceSharedBitmap::Create(IntSize(10, 10),
                                          CanvasResourceParams(),
                                          nullptr,  // CanvasResourceProvider
                                          kLow_SkFilterQuality);
+>>>>>>> chromium
   EXPECT_TRUE(!!canvas_resource);
   viz::TransferableResource resource;
   viz::ReleaseCallback release_callback;

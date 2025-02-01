@@ -550,7 +550,7 @@ bool SpatialNavigationController::IsValidCandidate(
       return false;
   }
 
-  return element->IsKeyboardFocusable();
+  return element->IsKeyboardFocusableSlow();
 }
 
 Element* SpatialNavigationController::GetFocusedElement() const {

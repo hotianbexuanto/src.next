@@ -27,9 +27,6 @@ IMPORT_APP_COMPAT_ALERTDIALOG_RE = re.compile(
 NEW_COMPATIBLE_ALERTDIALOG_BUILDER_RE = re.compile(
     r'\bnew\s+(UiUtils\s*\.)?CompatibleAlertDialogBuilder\b')
 
-NEW_ALERTDIALOG_BUILDER_RE = re.compile(
-    r'\bnew\sAlertDialog\.Builder\b')
-
 SPLIT_COMPAT_UTILS_IMPL_NAME_RE = re.compile(
     r'\bSplitCompatUtils\.getIdentifierName\(\s*[^\s"]')
 
@@ -52,7 +49,6 @@ def _CommonChecks(input_api, output_api):
   """Checks common to both upload and commit."""
   result = []
   result.extend(_CheckNotificationConstructors(input_api, output_api))
-  result.extend(_CheckAlertDialogBuilder(input_api, output_api))
   result.extend(_CheckCompatibleAlertDialogBuilder(input_api, output_api))
   result.extend(_CheckSplitCompatUtilsIdentifierName(input_api, output_api))
   # Add more checks here
@@ -81,6 +77,8 @@ def _CheckNotificationConstructors(input_api, output_api):
                                NEW_NOTIFICATION_BUILDER_RE)
 
 
+<<<<<<< HEAD
+=======
 def _CheckAlertDialogBuilder(input_api, output_api):
   # In general, preference and FRE related UIs are not relevant to VR mode.
   files_to_skip = (
@@ -149,6 +147,7 @@ def _CheckAlertDialogBuilder(input_api, output_api):
   return result
 
 
+>>>>>>> chromium
 def _CheckCompatibleAlertDialogBuilder(input_api, output_api):
   files_to_skip = (
       BROWSER_ROOT + 'autofill/AutofillPopupBridge.java',

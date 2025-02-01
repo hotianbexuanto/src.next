@@ -62,6 +62,16 @@ class BrokenAlternativeServicesTest
 
 TEST_F(BrokenAlternativeServicesTest, MarkBroken) {
   const BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoHTTP2, "foo", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  const BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoHTTP2, "foo", 1234),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  const BrokenAlternativeService alternative_service3(
+      AlternativeService(NextProto::kProtoHTTP2, "foo", 443),
+      network_anonymization_key2_, true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoHTTP2, "foo", 443), network_isolation_key1_,
       true /* use_network_isolation_key */);
   const BrokenAlternativeService alternative_service2(
@@ -70,6 +80,7 @@ TEST_F(BrokenAlternativeServicesTest, MarkBroken) {
   const BrokenAlternativeService alternative_service3(
       AlternativeService(kProtoHTTP2, "foo", 443), network_isolation_key2_,
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   EXPECT_FALSE(broken_services_.IsBroken(alternative_service1));
   EXPECT_FALSE(broken_services_.IsBroken(alternative_service2));
@@ -116,6 +127,16 @@ TEST_F(BrokenAlternativeServicesTest, MarkBroken) {
 
 TEST_F(BrokenAlternativeServicesTest, MarkBrokenUntilDefaultNetworkChanges) {
   const BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoHTTP2, "foo", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  const BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoHTTP2, "foo", 1234),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  const BrokenAlternativeService alternative_service3(
+      AlternativeService(NextProto::kProtoHTTP2, "foo", 443),
+      network_anonymization_key2_, true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoHTTP2, "foo", 443), network_isolation_key1_,
       true /* use_network_isolation_key */);
   const BrokenAlternativeService alternative_service2(
@@ -124,6 +145,7 @@ TEST_F(BrokenAlternativeServicesTest, MarkBrokenUntilDefaultNetworkChanges) {
   const BrokenAlternativeService alternative_service3(
       AlternativeService(kProtoHTTP2, "foo", 443), network_isolation_key2_,
       true /* use_network_isolation_key */);
+>>>>>>> chromium
   EXPECT_FALSE(broken_services_.IsBroken(alternative_service1));
   EXPECT_FALSE(broken_services_.WasRecentlyBroken(alternative_service1));
   EXPECT_FALSE(broken_services_.IsBroken(alternative_service2));
@@ -184,11 +206,19 @@ TEST_F(BrokenAlternativeServicesTest, MarkBrokenUntilDefaultNetworkChanges) {
 
 TEST_F(BrokenAlternativeServicesTest, MarkRecentlyBroken) {
   const BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoHTTP2, "foo", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  const BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoHTTP2, "foo", 443),
+      network_anonymization_key2_, true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoHTTP2, "foo", 443), network_isolation_key1_,
       true /* use_network_isolation_key */);
   const BrokenAlternativeService alternative_service2(
       AlternativeService(kProtoHTTP2, "foo", 443), network_isolation_key2_,
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   EXPECT_FALSE(broken_services_.IsBroken(alternative_service1));
   EXPECT_FALSE(broken_services_.WasRecentlyBroken(alternative_service1));
@@ -222,6 +252,16 @@ TEST_F(BrokenAlternativeServicesTest, MarkRecentlyBroken) {
 
 TEST_F(BrokenAlternativeServicesTest, OnDefaultNetworkChanged) {
   BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoQUIC, "bar", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  BrokenAlternativeService alternative_service3(
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      network_anonymization_key2_, true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), network_isolation_key1_,
       true /* use_network_isolation_key */);
   BrokenAlternativeService alternative_service2(
@@ -230,6 +270,7 @@ TEST_F(BrokenAlternativeServicesTest, OnDefaultNetworkChanged) {
   BrokenAlternativeService alternative_service3(
       AlternativeService(kProtoQUIC, "foo", 443), network_isolation_key2_,
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   EXPECT_FALSE(broken_services_.IsBroken(alternative_service1));
   EXPECT_FALSE(broken_services_.WasRecentlyBroken(alternative_service1));
@@ -306,8 +347,13 @@ TEST_F(BrokenAlternativeServicesTest, OnDefaultNetworkChanged) {
 TEST_F(BrokenAlternativeServicesTest,
        ExpireBrokenAlternativeServiceOnDefaultNetwork) {
   BrokenAlternativeService alternative_service(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), network_isolation_key1_,
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   broken_services_.MarkBrokenUntilDefaultNetworkChanges(alternative_service);
 
@@ -342,8 +388,13 @@ TEST_F(BrokenAlternativeServicesTest,
 
 TEST_F(BrokenAlternativeServicesTest, ExpireBrokenAlternateProtocolMappings) {
   BrokenAlternativeService alternative_service(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), network_isolation_key1_,
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   broken_services_.MarkBroken(alternative_service);
 
@@ -379,8 +430,13 @@ TEST_F(BrokenAlternativeServicesTest, ExpireBrokenAlternateProtocolMappings) {
 TEST_F(BrokenAlternativeServicesTest, IsBroken) {
   // Tests the IsBroken() methods.
   BrokenAlternativeService alternative_service(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
+>>>>>>> chromium
   base::TimeTicks brokenness_expiration;
 
   EXPECT_FALSE(broken_services_.IsBroken(alternative_service));
@@ -425,8 +481,13 @@ TEST_F(BrokenAlternativeServicesTest, IsBroken) {
 // - brokenness expires after two intervals.
 TEST_F(BrokenAlternativeServicesTest, BrokenAfterBrokenOnDefaultNetwork) {
   BrokenAlternativeService alternative_service(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   // Mark the alternative service broken on the default network.
   broken_services_.MarkBrokenUntilDefaultNetworkChanges(alternative_service);
@@ -476,8 +537,13 @@ TEST_F(BrokenAlternativeServicesTest, BrokenAfterBrokenOnDefaultNetwork) {
 // - (signal received that default network changes);
 TEST_F(BrokenAlternativeServicesTest, BrokenOnDefaultNetworkAfterBroken) {
   BrokenAlternativeService alternative_service(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   // Mark the alternative service broken.
   broken_services_.MarkBroken(alternative_service);
@@ -520,8 +586,13 @@ TEST_F(BrokenAlternativeServicesTest, BrokenOnDefaultNetworkAfterBroken) {
 TEST_F(BrokenAlternativeServicesTest,
        BrokenUntilDefaultNetworkChangeWithExponentialBackoff) {
   BrokenAlternativeService alternative_service(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   // Mark the alternative service broken on the default network.
   broken_services_.MarkBrokenUntilDefaultNetworkChanges(alternative_service);
@@ -582,8 +653,13 @@ TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff) {
   // longer apply.
 
   BrokenAlternativeService alternative_service(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   broken_services_.MarkBroken(alternative_service);
   test_task_runner_->FastForwardBy(base::TimeDelta::FromMinutes(5) -
@@ -663,6 +739,88 @@ TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff) {
   EXPECT_TRUE(broken_services_.IsBroken(alternative_service));
   test_task_runner_->FastForwardBy(base::TimeDelta::FromSeconds(1));
   EXPECT_FALSE(broken_services_.IsBroken(alternative_service));
+<<<<<<< HEAD
+
+  broken_services_.MarkBroken(alternative_service);
+  test_task_runner_->FastForwardBy(base::Minutes(2880) - base::Seconds(1));
+  EXPECT_TRUE(broken_services_.IsBroken(alternative_service));
+  test_task_runner_->FastForwardBy(base::Seconds(1));
+  EXPECT_FALSE(broken_services_.IsBroken(alternative_service));
+}
+
+void BrokenAlternativeServicesTest::TestExponentialBackoff(
+    base::TimeDelta initial_delay,
+    bool exponential_backoff_on_initial_delay) {
+  // Tests the exponential backoff of the computed expiration delay when an
+  // alt svc is marked broken. After being marked broken 10 times, the max
+  // expiration delay will have been reached and exponential backoff will no
+  // longer apply.
+  broken_services_.SetDelayParams(initial_delay,
+                                  exponential_backoff_on_initial_delay);
+
+  BrokenAlternativeService alternative_service(
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+
+  broken_services_.MarkBroken(alternative_service);
+  test_task_runner_->FastForwardBy(initial_delay - base::Seconds(1));
+  EXPECT_TRUE(broken_services_.IsBroken(alternative_service));
+  test_task_runner_->FastForwardBy(base::Seconds(1));
+  EXPECT_FALSE(broken_services_.IsBroken(alternative_service));
+
+  for (size_t broken_count = 1; broken_count < 20; ++broken_count) {
+    broken_services_.MarkBroken(alternative_service);
+    base::TimeDelta broken_delay;
+    if (exponential_backoff_on_initial_delay) {
+      broken_delay = initial_delay * (1 << broken_count);
+    } else {
+      broken_delay = base::Seconds(kBrokenAlternativeProtocolDelaySecs) *
+                     (1 << (broken_count - 1));
+    }
+    if (broken_delay > base::Days(2)) {
+      broken_delay = base::Days(2);
+    }
+    test_task_runner_->FastForwardBy(broken_delay - base::Seconds(1));
+    EXPECT_TRUE(broken_services_.IsBroken(alternative_service));
+    test_task_runner_->FastForwardBy(base::Seconds(1));
+    EXPECT_FALSE(broken_services_.IsBroken(alternative_service));
+  }
+}
+
+TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff_OneSecond_True) {
+  TestExponentialBackoff(base::Seconds(1), true);
+}
+
+TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff_OneSecond_False) {
+  TestExponentialBackoff(base::Seconds(1), false);
+}
+
+TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff_FiveSeconds_True) {
+  TestExponentialBackoff(base::Seconds(5), true);
+}
+
+TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff_FiveSeconds_False) {
+  TestExponentialBackoff(base::Seconds(5), false);
+}
+
+TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff_TenSeconds_True) {
+  TestExponentialBackoff(base::Seconds(10), true);
+}
+
+TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff_TenSeconds_False) {
+  TestExponentialBackoff(base::Seconds(10), false);
+}
+
+TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff_FiveMinutes_True) {
+  TestExponentialBackoff(base::Seconds(kBrokenAlternativeProtocolDelaySecs),
+                         true);
+}
+
+TEST_F(BrokenAlternativeServicesTest, ExponentialBackoff_FiveMinutes_False) {
+  TestExponentialBackoff(base::Seconds(kBrokenAlternativeProtocolDelaySecs),
+                         false);
+=======
+>>>>>>> chromium
 }
 
 TEST_F(BrokenAlternativeServicesTest, RemoveExpiredBrokenAltSvc) {
@@ -675,11 +833,19 @@ TEST_F(BrokenAlternativeServicesTest, RemoveExpiredBrokenAltSvc) {
   // expire before A.
 
   BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoQUIC, "bar", 443),
+      network_anonymization_key2_, true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), network_isolation_key1_,
       true /* use_network_isolation_key */);
   BrokenAlternativeService alternative_service2(
       AlternativeService(kProtoQUIC, "bar", 443), network_isolation_key2_,
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   // Repeately mark |alternative_service1| broken and let brokenness expire.
   // Do this a few times.
@@ -779,11 +945,19 @@ TEST_F(BrokenAlternativeServicesTest, RemoveExpiredBrokenAltSvc) {
 TEST_F(BrokenAlternativeServicesTest,
        RemoveExpiredBrokenAltSvcWithNetworkIsolationKey) {
   BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      network_anonymization_key2_, true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), network_isolation_key1_,
       true /* use_network_isolation_key */);
   BrokenAlternativeService alternative_service2(
       AlternativeService(kProtoQUIC, "foo", 443), network_isolation_key2_,
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   // Repeately mark |alternative_service1| broken and let brokenness expire.
   // Do this a few times.
@@ -880,11 +1054,19 @@ TEST_F(BrokenAlternativeServicesTest,
 
 TEST_F(BrokenAlternativeServicesTest, SetBrokenAlternativeServices) {
   BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo1", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+  BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoQUIC, "foo2", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo1", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
   BrokenAlternativeService alternative_service2(
       AlternativeService(kProtoQUIC, "foo2", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   base::TimeDelta delay1 = base::TimeDelta::FromMinutes(1);
 
@@ -942,6 +1124,16 @@ TEST_F(BrokenAlternativeServicesTest, SetBrokenAlternativeServices) {
 TEST_F(BrokenAlternativeServicesTest,
        SetBrokenAlternativeServicesWithExisting) {
   BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo1", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+  BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoQUIC, "foo2", 443),
+      network_anonymization_key1_, true /* use_network_anonymization_key */);
+  BrokenAlternativeService alternative_service3(
+      AlternativeService(NextProto::kProtoQUIC, "foo3", 443),
+      network_anonymization_key2_, true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo1", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
   BrokenAlternativeService alternative_service2(
@@ -950,6 +1142,7 @@ TEST_F(BrokenAlternativeServicesTest,
   BrokenAlternativeService alternative_service3(
       AlternativeService(kProtoQUIC, "foo3", 443), network_isolation_key2_,
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   std::unique_ptr<BrokenAlternativeServiceList> broken_list =
       std::make_unique<BrokenAlternativeServiceList>();
@@ -1044,11 +1237,19 @@ TEST_F(BrokenAlternativeServicesTest, ScheduleExpireTaskAfterExpire) {
   // is scheduled for the next broken alt svc in the expiration queue.
 
   BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+  BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoQUIC, "bar", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
   BrokenAlternativeService alternative_service2(
       AlternativeService(kProtoQUIC, "bar", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   // Mark |alternative_service1| broken and let brokenness expire. This will
   // increase its expiration delay the next time it's marked broken.
@@ -1073,11 +1274,19 @@ TEST_F(BrokenAlternativeServicesTest, ScheduleExpireTaskAfterExpire) {
 
 TEST_F(BrokenAlternativeServicesTest, Clear) {
   BrokenAlternativeService alternative_service1(
+<<<<<<< HEAD
+      AlternativeService(NextProto::kProtoQUIC, "foo", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+  BrokenAlternativeService alternative_service2(
+      AlternativeService(NextProto::kProtoQUIC, "bar", 443),
+      NetworkAnonymizationKey(), true /* use_network_anonymization_key */);
+=======
       AlternativeService(kProtoQUIC, "foo", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
   BrokenAlternativeService alternative_service2(
       AlternativeService(kProtoQUIC, "bar", 443), NetworkIsolationKey(),
       true /* use_network_isolation_key */);
+>>>>>>> chromium
 
   broken_services_.MarkBroken(alternative_service1);
   broken_services_.MarkRecentlyBroken(alternative_service2);

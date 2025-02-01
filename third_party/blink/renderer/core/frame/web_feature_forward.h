@@ -18,7 +18,11 @@ namespace mojom {
 enum class WebFeature : int32_t;
 }  // namespace mojom
 using WebFeature = mojom::WebFeature;
+<<<<<<< HEAD
+using WebDXFeature = mojom::blink::WebDXFeature;
+=======
 
+>>>>>>> chromium
 }  // namespace blink
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_WEB_FEATURE_FORWARD_H_

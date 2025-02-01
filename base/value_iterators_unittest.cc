@@ -11,9 +11,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace base {
-
-namespace detail {
+namespace base::detail {
 
 namespace {
 
@@ -259,6 +257,9 @@ TEST(ValueIteratorsTest, ConstDictIteratorOperatorNE) {
   EXPECT_NE(iterator(storage.begin()), iterator(storage.end()));
 }
 
+<<<<<<< HEAD
+}  // namespace base::detail
+=======
 TEST(ValueIteratorsTest, DictIteratorProxy) {
   DictStorage storage;
   storage.emplace("null", std::make_unique<Value>(Value::Type::NONE));
@@ -328,3 +329,4 @@ TEST(ValueIteratorsTest, ConstDictIteratorProxy) {
 }  // namespace detail
 
 }  // namespace base
+>>>>>>> chromium

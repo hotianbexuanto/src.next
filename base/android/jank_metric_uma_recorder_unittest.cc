@@ -56,6 +56,78 @@ const size_t kJankBurstsLen = base::size(kJankBursts);
 }  // namespace
 
 TEST(JankMetricUMARecorder, TestUMARecording) {
+<<<<<<< HEAD
+  JNIEnv* env = AttachCurrentThread();
+
+  jlongArray java_durations = GenerateJavaLongArray(env, kDurations);
+
+  jintArray java_missed_vsyncs = GenerateJavaIntArray(env, kMissedVsyncs);
+
+  const int kMinScenario = static_cast<int>(JankScenario::PERIODIC_REPORTING);
+  const int kMaxScenario = static_cast<int>(JankScenario::MAX_VALUE);
+  // keep one histogram tester outside to ensure that each histogram is a
+  // different one rather than just the same string over and over.
+  HistogramTester complete_histogram_tester;
+  size_t total_histograms = 0;
+  for (int i = kMinScenario; i < kMaxScenario; ++i) {
+    if ((i == static_cast<int>(JankScenario::WEBVIEW_SCROLLING)) ||
+        (i == static_cast<int>(JankScenario::FEED_SCROLLING))) {
+      continue;
+    }
+    // HistogramTester takes a snapshot of currently incremented counters so
+    // everything is scoped to just this iteration of the for loop.
+    HistogramTester histogram_tester;
+
+    RecordJankMetrics(
+        env,
+        /* java_durations_ns= */
+        base::android::JavaParamRef<jlongArray>(env, java_durations),
+        /* java_missed_vsyncs = */
+        base::android::JavaParamRef<jintArray>(env, java_missed_vsyncs),
+        /* java_reporting_interval_start_time = */ 0,
+        /* java_reporting_interval_duration = */ 1000,
+        /* java_scenario_enum = */ i);
+
+    const std::string kDurationName =
+        GetAndroidFrameTimelineDurationHistogramName(
+            static_cast<JankScenario>(i));
+    const std::string kJankyName =
+        GetAndroidFrameTimelineJankHistogramName(static_cast<JankScenario>(i));
+
+    // Only one Duration and one Jank scenario should be incremented.
+    base::HistogramTester::CountsMap count_map =
+        histogram_tester.GetTotalCountsForPrefix("Android.FrameTimelineJank.");
+    EXPECT_EQ(count_map.size(), 2ul);
+    EXPECT_EQ(count_map[kDurationName], 8) << kDurationName;
+    EXPECT_EQ(count_map[kJankyName], 8) << kJankyName;
+    // And we should be two more then last iteration, but don't do any other
+    // verification because each iteration will do their own.
+    base::HistogramTester::CountsMap total_count_map =
+        complete_histogram_tester.GetTotalCountsForPrefix(
+            "Android.FrameTimelineJank.");
+    EXPECT_EQ(total_count_map.size(), total_histograms + 2);
+    total_histograms += 2;
+
+    EXPECT_THAT(histogram_tester.GetAllSamples(kDurationName),
+                ElementsAre(Bucket(1, 3), Bucket(2, 1), Bucket(10, 1),
+                            Bucket(20, 1), Bucket(29, 1), Bucket(57, 1)))
+        << kDurationName;
+    EXPECT_THAT(histogram_tester.GetAllSamples(kJankyName),
+                ElementsAre(Bucket(FrameJankStatus::kJanky, 2),
+                            Bucket(FrameJankStatus::kNonJanky, 6)))
+        << kJankyName;
+  }
+}
+
+TEST(JankMetricUMARecorder, TestWebviewScrollingScenario) {
+  JNIEnv* env = AttachCurrentThread();
+
+  jlongArray java_durations = GenerateJavaLongArray(env, kDurations);
+  jintArray java_missed_vsyncs = GenerateJavaIntArray(env, kMissedVsyncs);
+
+  const int scenario = static_cast<int>(JankScenario::WEBVIEW_SCROLLING);
+=======
+>>>>>>> chromium
   HistogramTester histogram_tester;
 
   JNIEnv* env = AttachCurrentThread();

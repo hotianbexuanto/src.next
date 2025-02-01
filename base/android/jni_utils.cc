@@ -23,10 +23,17 @@ ScopedJavaLocalRef<jobject> GetSplitClassLoader(JNIEnv* env,
       env, ConvertUTF8ToJavaString(env, split_name));
 }
 
+<<<<<<< HEAD
+  ScopedJavaGlobalRef<jobject> class_loader(
+      Java_JNIUtils_getSplitClassLoader(env, split_name));
+  jobject class_loader_obj = class_loader.obj();
+  lock_and_map->map.insert({split_name, std::move(class_loader)});
+  return class_loader_obj;
+=======
 bool IsSelectiveJniRegistrationEnabled(JNIEnv* env) {
   return Java_JNIUtils_isSelectiveJniRegistrationEnabled(env);
+>>>>>>> chromium
 }
 
 }  // namespace android
 }  // namespace base
-

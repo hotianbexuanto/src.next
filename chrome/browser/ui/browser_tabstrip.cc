@@ -38,6 +38,14 @@ void AddTabAt(Browser* browser,
   params.tabstrip_index = idx;
   params.group = group;
   Navigate(&params);
+<<<<<<< HEAD
+
+  if (!params.navigated_or_inserted_contents) {
+    return nullptr;
+  }
+
+=======
+>>>>>>> chromium
   CoreTabHelper* core_tab_helper =
       CoreTabHelper::FromWebContents(params.navigated_or_inserted_contents);
   core_tab_helper->set_new_tab_start_time(new_tab_start_time);
@@ -94,8 +102,9 @@ void CloseWebContents(Browser* browser,
 }
 
 void ConfigureTabGroupForNavigation(NavigateParams* nav_params) {
-  if (!nav_params->source_contents)
+  if (!nav_params->source_contents) {
     return;
+  }
 
   if (!nav_params->browser || !nav_params->browser->SupportsWindowFeature(
                                   Browser::WindowFeature::FEATURE_TABSTRIP)) {
@@ -111,8 +120,9 @@ void ConfigureTabGroupForNavigation(NavigateParams* nav_params) {
   // If the source tab is not in the current tab strip (e.g. if the current
   // navigation is in a new window), don't set the group. Groups cannot be
   // shared across multiple windows.
-  if (source_index == TabStripModel::kNoTab)
+  if (source_index == TabStripModel::kNoTab) {
     return;
+  }
 
   if (nav_params->disposition == WindowOpenDisposition::NEW_FOREGROUND_TAB ||
       nav_params->disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB) {

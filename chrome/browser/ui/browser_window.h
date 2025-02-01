@@ -11,7 +11,11 @@
 
 #include "base/callback_forward.h"
 #include "build/build_config.h"
+<<<<<<< HEAD
+#include "chrome/browser/apps/link_capturing/intent_picker_info.h"
+=======
 #include "chrome/browser/apps/intent_helper/apps_navigation_types.h"
+>>>>>>> chromium
 #include "chrome/browser/lifetime/browser_close_manager.h"
 #include "chrome/browser/signin/chrome_signin_helper.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
@@ -81,7 +85,12 @@ class SharingHubBubbleView;
 
 namespace ui {
 class NativeTheme;
+<<<<<<< HEAD
+class ThemeProvider;
+}  // namespace ui
+=======
 }
+>>>>>>> chromium
 
 namespace views {
 class Button;
@@ -300,6 +309,9 @@ class BrowserWindow : public ui::BaseWindow {
   // Updates whether or not the custom tab bar is visible. Animates the
   // transition if |animate| is true.
   virtual void UpdateCustomTabBarVisibility(bool visible, bool animate) = 0;
+
+  // Updates the visibility of the scrim that covers the content area.
+  virtual void SetContentScrimVisibility(bool visible) = 0;
 
   // Resets the toolbar's tab state for |contents|.
   virtual void ResetToolbarTabState(content::WebContents* contents) = 0;
@@ -534,8 +546,22 @@ class BrowserWindow : public ui::BaseWindow {
   // Shows a confirmation dialog about enabling caret browsing.
   virtual void ShowCaretBrowsingDialog() = 0;
 
+<<<<<<< HEAD
+  // Create and open the tab search bubble. Optionally force it to open to the
+  // given section and organization feature.
+  virtual void CreateTabSearchBubble(
+      tab_search::mojom::TabSearchSection section,
+      tab_search::mojom::TabOrganizationFeature organization_feature) = 0;
+  void CreateTabSearchBubble(tab_search::mojom::TabSearchSection section =
+                                 tab_search::mojom::TabSearchSection::kSearch) {
+    CreateTabSearchBubble(section,
+                          tab_search::mojom::TabOrganizationFeature::kNone);
+  }
+
+=======
   // Create and open the tab search bubble.
   virtual void CreateTabSearchBubble() = 0;
+>>>>>>> chromium
   // Closes the tab search bubble if open for the given browser instance.
   virtual void CloseTabSearchBubble() = 0;
 

@@ -14,6 +14,10 @@
 #include "base/containers/contains.h"
 #include "base/json/json_writer.h"
 #include "base/notreached.h"
+<<<<<<< HEAD
+#include "base/observer_list.h"
+=======
+>>>>>>> chromium
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
@@ -23,7 +27,13 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/extensions/api/chrome_web_view_internal.h"
 #include "chrome/common/extensions/api/context_menus.h"
+<<<<<<< HEAD
+#include "components/guest_view/browser/guest_view_base.h"
+#include "components/guest_view/common/guest_view_constants.h"
+#include "content/public/browser/child_process_host.h"
+=======
 #include "chrome/common/extensions/api/url_handlers/url_handlers_parser.h"
+>>>>>>> chromium
 #include "content/public/browser/context_menu_params.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/child_process_host.h"
@@ -134,8 +144,7 @@ MenuItem::MenuItem(const Id& id,
       enabled_(enabled),
       contexts_(contexts) {}
 
-MenuItem::~MenuItem() {
-}
+MenuItem::~MenuItem() = default;
 
 std::unique_ptr<MenuItem> MenuItem::ReleaseChild(const Id& child_id,
                                                  bool recursive) {
@@ -448,10 +457,15 @@ bool MenuManager::ChangeParent(const MenuItem::Id& child_id,
       return false;
     }
     MenuItem::OwnedList& list = i->second;
+<<<<<<< HEAD
+    auto j =
+        std::ranges::find(list, child_ptr, &std::unique_ptr<MenuItem>::get);
+=======
     auto j = std::find_if(list.begin(), list.end(),
                           [child_ptr](const std::unique_ptr<MenuItem>& item) {
                             return item.get() == child_ptr;
                           });
+>>>>>>> chromium
     if (j == list.end()) {
       NOTREACHED();
       return false;
@@ -723,18 +737,42 @@ void MenuManager::ExecuteCommand(content::BrowserContext* context,
         ->active_tab_permission_granter()
         ->GrantIfRequested(extension);
   }
+<<<<<<< HEAD
+=======
 
+>>>>>>> chromium
   {
     // Dispatch to menu item's .onclick handler (this is the legacy API, from
     // before chrome.contextMenus.onClicked existed).
     auto event = std::make_unique<Event>(
         webview_guest ? events::WEB_VIEW_INTERNAL_CONTEXT_MENUS
                       : events::CONTEXT_MENUS,
+<<<<<<< HEAD
+        webview_guest ? (webview_guest->IsOwnedByControlledFrameEmbedder()
+                             ? "controlledFrameInternal.contextMenus"
+                             : kOnWebviewContextMenus)
+                      : kOnContextMenus,
+        args.Clone(), context);
+=======
         webview_guest ? kOnWebviewContextMenus : kOnContextMenus,
         base::Value(args).TakeList(), context);
+>>>>>>> chromium
     event->user_gesture = EventRouter::USER_GESTURE_ENABLED;
-    event_router->DispatchEventToExtension(item->extension_id(),
-                                           std::move(event));
+    if (webview_guest) {
+      event->filter_info->has_instance_id = true;
+      event->filter_info->instance_id = webview_guest->view_instance_id();
+    }
+    if (!item->extension_id().empty()) {
+      // For extensions and ChromeApps Webview.
+      event_router->DispatchEventToExtension(item->extension_id(),
+                                             std::move(event));
+    } else if (item->extension_id().empty() && webview_guest) {
+      // For Controlled Frame.
+      event_router->DispatchEventToURL(
+          webview_guest->owner_rfh()->GetLastCommittedURL(), std::move(event));
+    } else {
+      NOTREACHED();
+    }
   }
   {
     // Dispatch to .contextMenus.onClicked handler.
@@ -745,10 +783,28 @@ void MenuManager::ExecuteCommand(content::BrowserContext* context,
                       : api::context_menus::OnClicked::kEventName,
         std::move(args), context);
     event->user_gesture = EventRouter::USER_GESTURE_ENABLED;
+<<<<<<< HEAD
+    if (webview_guest) {
+      event->filter_info->has_instance_id = true;
+      event->filter_info->instance_id = webview_guest->view_instance_id();
+    }
+    if (!item->extension_id().empty()) {
+      // For extensions and ChromeApps Webview.
+      event_router->DispatchEventToExtension(item->extension_id(),
+                                             std::move(event));
+    } else if (item->extension_id().empty() && webview_guest) {
+      // For Controlled Frame.
+      event_router->DispatchEventToURL(
+          webview_guest->owner_rfh()->GetLastCommittedURL(), std::move(event));
+    } else {
+      NOTREACHED();
+    }
+=======
     if (webview_guest)
       event->filter_info.instance_id = webview_guest->view_instance_id();
     event_router->DispatchEventToExtension(item->extension_id(),
                                            std::move(event));
+>>>>>>> chromium
   }
 }
 
@@ -982,8 +1038,7 @@ MenuItem::Id::Id() : incognito(false), uid(0) {}
 MenuItem::Id::Id(bool incognito, const MenuItem::ExtensionKey& extension_key)
     : incognito(incognito), extension_key(extension_key), uid(0) {}
 
-MenuItem::Id::~Id() {
-}
+MenuItem::Id::~Id() = default;
 
 bool MenuItem::Id::operator==(const Id& other) const {
   return (incognito == other.incognito &&

@@ -28,7 +28,12 @@
 
 #include "third_party/blink/renderer/core/frame/screen.h"
 
+<<<<<<< HEAD
+#include "base/numerics/safe_conversions.h"
+#include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink.h"
+=======
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/event_target_names.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -151,7 +156,11 @@ bool Screen::isExtended() const {
 
   auto* context = GetExecutionContext();
   if (!context->IsFeatureEnabled(
+<<<<<<< HEAD
+          network::mojom::PermissionsPolicyFeature::kWindowManagement)) {
+=======
           mojom::blink::PermissionsPolicyFeature::kWindowPlacement)) {
+>>>>>>> chromium
     return false;
   }
 

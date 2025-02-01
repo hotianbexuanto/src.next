@@ -2,6 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
+=======
+>>>>>>> chromium
 #include "net/base/hash_value.h"
 
 #include <stdlib.h>
@@ -11,6 +19,11 @@
 
 #include "base/base64.h"
 #include "base/check_op.h"
+<<<<<<< HEAD
+#include "base/compiler_specific.h"
+#include "base/containers/span.h"
+=======
+>>>>>>> chromium
 #include "base/notreached.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -61,9 +74,13 @@ bool HashValue::FromString(const base::StringPiece value) {
 }
 
 std::string HashValue::ToString() const {
+<<<<<<< HEAD
+  std::string base64_str = base::Base64Encode(*this);
+=======
   std::string base64_str;
   base::Base64Encode(base::StringPiece(reinterpret_cast<const char*>(data()),
                                        size()), &base64_str);
+>>>>>>> chromium
   switch (tag_) {
     case HASH_VALUE_SHA256:
       return std::string("sha256/") + base64_str;

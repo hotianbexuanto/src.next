@@ -23,12 +23,14 @@ void ExtensionInstalledWaiter::WaitForInstall(
 
 void ExtensionInstalledWaiter::SetGivingUpCallbackForTesting(
     base::RepeatingClosure callback) {
-  if (g_giving_up_callback)
+  if (g_giving_up_callback) {
     delete g_giving_up_callback;
-  if (!callback.is_null())
+  }
+  if (!callback.is_null()) {
     g_giving_up_callback = new base::RepeatingClosure(callback);
-  else
+  } else {
     g_giving_up_callback = nullptr;
+  }
 }
 
 ExtensionInstalledWaiter::ExtensionInstalledWaiter(
@@ -47,8 +49,13 @@ ExtensionInstalledWaiter::ExtensionInstalledWaiter(
 }
 
 ExtensionInstalledWaiter::~ExtensionInstalledWaiter() {
-  if (done_callback_ && g_giving_up_callback)
+  if (done_callback_ && g_giving_up_callback) {
     g_giving_up_callback->Run();
+<<<<<<< HEAD
+  }
+  BrowserList::RemoveObserver(this);
+=======
+>>>>>>> chromium
 }
 
 void ExtensionInstalledWaiter::RunCallbackIfExtensionInstalled() {
@@ -68,8 +75,9 @@ bool ExtensionInstalledWaiter::IsExtensionInstalled() const {
 void ExtensionInstalledWaiter::OnExtensionLoaded(
     content::BrowserContext* browser_context,
     const extensions::Extension* extension) {
-  if (extension != extension_.get())
+  if (extension != extension_.get()) {
     return;
+  }
 
   // Only call Wait() after all the other extension observers have had a chance
   // to run.
@@ -79,6 +87,22 @@ void ExtensionInstalledWaiter::OnExtensionLoaded(
                      weak_factory_.GetWeakPtr()));
 }
 
+<<<<<<< HEAD
+void ExtensionInstalledWaiter::OnExtensionUnloaded(
+    content::BrowserContext* browser_context,
+    const extensions::Extension* extension,
+    extensions::UnloadedExtensionReason reason) {
+  if (extension == extension_.get()) {
+    delete this;
+  }
+}
+
+void ExtensionInstalledWaiter::OnBrowserRemoved(Browser* browser) {
+  if (browser == browser_) {
+    delete this;
+  }
+=======
 void ExtensionInstalledWaiter::OnExtensionRemoved() {
   delete this;
+>>>>>>> chromium
 }

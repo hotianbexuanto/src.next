@@ -300,6 +300,25 @@ bool HttpAuthCache::Remove(const GURL& origin,
   return false;
 }
 
+<<<<<<< HEAD
+bool HttpAuthCache::ClearEntriesAddedBetween(
+    base::Time begin_time,
+    base::Time end_time,
+    base::RepeatingCallback<bool(const GURL&)> url_matcher) {
+  if (begin_time.is_min() && end_time.is_max() && !url_matcher) {
+    return ClearAllEntries();
+  }
+  const size_t num_entries_before = entries_.size();
+  std::erase_if(entries_, [begin_time, end_time, url_matcher](
+                              const EntryMap::value_type& entry_map_pair) {
+    const Entry& entry = entry_map_pair.second;
+    return entry.creation_time_ >= begin_time &&
+           entry.creation_time_ < end_time &&
+           (url_matcher ? url_matcher.Run(entry.scheme_host_port().GetURL())
+                        : true);
+  });
+  return entries_.size() != num_entries_before;
+=======
 void HttpAuthCache::ClearEntriesAddedBetween(base::Time begin_time,
                                              base::Time end_time) {
   if (begin_time.is_min() && end_time.is_max()) {
@@ -312,10 +331,15 @@ void HttpAuthCache::ClearEntriesAddedBetween(base::Time begin_time,
                   return entry.creation_time_ >= begin_time &&
                          entry.creation_time_ < end_time;
                 });
+>>>>>>> chromium
 }
 
-void HttpAuthCache::ClearAllEntries() {
+bool HttpAuthCache::ClearAllEntries() {
+  if (entries_.empty()) {
+    return false;
+  }
   entries_.clear();
+  return true;
 }
 
 bool HttpAuthCache::UpdateStaleChallenge(

@@ -34,12 +34,23 @@ void WriteTokenToPickle(Pickle* pickle, const Token& token) {
 
 absl::optional<Token> ReadTokenFromPickle(PickleIterator* pickle_iterator) {
   uint64_t high;
+<<<<<<< HEAD
+  if (!pickle_iterator->ReadUInt64(&high)) {
+    return std::nullopt;
+  }
+
+  uint64_t low;
+  if (!pickle_iterator->ReadUInt64(&low)) {
+    return std::nullopt;
+  }
+=======
   if (!pickle_iterator->ReadUInt64(&high))
     return absl::nullopt;
 
   uint64_t low;
   if (!pickle_iterator->ReadUInt64(&low))
     return absl::nullopt;
+>>>>>>> chromium
 
   return Token(high, low);
 }

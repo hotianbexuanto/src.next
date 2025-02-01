@@ -6,6 +6,8 @@ package org.chromium.base;
 
 import static android.content.Context.UI_MODE_SERVICE;
 
+import static org.chromium.build.NullUtil.assumeNonNull;
+
 import android.app.UiModeManager;
 import android.content.Context;
 import android.content.pm.PackageInfo;
@@ -19,24 +21,56 @@ import android.text.TextUtils;
 import androidx.annotation.ChecksSdkIntAtLeast;
 import androidx.annotation.NonNull;
 
+<<<<<<< HEAD
+import org.chromium.base.version_info.VersionInfo;
+import org.chromium.build.BuildConfig;
+import org.chromium.build.NativeLibraries;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.NullUnmarked;
+import org.chromium.build.annotations.Nullable;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+import javax.annotation.concurrent.GuardedBy;
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.compat.ApiHelperForP;
 import org.chromium.build.BuildConfig;
+>>>>>>> chromium
 
 /**
  * BuildInfo is a utility class providing easy access to {@link PackageInfo} information. This is
  * primarily of use for accessing package information from native code.
  */
+@NullMarked
 public class BuildInfo {
     private static final String TAG = "BuildInfo";
     private static final int MAX_FINGERPRINT_LENGTH = 128;
 
+<<<<<<< HEAD
+    private static @Nullable PackageInfo sBrowserPackageInfo;
+=======
     private static PackageInfo sBrowserPackageInfo;
+>>>>>>> chromium
     private static boolean sInitialized;
+    private static @Nullable String sGmsVersionCodeForTesting;
 
+    private ApplicationInfo mBrowserApplicationInfo;
+
+<<<<<<< HEAD
+    /**
+     * The package name of the host app which has loaded WebView, retrieved from the application
+     * context. In the context of the SDK Runtime, the package name of the app that owns this
+     * particular instance of the SDK Runtime will also be included. e.g.
+     * com.google.android.sdksandbox:com:com.example.myappwithads
+     */
+    public final String hostPackageName;
+=======
     // TODO(crbug.com/1192402): Replace this with Build.VERSION_CODES.S in the code once chromium
     // import Android S SDK.
     public static final int ANDROID_S_API_SDK_INT = 31;
+>>>>>>> chromium
 
     /** Not a member variable to avoid creating the instance early (it is set early in start up). */
     private static String sFirebaseAppId = "";
@@ -66,6 +100,93 @@ public class BuildInfo {
     /** Whether we're running on Android TV or not */
     public final boolean isTV;
 
+<<<<<<< HEAD
+    /** Whether we're running on an Android Automotive OS device or not. */
+    public final boolean isAutomotive;
+
+    /** Whether we're running on an Android Foldable OS device or not. */
+    public final boolean isFoldable;
+
+    /** Whether we're running on an Android Desktop OS device or not. */
+    public final boolean isDesktop;
+
+    /**
+     * version of the FEATURE_VULKAN_DEQP_LEVEL, if available. Queried only on Android T or above
+     */
+    public final int vulkanDeqpLevel;
+
+    /**
+     * The SHA256 of the public certificate used to sign the host application. This will default to
+     * an empty string if we were unable to retrieve it.
+     */
+    @GuardedBy("mCertLock")
+    private @Nullable String mHostSigningCertSha256;
+
+    /** The versionCode of Play Services. Can be overridden in tests. */
+    private String mGmsVersionCode;
+
+    private final Object mCertLock = new Object();
+
+    private static class Holder {
+        private static final BuildInfo INSTANCE = new BuildInfo();
+    }
+
+    @CalledByNative
+    private static String[] getAll() {
+        return BuildInfo.getInstance().getAllProperties();
+    }
+
+    @CalledByNative
+    private static @JniType("std::string") String lazyGetHostSigningCertSha256() {
+        return BuildInfo.getInstance().getHostSigningCertSha256();
+    }
+
+    @CalledByNativeForTesting
+    public static void setGmsVersionCodeForTest(@JniType("std::string") String gmsVersionCode) {
+        sGmsVersionCodeForTesting = gmsVersionCode;
+    }
+
+    /** Returns a serialized string array of all properties of this class. */
+    private String[] getAllProperties() {
+        // This implementation needs to be kept in sync with the native BuildInfo constructor.
+        return new String[] {
+            Build.BRAND,
+            Build.DEVICE,
+            Build.ID,
+            Build.MANUFACTURER,
+            Build.MODEL,
+            String.valueOf(Build.VERSION.SDK_INT),
+            Build.TYPE,
+            Build.BOARD,
+            hostPackageName,
+            String.valueOf(hostVersionCode),
+            hostPackageLabel,
+            packageName,
+            String.valueOf(versionCode),
+            versionName,
+            androidBuildFingerprint,
+            getGmsVersionCode(),
+            installerPackageName,
+            abiString,
+            customThemes,
+            resourcesVersion,
+            String.valueOf(
+                    ContextUtils.getApplicationContext().getApplicationInfo().targetSdkVersion),
+            isDebugAndroid() ? "1" : "0",
+            isTV ? "1" : "0",
+            Build.VERSION.INCREMENTAL,
+            Build.HARDWARE,
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? "1" : "0",
+            isAutomotive ? "1" : "0",
+            Build.VERSION.SDK_INT >= VERSION_CODES.UPSIDE_DOWN_CAKE ? "1" : "0",
+            targetsAtLeastU() ? "1" : "0",
+            Build.VERSION.CODENAME,
+            String.valueOf(vulkanDeqpLevel),
+            isFoldable ? "1" : "0",
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? Build.SOC_MANUFACTURER : "",
+            isDebugApp() ? "1" : "0",
+            isDesktop ? "1" : "0",
+=======
     private static class Holder { private static BuildInfo sInstance = new BuildInfo(); }
 
     @CalledByNative
@@ -99,10 +220,11 @@ public class BuildInfo {
                 isDebugAndroid() ? "1" : "0",
                 buildInfo.isTV ? "1" : "0",
                 Build.VERSION.INCREMENTAL,
+>>>>>>> chromium
         };
     }
 
-    private static String nullToEmpty(CharSequence seq) {
+    private static String nullToEmpty(@Nullable CharSequence seq) {
         return seq == null ? "" : seq.toString();
     }
 
@@ -122,27 +244,143 @@ public class BuildInfo {
         sBrowserPackageInfo = packageInfo;
     }
 
-    public static BuildInfo getInstance() {
-        return Holder.sInstance;
+<<<<<<< HEAD
+    /**
+     * @return ApplicationInfo for Chrome/WebView (as opposed to host app).
+     */
+    public ApplicationInfo getBrowserApplicationInfo() {
+        return mBrowserApplicationInfo;
     }
 
+    public static BuildInfo getInstance() {
+        // Some tests mock out things BuildInfo is based on, so disable caching in tests to ensure
+        // such mocking is not defeated by caching.
+        if (BuildConfig.IS_FOR_TEST) {
+            return new BuildInfo();
+        }
+        return Holder.INSTANCE;
+    }
+
+    /** The versionCode of Play Services. */
+    public String getGmsVersionCode() {
+        return sGmsVersionCodeForTesting == null ? mGmsVersionCode : sGmsVersionCodeForTesting;
+=======
+    public static BuildInfo getInstance() {
+        return Holder.sInstance;
+>>>>>>> chromium
+    }
+
+    @SuppressWarnings("NullAway") // https://github.com/uber/NullAway/issues/98
     private BuildInfo() {
         sInitialized = true;
+<<<<<<< HEAD
+        Context appContext = ContextUtils.getApplicationContext();
+        String appContextPackageName = appContext.getPackageName();
+        PackageManager pm = appContext.getPackageManager();
+
+        String providedHostPackageName = null;
+        String providedHostPackageLabel = null;
+        String providedPackageName = null;
+        String providedPackageVersionName = null;
+        Long providedHostVersionCode = null;
+
+        // The child processes are running in an isolated process so they can't grab a lot of
+        // package information in the same way that we normally would retrieve them. To get around
+        // this, we feed the information as command line switches.
+        if (CommandLine.isInitialized()) {
+            CommandLine commandLine = CommandLine.getInstance();
+            providedHostPackageName = commandLine.getSwitchValue(BaseSwitches.HOST_PACKAGE_NAME);
+            providedHostPackageLabel = commandLine.getSwitchValue(BaseSwitches.HOST_PACKAGE_LABEL);
+            providedPackageName = commandLine.getSwitchValue(BaseSwitches.PACKAGE_NAME);
+            providedPackageVersionName =
+                    commandLine.getSwitchValue(BaseSwitches.PACKAGE_VERSION_NAME);
+
+            String flagValue = commandLine.getSwitchValue(BaseSwitches.HOST_VERSION_CODE);
+
+            if (flagValue != null) {
+                providedHostVersionCode = Long.parseLong(flagValue);
+            }
+        }
+
+        boolean hostInformationProvided =
+                providedHostPackageName != null
+                        && providedHostPackageLabel != null
+                        && providedHostVersionCode != null
+                        && providedPackageName != null
+                        && providedPackageVersionName != null;
+
+        // We want to retrieve the original package installed to verify to host package name.
+        // In the case of the SDK Runtime, we would like to retrieve the package name loading the
+        // SDK.
+        String appInstalledPackageName = appContextPackageName;
+
+        if (hostInformationProvided) {
+            hostPackageName = providedHostPackageName;
+            hostPackageLabel = providedHostPackageLabel;
+            hostVersionCode = providedHostVersionCode;
+            versionName = providedPackageVersionName;
+            packageName = providedPackageName;
+
+            mBrowserApplicationInfo = appContext.getApplicationInfo();
+        } else {
+            // The SDK Qualified package name will retrieve the same information as
+            // appInstalledPackageName but prefix it with the SDK Sandbox process so that we can
+            // tell SDK Runtime data apart from regular data in our logs and metrics.
+            String sdkQualifiedName = appInstalledPackageName;
+
+            // TODO(bewise): There isn't currently an official API to grab the host package name
+            // with the SDK Runtime. We can work around this because SDKs loaded in the SDK
+            // Runtime have the host UID + 10000. This should be updated if a public API comes
+            // along that we can use.
+            // You can see more about this in the Android source:
+            // https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/core/java/android/os/Process.java;l=292;drc=47fffdd53115a9af1820e3f89d8108745be4b55d
+            if (ContextUtils.isSdkSandboxProcess()) {
+                final int hostId = Process.myUid() - 10000;
+                final String[] packageNames = pm.getPackagesForUid(hostId);
+
+                if (packageNames != null && packageNames.length > 0) {
+                    // We could end up with more than one package name if the app used a
+                    // sharedUserId but these are deprecated so this is a safe bet to rely on the
+                    // first package name.
+                    appInstalledPackageName = packageNames[0];
+                    sdkQualifiedName += ":" + appInstalledPackageName;
+                }
+            }
+
+            ApplicationInfo appInfo = appContext.getApplicationInfo();
+            hostPackageName = sdkQualifiedName;
+            hostPackageLabel = nullToEmpty(pm.getApplicationLabel(appInfo));
+
+=======
         try {
             Context appContext = ContextUtils.getApplicationContext();
             String hostPackageName = appContext.getPackageName();
             PackageManager pm = appContext.getPackageManager();
             PackageInfo pi = pm.getPackageInfo(hostPackageName, 0);
             hostVersionCode = packageVersionCode(pi);
+>>>>>>> chromium
             if (sBrowserPackageInfo != null) {
+                PackageInfo pi =
+                        assumeNonNull(PackageUtils.getPackageInfo(appInstalledPackageName, 0));
+                hostVersionCode = packageVersionCode(pi);
                 packageName = sBrowserPackageInfo.packageName;
                 versionCode = packageVersionCode(sBrowserPackageInfo);
                 versionName = nullToEmpty(sBrowserPackageInfo.versionName);
+<<<<<<< HEAD
+                mBrowserApplicationInfo = sBrowserPackageInfo.applicationInfo;
+                sBrowserPackageInfo = null;
+            } else {
+                packageName = appContextPackageName;
+                hostVersionCode = BuildConfig.VERSION_CODE;
+                versionName = VersionInfo.getProductVersion();
+                mBrowserApplicationInfo = appInfo;
+=======
                 sBrowserPackageInfo = null;
             } else {
                 packageName = hostPackageName;
                 versionCode = hostVersionCode;
                 versionName = nullToEmpty(pi.versionName);
+>>>>>>> chromium
             }
 
             hostPackageLabel = nullToEmpty(pm.getApplicationLabel(pi.applicationInfo));
@@ -267,4 +505,58 @@ public class BuildInfo {
         return sFirebaseAppId;
     }
 
+<<<<<<< HEAD
+    @NullUnmarked
+    public String getHostSigningCertSha256() {
+        // We currently only make use of this certificate for calls from the storage access API
+        // within WebView. So we rather lazy load this value to avoid impacting app startup.
+        synchronized (mCertLock) {
+            if (mHostSigningCertSha256 == null) {
+                String certificate = "";
+
+                PackageInfo pi =
+                        PackageUtils.getPackageInfo(
+                                ContextUtils.getApplicationContext().getPackageName(),
+                                getPackageInfoFlags());
+
+                Signature[] signatures = getPackageSignatures(pi);
+                if (signatures != null) {
+                    try {
+                        MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+                        // The current signing certificate is always the last one in the list.
+                        byte[] digest =
+                                messageDigest.digest(
+                                        signatures[signatures.length - 1].toByteArray());
+                        certificate = PackageUtils.byteArrayToHexString(digest);
+                    } catch (NoSuchAlgorithmException e) {
+                        Log.w(TAG, "Unable to hash host app signature", e);
+                    }
+                }
+
+                mHostSigningCertSha256 = certificate;
+            }
+
+            return mHostSigningCertSha256;
+        }
+    }
+
+    private int getPackageInfoFlags() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return PackageManager.GET_SIGNING_CERTIFICATES;
+        }
+        return PackageManager.GET_SIGNATURES;
+    }
+
+    private Signature @Nullable [] getPackageSignatures(PackageInfo pi) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            if (pi.signingInfo == null) {
+                return null;
+            }
+            return pi.signingInfo.getSigningCertificateHistory();
+        }
+
+        return pi.signatures;
+    }
+=======
+>>>>>>> chromium
 }

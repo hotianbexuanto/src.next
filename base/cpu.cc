@@ -34,9 +34,18 @@
     (defined(OS_ANDROID) || defined(OS_LINUX) || defined(OS_CHROMEOS))
 #include <asm/hwcap.h>
 #include <sys/auxv.h>
+<<<<<<< HEAD
+
+#include <algorithm>
+
+#include "base/files/file_util.h"
+#include "base/numerics/checked_math.h"
+#include "base/strings/string_number_conversions.h"
+=======
 #include "base/files/file_util.h"
 #include "base/numerics/checked_math.h"
 #include "base/ranges/algorithm.h"
+>>>>>>> chromium
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 
@@ -53,8 +62,8 @@ struct ProcCpuInfo {
 
 #if defined(ARCH_CPU_X86_FAMILY)
 #if defined(COMPILER_MSVC)
-#include <intrin.h>
 #include <immintrin.h>  // For _xgetbv()
+#include <intrin.h>
 #endif
 #endif
 
@@ -142,8 +151,7 @@ uint64_t xgetbv(uint32_t xcr) {
 #else
   uint32_t eax, edx;
 
-  __asm__ volatile (
-    "xgetbv" : "=a"(eax), "=d"(edx) : "c"(xcr));
+  __asm__ volatile("xgetbv" : "=a"(eax), "=d"(edx) : "c"(xcr));
   return (static_cast<uint64_t>(edx) << 32) | eax;
 #endif  // defined(COMPILER_MSVC)
 }
@@ -222,12 +230,16 @@ const ProcCpuInfo& ParseProcCpu() {
 
 void CPU::Initialize(bool require_branding) {
 #if defined(ARCH_CPU_X86_FAMILY)
+<<<<<<< HEAD
+  int cpu_info[4] = {-1, 0, 0, 0};
+=======
   int cpu_info[4] = {-1};
   // This array is used to temporarily hold the vendor name and then the brand
   // name. Thus it has to be big enough for both use cases. There are
   // static_asserts below for each of the use cases to make sure this array is
   // big enough.
   char cpu_string[sizeof(cpu_info) * 3 + 1];
+>>>>>>> chromium
 
   // __cpuid with an InfoType argument of 0 returns the number of
   // valid Ids in CPUInfo[0] and the CPU identification string in
@@ -248,7 +260,12 @@ void CPU::Initialize(bool require_branding) {
 
   // Interpret CPU feature information.
   if (num_ids > 0) {
+<<<<<<< HEAD
+    int cpu_info7[4] = {};
+    int cpu_einfo7[4] = {};
+=======
     int cpu_info7[4] = {0};
+>>>>>>> chromium
     __cpuid(cpu_info, 1);
     if (num_ids >= 7) {
       __cpuid(cpu_info7, 7);
@@ -262,10 +279,10 @@ void CPU::Initialize(bool require_branding) {
     model_ = results.model;
     ext_family_ = results.ext_family;
     ext_model_ = results.ext_model;
-    has_mmx_ =   (cpu_info[3] & 0x00800000) != 0;
-    has_sse_ =   (cpu_info[3] & 0x02000000) != 0;
-    has_sse2_ =  (cpu_info[3] & 0x04000000) != 0;
-    has_sse3_ =  (cpu_info[2] & 0x00000001) != 0;
+    has_mmx_ = (cpu_info[3] & 0x00800000) != 0;
+    has_sse_ = (cpu_info[3] & 0x02000000) != 0;
+    has_sse2_ = (cpu_info[3] & 0x04000000) != 0;
+    has_sse3_ = (cpu_info[2] & 0x00000001) != 0;
     has_ssse3_ = (cpu_info[2] & 0x00000200) != 0;
     has_sse41_ = (cpu_info[2] & 0x00080000) != 0;
     has_sse42_ = (cpu_info[2] & 0x00100000) != 0;
@@ -288,11 +305,10 @@ void CPU::Initialize(bool require_branding) {
     // even after following Intel's example code. (See crbug.com/375968.)
     // Because of that, we also test the XSAVE bit because its description in
     // the CPUID documentation suggests that it signals xgetbv support.
-    has_avx_ =
-        (cpu_info[2] & 0x10000000) != 0 &&
-        (cpu_info[2] & 0x04000000) != 0 /* XSAVE */ &&
-        (cpu_info[2] & 0x08000000) != 0 /* OSXSAVE */ &&
-        (xgetbv(0) & 6) == 6 /* XSAVE enabled by kernel */;
+    has_avx_ = (cpu_info[2] & 0x10000000) != 0 &&
+               (cpu_info[2] & 0x04000000) != 0 /* XSAVE */ &&
+               (cpu_info[2] & 0x08000000) != 0 /* OSXSAVE */ &&
+               (xgetbv(0) & 6) == 6 /* XSAVE enabled by kernel */;
     has_aesni_ = (cpu_info[2] & 0x02000000) != 0;
     has_avx2_ = has_avx_ && (cpu_info7[1] & 0x00000020) != 0;
   }
@@ -366,6 +382,47 @@ void CPU::Initialize(bool require_branding) {
 }
 
 CPU::IntelMicroArchitecture CPU::GetIntelMicroArchitecture() const {
+<<<<<<< HEAD
+  if (has_avx512_vnni()) {
+    return AVX512_VNNI;
+  }
+  if (has_avx512_bw()) {
+    return AVX512BW;
+  }
+  if (has_avx512_f()) {
+    return AVX512F;
+  }
+  if (has_avx_vnni()) {
+    return AVX_VNNI;
+  }
+  if (has_avx2()) {
+    return AVX2;
+  }
+  if (has_fma3()) {
+    return FMA3;
+  }
+  if (has_avx()) {
+    return AVX;
+  }
+  if (has_sse42()) {
+    return SSE42;
+  }
+  if (has_sse41()) {
+    return SSE41;
+  }
+  if (has_ssse3()) {
+    return SSSE3;
+  }
+  if (has_sse3()) {
+    return SSE3;
+  }
+  if (has_sse2()) {
+    return SSE2;
+  }
+  if (has_sse()) {
+    return SSE;
+  }
+=======
   if (has_avx2()) return AVX2;
   if (has_avx()) return AVX;
   if (has_sse42()) return SSE42;
@@ -374,6 +431,7 @@ CPU::IntelMicroArchitecture CPU::GetIntelMicroArchitecture() const {
   if (has_sse3()) return SSE3;
   if (has_sse2()) return SSE2;
   if (has_sse()) return SSE;
+>>>>>>> chromium
   return PENTIUM;
 }
 

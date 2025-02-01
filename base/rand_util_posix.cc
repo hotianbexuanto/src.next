@@ -2,6 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
+=======
+>>>>>>> chromium
 #include "base/rand_util.h"
 
 #include <errno.h>
@@ -52,9 +60,48 @@ class URandomFd {
   const int fd_;
 };
 
+<<<<<<< HEAD
+#if (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
+     BUILDFLAG(IS_ANDROID)) &&                        \
+    !BUILDFLAG(IS_NACL)
+// TODO(pasko): Unify reading kernel version numbers in:
+// mojo/core/channel_linux.cc
+// chrome/browser/android/seccomp_support_detector.cc
+void KernelVersionNumbers(int32_t* major_version,
+                          int32_t* minor_version,
+                          int32_t* bugfix_version) {
+  struct utsname info;
+  if (uname(&info) < 0) {
+    NOTREACHED();
+  }
+  int num_read = sscanf(info.release, "%d.%d.%d", major_version, minor_version,
+                        bugfix_version);
+  if (num_read < 1) {
+    *major_version = 0;
+  }
+  if (num_read < 2) {
+    *minor_version = 0;
+  }
+  if (num_read < 3) {
+    *bugfix_version = 0;
+  }
+}
+
+bool KernelSupportsGetRandom() {
+  int32_t major = 0;
+  int32_t minor = 0;
+  int32_t bugfix = 0;
+  KernelVersionNumbers(&major, &minor, &bugfix);
+  if (major > 3 || (major == 3 && minor >= 17)) {
+    return true;
+  }
+  return false;
+}
+=======
 }  // namespace
 
 namespace base {
+>>>>>>> chromium
 
 // NOTE: In an ideal future, all implementations of this function will just
 // wrap BoringSSL's `RAND_bytes`. TODO(crbug.com/995996): Figure out the

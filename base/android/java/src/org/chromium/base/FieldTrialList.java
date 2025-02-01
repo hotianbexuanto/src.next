@@ -7,10 +7,17 @@ package org.chromium.base;
 import org.chromium.base.annotations.MainDex;
 import org.chromium.base.annotations.NativeMethods;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+
+/** Helper to get field trial information. */
+@NullMarked
+=======
 /**
  * Helper to get field trial information.
  */
 @MainDex
+>>>>>>> chromium
 public class FieldTrialList {
 
     private FieldTrialList() {}

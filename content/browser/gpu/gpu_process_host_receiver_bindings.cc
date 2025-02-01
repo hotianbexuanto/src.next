@@ -19,6 +19,14 @@
 #include "media/mojo/mojom/android_overlay.mojom.h"
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+#include "components/services/font/public/mojom/font_service.mojom.h"  // nogncheck
+#include "content/browser/font_service.h"  // nogncheck
+#endif
+
+=======
+>>>>>>> chromium
 namespace content {
 
 namespace {
@@ -43,6 +51,17 @@ void GpuProcessHost::BindHostReceiver(
   }
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+  if (auto font_receiver =
+          generic_receiver.As<font_service::mojom::FontService>()) {
+    ConnectToFontService(std::move(font_receiver));
+    return;
+  }
+#endif
+
+=======
+>>>>>>> chromium
   GetContentClient()->browser()->BindGpuHostReceiver(
       std::move(generic_receiver));
 }

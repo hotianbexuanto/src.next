@@ -224,7 +224,11 @@ class NET_EXPORT_PRIVATE HttpStreamParser {
   // Offset of the first unused byte in |read_buf_|.  May be nonzero due to
   // body data in the same packet as header data but is zero when reading
   // headers.
+<<<<<<< HEAD
+  size_t read_buf_unused_offset_ = 0;
+=======
   int read_buf_unused_offset_;
+>>>>>>> chromium
 
   // The amount beyond |read_buf_unused_offset_| where the status line starts;
   // std::string::npos if not found yet.
@@ -279,7 +283,11 @@ class NET_EXPORT_PRIVATE HttpStreamParser {
 
   // Where the caller wants the body data.
   scoped_refptr<IOBuffer> user_read_buf_;
+<<<<<<< HEAD
+  size_t user_read_buf_len_ = 0;
+=======
   int user_read_buf_len_;
+>>>>>>> chromium
 
   // The callback to notify a user that the handshake has been confirmed.
   CompletionOnceCallback confirm_handshake_callback_;

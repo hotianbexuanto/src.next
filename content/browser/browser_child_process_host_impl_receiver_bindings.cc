@@ -4,14 +4,19 @@
 
 // This file exposes services in the browser to child processes.
 
+<<<<<<< HEAD
+#include "base/functional/bind.h"
+=======
 #include "content/browser/browser_child_process_host_impl.h"
 
 #include "base/bind.h"
+>>>>>>> chromium
 #include "base/no_destructor.h"
 #include "base/task/thread_pool.h"
 #include "build/build_config.h"
 #include "components/discardable_memory/public/mojom/discardable_shared_memory_manager.mojom.h"
 #include "components/discardable_memory/service/discardable_shared_memory_manager.h"
+#include "content/browser/browser_child_process_host_impl.h"
 #include "content/browser/field_trial_recorder.h"
 #include "content/common/field_trial_recorder.mojom.h"
 #include "content/public/browser/browser_child_process_host_delegate.h"
@@ -19,18 +24,27 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/device_service.h"
 #include "content/public/common/content_features.h"
+#include "mojo/public/cpp/bindings/binder_map.h"
 #include "services/device/public/mojom/power_monitor.mojom.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/metrics/public/mojom/ukm_interface.mojom.h"
 #include "services/metrics/ukm_recorder_interface.h"
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_MAC)
+#include "content/browser/sandbox_support_impl.h"
+#include "content/common/sandbox_support.mojom.h"
+=======
 #if defined(OS_MAC)
 #include "content/browser/sandbox_support_mac_impl.h"
 #include "content/common/sandbox_support_mac.mojom.h"
+>>>>>>> chromium
 #endif
 
 #if defined(OS_WIN)
 #include "content/browser/renderer_host/dwrite_font_proxy_impl_win.h"
+#include "content/browser/sandbox_support_impl.h"
+#include "content/common/sandbox_support.mojom.h"
 #include "content/public/common/font_cache_dispatcher_win.h"
 #include "content/public/common/font_cache_win.mojom.h"
 #endif
@@ -65,9 +79,15 @@ void BrowserChildProcessHostImpl::BindHostReceiver(
     return;
   }
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_MAC)
+  if (auto r = receiver.As<mojom::SandboxSupport>()) {
+    static base::NoDestructor<SandboxSupportImpl> sandbox_support;
+=======
 #if defined(OS_MAC)
   if (auto r = receiver.As<mojom::SandboxSupportMac>()) {
     static base::NoDestructor<SandboxSupportMacImpl> sandbox_support;
+>>>>>>> chromium
     sandbox_support->BindReceiver(std::move(r));
     return;
   }
@@ -78,7 +98,11 @@ void BrowserChildProcessHostImpl::BindHostReceiver(
     FontCacheDispatcher::Create(std::move(r));
     return;
   }
-
+  if (auto r = receiver.As<mojom::SandboxSupport>()) {
+    static base::NoDestructor<SandboxSupportImpl> sandbox_support;
+    sandbox_support->BindReceiver(std::move(r));
+    return;
+  }
   if (auto r = receiver.As<blink::mojom::DWriteFontProxy>()) {
     base::ThreadPool::CreateSequencedTaskRunner(
         {base::TaskPriority::USER_BLOCKING, base::MayBlock()})
@@ -129,6 +153,10 @@ void BrowserChildProcessHostImpl::BindHostReceiver(
   if (auto r = receiver.As<ukm::mojom::UkmRecorderInterface>()) {
     metrics::UkmRecorderInterface::Create(ukm::UkmRecorder::Get(),
                                           std::move(r));
+    return;
+  }
+
+  if (binder_map_.TryBind(this, &receiver)) {
     return;
   }
 

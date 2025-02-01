@@ -16,6 +16,8 @@
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/search_engines/chrome_template_url_service_client.h"
 #include "chrome/test/base/testing_profile.h"
+#include "components/regional_capabilities/regional_capabilities_service.h"
+#include "components/regional_capabilities/regional_capabilities_test_utils.h"
 #include "components/search_engines/keyword_table.h"
 #include "components/search_engines/keyword_web_data_service.h"
 #include "components/search_engines/search_engines_test_util.h"
@@ -65,13 +67,46 @@ void RemoveManagedDefaultSearchPreferences(TestingProfile* profile) {
       DefaultSearchManager::kDefaultSearchProviderDataPrefName);
 }
 
+<<<<<<< HEAD
+void SetRecommendedDefaultSearchPreferences(const TemplateURLData& data,
+                                            bool enabled,
+                                            TestingProfile* profile) {
+  base::Value::Dict dict = TemplateURLDataToDictionary(data);
+  dict.Set(DefaultSearchManager::kDisabledByPolicy, !enabled);
+
+  profile->GetTestingPrefService()->SetRecommendedPref(
+      DefaultSearchManager::kDefaultSearchProviderDataPrefName,
+      std::move(dict));
+}
+
+void SetManagedSearchSettingsPreference(
+    const EnterpriseSearchManager::OwnedTemplateURLDataVector&
+        enterprise_search_engines,
+    TestingProfile* profile) {
+  base::Value::List pref_value;
+  for (auto& enterprise_search_engine : enterprise_search_engines) {
+    pref_value.Append(
+        base::Value(TemplateURLDataToDictionary(*enterprise_search_engine)));
+  }
+
+  profile->GetTestingPrefService()->SetManagedPref(
+      EnterpriseSearchManager::kSiteSearchSettingsPrefName,
+      std::move(pref_value));
+}
+
+=======
+>>>>>>> chromium
 std::unique_ptr<TemplateURL> CreateTestTemplateURL(
     const std::u16string& keyword,
     const std::string& url,
     const std::string& guid,
     base::Time last_modified,
     bool safe_for_autoreplace,
+<<<<<<< HEAD
+    TemplateURLData::PolicyOrigin policy_origin,
+=======
     bool created_by_policy,
+>>>>>>> chromium
     int prepopulate_id) {
   DCHECK(!base::StartsWith(guid, "key"))
       << "Don't use test GUIDs with the form \"key1\". Use \"guid1\" instead "
@@ -85,10 +120,11 @@ std::unique_ptr<TemplateURL> CreateTestTemplateURL(
   data.safe_for_autoreplace = safe_for_autoreplace;
   data.date_created = base::Time::FromTimeT(100);
   data.last_modified = last_modified;
-  data.created_by_policy = created_by_policy;
+  data.policy_origin = policy_origin;
   data.prepopulate_id = prepopulate_id;
-  if (!guid.empty())
+  if (!guid.empty()) {
     data.sync_guid = guid;
+  }
   return std::make_unique<TemplateURL>(data);
 }
 
@@ -109,12 +145,39 @@ TemplateURLServiceTestUtil::TemplateURLServiceTestUtil() {
       web_database_service.get(), base::ThreadTaskRunnerHandle::Get());
   web_data_service_->Init(base::NullCallback());
 
+<<<<<<< HEAD
+  if (!local_state_) {
+    if (g_browser_process->local_state()) {
+      local_state_ = g_browser_process->local_state();
+    } else {
+      // `g_browser_process->local_state()` might be null in unit tests.
+      owned_local_state_ = std::make_unique<ScopedTestingLocalState>(
+          TestingBrowserProcess::GetGlobal());
+      local_state_ = owned_local_state_->Get();
+    }
+  }
+
+  regional_capabilities_service_ =
+      regional_capabilities::CreateServiceWithFakeClient(*profile_->GetPrefs());
+
+  search_engine_choice_service_ =
+      std::make_unique<search_engines::SearchEngineChoiceService>(
+          *profile_->GetPrefs(), local_state_, *regional_capabilities_service_,
+          /*is_profile_eligible_for_dse_guest_propagation=*/false);
+
+=======
+>>>>>>> chromium
   ResetModel(false);
 }
 
 TemplateURLServiceTestUtil::~TemplateURLServiceTestUtil() {
   ClearModel();
   web_data_service_->ShutdownOnUISequence();
+<<<<<<< HEAD
+  search_engine_choice_service_.reset();
+  regional_capabilities_service_.reset();
+=======
+>>>>>>> chromium
   profile_.reset();
 
   // Flush the message loop to make application verifiers happy.
@@ -156,8 +219,9 @@ void TemplateURLServiceTestUtil::ClearModel() {
 }
 
 void TemplateURLServiceTestUtil::ResetModel(bool verify_load) {
-  if (model_)
+  if (model_) {
     ClearModel();
+  }
   model_ = std::make_unique<TemplateURLService>(
       profile()->GetPrefs(),
       std::make_unique<TestingSearchTermsData>("http://www.google.com/"),
@@ -170,8 +234,9 @@ void TemplateURLServiceTestUtil::ResetModel(bool verify_load) {
       base::BindLambdaForTesting([&] { ++dsp_set_to_google_callback_count_; }));
   model()->AddObserver(this);
   changed_count_ = 0;
-  if (verify_load)
+  if (verify_load) {
     VerifyLoad();
+  }
 }
 
 std::u16string TemplateURLServiceTestUtil::GetAndClearSearchTerm() {
@@ -184,8 +249,8 @@ TemplateURL* TemplateURLServiceTestUtil::AddExtensionControlledTURL(
     std::unique_ptr<TemplateURL> extension_turl) {
   TemplateURL* result = model()->Add(std::move(extension_turl));
   DCHECK(result);
-  DCHECK(result->GetExtensionInfoForTesting());
-  if (result->GetExtensionInfoForTesting()->wants_to_be_default_engine) {
+  DCHECK(result->GetExtensionInfo());
+  if (result->GetExtensionInfo()->wants_to_be_default_engine) {
     SetExtensionDefaultSearchInPrefs(profile()->GetTestingPrefService(),
                                      result->data());
   }
@@ -197,9 +262,10 @@ void TemplateURLServiceTestUtil::RemoveExtensionControlledTURL(
   TemplateURL* turl = model()->FindTemplateURLForExtension(
       extension_id, TemplateURL::NORMAL_CONTROLLED_BY_EXTENSION);
   ASSERT_TRUE(turl);
-  ASSERT_TRUE(turl->GetExtensionInfoForTesting());
-  if (turl->GetExtensionInfoForTesting()->wants_to_be_default_engine)
+  ASSERT_TRUE(turl->GetExtensionInfo());
+  if (turl->GetExtensionInfo()->wants_to_be_default_engine) {
     RemoveExtensionDefaultSearchFromPrefs(profile()->GetTestingPrefService());
+  }
   model()->RemoveExtensionControlledTURL(
       extension_id, TemplateURL::NORMAL_CONTROLLED_BY_EXTENSION);
 }

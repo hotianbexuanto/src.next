@@ -26,8 +26,17 @@ namespace extensions {
 
 class ManifestV3BrowserTest : public ExtensionBrowserTest {
  public:
+<<<<<<< HEAD
+  ManifestV3BrowserTest() = default;
+
+  ManifestV3BrowserTest(const ManifestV3BrowserTest&) = delete;
+  ManifestV3BrowserTest& operator=(const ManifestV3BrowserTest&) = delete;
+
+  ~ManifestV3BrowserTest() override = default;
+=======
   ManifestV3BrowserTest() {}
   ~ManifestV3BrowserTest() override {}
+>>>>>>> chromium
 
   void SetUpOnMainThread() override {
     ExtensionBrowserTest::SetUpOnMainThread();

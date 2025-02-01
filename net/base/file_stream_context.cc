@@ -20,6 +20,10 @@
 #include "base/android/content_uri_utils.h"
 #endif
 
+#if BUILDFLAG(IS_WIN)
+#include <windows.h>
+#endif
+
 namespace net {
 
 namespace {

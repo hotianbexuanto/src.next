@@ -463,10 +463,22 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   // number of records successfully updated.
   virtual size_t UpdateURLs(const URLRows& urls);
 
+<<<<<<< HEAD
+  // Gets whether the URL is known to sync.
+  bool GetIsUrlKnownToSync(URLID id, bool* is_known_to_sync);
+
+  // Searches for a visit with the given `originator_visit_id` coming from
+  // another device (identified by `originator_cache_guid`). If found, returns
+  // true and writes the visit into `visit_row`; otherwise returns false.
+  bool GetForeignVisit(const std::string& originator_cache_guid,
+                       VisitID originator_visit_id,
+                       VisitRow* visit_row) override;
+=======
   // While adding visits in batch, the source needs to be provided.
   virtual bool AddVisits(const GURL& url,
                          const std::vector<VisitInfo>& visits,
                          VisitSource visit_source);
+>>>>>>> chromium
 
   virtual bool RemoveVisits(const VisitVector& visits);
 
@@ -606,6 +618,22 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   // of the associated URL (whether added or not) is returned. Both values will
   // be 0 on failure.
   //
+<<<<<<< HEAD
+  // If the caller wants to add this visit to the VisitedLinkDatabase, it needs
+  // to provide values for the `top_level_url`, `frame_url`, `is_ephemeral`
+  // parameters. `top_level_url` is a GURL representing the top-level frame that
+  // this navigation originated from. Context clicks may replace an invalid
+  // `top_level_url` with a valid `opener_url`, which contains only the GURL
+  // from `opener_visit` for quick access. `frame_url` is GURL representing the
+  // immediate frame that this navigation originated from. For example, if a
+  // link to `c.com` is clicked in an iframe `b.com` that is embedded in
+  // `a.com`, the `top_level_url` is `a.com` and the `frame_url` is `b.com` (and
+  // the `url` is `c.com`). `is_ephemeral` represents whether our navigation
+  // came from a credentialless iframe (which is an ephemeral context). When
+  // true, we want to avoid adding the visit into the VisitedLinkDatabase.
+  //
+=======
+>>>>>>> chromium
   // This does not schedule database commits, it is intended to be used as a
   // subroutine for AddPage only. It also assumes the database is valid.
   std::pair<URLID, VisitID> AddPageVisit(
@@ -616,8 +644,26 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
       bool hidden,
       VisitSource visit_source,
       bool should_increment_typed_count,
+<<<<<<< HEAD
+      VisitID opener_visit,
+      bool consider_for_ntp_most_visited,
+      bool is_ephemeral = false,
+      std::optional<int64_t> local_navigation_id = std::nullopt,
+      std::optional<std::u16string> title = std::nullopt,
+      std::optional<GURL> top_level_url = std::nullopt,
+      std::optional<GURL> frame_url = std::nullopt,
+      std::optional<GURL> opener_url = std::nullopt,
+      std::optional<std::string> app_id = std::nullopt,
+      std::optional<base::TimeDelta> visit_duration = std::nullopt,
+      std::optional<std::string> originator_cache_guid = std::nullopt,
+      std::optional<VisitID> originator_visit_id = std::nullopt,
+      std::optional<VisitID> originator_referring_visit = std::nullopt,
+      std::optional<VisitID> originator_opener_visit = std::nullopt,
+      bool is_known_to_sync = false);
+=======
       bool floc_allowed,
       absl::optional<std::u16string> title = absl::nullopt);
+>>>>>>> chromium
 
   // Returns a redirect chain in `redirects` for the VisitID
   // `cur_visit`. `cur_visit` is assumed to be valid. Assumes that

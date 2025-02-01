@@ -52,4 +52,23 @@ TEST(DownloadStatsTest, RecordDownloadCancelReason) {
   histogram_tester.ExpectTotalCount(kDownloadCancelReasonHistogram, 1);
 }
 
+<<<<<<< HEAD
+TEST(DownloadStatsTest, RecordDownloadOpen) {
+  base::HistogramTester histogram_tester;
+  base::UserActionTester user_action_tester;
+  RecordDownloadOpen(DOWNLOAD_OPEN_METHOD_DEFAULT_BROWSER, "application/pdf");
+
+  EXPECT_EQ(1, user_action_tester.GetActionCount("Download.Open"));
+  histogram_tester.ExpectUniqueSample(
+      "Download.OpenMethod",
+      /*sample=*/DOWNLOAD_OPEN_METHOD_DEFAULT_BROWSER,
+      /*expected_bucket_count=*/1);
+  histogram_tester.ExpectUniqueSample(
+      "Download.Open.ContentType",
+      /*sample=*/download::DownloadContent::kPdf,
+      /*expected_bucket_count=*/1);
+}
+
+=======
+>>>>>>> chromium
 }  // namespace

@@ -218,6 +218,11 @@ class NET_EXPORT BidirectionalStream : public BidirectionalStreamImpl::Delegate,
   void OnNeedsClientAuth(const SSLConfig& used_ssl_config,
                          SSLCertRequestInfo* cert_info) override;
   void OnQuicBroken() override;
+<<<<<<< HEAD
+  void OnSwitchesToHttpStreamPool(
+      HttpStreamPoolRequestInfo request_info) override;
+=======
+>>>>>>> chromium
 
   // Helper method to notify delegate if there is an error.
   void NotifyFailed(int error);

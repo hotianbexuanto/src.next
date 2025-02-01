@@ -14,8 +14,15 @@
 #include "base/check.h"
 #include "base/hash/md5.h"
 #include "base/location.h"
+<<<<<<< HEAD
+#include "base/memory/ref_counted.h"
+#include "base/metrics/histogram_functions.h"
+#include "base/numerics/safe_conversions.h"
+#include "base/strings/string_number_conversions.h"
+=======
 #include "base/metrics/histogram_macros.h"
 #include "base/single_thread_task_runner.h"
+>>>>>>> chromium
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task_runner.h"
@@ -49,10 +56,16 @@ void RunOrPostGetMostVisitedURLsCallback(
 // Checks if the titles stored in `old_list` and `new_list` have changes.
 bool DoTitlesDiffer(const MostVisitedURLList& old_list,
                     const MostVisitedURLList& new_list) {
+<<<<<<< HEAD
+  return !std::ranges::equal(old_list, new_list, std::equal_to<>(),
+                             &MostVisitedURL::title, &MostVisitedURL::title);
+}
+=======
   // If the two lists have different sizes, the most visited titles are
   // considered to have changes.
   if (old_list.size() != new_list.size())
     return true;
+>>>>>>> chromium
 
   return !std::equal(std::begin(old_list), std::end(old_list),
                      std::begin(new_list),

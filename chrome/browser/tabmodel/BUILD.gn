@@ -24,6 +24,22 @@ android_library("java") {
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabCreator.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabCreatorManager.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabCreatorManagerSupplier.java",
+<<<<<<< HEAD
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroup.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupCollapsedUtils.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupColorUtils.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupFeatureUtils.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupModelFilter.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupModelFilterFactory.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupModelFilterImpl.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupModelFilterInternal.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupModelFilterObserver.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupModelFilterProvider.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupSyncIdUtils.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupTitleUtils.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupUtils.java",
+=======
+>>>>>>> chromium
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabList.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModel.java",
     "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelFilter.java",
@@ -46,6 +62,11 @@ android_library("java") {
   ]
   deps = [
     "//base:base_java",
+<<<<<<< HEAD
+    "//build/android:build_java",
+    "//chrome/browser/flags:java",
+=======
+>>>>>>> chromium
     "//chrome/browser/profiles/android:java",
     "//chrome/browser/tab:java",
     "//components/embedder_support/android:util_java",
@@ -65,20 +86,76 @@ android_library_factory("factory_java") {
   ]
 }
 
+<<<<<<< HEAD
+robolectric_library("junit") {
+  sources = [
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabClosureParamsUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupCollapsedUtilsUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupColorUtilsUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupModelFilterImplUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupSyncIdUtilsUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupTitleUtilsUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupUtilsUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelSelectorTabModelObserverUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelSelectorTabRegistrationObserverUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabModelUtilsUnitTest.java",
+    "android/java/src/org/chromium/chrome/browser/tabmodel/TabWindowManagerTest.java",
+  ]
+
+=======
 android_library("javatests") {
   testonly = true
   sources = [ "android/java/src/org/chromium/chrome/browser/tabmodel/IncognitoTabModelTest.java" ]
+>>>>>>> chromium
   deps = [
     ":java",
+<<<<<<< HEAD
+    ":test_support_java",
+    "//base:base_java",
+=======
+>>>>>>> chromium
     "//base:base_java_test_support",
     "//chrome/android:chrome_java",
     "//chrome/browser/flags:java",
     "//chrome/browser/tab:java",
+<<<<<<< HEAD
+    "//chrome/browser/tab_group_sync:features_java",
+    "//chrome/browser/tab_ui/android:java",
+    "//chrome/browser/tabmodel:java",
+    "//chrome/test/android:chrome_java_unit_test_support",
+    "//components/tab_groups:tab_groups_java",
+    "//content/public/android:content_full_java",
+    "//third_party/androidx:androidx_annotation_annotation_java",
+    "//third_party/androidx:androidx_collection_collection_java",
+    "//third_party/androidx:androidx_test_core_java",
+    "//third_party/androidx:androidx_test_espresso_espresso_core_java",
+=======
     "//chrome/test/android:chrome_java_test_support",
     "//content/public/android:content_java",
     "//content/public/test/android:content_java_test_support",
+>>>>>>> chromium
     "//third_party/androidx:androidx_test_runner_java",
     "//third_party/junit",
     "//third_party/mockito:mockito_java",
+<<<<<<< HEAD
+    "//ui/android:ui_java",
+    "//ui/android:ui_java_test_support",
+    "//url:gurl_junit_test_support",
+    "//url:url_java",
+  ]
+}
+
+robolectric_library("test_support_java") {
+  testonly = true
+  sources = [ "android/java/src/org/chromium/chrome/browser/tabmodel/TabUiUnitTestUtils.java" ]
+  deps = [
+    ":java",
+    "//base:base_java",
+    "//chrome/browser/tab:java",
+    "//content/public/android:content_full_java",
+    "//third_party/mockito:mockito_java",
+    "//url:url_java",
+=======
+>>>>>>> chromium
   ]
 }

@@ -128,6 +128,15 @@ BoxPainterBase::FillLayerInfo BoxModelObjectPainter::GetFillLayerInfo(
     const Color& color,
     const FillLayer& bg_layer,
     BackgroundBleedAvoidance bleed_avoidance,
+<<<<<<< HEAD
+    bool is_painting_background_in_contents_space,
+    PaintFlags paint_flags) const {
+  return BoxPainterBase::FillLayerInfo(
+      box_model_.GetDocument(), box_model_.StyleRef(),
+      box_model_.IsScrollContainer(), color, bg_layer, bleed_avoidance,
+      PhysicalBoxSides(), box_model_.IsLayoutInline(),
+      is_painting_background_in_contents_space, paint_flags);
+=======
     bool is_painting_scrolling_background) const {
   PhysicalBoxSides sides_to_include;
   if (flow_box_)
@@ -152,6 +161,7 @@ bool BoxModelObjectPainter::IsPaintingScrollingBackground(
 
   const auto& this_box = To<LayoutBox>(box_model_);
   return BoxDecorationData::IsPaintingScrollingBackground(paint_info, this_box);
+>>>>>>> chromium
 }
 
 }  // namespace blink

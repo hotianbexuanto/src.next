@@ -916,12 +916,27 @@ String CounterValueForElement(Element* element) {
   if (LayoutObject* marker =
           element->PseudoElementLayoutObject(kPseudoIdMarker))
     WriteCounterValuesFromChildren(stream, marker, is_first_counter);
+<<<<<<< HEAD
+  if (LayoutObject* check =
+          element->PseudoElementLayoutObject(kPseudoIdCheckMark)) {
+    WriteCounterValuesFromChildren(stream, check, is_first_counter);
+  }
+=======
+>>>>>>> chromium
   if (LayoutObject* before =
           element->PseudoElementLayoutObject(kPseudoIdBefore))
     WriteCounterValuesFromChildren(stream, before, is_first_counter);
   if (LayoutObject* after = element->PseudoElementLayoutObject(kPseudoIdAfter))
     WriteCounterValuesFromChildren(stream, after, is_first_counter);
+<<<<<<< HEAD
+  if (LayoutObject* picker_icon =
+          element->PseudoElementLayoutObject(kPseudoIdPickerIcon)) {
+    WriteCounterValuesFromChildren(stream, picker_icon, is_first_counter);
+  }
+  return stream.ReleaseString();
+=======
   return stream.Release();
+>>>>>>> chromium
 }
 
 String MarkerTextForListItem(Element* element) {

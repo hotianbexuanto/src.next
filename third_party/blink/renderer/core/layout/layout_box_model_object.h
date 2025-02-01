@@ -589,6 +589,10 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
 
   void WillBeDestroyed() override;
 
+  PhysicalOffset OffsetFromContainerInternal(
+      const LayoutObject*,
+      MapCoordinatesFlags) const override;
+
   PhysicalOffset AdjustedPositionRelativeTo(const PhysicalOffset&,
                                             const Element*) const;
 

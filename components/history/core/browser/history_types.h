@@ -9,6 +9,11 @@
 #include <stdint.h>
 
 #include <map>
+<<<<<<< HEAD
+#include <memory>
+#include <optional>
+=======
+>>>>>>> chromium
 #include <set>
 #include <string>
 #include <utility>
@@ -29,11 +34,16 @@
 namespace history {
 
 class PageUsageData;
+struct KeywordSearchTermVisit;
 
 // Container for a list of URLs.
-typedef std::vector<GURL> RedirectList;
+using RedirectList = std::vector<GURL>;
 
+<<<<<<< HEAD
+using SegmentID = int64_t;  // URL segments for the most visited view.
+=======
 typedef int64_t SegmentID;        // URL segments for the most visited view.
+>>>>>>> chromium
 
 // The enumeration of all possible sources of visits is listed below.
 // The source will be propagated along with a URL or a visit item
@@ -51,10 +61,30 @@ enum VisitSource {
   SOURCE_SAFARI_IMPORTED = 5,
 };
 
-typedef int64_t VisitID;
-// Structure to hold the mapping between each visit's id and its source.
-typedef std::map<VisitID, VisitSource> VisitSourceMap;
+<<<<<<< HEAD
+// Corresponds to the "id" column of the "visits" SQL table.
+using VisitID = int64_t;
+// `kInvalidVisitID` is 0 because SQL AUTOINCREMENT's very first row has
+// "id" == 1. Therefore any 0 VisitID is a sentinel null-like value.
+inline constexpr VisitID kInvalidVisitID = 0;
+// Corresponds to the "id" column of the "visited_links" SQL table.
+using VisitedLinkID = int64_t;
+// `kInvalidVisitedLinkID` is 0 because SQL AUTOINCREMENT's very first row has
+// "id" == 1. Therefore any 0 VisitedLinkID is a sentinel null-like value.
+inline constexpr VisitedLinkID kInvalidVisitedLinkID = 0;
 
+=======
+typedef int64_t VisitID;
+>>>>>>> chromium
+// Structure to hold the mapping between each visit's id and its source.
+using VisitSourceMap = std::map<VisitID, VisitSource>;
+
+<<<<<<< HEAD
+// Constant used to represent that no app_id is used for matching.
+inline constexpr std::optional<std::string> kNoAppIdFilter;
+
+=======
+>>>>>>> chromium
 // VisitRow -------------------------------------------------------------------
 
 // Holds all information associated with a specific visit. A visit holds time
@@ -104,15 +134,68 @@ class VisitRow {
   // Records whether the visit incremented the omnibox typed score.
   bool incremented_omnibox_typed_score = false;
 
+<<<<<<< HEAD
+  // Indicates the visit that opened this one.
+  //
+  // 0 (kInvalidVisitId) indicates no opener visit. Only non-zero if this visit
+  // was directly initiated by open in a new tab, window, or for same-document
+  // navigations. It is possible for this to be non-zero and the visit to not
+  // exist (i.e., if the visit expired).
+  //
+  // This differs from `referring_visit` since this links visits across tabs
+  // whereas `referring_visit` is only populated if the Referrer is from the
+  // same tab.
+  VisitID opener_visit = kInvalidVisitID;
+
+  // Specifies whether a navigation should contribute to the Most Visited tiles
+  // in the New Tab Page. Note that setting this to true (most common case)
+  // doesn't guarantee it's relevant for Most Visited, since other requirements
+  // exist (e.g. certain page transition types).
+  bool consider_for_ntp_most_visited = true;
+
+  // These are set only for synced visits originating from a different machine.
+  // `originator_cache_guid` is the originator machine's unique client ID. It's
+  // called a "cache" just to match Chrome Sync's terminology.
+  std::string originator_cache_guid;
+  // The visit ID of this visit on the originating device, which is *not*
+  // comparable to local visit IDs (as in `visit_id` / `referring_visit` /
+  // `opener_visit`).
+  // Note that even for synced visits, this may be 0, if the visit came from a
+  // "legacy" client (which was using Sessions sync rather than History sync).
+  VisitID originator_visit_id = kInvalidVisitID;
+  // `originator_referring_visit` and `originator_opener_visit` are similar to
+  // the non-"originator" versions, but their contents refer to originator visit
+  // IDs rather than to local ones.
+  // Note that `originator_referring_visit` corresponds to the
+  // "originator_from_visit" column in the visit DB.
+  VisitID originator_referring_visit = kInvalidVisitID;
+  VisitID originator_opener_visit = kInvalidVisitID;
+  // Set to true for visits known to Chrome Sync, which can be:
+  //  1. Remote visits that have been synced to the local machine.
+  //  2. Local visits that have been sent to Sync.
+  bool is_known_to_sync = false;
+  // If this visit has a transition type of `LINK` or `MANUAL_SUBFRAME`, it will
+  // have a corresponding entry in the VisitedLinkDatabase. That unique row ID
+  // is stored here. If there is no corresponding entry, the
+  // `kInvalidVisitedLinkID` is stored by default. The VisitDatabase has a
+  // many-to-one relationship with the VisitedLinkDatabase. As such, more than
+  // one visit may correspond to the same VisitedLinkID.
+  VisitedLinkID visited_link_id = kInvalidVisitedLinkID;
+  // The package name of the app if this visit takes place in Custom Tab opened
+  // by an app. This is set only on Android if the Custom Tab knows which app
+  // launched it; otherwise remains null.
+  std::optional<std::string> app_id;
+=======
+>>>>>>> chromium
   // We allow the implicit copy constructor and operator=.
 };
 
 // We pass around vectors of visits a lot
-typedef std::vector<VisitRow> VisitVector;
+using VisitVector = std::vector<VisitRow>;
 
 // The basic information associated with a visit (timestamp, type of visit),
 // used by HistoryBackend::AddVisits() to create new visits for a URL.
-typedef std::pair<base::Time, ui::PageTransition> VisitInfo;
+using VisitInfo = std::pair<base::Time, ui::PageTransition>;
 
 // PageVisit ------------------------------------------------------------------
 
@@ -131,7 +214,7 @@ struct PageVisit {
 // a given URL appears in those results.
 class QueryResults {
  public:
-  typedef std::vector<URLResult> URLResultVector;
+  using URLResultVector = std::vector<URLResult>;
 
   QueryResults();
   ~QueryResults();
@@ -188,7 +271,11 @@ class QueryResults {
   // time an entry with that URL appears. Normally, each URL will have one or
   // very few indices after it, so we optimize this to use statically allocated
   // memory when possible.
+<<<<<<< HEAD
+  using URLToResultIndices = std::map<GURL, absl::InlinedVector<size_t, 4>>;
+=======
   typedef std::map<GURL, base::StackVector<size_t, 4>> URLToResultIndices;
+>>>>>>> chromium
 
   // Inserts an entry into the `url_to_results_` map saying that the given URL
   // is at the given index in the results_.
@@ -254,8 +341,30 @@ struct QueryOptions {
   DuplicateHandling duplicate_policy = REMOVE_ALL_DUPLICATES;
 
   // Allows the caller to specify the matching algorithm for text queries.
+<<<<<<< HEAD
+  // query_parser::MatchingAlgorithm matching_algorithm =
+  // query_parser::MatchingAlgorithm::DEFAULT;
+  std::optional<query_parser::MatchingAlgorithm> matching_algorithm;
+
+  // Whether the history query should only search through hostnames.
+  // When this is true, the matching_algorithm field is ignored.
+  bool host_only = false;
+
+  enum VisitOrder {
+    RECENT_FIRST,
+    OLDEST_FIRST,
+  };
+
+  // Whether to prioritize most recent or oldest visits when `max_count` is
+  // reached. Will affect visit order as well.
+  VisitOrder visit_order = RECENT_FIRST;
+
+  // If nullopt, search doesn't take app_id into consideration.
+  std::optional<std::string> app_id;
+=======
   query_parser::MatchingAlgorithm matching_algorithm =
       query_parser::MatchingAlgorithm::DEFAULT;
+>>>>>>> chromium
 
   // Helpers to get the effective parameters values, since a value of 0 means
   // "unspecified".
@@ -401,7 +510,7 @@ struct MostVisitedURLWithRank {
   int rank;
 };
 
-typedef std::vector<MostVisitedURLWithRank> MostVisitedURLWithRankList;
+using MostVisitedURLWithRankList = std::vector<MostVisitedURLWithRank>;
 
 struct TopSitesDelta {
   TopSitesDelta();
@@ -415,7 +524,7 @@ struct TopSitesDelta {
 
 // Map from origins to a count of matching URLs and the last visited time to any
 // URL under that origin.
-typedef std::map<GURL, std::pair<int, base::Time>> OriginCountAndLastVisitMap;
+using OriginCountAndLastVisitMap = std::map<GURL, std::pair<int, base::Time>>;
 
 // Statistics -----------------------------------------------------------------
 
@@ -627,7 +736,32 @@ class DeletionInfo {
   absl::optional<std::set<GURL>> restrict_urls_;
   OriginCountAndLastVisitMap deleted_urls_origin_map_;
 
+<<<<<<< HEAD
+// When a VisitedLink is deleted from the VisitedLinkDatabase, we notify the
+// HistoryService with the following information. In `visited_link_row`, we are
+// given a URLID. Callers should obtain the GURL associated with that URLID from
+// the URLDatabase and pass it along with this payload.
+struct DeletedVisitedLink {
+  GURL link_url;
+  VisitedLinkRow visited_link_row;
+};
+
+// When a Visit is deleted from the the VisitDatabase, we notify the
+// HistoryService with the following information. `deleted_visited_link` is
+// optional, as not all VisitRow deletions result in a deletion from the
+// VisitedLinkDatabase.
+struct DeletedVisit {
+  explicit DeletedVisit(VisitRow visit);
+  DeletedVisit(VisitRow visit, DeletedVisitedLink deleted_visited_link);
+  DeletedVisit(const DeletedVisit& other);
+  DeletedVisit& operator=(const DeletedVisit& other);
+  ~DeletedVisit();
+
+  VisitRow visit_row;
+  std::optional<DeletedVisitedLink> deleted_visited_link;
+=======
   DISALLOW_COPY_AND_ASSIGN(DeletionInfo);
+>>>>>>> chromium
 };
 
 // Represents a visit to a domain.

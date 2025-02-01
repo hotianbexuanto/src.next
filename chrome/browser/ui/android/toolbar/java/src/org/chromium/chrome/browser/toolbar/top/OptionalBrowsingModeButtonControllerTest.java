@@ -207,8 +207,21 @@ public class OptionalBrowsingModeButtonControllerTest {
 
     private static ButtonDataImpl createButtonData() {
         return new ButtonDataImpl(
+<<<<<<< HEAD
+                /* canShow= */ true,
+                /* drawable= */ null,
+                /* onClickListener= */ null,
+                /* contentDescription= */ "",
+                /* supportsTinting= */ false,
+                /* iphCommandBuilder= */ null,
+                /* isEnabled= */ true,
+                buttonVariant,
+                /* tooltipTextResId= */ Resources.ID_NULL,
+                /* showHoverhighlight= */ false);
+=======
                 /*canShow=*/true, /*drawable=*/null, /*onClickListener=*/null,
                 /*contentDescriptionResId=*/0, /*supportsTinting=*/false,
                 /*iphCommandBuilder=*/null, /*isEnabled=*/true);
+>>>>>>> chromium
     }
 }

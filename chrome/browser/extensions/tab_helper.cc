@@ -328,6 +328,49 @@ SkBitmap* TabHelper::GetExtensionAppIcon() {
   return &extension_app_icon_;
 }
 
+<<<<<<< HEAD
+void TabHelper::SetReloadRequired(
+    PermissionsManager::UserSiteSetting site_setting) {
+  switch (site_setting) {
+    case PermissionsManager::UserSiteSetting::kGrantAllExtensions: {
+      // Granting access to all extensions is allowed iff feature is
+      // enabled, and it shouldn't be enabled anywhere where this is called.
+      NOTREACHED();
+    }
+    case PermissionsManager::UserSiteSetting::kBlockAllExtensions: {
+      // A reload is required if any extension that had site access will lose
+      // it.
+      content::WebContents* web_contents = GetVisibleWebContents();
+      SitePermissionsHelper permissions_helper(profile_);
+      const ExtensionSet& extensions =
+          ExtensionRegistry::Get(profile_)->enabled_extensions();
+      reload_required_ = std::ranges::any_of(
+          extensions, [&permissions_helper,
+                       web_contents](scoped_refptr<const Extension> extension) {
+            return permissions_helper.GetSiteInteraction(*extension,
+                                                         web_contents) ==
+                   SitePermissionsHelper::SiteInteraction::kGranted;
+          });
+      break;
+    }
+    case PermissionsManager::UserSiteSetting::kCustomizeByExtension:
+      // When the user selects "customize by extension" it means previously all
+      // extensions were blocked and each extension's page access is set as
+      // "denied". Blocked actions in the ExtensionActionRunner are computed by
+      // checking if a page access is "withheld". Therefore, we always need a
+      // refresh since we don't know if there are any extensions that would have
+      // wanted to run if the page had not been restricted by the user.
+      reload_required_ = true;
+      break;
+  }
+}
+
+bool TabHelper::IsReloadRequired() {
+  return reload_required_;
+}
+
+=======
+>>>>>>> chromium
 void TabHelper::OnWatchedPageChanged(
     const std::vector<std::string>& css_selectors) {
   InvokeForContentRulesRegistries(

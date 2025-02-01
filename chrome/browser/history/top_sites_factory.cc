@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include <array>
 #include <memory>
 
 #include "base/bind.h"
@@ -55,14 +56,14 @@ struct RawPrepopulatedPage {
 
 #if !defined(OS_ANDROID)
 // Android does not use prepopulated pages.
-const RawPrepopulatedPage kRawPrepopulatedPages[] = {
+const auto kRawPrepopulatedPages = std::to_array<RawPrepopulatedPage>({
     {
         IDS_WEBSTORE_URL,
         IDS_EXTENSION_WEB_STORE_TITLE_SHORT,
         IDR_WEBSTORE_ICON_32,
         SkColorSetRGB(63, 132, 197),
     },
-};
+});
 #endif
 
 void InitializePrepopulatedPageList(

@@ -33,8 +33,16 @@ class TrialLogger : public base::FieldTrialList::Observer {
 
   static void Log(const std::string& trial_name,
                   const std::string& group_name) {
+<<<<<<< HEAD
+    // Changes to format of the log message below must be accompanied by
+    // changes to finch smoke tests since they look for this log message
+    // in the logcat.
+    LOG(INFO) << "Active field trial \"" << trial_name << "\" in group \""
+              << group_name << '"';
+=======
     LOG(INFO) << "Active field trial \"" << trial_name
               << "\" in group \"" << group_name<< '"';
+>>>>>>> chromium
   }
 
  protected:
@@ -76,7 +84,7 @@ static ScopedJavaLocalRef<jstring> JNI_FieldTrialList_GetVariationParameter(
 }
 
 static void JNI_FieldTrialList_LogActiveTrials(JNIEnv* env) {
-  DCHECK(!g_trial_logger.IsCreated()); // This need only be called once.
+  DCHECK(!g_trial_logger.IsCreated());  // This need only be called once.
 
   LOG(INFO) << "Logging active field trials...";
   base::FieldTrialList::AddObserver(&g_trial_logger.Get());

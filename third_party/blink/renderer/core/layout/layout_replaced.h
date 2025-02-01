@@ -27,7 +27,7 @@
 
 namespace blink {
 
-struct IntrinsicSizingInfo;
+struct PhysicalNaturalSizingInfo;
 
 // LayoutReplaced is the base class for a replaced element as defined by CSS:
 //
@@ -50,8 +50,12 @@ struct IntrinsicSizingInfo;
 // the intrinsic value).
 class CORE_EXPORT LayoutReplaced : public LayoutBox {
  public:
+<<<<<<< HEAD
+  explicit LayoutReplaced(Element*);
+=======
   LayoutReplaced(Element*);
   LayoutReplaced(Element*, const LayoutSize& intrinsic_size);
+>>>>>>> chromium
   ~LayoutReplaced() override;
 
   LayoutUnit ComputeReplacedLogicalWidth(
@@ -97,9 +101,13 @@ class CORE_EXPORT LayoutReplaced : public LayoutBox {
 
   void Paint(const PaintInfo&) const override;
 
+  // Compute the natural dimensions of the replaced content. Should not apply
+  // any additional transformations (like 'object-view-box').
+  virtual PhysicalNaturalSizingInfo GetNaturalDimensions() const = 0;
+
   // This function is public only so we can call it when computing
   // intrinsic size in LayoutNG.
-  virtual void ComputeIntrinsicSizingInfo(IntrinsicSizingInfo&) const;
+  PhysicalNaturalSizingInfo ComputeIntrinsicSizingInfo() const;
 
   // This callback must be invoked whenever the underlying intrinsic size has
   // changed.
@@ -110,6 +118,34 @@ class CORE_EXPORT LayoutReplaced : public LayoutBox {
   virtual void IntrinsicSizeChanged();
 
  protected:
+<<<<<<< HEAD
+  virtual bool ShouldApplyObjectViewBox() const {
+    NOT_DESTROYED();
+    return true;
+  }
+
+  bool IsInSelfHitTestingPhase(HitTestPhase phase) const override {
+    NOT_DESTROYED();
+    if (LayoutBox::IsInSelfHitTestingPhase(phase))
+      return true;
+
+    auto* element = DynamicTo<Element>(GetNode());
+    return element && element->IsReplacedElementRespectingCSSOverflow() &&
+           phase == HitTestPhase::kSelfBlockBackground;
+  }
+
+  void WillBeDestroyed() override;
+
+  // This function calculates the placement of the replaced contents. It takes
+  // natural dimensions of the replaced contents, stretch to fit CSS content
+  // box according to object-fit, object-position and object-view-box.
+  PhysicalRect ComputeReplacedContentRect(
+      const PhysicalRect& base_content_rect,
+      const PhysicalNaturalSizingInfo& sizing_info) const;
+
+  void StyleDidChange(StyleDifference, const ComputedStyle* old_style) override;
+
+=======
   void WillBeDestroyed() override;
 
   void UpdateLayout() override;
@@ -166,6 +202,7 @@ class CORE_EXPORT LayoutReplaced : public LayoutBox {
     intrinsic_size_ = intrinsic_size;
   }
 
+>>>>>>> chromium
   PositionWithAffinity PositionForPoint(const PhysicalOffset&) const override;
 
   bool IsOfType(LayoutObjectType type) const override {
@@ -173,6 +210,27 @@ class CORE_EXPORT LayoutReplaced : public LayoutBox {
     return type == kLayoutObjectReplaced || LayoutBox::IsOfType(type);
   }
 
+<<<<<<< HEAD
+  // ReplacedPainter doesn't support CompositeBackgroundAttachmentFixed yet.
+  bool ComputeCanCompositeBackgroundAttachmentFixed() const override {
+    NOT_DESTROYED();
+    return false;
+  }
+
+  // ImageResourceObserver
+  gfx::Size GetSpeculativeDecodeSize() const override;
+
+ private:
+  // Computes a rect, relative to the element's content's natural size, that
+  // should be used as the content source when rendering this element. This
+  // value is used as the input for object-fit/object-position during painting.
+  std::optional<PhysicalRect> ComputeObjectViewBoxRect(
+      const PhysicalNaturalSizingInfo& sizing_info) const;
+
+  PhysicalRect ComputeObjectFitAndPositionRect(
+      const PhysicalRect& base_content_rect,
+      const PhysicalNaturalSizingInfo& sizing_info) const;
+=======
  private:
   MinMaxSizes PreferredLogicalWidths() const final;
 
@@ -182,6 +240,7 @@ class CORE_EXPORT LayoutReplaced : public LayoutBox {
   LayoutUnit ComputeConstrainedLogicalWidth(ShouldComputePreferred) const;
 
   mutable LayoutSize intrinsic_size_;
+>>>>>>> chromium
 };
 
 template <>

@@ -10,7 +10,6 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "content/browser/utility_process_host.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
@@ -20,13 +19,23 @@
 #include "content/public/test/test_service.mojom.h"
 #include "content/test/sandbox_status.test-mojom.h"
 #include "mojo/public/cpp/bindings/remote.h"
+<<<<<<< HEAD
+#include "ppapi/buildflags/buildflags.h"
+=======
 #include "printing/buildflags/buildflags.h"
+>>>>>>> chromium
 #include "sandbox/policy/linux/sandbox_linux.h"
 #include "sandbox/policy/switches.h"
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+#include "chromeos/ash/components/assistant/buildflags.h"
+#endif  // BUILDFLAG(IS_CHROMEOS)
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chromeos/assistant/buildflags.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 
 using sandbox::policy::SandboxLinux;
 using sandbox::policy::SandboxType;
@@ -44,6 +53,12 @@ std::vector<SandboxType> GetSandboxTypesToTest() {
   for (SandboxType t = SandboxType::kNoSandbox; t <= SandboxType::kMaxValue;
        t = static_cast<SandboxType>(static_cast<int>(t) + 1)) {
     // These sandbox types can't be spawned in a utility process.
+<<<<<<< HEAD
+    if (t == Sandbox::kRenderer || t == Sandbox::kGpu ||
+        t == Sandbox::kZygoteIntermediateSandbox) {
+      continue;
+    }
+=======
     if (t == SandboxType::kRenderer || t == SandboxType::kGpu)
       continue;
 #if defined(OS_LINUX) || defined(OS_CHROMEOS)
@@ -51,6 +66,7 @@ std::vector<SandboxType> GetSandboxTypesToTest() {
       continue;
 #endif
 
+>>>>>>> chromium
     types.push_back(t);
   }
   return types;
@@ -133,19 +149,43 @@ class UtilityProcessSandboxBrowserTest
         break;
       }
 
+<<<<<<< HEAD
+      case Sandbox::kAudio:
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+      case Sandbox::kHardwareVideoDecoding:
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS)
+      case Sandbox::kIme:
+      case Sandbox::kTts:
+      case Sandbox::kNearby:
+=======
       case SandboxType::kAudio:
 #if BUILDFLAG(IS_CHROMEOS_ASH)
       case SandboxType::kIme:
       case SandboxType::kTts:
+>>>>>>> chromium
 #if BUILDFLAG(ENABLE_CROS_LIBASSISTANT)
       case SandboxType::kLibassistant:
 #endif  // BUILDFLAG(ENABLE_CROS_LIBASSISTANT)
+<<<<<<< HEAD
+#endif  // BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_LINUX)
+      case Sandbox::kVideoEffects:
+      case Sandbox::kOnDeviceTranslation:
+#endif
+      case Sandbox::kHardwareVideoEncoding:
+      case Sandbox::kNetwork:
+      case Sandbox::kPrintBackend:
+      case Sandbox::kScreenAI:
+      case Sandbox::kSpeechRecognition: {
+=======
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
       case SandboxType::kNetwork:
 #if BUILDFLAG(ENABLE_PRINTING)
       case SandboxType::kPrintBackend:
 #endif
       case SandboxType::kSpeechRecognition: {
+>>>>>>> chromium
         constexpr int kExpectedPartialSandboxFlags =
             SandboxLinux::kSeccompBPF | SandboxLinux::kYama |
             SandboxLinux::kSeccompTSYNC;
@@ -174,6 +214,36 @@ class UtilityProcessSandboxBrowserTest
 };
 
 IN_PROC_BROWSER_TEST_P(UtilityProcessSandboxBrowserTest, VerifySandboxType) {
+<<<<<<< HEAD
+#if BUILDFLAG(IS_LINUX) || (BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(USE_VAAPI) && \
+                            !BUILDFLAG(USE_V4L2_CODEC))
+  if (GetParam() == Sandbox::kHardwareVideoDecoding) {
+    // TODO(b/195769334): On Linux, this test fails with
+    // Sandbox::kHardwareVideoDecoding because the pre-sandbox hook needs Ozone
+    // which is not available in the utility process that this test starts. We
+    // need to remove the Ozone dependency and re-enable this test.
+    //
+    // TODO(b/195769334): this test fails on linux-chromeos-rel because neither
+    // USE_VAAPI nor USE_V4L2_CODEC are set and the sandbox policy doesn't like
+    // that. In ChromeOS builds for real devices, one of the two flags is set,
+    // so this is not a big problem. However, we should consider making
+    // kHardwareVideoDecoding exist only when either USE_VAAPI or USE_V4L2_CODEC
+    // are set.
+    GTEST_SKIP();
+  }
+#endif
+
+#if BUILDFLAG(IS_LINUX)
+  if (GetParam() == Sandbox::kHardwareVideoEncoding) {
+    // TODO(b/248540499): On Linux, this test fails with
+    // Sandbox::kHardwareVideoEncoding because the pre-sandbox hook needs Ozone
+    // which is not available in the utility process that this test starts. We
+    // need to remove the Ozone dependency and re-enable this test.
+    GTEST_SKIP();
+  }
+#endif
+=======
+>>>>>>> chromium
   RunUtilityProcess();
 }
 

@@ -38,13 +38,13 @@ class SavePackageFilePicker : public ui::SelectFileDialog::Listener {
   void FileSelectionCanceled(void* unused_params) override;
 
   bool ShouldSaveAsOnlyHTML(content::WebContents* web_contents) const;
-  bool ShouldSaveAsMHTML() const;
+  bool ShouldSaveAsMHTMLByDefault() const;
 
   // Used to look up the renderer process for this request to get the context.
-  int render_process_id_;
+  const int render_process_id_;
 
   // Whether the web page can be saved as a complete HTML file.
-  bool can_save_as_complete_;
+  const bool can_save_as_complete_;
 
   DownloadPrefs* download_prefs_;
 

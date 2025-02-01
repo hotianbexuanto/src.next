@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.tasks.tab_management;
 
+import androidx.annotation.CallSuper;
 import androidx.annotation.IntDef;
 
 import org.chromium.base.ObserverList;
@@ -70,8 +71,14 @@ public class MessageService {
         this.mMessageType = mMessageType;
     }
 
+    @CallSuper
+    public void destroy() {
+        mObservers.clear();
+    }
+
     /**
      * Add a {@link MessageObserver} to be notified when message from external service is changes.
+     *
      * @param observer a {@link MessageObserver} to add.
      */
     public void addObserver(MessageObserver observer) {
@@ -104,4 +111,19 @@ public class MessageService {
             observer.messageInvalidate(mMessageType);
         }
     }
+<<<<<<< HEAD
+
+    /**
+     * Log metrics related to the message disable reason.
+     * @param messageType the message type or identifier.
+     * @param reason the message disable reason.
+     */
+    void logMessageDisableMetrics(String messageType, @MessageDisableReason int reason) {
+        RecordHistogram.recordEnumeratedHistogram(
+                String.format("GridTabSwitcher.%s.DisableReason", messageType),
+                reason,
+                MessageDisableReason.MAX_VALUE);
+    }
+=======
+>>>>>>> chromium
 }

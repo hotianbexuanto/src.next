@@ -6,6 +6,7 @@
 #define CONTENT_BROWSER_HOST_ZOOM_MAP_IMPL_H_
 
 #include <map>
+#include <set>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -17,6 +18,7 @@
 
 namespace content {
 
+class RenderFrameHostImpl;
 class WebContentsImpl;
 
 // HostZoomMap lives on the UI thread.
@@ -60,6 +62,8 @@ class CONTENT_EXPORT HostZoomMapImpl : public HostZoomMap {
   // Returns the current zoom level for the specified WebContents. This may
   // be a temporary zoom level, depending on UsesTemporaryZoomLevel().
   double GetZoomLevelForWebContents(WebContentsImpl* web_contents_impl);
+  double GetZoomLevelForWebContents(WebContentsImpl* web_contents_impl,
+                                    GlobalRenderFrameHostId rfh_id);
 
   bool PageScaleFactorIsOneForWebContents(
       WebContentsImpl* web_contents_impl) const;
@@ -68,6 +72,9 @@ class CONTENT_EXPORT HostZoomMapImpl : public HostZoomMap {
   // a temporary zoom level, then level is only applied to this WebContents.
   // Otherwise, the level will be applied on a host level.
   void SetZoomLevelForWebContents(WebContentsImpl* web_contents_impl,
+                                  double level);
+  void SetZoomLevelForWebContents(WebContentsImpl* web_contents_impl,
+                                  GlobalRenderFrameHostId rfh_id,
                                   double level);
 
   // Returns the temporary zoom level that's only valid for the lifetime of
@@ -82,6 +89,27 @@ class CONTENT_EXPORT HostZoomMapImpl : public HostZoomMap {
 
   void SetClockForTesting(base::Clock* clock) override;
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_ANDROID)
+  void SetDefaultZoomLevelPrefCallback(
+      HostZoomMap::DefaultZoomChangedCallback callback) override;
+  HostZoomMap::DefaultZoomChangedCallback* GetDefaultZoomLevelPrefCallback();
+  double GetZoomLevelForHostAndSchemeAndroid(const std::string& scheme,
+                                             const std::string& host) override;
+  void SetSystemFontScaleForTesting(float scale);
+  void SetShouldAdjustForOSLevelForTesting(bool shouldAdjustForOSLevel);
+#endif
+
+  double GetZoomLevelForPreviewAndHost(const std::string& host) override;
+  void SetZoomLevelForPreviewAndHost(const std::string& host,
+                                     double level) override;
+
+  void SetIndependentZoomForFrameTreeNode(WebContents* web_contents,
+                                          FrameTreeNodeId ftn_id) override;
+  void ClearIndependentZoomForFrameTreeNode(FrameTreeNodeId ftn_id) override;
+
+=======
+>>>>>>> chromium
  private:
   struct ZoomLevel {
     double level;
@@ -90,6 +118,10 @@ class CONTENT_EXPORT HostZoomMapImpl : public HostZoomMap {
   typedef std::map<std::string, ZoomLevel> HostZoomLevels;
   typedef std::map<std::string, HostZoomLevels> SchemeHostZoomLevels;
 
+<<<<<<< HEAD
+  typedef std::map<GlobalRenderFrameHostId, double> TemporaryZoomLevels;
+  typedef std::set<FrameTreeNodeId> IndependentZoomFrameTreeNodes;
+=======
   struct RenderViewKey {
     int render_process_id;
     int render_view_id;
@@ -104,6 +136,7 @@ class CONTENT_EXPORT HostZoomMapImpl : public HostZoomMap {
 
   typedef std::map<RenderViewKey, double> TemporaryZoomLevels;
   typedef std::map<RenderViewKey, bool> ViewPageScaleFactorsAreOne;
+>>>>>>> chromium
 
   double GetZoomLevelForHost(const std::string& host) const;
 
@@ -112,6 +145,11 @@ class CONTENT_EXPORT HostZoomMapImpl : public HostZoomMap {
   void SetZoomLevelForHostInternal(const std::string& host,
                                    double level,
                                    base::Time last_modified);
+
+  // Internal helper for SetDefaultZoomLevel().
+  void SetDefaultZoomLevelInternal(double level,
+                                   WebContentsImpl* web_contents,
+                                   RenderFrameHostImpl* rfh);
 
   // Notifies the renderers from this browser context to change the zoom level
   // for the specified host and scheme.
@@ -133,6 +171,13 @@ class CONTENT_EXPORT HostZoomMapImpl : public HostZoomMap {
   ViewPageScaleFactorsAreOne view_page_scale_factors_are_one_;
 
   TemporaryZoomLevels temporary_zoom_levels_;
+  // Used to track which FrameTreeNodes have independent zoom. A FrameTreeNode
+  // can have a zoom level that is independent from the main frame when it is
+  // displaying content in a GuestView (or possibly a PDF in a OOPIF without a
+  // GuestView), and features::kGuestViewMPArch is enabled. When this feature is
+  // not enabled it means that GuestViews will have their own WebContents, and
+  // so the use of a single zoom level for an entire WebContents suffices.
+  IndependentZoomFrameTreeNodes independent_zoom_frame_tree_nodes_;
 
   base::Clock* clock_;
 

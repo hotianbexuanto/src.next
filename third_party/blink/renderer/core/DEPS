@@ -13,6 +13,11 @@ include_rules = [
     "+base/metrics/field_trial_params.h",
     "+base/numerics/ranges.h",
     "+base/profiler/sample_metadata.h",
+<<<<<<< HEAD
+    "+base/strings/pattern.h",
+    "+base/strings/string_split.h",
+=======
+>>>>>>> chromium
     "+base/strings/stringprintf.h",
     "+base/synchronization/waitable_event.h",
     "+base/values.h",

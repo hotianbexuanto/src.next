@@ -31,7 +31,17 @@ class PermissionMessageCombinationsUnittest : public testing::Test {
   PermissionMessageCombinationsUnittest()
       : message_provider_(new ChromePermissionMessageProvider()),
         allowlisted_extension_id_(kAllowlistedExtensionID) {}
+<<<<<<< HEAD
+
+  PermissionMessageCombinationsUnittest(
+      const PermissionMessageCombinationsUnittest&) = delete;
+  PermissionMessageCombinationsUnittest& operator=(
+      const PermissionMessageCombinationsUnittest&) = delete;
+
+  ~PermissionMessageCombinationsUnittest() override = default;
+=======
   ~PermissionMessageCombinationsUnittest() override {}
+>>>>>>> chromium
 
   // Overridden from testing::Test:
   void SetUp() override {

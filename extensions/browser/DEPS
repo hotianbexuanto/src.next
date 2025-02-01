@@ -2,6 +2,11 @@ include_rules = [
   "+chromeos",
   "+components/back_forward_cache",
   "+components/guest_view",
+<<<<<<< HEAD
+  "+components/input",
+  "+components/javascript_dialogs",
+=======
+>>>>>>> chromium
   "+components/keyed_service",
   "+components/pref_registry",
   "+components/services/unzip/content",

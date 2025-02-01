@@ -31,44 +31,61 @@ void FocusTabAfterNavigationHelper::ReadyToCommitNavigation(
   // 3) move the focus before the page starts rendering
   // (only 1 is a hard-requirement;  2 and 3 seem desirable but there are no
   // known scenarios where violating these requirements would lead to bugs).
-  if (ShouldFocusTabContents(navigation))
+  if (ShouldFocusTabContents(navigation)) {
     web_contents()->SetInitialFocus();
+  }
 }
 
 bool FocusTabAfterNavigationHelper::ShouldFocusTabContents(
     content::NavigationHandle* navigation) {
   // Don't focus content in an inactive window or tab.
+<<<<<<< HEAD
+  Browser* browser = chrome::FindBrowserWithTab(web_contents());
+  if (!browser) {
+=======
   Browser* browser = chrome::FindBrowserWithWebContents(web_contents());
   if (!browser)
+>>>>>>> chromium
     return false;
-  if (!browser->window()->IsActive())
+  }
+  if (!browser->window()->IsActive()) {
     return false;
-  if (browser->tab_strip_model()->GetActiveWebContents() != web_contents())
+  }
+  if (browser->tab_strip_model()->GetActiveWebContents() != web_contents()) {
     return false;
+  }
 
   // Don't focus content after subframe navigations.
+<<<<<<< HEAD
+  if (!navigation->IsInPrimaryMainFrame()) {
+=======
   // TODO(https://crbug.com/1218946): With MPArch there may be multiple main
   // frames. This caller was converted automatically to the primary main frame
   // to preserve its semantics. Follow up to confirm correctness.
   if (!navigation->IsInPrimaryMainFrame())
+>>>>>>> chromium
     return false;
+  }
 
   // Browser-initiated navigations (e.g. typing in an omnibox) are taken care of
   // in Browser::UpdateUIForNavigationInTab.  See also https://crbug.com/1048591
   // for possible regression risks related to returning |true| here.
-  if (!navigation->IsRendererInitiated())
+  if (!navigation->IsRendererInitiated()) {
     return false;
+  }
 
   // Renderer-initiated navigations shouldn't focus the tab contents, unless the
   // navigation is leaving the NTP.  See also https://crbug.com/1027719.
   bool started_at_ntp = IsNtpURL(web_contents()->GetLastCommittedURL());
-  if (!started_at_ntp)
+  if (!started_at_ntp) {
     return false;
+  }
 
   // Navigations initiated via chrome.tabs.update and similar APIs should not
   // steal focus from the omnibox.  See also https://crbug.com/1085779.
-  if (navigation->GetPageTransition() & ui::PAGE_TRANSITION_FROM_API)
+  if (navigation->GetPageTransition() & ui::PAGE_TRANSITION_FROM_API) {
     return false;
+  }
 
   // Rewrite chrome://newtab to compare with the navigation URL.
   GURL rewritten_ntp_url = web_contents()->GetLastCommittedURL();
@@ -85,8 +102,9 @@ bool FocusTabAfterNavigationHelper::ShouldFocusTabContents(
 bool FocusTabAfterNavigationHelper::IsNtpURL(const GURL& url) {
   // TODO(lukasza): https://crbug.com/1034999: Try to avoid special-casing
   // kChromeUINewTabURL below and covering it via IsNTPOrRelatedURL instead.
-  if (url == GURL(chrome::kChromeUINewTabURL))
+  if (url == GURL(chrome::kChromeUINewTabURL)) {
     return true;
+  }
 
   Profile* profile =
       Profile::FromBrowserContext(web_contents()->GetBrowserContext());

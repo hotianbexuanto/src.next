@@ -35,7 +35,11 @@
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/download/notification/download_notification_manager.h"
+<<<<<<< HEAD
+#endif  // BUILDFLAG(IS_CHROMEOS)
+=======
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 
 namespace {
 
@@ -46,8 +50,8 @@ namespace {
 
 class AndroidUIControllerDelegate : public DownloadUIController::Delegate {
  public:
-  AndroidUIControllerDelegate() {}
-  ~AndroidUIControllerDelegate() override {}
+  AndroidUIControllerDelegate() = default;
+  ~AndroidUIControllerDelegate() override = default;
 
  private:
   // DownloadUIController::Delegate
@@ -67,7 +71,7 @@ class DownloadShelfUIControllerDelegate
   // |profile| is required to outlive DownloadShelfUIControllerDelegate.
   explicit DownloadShelfUIControllerDelegate(Profile* profile)
       : profile_(profile) {}
-  ~DownloadShelfUIControllerDelegate() override {}
+  ~DownloadShelfUIControllerDelegate() override = default;
 
  private:
   // DownloadUIController::Delegate
@@ -108,12 +112,112 @@ void DownloadShelfUIControllerDelegate::OnNewDownloadReady(
   }
 }
 
+<<<<<<< HEAD
+class DownloadBubbleUIControllerDelegate
+    : public DownloadUIController::Delegate {
+ public:
+  // |profile| is required to outlive DownloadBubbleUIControllerDelegate.
+  explicit DownloadBubbleUIControllerDelegate(Profile* profile)
+      : profile_(profile) {
+    if (profile_->IsOffTheRecord()) {
+      profile_->GetPrefs()->SetBoolean(prefs::kPromptForDownload, true);
+    }
+  }
+  ~DownloadBubbleUIControllerDelegate() override = default;
+
+ private:
+  // DownloadUIController::Delegate
+  void OnNewDownloadReady(download::DownloadItem* item) override;
+  void OnButtonClicked() override;
+
+  raw_ptr<Profile> profile_;
+};
+
+void DownloadBubbleUIControllerDelegate::OnNewDownloadReady(
+    download::DownloadItem* item) {
+  if (!DownloadItemModel(item).ShouldShowInBubble())
+    return;
+  // crx downloads are handled by the DownloadBubbleUpdateService.
+  // TODO(chlily): Consolidate these code paths.
+  if (download_crx_util::IsExtensionDownload(*item)) {
+    return;
+  }
+
+  DownloadBubbleUpdateService* download_bubble_update_service =
+      DownloadBubbleUpdateServiceFactory::GetForProfile(profile_);
+  if (!download_bubble_update_service) {
+    return;
+  }
+  download_bubble_update_service->NotifyWindowsOfDownloadItemAdded(item);
+}
+
+void DownloadBubbleUIControllerDelegate::OnButtonClicked() {
+  BrowserList* browser_list = BrowserList::GetInstance();
+  if (!browser_list)
+    return;
+
+  for (Browser* browser : *browser_list) {
+    if (browser && browser->window() &&
+        browser->window()->GetDownloadBubbleUIController()) {
+      browser->window()->GetDownloadBubbleUIController()->HandleButtonPressed();
+    }
+  }
+}
+
+#endif  // BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(IS_CHROMEOS)
+
+// A composite `DownloadUIController::Delegate` for use exclusively on ChromeOS.
+// TODO(http://b/279791981): Remove after enabling the new downloads integration
+// with System UI surfaces and deprecating `DownloadNotificationManager`.
+class CrOSUIControllerDelegate : public DownloadUIController::Delegate {
+ public:
+  explicit CrOSUIControllerDelegate(content::DownloadManager* manager) {
+    // Conditionally add the `DownloadBubbleUIControllerDelegate`.
+    auto* profile = Profile::FromBrowserContext(manager->GetBrowserContext());
+    if (download::IsDownloadBubbleEnabled()) {
+      delegates_.emplace_back(
+          std::make_unique<DownloadBubbleUIControllerDelegate>(profile));
+      InitializeDownloadBubbleUpdateService(profile, manager);
+    }
+
+    // The `DownloadNotificationManager` should always be added as it provides
+    // System UI notifications on ChromeOS.
+    delegates_.emplace_back(
+        std::make_unique<DownloadNotificationManager>(profile));
+  }
+
+  CrOSUIControllerDelegate(const CrOSUIControllerDelegate&) = delete;
+  CrOSUIControllerDelegate& operator=(const CrOSUIControllerDelegate&) = delete;
+  ~CrOSUIControllerDelegate() override = default;
+
+ private:
+  // DownloadUIController::Delegate:
+  void OnNewDownloadReady(download::DownloadItem* item) override {
+    for (auto& delegate : delegates_) {
+      delegate->OnNewDownloadReady(item);
+    }
+  }
+
+  void OnButtonClicked() override {
+    for (auto& delegate : delegates_) {
+      delegate->OnButtonClicked();
+    }
+  }
+
+  // The collection of delegates contained by this composite.
+  std::vector<std::unique_ptr<DownloadUIController::Delegate>> delegates_;
+};
+
+#endif  // BUILDFLAG(IS_CHROMEOS)
+=======
 #endif  // !OS_ANDROID
+>>>>>>> chromium
 
 } // namespace
 
-DownloadUIController::Delegate::~Delegate() {
-}
+DownloadUIController::Delegate::~Delegate() = default;
 
 DownloadUIController::DownloadUIController(content::DownloadManager* manager,
                                            std::unique_ptr<Delegate> delegate)

@@ -3,12 +3,22 @@
 // found in the LICENSE file.
 
 #include <memory>
+<<<<<<< HEAD
+
+#include "base/strings/to_string.h"
+=======
+>>>>>>> chromium
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/element_traversal.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/dom/has_invalidation_flags.h"
+#include "third_party/blink/renderer/core/dom/shadow_root.h"
+=======
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
@@ -47,8 +57,96 @@ void AffectedByPseudoTest::CheckElementsForFocus(
               element->ChildrenOrSiblingsAffectedByFocus());
   }
 
+<<<<<<< HEAD
+Element* AffectedByPseudoTest::GetShadowTreeElementById(
+    const char* shadow_host_id,
+    const char* element_id) const {
+  ShadowRoot* shadow_root = GetElementById(shadow_host_id)->GetShadowRoot();
+  DCHECK(shadow_root) << "#" << shadow_host_id << " must have shadow root";
+  return shadow_root->getElementById(AtomicString(element_id));
+}
+
+void AffectedByPseudoTest::CheckAffectedByFlagsForHas(
+    const char* element_id,
+    std::map<AffectedByFlagName, bool> expected) const {
+  CheckAffectedByFlagsForHasInternal(/* shadow_host_id */ nullptr, element_id,
+                                     std::move(expected));
+}
+
+void AffectedByPseudoTest::CheckAffectedByFlagsForHasInShadowTree(
+    const char* shadow_host_id,
+    const char* element_id,
+    std::map<AffectedByFlagName, bool> expected) const {
+  CheckAffectedByFlagsForHasInternal(shadow_host_id, element_id,
+                                     std::move(expected));
+}
+
+void AffectedByPseudoTest::CheckAffectedByFlagsForHasInternal(
+    const char* shadow_host_id,
+    const char* element_id,
+    std::map<AffectedByFlagName, bool> expected) const {
+  Element* element;
+  if (shadow_host_id) {
+    element = GetShadowTreeElementById(shadow_host_id, element_id);
+  } else {
+    element = GetElementById(element_id);
+  }
+  bool actual;
+  const char* flag_name = nullptr;
+  for (auto iter : expected) {
+    switch (iter.first) {
+      case kAffectedBySubjectHas:
+        actual = element->AffectedBySubjectHas();
+        flag_name = "AffectedBySubjectHas";
+        break;
+      case kAffectedByNonSubjectHas:
+        actual = element->AffectedByNonSubjectHas();
+        flag_name = "AffectedByNonSubjectHas";
+        break;
+      case kAncestorsOrAncestorSiblingsAffectedByHas:
+        actual = element->AncestorsOrAncestorSiblingsAffectedByHas();
+        flag_name = "AncestorsOrAncestorSiblingsAffectedByHas";
+        break;
+      case kSiblingsAffectedByHas:
+        actual = element->GetSiblingsAffectedByHasFlags();
+        flag_name = "SiblingsAffectedByHas";
+        break;
+      case kSiblingsAffectedByHasForSiblingRelationship:
+        actual = element->HasSiblingsAffectedByHasFlags(
+            SiblingsAffectedByHasFlags::kFlagForSiblingRelationship);
+        flag_name = "SiblingsAffectedByHasForSiblingRelationship";
+        break;
+      case kSiblingsAffectedByHasForSiblingDescendantRelationship:
+        actual = element->HasSiblingsAffectedByHasFlags(
+            SiblingsAffectedByHasFlags::kFlagForSiblingDescendantRelationship);
+        flag_name = "SiblingsAffectedByHasForSiblingDescendantRelationship";
+        break;
+      case kAffectedByPseudoInHas:
+        actual = element->AffectedByPseudoInHas();
+        flag_name = "AffectedByPseudoInHas";
+        break;
+      case kAncestorsOrSiblingsAffectedByHoverInHas:
+        actual = element->AncestorsOrSiblingsAffectedByHoverInHas();
+        flag_name = "AncestorsOrSiblingsAffectedByHoverInHas";
+        break;
+      case kAffectedByLogicalCombinationsInHas:
+        actual = element->AffectedByLogicalCombinationsInHas();
+        flag_name = "AffectedByLogicalCombinationsInHas";
+        break;
+    }
+    DCHECK(flag_name);
+    if (iter.second == actual) {
+      continue;
+    }
+
+    ADD_FAILURE() << "#" << element_id << " : " << flag_name << " should be "
+                  << base::ToString(iter.second) << " but is "
+                  << base::ToString(actual);
+  }
+=======
   DCHECK(!element);
   DCHECK_EQ(i, expected_count);
+>>>>>>> chromium
 }
 
 // ":focus div" will mark ascendants of all divs with

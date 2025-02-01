@@ -47,7 +47,7 @@ class ExtensionAssetsManager {
                                   const base::FilePath& extension_root) = 0;
 
  protected:
-  virtual ~ExtensionAssetsManager() {}
+  virtual ~ExtensionAssetsManager() = default;
 };
 
 }  // namespace extensions

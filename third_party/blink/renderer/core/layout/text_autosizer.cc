@@ -34,6 +34,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/containers/span.h"
 #include "base/memory/ptr_util.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -56,10 +57,46 @@
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/platform/geometry/int_rect.h"
 #include "third_party/blink/renderer/platform/network/network_utils.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/platform/weborigin/security_origin.h"
+#include "third_party/blink/renderer/platform/wtf/hash_functions.h"
+#include "ui/gfx/geometry/rect.h"
+=======
+>>>>>>> chromium
+
+namespace blink {
+namespace {
+struct FingerprintSourceData;
+}
+}  // namespace blink
+
+// `FingerprintSourceData` contains a float, but its sign is normalized before
+// the object is hashed, so it's safe to hash; allow conversion to a byte span
+// to facilitate this.
+namespace base {
+template <>
+inline constexpr bool
+    kCanSafelyConvertToByteSpan<::blink::FingerprintSourceData> = true;
+}
 
 namespace blink {
 
 namespace {
+
+struct FingerprintSourceData {
+  STACK_ALLOCATED();
+
+ public:
+  unsigned parent_hash_ = 0;
+  unsigned qualified_name_hash_ = 0;
+  // Style specific selection of signals
+  unsigned packed_style_properties_ = 0;
+  unsigned column_ = 0;
+  float width_ = 0;
+};
+// Ensures efficient hashing using StringHasher.
+static_assert(!(sizeof(FingerprintSourceData) % sizeof(UChar)),
+              "sizeof(FingerprintSourceData) must be a multiple of UChar");
 
 inline int GetLayoutInlineSize(const Document& document,
                                const LocalFrameView& main_frame_view) {
@@ -864,8 +901,13 @@ TextAutosizer::Fingerprint TextAutosizer::ComputeFingerprint(
     // packedStyleProperties effectively using 16 bits now.
 
     // consider for adding: writing mode, padding.
+<<<<<<< HEAD
+    data.width_ =
+        width.IsFixed() ? WTF::NormalizeSign(width.GetFloatValue()) : 0.0f;
+=======
 
     data.width_ = style->Width().GetFloatValue();
+>>>>>>> chromium
   }
 
   // Use nodeIndex as a rough approximation of column number

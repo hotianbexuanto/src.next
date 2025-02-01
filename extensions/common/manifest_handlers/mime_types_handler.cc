@@ -6,7 +6,13 @@
 
 #include <stddef.h>
 
+<<<<<<< HEAD
+#include <algorithm>
+
+#include "base/containers/contains.h"
+=======
 #include "base/cxx17_backports.h"
+>>>>>>> chromium
 #include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_util.h"

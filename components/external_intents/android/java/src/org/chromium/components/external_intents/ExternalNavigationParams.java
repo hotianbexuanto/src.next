@@ -39,11 +39,14 @@ public class ExternalNavigationParams {
 
     /** Whether this navigation happens in background tab. */
     private final boolean mIsBackgroundTabNavigation;
+<<<<<<< HEAD
+=======
 
     /** Whether intent launches are allowed in background tabs. */
     private final boolean mIntentLaunchesAllowedInBackgroundTabs;
 
     /** Whether this navigation happens in main frame. */
+>>>>>>> chromium
     private final boolean mIsMainFrame;
 
     /**
@@ -71,6 +74,31 @@ public class ExternalNavigationParams {
      */
     private Origin mInitiatorOrigin;
 
+<<<<<<< HEAD
+    // Populated when an async action is taken, ensuring the callback gets called.
+    private RequiredCallback<AsyncActionTakenParams> mRequiredAsyncActionTakenCallback;
+
+    private ExternalNavigationParams(
+            @NonNull GURL url,
+            boolean isIncognito,
+            GURL referrerUrl,
+            int pageTransition,
+            boolean isRedirect,
+            boolean appMustBeInForeground,
+            @NonNull RedirectHandler redirectHandler,
+            boolean openInNewTab,
+            boolean isBackgroundTabNavigation,
+            boolean isMainFrame,
+            String nativeClientPackageName,
+            boolean hasUserGesture,
+            Callback<AsyncActionTakenParams> asyncActionTakenCallback,
+            boolean isRendererInitiated,
+            @Nullable Origin initiatorOrigin,
+            boolean isInitialNavigationInFrame,
+            boolean isHiddenCrossFrameNavigation,
+            boolean isSandboxedMainFrame,
+            long navigationId) {
+=======
     private ExternalNavigationParams(GURL url, boolean isIncognito, GURL referrerUrl,
             int pageTransition, boolean isRedirect, boolean appMustBeInForeground,
             RedirectHandler redirectHandler, boolean openInNewTab,
@@ -78,6 +106,7 @@ public class ExternalNavigationParams {
             boolean isMainFrame, String nativeClientPackageName, boolean hasUserGesture,
             boolean shouldCloseContentsOnOverrideUrlLoadingAndLaunchIntent,
             boolean isRendererInitiated, @Nullable Origin initiatorOrigin) {
+>>>>>>> chromium
         mUrl = url;
         assert mUrl != null;
         mIsIncognito = isIncognito;
@@ -88,7 +117,6 @@ public class ExternalNavigationParams {
         mRedirectHandler = redirectHandler;
         mOpenInNewTab = openInNewTab;
         mIsBackgroundTabNavigation = isBackgroundTabNavigation;
-        mIntentLaunchesAllowedInBackgroundTabs = intentLaunchesAllowedInBackgroundTabs;
         mIsMainFrame = isMainFrame;
         mNativeClientPackageName = nativeClientPackageName;
         mHasUserGesture = hasUserGesture;
@@ -146,12 +174,9 @@ public class ExternalNavigationParams {
         return mIsBackgroundTabNavigation;
     }
 
-    /** @return Whether intent launches are allowed in background tabs. */
-    public boolean areIntentLaunchesAllowedInBackgroundTabs() {
-        return mIntentLaunchesAllowedInBackgroundTabs;
-    }
-
-    /** @return Whether this navigation happens in main frame. */
+    /**
+     * @return Whether this navigation happens in main frame.
+     */
     public boolean isMainFrame() {
         return mIsMainFrame;
     }
@@ -220,11 +245,14 @@ public class ExternalNavigationParams {
 
         /** Whether this navigation happens in background tab. */
         private boolean mIsBackgroundTabNavigation;
+<<<<<<< HEAD
+=======
 
         /** Whether intent launches are allowed in background tabs. */
         private boolean mIntentLaunchesAllowedInBackgroundTabs;
 
         /** Whether this navigation happens in main frame. */
+>>>>>>> chromium
         private boolean mIsMainFrame;
 
         /**
@@ -290,12 +318,6 @@ public class ExternalNavigationParams {
             return this;
         }
 
-        /** Sets whether intent launches are allowed in background tabs. */
-        public Builder setIntentLaunchesAllowedInBackgroundTabs(boolean v) {
-            mIntentLaunchesAllowedInBackgroundTabs = v;
-            return this;
-        }
-
         /** Sets whether this navigation happens in main frame. */
         public Builder setIsMainFrame(boolean v) {
             mIsMainFrame = v;
@@ -341,12 +363,35 @@ public class ExternalNavigationParams {
 
         /** @return A fully constructed {@link ExternalNavigationParams} object. */
         public ExternalNavigationParams build() {
+<<<<<<< HEAD
+            return new ExternalNavigationParams(
+                    mUrl,
+                    mIsIncognito,
+                    mReferrerUrl,
+                    mPageTransition,
+                    mIsRedirect,
+                    mApplicationMustBeInForeground,
+                    mRedirectHandler,
+                    mOpenInNewTab,
+                    mIsBackgroundTabNavigation,
+                    mIsMainFrame,
+                    mNativeClientPackageName,
+                    mHasUserGesture,
+                    mAsyncActionTakenCallback,
+                    mIsRendererInitiated,
+                    mInitiatorOrigin,
+                    mIsInitialNavigationInFrame,
+                    mIsHiddenCrossFrameNavigation,
+                    mIsSandboxedMainFrame,
+                    mNavigationId);
+=======
             return new ExternalNavigationParams(mUrl, mIsIncognito, mReferrerUrl, mPageTransition,
                     mIsRedirect, mApplicationMustBeInForeground, mRedirectHandler, mOpenInNewTab,
                     mIsBackgroundTabNavigation, mIntentLaunchesAllowedInBackgroundTabs,
                     mIsMainFrame, mNativeClientPackageName, mHasUserGesture,
                     mShouldCloseContentsOnOverrideUrlLoadingAndLaunchIntent, mIsRendererInitiated,
                     mInitiatorOrigin);
+>>>>>>> chromium
         }
     }
 }

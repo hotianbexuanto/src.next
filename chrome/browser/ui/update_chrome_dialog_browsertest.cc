@@ -9,7 +9,7 @@
 
 class UpdateRecommendedDialogTest : public DialogBrowserTest {
  public:
-  UpdateRecommendedDialogTest() {}
+  UpdateRecommendedDialogTest() = default;
 
   void ShowUi(const std::string& name) override {
     InProcessBrowserTest::browser()->window()->ShowUpdateChromeDialog();

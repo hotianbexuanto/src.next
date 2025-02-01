@@ -4,6 +4,14 @@
 
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_video_frame_pool.h"
 
+<<<<<<< HEAD
+#include "base/debug/dump_without_crashing.h"
+#include "base/feature_list.h"
+#include "base/functional/bind.h"
+#include "base/memory/raw_ptr.h"
+#include "base/trace_event/trace_event_impl.h"
+=======
+>>>>>>> chromium
 #include "components/viz/common/gpu/raster_context_provider.h"
 #include "gpu/command_buffer/client/context_support.h"
 #include "gpu/command_buffer/client/gpu_memory_buffer_manager.h"
@@ -24,12 +32,38 @@ class Context : public media::RenderableGpuMemoryBufferVideoFramePool::Context {
                        context_provider)
       : weak_context_provider_(context_provider) {}
 
+<<<<<<< HEAD
+  scoped_refptr<gpu::ClientSharedImage> CreateSharedImage(
+      const gfx::Size& size,
+      gfx::BufferUsage buffer_usage,
+      const viz::SharedImageFormat& si_format,
+      const gfx::ColorSpace& color_space,
+      gpu::SharedImageUsageSet usage,
+      gpu::SyncToken& sync_token) override {
+    auto* sii = SharedImageInterface();
+    if (!sii) {
+      return nullptr;
+    }
+    auto client_shared_image =
+        sii->CreateSharedImage({si_format, size, color_space, usage,
+                                "WebGraphicsContext3DVideoFramePool"},
+                               gpu::kNullSurfaceHandle, buffer_usage);
+    if (!client_shared_image) {
+      return nullptr;
+    }
+#if BUILDFLAG(IS_MAC)
+    client_shared_image->SetColorSpaceOnNativeBuffer(color_space);
+#endif
+    sync_token = sii->GenVerifiedSyncToken();
+    return client_shared_image;
+=======
   std::unique_ptr<gfx::GpuMemoryBuffer> CreateGpuMemoryBuffer(
       const gfx::Size& size,
       gfx::BufferFormat format,
       gfx::BufferUsage usage) override {
     return GpuMemoryBufferManager()->CreateGpuMemoryBuffer(
         size, format, usage, gpu::kNullSurfaceHandle, nullptr);
+>>>>>>> chromium
   }
 
   void CreateSharedImage(gfx::GpuMemoryBuffer* gpu_memory_buffer,
@@ -57,14 +91,15 @@ class Context : public media::RenderableGpuMemoryBufferVideoFramePool::Context {
     sii->DestroySharedImage(sync_token, mailbox);
   }
 
+  const gpu::SharedImageCapabilities& GetCapabilities() override {
+    return SharedImageInterface()->GetCapabilities();
+  }
+
  private:
   gpu::SharedImageInterface* SharedImageInterface() const {
     if (!weak_context_provider_)
       return nullptr;
-    auto* context_provider = weak_context_provider_->ContextProvider();
-    if (!context_provider)
-      return nullptr;
-    return context_provider->SharedImageInterface();
+    return weak_context_provider_->ContextProvider().SharedImageInterface();
   }
 
   gpu::GpuMemoryBufferManager* GpuMemoryBufferManager() const {
@@ -89,6 +124,127 @@ WebGraphicsContext3DVideoFramePool::WebGraphicsContext3DVideoFramePool(
 WebGraphicsContext3DVideoFramePool::~WebGraphicsContext3DVideoFramePool() =
     default;
 
+<<<<<<< HEAD
+gpu::raster::RasterInterface*
+WebGraphicsContext3DVideoFramePool::GetRasterInterface() const {
+  if (weak_context_provider_) {
+    if (auto* raster_context_provider =
+            weak_context_provider_->ContextProvider().RasterContextProvider()) {
+      return raster_context_provider->RasterInterface();
+    }
+  }
+  return nullptr;
+}
+
+namespace {
+void SignalGpuCompletion(
+    base::WeakPtr<blink::WebGraphicsContext3DProviderWrapper> ctx_wrapper,
+    GLenum query_target,
+    base::OnceClosure callback) {
+  DCHECK(ctx_wrapper);
+  auto& context_provider = ctx_wrapper->ContextProvider();
+  auto* raster_context_provider = context_provider.RasterContextProvider();
+  DCHECK(raster_context_provider);
+  auto* ri = raster_context_provider->RasterInterface();
+  DCHECK(ri);
+
+  unsigned query_id = 0;
+  ri->GenQueriesEXT(1, &query_id);
+  ri->BeginQueryEXT(query_target, query_id);
+  ri->EndQueryEXT(query_target);
+
+  auto on_query_done_lambda =
+      [](base::WeakPtr<blink::WebGraphicsContext3DProviderWrapper> ctx_wrapper,
+         unsigned query_id, base::OnceClosure wrapped_callback) {
+        if (ctx_wrapper) {
+          if (auto* ri_provider =
+                  ctx_wrapper->ContextProvider().RasterContextProvider()) {
+            auto* ri = ri_provider->RasterInterface();
+            ri->DeleteQueriesEXT(1, &query_id);
+          }
+        }
+        std::move(wrapped_callback).Run();
+      };
+
+  auto* context_support = raster_context_provider->ContextSupport();
+  DCHECK(context_support);
+  context_support->SignalQuery(
+      query_id, base::BindOnce(on_query_done_lambda, std::move(ctx_wrapper),
+                               query_id, std::move(callback)));
+}
+
+void CopyToGpuMemoryBuffer(
+    base::WeakPtr<blink::WebGraphicsContext3DProviderWrapper> ctx_wrapper,
+    media::VideoFrame* dst_frame,
+    base::OnceClosure callback) {
+  CHECK(dst_frame->HasMappableGpuBuffer());
+  CHECK(!dst_frame->HasNativeGpuMemoryBuffer());
+  CHECK(dst_frame->HasSharedImage());
+
+  DCHECK(ctx_wrapper);
+  auto& context_provider = ctx_wrapper->ContextProvider();
+  auto* raster_context_provider = context_provider.RasterContextProvider();
+  DCHECK(raster_context_provider);
+  auto* ri = raster_context_provider->RasterInterface();
+  DCHECK(ri);
+
+  gpu::SyncToken blit_done_sync_token;
+  ri->GenUnverifiedSyncTokenCHROMIUM(blit_done_sync_token.GetData());
+
+  auto* sii = context_provider.SharedImageInterface();
+  DCHECK(sii);
+
+  const bool use_async_copy =
+      base::FeatureList::IsEnabled(kUseCopyToGpuMemoryBufferAsync);
+  const auto mailbox = dst_frame->shared_image()->mailbox();
+  if (use_async_copy) {
+    auto copy_to_gmb_done_lambda = [](base::OnceClosure callback,
+                                      bool success) {
+      if (!success) {
+        DLOG(ERROR) << "CopyToGpuMemoryBufferAsync failed!";
+        base::debug::DumpWithoutCrashing();
+      }
+      std::move(callback).Run();
+    };
+
+    sii->CopyToGpuMemoryBufferAsync(
+        blit_done_sync_token, mailbox,
+        base::BindOnce(std::move(copy_to_gmb_done_lambda),
+                       std::move(callback)));
+  } else {
+    sii->CopyToGpuMemoryBuffer(blit_done_sync_token, mailbox);
+  }
+
+  // Synchronize RasterInterface with SharedImageInterface.
+  auto copy_to_gmb_done_sync_token = sii->GenUnverifiedSyncToken();
+  ri->WaitSyncTokenCHROMIUM(copy_to_gmb_done_sync_token.GetData());
+
+  // Make access to the `dst_frame` wait on copy completion. We also update the
+  // ReleaseSyncToken here since it's used when the underlying GpuMemoryBuffer
+  // and SharedImage resources are returned to the pool. This is not necessary
+  // since we'll set the empty sync token on the video frame on GPU completion.
+  // But if we ever refactor this code to have a "don't wait for GMB" mode, the
+  // correct sync token on the video frame will be needed.
+  gpu::SyncToken completion_sync_token;
+  ri->GenUnverifiedSyncTokenCHROMIUM(completion_sync_token.GetData());
+  media::SimpleSyncTokenClient simple_client(completion_sync_token);
+  dst_frame->UpdateAcquireSyncToken(&simple_client);
+  dst_frame->UpdateReleaseSyncToken(&simple_client);
+
+  // Do not use a query to track copy completion on Windows when using the new
+  // CopyToGpuMemoryBufferAsync API which performs an async copy that cannot be
+  // tracked using the command buffer.
+  if (!use_async_copy) {
+    // On Windows, shared memory CopyToGpuMemoryBuffer will do synchronization
+    // on its own. No need for GL_COMMANDS_COMPLETED_CHROMIUM QueryEXT.
+    SignalGpuCompletion(std::move(ctx_wrapper), GL_COMMANDS_ISSUED_CHROMIUM,
+                        std::move(callback));
+  }
+}
+}  // namespace
+
+=======
+>>>>>>> chromium
 bool WebGraphicsContext3DVideoFramePool::CopyRGBATextureToVideoFrame(
     viz::ResourceFormat src_format,
     const gfx::Size& src_size,
@@ -98,16 +254,23 @@ bool WebGraphicsContext3DVideoFramePool::CopyRGBATextureToVideoFrame(
     base::OnceCallback<void(scoped_refptr<media::VideoFrame>)> callback) {
   if (!weak_context_provider_)
     return false;
-  auto* context_provider = weak_context_provider_->ContextProvider();
-  if (!context_provider)
-    return false;
-  auto* raster_context_provider = context_provider->RasterContextProvider();
+  auto& context_provider = weak_context_provider_->ContextProvider();
+  auto* raster_context_provider = context_provider.RasterContextProvider();
   if (!raster_context_provider)
     return false;
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_WIN)
+  // CopyToGpuMemoryBuffer is only supported for D3D shared images on Windows.
+  if (!context_provider.SharedImageInterface()
+           ->GetCapabilities()
+           .shared_image_d3d) {
+    DVLOG(1) << "CopyToGpuMemoryBuffer not supported.";
+=======
   scoped_refptr<media::VideoFrame> dst_frame =
       pool_->MaybeCreateVideoFrame(src_size);
   if (!dst_frame)
+>>>>>>> chromium
     return false;
 
   gpu::SyncToken copy_done_sync_token;
@@ -123,4 +286,66 @@ bool WebGraphicsContext3DVideoFramePool::CopyRGBATextureToVideoFrame(
   return true;
 }
 
+<<<<<<< HEAD
+namespace {
+
+void ApplyMetadataAndRunCallback(
+    scoped_refptr<media::VideoFrame> src_video_frame,
+    WebGraphicsContext3DVideoFramePool::FrameReadyCallback orig_callback,
+    scoped_refptr<media::VideoFrame> converted_video_frame) {
+  if (!converted_video_frame) {
+    std::move(orig_callback).Run(nullptr);
+    return;
+  }
+  // TODO(https://crbug.com/1302284): handle cropping before conversion
+  auto wrapped_format = converted_video_frame->format();
+  auto wrapped = media::VideoFrame::WrapVideoFrame(
+      std::move(converted_video_frame), wrapped_format,
+      src_video_frame->visible_rect(), src_video_frame->natural_size());
+  wrapped->set_timestamp(src_video_frame->timestamp());
+  // TODO(https://crbug.com/1302283): old metadata might not be applicable to
+  // new frame
+  wrapped->metadata().MergeMetadataFrom(src_video_frame->metadata());
+
+  std::move(orig_callback).Run(std::move(wrapped));
+}
+
+BASE_FEATURE(kGpuMemoryBufferReadbackFromTexture,
+             "GpuMemoryBufferReadbackFromTexture",
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS) || \
+    BUILDFLAG(IS_LINUX)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
+}  // namespace
+
+bool WebGraphicsContext3DVideoFramePool::ConvertVideoFrame(
+    scoped_refptr<media::VideoFrame> src_video_frame,
+    const gfx::ColorSpace& dst_color_space,
+    FrameReadyCallback callback) {
+  auto format = src_video_frame->format();
+  DCHECK(format == media::PIXEL_FORMAT_XBGR ||
+         format == media::PIXEL_FORMAT_ABGR ||
+         format == media::PIXEL_FORMAT_XRGB ||
+         format == media::PIXEL_FORMAT_ARGB)
+      << "Invalid format " << format;
+  DCHECK(src_video_frame->HasSharedImage());
+  return CopyRGBATextureToVideoFrame(
+      src_video_frame->coded_size(),
+      src_video_frame->shared_image(), src_video_frame->acquire_sync_token(),
+      dst_color_space,
+      WTF::BindOnce(ApplyMetadataAndRunCallback, src_video_frame,
+                    std::move(callback)));
+}
+
+// static
+bool WebGraphicsContext3DVideoFramePool::
+    IsGpuMemoryBufferReadbackFromTextureEnabled() {
+  return base::FeatureList::IsEnabled(kGpuMemoryBufferReadbackFromTexture);
+}
+
+=======
+>>>>>>> chromium
 }  // namespace blink

@@ -104,11 +104,6 @@ bool IsScrollBlockingEvent(const AtomicString& event_type) {
          IsWheelScrollBlockingEvent(event_type);
 }
 
-bool IsInstrumentedForAsyncStack(const AtomicString& event_type) {
-  return event_type == event_type_names::kLoad ||
-         event_type == event_type_names::kError;
-}
-
 base::TimeDelta BlockedEventsWarningThreshold(ExecutionContext* context,
                                               const Event& event) {
   if (!event.cancelable())
@@ -209,6 +204,168 @@ void CountFiringEventListeners(const Event& event,
   }
 }
 
+<<<<<<< HEAD
+// See documentation for `ObservableSubscribeDelegate` below.
+class ObservableEventListener final : public NativeEventListener {
+ public:
+  ObservableEventListener(Subscriber*,
+                          ScriptState*,
+                          const AtomicString&,
+                          EventTarget*,
+                          const ObservableEventListenerOptions*);
+
+  // NativeEventListener overrides:
+  void Invoke(ExecutionContext*, Event*) final;
+
+  void Trace(Visitor*) const override;
+
+ private:
+  // The `Subscriber` that `this` forwards events to when `Invoke()` is called.
+  const Member<Subscriber> subscriber_;
+  // This is the `ScriptState` associated with the subscription. We store it
+  // here so that asynchronously later, when `Invoke()` is called (i.e., when
+  // the `EventTarget` that `this` is listening to starts firing events), we can
+  // transform the events into `ScriptValue` objects (which requires a
+  // `ScriptState`) and forward them to `subscriber_` above.
+  const Member<ScriptState> script_state_;
+};
+
+ObservableEventListener::ObservableEventListener(
+    Subscriber* subscriber,
+    ScriptState* script_state,
+    const AtomicString& event_type,
+    EventTarget* event_target,
+    const ObservableEventListenerOptions* options)
+    : subscriber_(subscriber), script_state_(script_state) {
+  // `event_target_` is non-null here. If the event target were null (i.e.,
+  // garbage collected before this gets called), then this constructor would not
+  // be invoked with it.
+  CHECK(event_target);
+
+  // `this` only gets constructed if `subscriber_` is active. If the subscriber
+  // becomes inactive immediately upon subscription (i.e., an already-aborted
+  // signal is passed into `Observable::subscribe()`, then `this` does not even
+  // get constructed, since we must not add an event listener to `event_target`
+  // in that case.
+  CHECK(subscriber_->active());
+
+  AddEventListenerOptionsResolved* options_resolved =
+      MakeGarbageCollected<AddEventListenerOptionsResolved>();
+  if (options->hasCapture()) {
+    options_resolved->setCapture(options->capture());
+  }
+  if (options->hasPassive()) {
+    options_resolved->setPassive(options->passive());
+  }
+  options_resolved->setSignal(subscriber->signal());
+
+  event_target->addEventListener(event_type, this, options_resolved);
+}
+
+void ObservableEventListener::Invoke(ExecutionContext* execution_context,
+                                     Event* event) {
+  // The `script_state_` will always be valid here, because
+  // `EventTarget::FireEventListeners()` early-returns if its `ExecutionContext`
+  // is detached.
+  DCHECK(script_state_->ContextIsValid());
+  ScriptState::Scope scope(script_state_);
+  ScriptValue script_value = ScriptValue::From(script_state_, event);
+
+  subscriber_->next(script_value);
+}
+
+void ObservableEventListener::Trace(Visitor* visitor) const {
+  visitor->Trace(subscriber_);
+  visitor->Trace(script_state_);
+
+  NativeEventListener::Trace(visitor);
+}
+
+// This is the synthetic subscribe callback that we construct `Observable`s with
+// that are created by `EventTarget#when()`. `OnSubscribe()` adds a brand new
+// `ObservableEventListener` as a new event listener for events named
+// `event_type_`. When events are received, they are propagated directly to
+// `Subscriber`.
+class ObservableSubscribeDelegate final : public Observable::SubscribeDelegate {
+ public:
+  ObservableSubscribeDelegate(EventTarget*,
+                              const AtomicString&,
+                              const ObservableEventListenerOptions*);
+
+  // Observable::SubscribeDelegate overrides:
+  void OnSubscribe(Subscriber*, ScriptState*) final;
+
+  void Trace(Visitor*) const override;
+
+ private:
+  // This is the event target for which we will vend per-subscriber event
+  // listeners. The typical flow here looks like this:
+  //   1.) `EventTarget::when()` is called, returning an observable whose
+  //       subscribe callback is `this` (instead of a JS-provided v8
+  //       callback).
+  //   2.) `Observable::subscribe()` is called by JS, and thus `OnSubscribe()`
+  //       is invoked on `this`.
+  //   3.) `OnSubscribe()` creates a new `ObservableEventListener` just for
+  //       the new subscriber, listening for events named `event_type_` from
+  //       `event_target_`.
+  //   4.) The `ObservableEventListener` keeps a pointer to the subscriber,
+  //       and when events are dispatched to the listener, they are forwarded
+  //       to `Subscriber::next()`.
+  const WeakMember<EventTarget> event_target_;
+  AtomicString event_type_;
+  const Member<const ObservableEventListenerOptions> options_;
+};
+
+ObservableSubscribeDelegate::ObservableSubscribeDelegate(
+    EventTarget* event_target,
+    const AtomicString& event_type,
+    const ObservableEventListenerOptions* options)
+    : event_target_(event_target), event_type_(event_type), options_(options) {}
+
+void ObservableSubscribeDelegate::OnSubscribe(Subscriber* subscriber,
+                                              ScriptState* script_state) {
+  // This should have already been checked by `Observable::subscribe()` before
+  // getting here.
+  CHECK(script_state->ContextIsValid());
+
+  // The weak `event_target_` could be null at this point, if the target has
+  // been garbage collected by the time `this`'s associated Observable has been
+  // subscribed to. We early return in this case, as to avoid setting up the
+  // entire event listener / abort signal mechanism.
+  //
+  // "If event target is null, abort these steps."
+  if (!event_target_) {
+    return;
+  }
+
+  // If the subscriber is already aborted, early return because there is no use
+  // in adding the event listener, since it will never be able to removed again.
+  // It is possible for the subscriber to be aborted at this point if
+  // `Observable#subscribe()` is called with an already-aborted signal in
+  // `SubscribeOptions`.
+  //
+  // "If subscriber's subscription controller's signal is aborted, abort these
+  // steps."
+  if (subscriber->signal()->aborted()) {
+    return;
+  }
+
+  // This freshly-created event listener immediately gets owned by
+  // `event_target_`'s event listener vector. `this` does not need to hold onto
+  // any of the event listeners created here.
+  MakeGarbageCollected<ObservableEventListener>(
+      subscriber, script_state, event_type_, event_target_, options_);
+}
+
+void ObservableSubscribeDelegate::Trace(Visitor* visitor) const {
+  visitor->Trace(event_target_);
+  visitor->Trace(options_);
+
+  Observable::SubscribeDelegate::Trace(visitor);
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 EventTargetData::EventTargetData() = default;
@@ -454,6 +611,40 @@ bool EventTarget::AddEventListenerInternal(
   if (options->hasSignal() && options->signal()->aborted())
     return false;
 
+<<<<<<< HEAD
+  // It doesn't make sense to add an event listener without an ExecutionContext
+  // and some code below here assumes we have one.
+  auto* execution_context = GetExecutionContext();
+  if (!execution_context)
+    return false;
+
+  // Unload/Beforeunload handlers are not allowed in fenced frames.
+  if (event_type == event_type_names::kUnload ||
+      event_type == event_type_names::kBeforeunload) {
+    if (const LocalDOMWindow* window = ExecutingWindow()) {
+      if (const LocalFrame* frame = window->GetFrame()) {
+        if (frame->IsInFencedFrameTree()) {
+          window->PrintErrorMessage(
+              "unload/beforeunload handlers are prohibited in fenced frames.");
+          return false;
+        }
+      }
+    }
+  }
+
+  // Consider `Permissions-Policy: unload` unless the deprecation trial is in
+  // effect.
+  if (event_type == event_type_names::kUnload &&
+      !RuntimeEnabledFeatures::DeprecateUnloadOptOutEnabled(
+          execution_context) &&
+      !execution_context->IsFeatureEnabled(
+          network::mojom::PermissionsPolicyFeature::kUnload,
+          ReportOptions::kReportOnFailure)) {
+    return false;
+  }
+
+=======
+>>>>>>> chromium
   if (event_type == event_type_names::kTouchcancel ||
       event_type == event_type_names::kTouchend ||
       event_type == event_type_names::kTouchmove ||
@@ -501,12 +692,16 @@ bool EventTarget::AddEventListenerInternal(
       }
     }
 
+<<<<<<< HEAD
+    AddedEventListener(event_type, *registered_listener);
+=======
     AddedEventListener(event_type, registered_listener);
     if (IsA<JSBasedEventListener>(listener) &&
         IsInstrumentedForAsyncStack(event_type)) {
       probe::AsyncTaskScheduled(GetExecutionContext(), event_type,
                                 listener->async_task_id());
     }
+>>>>>>> chromium
   }
   return added;
 }
@@ -514,6 +709,34 @@ bool EventTarget::AddEventListenerInternal(
 void EventTarget::AddedEventListener(
     const AtomicString& event_type,
     RegisteredEventListener& registered_listener) {
+<<<<<<< HEAD
+  const LocalDOMWindow* executing_window = ExecutingWindow();
+  Document* document =
+      executing_window ? executing_window->document() : nullptr;
+  if (document) {
+    if (event_type == event_type_names::kAuxclick) {
+      UseCounter::Count(*document, WebFeature::kAuxclickAddListenerCount);
+    } else if (event_type == event_type_names::kAppinstalled) {
+      UseCounter::Count(*document, WebFeature::kAppInstalledEventAddListener);
+    } else if (event_util::IsPointerEventType(event_type)) {
+      UseCounter::Count(*document, WebFeature::kPointerEventAddListenerCount);
+    } else if (event_type == event_type_names::kSlotchange) {
+      UseCounter::Count(*document, WebFeature::kSlotChangeEventAddListener);
+    } else if (event_type == event_type_names::kBeforematch) {
+      UseCounter::Count(*document, WebFeature::kBeforematchHandlerRegistered);
+    } else if (event_type ==
+               event_type_names::kContentvisibilityautostatechange) {
+      UseCounter::Count(
+          *document,
+          WebFeature::kContentVisibilityAutoStateChangeHandlerRegistered);
+    } else if (event_type == event_type_names::kScrollend) {
+      UseCounter::Count(*document, WebFeature::kScrollend);
+    } else if (event_util::IsSnapEventType(event_type)) {
+      UseCounter::Count(*document, WebFeature::kSnapEvent);
+    } else if (RuntimeEnabledFeatures::WindowOnMoveEventEnabled() &&
+               (event_type == event_type_names::kMove)) {
+      UseCounter::Count(*document, WebFeature::kMoveEvent);
+=======
   if (const LocalDOMWindow* executing_window = ExecutingWindow()) {
     if (Document* document = executing_window->document()) {
       if (event_type == event_type_names::kAuxclick) {
@@ -527,6 +750,7 @@ void EventTarget::AddedEventListener(
       } else if (event_type == event_type_names::kBeforematch) {
         UseCounter::Count(*document, WebFeature::kBeforematchHandlerRegistered);
       }
+>>>>>>> chromium
     }
   }
 
@@ -658,11 +882,14 @@ bool EventTarget::SetAttributeEventListener(const AtomicString& event_type,
     return false;
   }
   if (registered_listener) {
+<<<<<<< HEAD
+=======
     if (IsA<JSBasedEventListener>(listener) &&
         IsInstrumentedForAsyncStack(event_type)) {
       probe::AsyncTaskScheduled(GetExecutionContext(), event_type,
                                 listener->async_task_id());
     }
+>>>>>>> chromium
     registered_listener->SetCallback(listener);
     return true;
   }
@@ -888,8 +1115,11 @@ bool EventTarget::FireEventListeners(Event& event,
     event.SetHandlingPassive(EventPassiveMode(registered_listener));
 
     probe::UserCallback probe(context, nullptr, event.type(), false, this);
+<<<<<<< HEAD
+=======
     probe::AsyncTask async_task(context, listener->async_task_id(), "event",
                                 IsInstrumentedForAsyncStack(event.type()));
+>>>>>>> chromium
 
     // To match Mozilla, the AT_TARGET phase fires both capturing and bubbling
     // event listeners, even though that violates some versions of the DOM spec.

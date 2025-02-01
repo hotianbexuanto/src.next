@@ -4,15 +4,22 @@
 
 package org.chromium.content.browser;
 
+import static org.chromium.build.NullUtil.assumeNonNull;
+
 import android.os.SystemClock;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 
 import org.chromium.base.UserData;
+<<<<<<< HEAD
+import org.chromium.build.annotations.Initializer;
+import org.chromium.build.annotations.NullMarked;
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+>>>>>>> chromium
 import org.chromium.content.browser.input.ImeAdapterImpl;
 import org.chromium.content.browser.webcontents.WebContentsImpl;
 import org.chromium.content.browser.webcontents.WebContentsImpl.UserDataFactory;
@@ -25,6 +32,7 @@ import org.chromium.ui.base.EventForwarder;
  * content components.
  */
 @JNINamespace("content")
+@NullMarked
 public class ContentUiEventHandler implements UserData {
     private final WebContentsImpl mWebContents;
     private InternalAccessDelegate mEventDelegate;
@@ -36,8 +44,12 @@ public class ContentUiEventHandler implements UserData {
     }
 
     public static ContentUiEventHandler fromWebContents(WebContents webContents) {
-        return ((WebContentsImpl) webContents)
-                .getOrSetUserData(ContentUiEventHandler.class, UserDataFactoryLazyHolder.INSTANCE);
+        ContentUiEventHandler ret =
+                ((WebContentsImpl) webContents)
+                        .getOrSetUserData(
+                                ContentUiEventHandler.class, UserDataFactoryLazyHolder.INSTANCE);
+        assert ret != null;
+        return ret;
     }
 
     public ContentUiEventHandler(WebContents webContents) {
@@ -46,6 +58,17 @@ public class ContentUiEventHandler implements UserData {
                 ContentUiEventHandlerJni.get().init(ContentUiEventHandler.this, webContents);
     }
 
+<<<<<<< HEAD
+    static ContentUiEventHandler createForTesting(
+            WebContents webContents, long nativeContentUiEventHandler) {
+        ContentUiEventHandler contentUiEventHandler = new ContentUiEventHandler(webContents);
+        contentUiEventHandler.mNativeContentUiEventHandler = nativeContentUiEventHandler;
+        return contentUiEventHandler;
+    }
+
+    @Initializer
+=======
+>>>>>>> chromium
     public void setEventDelegate(InternalAccessDelegate delegate) {
         mEventDelegate = delegate;
     }
@@ -166,9 +189,18 @@ public class ContentUiEventHandler implements UserData {
         // It's a very real (and valid) possibility that a fling may still
         // be active when programatically scrolling. Cancelling the fling in
         // such cases ensures a consistent gesture event stream.
+<<<<<<< HEAD
+        GestureListenerManagerImpl gestureManager =
+                GestureListenerManagerImpl.fromWebContents(mWebContents);
+        assumeNonNull(gestureManager);
+        if (gestureManager.hasActiveFlingScroll()) {
+            ContentUiEventHandlerJni.get()
+                    .cancelFling(mNativeContentUiEventHandler, ContentUiEventHandler.this, time);
+=======
         if (GestureListenerManagerImpl.fromWebContents(mWebContents).hasActiveFlingScroll()) {
             ContentUiEventHandlerJni.get().cancelFling(
                     mNativeContentUiEventHandler, ContentUiEventHandler.this, time);
+>>>>>>> chromium
         }
         ContentUiEventHandlerJni.get().sendScrollEvent(
                 mNativeContentUiEventHandler, ContentUiEventHandler.this, time, dxPix, dyPix);

@@ -34,9 +34,14 @@ ProcessMapFactory::~ProcessMapFactory() {}
 
 KeyedService* ProcessMapFactory::BuildServiceInstanceFor(
     BrowserContext* context) const {
+<<<<<<< HEAD
+  std::unique_ptr<ProcessMap> process_map =
+      std::make_unique<ProcessMap>(context);
+=======
   ProcessMap* process_map = new ProcessMap();
   process_map->set_is_lock_screen_context(
       ExtensionsBrowserClient::Get()->IsLockScreenContext(context));
+>>>>>>> chromium
   return process_map;
 }
 

@@ -85,6 +85,11 @@ void BitmapImageMetrics::CountImageJpegDensity(int image_min_side,
   }
 }
 
+<<<<<<< HEAD
+  density_histogram->CountMany(
+      base::saturated_cast<base::Histogram::Sample32>(density_centi_bpp),
+      image_size_kib);
+=======
 void BitmapImageMetrics::CountJpegArea(const IntSize& size) {
   DEFINE_THREAD_SAFE_STATIC_LOCAL(
       CustomCountHistogram, image_area_histogram,
@@ -98,6 +103,7 @@ void BitmapImageMetrics::CountJpegArea(const IntSize& size) {
 
 void BitmapImageMetrics::CountJpegColorSpace(JpegColorSpace color_space) {
   UMA_HISTOGRAM_ENUMERATION("Blink.ImageDecoders.Jpeg.ColorSpace", color_space);
+>>>>>>> chromium
 }
 
 }  // namespace blink

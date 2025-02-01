@@ -10,7 +10,12 @@
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+#include "base/gtest_prod_util.h"
+#include "base/memory/raw_ptr.h"
+=======
 #include "base/macros.h"
+>>>>>>> chromium
 #include "base/observer_list.h"
 #include "base/strings/string_piece_forward.h"
 #include "base/time/time.h"
@@ -35,6 +40,7 @@
 #include "third_party/abseil-cpp/absl/types/optional.h"
 
 class ExtensionPrefValueMap;
+class ExtensionSyncService;
 class PrefService;
 
 namespace base {
@@ -58,6 +64,12 @@ namespace extensions {
 class AppSorting;
 class EarlyExtensionPrefsObserver;
 class ExtensionPrefsObserver;
+<<<<<<< HEAD
+class ExtensionRegistrar;
+class ExtensionService;
+class PermissionSet;
+=======
+>>>>>>> chromium
 class URLPatternSet;
 
 // Class for managing global and per-extension preferences.
@@ -150,6 +162,23 @@ class ExtensionPrefs : public KeyedService {
     DISALLOW_COPY_AND_ASSIGN(ScopedListUpdate);
   };
 
+  // A passkey class for raw manipulation of disable reasons. See the usage of
+  // this class below for more information.
+  class DisableReasonRawManipulationPasskey {
+   public:
+    ~DisableReasonRawManipulationPasskey() = default;
+
+   private:
+    DisableReasonRawManipulationPasskey() = default;
+    friend class ::ExtensionSyncService;
+    friend class ExtensionPrefs;
+    friend class ExtensionRegistrar;
+    friend class ExtensionService;
+    friend class UpdateDataProviderTest;
+    FRIEND_TEST_ALL_PREFIXES(ExtensionPrefsSimpleTest,
+                             DisableReasonsRawManipulation);
+  };
+
   // Creates an ExtensionPrefs object.
   // Does not take ownership of |prefs| or |extension_pref_value_map|.
   // If |extensions_disabled| is true, extension controlled preferences and
@@ -232,6 +261,8 @@ class ExtensionPrefs : public KeyedService {
                               const mojom::ManifestLocation location,
                               bool external_uninstall);
 
+<<<<<<< HEAD
+=======
   // Sets the extension's state to enabled and clears disable reasons.
   void SetExtensionEnabled(const std::string& extension_id);
 
@@ -257,6 +288,7 @@ class ExtensionPrefs : public KeyedService {
   BlocklistState GetExtensionBlocklistState(
       const std::string& extension_id) const;
 
+>>>>>>> chromium
   // Gets the value of a bit map pref. Gets the value of
   // |extension_id| from |pref_key|. If the value is not found or invalid,
   // return the |default_bit|.
@@ -365,6 +397,15 @@ class ExtensionPrefs : public KeyedService {
   // Did the extension ask to escalate its permission during an upgrade?
   bool DidExtensionEscalatePermissions(const std::string& id) const;
 
+  // Sets the extension's state to enabled and clears disable reasons.
+  void SetExtensionEnabled(const ExtensionId& extension_id);
+
+  // Sets the extension's state to disabled and sets the disable reasons.
+  // However, if the current state is EXTERNAL_EXTENSION_UNINSTALLED then that
+  // is preserved (but the disable reasons are still set).
+  void SetExtensionDisabled(const ExtensionId& extension_id,
+                            const DisableReasonSet& disable_reasons);
+
   // Getters and setters for disabled reason.
   // Note that you should rarely need to modify disable reasons directly -
   // pass the proper value to SetExtensionState instead when you enable/disable
@@ -375,12 +416,47 @@ class ExtensionPrefs : public KeyedService {
                         disable_reason::DisableReason disable_reason) const;
   void AddDisableReason(const std::string& extension_id,
                         disable_reason::DisableReason disable_reason);
+<<<<<<< HEAD
+  void AddDisableReasons(const ExtensionId& extension_id,
+                         const DisableReasonSet& disable_reasons);
+  void RemoveDisableReason(const ExtensionId& extension_id,
+                           disable_reason::DisableReason disable_reason);
+  void ReplaceDisableReasons(const ExtensionId& extension_id,
+                             const DisableReasonSet& disable_reasons);
+  void ClearDisableReasons(const ExtensionId& extension_id);
+=======
   void AddDisableReasons(const std::string& extension_id, int disable_reasons);
   void RemoveDisableReason(const std::string& extension_id,
                            disable_reason::DisableReason disable_reason);
   void ReplaceDisableReasons(const std::string& extension_id,
                              int disable_reasons);
   void ClearDisableReasons(const std::string& extension_id);
+>>>>>>> chromium
+
+  // The methods above will start returning / accepting a `flat_set` of
+  // `DisableReason` soon (see crbug.com/372186532). When that happens, all
+  // unknown reasons in prefs will be collapsed to `DISABLE_UNKNOWN` before
+  // returning. Writing unknown reasons to prefs will be disallowed. This is
+  // because casting unknown reasons (integer) to `DisableReason` enum is
+  // undefined behavior. This isn't a problem in the bitflag representation
+  // because there is no casting involved.
+  //
+  // Any code which needs to read or write unknown reasons should use the
+  // methods below, which operate on raw integers. This is needed for scenarios
+  // like Sync where unknown reasons can be synced from newer versions of the
+  // browser to older versions. Most code should use the above methods. We want
+  // to limit the use of the methods below, so they are guarded by a passkey.
+  base::flat_set<int> GetDisableReasons(DisableReasonRawManipulationPasskey,
+                                        const ExtensionId& extension_id) const;
+  void ReplaceDisableReasons(DisableReasonRawManipulationPasskey,
+                             const ExtensionId& extension_id,
+                             const base::flat_set<int>& disable_reasons);
+  void AddDisableReasons(DisableReasonRawManipulationPasskey,
+                         const ExtensionId& extension_id,
+                         const base::flat_set<int>& disable_reasons);
+  void SetExtensionDisabled(DisableReasonRawManipulationPasskey,
+                            const ExtensionId& extension_id,
+                            const base::flat_set<int>& disable_reasons);
 
   // Clears disable reasons that do not apply to component extensions.
   void ClearInapplicableDisableReasonsForComponentExtension(
@@ -599,6 +675,8 @@ class ExtensionPrefs : public KeyedService {
   // Returns the creation flags mask for a delayed install extension.
   int GetDelayedInstallCreationFlags(const std::string& extension_id) const;
 
+<<<<<<< HEAD
+=======
   // Returns true if the extension was installed from the Chrome Web Store.
   bool IsFromWebStore(const std::string& extension_id) const;
 
@@ -617,6 +695,7 @@ class ExtensionPrefs : public KeyedService {
   // found.
   base::Time GetInstallTime(const std::string& extension_id) const;
 
+>>>>>>> chromium
   // Returns true if the extension should not be synced.
   bool DoNotSync(const std::string& extension_id) const;
 
@@ -728,10 +807,17 @@ class ExtensionPrefs : public KeyedService {
   // TODO(archanasimha): Remove this around M89.
   void MigrateDeprecatedDisableReasons();
 
+<<<<<<< HEAD
+  // Performs a one-time migration of the legacy disable reasons bitflag to a
+  // list of disable reasons.
+  // TODO(crbug.com/372186532): Remove this around M140.
+  void MaybeMigrateDisableReasonsBitflagToList();
+=======
   // Looks to see if the Youtube extension is installed, and removes the
   // FROM_BOOKMARK flag from it's creation flags.
   // TODO(dmurph): Remove this in m90.
   void MigrateYoutubeOffBookmarkApps();
+>>>>>>> chromium
 
   // Iterates over the extension pref entries and removes any obsolete keys. We
   // need to do this here specially (rather than in
@@ -774,6 +860,12 @@ class ExtensionPrefs : public KeyedService {
   friend class ExtensionPrefsBlocklistedExtensions;  // Unit test.
   friend class ExtensionPrefsComponentExtension;     // Unit test.
   friend class ExtensionPrefsUninstallExtension;     // Unit test.
+<<<<<<< HEAD
+  friend class ExtensionPrefsDisableReasonsBitflagToListMigration;  // Unit
+                                                                    // test.
+  friend class ExtensionPrefsMigratesToLastUpdateTime;  // Unit test.
+=======
+>>>>>>> chromium
   friend class
       ExtensionPrefsBitMapPrefValueClearedIfEqualsDefaultValue;  // Unit test.
 
@@ -862,6 +954,18 @@ class ExtensionPrefs : public KeyedService {
   // doesn't exist.
   const base::DictionaryValue* GetExtensionPref(const std::string& id) const;
 
+<<<<<<< HEAD
+  // Helper function to notify observers that the disable reasons for an
+  // extension have changed.
+  void NotifyDisableReasonsChanged(const ExtensionId& extension_id);
+
+  // Helper methods to read and write disable reasons to prefs.
+  base::flat_set<int> ReadDisableReasonsFromPrefs(
+      const ExtensionId& extension_id) const;
+
+  void WriteDisableReasonsToPrefs(const ExtensionId& extension_id,
+                                  const base::flat_set<int>& disable_reasons);
+=======
   // Modifies the extensions disable reasons to add a new reason, remove an
   // existing reason, or clear all reasons. Notifies observers if the set of
   // DisableReasons has changed.
@@ -869,6 +973,7 @@ class ExtensionPrefs : public KeyedService {
   void ModifyDisableReasons(const std::string& extension_id,
                             int reasons,
                             BitMapPrefOperation operation);
+>>>>>>> chromium
 
   // Installs the persistent extension preferences into |prefs_|'s extension
   // pref store. Does nothing if extensions_disabled_ is true.

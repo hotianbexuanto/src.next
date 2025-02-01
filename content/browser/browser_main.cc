@@ -14,6 +14,10 @@ namespace content {
 
 namespace {
 
+<<<<<<< HEAD
+  base::CurrentProcess::GetInstance().SetProcessType(
+      base::CurrentProcessType::PROCESS_BROWSER);
+=======
 // Generates a pair of BrowserMain async events. We don't use the TRACE_EVENT0
 // macro because the tracing infrastructure doesn't expect synchronous events
 // around the main loop of a thread.
@@ -36,6 +40,7 @@ int BrowserMain(const MainFunctionParams& parameters) {
   base::trace_event::TraceLog::GetInstance()->set_process_name("Browser");
   base::trace_event::TraceLog::GetInstance()->SetProcessSortIndex(
       kTraceEventBrowserProcessSortIndex);
+>>>>>>> chromium
 
   std::unique_ptr<BrowserMainRunnerImpl> main_runner(
       BrowserMainRunnerImpl::Create());

@@ -33,7 +33,7 @@ void AcceleratedStaticBitmapImage::ReleaseTexture(void* ctx) {
   if (release_ctx->context_provider_wrapper) {
     if (release_ctx->texture_id) {
       auto* ri = release_ctx->context_provider_wrapper->ContextProvider()
-                     ->RasterInterface();
+                     .RasterInterface();
       ri->EndSharedImageAccessDirectCHROMIUM(release_ctx->texture_id);
       ri->DeleteGpuRasterTexture(release_ctx->texture_id);
     }
@@ -49,17 +49,64 @@ AcceleratedStaticBitmapImage::CreateFromCanvasMailbox(
     const gpu::SyncToken& sync_token,
     GLuint shared_image_texture_id,
     const SkImageInfo& sk_image_info,
-    GLenum texture_target,
-    bool is_origin_top_left,
     base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
     base::PlatformThreadRef context_thread_ref,
     scoped_refptr<base::SingleThreadTaskRunner> context_task_runner,
     viz::ReleaseCallback release_callback) {
   return base::AdoptRef(new AcceleratedStaticBitmapImage(
+<<<<<<< HEAD
+      std::move(shared_image), sync_token, shared_image_texture_id,
+      sk_image_info, ImageOrientationEnum::kDefault,
+      std::move(context_provider_wrapper), context_thread_ref,
+      std::move(context_task_runner), std::move(release_callback)));
+}
+
+// static
+scoped_refptr<AcceleratedStaticBitmapImage>
+AcceleratedStaticBitmapImage::CreateFromExternalSharedImage(
+    const gpu::ExportedSharedImage& exported_shared_image,
+    const gpu::SyncToken& sync_token,
+    const SkImageInfo& sk_image_info,
+    base::OnceCallback<void(const gpu::SyncToken&)> external_callback) {
+  auto shared_gpu_context = blink::SharedGpuContext::ContextProviderWrapper();
+  if (!shared_gpu_context) {
+    return nullptr;
+  }
+  auto* sii = shared_gpu_context->ContextProvider().SharedImageInterface();
+  if (!sii) {
+    return nullptr;
+  }
+
+  scoped_refptr<gpu::ClientSharedImage> shared_image =
+      sii->ImportSharedImage(exported_shared_image);
+  auto release_token = sii->GenVerifiedSyncToken();
+  // No need to keep the original image after the new reference has been added.
+  // Need to update the sync token, however.
+  std::move(external_callback).Run(release_token);
+
+  auto release_callback = WTF::BindOnce(
+      [](base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider,
+         scoped_refptr<gpu::ClientSharedImage> shared_image,
+         const gpu::SyncToken& sync_token, bool is_lost) {
+        if (is_lost || !context_provider) {
+          return;
+        }
+        shared_image->UpdateDestructionSyncToken(sync_token);
+      },
+      shared_gpu_context, shared_image);
+
+  return base::AdoptRef(new AcceleratedStaticBitmapImage(
+      std::move(shared_image), sync_token, 0u, sk_image_info,
+      ImageOrientationEnum::kDefault, shared_gpu_context,
+      base::PlatformThreadRef(),
+      ThreadScheduler::Current()->CleanupTaskRunner(),
+      std::move(release_callback)));
+=======
       mailbox, sync_token, shared_image_texture_id, sk_image_info,
       texture_target, is_origin_top_left, ImageOrientationEnum::kDefault,
       std::move(context_provider_wrapper), context_thread_ref,
       std::move(context_task_runner), std::move(release_callback)));
+>>>>>>> chromium
 }
 
 AcceleratedStaticBitmapImage::AcceleratedStaticBitmapImage(
@@ -67,8 +114,11 @@ AcceleratedStaticBitmapImage::AcceleratedStaticBitmapImage(
     const gpu::SyncToken& sync_token,
     GLuint shared_image_texture_id,
     const SkImageInfo& sk_image_info,
+<<<<<<< HEAD
+=======
     GLenum texture_target,
     bool is_origin_top_left,
+>>>>>>> chromium
     const ImageOrientation& orientation,
     base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
     base::PlatformThreadRef context_thread_ref,
@@ -77,8 +127,11 @@ AcceleratedStaticBitmapImage::AcceleratedStaticBitmapImage(
     : StaticBitmapImage(orientation),
       mailbox_(mailbox),
       sk_image_info_(sk_image_info),
+<<<<<<< HEAD
+=======
       texture_target_(texture_target),
       is_origin_top_left_(is_origin_top_left),
+>>>>>>> chromium
       context_provider_wrapper_(std::move(context_provider_wrapper)),
       mailbox_ref_(
           base::MakeRefCounted<MailboxRef>(sync_token,
@@ -159,7 +212,16 @@ bool AcceleratedStaticBitmapImage::CopyToResourceProvider(
   if (!IsValid())
     return false;
 
+<<<<<<< HEAD
+  const gpu::SyncToken& ready_sync_token = mailbox_ref_->sync_token();
+  gpu::SyncToken completion_sync_token;
+  if (!resource_provider->OverwriteImage(
+          shared_image_, copy_rect, ready_sync_token, completion_sync_token)) {
+    return false;
+  }
+=======
   DCHECK(mailbox_.IsSharedImage());
+>>>>>>> chromium
 
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> shared_context_wrapper =
       SharedGpuContext::ContextProviderWrapper();
@@ -245,7 +307,7 @@ bool AcceleratedStaticBitmapImage::IsValid() const {
 WebGraphicsContext3DProvider* AcceleratedStaticBitmapImage::ContextProvider()
     const {
   auto context = ContextProviderWrapper();
-  return context ? context->ContextProvider() : nullptr;
+  return context ? &(context->ContextProvider()) : nullptr;
 }
 
 base::WeakPtr<WebGraphicsContext3DProviderWrapper>
@@ -270,12 +332,19 @@ void AcceleratedStaticBitmapImage::InitializeTextureBacking(
     return;
 
   gpu::raster::RasterInterface* shared_ri =
-      context_provider_wrapper->ContextProvider()->RasterInterface();
+      context_provider_wrapper->ContextProvider().RasterInterface();
   shared_ri->WaitSyncTokenCHROMIUM(mailbox_ref_->sync_token().GetConstData());
 
+<<<<<<< HEAD
+  const auto& capabilities =
+      context_provider_wrapper->ContextProvider().GetCapabilities();
+
+  if (capabilities.gpu_rasterization) {
+=======
   if (context_provider_wrapper->ContextProvider()
           ->GetCapabilities()
           .supports_oop_raster) {
+>>>>>>> chromium
     DCHECK_EQ(shared_image_texture_id, 0u);
     skia_context_provider_wrapper_ = context_provider_wrapper;
     texture_backing_ = sk_make_sp<MailboxTextureBacking>(
@@ -285,7 +354,7 @@ void AcceleratedStaticBitmapImage::InitializeTextureBacking(
   }
 
   GrDirectContext* shared_gr_context =
-      context_provider_wrapper->ContextProvider()->GetGrContext();
+      context_provider_wrapper->ContextProvider().GetGrContext();
   DCHECK(shared_ri &&
          shared_gr_context);  // context isValid already checked in callers
 
@@ -303,13 +372,22 @@ void AcceleratedStaticBitmapImage::InitializeTextureBacking(
   }
 
   GrGLTextureInfo texture_info;
-  texture_info.fTarget = texture_target_;
+  texture_info.fTarget = shared_image_->GetTextureTarget();
   texture_info.fID = shared_context_texture_id;
   texture_info.fFormat =
+<<<<<<< HEAD
+      context_provider_wrapper->ContextProvider().GetGrGLTextureFormat(
+          viz::SkColorTypeToSinglePlaneSharedImageFormat(
+              sk_image_info_.colorType()));
+  auto backend_texture =
+      GrBackendTextures::MakeGL(sk_image_info_.width(), sk_image_info_.height(),
+                                skgpu::Mipmapped::kNo, texture_info);
+=======
       CanvasResourceParams(sk_image_info_).GLSizedInternalFormat();
   GrBackendTexture backend_texture(sk_image_info_.width(),
                                    sk_image_info_.height(), GrMipMapped::kNo,
                                    texture_info);
+>>>>>>> chromium
 
   GrSurfaceOrigin origin = IsOriginTopLeft() ? kTopLeft_GrSurfaceOrigin
                                              : kBottomLeft_GrSurfaceOrigin;
@@ -358,6 +436,14 @@ void AcceleratedStaticBitmapImage::EnsureSyncTokenVerified() {
 gpu::MailboxHolder AcceleratedStaticBitmapImage::GetMailboxHolder() const {
   if (!IsValid())
     return gpu::MailboxHolder();
+<<<<<<< HEAD
+  }
+  return gpu::MailboxHolder(shared_image_->mailbox(),
+                            mailbox_ref_->sync_token(),
+                            shared_image_->GetTextureTarget());
+}
+=======
+>>>>>>> chromium
 
   return gpu::MailboxHolder(mailbox_, mailbox_ref_->sync_token(),
                             texture_target_);
@@ -377,6 +463,8 @@ bool AcceleratedStaticBitmapImage::CurrentFrameKnownToBeOpaque() {
   return sk_image_info_.isOpaque();
 }
 
+<<<<<<< HEAD
+=======
 scoped_refptr<StaticBitmapImage>
 AcceleratedStaticBitmapImage::ConvertToColorSpace(
     sk_sp<SkColorSpace> color_space,
@@ -415,4 +503,5 @@ AcceleratedStaticBitmapImage::ConvertToColorSpace(
   return provider->Snapshot(orientation_);
 }
 
+>>>>>>> chromium
 }  // namespace blink

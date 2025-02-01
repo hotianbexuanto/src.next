@@ -10,8 +10,17 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 
+<<<<<<< HEAD
+import org.jni_zero.JNINamespace;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
+
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+>>>>>>> chromium
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -23,9 +32,15 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Locale;
 
+<<<<<<< HEAD
+/** Helper methods for dealing with Files. */
+@NullMarked
+@JNINamespace("base::android")
+=======
 /**
  * Helper methods for dealing with Files.
  */
+>>>>>>> chromium
 public class FileUtils {
     private static final String TAG = "FileUtils";
 
@@ -154,10 +169,14 @@ public class FileUtils {
         }
     }
 
+<<<<<<< HEAD
+    /** Reads inputStream into a byte array. */
+=======
     /**
      * Reads inputStream into a byte array.
      */
     @NonNull
+>>>>>>> chromium
     public static byte[] readStream(InputStream inputStream) throws IOException {
         ByteArrayOutputStream data = new ByteArrayOutputStream();
         FileUtils.copyStream(inputStream, data);
@@ -200,8 +219,7 @@ public class FileUtils {
     }
 
     /** Queries and decodes bitmap from content provider. */
-    @Nullable
-    public static Bitmap queryBitmapFromContentProvider(Context context, Uri uri) {
+    public static @Nullable Bitmap queryBitmapFromContentProvider(Context context, Uri uri) {
         try (ParcelFileDescriptor parcelFileDescriptor =
                         context.getContentResolver().openFileDescriptor(uri, "r")) {
             if (parcelFileDescriptor == null) {

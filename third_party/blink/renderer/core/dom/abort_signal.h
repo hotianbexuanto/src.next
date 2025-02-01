@@ -5,12 +5,29 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_ABORT_SIGNAL_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_ABORT_SIGNAL_H_
 
+<<<<<<< HEAD
+#include "base/functional/callback_forward.h"
+#include "third_party/blink/renderer/bindings/core/v8/script_value.h"
+=======
 #include "base/callback_forward.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_linked_hash_set.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
+#include "third_party/blink/renderer/platform/heap/member.h"
+#include "third_party/blink/renderer/platform/scheduler/public/post_cancellable_task.h"
+
+namespace v8 {
+class Isolate;
+}  // namespace v8
+=======
 #include "third_party/blink/renderer/platform/heap/heap_allocator.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+>>>>>>> chromium
 
 namespace blink {
 
@@ -18,7 +35,12 @@ class ExecutionContext;
 class ScriptState;
 
 // Implementation of https://dom.spec.whatwg.org/#interface-AbortSignal
+<<<<<<< HEAD
+class CORE_EXPORT AbortSignal : public EventTarget,
+                                public ExecutionContextLifecycleObserver {
+=======
 class CORE_EXPORT AbortSignal : public EventTargetWithInlineData {
+>>>>>>> chromium
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -27,11 +49,24 @@ class CORE_EXPORT AbortSignal : public EventTargetWithInlineData {
 
   // abort_signal.idl
   static AbortSignal* abort(ScriptState*);
+<<<<<<< HEAD
+  static AbortSignal* abort(ScriptState*, ScriptValue reason);
+  static AbortSignal* any(ScriptState*,
+                          HeapVector<Member<AbortSignal>> signals);
+  static AbortSignal* timeout(ScriptState*, uint64_t milliseconds);
+  ScriptValue reason(ScriptState*) const;
+  bool aborted() const { return !abort_reason_.IsEmpty(); }
+  void throwIfAborted(v8::Isolate*) const;
+=======
   bool aborted() const { return aborted_flag_; }
+>>>>>>> chromium
   DEFINE_ATTRIBUTE_EVENT_LISTENER(abort, kAbort)
 
   const AtomicString& InterfaceName() const override;
   ExecutionContext* GetExecutionContext() const override;
+
+  // `ExecutionContextLifecycleObserver` overrides:
+  void ContextDestroyed() override;
 
   // Internal API
 
@@ -68,10 +103,38 @@ class CORE_EXPORT AbortSignal : public EventTargetWithInlineData {
  private:
   void AddSignalAbortAlgorithm(AbortSignal*);
 
+<<<<<<< HEAD
+  void AbortTimeoutFired(ScriptState*);
+
+  enum class AddRemoveType { kAdded, kRemoved };
+  void OnEventListenerAddedOrRemoved(const AtomicString& event_type,
+                                     AddRemoveType);
+
+  void SetAbortReason(ScriptState* script_state, ScriptValue reason);
+  void RunAbortSteps();
+
+  // https://dom.spec.whatwg.org/#abortsignal-abort-reason
+  // There is one difference from the spec. The value is empty instead of
+  // undefined when this signal is not aborted. This is because
+  // ScriptValue::IsUndefined requires callers to enter a V8 context whereas
+  // ScriptValue::IsEmpty does not.
+  ScriptValue abort_reason_;
+  HeapLinkedHashSet<WeakMember<AbortSignal::AlgorithmHandle>> abort_algorithms_;
+  SignalType signal_type_;
+
+  // This is set to a DependentSignalCompositionManager for composite signals or
+  // a SourceSignalCompositionManager for non-composite signals. Null if
+  // AbortSignalAny isn't enabled.
+  Member<AbortSignalCompositionManager> composition_manager_;
+
+  // Handle for the delayed task associated with `SignalType::kTimeout` signals.
+  TaskHandle timout_task_handle_;
+=======
   bool aborted_flag_ = false;
   Vector<base::OnceClosure> abort_algorithms_;
   HeapVector<Member<AbortSignal>> dependent_signals_;
   Member<ExecutionContext> execution_context_;
+>>>>>>> chromium
 };
 
 }  // namespace blink

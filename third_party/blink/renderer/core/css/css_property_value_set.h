@@ -53,6 +53,8 @@ class CORE_EXPORT CSSPropertyValueSet
 
   void FinalizeGarbageCollectedObject();
 
+<<<<<<< HEAD
+=======
   class PropertyReference {
     STACK_ALLOCATED();
 
@@ -87,11 +89,12 @@ class CORE_EXPORT CSSPropertyValueSet
     unsigned index_;
   };
 
+>>>>>>> chromium
   unsigned PropertyCount() const;
   bool IsEmpty() const;
-  PropertyReference PropertyAt(unsigned index) const {
-    return PropertyReference(*this, index);
-  }
+
+  const CSSPropertyValue& PropertyAt(unsigned index) const;
+  base::span<const CSSPropertyValue> Properties() const;
 
   template <typename T>  // CSSPropertyID or AtomicString
   int FindPropertyIndex(T property) const;
@@ -128,6 +131,50 @@ class CORE_EXPORT CSSPropertyValueSet
   String AsText() const;
 
   bool IsMutable() const { return is_mutable_; }
+<<<<<<< HEAD
+  bool ContainsCursorHand() const { return contains_cursor_hand_; }
+
+  // Computes a hash of the contents of this property value set
+  // (cached after first call). Note that hash equality may have
+  // false negatives (there is no guarantee that a.AsText() == b.AsText()
+  // implies a.GetHash() == b.GetHash()), because not all CSSValues are
+  // easily hashed and may fall back to using the pointer value.
+  //
+  // The hash value has a second task, namely to mark property sets that have
+  // been modified after we've stored them into the MPC
+  // (MatchedPropertiesCache). If you call GetHash() and then later modify the
+  // property set (in any way that would change the hash), all future calls to
+  // GetHash() for this object will return HashTraits<unsigned>::DeletedValue(),
+  // making them invalid for cache lookup uses. (This status can be reset if you
+  // clone the object, such as calling ImmutableCopyIfNeeded().) This protects
+  // the MPC from returning false positives when a mutable CSSPropertyValueSet
+  // has changed, such as for SVG objects' “direct update” of the presentation
+  // attribute style.
+  //
+  // Can never return HashTraits<unsigned>::EmptyValue() (it is used
+  // internally).
+  unsigned GetHash() const {
+    if (hash_ == WTF::HashTraits<unsigned>::EmptyValue()) {
+      hash_ = ComputeHash();
+    }
+    return hash_;
+  }
+  unsigned GetExistingHash() const {
+    DCHECK_NE(hash_, WTF::HashTraits<unsigned>::EmptyValue());
+    return hash_;
+  }
+  bool ModifiedSinceHashing() const {
+    return hash_ == WTF::HashTraits<unsigned>::DeletedValue();
+  }
+
+  bool Equals(const CSSPropertyValueSet& other) {
+    if (this == &other) {
+      return true;
+    }
+    return Properties() == other.Properties();
+  }
+=======
+>>>>>>> chromium
 
   bool HasFailedOrCanceledSubresources() const;
 
@@ -143,7 +190,11 @@ class CORE_EXPORT CSSPropertyValueSet
   void TraceAfterDispatch(blink::Visitor* visitor) const {}
 
  protected:
+<<<<<<< HEAD
+  static constexpr unsigned kMaxArraySize = (1 << 25) - 1;
+=======
   enum { kMaxArraySize = (1 << 28) - 1 };
+>>>>>>> chromium
 
   explicit CSSPropertyValueSet(CSSParserMode css_parser_mode)
       : array_size_(0), css_parser_mode_(css_parser_mode), is_mutable_(true) {}
@@ -158,13 +209,30 @@ class CORE_EXPORT CSSPropertyValueSet
         css_parser_mode_(css_parser_mode),
         is_mutable_(false) {}
 
+<<<<<<< HEAD
+  unsigned ComputeHash() const;
+
+  const uint32_t array_size_ : 25;  // Only for immutable sets.
+  const uint32_t css_parser_mode_ : 4;
+  const uint32_t is_mutable_ : 1;
+  const uint32_t contains_cursor_hand_ : 1;
+  uint32_t may_have_logical_properties_ : 1 = false;  // Only for mutable sets.
+
+  // EmptyValue() means “not computed yet”. DeletedValue() means “invalid”
+  // (see GetHash()).
+  mutable unsigned hash_ = WTF::HashTraits<unsigned>::EmptyValue();
+=======
   const uint32_t array_size_ : 28;
   const uint32_t css_parser_mode_ : 3;
   const uint32_t is_mutable_ : 1;
+>>>>>>> chromium
 
   friend class PropertySetCSSStyleDeclaration;
 };
 
+<<<<<<< HEAD
+class CORE_EXPORT alignas(CSSPropertyName) ImmutableCSSPropertyValueSet
+=======
 // Used for lazily parsing properties.
 class CSSLazyPropertyParser : public GarbageCollected<CSSLazyPropertyParser> {
  public:
@@ -178,6 +246,7 @@ class CSSLazyPropertyParser : public GarbageCollected<CSSLazyPropertyParser> {
 
 class CORE_EXPORT ALIGNAS(alignof(Member<const CSSValue>))
     ALIGNAS(alignof(CSSPropertyValueMetadata)) ImmutableCSSPropertyValueSet
+>>>>>>> chromium
     : public CSSPropertyValueSet {
  public:
   ImmutableCSSPropertyValueSet(const CSSPropertyValue*,
@@ -189,21 +258,49 @@ class CORE_EXPORT ALIGNAS(alignof(Member<const CSSValue>))
 
   unsigned PropertyCount() const { return array_size_; }
 
+<<<<<<< HEAD
+  base::span<const CSSPropertyValue> Properties() const;
+=======
   const Member<const CSSValue>* ValueArray() const;
   const CSSPropertyValueMetadata* MetadataArray() const;
+>>>>>>> chromium
 
   template <typename T>  // CSSPropertyID or AtomicString
   int FindPropertyIndex(T property) const;
 
   void TraceAfterDispatch(blink::Visitor*) const;
+<<<<<<< HEAD
+
+ private:
+  const CSSPropertyValue* ArrayBase() const;
+};
+
+inline const CSSPropertyValue* ImmutableCSSPropertyValueSet::ArrayBase() const {
+=======
 };
 
 inline const Member<const CSSValue>* ImmutableCSSPropertyValueSet::ValueArray()
     const {
+>>>>>>> chromium
   static_assert(
-      sizeof(ImmutableCSSPropertyValueSet) % alignof(Member<const CSSValue>) ==
-          0,
+      sizeof(ImmutableCSSPropertyValueSet) % alignof(CSSPropertyName) == 0,
       "ValueArray may be improperly aligned");
+<<<<<<< HEAD
+  // SAFETY: By funneling all allocation of ImmutableCSSPropertyValueSet through
+  // Create(), we guarantee that the array will exist where we expect it.
+  CHECK_GT(array_size_, 0u);
+  return UNSAFE_BUFFERS(reinterpret_cast<const CSSPropertyValue*>(this + 1));
+}
+
+inline base::span<const CSSPropertyValue>
+ImmutableCSSPropertyValueSet::Properties() const {
+  if (array_size_ == 0) {
+    return base::span<CSSPropertyValue>();
+  }
+  // SAFETY: By funneling all allocation of ImmutableCSSPropertyValueSet through
+  // Create(), we guarantee that the array will have the size we expect.
+  return UNSAFE_BUFFERS(base::span(ArrayBase(), array_size_));
+=======
   return reinterpret_cast<const Member<const CSSValue>*>(this + 1);
 }
 
@@ -217,6 +314,7 @@ ImmutableCSSPropertyValueSet::MetadataArray() const {
       "MetadataArray may be improperly aligned");
   return reinterpret_cast<const CSSPropertyValueMetadata*>(ValueArray() +
                                                            array_size_);
+>>>>>>> chromium
 }
 
 template <>
@@ -235,7 +333,38 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
   ~MutableCSSPropertyValueSet() = default;
 
   unsigned PropertyCount() const { return property_vector_.size(); }
+  const HeapVector<CSSPropertyValue, 4>& Properties() const {
+    return property_vector_;
+  }
 
+<<<<<<< HEAD
+  enum SetResult {
+    // The value failed to parse correctly, and thus, there was no change.
+    kParseError = 0,
+
+    // The value parsed correctly, but there was no change,
+    // as it matched the value already in place.
+    kUnchanged = 1,
+
+    // The value parsed correctly, and there was a change to a property that
+    // already existed.
+    kModifiedExisting = 2,
+
+    // The value parsed correctly, and caused a property to be added or
+    // modified. (If you do not care whether it did, you can compare the
+    // enum using result >= kModifiedExisting.)
+    kChangedPropertySet = 3,
+  };
+
+  // Wrapper around SetLonghandProperty() for setting multiple properties
+  // at a time.
+  SetResult AddParsedProperties(base::span<CSSPropertyValue>);
+
+  // Wrapper around SetLonghandProperty() that does nothing if the same property
+  // already exists with an !important declaration.
+  //
+=======
+>>>>>>> chromium
   // Returns whether this style set was changed.
   bool AddParsedProperties(const HeapVector<CSSPropertyValue, 256>&);
   bool AddRespectingCascade(const CSSPropertyValue&);
@@ -265,8 +394,14 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
   bool SetProperty(const CSSPropertyValue&, CSSPropertyValue* slot = nullptr);
 
   template <typename T>  // CSSPropertyID or AtomicString
+<<<<<<< HEAD
+  bool RemoveProperty(const T& property, String* return_text = nullptr);
+  bool RemovePropertiesInSet(base::span<const CSSProperty* const> set);
+  bool RemovePropertiesAffectedByAll();
+=======
   bool RemoveProperty(T property, String* return_text = nullptr);
   bool RemovePropertiesInSet(const CSSProperty* const set[], unsigned length);
+>>>>>>> chromium
   void RemoveEquivalentProperties(const CSSPropertyValueSet*);
   void RemoveEquivalentProperties(const CSSStyleDeclaration*);
 
@@ -298,7 +433,6 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
   friend class CSSPropertyValueSet;
 
   HeapVector<CSSPropertyValue, 4> property_vector_;
-  bool may_have_logical_properties_{false};
 };
 
 template <>
@@ -308,23 +442,22 @@ struct DowncastTraits<MutableCSSPropertyValueSet> {
   }
 };
 
-inline const CSSPropertyValueMetadata&
-CSSPropertyValueSet::PropertyReference::PropertyMetadata() const {
+inline const CSSPropertyValue& CSSPropertyValueSet::PropertyAt(
+    unsigned index) const {
   if (auto* mutable_property_set =
-          DynamicTo<MutableCSSPropertyValueSet>(property_set_)) {
-    return mutable_property_set->property_vector_.at(index_).Metadata();
+          DynamicTo<MutableCSSPropertyValueSet>(this)) {
+    return mutable_property_set->property_vector_.at(index);
   }
-  return To<ImmutableCSSPropertyValueSet>(*property_set_)
-      .MetadataArray()[index_];
+  return To<ImmutableCSSPropertyValueSet>(*this).Properties()[index];
 }
 
-inline const CSSValue& CSSPropertyValueSet::PropertyReference::PropertyValue()
+inline base::span<const CSSPropertyValue> CSSPropertyValueSet::Properties()
     const {
   if (auto* mutable_property_set =
-          DynamicTo<MutableCSSPropertyValueSet>(property_set_)) {
-    return *mutable_property_set->property_vector_.at(index_).Value();
+          DynamicTo<MutableCSSPropertyValueSet>(this)) {
+    return mutable_property_set->Properties();
   }
-  return *To<ImmutableCSSPropertyValueSet>(*property_set_).ValueArray()[index_];
+  return To<ImmutableCSSPropertyValueSet>(*this).Properties();
 }
 
 inline unsigned CSSPropertyValueSet::PropertyCount() const {

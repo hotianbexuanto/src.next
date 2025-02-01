@@ -270,6 +270,28 @@ void GraphicsContext::BeginLayer(float opacity,
   } else {
     SaveLayer(nullptr, &layer_flags);
   }
+<<<<<<< HEAD
+  BeginLayer(flags);
+}
+
+void GraphicsContext::BeginLayer(sk_sp<PaintFilter> image_filter,
+                                 const gfx::RectF* bounds) {
+  cc::PaintFlags flags;
+  flags.setImageFilter(std::move(image_filter));
+  BeginLayer(flags, bounds);
+}
+
+void GraphicsContext::BeginLayer(const cc::PaintFlags& flags,
+                                 const gfx::RectF* bounds) {
+  DCHECK(canvas_);
+  if (bounds) {
+    const SkRect sk_bounds = gfx::RectFToSkRect(*bounds);
+    canvas_->saveLayer(sk_bounds, flags);
+  } else {
+    canvas_->saveLayer(flags);
+  }
+=======
+>>>>>>> chromium
 
 #if DCHECK_IS_ON()
   ++layer_count_;
@@ -691,6 +713,9 @@ void GraphicsContext::DrawTextInternal(const Font& font,
   });
 }
 
+<<<<<<< HEAD
+// This function is not used if TextCombineEmphasisNG flag is enabled.
+=======
 bool GraphicsContext::ShouldDrawDarkModeTextContrastOutline(
     const PaintFlags& original_flags,
     const DarkModeFlags& dark_flags) const {
@@ -736,11 +761,18 @@ void GraphicsContext::DrawEmphasisMarksInternal(const Font& font,
       });
 }
 
+>>>>>>> chromium
 void GraphicsContext::DrawEmphasisMarks(const Font& font,
-                                        const TextRunPaintInfo& text_info,
+                                        const TextRun& run,
                                         const AtomicString& mark,
+<<<<<<< HEAD
+                                        const gfx::PointF& point,
+                                        const AutoDarkMode& auto_dark_mode) {
+  DrawEmphasisMarksInternal(font, run, mark, point, auto_dark_mode);
+=======
                                         const FloatPoint& point) {
   DrawEmphasisMarksInternal(font, text_info, mark, point);
+>>>>>>> chromium
 }
 
 void GraphicsContext::DrawEmphasisMarks(
@@ -751,6 +783,18 @@ void GraphicsContext::DrawEmphasisMarks(
   DrawEmphasisMarksInternal(font, text_info, mark, point);
 }
 
+<<<<<<< HEAD
+void GraphicsContext::DrawBidiText(const Font& font,
+                                   const TextRun& run,
+                                   const gfx::PointF& point,
+                                   const AutoDarkMode& auto_dark_mode) {
+  DrawTextPasses([&](const cc::PaintFlags& flags) {
+    if (font.DrawBidiText(canvas_, TextRunPaintInfo(run), point,
+                          Font::kDoNotPaintIfFontNotReady,
+                          DarkModeFlags(this, auto_dark_mode, flags),
+                          printing_ ? Font::DrawType::kGlyphsAndClusters
+                                    : Font::DrawType::kGlyphsOnly)) {
+=======
 void GraphicsContext::DrawBidiText(
     const Font& font,
     const TextRunPaintInfo& run_info,
@@ -764,6 +808,7 @@ void GraphicsContext::DrawBidiText(
             DarkModeFlags(this, flags, DarkModeFilter::ElementRole::kText),
             printing_ ? Font::DrawType::kGlyphsAndClusters
                       : Font::DrawType::kGlyphsOnly)) {
+>>>>>>> chromium
       paint_controller_.SetTextPainted();
     }
   });

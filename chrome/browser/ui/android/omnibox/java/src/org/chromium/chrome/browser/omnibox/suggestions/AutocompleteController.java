@@ -4,6 +4,19 @@
 
 package org.chromium.chrome.browser.omnibox.suggestions;
 
+<<<<<<< HEAD
+import androidx.annotation.Px;
+import androidx.annotation.VisibleForTesting;
+
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
+
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.omnibox.OmniboxMetrics;
+import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxAnswerAction;
+=======
 import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
@@ -12,6 +25,7 @@ import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.NativeMethods;
+>>>>>>> chromium
 import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionHandler.VoiceResult;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
@@ -39,10 +53,28 @@ import java.util.Set;
  * AutocompleteController is no longer valid, and removes it from the AutocompleteControllerFactory
  * cache.
  */
+@NullMarked
 public class AutocompleteController {
     // Maximum number of voice suggestions to show.
     private static final int MAX_VOICE_SUGGESTION_COUNT = 3;
 
+<<<<<<< HEAD
+    private final Set<OnSuggestionsReceivedListener> mListeners = new HashSet<>();
+    private long mNativeController;
+    private Optional<AutocompleteResult> mAutocompleteResult = Optional.empty();
+
+    /** Listener for receiving OmniboxSuggestions. */
+    public interface OnSuggestionsReceivedListener {
+        /**
+         * Receive autocomplete matches for currently executing query.
+         *
+         * @param autocompleteResult The current set of autocomplete matches for previously supplied
+         *     query.
+         * @param isFinal Whether this result is transitory (false) or final (true). Final result
+         *     always comes in last, even if the query is canceled.
+         */
+        void onSuggestionsReceived(AutocompleteResult autocompleteResult, boolean isFinal);
+=======
     private final @NonNull Profile mProfile;
     private final @NonNull Set<OnSuggestionsReceivedListener> mListeners = new HashSet<>();
     private long mNativeController;
@@ -52,6 +84,7 @@ public class AutocompleteController {
     public interface OnSuggestionsReceivedListener {
         void onSuggestionsReceived(
                 AutocompleteResult autocompleteResult, String inlineAutocompleteText);
+>>>>>>> chromium
     }
 
     @CalledByNative
@@ -60,6 +93,19 @@ public class AutocompleteController {
         mNativeController = nativeController;
     }
 
+<<<<<<< HEAD
+    /**
+     * @param listener The listener to be notified when new suggestions are available.
+     */
+    public void addOnSuggestionsReceivedListener(OnSuggestionsReceivedListener listener) {
+        mListeners.add(listener);
+    }
+
+    /**
+     * @param listener A previously registered new suggestions listener to be removed.
+     */
+    public void removeOnSuggestionsReceivedListener(OnSuggestionsReceivedListener listener) {
+=======
     /** @param listener The listener to be notified when new suggestions are available. */
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     public void addOnSuggestionsReceivedListener(@NonNull OnSuggestionsReceivedListener listener) {
@@ -68,6 +114,7 @@ public class AutocompleteController {
 
     /** @param listener A previously registered new suggestions listener to be removed. */
     void removeOnSuggestionsReceivedListener(@NonNull OnSuggestionsReceivedListener listener) {
+>>>>>>> chromium
         mListeners.remove(listener);
     }
 
@@ -83,16 +130,54 @@ public class AutocompleteController {
      * @param queryTileId The ID of the query tile selected by the user, if any.
      * @param isQueryStartedFromTiles Whether the search query is started from query tiles.
      */
+<<<<<<< HEAD
+    @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
+    public void start(
+            GURL url,
+            int pageClassification,
+            String text,
+            int cursorPosition,
+            boolean preventInlineAutocomplete) {
+=======
     void start(@NonNull String url, int pageClassification, @NonNull String text,
             int cursorPosition, boolean preventInlineAutocomplete, @Nullable String queryTileId,
             boolean isQueryStartedFromTiles) {
+>>>>>>> chromium
         if (mNativeController == 0) return;
         assert !TextUtils.isEmpty(url);
         if (TextUtils.isEmpty(url)) return;
 
+<<<<<<< HEAD
+        AutocompleteControllerJni.get()
+                .start(
+                        mNativeController,
+                        text,
+                        cursorPosition,
+                        null,
+                        url.getSpec(),
+                        pageClassification,
+                        preventInlineAutocomplete,
+                        false,
+                        false,
+                        true);
+    }
+
+    /**
+     * Issue a prefetch request for zero prefix suggestions. Prefetch is a fire-and-forget operation
+     * that yields no results.
+     *
+     * @param url The URL of the current tab, used to suggest query refinements.
+     * @param pageClassification The page classification of the current tab.
+     */
+    void startPrefetch(GURL url, int pageClassification) {
+        if (mNativeController == 0) return;
+        AutocompleteControllerJni.get()
+                .startPrefetch(mNativeController, url.getSpec(), pageClassification);
+=======
         AutocompleteControllerJni.get().start(mNativeController, text, cursorPosition, null, url,
                 pageClassification, preventInlineAutocomplete, false, false, true, queryTileId,
                 isQueryStartedFromTiles);
+>>>>>>> chromium
     }
 
     /**
@@ -110,8 +195,12 @@ public class AutocompleteController {
      * @return The AutocompleteMatch specifying where to navigate, the transition type, etc. May
      *         be null if the input is invalid.
      */
+<<<<<<< HEAD
+    public @Nullable AutocompleteMatch classify(String text) {
+=======
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     public AutocompleteMatch classify(@NonNull String text, boolean focusedFromFakebox) {
+>>>>>>> chromium
         if (mNativeController == 0) return null;
         return AutocompleteControllerJni.get().classify(
                 mNativeController, text, focusedFromFakebox);
@@ -125,9 +214,14 @@ public class AutocompleteController {
      * @param pageClassification The page classification of the current tab.
      * @param title The title of the currently loaded web page.
      */
+<<<<<<< HEAD
+    public void startZeroSuggest(
+            String omniboxText, GURL url, int pageClassification, String title) {
+=======
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     public void startZeroSuggest(@NonNull String omniboxText, @NonNull String url,
             int pageClassification, @NonNull String title) {
+>>>>>>> chromium
         if (mNativeController == 0) return;
         assert !TextUtils.isEmpty(url);
         if (TextUtils.isEmpty(url)) return;
@@ -169,9 +263,16 @@ public class AutocompleteController {
     }
 
     @CalledByNative
+<<<<<<< HEAD
+    @VisibleForTesting
+    public void onSuggestionsReceived(AutocompleteResult autocompleteResult, boolean isFinal) {
+        mAutocompleteResult = Optional.of(autocompleteResult);
+
+=======
     private void onSuggestionsReceived(@NonNull AutocompleteResult autocompleteResult,
             @NonNull String inlineAutocompleteText) {
         mAutocompleteResult = autocompleteResult;
+>>>>>>> chromium
         // Notify callbacks of suggestions.
         for (OnSuggestionsReceivedListener listener : mListeners) {
             listener.onSuggestionsReceived(autocompleteResult, inlineAutocompleteText);
@@ -198,9 +299,21 @@ public class AutocompleteController {
      * @param webContents The web contents for the tab where the selected suggestion will be shown.
      */
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
+<<<<<<< HEAD
+    public void onSuggestionSelected(
+            AutocompleteMatch match,
+            int suggestionLine,
+            int disposition,
+            GURL currentPageUrl,
+            int pageClassification,
+            long elapsedTimeSinceModified,
+            int completedLength,
+            @Nullable WebContents webContents) {
+=======
     public void onSuggestionSelected(int selectedIndex, int disposition, int type,
             @NonNull String currentPageUrl, int pageClassification, long elapsedTimeSinceModified,
             int completedLength, @Nullable WebContents webContents) {
+>>>>>>> chromium
         if (mNativeController == 0) return;
         if (!mAutocompleteResult.verifyCoherency()) return;
         AutocompleteControllerJni.get().onSuggestionSelected(mNativeController, selectedIndex,
@@ -303,6 +416,22 @@ public class AutocompleteController {
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     @NativeMethods
     public interface Natives {
+<<<<<<< HEAD
+        void start(
+                long nativeAutocompleteControllerAndroid,
+                String text,
+                int cursorPosition,
+                @Nullable String desiredTld,
+                String currentUrl,
+                int pageClassification,
+                boolean preventInlineAutocomplete,
+                boolean preferKeyword,
+                boolean allowExactKeywordMatch,
+                boolean wantAsynchronousMatches);
+
+        AutocompleteMatch classify(long nativeAutocompleteControllerAndroid, String text);
+
+=======
         void start(long nativeAutocompleteControllerAndroid, String text, int cursorPosition,
                 String desiredTld, String currentUrl, int pageClassification,
                 boolean preventInlineAutocomplete, boolean preferKeyword,
@@ -310,8 +439,60 @@ public class AutocompleteController {
                 boolean isQueryStartedFromTiles);
         AutocompleteMatch classify(
                 long nativeAutocompleteControllerAndroid, String text, boolean focusedFromFakebox);
+>>>>>>> chromium
         void stop(long nativeAutocompleteControllerAndroid, boolean clearResults);
         void resetSession(long nativeAutocompleteControllerAndroid);
+<<<<<<< HEAD
+
+        void onSuggestionSelected(
+                long nativeAutocompleteControllerAndroid,
+                long nativeAutocompleteMatch,
+                int matchIndex,
+                int disposition,
+                String currentPageUrl,
+                int pageClassification,
+                long elapsedTimeSinceModified,
+                int completedLength,
+                @Nullable WebContents webContents);
+
+        boolean onSuggestionTouchDown(
+                long nativeAutocompleteControllerAndroid,
+                long nativeAutocompleteMatch,
+                int matchIndex,
+                @Nullable WebContents webContents);
+
+        void onOmniboxFocused(
+                long nativeAutocompleteControllerAndroid,
+                String omniboxText,
+                String currentUrl,
+                int pageClassification,
+                String currentTitle);
+
+        void deleteMatchElement(
+                long nativeAutocompleteControllerAndroid,
+                long nativeAutocompleteMatch,
+                int elementIndex);
+
+        void deleteMatch(long nativeAutocompleteControllerAndroid, long nativeAutocompleteMatch);
+
+        GURL updateMatchDestinationURLWithAdditionalSearchboxStats(
+                long nativeAutocompleteControllerAndroid,
+                long nativeAutocompleteMatch,
+                long elapsedTimeSinceInputChange);
+
+        GURL getAnswerActionDestinationURL(
+                long nativeAutocompleteControllerAndroid,
+                long nativeAutocompleteMatch,
+                long elapsedTimeSinceInputChange,
+                long nativeAnswerAction);
+
+        Tab getMatchingTabForSuggestion(
+                long nativeAutocompleteControllerAndroid, long nativeAutocompleteMatch);
+
+        void setVoiceMatches(
+                long nativeAutocompleteControllerAndroid,
+                String[] matches,
+=======
         void onSuggestionSelected(long nativeAutocompleteControllerAndroid, int selectedIndex,
                 int disposition, String currentPageUrl, int pageClassification,
                 long elapsedTimeSinceModified, int completedLength, WebContents webContents);
@@ -323,6 +504,7 @@ public class AutocompleteController {
                 long elapsedTimeSinceInputChange, String newQueryText, String[] newQueryParams);
         Tab findMatchingTabWithUrl(long nativeAutocompleteControllerAndroid, GURL url);
         void setVoiceMatches(long nativeAutocompleteControllerAndroid, String[] matches,
+>>>>>>> chromium
                 float[] confidenceScores);
 
         /**

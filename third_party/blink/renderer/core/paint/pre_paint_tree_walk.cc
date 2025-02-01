@@ -4,9 +4,14 @@
 
 #include "third_party/blink/renderer/core/paint/pre_paint_tree_walk.h"
 
+<<<<<<< HEAD
+#include "base/debug/dump_without_crashing.h"
+#include "base/types/optional_util.h"
+=======
 #include "base/auto_reset.h"
 #include "base/stl_util.h"
 #include "cc/base/features.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/document_lifecycle.h"
 #include "third_party/blink/renderer/core/frame/event_handler_registry.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -16,6 +21,7 @@
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/layout/layout_box_model_object.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
+#include "third_party/blink/renderer/core/layout/layout_html_canvas.h"
 #include "third_party/blink/renderer/core/layout/layout_multi_column_flow_thread.h"
 #include "third_party/blink/renderer/core/layout/layout_shift_tracker.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"

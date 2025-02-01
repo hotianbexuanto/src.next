@@ -22,8 +22,17 @@ FontDescription FontStyleResolver::ComputeFont(
   CSSToLengthConversionData::FontSizes fontSizes(10, 10, &font, 1);
   CSSToLengthConversionData::ViewportSize viewportSize(0, 0);
   CSSToLengthConversionData::ContainerSizes container_sizes;
+<<<<<<< HEAD
+  CSSToLengthConversionData::AnchorData anchor_data;
+  CSSToLengthConversionData::Flags ignored_flags = 0;
+  CSSToLengthConversionData conversion_data(
+      WritingMode::kHorizontalTb, font_sizes, line_height_size, viewport_size,
+      container_sizes, anchor_data, 1, ignored_flags,
+      /*element=*/nullptr);
+=======
   CSSToLengthConversionData conversionData(nullptr, fontSizes, viewportSize,
                                            container_sizes, 1);
+>>>>>>> chromium
 
   // CSSPropertyID::kFontSize
   if (property_set.HasProperty(CSSPropertyID::kFontSize)) {
@@ -60,6 +69,7 @@ FontDescription FontStyleResolver::ComputeFont(
   // CSSPropertyID::kFontWeight
   if (property_set.HasProperty(CSSPropertyID::kFontWeight)) {
     builder.SetWeight(StyleBuilderConverterBase::ConvertFontWeight(
+        conversion_data,
         *property_set.GetPropertyCSSValue(CSSPropertyID::kFontWeight),
         FontBuilder::InitialWeight()));
   }

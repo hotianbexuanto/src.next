@@ -7,15 +7,20 @@ package org.chromium.base;
 import android.content.Context;
 import android.provider.Settings;
 
-import androidx.annotation.Nullable;
-
 import org.chromium.base.supplier.Supplier;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 
 import java.io.File;
 
+<<<<<<< HEAD
+/** Provides implementation of command line initialization for Android. */
+@NullMarked
+=======
 /**
  * Provides implementation of command line initialization for Android.
  */
+>>>>>>> chromium
 public final class CommandLineInitUtil {
     /**
      * The location of the command line file needs to be in a protected
@@ -34,6 +39,16 @@ public final class CommandLineInitUtil {
      */
     private static final String COMMAND_LINE_FILE_PATH_DEBUG_APP = "/data/local/tmp";
 
+<<<<<<< HEAD
+    /** The name of the command line file to pull arguments from. */
+    private static @Nullable String sFilenameOverrideForTesting;
+
+    private CommandLineInitUtil() {}
+
+    /** Set the filename to use. */
+    public static void setFilenameOverrideForTesting(String value) {
+        sFilenameOverrideForTesting = value;
+=======
     private CommandLineInitUtil() {
     }
 
@@ -43,6 +58,7 @@ public final class CommandLineInitUtil {
      */
     public static void initCommandLine(String fileName) {
         initCommandLine(fileName, null);
+>>>>>>> chromium
     }
 
     /**
@@ -77,9 +93,16 @@ public final class CommandLineInitUtil {
         return context.getPackageName().equals(getDebugApp(context)) || BuildInfo.isDebugAndroid();
     }
 
+<<<<<<< HEAD
+    private static @Nullable String getDebugApp(Context context) {
+        boolean adbEnabled =
+                Settings.Global.getInt(context.getContentResolver(), Settings.Global.ADB_ENABLED, 0)
+                        == 1;
+=======
     private static String getDebugApp(Context context) {
         boolean adbEnabled = Settings.Global.getInt(context.getContentResolver(),
                 Settings.Global.ADB_ENABLED, 0) == 1;
+>>>>>>> chromium
         if (adbEnabled) {
             return Settings.Global.getString(context.getContentResolver(),
                     Settings.Global.DEBUG_APP);

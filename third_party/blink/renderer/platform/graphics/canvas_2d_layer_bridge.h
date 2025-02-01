@@ -26,6 +26,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_CANVAS_2D_LAYER_BRIDGE_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_CANVAS_2D_LAYER_BRIDGE_H_
 
+<<<<<<< HEAD
+#include "third_party/blink/renderer/platform/graphics/canvas_hibernation_handler.h"
+=======
 #include <memory>
 #include <random>
 #include <utility>
@@ -43,6 +46,7 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_color_params.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_host.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/deque.h"
@@ -64,6 +68,21 @@ class Canvas2DLayerBridgeTest;
 class SharedContextRateLimiter;
 class StaticBitmapImage;
 
+<<<<<<< HEAD
+// Canvas2DLayerBridge historically served as the means of creating resources
+// for 2D canvas contexts. It has since had almost all functionality migrated
+// out of it and is merely a wrapper of CanvasHibernationHandler. However,
+// HTMLCanvasElement and CanvasRenderingContext2D still continue to base logic
+// on the dynamic presence/absence of a bridge instance for legacy reasons.
+// Until we migrate all of that legacy logic, we are leaving Canvas2DLayerBridge
+// in place.
+// DO NOT ADD ANY CODE OR FUNCTIONALITY HERE.
+// TODO(crbug.com/40280152): Eliminate this class once it is actually used
+// strictly as a wrapper for CanvasHibernationHandler's functionality.
+class PLATFORM_EXPORT Canvas2DLayerBridge {
+ public:
+  explicit Canvas2DLayerBridge(CanvasResourceHost& resource_host);
+=======
 #if defined(OS_MAC)
 // Canvas hibernation is currently disabled on MacOS X due to a bug that causes
 // content loss. TODO: Find a better fix for crbug.com/588434
@@ -75,11 +94,20 @@ class StaticBitmapImage;
 class PLATFORM_EXPORT Canvas2DLayerBridge : public cc::TextureLayerClient {
  public:
   Canvas2DLayerBridge(const IntSize&, RasterMode, const CanvasColorParams&);
+>>>>>>> chromium
   Canvas2DLayerBridge(const Canvas2DLayerBridge&) = delete;
   Canvas2DLayerBridge& operator=(const Canvas2DLayerBridge&) = delete;
 
   ~Canvas2DLayerBridge() override;
 
+<<<<<<< HEAD
+  CanvasHibernationHandler& GetHibernationHandler() {
+    return hibernation_handler_;
+  }
+
+ private:
+  CanvasHibernationHandler hibernation_handler_;
+=======
   // cc::TextureLayerClient implementation.
   bool PrepareTransferableResource(
       cc::SharedBitmapIdRegistrar* bitmap_registrar,
@@ -232,6 +260,7 @@ class PLATFORM_EXPORT Canvas2DLayerBridge : public cc::TextureLayerClient {
   sk_sp<cc::PaintRecord> last_recording_;
 
   base::WeakPtrFactory<Canvas2DLayerBridge> weak_ptr_factory_{this};
+>>>>>>> chromium
 };
 
 }  // namespace blink

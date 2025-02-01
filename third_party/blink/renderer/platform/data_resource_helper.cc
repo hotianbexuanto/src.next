@@ -28,9 +28,16 @@ String UncompressResourceAsASCIIString(int resource_id) {
 }
 
 Vector<char> UncompressResourceAsBinary(int resource_id) {
+<<<<<<< HEAD
+  std::string data = Platform::Current()->GetDataResourceString(resource_id);
+  Vector<char> result;
+  result.AppendSpan(base::span(data));
+  return result;
+=======
   WebData data = Platform::Current()->UncompressDataResource(resource_id);
   const SharedBuffer& shared_buffer = data;
   return shared_buffer.CopyAs<Vector<char>>();
+>>>>>>> chromium
 }
 
 }  // namespace blink

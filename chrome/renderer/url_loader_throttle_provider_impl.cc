@@ -123,13 +123,13 @@ URLLoaderThrottleProviderImpl::Clone() {
   return base::WrapUnique(new URLLoaderThrottleProviderImpl(*this));
 }
 
-blink::WebVector<std::unique_ptr<blink::URLLoaderThrottle>>
+std::vector<std::unique_ptr<blink::URLLoaderThrottle>>
 URLLoaderThrottleProviderImpl::CreateThrottles(
     int render_frame_id,
     const blink::WebURLRequest& request) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
-  blink::WebVector<std::unique_ptr<blink::URLLoaderThrottle>> throttles;
+  std::vector<std::unique_ptr<blink::URLLoaderThrottle>> throttles;
 
   const network::mojom::RequestDestination request_destination =
       request.GetRequestDestination();

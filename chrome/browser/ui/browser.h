@@ -20,7 +20,11 @@
 #include "base/time/time.h"
 #include "base/timer/elapsed_timer.h"
 #include "build/build_config.h"
+<<<<<<< HEAD
+#include "chrome/browser/tab_contents/web_contents_collection.h"
+=======
 #include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "chrome/browser/themes/theme_service_observer.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
 #include "chrome/browser/ui/bookmarks/bookmark_tab_helper_observer.h"
@@ -76,7 +80,7 @@ class BrowserCommandController;
 
 namespace content {
 class SessionStorageNamespace;
-}
+}  // namespace content
 
 namespace extensions {
 class BrowserExtensionWindowController;
@@ -434,6 +438,7 @@ class Browser : public TabStripModelObserver,
   // window is an app window.
   std::u16string GetWindowTitleForTab(bool include_app_name, int index) const;
 
+  std::u16string GetTitleForTab(int index) const;
   // Gets the window title for the current tab, to display in a menu. If the
   // title is too long to fit in the required space, the tab title will be
   // elided. The result title might still be a larger width than specified, as
@@ -642,13 +647,18 @@ class Browser : public TabStripModelObserver,
   void OnDidBlockNavigation(
       content::WebContents* web_contents,
       const GURL& blocked_url,
-      const GURL& initiator_url,
       blink::mojom::NavigationBlockedReason reason) override;
   content::PictureInPictureResult EnterPictureInPicture(
       content::WebContents* web_contents,
       const viz::SurfaceId&,
       const gfx::Size&) override;
   void ExitPictureInPicture() override;
+<<<<<<< HEAD
+  bool IsBackForwardCacheSupported(content::WebContents& web_contents) override;
+  content::PreloadingEligibility IsPrerender2Supported(
+      content::WebContents& web_contents,
+      content::PreloadingTriggerType trigger_type) override;
+=======
   bool IsBackForwardCacheSupported() override;
   bool IsPrerender2Supported() override;
   std::unique_ptr<content::WebContents> ActivatePortalWebContents(
@@ -658,6 +668,7 @@ class Browser : public TabStripModelObserver,
       content::WebContents* old_contents,
       content::WebContents* new_contents,
       base::OnceCallback<void()> callback) override;
+>>>>>>> chromium
   bool ShouldShowStaleContentOnEviction(content::WebContents* source) override;
   void MediaWatchTimeChanged(
       const content::MediaPlayerWatchTime& watch_time) override;
@@ -668,7 +679,7 @@ class Browser : public TabStripModelObserver,
   bool is_type_app() const { return type_ == TYPE_APP; }
   bool is_type_app_popup() const { return type_ == TYPE_APP_POPUP; }
   bool is_type_devtools() const { return type_ == TYPE_DEVTOOLS; }
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
   bool is_type_custom_tab() const { return type_ == TYPE_CUSTOM_TAB; }
 #endif
   // TODO(crbug.com/990158): |deprecated_is_app()| is added for backwards
@@ -708,6 +719,59 @@ class Browser : public TabStripModelObserver,
   void SetWindowUserTitle(const std::string& user_title);
 
   StatusBubble* GetStatusBubbleForTesting();
+<<<<<<< HEAD
+  UnloadController* GetUnloadControllerForTesting() {
+    return &unload_controller_;
+  }
+
+  // Sets or clears the flags to force showing bookmark bar.
+  void SetForceShowBookmarkBarFlag(ForceShowBookmarkBarFlag flag);
+  void ClearForceShowBookmarkBarFlag(ForceShowBookmarkBarFlag flag);
+
+  // BrowserWindowInterface overrides:
+  views::WebView* GetWebView() override;
+  Profile* GetProfile() override;
+  void OpenGURL(const GURL& gurl, WindowOpenDisposition disposition) override;
+  content::WebContents* OpenURL(
+      const content::OpenURLParams& params,
+      base::OnceCallback<void(content::NavigationHandle&)>
+          navigation_handle_callback) override;
+  const SessionID& GetSessionID() override;
+  TabStripModel* GetTabStripModel() override;
+  bool IsTabStripVisible() override;
+  bool ShouldHideUIForFullscreen() const override;
+  base::CallbackListSubscription RegisterBrowserDidClose(
+      BrowserDidCloseCallback callback) override;
+  views::View* TopContainer() override;
+  base::CallbackListSubscription RegisterActiveTabDidChange(
+      ActiveTabChangeCallback callback) override;
+  tabs::TabInterface* GetActiveTabInterface() override;
+  BrowserWindowFeatures& GetFeatures() override;
+  web_modal::WebContentsModalDialogHost*
+  GetWebContentsModalDialogHostForWindow() override;
+  bool IsActive() override;
+  base::CallbackListSubscription RegisterDidBecomeActive(
+      DidBecomeActiveCallback callback) override;
+  base::CallbackListSubscription RegisterDidBecomeInactive(
+      DidBecomeInactiveCallback callback) override;
+  ExclusiveAccessManager* GetExclusiveAccessManager() override;
+  BrowserActions* GetActions() override;
+  Type GetType() const override;
+  BrowserUserEducationInterface* GetUserEducationInterface() override;
+  web_app::AppBrowserController* GetAppBrowserController() override;
+  std::vector<tabs::TabInterface*> GetAllTabInterfaces() override;
+  Browser* GetBrowserForMigrationOnly() override;
+
+  // Called by BrowserView when on active changes.
+  void DidBecomeActive();
+  void DidBecomeInactive();
+
+#if BUILDFLAG(IS_CHROMEOS)
+  bool IsLockedForOnTask();
+  void SetLockedForOnTask(bool locked);
+#endif
+=======
+>>>>>>> chromium
 
  private:
   friend class BrowserTest;
@@ -934,10 +998,13 @@ class Browser : public TabStripModelObserver,
   // Overridden from ThemeServiceObserver:
   void OnThemeChanged() override;
 
+<<<<<<< HEAD
+=======
   // Overridden from translate::ContentTranslateDriver::TranslationObserver:
   void OnIsPageTranslatedChanged(content::WebContents* source) override;
   void OnTranslateEnabledChanged(content::WebContents* source) override;
 
+>>>>>>> chromium
   // Command and state updating ///////////////////////////////////////////////
 
   // Handle changes to tab strip model.
@@ -957,6 +1024,14 @@ class Browser : public TabStripModelObserver,
   // Handle changes to kDevToolsAvailability preference.
   void OnDevToolsAvailabilityChanged();
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+  // Handle `on_task_locked_` state changes.
+  void OnLockedForOnTaskUpdated();
+#endif
+
+=======
+>>>>>>> chromium
   // UI update coalescing and handling ////////////////////////////////////////
 
   // Asks the toolbar (and as such the location bar) to update its state to
@@ -1053,7 +1128,12 @@ class Browser : public TabStripModelObserver,
   bool AppBrowserSupportsWindowFeature(WindowFeature feature,
                                        bool check_can_support) const;
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+  // See comment on SupportsWindowFeatureImpl for info on `check_can_support`.
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   bool CustomTabBrowserSupportsWindowFeature(WindowFeature feature) const;
 #endif
 
@@ -1232,6 +1312,23 @@ class Browser : public TabStripModelObserver,
 
   WarnBeforeClosingCallback warn_before_closing_callback_;
 
+<<<<<<< HEAD
+  // Tells if the browser should skip warning the user when closing the window.
+  bool force_skip_warning_user_on_close_ = false;
+
+  // If true, immediately updates the UI when scheduled.
+  bool update_ui_immediately_for_testing_ = false;
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // OnTask is a ChromeOS feature that is not related to web browsers, but
+  // happens to be implemented using code in //chrome/browser. The feature,
+  // when enabled, disables certain functionality that a web browser would
+  // never typically disable.
+  bool on_task_locked_ = false;
+#endif
+
+=======
+>>>>>>> chromium
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   std::unique_ptr<extensions::ExtensionBrowserWindowHelper>
       extension_browser_window_helper_;

@@ -19,7 +19,7 @@
 
 class ChromeBrowserMainExtraParts {
  public:
-  virtual ~ChromeBrowserMainExtraParts() {}
+  virtual ~ChromeBrowserMainExtraParts() = default;
 
   // EarlyInitialization methods.
   virtual void PreEarlyInitialization() {}

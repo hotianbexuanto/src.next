@@ -53,7 +53,7 @@ namespace base {
 namespace android {
 
 // Used to mark symbols to be exported in a shared library's symbol table.
-#define JNI_EXPORT __attribute__ ((visibility("default")))
+#define JNI_EXPORT __attribute__((visibility("default")))
 
 // Contains the registration method information for initializing JNI bindings.
 struct RegistrationMethod {
@@ -100,6 +100,8 @@ BASE_EXPORT ScopedJavaLocalRef<jclass> GetClass(JNIEnv* env,
 BASE_EXPORT ScopedJavaLocalRef<jclass> GetClass(JNIEnv* env,
                                                 const char* class_name);
 
+<<<<<<< HEAD
+=======
 // The method will initialize |atomic_class_id| to contain a global ref to the
 // class. And will return that ref on subsequent calls.  It's the caller's
 // responsibility to release the ref when it is no longer needed.
@@ -142,6 +144,7 @@ class BASE_EXPORT MethodID {
                            std::atomic<jmethodID>* atomic_method_id);
 };
 
+>>>>>>> chromium
 // Returns true if an exception is pending in the provided JNIEnv*.
 BASE_EXPORT bool HasException(JNIEnv* env);
 

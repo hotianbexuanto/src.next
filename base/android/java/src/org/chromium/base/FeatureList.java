@@ -4,23 +4,36 @@
 
 package org.chromium.base;
 
+<<<<<<< HEAD
+=======
 import androidx.annotation.Nullable;
+>>>>>>> chromium
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.MainDex;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.library_loader.LibraryLoader;
+import org.chromium.build.annotations.NullMarked;
 
+<<<<<<< HEAD
+/** Provides the state of the native FeatureList. */
+@NullMarked
+=======
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Provides shared capabilities for feature flag support.
  */
+>>>>>>> chromium
 @JNINamespace("base::android")
 @MainDex
 public class FeatureList {
+<<<<<<< HEAD
+    /** Prevent access to default values of the native feature flag. */
+    private static boolean sDisableNativeForTesting;
+=======
     /**
      * Test value overrides for tests without native.
      */
@@ -73,16 +86,31 @@ public class FeatureList {
 
     /** Access to default values of the native feature flag. */
     private static boolean sTestCanUseDefaults;
+>>>>>>> chromium
 
     private FeatureList() {}
 
     /**
+<<<<<<< HEAD
+     * TODO(crbug.com/345483622): Migrate usages and remove isInitialized().
+     *
+     * @deprecated For checking flags, use {@code MutableFlagWithSafeDefault} for flags that have a
+     *     pre-native default value. Use {@code CachedFlag} for flags that should use a disk-cached
+     *     value if checked pre-native. Otherwise, Use {@link #isNativeInitialized()} to check if
+     *     the native FeatureList is initialized.
+=======
      * @return Whether the native FeatureList has been initialized. If this method returns false,
      *         none of the methods in this class that require native access should be called (except
      *         in tests if test features have been set).
+>>>>>>> chromium
      */
     public static boolean isInitialized() {
+<<<<<<< HEAD
+        return (sDisableNativeForTesting && FeatureOverrides.sTestFeatures != null)
+                || isNativeInitialized();
+=======
         return hasTestFeatures() || isNativeInitialized();
+>>>>>>> chromium
     }
 
     /**
@@ -102,6 +130,28 @@ public class FeatureList {
     }
 
     /**
+<<<<<<< HEAD
+     * Block (or unblock) querying feature values from native and instead rely only on test values.
+     *
+     * <p>When native is disabled, calling {@link FeatureMap#isEnabledInNative(String)} will cause
+     * an exception to be thrown and calling {@link FeatureMap#getFieldTrialParamByFeature(String,
+     * String)} will cause the default value to be returned.
+     */
+    public static void setDisableNativeForTesting(boolean value) {
+        boolean prev = sDisableNativeForTesting;
+        sDisableNativeForTesting = value;
+        ResettersForTesting.register(() -> sDisableNativeForTesting = prev);
+    }
+
+    /**
+     * Whether to block querying feature values from native and instead rely only on test values.
+     */
+    public static boolean getDisableNativeForTesting() {
+        return sDisableNativeForTesting;
+    }
+
+    @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
+=======
      * This is called explicitly for instrumentation tests via Features#applyForInstrumentation().
      * Unit tests and Robolectric tests must not invoke this and should rely on the {@link Features}
      * annotations to enable or disable any feature flags.
@@ -188,6 +238,7 @@ public class FeatureList {
         return null;
     }
 
+>>>>>>> chromium
     @NativeMethods
     interface Natives {
         boolean isInitialized();

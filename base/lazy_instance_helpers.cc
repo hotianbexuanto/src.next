@@ -8,8 +8,7 @@
 #include "base/atomicops.h"
 #include "base/threading/platform_thread.h"
 
-namespace base {
-namespace internal {
+namespace base::internal {
 
 bool NeedsLazyInstance(subtle::AtomicWord* state) {
   // Try to create the instance, if we're the first, will go from 0 to
@@ -32,6 +31,19 @@ bool NeedsLazyInstance(subtle::AtomicWord* state) {
     const base::TimeTicks start = base::TimeTicks::Now();
     do {
       const base::TimeDelta elapsed = base::TimeTicks::Now() - start;
+<<<<<<< HEAD
+      // Spin with YieldCurrentThread for at most one ms - this ensures
+      // maximum responsiveness. After that spin with Sleep(1ms) so that we
+      // don't burn excessive CPU time - this also avoids infinite loops due
+      // to priority inversions (https://crbug.com/797129).
+      if (elapsed < Milliseconds(1)) {
+        PlatformThread::YieldCurrentThread();
+      } else {
+        PlatformThread::Sleep(Milliseconds(1));
+      }
+    } while (state.load(std::memory_order_acquire) ==
+             kLazyInstanceStateCreating);
+=======
       // Spin with YieldCurrentThread for at most one ms - this ensures maximum
       // responsiveness. After that spin with Sleep(1ms) so that we don't burn
       // excessive CPU time - this also avoids infinite loops due to priority
@@ -41,6 +53,7 @@ bool NeedsLazyInstance(subtle::AtomicWord* state) {
       else
         PlatformThread::Sleep(TimeDelta::FromMilliseconds(1));
     } while (subtle::Acquire_Load(state) == kLazyInstanceStateCreating);
+>>>>>>> chromium
   }
   // Someone else created the instance.
   return false;
@@ -56,9 +69,9 @@ void CompleteLazyInstance(subtle::AtomicWord* state,
   subtle::Release_Store(state, new_instance);
 
   // Make sure that the lazily instantiated object will get destroyed at exit.
-  if (new_instance && destructor)
+  if (new_instance && destructor) {
     AtExitManager::RegisterCallback(destructor, destructor_arg);
+  }
 }
 
-}  // namespace internal
-}  // namespace base
+}  // namespace base::internal

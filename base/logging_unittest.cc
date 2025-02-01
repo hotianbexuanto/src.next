@@ -67,8 +67,8 @@ namespace logging {
 
 namespace {
 
-using ::testing::Return;
 using ::testing::_;
+using ::testing::Return;
 
 class LoggingTest : public testing::Test {
  protected:
@@ -96,6 +96,28 @@ class MockLogAssertHandler {
 
 TEST_F(LoggingTest, BasicLogging) {
   MockLogSource mock_log_source;
+<<<<<<< HEAD
+
+  // 4 base logs: LOG, LOG_IF, PLOG, and PLOG_IF
+  int expected_logs = 4;
+
+  // 4 verbose logs: VLOG, VLOG_IF, VPLOG, VPLOG_IF.
+  if (VLOG_IS_ON(0)) {
+    expected_logs += 4;
+  }
+
+  // 4 debug logs: DLOG, DLOG_IF, DPLOG, DPLOG_IF.
+  if (DCHECK_IS_ON()) {
+    expected_logs += 4;
+  }
+
+  // 4 verbose debug logs: DVLOG, DVLOG_IF, DVPLOG, DVPLOG_IF
+  if (VLOG_IS_ON(0) && DCHECK_IS_ON()) {
+    expected_logs += 4;
+  }
+
+=======
+>>>>>>> chromium
   EXPECT_CALL(mock_log_source, Log())
       .Times(DCHECK_IS_ON() ? 16 : 8)
       .WillRepeatedly(Return("log message"));
@@ -192,8 +214,9 @@ TEST_F(LoggingTest, LoggingIsLazyByDestination) {
   EXPECT_CALL(mock_log_source, Log()).Times(0);
 
   // Severity >= ERROR is always printed to stderr.
-  EXPECT_CALL(mock_log_source_error, Log()).Times(1).
-      WillRepeatedly(Return("log message"));
+  EXPECT_CALL(mock_log_source_error, Log())
+      .Times(1)
+      .WillRepeatedly(Return("log message"));
 
   LoggingSettings settings;
   settings.logging_dest = LOG_NONE;
@@ -699,6 +722,19 @@ TEST_F(LoggingTest, NestedLogAssertHandlers) {
 // found by ADL, since defining another operator<< prevents name lookup from
 // looking in the global namespace.
 namespace nested_test {
+<<<<<<< HEAD
+class Streamable {};
+[[maybe_unused]] std::ostream& operator<<(std::ostream& out,
+                                          const Streamable&) {
+  return out << "Streamable";
+}
+TEST_F(LoggingTest, StreamingWstringFindsCorrectOperator) {
+  std::wstring wstr = L"Hello World";
+  std::ostringstream ostr;
+  ostr << wstr;
+  EXPECT_EQ("Hello World", ostr.str());
+}
+=======
   class Streamable {};
   ALLOW_UNUSED_TYPE std::ostream& operator<<(std::ostream& out,
                                              const Streamable&) {
@@ -710,6 +746,7 @@ namespace nested_test {
     ostr << wstr;
     EXPECT_EQ("Hello World", ostr.str());
   }
+>>>>>>> chromium
 }  // namespace nested_test
 
 #if defined(OS_FUCHSIA)
@@ -906,6 +943,175 @@ TEST_F(LoggingTest, String16) {
   }
 }
 
+<<<<<<< HEAD
+// Tests that we don't VLOG from logging_unittest except when in the scope
+// of the ScopedVmoduleSwitches.
+TEST_F(LoggingTest, ScopedVmoduleSwitches) {
+  EXPECT_TRUE(VLOG_IS_ON(0));
+
+  // To avoid unreachable-code warnings when VLOG is disabled at compile-time.
+  int expected_logs = 0;
+  if (VLOG_IS_ON(0)) {
+    expected_logs += 1;
+  }
+
+  SetMinLogLevel(LOGGING_FATAL);
+
+  {
+    MockLogSource mock_log_source;
+    EXPECT_CALL(mock_log_source, Log()).Times(0);
+
+    VLOG(1) << mock_log_source.Log();
+  }
+
+  {
+    ScopedVmoduleSwitches scoped_vmodule_switches;
+    scoped_vmodule_switches.InitWithSwitches(__FILE__ "=1");
+    MockLogSource mock_log_source;
+    EXPECT_CALL(mock_log_source, Log())
+        .Times(expected_logs)
+        .WillRepeatedly(Return("log message"));
+
+    VLOG(1) << mock_log_source.Log();
+  }
+
+  {
+    MockLogSource mock_log_source;
+    EXPECT_CALL(mock_log_source, Log()).Times(0);
+
+    VLOG(1) << mock_log_source.Log();
+  }
+}
+
+TEST_F(LoggingTest, BuildCrashString) {
+  EXPECT_EQ("file.cc:42: ",
+            LogMessage("file.cc", 42, LOGGING_ERROR).BuildCrashString());
+
+  // BuildCrashString() should strip path/to/file prefix.
+  LogMessage msg(
+#if BUILDFLAG(IS_WIN)
+      "..\\foo\\bar\\file.cc",
+#else
+      "../foo/bar/file.cc",
+#endif  // BUILDFLAG(IS_WIN)
+      42, LOGGING_ERROR);
+  msg.stream() << "Hello";
+  EXPECT_EQ("file.cc:42: Hello", msg.BuildCrashString());
+}
+
+TEST_F(LoggingTest, SystemErrorNotChanged) {
+  auto set_last_error = [](logging::SystemErrorCode error) {
+#if BUILDFLAG(IS_WIN)
+    ::SetLastError(error);
+#else
+    errno = error;
+#endif
+  };
+
+  SystemErrorCode during_streaming = 0;
+  SystemErrorCode set_during_streaming = 0;
+
+  set_last_error(SystemErrorCode(123));
+  LOG(WARNING) << (during_streaming = GetLastSystemErrorCode())
+               << (set_last_error(SystemErrorCode(42)),
+                   set_during_streaming = GetLastSystemErrorCode());
+
+  // Initializing the LogMessage shouldn't change the observable error code.
+  EXPECT_EQ(SystemErrorCode(123), during_streaming);
+  // Verify that we can set and get the error code during streaming.
+  EXPECT_EQ(SystemErrorCode(42), set_during_streaming);
+  // Verify that the last set error code (during streaming) is preserved after
+  // logging as well.
+  EXPECT_EQ(SystemErrorCode(42), GetLastSystemErrorCode());
+
+  // Repeat the test above but using PLOG.
+  during_streaming = 0;
+  set_during_streaming = 0;
+  set_last_error(SystemErrorCode(123));
+  PLOG(ERROR) << (during_streaming = GetLastSystemErrorCode())
+              << (set_last_error(SystemErrorCode(42)),
+                  set_during_streaming = GetLastSystemErrorCode());
+
+  EXPECT_EQ(SystemErrorCode(123), during_streaming);
+  EXPECT_EQ(SystemErrorCode(42), set_during_streaming);
+  EXPECT_EQ(SystemErrorCode(42), GetLastSystemErrorCode());
+}
+
+TEST_F(LoggingTest, CorrectSystemErrorUsed) {
+  auto set_last_error = [](logging::SystemErrorCode error) {
+#if BUILDFLAG(IS_WIN)
+    ::SetLastError(error);
+#else
+    errno = error;
+#endif
+  };
+
+  // Use a static because only captureless lambdas can be converted to a
+  // function pointer for SetLogMessageHandler().
+  static base::NoDestructor<std::string> log_string;
+  SetLogMessageHandler([](int severity, const char* file, int line,
+                          size_t start, const std::string& str) -> bool {
+    *log_string = str;
+    return true;
+  });
+
+  const SystemErrorCode kTestError = 28;
+  const std::string kExpectedSystemErrorMsg =
+      SystemErrorCodeToString(kTestError);
+
+  set_last_error(kTestError);
+  PLOG(ERROR);
+
+  // Test that the last system error code got printed as expected.
+  EXPECT_NE(std::string::npos, log_string->find(kExpectedSystemErrorMsg));
+
+  if (DCHECK_IS_ON()) {
+    *log_string = "";
+    set_last_error(kTestError);
+    DPLOG(ERROR);
+
+    EXPECT_NE(std::string::npos, log_string->find(kExpectedSystemErrorMsg));
+  }
+}
+
+TEST_F(LoggingTest, BuildTimeVLOG) {
+  // Use a static because only captureless lambdas can be converted to a
+  // function pointer for SetLogMessageHandler().
+  static base::NoDestructor<std::string> log_string;
+  SetLogMessageHandler([](int severity, const char* file, int line,
+                          size_t start, const std::string& str) -> bool {
+    *log_string = str;
+    return true;
+  });
+
+  // No VLOG by default.
+  EXPECT_FALSE(VLOG_IS_ON(1));
+  VLOG(1) << "Expect not logged";
+  EXPECT_TRUE(log_string->empty());
+
+  // Re-define ENABLED_VLOG_LEVEL to enable VLOG(1).
+  // Note that ENABLED_VLOG_LEVEL has impact on all the code after it so please
+  // keep this test case the last one in this file.
+#undef ENABLED_VLOG_LEVEL
+#define ENABLED_VLOG_LEVEL 1
+
+  EXPECT_TRUE(VLOG_IS_ON(1));
+  EXPECT_FALSE(VLOG_IS_ON(2));
+
+  VLOG(1) << "Expect logged";
+  EXPECT_THAT(*log_string, ::testing::MatchesRegex(".* Expect logged\n"));
+
+  log_string->clear();
+  VLOG(2) << "Expect not logged";
+  EXPECT_TRUE(log_string->empty());
+}
+
+// NO NEW TESTS HERE
+// The test above redefines ENABLED_VLOG_LEVEL, so new tests should be added
+// before it.
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 }  // namespace logging

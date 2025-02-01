@@ -21,15 +21,26 @@ import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.compat.ApiHelperForM;
 import org.chromium.base.compat.ApiHelperForP;
 
+<<<<<<< HEAD
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JNINamespace;
+
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+
+/** Exposes radio related information about the current device. */
+@NullMarked
+=======
 /**
  * Exposes radio related information about the current device.
  */
+>>>>>>> chromium
 @JNINamespace("base::android")
 public class RadioUtils {
     // Cached value indicating if app has ACCESS_NETWORK_STATE permission.
-    private static Boolean sHaveAccessNetworkState;
+    private static @Nullable Boolean sHaveAccessNetworkState;
     // Cached value indicating if app has ACCESS_WIFI_STATE permission.
-    private static Boolean sHaveAccessWifiState;
+    private static @Nullable Boolean sHaveAccessWifiState;
 
     private RadioUtils() {}
 

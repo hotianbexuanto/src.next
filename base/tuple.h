@@ -26,6 +26,7 @@
 #define BASE_TUPLE_H_
 
 #include <stddef.h>
+
 #include <tuple>
 #include <utility>
 
@@ -53,10 +54,15 @@ inline void DispatchToMethodImpl(const ObjT& obj,
 }
 
 template <typename ObjT, typename Method, typename Tuple>
+<<<<<<< HEAD
+inline void DispatchToMethod(const ObjT& obj, Method method, Tuple&& args) {
+  constexpr size_t size = std::tuple_size_v<std::decay_t<Tuple>>;
+=======
 inline void DispatchToMethod(const ObjT& obj,
                              Method method,
                              Tuple&& args) {
   constexpr size_t size = std::tuple_size<std::decay_t<Tuple>>::value;
+>>>>>>> chromium
   DispatchToMethodImpl(obj, method, std::forward<Tuple>(args),
                        std::make_index_sequence<size>());
 }

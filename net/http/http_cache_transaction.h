@@ -284,6 +284,13 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
     STATE_NETWORK_READ_COMPLETE,
   };
 
+<<<<<<< HEAD
+  // Action to take when restarting a transaction after a No-Vary-Search
+  // failure.
+  enum class RestartCacheEntryAction {
+    kDontErase,  // Leave the entry in the NoVarySearchCache.
+    kErase,      // Erase the entry from the NoVarySearchCache.
+=======
   // Used for categorizing validation triggers in histograms.
   // NOTE: This enumeration is used in histograms, so please do not add entries
   // in the middle.
@@ -301,7 +308,30 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
     // with this entry (unless we are ignoring them thanks to a loadflag),
     // i.e. it's expired and has nothing that permits validations.
     HINT_UNUSABLE_PER_CACHING_HEADERS = (1 << 0),
+>>>>>>> chromium
   };
+
+  // Result of trying to apply No-Vary-Search to request.
+  //
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  //
+  // LINT.IfChange(NoVarySearchUseResult)
+  enum class NoVarySearchUseResult : uint8_t {
+    kNotApplied = 0,    // Request unsuitable, or feature disabled.
+    kNoMatch = 1,       // Not found in NoVarySearchCache.
+    kURLUnchanged = 2,  // There was a match, but the URL was identical.
+    kUsed = 3,          // Original URL was used.
+    kNotSuitable = 4,   // Unusable according to in-memory hints.
+    kNotOpenable = 5,   // Cache entry doesn't exist or couldn't be opened.
+    kReadOnlyNeedsValidation = 6,  // Validation required but write not allowed.
+    kIncompleteBody = 7,           // Cached response body was incomplete.
+    kCouldntConditionalize = 8,    // Couldn't send conditional request.
+    kValidated = 9,                // Original URL response was revalidated.
+    kUpdated = 10,                 // Original URL response was updated.
+    kMaxValue = kUpdated,
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/net/enums.xml:NoVarySearchUseResult)
 
   // Runs the state transition loop. Resets and calls |callback_| on exit,
   // unless the return value is ERR_IO_PENDING.
@@ -483,7 +513,20 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // to/from the entry. If |entry_is_complete| is false the result may be either
   // a truncated or a doomed entry based on whether the stored response can be
   // resumed or not.
+<<<<<<< HEAD
+  void DoneWithEntry(bool entry_is_complete);
+
+  // Dooms the given entry so that it will not be reused for other requests,
+  // then calls `DoneWithEntry()`.
+  //
+  // This happens when network conditions have changed since the entry was
+  // cached, which results in deterministic failures when trying to use the
+  // cache entry. In order to let future requests succeed, the cache entry
+  // should be doomed.
+  void DoomInconsistentEntry();
+=======
   void DoneWithEntry(bool did_finish);
+>>>>>>> chromium
 
   // Returns an error to signal the caller that the current read failed. The
   // current operation |result| is also logged. If |restart| is true, the
@@ -510,7 +553,7 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // between the byte range request and the cached entry.
   int DoRestartPartialRequest();
 
-  // Resets the relavant internal state to remove traces of internal processing
+  // Resets the relevant internal state to remove traces of internal processing
   // related to range requests. Deletes |partial_| if |delete_object| is true.
   void ResetPartialState(bool delete_object);
 
@@ -572,12 +615,75 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // Disables caching for large content when running on battery.
   bool ShouldDisableCaching(const HttpResponseHeaders* headers) const;
 
+<<<<<<< HEAD
+  // 304 revalidations of resources that set security headers and that get
+  // forwarded might need to set these headers again to avoid being blocked.
+  void UpdateSecurityHeadersBeforeForwarding();
+
+  enum class DiskCacheAccessType {
+    kRead,
+    kWrite,
+  };
+  void BeginDiskCacheAccessTimeCount();
+  void EndDiskCacheAccessTimeCount(DiskCacheAccessType type);
+
+  void RecordEntrySizeHistograms(const disk_cache::Entry& entry);
+
+  // Returns true if the current transaction is in-scope for No-Vary-Search
+  // treatment.
+  bool IsNoVarySearchApplicable() const;
+
+  // Returns true if the current transaction is using a URL that was rewritten
+  // by the NoVarySearchCache.
+  bool IsUsingURLFromNoVarySearchCache() const;
+
+  // Checks for a matching entry in the NoVarySearchCache. If one is found, and
+  // the URL is different, modifies `request_` to use the matching entry, and
+  // returns kUsed. Otherwise returns kNoMatch or KURLUnchanged.
+  NoVarySearchUseResult LookupRequestInNoVarySearchCache();
+
+  // Removes the used NoVarySearchCache entry from the NoVarySearchCache, sets
+  // `use_no_vary_search_cache_` to false, and restarts the transaction from the
+  // beginning.
+  int RestartWithoutNoVarySearchCache(RestartCacheEntryAction entry_action,
+                                      NoVarySearchUseResult restart_reason);
+
+  // If `mutable_request_` has not been initialized, initialize it by making a
+  // shallow copy of `request_`, and then modify `request_` to point to it.
+  void EnsureMutableRequest();
+
+  State next_state_{STATE_NONE};
+
+  // Set when a HTTPCache transaction is pending in parallel with other IO.
+  bool waiting_for_cache_io_ = false;
+
+  // If a pending async HTTPCache transaction takes longer than the parallel
+  // Network IO, this will store the result of the Network IO operation until
+  // the cache transaction completes (or times out).
+  std::optional<int> pending_io_result_ = std::nullopt;
+
+  // Used for tracing.
+  const uint64_t trace_id_;
+=======
   State next_state_;
+>>>>>>> chromium
 
   // Initial request with which Start() was invoked.
   const HttpRequestInfo* initial_request_;
 
+<<<<<<< HEAD
+  // `mutable_request_` is assigned to `request_` after allocation. It must be
+  // declared before `request_` so that it will be destroyed afterwards to
+  // prevent that pointer from dangling.
+  std::unique_ptr<HttpRequestInfo> mutable_request_;
+
+  // The request this transaction is currently processing. Always points either
+  // to `initial_request_` or `mutable_request_`. Is set back to
+  // `initial_request_` when the transaction is restarted.
+  raw_ptr<const HttpRequestInfo> request_ = nullptr;
+=======
   const HttpRequestInfo* request_;
+>>>>>>> chromium
 
   std::string method_;
   RequestPriority priority_;
@@ -665,6 +771,23 @@ class NET_EXPORT_PRIVATE HttpCache::Transaction : public HttpTransaction {
   // other writer transactions, no transaction then accounts for those
   // statistics.
   bool moved_network_transaction_to_writers_;
+
+  // True if we should look up the URL in the NoVarySearchCache. Starts true if
+  // the kHttpCacheNoVarySearch feature is enabled. Set to false if the
+  // transaction needs to be restarted because the URL returned by the
+  // NoVarySearchCache was not usable.
+  bool read_no_vary_search_cache_;
+
+  // The result of applying the No-Vary-Search to the request. For UMA.
+  NoVarySearchUseResult no_vary_search_use_result_ =
+      NoVarySearchUseResult::kNotApplied;
+
+  // If an entry in the NoVarySearchCache was found to be unhelpful, this
+  // handle can be used to erase it. Only set if an entry was found in the
+  // NoVerySearchCache and hasn't been erased already. This is also used as a
+  // flag to indicate we are using a URL provided by the NoVarySearchCache.
+  std::optional<NoVarySearchCache::EraseHandle>
+      no_vary_search_cache_erase_handle_;
 
   // The helper object to use to create WebSocketHandshakeStreamBase
   // objects. Only relevant when establishing a WebSocket connection.

@@ -455,7 +455,72 @@ export class Service implements ActivityLogDelegate, ActivityLogEventDelegate,
     chrome.developerPrivate.notifyDragInstallInProgress();
   }
 
+<<<<<<< HEAD
+  getUserSiteSettings(): Promise<chrome.developerPrivate.UserSiteSettings> {
+    return chrome.developerPrivate.getUserSiteSettings();
+  }
+
+  addUserSpecifiedSites(
+      siteSet: chrome.developerPrivate.SiteSet,
+      hosts: string[]): Promise<void> {
+    return chrome.developerPrivate.addUserSpecifiedSites({siteSet, hosts});
+  }
+
+  removeUserSpecifiedSites(
+      siteSet: chrome.developerPrivate.SiteSet,
+      hosts: string[]): Promise<void> {
+    return chrome.developerPrivate.removeUserSpecifiedSites({siteSet, hosts});
+  }
+
+  getUserAndExtensionSitesByEtld():
+      Promise<chrome.developerPrivate.SiteGroup[]> {
+    return chrome.developerPrivate.getUserAndExtensionSitesByEtld();
+  }
+
+  getMatchingExtensionsForSite(site: string):
+      Promise<chrome.developerPrivate.MatchingExtensionInfo[]> {
+    return chrome.developerPrivate.getMatchingExtensionsForSite(site);
+  }
+
+  getUserSiteSettingsChangedTarget() {
+    return chrome.developerPrivate.onUserSiteSettingsChanged;
+  }
+
+  setShowAccessRequestsInToolbar(id: string, showRequests: boolean) {
+    chrome.developerPrivate.updateExtensionConfiguration({
+      extensionId: id,
+      showAccessRequestsInToolbar: showRequests,
+    });
+  }
+
+  updateSiteAccess(
+      site: string,
+      updates: chrome.developerPrivate.ExtensionSiteAccessUpdate[]):
+      Promise<void> {
+    return chrome.developerPrivate.updateSiteAccess(site, updates);
+  }
+
+  dismissSafetyHubExtensionsMenuNotification() {
+    chrome.developerPrivate.dismissSafetyHubExtensionsMenuNotification();
+  }
+
+  dismissMv2DeprecationNotice(): void {
+    chrome.developerPrivate.updateProfileConfiguration(
+        {isMv2DeprecationNoticeDismissed: true});
+  }
+
+  dismissMv2DeprecationNoticeForExtension(id: string): Promise<void> {
+    return chrome.developerPrivate.dismissMv2DeprecationNoticeForExtension(id);
+  }
+
+  uploadItemToAccount(id: string): Promise<void> {
+    return chrome.developerPrivate.uploadExtensionToAccount(id);
+  }
+
+  static getInstance(): ServiceInterface {
+=======
   static getInstance(): Service {
+>>>>>>> chromium
     return instance || (instance = new Service());
   }
 

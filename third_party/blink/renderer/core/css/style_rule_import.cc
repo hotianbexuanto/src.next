@@ -22,6 +22,11 @@
 
 #include "third_party/blink/renderer/core/css/style_rule_import.h"
 
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/core_probes_inl.h"
+#include "third_party/blink/renderer/core/css/style_scope.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -35,12 +40,26 @@
 namespace blink {
 
 StyleRuleImport::StyleRuleImport(const String& href,
+<<<<<<< HEAD
+                                 LayerName&& layer,
+                                 const StyleScope* scope,
+                                 bool supported,
+                                 String supports_string,
+                                 const MediaQuerySet* media,
+=======
                                  scoped_refptr<MediaQuerySet> media,
+>>>>>>> chromium
                                  OriginClean origin_clean)
     : StyleRuleBase(kImport),
       parent_style_sheet_(nullptr),
       style_sheet_client_(MakeGarbageCollected<ImportedStyleSheetClient>(this)),
       str_href_(href),
+<<<<<<< HEAD
+      layer_(std::move(layer)),
+      scope_(scope),
+      supports_string_(std::move(supports_string)),
+=======
+>>>>>>> chromium
       media_queries_(media),
       loading_(false),
       origin_clean_(origin_clean) {
@@ -57,6 +76,11 @@ void StyleRuleImport::Dispose() {
 void StyleRuleImport::TraceAfterDispatch(blink::Visitor* visitor) const {
   visitor->Trace(style_sheet_client_);
   visitor->Trace(parent_style_sheet_);
+<<<<<<< HEAD
+  visitor->Trace(scope_);
+  visitor->Trace(media_queries_);
+=======
+>>>>>>> chromium
   visitor->Trace(style_sheet_);
   StyleRuleBase::TraceAfterDispatch(visitor);
 }

@@ -40,7 +40,6 @@
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
-#include "third_party/blink/renderer/core/layout/intrinsic_sizing_info.h"
 #include "third_party/blink/renderer/core/layout/layout_video.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
@@ -53,11 +52,15 @@
 
 namespace blink {
 
+<<<<<<< HEAD
+LayoutImage::LayoutImage(Element* element) : LayoutReplaced(element) {}
+=======
 LayoutImage::LayoutImage(Element* element)
     : LayoutReplaced(element, LayoutSize()),
       did_increment_visually_non_empty_pixel_count_(false),
       is_generated_content_(false),
       image_device_pixel_ratio_(1.0f) {}
+>>>>>>> chromium
 
 LayoutImage* LayoutImage::CreateAnonymous(PseudoElement& pseudo) {
   LayoutImage* image = new LayoutImage(nullptr);
@@ -134,6 +137,8 @@ void LayoutImage::ImageChanged(WrappedImagePtr new_image,
         1 / image_resource_->CachedImage()->DevicePixelRatioHeaderValue();
   }
 
+<<<<<<< HEAD
+=======
   if (!did_increment_visually_non_empty_pixel_count_) {
     // At a zoom level of 1 the image is guaranteed to have an integer size.
     View()->GetFrameView()->IncrementVisuallyNonEmptyPixelCount(
@@ -141,20 +146,46 @@ void LayoutImage::ImageChanged(WrappedImagePtr new_image,
     did_increment_visually_non_empty_pixel_count_ = true;
   }
 
+>>>>>>> chromium
   // The replaced content transform depends on the intrinsic size (see:
   // FragmentPaintPropertyTreeBuilder::UpdateReplacedContentTransform).
   SetNeedsPaintPropertyUpdate();
   InvalidatePaintAndMarkForLayoutIfNeeded(defer);
+
+  if (!did_increment_visually_non_empty_pixel_count_) {
+    PhysicalSize default_object_size{LayoutUnit(kDefaultWidth),
+                                     LayoutUnit(kDefaultHeight)};
+    default_object_size.Scale(StyleRef().EffectiveZoom());
+    PhysicalSize concrete_object_size =
+        ConcreteObjectSize(natural_dimensions_, default_object_size);
+    concrete_object_size.Scale(1 / StyleRef().EffectiveZoom());
+    View()->GetFrameView()->IncrementVisuallyNonEmptyPixelCount(
+        ToFlooredSize(concrete_object_size));
+    did_increment_visually_non_empty_pixel_count_ = true;
+  }
 }
 
+<<<<<<< HEAD
+bool LayoutImage::UpdateNaturalSizeIfNeeded() {
+=======
 void LayoutImage::UpdateIntrinsicSizeIfNeeded(const LayoutSize& new_size) {
+>>>>>>> chromium
   NOT_DESTROYED();
-  if (image_resource_->ErrorOccurred())
-    return;
-  SetIntrinsicSize(new_size);
+  PhysicalNaturalSizingInfo new_natural_dimensions;
+  // If the image resource is not associated with an image then we set natural
+  // dimensions of 0x0 ("represents nothing" per HTML spec).
+  if (image_resource_->HasImage()) {
+    new_natural_dimensions = PhysicalNaturalSizingInfo::FromSizingInfo(
+        image_resource_->GetNaturalDimensions(StyleRef().EffectiveZoom()));
+  }
+  const bool dimensions_changed = natural_dimensions_ != new_natural_dimensions;
+  if (!image_resource_->ErrorOccurred()) {
+    natural_dimensions_ = new_natural_dimensions;
+  }
+  return dimensions_changed;
 }
 
-bool LayoutImage::NeedsLayoutOnIntrinsicSizeChange() const {
+bool LayoutImage::NeedsLayoutOnNaturalSizeChange() const {
   NOT_DESTROYED();
   // Flex layout algorithm uses the intrinsic image width/height even if
   // width/height are specified.
@@ -172,23 +203,27 @@ bool LayoutImage::NeedsLayoutOnIntrinsicSizeChange() const {
 void LayoutImage::InvalidatePaintAndMarkForLayoutIfNeeded(
     CanDeferInvalidation defer) {
   NOT_DESTROYED();
+<<<<<<< HEAD
+  const bool dimensions_changed = UpdateNaturalSizeIfNeeded();
+=======
   LayoutSize old_intrinsic_size = IntrinsicSize();
 
   LayoutSize new_intrinsic_size = RoundedLayoutSize(
       ImageSizeOverriddenByIntrinsicSize(StyleRef().EffectiveZoom()));
   UpdateIntrinsicSizeIfNeeded(new_intrinsic_size);
+>>>>>>> chromium
 
   // In the case of generated image content using :before/:after/content, we
   // might not be in the layout tree yet. In that case, we just need to update
-  // our intrinsic size. layout() will be called after we are inserted in the
+  // our natural size. layout() will be called after we are inserted in the
   // tree which will take care of what we are doing here.
   if (!ContainingBlock())
     return;
 
-  if (old_intrinsic_size != new_intrinsic_size) {
+  if (dimensions_changed) {
     SetIntrinsicLogicalWidthsDirty();
 
-    if (NeedsLayoutOnIntrinsicSizeChange()) {
+    if (NeedsLayoutOnNaturalSizeChange()) {
       SetNeedsLayoutAndFullPaintInvalidation(
           layout_invalidation_reason::kSizeChanged);
       return;
@@ -256,6 +291,10 @@ bool LayoutImage::ForegroundIsKnownToBeOpaqueInRect(
   EObjectFit object_fit = StyleRef().GetObjectFit();
   if (object_fit != EObjectFit::kFill && object_fit != EObjectFit::kCover)
     return false;
+  // Object-view-box may leave parts of the content box empty.
+  if (StyleRef().ObjectViewBox()) {
+    return false;
+  }
   // Check for image with alpha.
   DEVTOOLS_TIMELINE_TRACE_EVENT_WITH_CATEGORIES(
       TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "PaintImage",
@@ -304,6 +343,29 @@ bool LayoutImage::NodeAtPoint(HitTestResult& result,
   return inside;
 }
 
+<<<<<<< HEAD
+PhysicalNaturalSizingInfo LayoutImage::GetNaturalDimensions() const {
+  NOT_DESTROYED();
+  PhysicalNaturalSizingInfo natural_dimensions = natural_dimensions_;
+  if (EmbeddedSVGImage()) {
+    // The value returned by LayoutImageResource will be in zoomed CSS
+    // pixels, but for the 'scale-down' object-fit value we want "zoomed
+    // device pixels", so undo the DPR part here.
+    if (StyleRef().GetObjectFit() == EObjectFit::kScaleDown) {
+      natural_dimensions.size.Scale(1 / ImageDevicePixelRatio());
+    }
+  } else if (RuntimeEnabledFeatures::
+                 LayoutImageForceAspectRatioOfOneOnErrorEnabled()) {
+    // Don't compute an intrinsic ratio to preserve historical WebKit behavior
+    // if we're painting alt text and/or a broken image.
+    // Video is excluded from this behavior because video elements have a
+    // default aspect ratio that a failed poster image load should not
+    // override.
+    if (image_resource_->ErrorOccurred() && !IsA<LayoutVideo>(this)) {
+      natural_dimensions.aspect_ratio =
+          PhysicalSize(LayoutUnit(1), LayoutUnit(1));
+    }
+=======
 bool LayoutImage::HasOverriddenIntrinsicSize() const {
   NOT_DESTROYED();
   if (!RuntimeEnabledFeatures::ExperimentalPoliciesEnabled())
@@ -409,7 +471,9 @@ void LayoutImage::ComputeIntrinsicSizingInfo(
       !IsA<LayoutVideo>(this)) {
     intrinsic_sizing_info.aspect_ratio = FloatSize(1, 1);
     return;
+>>>>>>> chromium
   }
+  return natural_dimensions;
 }
 
 bool LayoutImage::NeedsPreferredWidthsRecalculation() const {

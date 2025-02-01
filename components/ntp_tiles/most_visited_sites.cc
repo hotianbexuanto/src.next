@@ -175,7 +175,10 @@ bool MostVisitedSites::DoesSourceExist(TileSource source) const {
       return explore_sites_client_ != nullptr;
   }
   NOTREACHED();
+<<<<<<< HEAD
+=======
   return false;
+>>>>>>> chromium
 }
 
 void MostVisitedSites::SetHomepageClient(
@@ -293,6 +296,11 @@ bool MostVisitedSites::IsShortcutsVisible() const {
 
 bool MostVisitedSites::AddCustomLink(const GURL& url,
                                      const std::u16string& title) {
+<<<<<<< HEAD
+  return ApplyCustomLinksAction(
+      base::BindOnce(&CustomLinksManager::AddLink,
+                     base::Unretained(custom_links_.get()), url, title));
+=======
   if (!custom_links_ || !IsCustomLinksEnabled())
     return false;
 
@@ -311,11 +319,29 @@ bool MostVisitedSites::AddCustomLink(const GURL& url,
     UninitializeCustomLinks();
   }
   return success;
+>>>>>>> chromium
 }
 
 bool MostVisitedSites::UpdateCustomLink(const GURL& url,
                                         const GURL& new_url,
                                         const std::u16string& new_title) {
+<<<<<<< HEAD
+  return ApplyCustomLinksAction(base::BindOnce(
+      &CustomLinksManager::UpdateLink, base::Unretained(custom_links_.get()),
+      url, new_url, new_title));
+}
+
+bool MostVisitedSites::ReorderCustomLink(const GURL& url, size_t new_pos) {
+  return ApplyCustomLinksAction(
+      base::BindOnce(&CustomLinksManager::ReorderLink,
+                     base::Unretained(custom_links_.get()), url, new_pos));
+}
+
+bool MostVisitedSites::DeleteCustomLink(const GURL& url) {
+  return ApplyCustomLinksAction(
+      base::BindOnce(&CustomLinksManager::DeleteLink,
+                     base::Unretained(custom_links_.get()), url));
+=======
   if (!custom_links_ || !IsCustomLinksEnabled())
     return false;
 
@@ -376,6 +402,7 @@ bool MostVisitedSites::DeleteCustomLink(const GURL& url) {
     UninitializeCustomLinks();
   }
   return success;
+>>>>>>> chromium
 }
 
 void MostVisitedSites::UndoCustomLinkAction() {
@@ -662,6 +689,33 @@ NTPTilesVector MostVisitedSites::InsertHomeTile(
   return new_tiles;
 }
 
+<<<<<<< HEAD
+// Ensures |custom_links_| is initialized (exits on failure), then runs
+// |custom_links_action|. On success, builds the tileset. On failure, if this is
+// the first custom link action then uninitialize custom links.
+bool MostVisitedSites::ApplyCustomLinksAction(
+    base::OnceCallback<bool()> custom_links_action) {
+  if (!custom_links_ || !IsCustomLinksEnabled()) {
+    return false;
+  }
+
+  bool is_first_action = !custom_links_->IsInitialized();
+  // Initialize custom links if they have not been initialized yet.
+  InitializeCustomLinks();
+
+  bool success = std::move(custom_links_action).Run();
+  if (success) {
+    if (custom_links_action_count_ != -1) {
+      custom_links_action_count_++;
+    }
+    BuildCurrentTiles();
+  } else if (is_first_action) {
+    // We don't want to keep custom links initialized if the first action after
+    // initialization failed.
+    UninitializeCustomLinks();
+  }
+  return success;
+=======
 absl::optional<NTPTile> MostVisitedSites::CreateExploreSitesTile() {
   if (!explore_sites_client_)
     return absl::nullopt;
@@ -673,6 +727,7 @@ absl::optional<NTPTile> MostVisitedSites::CreateExploreSitesTile() {
   explore_sites_tile.title_source = TileTitleSource::UNKNOWN;
 
   return explore_sites_tile;
+>>>>>>> chromium
 }
 
 void MostVisitedSites::OnCustomLinksChanged() {

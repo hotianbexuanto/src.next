@@ -11,8 +11,11 @@ import androidx.annotation.Nullable;
 
 import org.chromium.base.UserData;
 import org.chromium.base.metrics.RecordHistogram;
+<<<<<<< HEAD
+=======
 import org.chromium.chrome.browser.tab.state.CriticalPersistedTabData;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+>>>>>>> chromium
 import org.chromium.net.NetError;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.url.GURL;
@@ -227,11 +230,6 @@ public class TabUma extends EmptyTabObserver implements UserData {
         mLastShownTimestamp = now;
 
         updateTabState(TAB_STATE_ACTIVE);
-    }
-
-    private static TabModelSelector getTabModelSelector(Tab tab) {
-        TabImpl tabImpl = (TabImpl) tab;
-        return tabImpl.getActivity().getTabModelSelector();
     }
 
     @Override

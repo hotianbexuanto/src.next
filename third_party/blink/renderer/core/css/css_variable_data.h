@@ -22,6 +22,71 @@ class CORE_EXPORT CSSVariableData : public RefCounted<CSSVariableData> {
   USING_FAST_MALLOC(CSSVariableData);
 
  public:
+<<<<<<< HEAD
+  CSSVariableData()
+      : length_(0),
+        is_animation_tainted_(false),
+        is_attr_tainted_(false),
+        needs_variable_resolution_(false),
+        is_8bit_(true),
+        has_font_units_(false),
+        has_root_font_units_(false),
+        has_line_height_units_(false) {}
+
+  using PassKey = base::PassKey<CSSVariableData>;
+  CSSVariableData(PassKey,
+                  StringView,
+                  bool is_animation_tainted,
+                  bool is_attr_tainted,
+                  bool needs_variable_resolution,
+                  bool has_font_units,
+                  bool has_root_font_units,
+                  bool has_line_height_units);
+
+  // This is the fastest (non-trivial) constructor if you've got the has_* data
+  // already, e.g. because you extracted them while tokenizing (see
+  // ExtractFeatures()) or got them from another CSSVariableData instance during
+  // substitution.
+  static CSSVariableData* Create(StringView original_text,
+                                 bool is_animation_tainted,
+                                 bool is_attr_tainted,
+                                 bool needs_variable_resolution,
+                                 bool has_font_units,
+                                 bool has_root_font_units,
+                                 bool has_line_height_units) {
+    if (original_text.length() > kMaxVariableBytes) {
+      // This should have been blocked off during variable substitution.
+      NOTREACHED();
+    }
+
+    return MakeGarbageCollected<CSSVariableData>(
+        AdditionalBytes(original_text.Is8Bit() ? original_text.length()
+                                               : 2 * original_text.length()),
+        PassKey(), original_text, is_animation_tainted, is_attr_tainted,
+        needs_variable_resolution, has_font_units, has_root_font_units,
+        has_line_height_units);
+  }
+
+  // This tokenizes the string to determine the has_* data.
+  // (The tokens are not used apart from that; only the original string is
+  // stored.)
+  static CSSVariableData* Create(const String& original_text,
+                                 bool is_animation_tainted,
+                                 bool is_attr_tainted,
+                                 bool needs_variable_resolution);
+
+  void Trace(Visitor*) const {}
+
+  StringView OriginalText() const {
+    // SAFETY: See AdditionalBytes() in Create().
+    if (is_8bit_) {
+      return StringView(UNSAFE_BUFFERS(
+          base::span(reinterpret_cast<const LChar*>(this + 1), length_)));
+    } else {
+      return StringView(UNSAFE_BUFFERS(
+          base::span(reinterpret_cast<const UChar*>(this + 1), length_)));
+    }
+=======
   static scoped_refptr<CSSVariableData> Create() {
     return base::AdoptRef(new CSSVariableData());
   }
@@ -48,6 +113,7 @@ class CORE_EXPORT CSSVariableData : public RefCounted<CSSVariableData> {
         std::move(resolved_tokens), std::move(backing_strings),
         is_animation_tainted, has_font_units, has_root_font_units, base_url,
         charset));
+>>>>>>> chromium
   }
 
   CSSParserTokenRange TokenRange() const { return tokens_; }
@@ -56,9 +122,13 @@ class CORE_EXPORT CSSVariableData : public RefCounted<CSSVariableData> {
   const Vector<String>& BackingStrings() const { return backing_strings_; }
   String Serialize() const;
 
+  bool EqualsIgnoringAttrTainting(const CSSVariableData& other) const;
+
   bool operator==(const CSSVariableData& other) const;
 
   bool IsAnimationTainted() const { return is_animation_tainted_; }
+
+  bool IsAttrTainted() const { return is_attr_tainted_; }
 
   bool NeedsVariableResolution() const { return needs_variable_resolution_; }
 
@@ -105,6 +175,34 @@ class CORE_EXPORT CSSVariableData : public RefCounted<CSSVariableData> {
 
   void ConsumeAndUpdateTokens(const CSSParserTokenRange&);
 
+<<<<<<< HEAD
+  // The maximum number of bytes for a CSS variable (including text
+  // that comes from var() substitution). This matches Firefox.
+  //
+  // If you change this, length_ below may need updates.
+  //
+  // https://drafts.csswg.org/css-variables/#long-variables
+  static const size_t kMaxVariableBytes = 2097152;
+
+ private:
+  // We'd like to use bool for the booleans, but this causes the struct to
+  // balloon in size on Windows:
+  // https://randomascii.wordpress.com/2010/06/06/bit-field-packing-with-visual-c/
+
+  // Enough for storing up to 2MB (and then some), cf. kMaxSubstitutionBytes.
+  // The remaining 3 bits are kept in reserve for future use.
+  const unsigned length_ : 22;
+  const unsigned is_animation_tainted_ : 1;       // bool.
+  const unsigned is_attr_tainted_ : 1;            // bool.
+  const unsigned needs_variable_resolution_ : 1;  // bool.
+  const unsigned is_8bit_ : 1;                    // bool.
+  unsigned has_font_units_ : 1;                   // bool.
+  unsigned has_root_font_units_ : 1;              // bool.
+  unsigned has_line_height_units_ : 1;            // bool.
+  unsigned /* unused_ */ : 3;
+
+  // The actual character data is stored after this.
+=======
   // tokens_ may have raw pointers to string data, we store the String objects
   // owning that data in backing_strings_ to keep it alive alongside the
   // tokens_.
@@ -117,6 +215,7 @@ class CORE_EXPORT CSSVariableData : public RefCounted<CSSVariableData> {
   bool has_root_font_units_ = false;
   String base_url_;
   WTF::TextEncoding charset_;
+>>>>>>> chromium
 };
 
 }  // namespace blink

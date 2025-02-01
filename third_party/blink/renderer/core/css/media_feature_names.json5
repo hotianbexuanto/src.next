@@ -60,6 +60,17 @@
     "-webkit-transform-3d",
     "scan",
     "device-posture",
+<<<<<<< HEAD
+    "horizontal-viewport-segments",
+    "vertical-viewport-segments",
+    "snapped",
+    "stuck",
+    "inverted-colors",
+    "scripting",
+    "resizable",
+    "scrollable",
+=======
     "screen-spanning",
+>>>>>>> chromium
   ],
 }

@@ -75,8 +75,39 @@ bool HttpBasicState::IsConnectionReused() const {
          connection_->reuse_type() == ClientSocketHandle::UNUSED_IDLE;
 }
 
+<<<<<<< HEAD
+void HttpBasicState::SetConnectionReused() {
+  connection_->set_reuse_type(StreamSocketHandle::SocketReuseType::kReusedIdle);
+}
+
+bool HttpBasicState::CanReuseConnection() const {
+  return parser_ && connection_->socket() && parser_->CanReuseConnection();
+}
+
+bool HttpBasicState::GetLoadTimingInfo(LoadTimingInfo* load_timing_info) const {
+  return connection_->GetLoadTimingInfo(IsConnectionReused(), load_timing_info);
+}
+
+void HttpBasicState::GetSSLInfo(SSLInfo* ssl_info) {
+  CHECK(connection_);
+  if (!connection_->socket() || !connection_->socket()->GetSSLInfo(ssl_info)) {
+    *ssl_info = SSLInfo();
+  }
+}
+
+int HttpBasicState::GetRemoteEndpoint(IPEndPoint* endpoint) {
+  if (!connection_ || !connection_->socket()) {
+    return ERR_SOCKET_NOT_CONNECTED;
+  }
+  return connection_->socket()->GetPeerAddress(endpoint);
+}
+
+const std::set<std::string>& HttpBasicState::GetDnsAliases() const {
+  static const base::NoDestructor<std::set<std::string>> emptyset_result;
+=======
 const std::vector<std::string>& HttpBasicState::GetDnsAliases() const {
   static const base::NoDestructor<std::vector<std::string>> emptyvector_result;
+>>>>>>> chromium
   return (connection_ && connection_->socket())
              ? connection_->socket()->GetDnsAliases()
              : *emptyvector_result;

@@ -10,9 +10,14 @@ import android.media.AudioManager;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.base.ThreadUtils;
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+>>>>>>> chromium
 
 /**
  * AudioFocusDelegate is the Java counterpart of content::AudioFocusDelegateAndroid.
@@ -26,11 +31,16 @@ import org.chromium.base.annotations.NativeMethods;
  * like a notification.
  */
 @JNINamespace("content")
+@NullMarked
 public class AudioFocusDelegate implements AudioManager.OnAudioFocusChangeListener {
     private static final String TAG = "MediaSession";
 
     private int mFocusType;
     private boolean mIsDucking;
+<<<<<<< HEAD
+    private @Nullable AudioFocusRequest mFocusRequest;
+=======
+>>>>>>> chromium
 
     // Native pointer to C++ content::AudioFocusDelegateAndroid.
     // It will be set to 0 when the native AudioFocusDelegateAndroid object is destroyed.
@@ -74,8 +84,38 @@ public class AudioFocusDelegate implements AudioManager.OnAudioFocusChangeListen
     }
 
     private boolean requestAudioFocusInternal() {
+<<<<<<< HEAD
+        AudioManager am =
+                (AudioManager)
+                        ContextUtils.getApplicationContext()
+                                .getSystemService(Context.AUDIO_SERVICE);
+
+        int result;
+        AudioAttributes playbackAttributes =
+                new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_UNKNOWN)
+                        .build();
+        mFocusRequest =
+                new AudioFocusRequest.Builder(mFocusType)
+                        .setAudioAttributes(playbackAttributes)
+                        .setAcceptsDelayedFocusGain(false)
+                        .setWillPauseWhenDucked(false)
+                        .setOnAudioFocusChangeListener(this, mHandler)
+                        .build();
+        try {
+            result = am.requestAudioFocus(mFocusRequest);
+        } catch (SecurityException e) {
+            // If we get a SecurityException, the platform has a bug and requestAudioFocus is broken
+            // (at least under our current running conditions). Pretend that everything worked,
+            // because the alternative is that media such as videos may refuse to ever play.
+            Log.w(TAG, "audio focus coordination is broken", e);
+            return true;
+        }
+=======
         AudioManager am = (AudioManager) ContextUtils.getApplicationContext().getSystemService(
                 Context.AUDIO_SERVICE);
+>>>>>>> chromium
 
         int result = am.requestAudioFocus(this, AudioManager.STREAM_MUSIC, mFocusType);
         return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
@@ -103,10 +143,15 @@ public class AudioFocusDelegate implements AudioManager.OnAudioFocusChangeListen
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                 mIsDucking = true;
+<<<<<<< HEAD
+                AudioFocusDelegateJni.get()
+                        .onStartDucking(mNativeAudioFocusDelegateAndroid, AudioFocusDelegate.this);
+=======
                 AudioFocusDelegateJni.get().recordSessionDuck(
                         mNativeAudioFocusDelegateAndroid, AudioFocusDelegate.this);
                 AudioFocusDelegateJni.get().onStartDucking(
                         mNativeAudioFocusDelegateAndroid, AudioFocusDelegate.this);
+>>>>>>> chromium
                 break;
             case AudioManager.AUDIOFOCUS_LOSS:
                 abandonAudioFocus();
@@ -125,6 +170,9 @@ public class AudioFocusDelegate implements AudioManager.OnAudioFocusChangeListen
         void onResume(long nativeAudioFocusDelegateAndroid, AudioFocusDelegate caller);
         void onStartDucking(long nativeAudioFocusDelegateAndroid, AudioFocusDelegate caller);
         void onStopDucking(long nativeAudioFocusDelegateAndroid, AudioFocusDelegate caller);
+<<<<<<< HEAD
+=======
         void recordSessionDuck(long nativeAudioFocusDelegateAndroid, AudioFocusDelegate caller);
+>>>>>>> chromium
     }
 }

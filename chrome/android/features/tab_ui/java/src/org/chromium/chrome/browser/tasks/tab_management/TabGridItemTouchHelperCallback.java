@@ -19,15 +19,29 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.chromium.base.metrics.RecordUserAction;
+<<<<<<< HEAD
+import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.base.supplier.ObservableSupplierImpl;
+import org.chromium.base.supplier.Supplier;
+=======
+>>>>>>> chromium
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.tabmodel.TabGroupFeatureUtils;
+import org.chromium.chrome.browser.tabmodel.TabGroupModelFilter;
+import org.chromium.chrome.browser.tabmodel.TabGroupUtils;
+import org.chromium.chrome.browser.tabmodel.TabModel;
+import org.chromium.chrome.browser.tasks.tab_management.MessageService.MessageType;
+=======
 import org.chromium.chrome.browser.tabmodel.EmptyTabModelFilter;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelFilter;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tasks.tab_groups.TabGroupModelFilter;
 import org.chromium.chrome.browser.tasks.tab_groups.TabGroupUtils;
+>>>>>>> chromium
 import org.chromium.chrome.browser.tasks.tab_management.TabListCoordinator.TabListMode;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabActionListener;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabGridDialogHandler;
@@ -45,7 +59,13 @@ import java.util.List;
 public class TabGridItemTouchHelperCallback extends ItemTouchHelper.SimpleCallback {
 
     private final TabListModel mModel;
+<<<<<<< HEAD
+    private final Supplier<TabGroupModelFilter> mCurrentTabGroupModelFilterSupplier;
+    private final ObservableSupplierImpl<Integer> mRecentlySwipedTabIdSupplier =
+            new ObservableSupplierImpl<>(Tab.INVALID_TAB_ID);
+=======
     private final TabModelSelector mTabModelSelector;
+>>>>>>> chromium
     private final TabListMediator.TabActionListener mTabClosedListener;
     private final String mComponentName;
     private final TabListMediator.TabGridDialogHandler mTabGridDialogHandler;
@@ -175,6 +195,9 @@ public class TabGridItemTouchHelperCallback extends ItemTouchHelper.SimpleCallba
         SimpleRecyclerViewAdapter.ViewHolder simpleViewHolder =
                 (SimpleRecyclerViewAdapter.ViewHolder) viewHolder;
 
+        int tabId = simpleViewHolder.model.get(TabProperties.TAB_ID);
+        mRecentlySwipedTabIdSupplier.set(tabId);
+
         if (simpleViewHolder.model.get(CARD_TYPE) == TAB) {
             mTabClosedListener.run(simpleViewHolder.model.get(TabProperties.TAB_ID));
 
@@ -233,8 +256,20 @@ public class TabGridItemTouchHelperCallback extends ItemTouchHelper.SimpleCallba
                         mRecyclerView.findViewHolderForAdapterPosition(mUnGroupTabIndex);
                 if (ungroupViewHolder != null && !mRecyclerView.isComputingLayout()) {
                     View ungroupItemView = ungroupViewHolder.itemView;
+<<<<<<< HEAD
+                    int tabId = mModel.get(mUnGroupTabIndex).model.get(TabProperties.TAB_ID);
+                    @Nullable Tab tab = filter.getTabModel().getTabById(tabId);
+                    if (tab != null) {
+                        filter.getTabUngrouper()
+                                .ungroupTabs(
+                                        List.of(tab),
+                                        /* trailing= */ true,
+                                        /* allowDialog= */ true);
+                    }
+=======
                     filter.moveTabOutOfGroup(
                             mModel.get(mUnGroupTabIndex).model.get(TabProperties.TAB_ID));
+>>>>>>> chromium
                     // Handle the case where the recyclerView is cleared out after ungrouping the
                     // last tab in group.
                     if (mRecyclerView.getAdapter().getItemCount() != 0) {
@@ -348,11 +383,26 @@ public class TabGridItemTouchHelperCallback extends ItemTouchHelper.SimpleCallba
     }
 
     private void onTabMergeToGroup(int selectedCardIndex, int hoveredCardIndex) {
+<<<<<<< HEAD
+        TabGroupModelFilter filter = mCurrentTabGroupModelFilterSupplier.get();
+        Tab selectedCard = filter.getTabAt(selectedCardIndex);
+        Tab hoveredCard = filter.getTabAt(hoveredCardIndex);
+        if (selectedCard == null) return;
+        if (hoveredCard == null) return;
+        boolean willMergingCreateNewGroup =
+                filter.willMergingCreateNewGroup(List.of(selectedCard, hoveredCard));
+        filter.mergeTabsToGroup(selectedCard.getId(), hoveredCard.getId());
+
+        if (willMergingCreateNewGroup && !TabGroupFeatureUtils.shouldSkipGroupCreationDialog()) {
+            mTabGroupCreationDialogManager.showDialog(hoveredCard.getRootId(), filter);
+        }
+=======
         TabGroupModelFilter filter =
                 (TabGroupModelFilter) mTabModelSelector.getTabModelFilterProvider()
                         .getCurrentTabModelFilter();
         filter.mergeTabsToGroup(filter.getTabAt(selectedCardIndex).getId(),
                 filter.getTabAt(hoveredCardIndex).getId());
+>>>>>>> chromium
 
         // If user has used drop-to-merge, send a signal to disable
         // FeatureConstants.TAB_GROUPS_DRAG_AND_DROP_FEATURE.
@@ -389,6 +439,11 @@ public class TabGridItemTouchHelperCallback extends ItemTouchHelper.SimpleCallba
     boolean hasDragFlagForTesting(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
         int flags = getMovementFlags(recyclerView, viewHolder);
         return (flags >> 16) != 0;
+    }
+
+    /** Provides the tab ID for the most recently swiped tab. */
+    ObservableSupplier<Integer> getRecentlySwipedTabIdSupplier() {
+        return mRecentlySwipedTabIdSupplier;
     }
 
     @VisibleForTesting

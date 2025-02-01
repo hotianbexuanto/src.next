@@ -29,7 +29,7 @@
 #include "cc/input/event_listener_properties.h"
 #include "cc/input/layer_selection_bound.h"
 #include "cc/input/overscroll_behavior.h"
-#include "cc/paint/paint_image.h"
+#include "cc/paint/draw_image.h"
 #include "cc/trees/paint_holding_commit_trigger.h"
 #include "cc/trees/paint_holding_reason.h"
 #include "components/viz/common/surfaces/frame_sink_id.h"
@@ -499,6 +499,9 @@ class CORE_EXPORT ChromeClient : public GarbageCollected<ChromeClient> {
 
   virtual void DidUpdateBrowserControls() const {}
 
+  virtual void DidUpdateMaxSafeAreaInsets(
+      const gfx::InsetsF& max_safe_area_insets) const {}
+
   virtual void RegisterPopupOpeningObserver(PopupOpeningObserver*) = 0;
   virtual void UnregisterPopupOpeningObserver(PopupOpeningObserver*) = 0;
   virtual void NotifyPopupOpeningObservers() const = 0;
@@ -512,7 +515,7 @@ class CORE_EXPORT ChromeClient : public GarbageCollected<ChromeClient> {
   }
 
   virtual void RequestDecode(LocalFrame*,
-                             const cc::PaintImage& image,
+                             const cc::DrawImage& image,
                              base::OnceCallback<void(bool)> callback) {
     std::move(callback).Run(false);
   }
@@ -522,7 +525,11 @@ class CORE_EXPORT ChromeClient : public GarbageCollected<ChromeClient> {
   // sometimes be the swap time, as is the case when the swap is aborted. In
   // this case, WebSwapResult will be DidNotSwap.
   using ReportTimeCallback =
+<<<<<<< HEAD
+      base::OnceCallback<void(const viz::FrameTimingDetails&)>;
+=======
       WTF::CrossThreadOnceFunction<void(WebSwapResult, base::TimeTicks)>;
+>>>>>>> chromium
   virtual void NotifyPresentationTime(LocalFrame& frame,
                                       ReportTimeCallback callback) {}
 

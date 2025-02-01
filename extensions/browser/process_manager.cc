@@ -8,14 +8,25 @@
 #include <unordered_set>
 #include <vector>
 
+<<<<<<< HEAD
+#include "base/containers/contains.h"
+#include "base/feature_list.h"
+#include "base/functional/bind.h"
+=======
 #include "base/bind.h"
 #include "base/feature_list.h"
 #include "base/guid.h"
+>>>>>>> chromium
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/metrics/field_trial_params.h"
+<<<<<<< HEAD
+#include "base/metrics/histogram_functions.h"
+#include "base/observer_list.h"
+=======
 #include "base/metrics/histogram_macros.h"
+>>>>>>> chromium
 #include "base/one_shot_event.h"
 #include "base/single_thread_task_runner.h"
 #include "base/strings/string_number_conversions.h"
@@ -51,7 +62,12 @@
 #include "extensions/browser/view_type_utils.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
+<<<<<<< HEAD
+#include "extensions/common/extension_features.h"
+#include "extensions/common/extension_id.h"
+=======
 #include "extensions/common/extension_messages.h"
+>>>>>>> chromium
 #include "extensions/common/manifest_handlers/background_info.h"
 #include "extensions/common/manifest_handlers/incognito_info.h"
 #include "extensions/common/mojom/renderer.mojom.h"
@@ -132,7 +148,6 @@ bool IsFrameInExtensionHost(ExtensionHost* extension_host,
 class IncognitoProcessManager : public ProcessManager {
  public:
   IncognitoProcessManager(BrowserContext* incognito_context,
-                          BrowserContext* original_context,
                           ExtensionRegistry* extension_registry);
   ~IncognitoProcessManager() override {}
   bool CreateBackgroundHost(const Extension* extension,
@@ -226,6 +241,20 @@ ProcessManager* ProcessManager::Get(BrowserContext* context) {
 ProcessManager* ProcessManager::Create(BrowserContext* context) {
   ExtensionRegistry* extension_registry = ExtensionRegistry::Get(context);
   ExtensionsBrowserClient* client = ExtensionsBrowserClient::Get();
+<<<<<<< HEAD
+
+  // Create a specialized ProcessManager for incognito contexts. Note that in
+  // the guest session, there is a single off-the-record context.  Unlike a
+  // regular incognito mode, background pages of extensions must be created
+  // regardless of whether extensions use "spanning" or "split" incognito
+  // behavior.
+  if (context->IsOffTheRecord() && !client->IsGuestSession(context)) {
+    return std::make_unique<IncognitoProcessManager>(context,
+                                                     extension_registry);
+  }
+
+  return std::make_unique<ProcessManager>(context, extension_registry);
+=======
   if (client->IsGuestSession(context)) {
     // In the guest session, there is a single off-the-record context.  Unlike
     // a regular incognito mode, background pages of extensions must be
@@ -262,19 +291,26 @@ ProcessManager* ProcessManager::CreateIncognitoForTesting(
   return new IncognitoProcessManager(incognito_context,
                                      original_context,
                                      extension_registry);
+>>>>>>> chromium
 }
 
 ProcessManager::ProcessManager(BrowserContext* context,
-                               BrowserContext* original_context,
                                ExtensionRegistry* extension_registry)
     : extension_registry_(extension_registry),
-      site_instance_(content::SiteInstance::Create(context)),
       browser_context_(context),
       worker_task_runner_(content::GetIOThreadTaskRunner({})),
       startup_background_hosts_created_(false),
       last_background_close_sequence_id_(0) {
-  // ExtensionRegistry is shared between incognito and regular contexts.
-  DCHECK_EQ(original_context, extension_registry_->browser_context());
+  // We are in the process of removing the primordial SiteInstance for
+  // extensions. With the associated feature enabled, the SiteInstance will
+  // always be null.
+  // TODO(https://crbug.com/334991035): Remove this block after we're confident
+  // this doesn't break anything.
+  if (!base::FeatureList::IsEnabled(
+          extensions_features::kRemoveCoreSiteInstance)) {
+    site_instance_ = content::SiteInstance::Create(context);
+  }
+
   extension_registry_->AddObserver(this);
 
   // Only the original profile needs to listen for ready to create background
@@ -304,12 +340,11 @@ void ProcessManager::Shutdown() {
 }
 
 void ProcessManager::RegisterRenderFrameHost(
-    content::WebContents* web_contents,
     content::RenderFrameHost* render_frame_host,
     const Extension* extension) {
   DCHECK(render_frame_host->IsRenderFrameLive());
   ExtensionRenderFrameData* data = &all_extension_frames_[render_frame_host];
-  data->view_type = GetViewType(web_contents);
+  data->view_type = GetViewType(render_frame_host);
 
   // Keep the lazy background page alive as long as any non-background-page
   // extension views are visible. Keepalive count balanced in
@@ -337,7 +372,7 @@ void ProcessManager::UnregisterRenderFrameHost(
 
 scoped_refptr<content::SiteInstance> ProcessManager::GetSiteInstanceForURL(
     const GURL& url) {
-  return site_instance_->GetRelatedSiteInstance(url);
+  return site_instance_ ? site_instance_->GetRelatedSiteInstance(url) : nullptr;
 }
 
 const ProcessManager::FrameSet ProcessManager::GetAllFrames() const {
@@ -393,9 +428,29 @@ bool ProcessManager::CreateBackgroundHost(const Extension* extension,
     return true;  // TODO(kalman): return false here? It might break things...
 
   DVLOG(1) << "CreateBackgroundHost " << extension->id();
+<<<<<<< HEAD
+
+  // If the extension is spanning mode, we use the original (on-the-record)
+  // BrowserContext.
+  content::BrowserContext* browser_context_to_use = browser_context_;
+  if (browser_context_->IsOffTheRecord() &&
+      IncognitoInfo::IsSpanningMode(extension)) {
+    browser_context_to_use =
+        ExtensionsBrowserClient::Get()->GetContextRedirectedToOriginal(
+            browser_context());
+  }
+
+  ExtensionHost* host = new ExtensionHost(
+      extension, GetSiteInstanceForURL(url).get(), browser_context_to_use, url,
+      mojom::ViewType::kExtensionBackgroundPage);
+  host->SetCloseHandler(
+      base::BindOnce(&ProcessManager::HandleCloseExtensionHost,
+                     weak_ptr_factory_.GetWeakPtr()));
+=======
   ExtensionHost* host =
       new ExtensionHost(extension, GetSiteInstanceForURL(url).get(), url,
                         mojom::ViewType::kExtensionBackgroundPage);
+>>>>>>> chromium
   host->CreateRendererSoon();
   OnBackgroundHostCreated(host);
   return true;
@@ -446,11 +501,15 @@ ExtensionHost* ProcessManager::GetExtensionHostForRenderFrameHost(
   return nullptr;
 }
 
+<<<<<<< HEAD
+bool ProcessManager::WakeEventPage(const ExtensionId& extension_id,
+=======
 bool ProcessManager::IsEventPageSuspended(const std::string& extension_id) {
   return GetBackgroundHostForExtension(extension_id) == nullptr;
 }
 
 bool ProcessManager::WakeEventPage(const std::string& extension_id,
+>>>>>>> chromium
                                    base::OnceCallback<void(bool)> callback) {
   if (GetBackgroundHostForExtension(extension_id)) {
     // The extension is already awake.
@@ -682,7 +741,6 @@ void ProcessManager::OnExtensionUnloaded(BrowserContext* browser_context,
 }
 
 void ProcessManager::CreateStartupBackgroundHosts() {
-  SCOPED_UMA_HISTOGRAM_TIMER("Extensions.ProcessManagerStartupHostsTime2");
   DCHECK(!startup_background_hosts_created_);
   for (const scoped_refptr<const Extension>& extension :
            extension_registry_->enabled_extensions()) {
@@ -988,7 +1046,7 @@ void ProcessManager::RenderProcessExited(
     const content::ChildProcessTerminationInfo& info) {
   DCHECK(process_observations_.IsObservingSource(host));
   process_observations_.RemoveObservation(host);
-  const int render_process_id = host->GetID();
+  const int render_process_id = host->GetDeprecatedID();
   // Look up and then clean up the entries that are affected by
   // |render_process_id| destruction.
   //
@@ -1089,9 +1147,8 @@ void ProcessManager::ClearBackgroundPageData(const std::string& extension_id) {
 
 IncognitoProcessManager::IncognitoProcessManager(
     BrowserContext* incognito_context,
-    BrowserContext* original_context,
     ExtensionRegistry* extension_registry)
-    : ProcessManager(incognito_context, original_context, extension_registry) {
+    : ProcessManager(incognito_context, extension_registry) {
   DCHECK(incognito_context->IsOffTheRecord());
 }
 

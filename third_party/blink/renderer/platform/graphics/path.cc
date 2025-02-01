@@ -147,6 +147,20 @@ void Path::Apply(void* info, PathApplierFunction function) const {
         break;
       case SkPath::kLine_Verb:
         path_element.type = kPathElementAddLineToPoint;
+<<<<<<< HEAD
+        path_element.points =
+            ConvertPathPoints(path_points, base::span(pts).subspan<1, 1>());
+        break;
+      case SkPath::kQuad_Verb:
+        path_element.type = kPathElementAddQuadCurveToPoint;
+        path_element.points =
+            ConvertPathPoints(path_points, base::span(pts).subspan<1, 2>());
+        break;
+      case SkPath::kCubic_Verb:
+        path_element.type = kPathElementAddCurveToPoint;
+        path_element.points =
+            ConvertPathPoints(path_points, base::span(pts).subspan<1, 3>());
+=======
         path_element.points = ConvertPathPoints(path_points, &pts[1], 1);
         break;
       case SkPath::kQuad_Verb:
@@ -156,6 +170,7 @@ void Path::Apply(void* info, PathApplierFunction function) const {
       case SkPath::kCubic_Verb:
         path_element.type = kPathElementAddCurveToPoint;
         path_element.points = ConvertPathPoints(path_points, &pts[1], 3);
+>>>>>>> chromium
         break;
       case SkPath::kConic_Verb: {
         // Approximate with quads.  Use two for now, increase if more precision
@@ -168,9 +183,15 @@ void Path::Apply(void* info, PathApplierFunction function) const {
 
         path_element.type = kPathElementAddQuadCurveToPoint;
         for (unsigned i = 0; i < kQuadCount; ++i) {
+<<<<<<< HEAD
+          path_element.points = ConvertPathPoints(
+              path_points, base::span(quads).subspan(1 + 2 * i, 2u));
+          function(info, path_element);
+=======
           path_element.points =
               ConvertPathPoints(path_points, &quads[1 + 2 * i], 2);
           function(info, &path_element);
+>>>>>>> chromium
         }
         continue;
       }

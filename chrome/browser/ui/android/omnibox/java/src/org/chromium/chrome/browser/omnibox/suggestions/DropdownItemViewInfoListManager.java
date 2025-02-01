@@ -8,10 +8,16 @@ import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 import android.view.View;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
+import org.chromium.ui.base.DeviceFormFactor;
+=======
 import androidx.annotation.NonNull;
 
 import org.chromium.chrome.browser.omnibox.styles.OmniboxTheme;
 import org.chromium.components.omnibox.AutocompleteResult;
+>>>>>>> chromium
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -21,6 +27,7 @@ import java.util.Collections;
 import java.util.List;
 
 /** Manages the list of DropdownItemViewInfo elements. */
+@NullMarked
 class DropdownItemViewInfoListManager {
     private final ModelList mManagedModel;
     private final SparseBooleanArray mGroupsCollapsedState;
@@ -28,7 +35,11 @@ class DropdownItemViewInfoListManager {
     private @OmniboxTheme int mOmniboxTheme;
     private List<DropdownItemViewInfo> mSourceViewInfoList;
 
+<<<<<<< HEAD
+    DropdownItemViewInfoListManager(ModelList managedModel, Context context) {
+=======
     DropdownItemViewInfoListManager(@NonNull ModelList managedModel) {
+>>>>>>> chromium
         assert managedModel != null : "Must specify a non-null model.";
         mLayoutDirection = View.LAYOUT_DIRECTION_INHERIT;
         mOmniboxTheme = OmniboxTheme.LIGHT_THEME;
@@ -112,8 +123,12 @@ class DropdownItemViewInfoListManager {
      * @param sourceList Source list of ViewInfo elements.
      * @param groupsDetails Group ID to GroupDetails map carrying group collapsed state information.
      */
+<<<<<<< HEAD
+    void setSourceViewInfoList(List<DropdownItemViewInfo> sourceList) {
+=======
     void setSourceViewInfoList(@NonNull List<DropdownItemViewInfo> sourceList,
             @NonNull SparseArray<AutocompleteResult.GroupDetails> groupsDetails) {
+>>>>>>> chromium
         mSourceViewInfoList = sourceList;
         mGroupsCollapsedState.clear();
 

@@ -32,8 +32,14 @@
 #include "third_party/blink/renderer/core/frame/local_frame_client_impl.h"
 
 #include <utility>
+#include <vector>
 
+<<<<<<< HEAD
+#include "base/containers/to_vector.h"
+#include "base/metrics/histogram_functions.h"
+=======
 #include "base/stl_util.h"
+>>>>>>> chromium
 #include "base/time/time.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -48,11 +54,11 @@
 #include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/public/platform/web_url_error.h"
-#include "third_party/blink/public/platform/web_vector.h"
 #include "third_party/blink/public/web/web_autofill_client.h"
 #include "third_party/blink/public/web/web_document.h"
 #include "third_party/blink/public/web/web_dom_event.h"
 #include "third_party/blink/public/web/web_form_element.h"
+#include "third_party/blink/public/web/web_history_commit_type.h"
 #include "third_party/blink/public/web/web_local_frame_client.h"
 #include "third_party/blink/public/web/web_manifest_manager.h"
 #include "third_party/blink/public/web/web_navigation_params.h"
@@ -383,12 +389,81 @@ void LocalFrameClientImpl::DidFinishSameDocumentNavigation(
     HistoryItem* item,
     WebHistoryCommitType commit_type,
     bool is_synchronously_committed,
+<<<<<<< HEAD
+    mojom::blink::SameDocumentNavigationType same_document_navigation_type,
+    bool is_client_redirect,
+    bool is_browser_initiated,
+    bool should_skip_screenshot) {
+=======
     bool is_history_api_navigation,
     bool is_client_redirect) {
+>>>>>>> chromium
   bool should_create_history_entry = commit_type == kWebStandardCommit;
   // TODO(dglazkov): Does this need to be called for subframes?
   web_frame_->ViewImpl()->DidCommitLoad(should_create_history_entry, true);
   if (web_frame_->Client()) {
+<<<<<<< HEAD
+    // This unique token is used to associate the session history entry, and its
+    // viewport screenshot before the navigation finishes in the renderer.
+    base::UnguessableToken screenshot_destination;
+
+    // Exclude `kWebHistoryInertCommit` because these types of navigations does
+    // not originate from nor add entries to the session history (i.e., they are
+    // not history-traversable).
+    // Exclude the WebView not being composited because we won't present any
+    // frame if it is not being actively drawn.
+    // Exclude cases with prefers-reduced-motion. Back forward transitions are
+    // disabled in this case so no screenshots are necessary.
+    // We however always propagate the history sequence number for correctness
+    // in CompositedOuterMainFrame cases.
+    bool navigation_with_screenshot = false;
+    if (IsCompositedOutermostMainFrame(web_frame_)) {
+      WebFrameWidgetImpl* frame_widget = web_frame_->FrameWidgetImpl();
+      // The outermost mainframe must have a frame widget.
+      CHECK(frame_widget);
+      frame_widget->PropagateHistorySequenceNumberToCompositor();
+
+      // When the navigation call goes through the browser,
+      // should_skip_screenshot makes the remaining checks redundant. However,
+      // some navigations originate in the renderer and do not involve a commit
+      // IPC from the browser (e.g., navigations to an anchor from an HTML
+      // element)
+      if (!should_skip_screenshot && commit_type != kWebHistoryInertCommit &&
+          !web_frame_->GetFrame()->GetSettings()->GetPrefersReducedMotion()) {
+        navigation_with_screenshot = true;
+        if (RuntimeEnabledFeatures::
+                IncrementLocalSurfaceIdForMainframeSameDocNavigationEnabled()) {
+          frame_widget->RequestNewLocalSurfaceId();
+          if (RuntimeEnabledFeatures::BackForwardTransitionsEnabled()) {
+            screenshot_destination = base::UnguessableToken::Create();
+            frame_widget->RequestViewportScreenshot(screenshot_destination);
+          }
+        }
+
+        frame_widget->NotifyPresentationTime(WTF::BindOnce(
+            [](base::TimeTicks start,
+               const viz::FrameTimingDetails& frame_timing_details) {
+              base::TimeDelta duration =
+                  frame_timing_details.presentation_feedback.timestamp - start;
+              base::UmaHistogramTimes(
+                  "Navigation."
+                  "MainframeSameDocumentNavigationCommitToPresentFirstFrame",
+                  duration);
+            },
+            base::TimeTicks::Now()));
+      }
+    }
+    base::UmaHistogramBoolean("Navigation.SameDocumentNavigationWithScreenshot",
+                              navigation_with_screenshot);
+
+    std::optional<blink::SameDocNavigationScreenshotDestinationToken> token =
+        std::nullopt;
+    if (!screenshot_destination.is_empty()) {
+      token = blink::SameDocNavigationScreenshotDestinationToken(
+          screenshot_destination);
+    }
+=======
+>>>>>>> chromium
     web_frame_->Client()->DidFinishSameDocumentNavigation(
         commit_type, is_synchronously_committed, is_history_api_navigation,
         is_client_redirect);
@@ -685,10 +760,22 @@ void LocalFrameClientImpl::DidChangePerformanceTiming() {
     web_frame_->Client()->DidChangePerformanceTiming();
 }
 
+<<<<<<< HEAD
+void LocalFrameClientImpl::DidObserveUserInteraction(
+    base::TimeTicks max_event_start,
+    base::TimeTicks max_event_queued_main_thread,
+    base::TimeTicks max_event_commit_finish,
+    base::TimeTicks max_event_end,
+    uint64_t interaction_offset) {
+  web_frame_->Client()->DidObserveUserInteraction(
+      max_event_start, max_event_queued_main_thread, max_event_commit_finish,
+      max_event_end, interaction_offset);
+=======
 void LocalFrameClientImpl::DidObserveInputDelay(base::TimeDelta input_delay) {
   if (web_frame_->Client()) {
     web_frame_->Client()->DidObserveInputDelay(input_delay);
   }
+>>>>>>> chromium
 }
 
 void LocalFrameClientImpl::DidChangeCpuTiming(base::TimeDelta time) {
@@ -749,8 +836,8 @@ void LocalFrameClientImpl::SelectorMatchChanged(
     const Vector<String>& added_selectors,
     const Vector<String>& removed_selectors) {
   if (WebLocalFrameClient* client = web_frame_->Client()) {
-    client->DidMatchCSS(WebVector<WebString>(added_selectors),
-                        WebVector<WebString>(removed_selectors));
+    client->DidMatchCSS(base::ToVector(added_selectors, ToWebString),
+                        base::ToVector(removed_selectors, ToWebString));
   }
 }
 
@@ -852,8 +939,8 @@ WebPluginContainerImpl* LocalFrameClientImpl::CreatePlugin(
   WebPluginParams params;
   params.url = url;
   params.mime_type = mime_type;
-  params.attribute_names = param_names;
-  params.attribute_values = param_values;
+  params.attribute_names = base::ToVector(param_names, ToWebString);
+  params.attribute_values = base::ToVector(param_values, ToWebString);
   params.load_manually = load_manually;
 
   WebPlugin* web_plugin = web_frame_->Client()->CreatePlugin(params);

@@ -185,7 +185,17 @@ class CONTENT_EXPORT ChildProcessLauncher {
       Client* client,
       mojo::OutgoingInvitation mojo_invitation,
       const mojo::ProcessErrorCallback& process_error_callback,
+<<<<<<< HEAD
+      std::unique_ptr<ChildProcessLauncherFileData> file_data,
+      scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+          histogram_memory_region = nullptr,
+      scoped_refptr<base::RefCountedData<base::ReadOnlySharedMemoryRegion>>
+          trace_config_memory_region = nullptr,
+      scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+          trace_output_memory_region = nullptr,
+=======
       std::map<std::string, base::FilePath> files_to_preload,
+>>>>>>> chromium
       bool terminate_on_shutdown = true);
   ~ChildProcessLauncher();
 
@@ -197,7 +207,7 @@ class CONTENT_EXPORT ChildProcessLauncher {
 
   // Call this when the child process exits to know what happened to it.
   // |known_dead| can be true if we already know the process is dead as it can
-  // help the implemention figure the proper TerminationStatus.
+  // help the implementation figure the proper TerminationStatus.
   // On Linux, the use of |known_dead| is subtle and can be crucial if an
   // accurate status is important. With |known_dead| set to false, a dead
   // process could be seen as running. With |known_dead| set to true, the

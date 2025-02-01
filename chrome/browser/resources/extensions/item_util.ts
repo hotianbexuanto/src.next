@@ -31,6 +31,23 @@ export enum UserAction {
   LEARN_MORE = 'Extensions.Settings.HostList.LearnMoreActivated',
 }
 
+<<<<<<< HEAD
+// Duration of the toast shown.
+export const TOAST_DURATION_MS = 3000;
+
+// Values for logging Extension Safety Hub metrics.
+export const SAFETY_HUB_EXTENSION_KEPT_HISTOGRAM_NAME =
+    'SafeBrowsing.ExtensionSafetyHub.Trigger.Kept';
+export const SAFETY_HUB_EXTENSION_REMOVED_HISTOGRAM_NAME =
+    'SafeBrowsing.ExtensionSafetyHub.Trigger.Removed';
+export const SAFETY_HUB_EXTENSION_SHOWN_HISTOGRAM_NAME =
+    `SafeBrowsing.ExtensionSafetyHub.Trigger.Shown`;
+// This number should match however many entries are defined in the
+// `SafetyCheckWarningReason` defined in the `enums.xml` file.
+export const SAFETY_HUB_WARNING_REASON_MAX_SIZE = 7;
+
+=======
+>>>>>>> chromium
 /**
  * Returns true if the extension is enabled, including terminated
  * extensions.
@@ -63,7 +80,13 @@ export function userCanChangeEnablement(
   if (item.disableReasons.corruptInstall ||
       item.disableReasons.suspiciousInstall ||
       item.disableReasons.updateRequired ||
+<<<<<<< HEAD
+      item.disableReasons.publishedInStoreRequired ||
+      item.disableReasons.blockedByPolicy ||
+      item.disableReasons.unsupportedDeveloperExtension) {
+=======
       item.disableReasons.blockedByPolicy) {
+>>>>>>> chromium
     return false;
   }
   // An item with dependent extensions can't be disabled (it would bork the
@@ -169,3 +192,73 @@ export function getEnableControl(data: chrome.developerPrivate.ExtensionInfo):
   }
   return EnableControl.ENABLE_TOGGLE;
 }
+<<<<<<< HEAD
+
+/**
+ * @return The tooltip to show for an extension's enable toggle.
+ */
+export function getEnableToggleTooltipText(
+    data: chrome.developerPrivate.ExtensionInfo): string {
+  if (!isEnabled(data.state)) {
+    return loadTimeData.getString('enableToggleTooltipDisabled');
+  }
+
+  return loadTimeData.getString(
+      data.permissions.canAccessSiteData ?
+          'enableToggleTooltipEnabledWithSiteAccess' :
+          'enableToggleTooltipEnabled');
+}
+
+export function createDummyExtensionInfo():
+    chrome.developerPrivate.ExtensionInfo {
+  return {
+    commands: [],
+    isCommandRegistrationHandledExternally: false,
+    dependentExtensions: [],
+    description: '',
+    disableReasons: {
+      suspiciousInstall: false,
+      corruptInstall: false,
+      updateRequired: false,
+      publishedInStoreRequired: false,
+      blockedByPolicy: false,
+      reloading: false,
+      custodianApprovalRequired: false,
+      parentDisabledPermissions: false,
+      unsupportedManifestVersion: false,
+      unsupportedDeveloperExtension: false,
+    },
+    errorCollection: {isEnabled: false, isActive: false},
+    fileAccess: {isEnabled: false, isActive: false},
+    homePage: {url: '', specified: false},
+    iconUrl: '',
+    id: '',
+    incognitoAccess: {isEnabled: false, isActive: false},
+    installWarnings: [],
+    location: chrome.developerPrivate.Location.UNKNOWN,
+    manifestErrors: [],
+    manifestHomePageUrl: '',
+    mustRemainInstalled: false,
+    name: '',
+    offlineEnabled: false,
+    permissions: {simplePermissions: [], canAccessSiteData: false},
+    runtimeErrors: [],
+    runtimeWarnings: [],
+    state: chrome.developerPrivate.ExtensionState.ENABLED,
+    type: chrome.developerPrivate.ExtensionType.EXTENSION,
+    updateUrl: '',
+    userMayModify: false,
+    version: '2.0',
+    views: [],
+    webStoreUrl: '',
+    showSafeBrowsingAllowlistWarning: false,
+    showAccessRequestsInToolbar: false,
+    safetyCheckWarningReason:
+        chrome.developerPrivate.SafetyCheckWarningReason.UNPUBLISHED,
+    isAffectedByMV2Deprecation: false,
+    didAcknowledgeMV2DeprecationNotice: false,
+    canUploadAsAccountExtension: false,
+  };
+}
+=======
+>>>>>>> chromium

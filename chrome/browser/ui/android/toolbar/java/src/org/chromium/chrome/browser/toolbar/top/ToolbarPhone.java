@@ -47,8 +47,13 @@ import androidx.core.graphics.drawable.DrawableCompat;
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.MathUtils;
 import org.chromium.base.TraceEvent;
+<<<<<<< HEAD
+import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
+=======
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
+>>>>>>> chromium
 import org.chromium.chrome.browser.omnibox.LocationBar;
 import org.chromium.chrome.browser.omnibox.LocationBarCoordinator;
 import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
@@ -69,7 +74,10 @@ import org.chromium.chrome.browser.toolbar.menu_button.MenuButtonCoordinator;
 import org.chromium.chrome.browser.toolbar.top.TopToolbarCoordinator.UrlExpansionObserver;
 import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.browser_ui.widget.animation.CancelAwareAnimatorListener;
+<<<<<<< HEAD
+=======
 import org.chromium.components.browser_ui.widget.animation.Interpolators;
+>>>>>>> chromium
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.ui.base.LocalizationUtils;
@@ -111,12 +119,26 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
     protected static final int ENTERING_TAB_SWITCHER = 2;
     protected static final int EXITING_TAB_SWITCHER = 3;
 
+<<<<<<< HEAD
+    private static final String PARAM_REMOVE_GTS_LAYOUT_LOCATION_BAR =
+            "remove_gts_layout_location_bar";
+    private static final boolean PARAM_REMOVE_GTS_LAYOUT_LOCATION_BAR_DEFAULT_VAL = true;
+
+    @ViewDebug.ExportedProperty(
+            category = "chrome",
+            mapping = {
+                @ViewDebug.IntToString(from = STATIC_TAB, to = "STATIC_TAB"),
+                @ViewDebug.IntToString(from = TAB_SWITCHER, to = "TAB_SWITCHER"),
+                @ViewDebug.IntToString(from = ENTERING_TAB_SWITCHER, to = "ENTERING_TAB_SWITCHER"),
+                @ViewDebug.IntToString(from = EXITING_TAB_SWITCHER, to = "EXITING_TAB_SWITCHER")
+=======
     // clang-format off
     @ViewDebug.ExportedProperty(category = "chrome", mapping = {
             @ViewDebug.IntToString(from = STATIC_TAB, to = "STATIC_TAB"),
             @ViewDebug.IntToString(from = TAB_SWITCHER, to = "TAB_SWITCHER"),
             @ViewDebug.IntToString(from = ENTERING_TAB_SWITCHER, to = "ENTERING_TAB_SWITCHER"),
             @ViewDebug.IntToString(from = EXITING_TAB_SWITCHER, to = "EXITING_TAB_SWITCHER")
+>>>>>>> chromium
             })
     // clang-format on
 
@@ -148,6 +170,8 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
     // a bitmap to use as a texture representation of this view.
     @ViewDebug.ExportedProperty(category = "chrome")
     protected boolean mTextureCaptureMode;
+<<<<<<< HEAD
+=======
     private boolean mForceTextureCapture;
     private boolean mLightDrawablesUsedForLastTextureCapture;
     private int mTabCountForLastTextureCapture;
@@ -168,6 +192,7 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
     // used when |mAnimateNormalToolbar| is false.
     @ViewDebug.ExportedProperty(category = "chrome")
     private Rect mClipRect;
+>>>>>>> chromium
 
     @ViewDebug.ExportedProperty(category = "chrome")
     protected boolean mUrlFocusChangeInProgress;
@@ -433,17 +458,39 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
                     return getCurrentTabView();
                 }
             }
+<<<<<<< HEAD
+            return OmniboxResourceProvider.getSuggestionsDropdownBackgroundColor(
+                    getContext(), mThemeColorProvider.getBrandedColorScheme());
+        }
+        return ChromeColors.getDefaultThemeColor(getContext(), isIncognitoBranded());
+=======
 
             @Override
             public View getNextFocusBackward() {
                 return findViewById(R.id.url_bar);
             }
         });
+>>>>>>> chromium
     }
 
     /**
      * Sets up click and key listeners once we have native library available to handle clicks.
      */
+<<<<<<< HEAD
+    private @ColorInt int getLocationBarDefaultColorForToolbarColor(
+            @ColorInt int toolbarColor, boolean shouldUseFocusColor) {
+        if (mLocationBar.getPhoneCoordinator().hasFocus() || shouldUseFocusColor) {
+
+            // Omnibox has same background as the Omnibox suggestion.
+            return OmniboxResourceProvider.getStandardSuggestionBackgroundColor(
+                    getContext(), mThemeColorProvider.getBrandedColorScheme());
+        }
+        return getLocationBarColorForToolbarColor(toolbarColor);
+    }
+
+    /** Sets up click and key listeners once we have native library available to handle clicks. */
+=======
+>>>>>>> chromium
     @Override
     protected void onNativeLibraryReady() {
         super.onNativeLibraryReady();
@@ -530,8 +577,26 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
         if (!mDisableLocationBarRelayout) {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
+<<<<<<< HEAD
+            boolean changed =
+                    layoutLocationBarWithoutAnimationExpansion(
+                            MeasureSpec.getSize(widthMeasureSpec));
+            // Avoid URL expansion while in or transitioning to/from tab switcher.
+            // updateUrlExpansionAnimation() is called for these states via
+            // setTabSwitcherMode()/onTabSwitcherTransitionFinished() ->
+            // updateVisualsForLocationBarState()
+            if (!ChromeFeatureList.sToolbarPhoneCleanupRemoveRedundantAnimCall.getValue()
+                    || !isInTabSwitcherMode()) {
+                if (!ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue()) {
+                    updateUrlExpansionAnimation();
+                } else {
+                    invokeTransition(false);
+                }
+            }
+=======
             boolean changed = layoutLocationBar(MeasureSpec.getSize(widthMeasureSpec));
             if (!isInTabSwitcherMode()) updateUrlExpansionAnimation();
+>>>>>>> chromium
             if (!changed) return;
         } else {
             updateUnfocusedLocationBarLayoutParams();
@@ -782,7 +847,11 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
     private void onNtpScrollChanged(float scrollFraction) {
         mNtpSearchBoxScrollFraction = scrollFraction;
         updateUrlExpansionFraction();
-        updateUrlExpansionAnimation();
+        if (!ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue()) {
+            updateUrlExpansionAnimation();
+        } else {
+            invokeTransition(false);
+        }
     }
 
     /**
@@ -906,7 +975,11 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
     private void setUrlFocusChangeFraction(float fraction) {
         mUrlFocusChangeFraction = fraction;
         updateUrlExpansionFraction();
-        updateUrlExpansionAnimation();
+        if (!ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue()) {
+            updateUrlExpansionAnimation();
+        } else {
+            invokeTransition(false);
+        }
     }
 
     private void updateUrlExpansionFraction() {
@@ -923,7 +996,28 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
      * focus change or scrolling the New Tab Page.
      */
     private void updateUrlExpansionAnimation() {
+<<<<<<< HEAD
+        // When exiting tab switcher, run / reset NTP animations based on if page is NTP.
+        Tab currentTab = getToolbarDataProvider().getTab();
+        if (ChromeFeatureList.sToolbarPhoneCleanupRemoveRedundantAnimCall.getValue()
+                && !ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue()
+                && currentTab != null
+                && mTabSwitcherState == EXITING_TAB_SWITCHER) {
+            if (isLocationBarShownInNtp()) {
+                updateNtpTransitionAnimation();
+            } else {
+                // Reset these values in case we transitioned to a different page during the
+                // transition.
+                resetNtpAnimationValues();
+            }
+            // Return since we do not need to perform focus change animations here.
+            return;
+        }
+
+        // TODO(crbug.com/40585866): Prevent url expansion signals from happening while the
+=======
         // TODO(https://crbug.com/865801): Prevent url expansion signals from happening while the
+>>>>>>> chromium
         // toolbar is not visible (e.g. in tab switcher mode).
         if (isInTabSwitcherMode()) return;
 
@@ -995,12 +1089,27 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
                 - (mOptionalButtonAnimationRunning ? mLocBarWidthChangeFraction
                                                    : mUrlExpansionFraction);
 
-        mLocationBarBackgroundNtpOffset.setEmpty();
-        mLocationBarNtpOffsetLeft = 0;
-        mLocationBarNtpOffsetRight = 0;
+        if (!ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue()) {
+            mLocationBarBackgroundNtpOffset.setEmpty();
+            mLocationBarNtpOffsetLeft = 0;
+            mLocationBarNtpOffsetRight = 0;
+        }
 
         Tab currentTab = getToolbarDataProvider().getTab();
         if (currentTab != null) {
+<<<<<<< HEAD
+            getToolbarDataProvider()
+                    .getNewTabPageDelegate()
+                    .setUrlFocusChangeAnimationPercent(mUrlFocusChangeFraction);
+            if (!ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue()) {
+                if (isLocationBarShownInNtp) {
+                    updateNtpTransitionAnimation();
+                } else {
+                    // Reset these values in case we transitioned to a different page during the
+                    // transition.
+                    resetNtpAnimationValues();
+                }
+=======
             getToolbarDataProvider().getNewTabPageDelegate().setUrlFocusChangeAnimationPercent(
                     mUrlFocusChangeFraction);
             if (isLocationBarShownInNTP()
@@ -1010,6 +1119,7 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
                 // Reset these values in case we transitioned to a different page during the
                 // transition.
                 resetNtpAnimationValues();
+>>>>>>> chromium
             }
         }
 
@@ -1094,6 +1204,10 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
      */
     private void resetNtpAnimationValues() {
         mLocationBarBackgroundNtpOffset.setEmpty();
+        if (ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue()) {
+            mLocationBarNtpOffsetLeft = 0;
+            mLocationBarNtpOffsetRight = 0;
+        }
         mActiveLocationBarBackground = mLocationBarBackground;
         mNtpSearchBoxTranslation.set(0, 0);
         mLocationBar.getPhoneCoordinator().setTranslationY(0);
@@ -1496,6 +1610,13 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
     }
 
     @Override
+<<<<<<< HEAD
+    public CaptureReadinessResult isReadyForTextureCapture() {
+        if (ToolbarFeatures.shouldSuppressCaptures()) {
+            return getReadinessStateWithSuppression();
+        } else {
+            return CaptureReadinessResult.unknown(!(urlHasFocus() || mUrlFocusChangeInProgress));
+=======
     public void draw(Canvas canvas) {
         // If capturing a texture of the toolbar, ensure the alpha is set prior to draw(...) being
         // called.  The alpha is being used prior to getting to draw(...), so updating the value
@@ -1516,6 +1637,7 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
             // Post an invalidate when the clip rect becomes null to ensure another draw pass occurs
             // and the full toolbar is drawn again.
             if (mClipRect == null) postInvalidate();
+>>>>>>> chromium
         }
     }
 
@@ -1532,6 +1654,40 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
         return !(urlHasFocus() || mUrlFocusChangeInProgress);
     }
 
+<<<<<<< HEAD
+    private PhoneCaptureStateToken generateToolbarSnapshotState() {
+        UrlBarData urlBarData;
+        @DrawableRes int securityIconResource;
+        if (ToolbarFeatures.shouldSuppressCaptures()) {
+            urlBarData = mLocationBar.getUrlBarData();
+            if (urlBarData == null) urlBarData = getToolbarDataProvider().getUrlBarData();
+            StatusCoordinator statusCoordinator = mLocationBar.getStatusCoordinator();
+            securityIconResource =
+                    statusCoordinator == null
+                            ? getToolbarDataProvider().getSecurityIconResource(false)
+                            : statusCoordinator.getSecurityIconResource();
+        } else {
+            urlBarData = getToolbarDataProvider().getUrlBarData();
+            securityIconResource = getToolbarDataProvider().getSecurityIconResource(false);
+        }
+
+        VisibleUrlText visibleUrlText =
+                new VisibleUrlText(
+                        urlBarData.displayText, mLocationBar.getOmniboxVisibleTextPrefixHint());
+        return new PhoneCaptureStateToken(
+                getTint().getDefaultColor(),
+                mTabCountSupplier == null ? 0 : mTabCountSupplier.get(),
+                mButtonData,
+                mVisualState,
+                visibleUrlText,
+                securityIconResource,
+                ImageViewCompat.getImageTintList(mHomeButton),
+                mHomeButton.getVisibility() == View.VISIBLE,
+                getMenuButtonCoordinator().isShowingUpdateBadge(),
+                getToolbarDataProvider().isPaintPreview(),
+                getProgressBar().getProgress(),
+                mUnfocusedLocationBarLayoutWidth);
+=======
     @Override
     public boolean setForceTextureCapture(boolean forceTextureCapture) {
         if (forceTextureCapture) {
@@ -1550,6 +1706,7 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
 
         mForceTextureCapture = forceTextureCapture;
         return false;
+>>>>>>> chromium
     }
 
     @Override
@@ -2171,10 +2328,43 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
             }
         });
         mUrlFocusLayoutAnimator.start();
+<<<<<<< HEAD
+        if (!hasFocus || mLocationBar.shouldShortCircuitFocusAnimation(true)) {
+            TraceEvent.instant("ToolbarPhone.ShortCircuitUnfocusAnimation");
+            mUrlFocusLayoutAnimator.end();
+        }
+=======
+>>>>>>> chromium
         TraceEvent.end("ToolbarPhone.triggerUrlFocusAnimation");
     }
 
     @Override
+<<<<<<< HEAD
+    public void onIncognitoStateChanged() {
+        // Set the correct branded color scheme tinting for the {@link TabSwitcherDrawable} whenever
+        // the incognito state changes.
+        setTabSwitcherDrawableColorScheme();
+    }
+
+    @Override
+    public void setTabCountSupplier(ObservableSupplier<Integer> tabCountSupplier) {
+        mTabCountSupplier = tabCountSupplier;
+        mTabCountSupplier.addObserver(mTabCountSupplierObserver);
+    }
+
+    private void onTabCountChanged(int numberOfTabs) {
+        mHomeButton.setEnabled(true);
+        setTabSwitcherDrawableColorScheme();
+    }
+
+    private void setTabSwitcherDrawableColorScheme() {
+        if (getTabSwitcherButtonCoordinator() != null) {
+            getTabSwitcherButtonCoordinator()
+                    .setBrandedColorScheme(mThemeColorProvider.getBrandedColorScheme());
+        }
+    }
+
+=======
     public void setTabCountProvider(TabCountProvider tabCountProvider) {
         mTabCountProvider = tabCountProvider;
         mTabCountProvider.addObserver(this);
@@ -2216,6 +2406,7 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
                 isIncognito() ? VisualState.INCOGNITO : VisualState.NORMAL);
     }
 
+>>>>>>> chromium
     @Override
     public void onTabContentViewChanged() {
         super.onTabContentViewChanged();
@@ -2293,7 +2484,11 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
         boolean wasShowingNtp = ntpDelegate.wasShowingNtp();
         float previousNtpScrollFraction = mNtpSearchBoxScrollFraction;
 
-        resetNtpAnimationValues();
+        if (!ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue()) {
+            resetNtpAnimationValues();
+        } else {
+            invokeTransition(true);
+        }
         ntpDelegate.setSearchBoxScrollListener(this::onNtpScrollChanged);
         if (ntpDelegate.isLocationBarShown()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -2454,7 +2649,11 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
             mLayoutUpdater.run();
         }
         updateShadowVisibility();
-        updateUrlExpansionAnimation();
+        if (!ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue()) {
+            updateUrlExpansionAnimation();
+        } else {
+            invokeTransition(false);
+        }
 
         // This exception is to prevent early change of theme color when exiting the tab switcher
         // since currently visual state does not map correctly to tab switcher state. See
@@ -2464,10 +2663,20 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
         }
 
         if (!visualStateChanged) {
+<<<<<<< HEAD
+            if (!ChromeFeatureList.sToolbarPhoneCleanupRemoveRedundantAnimCall.getValue()) {
+                assert !ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue();
+                if (mVisualState == VisualState.NEW_TAB_NORMAL) {
+                    updateNtpTransitionAnimation();
+                } else {
+                    resetNtpAnimationValues();
+                }
+=======
             if (mVisualState == VisualState.NEW_TAB_NORMAL) {
                 updateNtpTransitionAnimation();
             } else {
                 resetNtpAnimationValues();
+>>>>>>> chromium
             }
             TraceEvent.end("ToolbarPhone.updateVisualsForLocationBarState");
             return;
@@ -2490,11 +2699,24 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
         updateModernLocationBarColor(getLocationBarColorForToolbarColor(currentPrimaryColor));
 
         mLocationBar.updateVisualsForState();
+<<<<<<< HEAD
+        if (!ChromeFeatureList.sToolbarPhoneCleanupRemoveRedundantAnimCall.getValue()) {
+            assert !ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue();
+            // These are used to skip setting state unnecessarily while in the tab switcher.
+            boolean inOrEnteringStaticTab =
+                    mTabSwitcherState == STATIC_TAB || mTabSwitcherState == EXITING_TAB_SWITCHER;
+            // We update the alpha before comparing the visual state as we need to change
+            // its value when entering and exiting TabSwitcher mode.
+            if (isLocationBarShownInNtp() && inOrEnteringStaticTab) {
+                updateNtpTransitionAnimation();
+            }
+=======
 
         // We update the alpha before comparing the visual state as we need to change
         // its value when entering and exiting TabSwitcher mode.
         if (isLocationBarShownInNTP() && inOrEnteringStaticTab) {
             updateNtpTransitionAnimation();
+>>>>>>> chromium
         }
 
         getMenuButtonCoordinator().setVisibility(true);
@@ -2889,5 +3111,39 @@ public class ToolbarPhone extends ToolbarLayout implements OnClickListener, TabC
     private int getAdditionalOffsetForNTP() {
         return getResources().getDimensionPixelSize(R.dimen.location_bar_lateral_padding)
                 - getResources().getDimensionPixelSize(R.dimen.fake_search_box_lateral_padding);
+    }
+
+    /**
+     * Triggers NTP transition animation (if toolbar is shown on NTP) and URL expansion animation.
+     *
+     * @param resetNtpTransition if the transition is to reset NTP animation.
+     */
+    private void invokeTransition(boolean resetNtpTransition) {
+        assert (ChromeFeatureList.sToolbarPhoneCleanupRemoveRedundantAnimCall.getValue()
+                && ChromeFeatureList.sToolbarPhoneCleanupRefactorAnimations.getValue());
+        if (resetNtpTransition) {
+            resetNtpAnimationValues();
+            return;
+        }
+
+        // No-op when entering or in tab switcher.
+        if (inOrEnteringTabSwitcher()) {
+            return;
+        }
+
+        /*
+         * Invoke NTP translation before URL expansion - NTP animation determines offsets for
+         * locationBar and urlAction X-translations during URL expansion.
+         */
+        if (isLocationBarShownInNtp()) {
+            updateNtpTransitionAnimation();
+        } else {
+            resetNtpAnimationValues();
+        }
+        updateUrlExpansionAnimation();
+    }
+
+    private boolean inOrEnteringTabSwitcher() {
+        return mTabSwitcherState == TAB_SWITCHER || mTabSwitcherState == ENTERING_TAB_SWITCHER;
     }
 }

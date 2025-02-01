@@ -35,7 +35,7 @@ class CORE_EXPORT DeviceSingleWindowEventController
 
   bool IsSameSecurityOriginAsMainFrame() const;
   bool CheckPolicyFeatures(
-      const Vector<mojom::blink::PermissionsPolicyFeature>& features) const;
+      const Vector<network::mojom::PermissionsPolicyFeature>& features) const;
 
   void DispatchDeviceEvent(Event*);
 

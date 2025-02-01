@@ -146,6 +146,13 @@ void CustomScrollbarTheme::PaintScrollCorner(
   context.FillRect(corner_rect, Color::kWhite);
 }
 
+<<<<<<< HEAD
+void CustomScrollbarTheme::PaintTrackBackgroundAndButtons(
+    GraphicsContext& context,
+    const Scrollbar& scrollbar,
+    const gfx::Rect& rect) {
+  PaintPart(context, scrollbar, rect, kScrollbarBGPart);
+=======
 void CustomScrollbarTheme::PaintTrackAndButtons(GraphicsContext& context,
                                                 const Scrollbar& scrollbar,
                                                 const IntPoint& offset) {
@@ -155,6 +162,7 @@ void CustomScrollbarTheme::PaintTrackAndButtons(GraphicsContext& context,
   DCHECK_EQ(offset, IntPoint());
 
   PaintPart(context, scrollbar, scrollbar.FrameRect(), kScrollbarBGPart);
+>>>>>>> chromium
 
   if (HasButtons(scrollbar)) {
     PaintButton(context, scrollbar, ButtonRect(scrollbar, kBackButtonStartPart),

@@ -13,7 +13,10 @@ import android.text.TextUtils;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.IntentUtils;
+<<<<<<< HEAD
+=======
 import org.chromium.base.PackageManagerUtils;
+>>>>>>> chromium
 import org.chromium.ui.base.PageTransition;
 
 import java.util.HashSet;
@@ -47,9 +50,74 @@ public class RedirectHandler {
     private int mInitialNavigationType;
     private int mLastCommittedEntryIndexBeforeStartingNavigation;
 
+<<<<<<< HEAD
+        IntentState(
+                Intent initialIntent,
+                boolean preferToStayInChrome,
+                boolean isCustomTabIntent,
+                boolean externalIntentStartedTask) {
+            mInitialIntent = initialIntent;
+            mPreferToStayInChrome = preferToStayInChrome;
+            mIsCustomTabIntent = isCustomTabIntent;
+            mExternalIntentStartedTask = externalIntentStartedTask;
+        }
+    }
+
+    /** Captures the state of the initial navigation in a Navigation Chain. */
+    public static class InitialNavigationState {
+        public final boolean isRendererInitiated;
+        public final boolean isFromReload;
+        public final boolean isFromTyping;
+        public final boolean isFromFormSubmit;
+        public final boolean isFromIntent;
+        public final boolean hasUserGesture;
+
+        public InitialNavigationState(
+                boolean isRendererInitiated,
+                boolean hasUserGesture,
+                boolean isFromReload,
+                boolean isFromTyping,
+                boolean isFromFormSubmit,
+                boolean isFromIntent) {
+            this.isRendererInitiated = isRendererInitiated;
+            this.hasUserGesture = hasUserGesture;
+            this.isFromReload = isFromReload;
+            this.isFromTyping = isFromTyping;
+            this.isFromFormSubmit = isFromFormSubmit;
+            this.isFromIntent = isFromIntent;
+        }
+    }
+
+    private class NavigationChainState {
+        final boolean mHasUserStartedNonInitialNavigation;
+        boolean mIsOnFirstLoadInChain = true;
+        boolean mShouldNotOverrideUrlLoadingOnCurrentNavigationChain;
+        // TODO(crbug.com/40815393): Plumb through the user activation time from blink.
+        final long mNavigationChainStartTime = currentRealtime();
+        boolean mUsedBackOrForward;
+        boolean mPerformedHiddenCrossFrameNavigation;
+        final InitialNavigationState mInitialNavigationState;
+
+        NavigationChainState(
+                boolean hasUserStartedNonInitialNavigation,
+                InitialNavigationState initialNavigationChainState) {
+            mHasUserStartedNonInitialNavigation = hasUserStartedNonInitialNavigation;
+            mInitialNavigationState = initialNavigationChainState;
+        }
+    }
+
+    private IntentState mIntentState;
+    private boolean mIsPrefetchLoadForIntent;
+    private NavigationChainState mNavigationChainState;
+
+    // Not part of NavigationChainState as this should persist through resetting of the
+    // NavigationChain so that the history state can be correctly set even after the tab is hidden.
+    private int mLastCommittedEntryIndexBeforeStartingNavigation = INVALID_ENTRY_INDEX;
+=======
     private boolean mShouldNotOverrideUrlLoadingOnCurrentRedirectChain;
     private boolean mShouldNotBlockOverrideUrlLoadingOnCurrentRedirectionChain;
     private boolean mExternalIntentStartedTask;
+>>>>>>> chromium
 
     public static RedirectHandler create() {
         return new RedirectHandler();
@@ -145,27 +213,63 @@ public class RedirectHandler {
     }
 
     /**
-     * Updates new url loading information to trace navigation.
-     * A time based heuristic is used to determine if this loading is an effective redirect or not
-     * if core of |pageTransType| is LINK.
+     * Updates new url loading information to trace navigation. A time based heuristic is used to
+     * determine if this loading is an effective redirect or not if core of |pageTransType| is LINK.
      *
-     * http://crbug.com/322567 : Trace navigation started from an external app.
+     * <p>http://crbug.com/322567 : Trace navigation started from an external app.
      * http://crbug.com/331571 : Trace navigation started from user typing to do not override such
-     * navigation.
-     * http://crbug.com/426679 : Trace every navigation and the last committed entry index right
-     * before starting the navigation.
+     * navigation. http://crbug.com/426679 : Trace every navigation and the last committed entry
+     * index right before starting the navigation.
      *
      * @param pageTransType page transition type of this loading.
      * @param isRedirect whether this loading is http redirect or not.
      * @param hasUserGesture whether this loading is started by a user gesture.
-     * @param lastUserInteractionTime time when the last user interaction was made.
      * @param lastCommittedEntryIndex the last committed entry index right before this loading.
      */
+<<<<<<< HEAD
+    public void updateNewUrlLoading(
+            int pageTransType,
+            boolean isRedirect,
+            boolean hasUserGesture,
+            int lastCommittedEntryIndex,
+            boolean isInitialNavigation,
+            boolean isRendererInitiated) {
+        // Treat anything renderer-initiated without a gesture as part of the same navigation
+        // chain. Server redirects are also part of the same navigation chain.
+        boolean isSameNavigationChain = isRedirect || (isRendererInitiated && !hasUserGesture);
+
+        if (mNavigationChainState != null && isSameNavigationChain) {
+            updateNavigationChainState();
+        } else {
+            resetNavigationChainState(
+                    pageTransType,
+                    hasUserGesture,
+                    lastCommittedEntryIndex,
+                    isInitialNavigation,
+                    isRendererInitiated);
+        }
+        boolean isBackOrForward = (pageTransType & PageTransition.FORWARD_BACK) != 0;
+        if (isBackOrForward) mNavigationChainState.mUsedBackOrForward = true;
+    }
+
+    private void updateNavigationChainState() {
+        mNavigationChainState.mIsOnFirstLoadInChain = false;
+    }
+
+    private void resetNavigationChainState(
+            int pageTransType,
+            boolean hasUserGesture,
+            int lastCommittedEntryIndex,
+            boolean isInitialNavigation,
+            boolean isRendererInitiated) {
+        // Create the NavigationChainState for a new Navigation chain.
+=======
     public void updateNewUrlLoading(int pageTransType, boolean isRedirect, boolean hasUserGesture,
             long lastUserInteractionTime, int lastCommittedEntryIndex) {
         long prevNewUrlLoadingTime = mLastNewUrlLoadingTime;
         mLastNewUrlLoadingTime = SystemClock.elapsedRealtime();
 
+>>>>>>> chromium
         int pageTransitionCore = pageTransType & PageTransition.CORE_MASK;
 
         boolean isNewLoadingStartedByUser = false;
@@ -329,7 +433,39 @@ public class RedirectHandler {
     /**
      * @return The initial intent of a redirect chain, if available.
      */
+<<<<<<< HEAD
+    public boolean isNavigationChainExpired() {
+        return currentRealtime() - mNavigationChainState.mNavigationChainStartTime
+                > NAVIGATION_CHAIN_TIMEOUT_MILLIS;
+    }
+
+    public boolean navigationChainUsedBackOrForward() {
+        return mNavigationChainState.mUsedBackOrForward;
+    }
+
+    public InitialNavigationState getInitialNavigationState() {
+        return mNavigationChainState.mInitialNavigationState;
+    }
+
+    public boolean intentPrefersToStayInChrome() {
+        return mIntentState != null && mIntentState.mPreferToStayInChrome;
+    }
+
+    public void setPerformedHiddenCrossFrameNavigation() {
+        mNavigationChainState.mPerformedHiddenCrossFrameNavigation = true;
+    }
+
+    public boolean navigationChainPerformedHiddenCrossFrameNavigation() {
+        return mNavigationChainState.mPerformedHiddenCrossFrameNavigation;
+    }
+
+    // Facilitates simulated waiting in tests.
+    @VisibleForTesting
+    public long currentRealtime() {
+        return SystemClock.elapsedRealtime();
+=======
     public Intent getInitialIntent() {
         return mInitialIntent;
+>>>>>>> chromium
     }
 }

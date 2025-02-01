@@ -5,7 +5,11 @@
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
 #include "base/android/library_loader/library_loader_hooks.h"
+<<<<<<< HEAD
+#include "base/android/pre_freeze_background_memory_trimmer.h"
+=======
 #include "base/base_jni_headers/ChildProcessService_jni.h"
+>>>>>>> chromium
 #include "base/debug/dump_without_crashing.h"
 #include "base/file_descriptor_store.h"
 #include "base/logging.h"
@@ -77,6 +81,10 @@ void JNI_ChildProcessService_ExitChildProcess(JNIEnv* env) {
 NOINLINE void JNI_ChildProcessService_DumpProcessStack(JNIEnv* env) {
   LOG(ERROR) << "Dumping as requested.";
   base::debug::DumpWithoutCrashing();
+}
+
+void JNI_ChildProcessService_OnSelfFreeze(JNIEnv* env) {
+  PreFreezeBackgroundMemoryTrimmer::OnSelfFreeze();
 }
 
 }  // namespace android

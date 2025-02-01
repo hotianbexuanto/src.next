@@ -47,6 +47,10 @@
 #include <algorithm>
 
 #include "base/logging.h"
+<<<<<<< HEAD
+#include "base/numerics/safe_conversions.h"
+=======
+>>>>>>> chromium
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
@@ -203,9 +207,14 @@ bool HttpChunkedDecoder::ParseChunkSize(const char* start,
 
   // Be more restrictive than HexStringToInt64;
   // don't allow inputs with leading "-", "+", "0x", "0X"
+<<<<<<< HEAD
+  std::string_view chunk_size = base::as_string_view(buf);
+  if (!std::ranges::all_of(chunk_size, base::IsHexDigit<char>)) {
+=======
   base::StringPiece chunk_size(start, len);
   if (chunk_size.find_first_not_of("0123456789abcdefABCDEF")
       != base::StringPiece::npos) {
+>>>>>>> chromium
     return false;
   }
 

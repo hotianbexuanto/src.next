@@ -10,19 +10,69 @@
 #include <memory>
 #include <utility>
 
+<<<<<<< HEAD
+#include "chrome/browser/extensions/window_controller_list.h"
+#include "chrome/browser/profiles/profile.h"
+#include "components/sessions/content/session_tab_helper.h"
+#include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/render_process_host.h"
+#include "content/public/browser/web_contents.h"
+#include "extensions/common/mojom/api_permission_id.mojom-shared.h"
+#include "third_party/blink/public/common/chrome_debug_urls.h"
+#include "third_party/blink/public/common/features.h"
+
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/android/tab_model/tab_model.h"
+#include "chrome/browser/ui/android/tab_model/tab_model_list.h"
+#else
+// gn check doesn't understand this conditional, hence the nogncheck directives
+// below.
+#include "base/containers/fixed_flat_set.h"
+#include "base/hash/hash.h"
+#include "base/metrics/histogram_functions.h"
+=======
 #include "base/containers/contains.h"
+>>>>>>> chromium
 #include "base/no_destructor.h"
 #include "base/numerics/ranges.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
+<<<<<<< HEAD
+#include "base/types/expected_macros.h"
+#include "chrome/browser/browser_process.h"  // nogncheck
+=======
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/api/tab_groups/tab_groups_util.h"
 #include "chrome/browser/extensions/api/tabs/tabs_api.h"
 #include "chrome/browser/extensions/api/tabs/tabs_constants.h"
+>>>>>>> chromium
 #include "chrome/browser/extensions/browser_extension_window_controller.h"
 #include "chrome/browser/extensions/chrome_extension_function_details.h"
 #include "chrome/browser/extensions/tab_helper.h"
+<<<<<<< HEAD
+#include "chrome/browser/platform_util.h"  // nogncheck
+#include "chrome/browser/renderer_host/chrome_navigation_ui_data.h"
+#include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
+#include "chrome/browser/ui/browser.h"                   // nogncheck
+#include "chrome/browser/ui/browser_finder.h"            // nogncheck
+#include "chrome/browser/ui/browser_navigator.h"         // nogncheck
+#include "chrome/browser/ui/browser_navigator_params.h"  // nogncheck
+#include "chrome/browser/ui/browser_window.h"            // nogncheck
+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"  // nogncheck
+#include "chrome/browser/ui/recently_audible_helper.h"             // nogncheck
+#include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"     // nogncheck
+#include "chrome/browser/ui/singleton_tabs.h"                      // nogncheck
+#include "chrome/browser/ui/tab_contents/tab_contents_iterator.h"  // nogncheck
+#include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"  // nogncheck
+#include "chrome/browser/ui/tabs/tab_enums.h"        // nogncheck
+#include "chrome/browser/ui/tabs/tab_group_model.h"  // nogncheck
+#include "chrome/browser/ui/tabs/tab_strip_model.h"  // nogncheck
+#include "chrome/browser/ui/tabs/tab_utils.h"        // nogncheck
+#include "chrome/browser/ui/ui_features.h"           // nogncheck
+=======
 #include "chrome/browser/platform_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
@@ -37,17 +87,20 @@
 #include "chrome/browser/ui/tab_contents/tab_contents_iterator.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_utils.h"
+>>>>>>> chromium
 #include "chrome/common/extensions/api/tabs.h"
 #include "chrome/common/url_constants.h"
-#include "components/sessions/content/session_tab_helper.h"
-#include "components/tab_groups/tab_group_id.h"
+#include "components/tab_groups/tab_group_id.h"  // nogncheck
 #include "components/url_formatter/url_fixer.h"
 #include "content/public/browser/back_forward_cache.h"
 #include "content/public/browser/favicon_status.h"
+<<<<<<< HEAD
+=======
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
+>>>>>>> chromium
 #include "extensions/browser/extension_function.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/error_utils.h"
@@ -58,14 +111,21 @@
 #include "extensions/common/manifest_handlers/options_page_info.h"
 #include "extensions/common/permissions/api_permission.h"
 #include "extensions/common/permissions/permissions_data.h"
+<<<<<<< HEAD
+=======
 #include "third_party/abseil-cpp/absl/types/optional.h"
+>>>>>>> chromium
 #include "url/gurl.h"
+#include "url/url_constants.h"
+#endif
 
 using content::NavigationEntry;
 using content::WebContents;
 using extensions::mojom::APIPermissionID;
 
 namespace extensions {
+
+#if !BUILDFLAG(IS_ANDROID)
 
 namespace {
 
@@ -384,11 +444,13 @@ int ExtensionTabUtil::GetWindowIdOfTabStripModel(
   }
   return -1;
 }
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 int ExtensionTabUtil::GetTabId(const WebContents* web_contents) {
   return sessions::SessionTabHelper::IdForTab(web_contents).id();
 }
 
+#if !BUILDFLAG(IS_ANDROID)
 int ExtensionTabUtil::GetWindowIdOfTab(const WebContents* web_contents) {
   return sessions::SessionTabHelper::IdForWindowContainingTab(web_contents)
       .id();
@@ -483,10 +545,17 @@ std::unique_ptr<api::tabs::Tab> ExtensionTabUtil::CreateTabObject(
         std::make_unique<std::string>(visible_entry->GetFavicon().url.spec());
   }
   if (tab_strip) {
+<<<<<<< HEAD
+    tabs::TabInterface* opener = tab_strip->GetOpenerOfTabAt(tab_index);
+    if (opener) {
+      CHECK(opener->GetContents());
+      tab_object.opener_tab_id = GetTabIdForExtensions(opener->GetContents());
+=======
     WebContents* opener = tab_strip->GetOpenerOfWebContentsAt(tab_index);
     if (opener) {
       tab_object->opener_tab_id =
           std::make_unique<int>(GetTabIdForExtensions(opener));
+>>>>>>> chromium
     }
   }
 
@@ -695,6 +764,7 @@ bool ExtensionTabUtil::GetDefaultTab(Browser* browser,
 
   return false;
 }
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 // static
 bool ExtensionTabUtil::GetTabById(int tab_id,
@@ -741,7 +811,181 @@ bool ExtensionTabUtil::GetTabById(int tab_id,
                                   bool include_incognito,
                                   WebContents** contents) {
   return GetTabById(tab_id, browser_context, include_incognito, nullptr,
+<<<<<<< HEAD
+                    contents, nullptr);
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+// static
+int ExtensionTabUtil::GetGroupId(const tab_groups::TabGroupId& id) {
+  uint32_t hash = base::PersistentHash(id.ToString());
+  return std::abs(static_cast<int>(hash));
+}
+
+// static
+int ExtensionTabUtil::GetWindowIdOfGroup(const tab_groups::TabGroupId& id) {
+  Browser* browser = chrome::FindBrowserWithGroup(id, nullptr);
+  if (browser) {
+    return browser->session_id().id();
+  }
+  return -1;
+}
+
+// static
+bool ExtensionTabUtil::GetGroupById(
+    int group_id,
+    content::BrowserContext* browser_context,
+    bool include_incognito,
+    WindowController** out_window,
+    tab_groups::TabGroupId* id,
+    const tab_groups::TabGroupVisualData** visual_data,
+    std::string* error) {
+  // Zero output parameters for the error cases.
+  if (out_window) {
+    *out_window = nullptr;
+  }
+  if (visual_data) {
+    *visual_data = nullptr;
+  }
+
+  if (group_id == -1) {
+    return false;
+  }
+
+  Profile* profile = Profile::FromBrowserContext(browser_context);
+  Profile* incognito_profile =
+      include_incognito && profile->HasPrimaryOTRProfile()
+          ? profile->GetPrimaryOTRProfile(/*create_if_needed=*/true)
+          : nullptr;
+  for (WindowController* target_window : *WindowControllerList::GetInstance()) {
+    if (target_window->profile() != profile &&
+        target_window->profile() != incognito_profile) {
+      continue;
+    }
+    Browser* target_browser = target_window->GetBrowser();
+    if (!target_browser) {
+      continue;
+    }
+    TabStripModel* target_tab_strip = target_browser->tab_strip_model();
+    if (!target_tab_strip->SupportsTabGroups()) {
+      continue;
+    }
+    for (tab_groups::TabGroupId target_group :
+         target_tab_strip->group_model()->ListTabGroups()) {
+      if (ExtensionTabUtil::GetGroupId(target_group) == group_id) {
+        if (out_window) {
+          *out_window = target_window;
+        }
+        if (id) {
+          *id = target_group;
+        }
+        if (visual_data) {
+          *visual_data = target_tab_strip->group_model()
+                             ->GetTabGroup(target_group)
+                             ->visual_data();
+        }
+        return true;
+      }
+    }
+  }
+
+  *error = ErrorUtils::FormatErrorMessage(kGroupNotFoundError,
+                                          base::NumberToString(group_id));
+
+  return false;
+}
+
+// static
+api::tab_groups::TabGroup ExtensionTabUtil::CreateTabGroupObject(
+    const tab_groups::TabGroupId& id,
+    const tab_groups::TabGroupVisualData& visual_data) {
+  api::tab_groups::TabGroup tab_group_object;
+  tab_group_object.id = GetGroupId(id);
+  tab_group_object.collapsed = visual_data.is_collapsed();
+  tab_group_object.color = ColorIdToColor(visual_data.color());
+  tab_group_object.title = base::UTF16ToUTF8(visual_data.title());
+  tab_group_object.window_id = GetWindowIdOfGroup(id);
+
+  return tab_group_object;
+}
+
+// static
+std::optional<api::tab_groups::TabGroup> ExtensionTabUtil::CreateTabGroupObject(
+    const tab_groups::TabGroupId& id) {
+  Browser* browser = chrome::FindBrowserWithGroup(id, nullptr);
+  if (!browser) {
+    return std::nullopt;
+  }
+
+  CHECK(browser->tab_strip_model()->SupportsTabGroups());
+  TabGroupModel* group_model = browser->tab_strip_model()->group_model();
+  const tab_groups::TabGroupVisualData* visual_data =
+      group_model->GetTabGroup(id)->visual_data();
+
+  DCHECK(visual_data);
+
+  return CreateTabGroupObject(id, *visual_data);
+}
+
+// static
+api::tab_groups::Color ExtensionTabUtil::ColorIdToColor(
+    const tab_groups::TabGroupColorId& color_id) {
+  switch (color_id) {
+    case tab_groups::TabGroupColorId::kGrey:
+      return api::tab_groups::Color::kGrey;
+    case tab_groups::TabGroupColorId::kBlue:
+      return api::tab_groups::Color::kBlue;
+    case tab_groups::TabGroupColorId::kRed:
+      return api::tab_groups::Color::kRed;
+    case tab_groups::TabGroupColorId::kYellow:
+      return api::tab_groups::Color::kYellow;
+    case tab_groups::TabGroupColorId::kGreen:
+      return api::tab_groups::Color::kGreen;
+    case tab_groups::TabGroupColorId::kPink:
+      return api::tab_groups::Color::kPink;
+    case tab_groups::TabGroupColorId::kPurple:
+      return api::tab_groups::Color::kPurple;
+    case tab_groups::TabGroupColorId::kCyan:
+      return api::tab_groups::Color::kCyan;
+    case tab_groups::TabGroupColorId::kOrange:
+      return api::tab_groups::Color::kOrange;
+    case tab_groups::TabGroupColorId::kNumEntries:
+      NOTREACHED() << "kNumEntries is not a support color enum.";
+  }
+
+  NOTREACHED();
+}
+
+// static
+tab_groups::TabGroupColorId ExtensionTabUtil::ColorToColorId(
+    api::tab_groups::Color color) {
+  switch (color) {
+    case api::tab_groups::Color::kGrey:
+      return tab_groups::TabGroupColorId::kGrey;
+    case api::tab_groups::Color::kBlue:
+      return tab_groups::TabGroupColorId::kBlue;
+    case api::tab_groups::Color::kRed:
+      return tab_groups::TabGroupColorId::kRed;
+    case api::tab_groups::Color::kYellow:
+      return tab_groups::TabGroupColorId::kYellow;
+    case api::tab_groups::Color::kGreen:
+      return tab_groups::TabGroupColorId::kGreen;
+    case api::tab_groups::Color::kPink:
+      return tab_groups::TabGroupColorId::kPink;
+    case api::tab_groups::Color::kPurple:
+      return tab_groups::TabGroupColorId::kPurple;
+    case api::tab_groups::Color::kCyan:
+      return tab_groups::TabGroupColorId::kCyan;
+    case api::tab_groups::Color::kOrange:
+      return tab_groups::TabGroupColorId::kOrange;
+    case api::tab_groups::Color::kNone:
+      NOTREACHED();
+  }
+
+  NOTREACHED();
+=======
                     nullptr, contents, nullptr);
+>>>>>>> chromium
 }
 
 // static
@@ -805,6 +1049,12 @@ bool ExtensionTabUtil::PrepareURLForNavigation(const std::string& url_string,
                                                std::string* error) {
   GURL url =
       ExtensionTabUtil::ResolvePossiblyRelativeURL(url_string, extension);
+  // TODO(crbug.com/385086924): url_formatter::FixupURL transforms a URL
+  // with a 'mailto' scheme into a URL with an HTTP scheme. This is a
+  // mitigation pending a fix for the bug.
+  if (url.SchemeIs(url::kMailToScheme)) {
+    return url;
+  }
 
   // Ideally, the URL would only be "fixed" for user input (e.g. for URLs
   // entered into the Omnibox), but some extensions rely on the legacy behavior
@@ -874,14 +1124,26 @@ void ExtensionTabUtil::CreateTab(std::unique_ptr<WebContents> web_contents,
   if (browser_created && (browser != params.browser))
     browser->window()->Close();
 }
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 // static
 void ExtensionTabUtil::ForEachTab(
     base::RepeatingCallback<void(WebContents*)> callback) {
+#if !BUILDFLAG(IS_ANDROID)
   for (auto* web_contents : AllTabContentses())
     callback.Run(web_contents);
+#else
+  // Android has its own notion of the tab strip and cannot use the code above.
+  for (TabModel* tab_model : TabModelList::models()) {
+    int tab_count = tab_model->GetTabCount();
+    for (int i = 0; i < tab_count; ++i) {
+      callback.Run(tab_model->GetWebContentsAt(i));
+    }
+  }
+#endif
 }
 
+#if !BUILDFLAG(IS_ANDROID)
 // static
 WindowController* ExtensionTabUtil::GetWindowControllerOfTab(
     const WebContents* web_contents) {
@@ -997,4 +1259,43 @@ TabStripModel* ExtensionTabUtil::GetEditableTabStripModel(Browser* browser) {
   return browser->tab_strip_model();
 }
 
+<<<<<<< HEAD
+// static
+bool ExtensionTabUtil::TabIsInSavedTabGroup(content::WebContents* contents,
+                                            TabStripModel* tab_strip_model) {
+  // If the tab_strip_model is empty, find the contents in one of the browsers.
+  if (!tab_strip_model) {
+    CHECK(contents);
+    Browser* browser = chrome::FindBrowserWithTab(contents);
+
+    // if the webcontents isn't in any tabstrip, its not in a saved tab group.
+    if (!browser) {
+      return false;
+    }
+    tab_strip_model = browser->tab_strip_model();
+  }
+
+  tab_groups::TabGroupSyncService* tab_group_service =
+      tab_groups::SavedTabGroupUtils::GetServiceForProfile(
+          tab_strip_model->profile());
+
+  // If the service failed to start, then there are no saved tab groups.
+  if (!tab_group_service) {
+    return false;
+  }
+
+  // If the tab is not in a group, then its not going to be in a saved group.
+  int index = tab_strip_model->GetIndexOfWebContents(contents);
+  std::optional<tab_groups::TabGroupId> tab_group_id =
+      tab_strip_model->GetTabGroupForTab(index);
+  if (!tab_group_id.has_value()) {
+    return false;
+  }
+
+  return tab_group_service->GetGroup(tab_group_id.value()).has_value();
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+=======
+>>>>>>> chromium
 }  // namespace extensions

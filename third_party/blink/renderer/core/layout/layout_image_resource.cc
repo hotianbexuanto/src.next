@@ -29,9 +29,15 @@
 #include "third_party/blink/renderer/core/layout/layout_image_resource.h"
 
 #include "third_party/blink/public/resources/grit/blink_image_resources.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/css/style_engine.h"
+#include "third_party/blink/renderer/core/layout/layout_image.h"
+#include "third_party/blink/renderer/core/layout/natural_sizing_info.h"
+=======
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
 #include "third_party/blink/renderer/core/page/page.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/svg/graphics/svg_image_for_container.h"
 #include "third_party/blink/renderer/platform/graphics/placeholder_image.h"
 #include "ui/base/resource/scale_factor.h"
@@ -104,6 +110,38 @@ RespectImageOrientationEnum LayoutImageResource::ImageOrientation() const {
   return cached_image_->ForceOrientationIfNecessary(respect_orientation);
 }
 
+<<<<<<< HEAD
+NaturalSizingInfo LayoutImageResource::GetNaturalDimensions(
+    float multiplier) const {
+  if (!cached_image_ || !cached_image_->IsSizeAvailable() ||
+      !cached_image_->HasImage()) {
+    return NaturalSizingInfo::None();
+  }
+  NaturalSizingInfo sizing_info;
+  Image& image = *cached_image_->GetImage();
+  if (auto* svg_image = DynamicTo<SVGImage>(image)) {
+    const SVGImageViewInfo* view_info = SVGImageForContainer::CreateViewInfo(
+        *svg_image, layout_object_->GetNode());
+    if (!SVGImageForContainer::GetNaturalDimensions(*svg_image, view_info,
+                                                    sizing_info)) {
+      sizing_info = NaturalSizingInfo::None();
+    }
+  } else {
+    sizing_info.size = gfx::SizeF(image.Size(ImageOrientation()));
+    sizing_info.aspect_ratio = sizing_info.size;
+  }
+  if (multiplier != 1 && HasIntrinsicSize()) {
+    sizing_info.size = ApplyClampedZoom(sizing_info.size, multiplier);
+  }
+  if (auto* layout_image = DynamicTo<LayoutImage>(*layout_object_)) {
+    sizing_info.size.Scale(layout_image->ImageDevicePixelRatio());
+  }
+  return sizing_info;
+}
+
+Image* LayoutImageResource::BrokenImage(double device_pixel_ratio) {
+  // TODO(rendering-core): Replace static resources with dynamically
+=======
 FloatSize LayoutImageResource::ImageSize(float multiplier) const {
   if (!cached_image_)
     return FloatSize();
@@ -137,6 +175,7 @@ float LayoutImageResource::DeviceScaleFactor() const {
 
 Image* LayoutImageResource::BrokenImage(float device_scale_factor) {
   // TODO(schenney): Replace static resources with dynamically
+>>>>>>> chromium
   // generated ones, to support a wider range of device scale factors.
   if (device_scale_factor >= 2) {
     DEFINE_STATIC_REF(

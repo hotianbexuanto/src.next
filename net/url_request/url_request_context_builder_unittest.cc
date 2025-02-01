@@ -184,6 +184,47 @@ TEST_F(URLRequestContextBuilderTest, ShutDownNELAndReportingWithPendingUpload) {
       ConfiguredProxyResolutionService::CreateDirect());
   builder_.set_reporting_policy(std::make_unique<ReportingPolicy>());
   builder_.set_network_error_logging_enabled(true);
+<<<<<<< HEAD
+
+  std::unique_ptr<URLRequestContext> context(builder_.Build());
+  ASSERT_TRUE(context->network_error_logging_service());
+  ASSERT_TRUE(context->reporting_service());
+
+  // Queue a pending upload.
+  GURL url("https://www.foo.test");
+  context->reporting_service()->GetContextForTesting()->uploader()->StartUpload(
+      url::Origin::Create(url), url,
+      IsolationInfo::CreateTransient(/*nonce=*/std::nullopt), "report body", 0,
+      /*eligible_for_credentials=*/false, base::DoNothing());
+  base::RunLoop().RunUntilIdle();
+  ASSERT_EQ(1, context->reporting_service()
+                   ->GetContextForTesting()
+                   ->uploader()
+                   ->GetPendingUploadCountForTesting());
+  ASSERT_TRUE(mock_host_resolver->has_pending_requests());
+
+  // This should shut down and destroy the NEL and Reporting services, including
+  // the PendingUpload, and should not cause a crash.
+  context.reset();
+}
+
+#if !BUILDFLAG(CRONET_BUILD)
+// See crbug.com/935209. This test ensures that shutdown occurs correctly and
+// does not crash while destoying the NEL and Reporting services in the process
+// of destroying the URLRequestContext whilst Reporting has a pending upload.
+TEST_F(URLRequestContextBuilderTest,
+       ShutDownNELAndReportingWithPendingUploadAndPersistentStorage) {
+  std::unique_ptr<MockHostResolver> host_resolver =
+      std::make_unique<MockHostResolver>();
+  host_resolver->set_ondemand_mode(true);
+  MockHostResolver* mock_host_resolver = host_resolver.get();
+  builder_.set_host_resolver(std::move(host_resolver));
+  builder_.set_proxy_resolution_service(
+      ConfiguredProxyResolutionService::CreateDirect());
+  builder_.set_reporting_policy(std::make_unique<ReportingPolicy>());
+  builder_.set_network_error_logging_enabled(true);
+=======
+>>>>>>> chromium
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   builder_.set_persistent_reporting_and_nel_store(
@@ -206,8 +247,14 @@ TEST_F(URLRequestContextBuilderTest, ShutDownNELAndReportingWithPendingUpload) {
   // Queue a pending upload.
   GURL url("https://www.foo.test");
   context->reporting_service()->GetContextForTesting()->uploader()->StartUpload(
+<<<<<<< HEAD
+      url::Origin::Create(url), url,
+      IsolationInfo::CreateTransient(/*nonce=*/std::nullopt), "report body", 0,
+      /*eligible_for_credentials=*/false, base::DoNothing());
+=======
       url::Origin::Create(url), url, NetworkIsolationKey(), "report body", 0,
       base::DoNothing());
+>>>>>>> chromium
   base::RunLoop().RunUntilIdle();
   ASSERT_EQ(1, context->reporting_service()
                    ->GetContextForTesting()

@@ -33,6 +33,7 @@
 #include "net/base/request_priority.h"
 #include "net/http/http_network_session.h"
 #include "net/http/http_transaction_factory.h"
+#include "net/http/no_vary_search_cache.h"
 
 class GURL;
 
@@ -269,8 +270,52 @@ class NET_EXPORT HttpCache : public HttpTransactionFactory {
   // this will be the key itself.
   static std::string GetResourceURLFromHttpCacheKey(const std::string& key);
 
+<<<<<<< HEAD
+  // Generates the cache key for a request.
+  static std::optional<std::string> GenerateCacheKeyForRequest(
+      const HttpRequestInfo* request);
+
+  // Generates the cache key for a request, but using a different URL. This is
+  // more efficient than copying the HttpRequestInfo object and changing the
+  // URL.
+  static std::optional<std::string> GenerateCacheKeyForRequestWithAlternateURL(
+      const HttpRequestInfo* request,
+      const GURL& url);
+
+  enum class ExperimentMode {
+    // No additional partitioning is done for top-level navigations.
+    kStandard,
+    // A boolean is incorporated into the cache key that is true for
+    // renderer-initiated main frame navigations when the request initiator site
+    // is cross-site to the URL being navigated to.
+    kCrossSiteInitiatorBoolean,
+    // The request initiator site is incorporated into the cache key for
+    // renderer-initiated main frame navigations when the request initiator site
+    // is cross-site to the URL being navigated to. If the request initiator
+    // site is opaque, then no caching is performed of the navigated-to
+    // document.
+    kMainFrameNavigationInitiator,
+    // The request initiator site is incorporated into the cache key for all
+    // renderer-initiated navigations (including subframe navigations) when the
+    // request initiator site is cross-site to the URL being navigated to. If
+    // the request initiator site is opaque, then no caching is performed of the
+    // navigated-to document. When this scheme is used, the
+    // `is-subframe-document-resource` boolean is not incorporated into the
+    // cache key, since incorporating the initiator site for subframe
+    // navigations
+    // should be sufficient for mitigating the attacks that the
+    // `is-subframe-document-resource` mitigates.
+    kNavigationInitiator,
+  };
+
+  // Returns the HTTP Cache partitioning experiment mode currently in use. Only
+  // one experiment mode feature flag should be enabled at a time, but if
+  // multiple are enabled then `ExperimentMode::kStandard` will be returned.
+  static ExperimentMode GetExperimentMode();
+=======
   // Function to generate cache key for testing.
   static std::string GenerateCacheKeyForTest(const HttpRequestInfo* request);
+>>>>>>> chromium
 
   // Enable split cache feature if not already overridden in the feature list.
   // Should only be invoked during process initialization before the HTTP
@@ -675,6 +720,11 @@ class NET_EXPORT HttpCache : public HttpTransactionFactory {
 
   // A clock that can be swapped out for testing.
   base::Clock* clock_;
+
+  // Set if the kHttpCacheNoVarySearch feature is enabled. Translates the URL in
+  // the request into the URL of a previous response that is equivalent
+  // according to the rules of the No-Vary-Search header in the response.
+  std::optional<NoVarySearchCache> no_vary_search_cache_;
 
   THREAD_CHECKER(thread_checker_);
 

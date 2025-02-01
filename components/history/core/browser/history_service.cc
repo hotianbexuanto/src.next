@@ -425,6 +425,66 @@ void HistoryService::AddPage(const HistoryAddPageArgs& add_page_args) {
                               add_page_args));
 }
 
+<<<<<<< HEAD
+void HistoryService::AddPartitionedVisitedLinks(
+    const HistoryAddPageArgs& args) {
+  // Ensure that we can communicate to our in-memory hashtable.
+  if (!visit_delegate_) {
+    return;
+  }
+
+  // When links are partitioned and the navigation comes from an ephemeral
+  // context we want to avoid adding it to the hashtable.
+  if (args.is_ephemeral) {
+    return;
+  }
+
+  // We require each element of the triple-partition key <link url, top-level
+  // site, frame origin> to have a valid value.
+  GURL top_level_or_opener;
+  if (args.top_level_url.has_value() && args.top_level_url->is_valid()) {
+    top_level_or_opener = args.top_level_url.value();
+  } else {
+    // Context clicks may replace their empty or invalid top-level site with a
+    // valid opener value. Check if the navigation transition type matches
+    // context click.
+    if (ui::PageTransitionCoreTypeIs(args.transition,
+                                     ui::PAGE_TRANSITION_LINK)) {
+      if (args.opener.has_value() && args.opener->url.is_valid()) {
+        top_level_or_opener = args.opener->url;
+      }
+    }
+  }
+
+  // If we were unable to obtain valid URLs for either of our top-level or
+  // frame origin parameters, we cannot successfully construct our
+  // triple-partition key and should not add this navigation to the hashtable.
+  if (!top_level_or_opener.is_valid() || !args.referrer.is_valid()) {
+    return;
+  }
+
+  // Add the VisitedLink representing each navigation to the partitioned
+  // hashtable.
+  if (!args.redirects.empty()) {
+    // We should not be asked to add a page in the middle of a redirect chain,
+    // and thus add_page_args.url should be the last element in the array
+    // add_page_args.redirects.
+    DCHECK_EQ(args.url, args.redirects.back());
+    for (const GURL& redirect : args.redirects) {
+      // All redirects originate from the same top-level site and frame origin.
+      VisitedLink link = {redirect, net::SchemefulSite(top_level_or_opener),
+                          url::Origin::Create(args.referrer)};
+      visit_delegate_->AddVisitedLink(link);
+    }
+  } else {
+    VisitedLink link = {args.url, net::SchemefulSite(top_level_or_opener),
+                        url::Origin::Create(args.referrer)};
+    visit_delegate_->AddVisitedLink(link);
+  }
+}
+
+=======
+>>>>>>> chromium
 void HistoryService::AddPageNoVisitForBookmark(const GURL& url,
                                                const std::u16string& title) {
   TRACE_EVENT0("browser", "HistoryService::AddPageNoVisitForBookmark");

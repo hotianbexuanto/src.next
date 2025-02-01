@@ -42,7 +42,7 @@
 
 class RedirectTest : public InProcessBrowserTest {
  public:
-  RedirectTest() {}
+  RedirectTest() = default;
 
   std::vector<GURL> GetRedirects(const GURL& url) {
     history::HistoryService* history_service =

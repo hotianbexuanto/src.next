@@ -94,7 +94,7 @@ DiceSignedInProfileCreator::DiceSignedInProfileCreator(
     absl::optional<size_t> icon_index,
     bool use_guest_profile,
     base::OnceCallback<void(Profile*)> callback)
-    : source_profile_(source_profile),
+    : source_profile_(source_profile->GetWeakPtr()),
       account_id_(account_id),
       callback_(std::move(callback)) {
   // Passing the sign-in token to an ephemeral Guest profile is part of the
@@ -130,6 +130,17 @@ DiceSignedInProfileCreator::DiceSignedInProfileCreator(
         base::BindRepeating(&DiceSignedInProfileCreator::OnNewProfileCreated,
                             weak_pointer_factory_.GetWeakPtr()));
   }
+<<<<<<< HEAD
+  std::u16string name = local_profile_name.empty()
+                            ? storage.ChooseNameForNewProfile()
+                            : local_profile_name;
+  ProfileManager::CreateMultiProfileAsync(
+      name, *icon_index,
+      /*is_hidden=*/false,
+      base::BindOnce(&DiceSignedInProfileCreator::OnNewProfileInitialized,
+                     weak_pointer_factory_.GetWeakPtr()));
+=======
+>>>>>>> chromium
 }
 
 DiceSignedInProfileCreator::DiceSignedInProfileCreator(
@@ -137,7 +148,7 @@ DiceSignedInProfileCreator::DiceSignedInProfileCreator(
     CoreAccountId account_id,
     const base::FilePath& target_profile_path,
     base::OnceCallback<void(Profile*)> callback)
-    : source_profile_(source_profile),
+    : source_profile_(source_profile->GetWeakPtr()),
       account_id_(account_id),
       callback_(std::move(callback)) {
   // Make sure the callback is not called synchronously.
@@ -199,18 +210,35 @@ void DiceSignedInProfileCreator::OnNewProfileInitialized(Profile* new_profile) {
 void DiceSignedInProfileCreator::OnNewProfileTokensLoaded(
     Profile* new_profile) {
   tokens_loaded_callback_runner_.reset();
-  if (!new_profile) {
+  if (!new_profile || !source_profile_) {
     if (callback_)
       std::move(callback_).Run(nullptr);
     return;
   }
 
   auto* accounts_mutator =
-      IdentityManagerFactory::GetForProfile(source_profile_)
+      IdentityManagerFactory::GetForProfile(source_profile_.get())
           ->GetAccountsMutator();
   auto* new_profile_accounts_mutator =
       IdentityManagerFactory::GetForProfile(new_profile)->GetAccountsMutator();
   accounts_mutator->MoveAccount(new_profile_accounts_mutator, account_id_);
+<<<<<<< HEAD
+
+  if (switches::IsExplicitBrowserSigninUIOnDesktopEnabled()) {
+    // Sign in for new profiles, profile switches are expected to be already
+    // signed in.
+    if (!new_profile_identity_manager->HasPrimaryAccount(
+            signin::ConsentLevel::kSignin)) {
+      new_profile_identity_manager->GetPrimaryAccountMutator()
+          ->SetPrimaryAccount(
+              account_id_, signin::ConsentLevel::kSignin,
+              signin_metrics::AccessPoint::kSigninInterceptFirstRunExperience);
+    }
+  }
+
+  if (callback_) {
+=======
   if (callback_)
+>>>>>>> chromium
     std::move(callback_).Run(new_profile);
 }

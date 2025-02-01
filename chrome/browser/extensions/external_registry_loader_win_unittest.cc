@@ -22,7 +22,7 @@ const char kDummyRegistryKey[] = "dummyId";
 
 class TestExternalRegistryLoader : public ExternalRegistryLoader {
  public:
-  TestExternalRegistryLoader() {}
+  TestExternalRegistryLoader() = default;
 
   using ExternalRegistryLoader::StartLoading;
 
@@ -34,7 +34,7 @@ class TestExternalRegistryLoader : public ExternalRegistryLoader {
   std::vector<int> GetPrefsTestIds() { return prefs_test_ids_; }
 
  private:
-  ~TestExternalRegistryLoader() override {}
+  ~TestExternalRegistryLoader() override = default;
 
   std::unique_ptr<base::DictionaryValue> LoadPrefsOnBlockingThread() override {
     return DictionaryBuilder().Set(kDummyRegistryKey, id_++).Build();
@@ -66,8 +66,19 @@ class TestExternalRegistryLoader : public ExternalRegistryLoader {
 
 class ExternalRegistryLoaderUnittest : public testing::Test {
  public:
+<<<<<<< HEAD
+  ExternalRegistryLoaderUnittest() = default;
+
+  ExternalRegistryLoaderUnittest(const ExternalRegistryLoaderUnittest&) =
+      delete;
+  ExternalRegistryLoaderUnittest& operator=(
+      const ExternalRegistryLoaderUnittest&) = delete;
+
+  ~ExternalRegistryLoaderUnittest() override = default;
+=======
   ExternalRegistryLoaderUnittest() {}
   ~ExternalRegistryLoaderUnittest() override {}
+>>>>>>> chromium
 
  protected:
   void RunUntilIdle() { task_environment_.RunUntilIdle(); }

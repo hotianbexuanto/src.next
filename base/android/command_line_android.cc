@@ -7,14 +7,31 @@
 #include "base/base_jni_headers/CommandLine_jni.h"
 #include "base/command_line.h"
 
+<<<<<<< HEAD
+#include "base/android/jni_string.h"
+#include "build/robolectric_buildflags.h"
+
+// Must come after all headers that specialize FromJniType() / ToJniType().
+#if BUILDFLAG(IS_ROBOLECTRIC)
+#include "base/base_robolectric_jni/CommandLine_jni.h"  // nogncheck
+#else
+#include "base/command_line_jni/CommandLine_jni.h"
+#endif
+
+using base::CommandLine;
+=======
 using base::android::ConvertUTF8ToJavaString;
 using base::android::ConvertJavaStringToUTF8;
+>>>>>>> chromium
 using base::android::JavaParamRef;
 using base::android::ScopedJavaLocalRef;
-using base::CommandLine;
 
 namespace {
 
+<<<<<<< HEAD
+void AppendToCommandLine(std::vector<std::string>& vec, bool includes_program) {
+  if (!includes_program) {
+=======
 void JNI_CommandLine_AppendJavaStringArrayToCommandLine(
     JNIEnv* env,
     const JavaParamRef<jobjectArray>& array,
@@ -23,7 +40,9 @@ void JNI_CommandLine_AppendJavaStringArrayToCommandLine(
   if (array)
     base::android::AppendJavaStringArrayToStringVector(env, array, &vec);
   if (!includes_program)
+>>>>>>> chromium
     vec.insert(vec.begin(), std::string());
+  }
   CommandLine extra_command_line(vec);
   CommandLine::ForCurrentProcess()->AppendArguments(extra_command_line,
                                                     includes_program);
@@ -49,6 +68,10 @@ static ScopedJavaLocalRef<jstring> JNI_CommandLine_GetSwitchValue(
   return ConvertUTF8ToJavaString(env, value);
 }
 
+<<<<<<< HEAD
+static CommandLine::SwitchMap JNI_CommandLine_GetSwitches(JNIEnv* env) {
+  return CommandLine::ForCurrentProcess()->GetSwitches();
+=======
 static ScopedJavaLocalRef<jobjectArray> JNI_CommandLine_GetSwitchesFlattened(
     JNIEnv* env) {
   // JNI doesn't support returning Maps. Instead, express this map as a 1
@@ -65,6 +88,7 @@ static void JNI_CommandLine_AppendSwitch(JNIEnv* env,
                                          const JavaParamRef<jstring>& jswitch) {
   std::string switch_string(ConvertJavaStringToUTF8(env, jswitch));
   CommandLine::ForCurrentProcess()->AppendSwitch(switch_string);
+>>>>>>> chromium
 }
 
 static void JNI_CommandLine_AppendSwitchWithValue(

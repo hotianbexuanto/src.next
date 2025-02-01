@@ -7,6 +7,10 @@
 
 #include "base/macros.h"
 #include "base/values.h"
+<<<<<<< HEAD
+#include "build/build_config.h"
+=======
+>>>>>>> chromium
 #include "components/policy/core/browser/configuration_policy_handler.h"
 
 namespace policy {

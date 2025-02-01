@@ -17,6 +17,7 @@
 #include "components/safe_browsing/content/common/file_type_policies.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "content/public/test/browser_task_environment.h"
+#include "google_apis/gaia/gaia_id.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -26,6 +27,11 @@
 #include "components/drive/drive_pref_names.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/flags/android/chrome_feature_list.h"
+#endif
+=======
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
 #include "base/hash/md5.h"
 #include "base/path_service.h"
@@ -33,6 +39,7 @@
 #include "chrome/common/chrome_paths_lacros.h"
 #include "components/account_id/account_id.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
+>>>>>>> chromium
 
 using safe_browsing::FileTypePolicies;
 
@@ -426,10 +433,28 @@ TEST(DownloadPrefsTest, DownloadDirSanitization) {
   DownloadPrefs prefs(&profile);
   const base::FilePath default_dir =
       prefs.GetDefaultDownloadDirectoryForProfile();
+<<<<<<< HEAD
+  AccountId account_id = AccountId::FromUserEmailGaiaId(
+      profile.GetProfileUserName(), GaiaId("12345"));
+  const std::string drivefs_profile_salt = "a";
+  base::FilePath removable_media_dir;
+  base::FilePath android_files_dir;
+  base::FilePath linux_files_dir;
+
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  removable_media_dir = ash::CrosDisksClient::GetRemovableDiskMountPoint();
+  android_files_dir = base::FilePath(file_manager::util::GetAndroidFilesPath());
+  linux_files_dir = file_manager::util::GetCrostiniMountDirectory(&profile);
+#endif
+=======
+>>>>>>> chromium
 
   // Test a valid subdirectory of downloads.
   ExpectValidDownloadDir(&profile, &prefs, default_dir.AppendASCII("testdir"));
 
+<<<<<<< HEAD
+  // Test with an invalid path outside the permitted paths.
+=======
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   // Test a valid subdirectory of documents. This isn't tested for ash because
   // these tests run on the linux "emulator", where ash uses ~/Documents, but
@@ -441,6 +466,7 @@ TEST(DownloadPrefsTest, DownloadDirSanitization) {
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
   // Test with an invalid path outside the download directory or drivefs.
+>>>>>>> chromium
   profile.GetPrefs()->SetString(prefs::kDownloadDefaultDirectory,
                                 "/home/chronos");
   EXPECT_EQ(prefs.DownloadPath(), default_dir);

@@ -4,7 +4,10 @@
 
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
 
+<<<<<<< HEAD
+=======
 #include "ash/constants/app_types.h"
+>>>>>>> chromium
 #include "ash/public/cpp/resources/grit/ash_public_unscaled_resources.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
@@ -55,11 +58,25 @@ void SettingsWindowManager::ForceDeprecatedSettingsWindowForTesting() {
 }
 
 // static
+<<<<<<< HEAD
+bool SettingsWindowManager::UseDeprecatedSettingsWindow(Profile* profile) {
+  if (g_force_deprecated_settings_window_for_testing) {
+    return true;
+  }
+
+  // Use deprecated settings window in Kiosk session only if SWA is disabled.
+  if (IsRunningInForcedAppMode()) {
+    return true;
+  }
+
+  return !web_app::AreWebAppsEnabled(profile);
+=======
 bool SettingsWindowManager::UseDeprecatedSettingsWindow(
     const Profile* profile) {
   return !web_app::AreWebAppsEnabled(profile) ||
          chrome::IsRunningInForcedAppMode() ||
          g_force_deprecated_settings_window_for_testing;
+>>>>>>> chromium
 }
 
 void SettingsWindowManager::AddObserver(
@@ -163,8 +180,9 @@ Browser* SettingsWindowManager::FindBrowserForProfile(Profile* profile) {
   }
 
   auto iter = settings_session_map_.find(profile);
-  if (iter != settings_session_map_.end())
+  if (iter != settings_session_map_.end()) {
     return chrome::FindBrowserWithID(iter->second);
+  }
 
   return nullptr;
 }
@@ -174,8 +192,13 @@ bool SettingsWindowManager::IsSettingsBrowser(Browser* browser) const {
 
   Profile* profile = browser->profile();
   if (!UseDeprecatedSettingsWindow(profile)) {
+<<<<<<< HEAD
+    if (!browser->app_controller()) {
+=======
     if (!browser->app_controller() || !browser->app_controller()->HasAppId())
+>>>>>>> chromium
       return false;
+    }
 
     // TODO(calamity): Determine whether, during startup, we need to wait for
     // app install and then provide a valid answer here.
@@ -191,8 +214,8 @@ bool SettingsWindowManager::IsSettingsBrowser(Browser* browser) const {
   }
 }
 
-SettingsWindowManager::SettingsWindowManager() {}
+SettingsWindowManager::SettingsWindowManager() = default;
 
-SettingsWindowManager::~SettingsWindowManager() {}
+SettingsWindowManager::~SettingsWindowManager() = default;
 
 }  // namespace chrome

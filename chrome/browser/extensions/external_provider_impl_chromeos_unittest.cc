@@ -56,7 +56,7 @@ class ExternalProviderImplChromeOSTest : public ExtensionServiceTestBase {
       : fake_user_manager_(new ash::FakeChromeUserManager()),
         scoped_user_manager_(base::WrapUnique(fake_user_manager_)) {}
 
-  ~ExternalProviderImplChromeOSTest() override {}
+  ~ExternalProviderImplChromeOSTest() override = default;
 
   void InitServiceWithExternalProviders(bool standalone) {
     InitServiceWithExternalProvidersAndUserType(standalone,

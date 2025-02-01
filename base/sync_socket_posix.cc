@@ -133,15 +133,18 @@ size_t SyncSocket::ReceiveWithTimeout(void* buffer,
     const TimeDelta this_timeout = finish_time - TimeTicks::Now();
     const int timeout_ms =
         static_cast<int>(this_timeout.InMillisecondsRoundedUp());
-    if (timeout_ms <= 0)
+    if (timeout_ms <= 0) {
       break;
+    }
     const int poll_result = poll(&pollfd, 1, timeout_ms);
     // Handle EINTR manually since we need to update the timeout value.
-    if (poll_result == -1 && errno == EINTR)
+    if (poll_result == -1 && errno == EINTR) {
       continue;
+    }
     // Return if other type of error or a timeout.
-    if (poll_result <= 0)
+    if (poll_result <= 0) {
       return bytes_read_total;
+    }
 
     // poll() only tells us that data is ready for reading, not how much.  We
     // must Peek() for the amount ready for reading to avoid blocking.
@@ -153,14 +156,21 @@ size_t SyncSocket::ReceiveWithTimeout(void* buffer,
     const size_t bytes_to_read = std::min(Peek(), length - bytes_read_total);
 
     // There may be zero bytes to read if the socket at the other end closed.
-    if (!bytes_to_read)
+    if (!bytes_to_read) {
       return bytes_read_total;
+    }
 
     const size_t bytes_received =
         Receive(static_cast<char*>(buffer) + bytes_read_total, bytes_to_read);
     bytes_read_total += bytes_received;
+<<<<<<< HEAD
+    buffer = buffer.subspan(bytes_received);
+    if (bytes_received != bytes_to_read) {
+=======
     if (bytes_received != bytes_to_read)
+>>>>>>> chromium
       return bytes_read_total;
+    }
   }
 
   return bytes_read_total;

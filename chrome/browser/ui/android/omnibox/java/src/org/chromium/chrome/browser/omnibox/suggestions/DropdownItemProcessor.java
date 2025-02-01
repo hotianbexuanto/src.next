@@ -4,12 +4,21 @@
 
 package org.chromium.chrome.browser.omnibox.suggestions;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.MockedInTests;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.ui.modelutil.PropertyModel;
+
+/** A processor of omnibox dropdown items. */
+@NullMarked
+=======
 import org.chromium.base.annotations.MockedInTests;
 import org.chromium.ui.modelutil.PropertyModel;
 
 /**
  * A processor of omnibox dropdown items.
  */
+>>>>>>> chromium
 @MockedInTests
 public interface DropdownItemProcessor {
     /**

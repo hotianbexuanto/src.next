@@ -2,7 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#include <algorithm>
+#include <bitset>
+#include <string_view>
+#include <vector>
+
+#include "base/base64.h"
 #include "base/command_line.h"
+#include "base/values.h"
+=======
+#include "base/command_line.h"
+>>>>>>> chromium
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -44,7 +55,7 @@ const DisabledItemsTestData kDisabledTokensTests[] = {
 
 class ChromeOriginTrialsTest : public InProcessBrowserTest {
  protected:
-  ChromeOriginTrialsTest() {}
+  ChromeOriginTrialsTest() = default;
 
   std::string GetCommandLineSwitch(const base::StringPiece& switch_name) {
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
@@ -156,7 +167,21 @@ IN_PROC_BROWSER_TEST_P(ChromeOriginTrialsDisabledTokensTest,
 }
 
 IN_PROC_BROWSER_TEST_P(ChromeOriginTrialsDisabledTokensTest,
+<<<<<<< HEAD
+                       DisabledTokensInPolicy) {
+  // Convert the uint8_t[] from generate_token.py into strings.
+  std::vector<std::string> expected_signatures;
+  std::ranges::transform(
+      GetParam().expected_list, std::back_inserter(expected_signatures),
+      [](const uint8_t bytes[]) {
+        return std::string(reinterpret_cast<const char*>(bytes),
+                           kTokenSignatureSize);
+      });
+  blink::OriginTrialPolicy* policy =
+      content::GetContentClientForTesting()->GetOriginTrialPolicy();
+=======
                        DisabledTokensSetOnCommandLine) {
+>>>>>>> chromium
   ASSERT_TRUE(local_state()->HasPrefPath(
       embedder_support::prefs::kOriginTrialDisabledTokens));
   std::string actual =

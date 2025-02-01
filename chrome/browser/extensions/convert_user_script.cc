@@ -84,8 +84,12 @@ scoped_refptr<Extension> ConvertUserScriptToExtension(
   // identity is its namespace+name, so we hash that to create a public key.
   // There will be no corresponding private key, which means user scripts cannot
   // be auto-updated, or claimed in the gallery.
+<<<<<<< HEAD
+  uint8_t raw[crypto::kSHA256Length] = {};
+=======
   char raw[crypto::kSHA256Length] = {0};
   std::string key;
+>>>>>>> chromium
   crypto::SHA256HashString(script_name, raw, crypto::kSHA256Length);
   base::Base64Encode(base::StringPiece(raw, crypto::kSHA256Length), &key);
 

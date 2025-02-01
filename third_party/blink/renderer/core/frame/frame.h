@@ -224,6 +224,14 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
     return had_sticky_user_activation_before_nav_;
   }
 
+  void SetAllowFocusDuringFocusAdvance(bool value) {
+    allow_focus_during_focus_advance_ = value;
+  }
+
+  bool AllowFocusDuringFocusAdvance() const {
+    return allow_focus_during_focus_advance_;
+  }
+
   bool IsAttached() const {
     return lifecycle_.GetState() == FrameLifecycle::kAttached;
   }
@@ -360,7 +368,28 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   // Detaches a frame from its parent frame if it has one.
   void DetachFromParent();
 
+<<<<<<< HEAD
+  // Swap out this frame for a new local frame. Note that this frame and the
+  // local frame can belong to different Pages in case of main frame
+  // LocalFrame <-> LocalFrame swaps. In that case, the frame actually being
+  // swapped in this frame's place in the old Page will be a placeholder
+  // RemoteFrame, while the new LocalFrame will get swapped in into a new Page.
+  // See comments in SwapImpl()'s implementation for more details.
+  bool Swap(WebLocalFrame*);
+
+  // Swap out this frame for a new remote frame. This method takes the
+  // mojo interfaces because they are provided in the construction IPC
+  // as opposed to being fetched via an AssociatedInterfaceProvider which
+  // WebLocalFrame uses.
+  bool Swap(WebRemoteFrame*,
+            mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost>
+                remote_frame_host,
+            mojo::PendingAssociatedReceiver<mojom::blink::RemoteFrame>
+                remote_frame_receiver,
+            const std::optional<base::UnguessableToken>& devtools_frame_token);
+=======
   bool Swap(WebFrame*);
+>>>>>>> chromium
 
   // Removes the given child from this frame.
   void RemoveChild(Frame* child);
@@ -439,6 +468,27 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   // null. The child frame's parent must be set in the constructor.
   void InsertAfter(Frame* new_child, Frame* previous_sibling);
 
+<<<<<<< HEAD
+  void CancelFormSubmissionWithVersion(uint64_t version);
+
+  bool SwapImpl(
+      WebFrame*,
+      mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost>
+          remote_frame_host,
+      mojo::PendingAssociatedReceiver<mojom::blink::RemoteFrame>
+          remote_frame_receiver,
+      const std::optional<base::UnguessableToken>& devtools_frame_token);
+
+  // Notifies a specific frame that it now has user activation. Used to prevent
+  // duplicated logic in `NotifyUserActivationInFrameTree()`, which notifies
+  // various sets of Frames that they're now activated.
+  static void NotifyUserActivationInFrame(
+      Frame* node,
+      mojom::blink::UserActivationNotificationType notification_type,
+      bool sticky_only);
+
+=======
+>>>>>>> chromium
   Member<FrameClient> client_;
   const Member<WindowProxyManager> window_proxy_manager_;
   FrameLifecycle lifecycle_;
@@ -486,6 +536,10 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   // The sticky user activation state of the current frame before eTLD+1
   // navigation.  This is used in autoplay.
   bool had_sticky_user_activation_before_nav_ = false;
+
+  // This is used in focus delegation scenario when
+  // focus-without-user-activation permission policy is set.
+  bool allow_focus_during_focus_advance_ = false;
 
   // This identifier represents the stable identifier between a
   // LocalFrame  <--> RenderFrameHostImpl or a

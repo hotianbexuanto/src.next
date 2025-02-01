@@ -4,13 +4,18 @@
 
 #include "components/ntp_tiles/custom_links_manager_impl.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 
 #include "base/auto_reset.h"
+<<<<<<< HEAD
+#include "base/functional/bind.h"
+=======
 #include "base/bind.h"
 #include "base/containers/cxx20_erase.h"
+>>>>>>> chromium
 #include "components/ntp_tiles/constants.h"
 #include "components/ntp_tiles/pref_names.h"
 #include "components/pref_registry/pref_registry_syncable.h"
@@ -188,8 +193,12 @@ void CustomLinksManagerImpl::StoreLinks() {
 
 std::vector<CustomLinksManager::Link>::iterator
 CustomLinksManagerImpl::FindLinkWithUrl(const GURL& url) {
+<<<<<<< HEAD
+  return std::ranges::find(current_links_, url, &Link::url);
+=======
   return std::find_if(current_links_.begin(), current_links_.end(),
                       [&url](const Link& link) { return link.url == url; });
+>>>>>>> chromium
 }
 
 base::CallbackListSubscription

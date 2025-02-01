@@ -58,6 +58,54 @@ class NET_EXPORT HttpStreamFactory {
     PRECONNECT,
   };
 
+<<<<<<< HEAD
+  // This is the subset of HttpRequestInfo needed by the HttpStreamFactory
+  // layer. It's separated out largely to avoid dangling pointers when jobs are
+  // orphaned, though it also avoids creating multiple copies of fields that
+  // aren't needed, like HttpRequestHeaders.
+  //
+  // See HttpRequestInfo for description of most fields.
+  struct NET_EXPORT StreamRequestInfo {
+    StreamRequestInfo();
+    explicit StreamRequestInfo(const HttpRequestInfo& http_request_info);
+
+    StreamRequestInfo(const StreamRequestInfo& other);
+    StreamRequestInfo& operator=(const StreamRequestInfo& other);
+    StreamRequestInfo(StreamRequestInfo&& other);
+    StreamRequestInfo& operator=(StreamRequestInfo&& other);
+
+    ~StreamRequestInfo();
+
+    std::string method;
+    NetworkAnonymizationKey network_anonymization_key;
+    MutableNetworkTrafficAnnotationTag traffic_annotation;
+
+    // Whether HTTP/1.x can be used. Extracted from
+    // UploadDataStream::AllowHTTP1().
+    bool is_http1_allowed = true;
+
+    int load_flags = 0;
+    PrivacyMode privacy_mode = PRIVACY_MODE_DISABLED;
+    SecureDnsPolicy secure_dns_policy = SecureDnsPolicy::kAllow;
+    SocketTag socket_tag;
+  };
+
+  // Calculates an appropriate SPDY session key for the given parameters.
+  static SpdySessionKey GetSpdySessionKey(
+      const ProxyChain& proxy_chain,
+      const GURL& origin_url,
+      const StreamRequestInfo& request_info);
+
+  // Returns whether an appropriate SPDY session would correspond to either a
+  // connection to the last proxy server in the chain (for the traditional HTTP
+  // proxying behavior of sending a GET request to the proxy server) or a
+  // connection through the entire proxy chain (for tunneled requests). Note
+  // that for QUIC proxies we no longer support the former.
+  static bool IsGetToProxy(const ProxyChain& proxy_chain,
+                           const GURL& origin_url);
+
+=======
+>>>>>>> chromium
   explicit HttpStreamFactory(HttpNetworkSession* session);
   virtual ~HttpStreamFactory();
 

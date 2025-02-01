@@ -199,21 +199,104 @@ ts_library("build_ts") {
     "runtime_host_permissions.ts",
     "runtime_hosts_dialog.ts",
     "service.ts",
+<<<<<<< HEAD
+    "sidebar.html.ts",
+    "sidebar.ts",
+    "site_permissions/site_permissions.html.ts",
+    "site_permissions/site_permissions.ts",
+    "site_permissions/site_permissions_by_site.html.ts",
+    "site_permissions/site_permissions_by_site.ts",
+    "site_permissions/site_permissions_edit_permissions_dialog.html.ts",
+    "site_permissions/site_permissions_edit_permissions_dialog.ts",
+    "site_permissions/site_permissions_edit_url_dialog.html.ts",
+    "site_permissions/site_permissions_edit_url_dialog.ts",
+    "site_permissions/site_permissions_list.html.ts",
+    "site_permissions/site_permissions_list.ts",
+    "site_permissions/site_permissions_site_group.html.ts",
+    "site_permissions/site_permissions_site_group.ts",
+    "site_permissions/site_settings_mixin.ts",
+    "toggle_row.html.ts",
+=======
     "shared_style.ts",
     "shared_vars.ts",
     "shortcut_input.ts",
     "shortcut_util.ts",
     "sidebar.ts",
+>>>>>>> chromium
     "toggle_row.ts",
     "toolbar.ts",
   ]
+<<<<<<< HEAD
+
+  icons_html_files = [ "icons.html" ]
+  html_to_wrapper_template = "detect"
+
+  # Files that are passed as input to css_to_wrapper().
+  css_files = [
+    "activity_log/activity_log.css",
+    "activity_log/activity_log_history.css",
+    "activity_log/activity_log_history_item.css",
+    "activity_log/activity_log_stream.css",
+    "activity_log/activity_log_stream_item.css",
+    "code_section.css",
+    "detail_view.css",
+    "drop_overlay.css",
+    "error_page.css",
+    "host_permissions_toggle_list.css",
+    "install_warnings_dialog.css",
+    "item.css",
+    "item_list.css",
+    "keyboard_shortcuts.css",
+    "load_error.css",
+    "manager.css",
+    "mv2_deprecation_panel.css",
+    "options_dialog.css",
+    "pack_dialog.css",
+    "pack_dialog_alert.css",
+    "review_panel.css",
+    "runtime_host_permissions.css",
+    "shared_style.css",
+    "shared_vars.css",
+    "sidebar.css",
+    "site_permissions/site_permissions.css",
+    "site_permissions/site_permissions_by_site.css",
+    "site_permissions/site_permissions_edit_permissions_dialog.css",
+    "site_permissions/site_permissions_list.css",
+    "site_permissions/site_permissions_site_group.css",
+    "toggle_row.css",
+    "toolbar.css",
+  ]
+
+  ts_composite = true
+  ts_definitions = [
+=======
   definitions = [
+>>>>>>> chromium
     "//tools/typescript/definitions/activity_log_private.d.ts",
     "//tools/typescript/definitions/chrome_event.d.ts",
+    "//tools/typescript/definitions/chrome_send.d.ts",
     "//tools/typescript/definitions/developer_private.d.ts",
     "//tools/typescript/definitions/management.d.ts",
     "//tools/typescript/definitions/metrics_private.d.ts",
     "//tools/typescript/definitions/runtime.d.ts",
+<<<<<<< HEAD
+    "//tools/typescript/definitions/tabs.d.ts",
+  ]
+
+  ts_deps = [
+    "//third_party/lit/v3_0:build_ts",
+    "//ui/webui/resources/cr_components/cr_shortcut_input:build_ts",
+    "//ui/webui/resources/cr_components/managed_footnote:build_ts",
+    "//ui/webui/resources/cr_elements:build_ts",
+    "//ui/webui/resources/js:build_ts",
+  ]
+
+  webui_context_type = "trusted"
+  optimize = optimize_webui
+  if (optimize) {
+    optimize_webui_host = "extensions"
+    optimize_webui_in_files = [ "extensions.js" ]
+=======
   ]
 
   if (is_chromeos_ash) {
@@ -222,6 +305,7 @@ ts_library("build_ts") {
       "kiosk_dialog.ts",
     ]
     definitions += [ "//tools/typescript/definitions/chrome_send.d.ts" ]
+>>>>>>> chromium
   }
 
   deps = [

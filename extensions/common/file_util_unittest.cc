@@ -6,6 +6,12 @@
 
 #include <stddef.h>
 
+<<<<<<< HEAD
+#include <array>
+#include <optional>
+#include <string_view>
+=======
+>>>>>>> chromium
 #include <utility>
 
 #include "base/cxx17_backports.h"
@@ -257,11 +263,16 @@ TEST_F(FileUtilTest, CheckIllegalFilenamesOnlyReserved) {
   base::ScopedTempDir temp;
   ASSERT_TRUE(temp.CreateUniqueTempDir());
 
-  static const base::FilePath::CharType* const folders[] = {
-      kLocaleFolder, kPlatformSpecificFolder};
+  static const auto folders = std::to_array<const base::FilePath::CharType*>(
+      {kLocaleFolder, kPlatformSpecificFolder});
 
+<<<<<<< HEAD
+  for (const auto* folder : folders) {
+    base::FilePath src_path = temp.GetPath().Append(folder);
+=======
   for (size_t i = 0; i < base::size(folders); i++) {
     base::FilePath src_path = temp.GetPath().Append(folders[i]);
+>>>>>>> chromium
     ASSERT_TRUE(base::CreateDirectory(src_path));
   }
 
@@ -610,10 +621,20 @@ TEST_F(FileUtilTest, CheckInvisibleIconFilePacked) {
 
 TEST_F(FileUtilTest, ExtensionURLToRelativeFilePath) {
 #define URL_PREFIX "chrome-extension://extension-id/"
-  struct TestCase {
+  static constexpr struct {
     const char* url;
     const char* expected_relative_path;
   } test_cases[] = {
+<<<<<<< HEAD
+      {URL_PREFIX "simple.html", "simple.html"},
+      {URL_PREFIX "directory/to/file.html", "directory/to/file.html"},
+      {URL_PREFIX "escape%20spaces.html", "escape spaces.html"},
+      {URL_PREFIX "%C3%9Cber.html",
+       "\xC3\x9C"
+       "ber.html"},
+#if BUILDFLAG(IS_WIN)
+      {URL_PREFIX "C%3A/simple.html", ""},
+=======
     {URL_PREFIX "simple.html", "simple.html"},
     {URL_PREFIX "directory/to/file.html", "directory/to/file.html"},
     {URL_PREFIX "escape%20spaces.html", "escape spaces.html"},
@@ -622,26 +643,32 @@ TEST_F(FileUtilTest, ExtensionURLToRelativeFilePath) {
      "ber.html"},
 #if defined(OS_WIN)
     {URL_PREFIX "C%3A/simple.html", ""},
+>>>>>>> chromium
 #endif
-    {URL_PREFIX "////simple.html", "simple.html"},
-    {URL_PREFIX "/simple.html", "simple.html"},
-    {URL_PREFIX "\\simple.html", "simple.html"},
-    {URL_PREFIX "\\\\foo\\simple.html", "foo/simple.html"},
-    // Escaped file paths result in failure.
-    {URL_PREFIX "..%2f..%2fsimple.html", ""},
-    // Escaped things that look like escaped file paths, on the other hand,
-    // should work.
-    {URL_PREFIX "..%252f..%252fsimple.html", "..%2f..%2fsimple.html"},
-    // This is a UTF-8 lock icon, which is unsafe to display in the omnibox, but
-    // is a valid, if unusual, file name.
-    {URL_PREFIX "%F0%9F%94%93.html", "\xF0\x9F\x94\x93.html"},
+      {URL_PREFIX "////simple.html", "simple.html"},
+      {URL_PREFIX "/simple.html", "simple.html"},
+      {URL_PREFIX "\\simple.html", "simple.html"},
+      {URL_PREFIX "\\\\foo\\simple.html", "foo/simple.html"},
+      // Escaped file paths result in failure.
+      {URL_PREFIX "..%2f..%2fsimple.html", ""},
+      // Escaped things that look like escaped file paths, on the other hand,
+      // should work.
+      {URL_PREFIX "..%252f..%252fsimple.html", "..%2f..%2fsimple.html"},
+      // This is a UTF-8 lock icon, which is unsafe to display in the omnibox,
+      // but is a valid, if unusual, file name.
+      {URL_PREFIX "%F0%9F%94%93.html", "\xF0\x9F\x94\x93.html"},
   };
 #undef URL_PREFIX
 
+<<<<<<< HEAD
+  for (const auto& test_case : test_cases) {
+    GURL url(test_case.url);
+=======
   for (size_t i = 0; i < base::size(test_cases); ++i) {
     GURL url(test_cases[i].url);
+>>>>>>> chromium
     base::FilePath expected_path =
-        base::FilePath::FromUTF8Unsafe(test_cases[i].expected_relative_path);
+        base::FilePath::FromUTF8Unsafe(test_case.expected_relative_path);
     base::FilePath actual_path = file_util::ExtensionURLToRelativeFilePath(url);
     EXPECT_FALSE(actual_path.IsAbsolute()) <<
       " For the path " << actual_path.value();

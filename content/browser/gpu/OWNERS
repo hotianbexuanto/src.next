@@ -1,6 +1,11 @@
 kbr@chromium.org
 zmo@chromium.org
+<<<<<<< HEAD
+kylechar@chromium.org
+blundell@chromium.org
+=======
 backer@chromium.org
+>>>>>>> chromium
 
 # For security review.
 per-file gpu_process_host_receiver_bindings.*=set noparent

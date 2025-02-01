@@ -802,8 +802,14 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, ReplaceStateSamePageIsNotRecorded) {
       browser()->tab_strip_model()->GetActiveWebContents();
 
   // Do a replaceState() to create a new navigation entry.
+<<<<<<< HEAD
+  ASSERT_TRUE(
+      content::ExecJs(web_contents, "history.replaceState({foo: 'bar'},'')",
+                      content::EvalJsOptions::EXECUTE_SCRIPT_NO_USER_GESTURE));
+=======
   ASSERT_TRUE(content::ExecuteScript(web_contents,
                                      "history.replaceState({foo: 'bar'},'')"));
+>>>>>>> chromium
   content::WaitForLoadStop(web_contents);
 
   // Because there was no user gesture and the url did not change, there should
@@ -814,3 +820,428 @@ IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, ReplaceStateSamePageIsNotRecorded) {
   history::QueryURLResult url_result = QueryURL(url);
   EXPECT_EQ(1u, url_result.visits.size());
 }
+<<<<<<< HEAD
+
+// Verifies history.replaceState() to the same url with a user gesture logs
+// a visit.
+IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, ReplaceStateSamePageVisitsRecorded) {
+  // Use the default embedded_https_test_server() for this test because
+  // replaceState requires a real, non-file URL.
+  GURL url(embedded_https_test_server().GetURL("foo.com", "/title3.html"));
+  NavigateParams params(browser(), url, ui::PAGE_TRANSITION_TYPED);
+  params.user_gesture = false;
+  ui_test_utils::NavigateToURL(&params);
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  // Do a replaceState() to create a new navigation entry.
+  ASSERT_TRUE(
+      content::ExecJs(web_contents, "history.replaceState({foo: 'bar'},'')"));
+  content::WaitForLoadStop(web_contents);
+
+  // The same url should have 2 visits given the user gesture.
+  std::vector<GURL> urls(GetHistoryContents());
+  ASSERT_EQ(1u, urls.size());
+  EXPECT_EQ(url, urls[0]);
+  history::QueryURLResult url_result = QueryURL(url);
+  EXPECT_EQ(2u, url_result.visits.size());
+}
+
+IN_PROC_BROWSER_TEST_F(HistoryBrowserTest, VisitAnnotations) {
+  ui_test_utils::WaitForHistoryToLoad(HistoryServiceFactory::GetForProfile(
+      browser()->profile(), ServiceAccessType::EXPLICIT_ACCESS));
+
+  // Navigate to some arbitrary page.
+  GURL url = GetTestFileURL("landing.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  // A visit should have been written to the DB.
+  std::vector<history::AnnotatedVisit> annotated_visits =
+      GetAllAnnotatedVisits();
+  ASSERT_EQ(annotated_visits.size(), 1u);
+  // ...and its on-visit annotation fields should be populated already.
+  history::AnnotatedVisit ongoing_visit = annotated_visits[0];
+  EXPECT_NE(ongoing_visit.context_annotations.on_visit.browser_type,
+            history::VisitContextAnnotations::BrowserType::kUnknown);
+  EXPECT_TRUE(ongoing_visit.context_annotations.on_visit.window_id.is_valid());
+  EXPECT_TRUE(ongoing_visit.context_annotations.on_visit.tab_id.is_valid());
+  EXPECT_NE(ongoing_visit.context_annotations.on_visit.task_id, -1);
+  EXPECT_GT(ongoing_visit.context_annotations.on_visit.response_code, 0);
+
+  // Navigate to a different page to "finish" the visit.
+  GURL url2 = GetTestFileURL("target.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url2));
+
+  std::vector<history::AnnotatedVisit> annotated_visits2 =
+      GetAllAnnotatedVisits();
+  ASSERT_EQ(annotated_visits2.size(), 2u);
+  // The most recent visit is returned first, so the second visit from this
+  // query should match the first visit from the previous query.
+  history::AnnotatedVisit finished_visit = annotated_visits2[1];
+  ASSERT_EQ(finished_visit.visit_row.visit_id,
+            ongoing_visit.visit_row.visit_id);
+  // The on-visit fields should be unchanged.
+  EXPECT_EQ(finished_visit.context_annotations.on_visit,
+            ongoing_visit.context_annotations.on_visit);
+  // The on-close fields should also be populated too now.
+  EXPECT_NE(finished_visit.context_annotations.page_end_reason, 0);
+  EXPECT_GT(finished_visit.context_annotations.total_foreground_duration,
+            base::Seconds(0));
+}
+
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_ObserversCallBothOnURLVisitedForLocalVisits \
+  DISABLED_ObserversCallBothOnURLVisitedForLocalVisits
+#else
+#define MAYBE_ObserversCallBothOnURLVisitedForLocalVisits \
+  ObserversCallBothOnURLVisitedForLocalVisits
+#endif
+IN_PROC_BROWSER_TEST_F(HistoryBrowserTest,
+                       MAYBE_ObserversCallBothOnURLVisitedForLocalVisits) {
+  history::HistoryService* history_service =
+      HistoryServiceFactory::GetForProfile(browser()->profile(),
+                                           ServiceAccessType::EXPLICIT_ACCESS);
+  ui_test_utils::WaitForHistoryToLoad(history_service);
+
+  // Load a page and wait for the history service to finish all its background
+  // tasks before actually running the test.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GetTestFileURL("landing.html?first=load")));
+  history::BlockUntilHistoryProcessesPendingRequests(history_service);
+
+  MockHistoryServiceObserver observer;
+  history_service->AddObserver(&observer);
+
+  // Navigate to some URLs and check that the observer gets called for the local
+  // visit.
+  history::URLRow url_row;
+  history::URLRow url_row2;
+  EXPECT_CALL(observer, OnURLVisited(history_service, _, _))
+      .WillOnce(testing::SaveArg<1>(&url_row));
+  EXPECT_CALL(observer, OnURLVisitedWithNavigationId(
+                            history_service, _, _,
+                            testing::Not(testing::Eq(std::nullopt))))
+      .WillOnce(testing::SaveArg<1>(&url_row2));
+
+  GURL url = GetTestFileURL("landing.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  // Both observer calls should have received the same url as the local visit.
+  EXPECT_EQ(url_row.url(), url);
+  EXPECT_EQ(url_row2.url(), url);
+
+  EXPECT_CALL(observer, OnURLVisited(history_service, _, _))
+      .WillOnce(testing::SaveArg<1>(&url_row));
+  EXPECT_CALL(observer, OnURLVisitedWithNavigationId(
+                            history_service, _, _,
+                            testing::Not(testing::Eq(std::nullopt))))
+      .WillOnce(testing::SaveArg<1>(&url_row2));
+
+  GURL url2 = GetTestFileURL("target.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url2));
+
+  EXPECT_EQ(url_row.url(), url2);
+  EXPECT_EQ(url_row2.url(), url2);
+
+  history_service->RemoveObserver(&observer);
+}
+
+// MPArch means Multiple Page Architecture, each WebContents may have additional
+// FrameTrees which will have their own associated Page.
+class HistoryMPArchBrowserTest : public HistoryBrowserTest {
+ public:
+  HistoryMPArchBrowserTest() = default;
+  ~HistoryMPArchBrowserTest() override = default;
+
+  HistoryMPArchBrowserTest(const HistoryMPArchBrowserTest&) = delete;
+  HistoryMPArchBrowserTest& operator=(const HistoryMPArchBrowserTest&) = delete;
+
+  void SetUpOnMainThread() override {
+    ASSERT_TRUE(embedded_https_test_server().Start());
+  }
+};
+
+// For tests which use prerender.
+class HistoryPrerenderBrowserTest : public HistoryMPArchBrowserTest {
+ public:
+  HistoryPrerenderBrowserTest()
+      : prerender_helper_(
+            base::BindRepeating(&HistoryPrerenderBrowserTest::web_contents,
+                                base::Unretained(this))) {}
+
+  void SetUp() override {
+    prerender_helper_.RegisterServerRequestMonitor(
+        embedded_https_test_server());
+    HistoryMPArchBrowserTest::SetUp();
+  }
+
+  content::test::PrerenderTestHelper& prerender_helper() {
+    return prerender_helper_;
+  }
+
+  content::WebContents* web_contents() {
+    return browser()->tab_strip_model()->GetActiveWebContents();
+  }
+
+ private:
+  content::test::PrerenderTestHelper prerender_helper_;
+};
+
+// Verify a prerendered page is not recorded if we do not activate it.
+IN_PROC_BROWSER_TEST_F(HistoryPrerenderBrowserTest,
+                       PrerenderPageIsNotRecordedUnlessActivated) {
+  const GURL kInitialUrl = embedded_https_test_server().GetURL("/empty.html");
+  const GURL kPrerenderingUrl =
+      embedded_https_test_server().GetURL("/empty.html?prerender");
+
+  // Navigate to an initial page.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kInitialUrl));
+
+  // Start a prerender, but we don't activate it.
+  const content::FrameTreeNodeId kHostId =
+      prerender_helper().AddPrerender(kPrerenderingUrl);
+  ASSERT_TRUE(kHostId);
+
+  // The prerendered page should not be recorded.
+  EXPECT_THAT(GetHistoryContents(), testing::ElementsAre(kInitialUrl));
+}
+
+// Verify a prerendered page is recorded if we activate it.
+IN_PROC_BROWSER_TEST_F(HistoryPrerenderBrowserTest,
+                       PrerenderPageIsRecordedIfActivated) {
+  const GURL kInitialUrl = embedded_https_test_server().GetURL("/empty.html");
+  const GURL kPrerenderingUrl =
+      embedded_https_test_server().GetURL("/empty.html?prerender");
+
+  // Navigate to an initial page.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kInitialUrl));
+
+  // Start a prerender.
+  const content::FrameTreeNodeId kHostId =
+      prerender_helper().AddPrerender(kPrerenderingUrl);
+  ASSERT_TRUE(kHostId);
+
+  // Activate.
+  prerender_helper().NavigatePrimaryPage(kPrerenderingUrl);
+  ASSERT_EQ(kPrerenderingUrl, web_contents()->GetLastCommittedURL());
+
+  // The prerendered page should be recorded.
+  EXPECT_THAT(GetHistoryContents(),
+              testing::ElementsAre(kPrerenderingUrl, kInitialUrl));
+}
+
+// Verify a prerendered page's last committed URL is recorded if we activate it.
+IN_PROC_BROWSER_TEST_F(HistoryPrerenderBrowserTest,
+                       PrerenderLastCommitedURLIsRecordedIfActivated) {
+  const GURL kInitialUrl = embedded_https_test_server().GetURL("/empty.html");
+  const GURL kPrerenderingUrl =
+      embedded_https_test_server().GetURL("/empty.html?prerender");
+  const GURL kPrerenderingFragmentUrl =
+      embedded_https_test_server().GetURL("/empty.html?prerender#test");
+
+  // Navigate to an initial page.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kInitialUrl));
+
+  // Start a prerender.
+  const content::FrameTreeNodeId kHostId =
+      prerender_helper().AddPrerender(kPrerenderingUrl);
+  ASSERT_TRUE(kHostId);
+
+  // Do a fragment navigation in the prerendered page.
+  prerender_helper().NavigatePrerenderedPage(kHostId, kPrerenderingFragmentUrl);
+  prerender_helper().WaitForPrerenderLoadCompletion(kHostId);
+
+  // Activate.
+  prerender_helper().NavigatePrimaryPage(kPrerenderingUrl);
+  ASSERT_EQ(kPrerenderingFragmentUrl, web_contents()->GetLastCommittedURL());
+
+  // The last committed URL of the prerendering page, instead of the original
+  // prerendering URL, should be recorded.
+  EXPECT_THAT(GetHistoryContents(),
+              testing::ElementsAre(kPrerenderingFragmentUrl, kInitialUrl));
+}
+
+IN_PROC_BROWSER_TEST_F(HistoryPrerenderBrowserTest,
+                       RedirectedPrerenderPageIsRecordedIfActivated) {
+  const GURL kInitialUrl = embedded_https_test_server().GetURL("/empty.html");
+
+  // Navigate to an initial page.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kInitialUrl));
+
+  // Start prerendering a URL that causes same-origin redirection.
+  const GURL kRedirectedUrl =
+      embedded_https_test_server().GetURL("/empty.html?prerender");
+  const GURL kPrerenderingUrl = embedded_https_test_server().GetURL(
+      "/server-redirect?" + kRedirectedUrl.spec());
+  prerender_helper().AddPrerender(kPrerenderingUrl);
+  EXPECT_EQ(prerender_helper().GetRequestCount(kPrerenderingUrl), 1);
+  EXPECT_EQ(prerender_helper().GetRequestCount(kRedirectedUrl), 1);
+
+  // The prerendering page should not be recorded.
+  EXPECT_THAT(GetHistoryContents(), testing::ElementsAre(kInitialUrl));
+
+  // Activate.
+  prerender_helper().NavigatePrimaryPage(kPrerenderingUrl);
+
+  // The redirected URL of the prerendering page, instead of the original
+  // prerendering URL, should be recorded.
+  EXPECT_THAT(GetHistoryContents(),
+              testing::ElementsAre(kRedirectedUrl, kInitialUrl));
+}
+
+// For tests which use fenced frame.
+class HistoryFencedFrameBrowserTest : public HistoryMPArchBrowserTest {
+ public:
+  HistoryFencedFrameBrowserTest() = default;
+  ~HistoryFencedFrameBrowserTest() override = default;
+  HistoryFencedFrameBrowserTest(const HistoryFencedFrameBrowserTest&) = delete;
+
+  HistoryFencedFrameBrowserTest& operator=(
+      const HistoryFencedFrameBrowserTest&) = delete;
+
+  content::test::FencedFrameTestHelper& fenced_frame_test_helper() {
+    return fenced_frame_helper_;
+  }
+
+  content::WebContents* web_contents() {
+    return browser()->tab_strip_model()->GetActiveWebContents();
+  }
+
+ private:
+  content::test::FencedFrameTestHelper fenced_frame_helper_;
+};
+
+IN_PROC_BROWSER_TEST_F(HistoryFencedFrameBrowserTest,
+                       FencedFrameDoesNotAffectLoadingState) {
+  HistoryTabHelper* history_tab_helper =
+      HistoryTabHelper::FromWebContents(web_contents());
+  ASSERT_TRUE(history_tab_helper);
+  base::TimeTicks last_load_completion_before_navigation =
+      history_tab_helper->last_load_completion_;
+
+  auto initial_url = embedded_https_test_server().GetURL("/empty.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), initial_url));
+  // |last_load_completion_| should be updated after finishing the normal
+  // navigation.
+  EXPECT_NE(last_load_completion_before_navigation,
+            history_tab_helper->last_load_completion_);
+
+  // Create a fenced frame.
+  GURL fenced_frame_url =
+      embedded_https_test_server().GetURL("/fenced_frames/title1.html");
+  content::RenderFrameHost* fenced_frame_host =
+      fenced_frame_test_helper().CreateFencedFrame(
+          web_contents()->GetPrimaryMainFrame(), fenced_frame_url);
+
+  // Navigate the fenced frame.
+  last_load_completion_before_navigation =
+      history_tab_helper->last_load_completion_;
+  fenced_frame_test_helper().NavigateFrameInFencedFrameTree(fenced_frame_host,
+                                                            fenced_frame_url);
+  // |last_load_completion_| should not be updated after finishing the
+  // navigation of the fenced frame.
+  EXPECT_EQ(last_load_completion_before_navigation,
+            history_tab_helper->last_load_completion_);
+}
+
+enum TestMode {
+  kPartitionedNoSelfLinks,
+  kPartitionedWithSelfLinks,
+  kPartitionedBothEnabled
+};
+
+// For tests which enable :visited links partitioning.
+class HistoryVisitedLinksBrowserTest
+    : public HistoryBrowserTest,
+      public ::testing::WithParamInterface<TestMode> {
+ public:
+  HistoryVisitedLinksBrowserTest() {
+    switch (GetParam()) {
+      case TestMode::kPartitionedNoSelfLinks:
+        scoped_feature_list_.InitWithFeatures(
+            {blink::features::kPartitionVisitedLinkDatabase},
+            {blink::features::kPartitionVisitedLinkDatabaseWithSelfLinks});
+        break;
+      case TestMode::kPartitionedWithSelfLinks:
+        scoped_feature_list_.InitWithFeatures(
+            {blink::features::kPartitionVisitedLinkDatabaseWithSelfLinks},
+            {blink::features::kPartitionVisitedLinkDatabase});
+        break;
+      case TestMode::kPartitionedBothEnabled:
+        scoped_feature_list_.InitWithFeatures(
+            {blink::features::kPartitionVisitedLinkDatabase,
+             blink::features::kPartitionVisitedLinkDatabaseWithSelfLinks},
+            {});
+        break;
+    }
+  }
+  content::WebContents* web_contents() {
+    return browser()->tab_strip_model()->GetActiveWebContents();
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         HistoryVisitedLinksBrowserTest,
+                         testing::Values(TestMode::kPartitionedNoSelfLinks,
+                                         TestMode::kPartitionedWithSelfLinks,
+                                         TestMode::kPartitionedBothEnabled));
+
+IN_PROC_BROWSER_TEST_P(HistoryVisitedLinksBrowserTest, GetSaltForSameOrigin) {
+  constexpr char kOrigin[] = "foo.com";
+  const GURL kUrl(embedded_https_test_server().GetURL(kOrigin, "/empty.html"));
+
+  // Obtain our expected salt value from the history service.
+  history::HistoryService* history_service =
+      HistoryServiceFactory::GetForProfile(browser()->profile(),
+                                           ServiceAccessType::EXPLICIT_ACCESS);
+  std::optional<uint64_t> expected_salt =
+      history_service->GetOrAddOriginSalt(url::Origin::Create(kUrl));
+  ASSERT_TRUE(expected_salt.has_value());
+
+  // Perform a navigation and assert that we obtain our expected salt value.
+  VisitedLinkNavigationThrottleObserver observer(web_contents(), kUrl);
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kUrl));
+  EXPECT_EQ(observer.GetVisitedLinkSalt(), expected_salt.value());
+
+  // Navigate to a same-origin URL. We should receive the same salt as our
+  // previous navigation.
+  const GURL kUrl2(
+      embedded_https_test_server().GetURL(kOrigin, "/title1.html"));
+  VisitedLinkNavigationThrottleObserver observer2(web_contents(), kUrl2);
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kUrl2));
+  EXPECT_EQ(observer.GetVisitedLinkSalt(), observer2.GetVisitedLinkSalt());
+}
+
+IN_PROC_BROWSER_TEST_P(HistoryVisitedLinksBrowserTest, AddSaltForCrossOrigin) {
+  constexpr char kOrigin[] = "foo.com";
+  const GURL kUrl(embedded_https_test_server().GetURL(kOrigin, "/empty.html"));
+
+  // Obtain our expected salt value for kOrigin from the history service.
+  history::HistoryService* history_service =
+      HistoryServiceFactory::GetForProfile(browser()->profile(),
+                                           ServiceAccessType::EXPLICIT_ACCESS);
+  std::optional<uint64_t> expected_salt =
+      history_service->GetOrAddOriginSalt(url::Origin::Create(kUrl));
+  ASSERT_TRUE(expected_salt.has_value());
+
+  // Perform a navigation and assert that we obtain our expected salt value for
+  // kOrigin.
+  VisitedLinkNavigationThrottleObserver observer(web_contents(), kUrl);
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kUrl));
+  EXPECT_EQ(observer.GetVisitedLinkSalt(), expected_salt.value());
+
+  // Navigate to a cross-origin URL. We should receive a different salt from our
+  // previous navigation.
+  constexpr char kOrigin2[] = "bar.com";
+  const GURL kUrl2(
+      embedded_https_test_server().GetURL(kOrigin2, "/title1.html"));
+  VisitedLinkNavigationThrottleObserver observer2(web_contents(), kUrl2);
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kUrl2));
+  EXPECT_NE(observer2.GetVisitedLinkSalt(), std::nullopt);
+  EXPECT_NE(observer.GetVisitedLinkSalt(), observer2.GetVisitedLinkSalt());
+}
+=======
+>>>>>>> chromium

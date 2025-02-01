@@ -47,6 +47,10 @@ import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 import org.chromium.chrome.browser.omaha.UpdateMenuItemHelper;
 import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomizations;
 import org.chromium.chrome.browser.profiles.Profile;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.readaloud.ReadAloudController;
+=======
+>>>>>>> chromium
 import org.chromium.chrome.browser.share.ShareHelper;
 import org.chromium.chrome.browser.share.ShareUtils;
 import org.chromium.chrome.browser.tab.Tab;
@@ -308,8 +312,32 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
         // Don't allow either "chrome://" pages or interstitial pages to be shared.
         menu.findItem(R.id.share_row_menu_id).setVisible(mShareUtils.shouldEnableShare(currentTab));
 
+<<<<<<< HEAD
+        boolean showOpenWith =
+                currentTab != null
+                        && currentTab.isNativePage()
+                        && currentTab.getNativePage().isPdf();
+        menu.findItem(R.id.open_with_id).setVisible(showOpenWith);
+
+        // Don't allow either "chrome://" pages or interstitial pages to be shared, or when the
+        // current tab is null.
+        boolean showShare = isCurrentTabNotNull && mShareUtils.shouldEnableShare(currentTab);
+        menu.findItem(R.id.share_row_menu_id).setVisible(showShare);
+
+        if (isCurrentTabNotNull) {
+            updateDirectShareMenuItem(menu.findItem(R.id.direct_share_menu_id));
+        }
+
+        // For the non-desktop case, Print action will be showed in the Share UI instead.
+        boolean showPrint =
+                showShare
+                        && BuildConfig.IS_DESKTOP_ANDROID
+                        && UserPrefs.get(currentTab.getProfile()).getBoolean(Pref.PRINTING_ENABLED);
+        menu.findItem(R.id.print_id).setVisible(showPrint);
+=======
         ShareHelper.configureDirectShareMenuItem(
                 mContext, menu.findItem(R.id.direct_share_menu_id));
+>>>>>>> chromium
 
         menu.findItem(R.id.paint_preview_show_id)
                 .setVisible(shouldShowPaintPreview(isChromeScheme, currentTab, isIncognito));
@@ -355,11 +383,27 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
         // Only display the Enter VR button if VR Shell Dev environment is enabled.
         menu.findItem(R.id.enter_vr_id).setVisible(shouldShowEnterVr());
 
+<<<<<<< HEAD
+        // Only display quick delete divider line on the regular mode page menu.
+        menu.findItem(R.id.quick_delete_divider_line_id).setVisible(!isIncognito);
+
+        menu.findItem(R.id.download_page_id).setVisible(shouldShowDownloadPageMenuItem(currentTab));
+    }
+
+    /**
+     * @return The number of Chrome instances either running alive or dormant but the state is
+     *     present for restoration.
+     */
+    @VisibleForTesting
+    int getInstanceCount() {
+        return mMultiWindowModeStateDispatcher.getInstanceCount();
+=======
         MenuItem managedByMenuItem = menu.findItem(R.id.managed_by_menu_id);
         managedByMenuItem.setVisible(shouldShowManagedByMenuItem(currentTab));
         // TODO(https://crbug.com/1092175): Enable "managed by" menu item after chrome://management
         // page is added.
         managedByMenuItem.setEnabled(false);
+>>>>>>> chromium
     }
 
     private void prepareCommonMenuItems(Menu menu, @MenuGroup int menuGroup, boolean isIncognito) {
@@ -430,6 +474,32 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
                 item.setVisible(isIncognito);
                 item.setEnabled(hasIncognitoTabs);
             }
+<<<<<<< HEAD
+            if (item.getItemId() == R.id.quick_delete_menu_id) {
+                item.setVisible(!isIncognito);
+            }
+            if (item.getItemId() == R.id.tinker_tank_menu_id) {
+                boolean enabled = TinkerTankDelegate.isEnabled();
+                item.setVisible(enabled);
+                item.setEnabled(enabled);
+            }
+
+            // This needs to be done after the visibility of the item is set.
+            if (item.getItemId() == R.id.divider_line_id) {
+                if (!hasItemBetweenDividers) {
+                    // If there isn't any visible menu items between the two divider lines, mark
+                    // this line invisible.
+                    item.setVisible(false);
+                } else {
+                    hasItemBetweenDividers = false;
+                }
+            } else if (!hasItemBetweenDividers && item.isVisible()) {
+                // When the item isn't a divider line and is visible, we set hasItemBetweenDividers
+                // to be true.
+                hasItemBetweenDividers = true;
+            }
+=======
+>>>>>>> chromium
         }
     }
 
@@ -579,8 +649,21 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
     }
 
     /**
+<<<<<<< HEAD
+     * @param currentTab Current tab being displayed.
+     * Returns whether the "Download page" menu item should be displayed.
+     */
+    protected boolean shouldShowDownloadPageMenuItem(Tab currentTab) {
+        return ChromeFeatureList.sHideTabletToolbarDownloadButton.isEnabled()
+                && isTabletSizeScreen()
+                && shouldEnableDownloadPage(currentTab);
+    }
+
+    /** Sets the visibility and labels of the "Add to Home screen" and "Open WebAPK" menu items. */
+=======
      * Sets the visibility and labels of the "Add to Home screen" and "Open WebAPK" menu items.
      */
+>>>>>>> chromium
     protected void prepareAddToHomescreenMenuItem(
             Menu menu, Tab currentTab, boolean shouldShowHomeScreenMenuItem) {
         MenuItem homescreenItem = menu.findItem(R.id.add_to_homescreen_id);

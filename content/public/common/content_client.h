@@ -99,9 +99,14 @@ class CONTENT_EXPORT ContentClient {
   // Sets the data on the current gpu.
   virtual void SetGpuInfo(const gpu::GPUInfo& gpu_info) {}
 
+<<<<<<< HEAD
+  // Gives the embedder a chance to register its own plugins.
+  virtual void AddPlugins(std::vector<content::ContentPluginInfo>* plugins) {}
+=======
   // Gives the embedder a chance to register its own pepper plugins.
   virtual void AddPepperPlugins(
       std::vector<content::PepperPluginInfo>* plugins) {}
+>>>>>>> chromium
 
   // Gives the embedder a chance to register the Content Decryption Modules
   // (CDM) it supports, as well as the CDM host file paths to verify CDM host.
@@ -184,7 +189,22 @@ class CONTENT_EXPORT ContentClient {
   // supported by the embedder.
   virtual blink::OriginTrialPolicy* GetOriginTrialPolicy();
 
+<<<<<<< HEAD
+  // Cross-origin subframes are generally not allowed to display a file picker
+  // for security reasons. This method allows content embedders to specify
+  // whether a cross-origin subframe of a particular origin should be allowed to
+  // display the file picker.
+  //
+  // For example, Chrome's built-in PDF viewer may be hosted in a cross-origin
+  // subframe. To allow this viewer to function correctly, Chrome uses this
+  // method to grant it access to the file picker.
+  virtual bool IsFilePickerAllowedForCrossOriginSubframe(
+      const url::Origin& origin);
+
+#if BUILDFLAG(IS_ANDROID)
+=======
 #if defined(OS_ANDROID)
+>>>>>>> chromium
   // Returns true for clients like Android WebView that uses synchronous
   // compositor. Note setting this to true will permit synchronous IPCs from
   // the browser UI thread.

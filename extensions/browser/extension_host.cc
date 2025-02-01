@@ -10,6 +10,12 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+<<<<<<< HEAD
+#include "base/timer/elapsed_timer.h"
+#include "components/input/native_web_keyboard_event.h"
+#include "components/javascript_dialogs/app_modal_dialog_manager.h"
+=======
+>>>>>>> chromium
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/native_web_keyboard_event.h"
@@ -52,17 +58,32 @@ namespace extensions {
 
 ExtensionHost::ExtensionHost(const Extension* extension,
                              SiteInstance* site_instance,
+                             content::BrowserContext* browser_context,
                              const GURL& url,
                              mojom::ViewType host_type)
     : delegate_(ExtensionsBrowserClient::Get()->CreateExtensionHostDelegate()),
       extension_(extension),
       extension_id_(extension->id()),
-      browser_context_(site_instance->GetBrowserContext()),
+      browser_context_(browser_context),
       initial_url_(url),
       extension_host_type_(host_type) {
   DCHECK(host_type == mojom::ViewType::kExtensionBackgroundPage ||
+<<<<<<< HEAD
+         host_type == mojom::ViewType::kOffscreenDocument ||
+         host_type == mojom::ViewType::kExtensionPopup ||
+         host_type == mojom::ViewType::kExtensionSidePanel);
+  // NOTE: `site_instance` may be null if the kRemoveRootSiteInstance feature
+  // is active. `WebContents::CreateParams` handles a null SiteInstance the
+  // same as if no SiteInstance argument were passed.
+  if (site_instance) {
+    // If a SiteInstance is passed, it must match the `browser_context`
+    // associated with the ExtensionHost.
+    CHECK_EQ(browser_context_, site_instance->GetBrowserContext());
+  }
+=======
          host_type == mojom::ViewType::kExtensionDialog ||
          host_type == mojom::ViewType::kExtensionPopup);
+>>>>>>> chromium
   host_contents_ = WebContents::Create(
       WebContents::CreateParams(browser_context_, site_instance)),
   content::WebContentsObserver::Observe(host_contents_.get());
@@ -360,7 +381,7 @@ void ExtensionHost::OnDecrementLazyKeepaliveCount() {
 
 content::JavaScriptDialogManager* ExtensionHost::GetJavaScriptDialogManager(
     WebContents* source) {
-  return delegate_->GetJavaScriptDialogManager();
+  return javascript_dialogs::AppModalDialogManager::GetInstance();
 }
 
 void ExtensionHost::AddNewContents(WebContents* source,

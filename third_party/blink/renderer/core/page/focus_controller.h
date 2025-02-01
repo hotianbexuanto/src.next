@@ -85,8 +85,25 @@ class CORE_EXPORT FocusController final
       LocalFrame* to,
       InputDeviceCapabilities* source_capabilities = nullptr);
   static Element* FindFocusableElementInShadowHost(const Element& shadow_host);
+<<<<<<< HEAD
+  static HTMLElement* FindScopeOwnerSlotOrReadingFlowContainer(const Element&);
+
+  // Returns the next focusable element (likely an <input> field) after the
+  // given element in focus traversal and within the enclosing <form> that
+  // requires user input before submitting the form (all <form>less <input>s are
+  // considered as one virtual form). Used by an Android virtual keyboard and
+  // Autofill to infer whether the enclosing <form> is ready for auto-submission
+  // after filling the given element or focus should be firstly moved to the
+  // next focusable element.
+  Element* NextFocusableElementForImeAndAutofill(Element*,
+                                                 mojom::blink::FocusType);
+  Element* FindFocusableElementForImeAutofillAndTesting(mojom::blink::FocusType,
+                                                        Element&,
+                                                        OwnerMap&);
+=======
   Element* NextFocusableElementInForm(Element*, mojom::blink::FocusType);
   Element* FindFocusableElementAfter(Element& element, mojom::blink::FocusType);
+>>>>>>> chromium
 
   bool SetFocusedElement(Element*, Frame*, const FocusParams&);
   // |setFocusedElement| variant with SelectionBehaviorOnFocus::None,
@@ -106,8 +123,6 @@ class CORE_EXPORT FocusController final
   void Trace(Visitor*) const;
 
  private:
-  Element* FindFocusableElement(mojom::blink::FocusType, Element&, OwnerMap&);
-
   bool AdvanceFocus(mojom::blink::FocusType,
                     bool initial_focus,
                     InputDeviceCapabilities* source_capabilities = nullptr);

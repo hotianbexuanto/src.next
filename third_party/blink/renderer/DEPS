@@ -12,7 +12,14 @@ include_rules = [
     "+base/containers/contains.h",
     "+base/containers/cxx20_erase.h",
     "+base/containers/span.h",
+<<<<<<< HEAD
+    "+base/containers/span_or_size.h",
+    "+base/containers/span_reader.h",
+    "+base/containers/span_writer.h",
+    "+base/containers/to_vector.h",
+=======
     "+base/cxx17_backports.h",
+>>>>>>> chromium
     "+base/dcheck_is_on.h",
     "+base/debug",
     "+base/feature_list.h",
@@ -64,6 +71,7 @@ include_rules = [
     "+base/trace_event",
     "+base/types/pass_key.h",
     "+base/types/strong_alias.h",
+    "+base/types/zip.h",
     "+build",
     "+components/crash/core/common/crash_key.h",
     "+components/power_scheduler",
@@ -81,7 +89,11 @@ include_rules = [
     "-ui/base/l10n",
     "-ui/base/resource",
 
+<<<<<<< HEAD
+    "+ui/accessibility/ax_constants.mojom-blink.h",
+=======
     "+ui/base/cursor/mojom/cursor.mojom-blink.h",
+>>>>>>> chromium
     "+ui/base/cursor/mojom/cursor_type.mojom-blink.h",
     "+ui/base/dragdrop/mojom",
     "+ui/events/keycodes/dom",

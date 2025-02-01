@@ -125,6 +125,41 @@ class CONTENT_EXPORT BrowsingInstance final
       const UrlInfo& url_info,
       bool allow_default_instance);
 
+<<<<<<< HEAD
+  // Same as above, but if a new SiteInstance needs to be created, it will be
+  // part of `creation_group`. A SiteInstance in a different group may be
+  // returned, if a matching SiteInstance already exists in this
+  // BrowsingInstance.
+  scoped_refptr<SiteInstanceImpl> GetSiteInstanceForURL(
+      const UrlInfo& url_info,
+      SiteInstanceGroup* creation_group,
+      bool allow_default_instance);
+
+  // This is the same as GetSiteInstanceForURL, but requires a valid
+  // `creation_group`. The returned SiteInstance could be in a different group
+  // if it exists already. If it is being created, the new SiteInstance will be
+  // in `creation_group`.
+  scoped_refptr<SiteInstanceImpl> GetMaybeGroupRelatedSiteInstanceForURL(
+      const UrlInfo& url_info,
+      SiteInstanceGroup* creation_group);
+
+  // Searches existing SiteInstances in the BrowsingInstance and returns a
+  // pointer to the (unique) SiteInstance that matches `site_info`, if any.
+  // If no matching SiteInstance is found, then a new SiteInstance is created
+  // in this BrowsingInstance with its site set to `site_info`.
+  scoped_refptr<SiteInstanceImpl> GetSiteInstanceForSiteInfo(
+      const SiteInfo& site_info);
+
+  // Return a SiteInstance in the same CoopRelatedGroup as this
+  // BrowsingInstance. It might or might not be in a new BrowsingInstance, and
+  // if it reuses an existing BrowsingInstance of the group, it might reuse an
+  // appropriate SiteInstance as well.
+  scoped_refptr<SiteInstanceImpl> GetCoopRelatedSiteInstanceForURL(
+      const UrlInfo& url_info,
+      bool allow_default_instance);
+
+=======
+>>>>>>> chromium
   // Returns a SiteInfo with site and process-lock URLs for |url_info| that are
   // identical with what these values would be if we called
   // GetSiteInstanceForURL() with the same |url_info| and

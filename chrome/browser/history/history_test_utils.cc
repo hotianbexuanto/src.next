@@ -37,9 +37,14 @@ class WaitForHistoryTask : public history::HistoryDBTask {
   }
 
  private:
+<<<<<<< HEAD
+  base::OnceClosure quit_closure_;
+  ~WaitForHistoryTask() override = default;
+=======
   ~WaitForHistoryTask() override {}
 
   DISALLOW_COPY_AND_ASSIGN(WaitForHistoryTask);
+>>>>>>> chromium
 };
 
 }  // namespace

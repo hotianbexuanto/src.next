@@ -96,9 +96,10 @@ ExtensionSystemFactory::ExtensionSystemFactory()
 ExtensionSystemFactory::~ExtensionSystemFactory() {
 }
 
-KeyedService* ExtensionSystemFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+ExtensionSystemFactory::BuildServiceInstanceForBrowserContext(
     content::BrowserContext* context) const {
-  return new ExtensionSystemImpl(static_cast<Profile*>(context));
+  return std::make_unique<ExtensionSystemImpl>(static_cast<Profile*>(context));
 }
 
 content::BrowserContext* ExtensionSystemFactory::GetBrowserContextToUse(

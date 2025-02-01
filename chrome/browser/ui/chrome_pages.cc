@@ -39,7 +39,16 @@
 #include "chromeos/login/login_state/login_state.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/browser/bookmark_node.h"
+<<<<<<< HEAD
+#include "components/commerce/core/commerce_constants.h"
+#include "components/password_manager/core/common/password_manager_features.h"
+#include "components/privacy_sandbox/privacy_sandbox_features.h"
+#include "components/safe_browsing/core/common/safe_browsing_settings_metrics.h"
+#include "components/safe_browsing/core/common/safebrowsing_referral_methods.h"
+#include "components/signin/public/base/consent_level.h"
+=======
 #include "components/signin/public/identity_manager/consent_level.h"
+>>>>>>> chromium
 #include "content/public/browser/web_contents.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/common/constants.h"
@@ -48,9 +57,17 @@
 #include "ui/base/window_open_disposition.h"
 #include "url/url_util.h"
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+#include "ash/webui/connectivity_diagnostics/url_constants.h"
+#include "ash/webui/settings/public/constants/routes.mojom.h"
+#include "ash/webui/settings/public/constants/routes_util.h"
+#include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/constants/ash_features.h"
 #include "base/metrics/histogram_functions.h"
+>>>>>>> chromium
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
 #include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #include "chrome/browser/ui/webui/settings/chromeos/constants/routes_util.h"
@@ -74,8 +91,9 @@ const char kHashMark[] = "#";
 
 void FocusWebContents(Browser* browser) {
   auto* const contents = browser->tab_strip_model()->GetActiveWebContents();
-  if (contents)
+  if (contents) {
     contents->Focus();
+  }
 }
 
 // Shows |url| in a tab in |browser|. If a tab is already open to |url|,
@@ -94,9 +112,14 @@ void OpenBookmarkManagerForNode(Browser* browser, int64_t node_id) {
   ShowSingletonTabIgnorePathOverwriteNTP(browser, url);
 }
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+void LaunchReleaseNotesImpl(Profile* profile, apps::LaunchSource source) {
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
 void LaunchReleaseNotesImpl(Profile* profile,
                             apps::mojom::LaunchSource source) {
+>>>>>>> chromium
   base::RecordAction(UserMetricsAction("ReleaseNotes.ShowReleaseNotes"));
   web_app::SystemAppLaunchParams params;
   params.url = GURL("chrome://help-app/updates");
@@ -111,8 +134,13 @@ void LaunchReleaseNotesImpl(Profile* profile,
 // is created.
 void ShowHelpImpl(Browser* browser, Profile* profile, HelpSource source) {
   base::RecordAction(UserMetricsAction("ShowHelpTab"));
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+  auto app_launch_source = apps::LaunchSource::kUnknown;
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
   auto app_launch_source = apps::mojom::LaunchSource::kUnknown;
+>>>>>>> chromium
   switch (source) {
     case HELP_SOURCE_KEYBOARD:
       app_launch_source = apps::mojom::LaunchSource::kFromKeyboard;
@@ -140,7 +168,14 @@ void ShowHelpImpl(Browser* browser, Profile* profile, HelpSource source) {
     case HELP_SOURCE_MENU:
       url = GURL(kChromeHelpViaMenuURL);
       break;
+<<<<<<< HEAD
+    case HELP_SOURCE_WEBHID:
+      url = GURL(kChooserHidOverviewUrl);
+      break;
+#if BUILDFLAG(IS_CHROMEOS)
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
     case HELP_SOURCE_WEBUI:
       url = GURL(kChromeHelpViaWebUIURL);
       break;
@@ -151,6 +186,21 @@ void ShowHelpImpl(Browser* browser, Profile* profile, HelpSource source) {
     case HELP_SOURCE_WEBUI:
       url = GURL(kChromeHelpViaWebUIURL);
       break;
+<<<<<<< HEAD
+#endif  // BUILDFLAG(IS_CHROMEOS)
+    case HELP_SOURCE_WEBUSB:
+      url = GURL(kChooserUsbOverviewURL);
+      break;
+    default:
+      NOTREACHED() << "Unhandled help source " << source;
+  }
+  if (browser) {
+    ShowSingletonTab(browser, url);
+  } else {
+    ShowSingletonTab(profile, url);
+  }
+#endif  // BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+=======
 #endif
     default:
       NOTREACHED() << "Unhandled help source " << source;
@@ -162,6 +212,7 @@ void ShowHelpImpl(Browser* browser, Profile* profile, HelpSource source) {
   }
   ShowSingletonTab(browser, url);
 #endif
+>>>>>>> chromium
 }
 
 std::string GenerateContentSettingsExceptionsSubPage(ContentSettingsType type) {
@@ -215,6 +266,59 @@ void ShowSiteSettingsImpl(Browser* browser, Profile* profile, const GURL& url) {
   Navigate(&params);
 }
 
+<<<<<<< HEAD
+// TODO(crbug.com/40101962): Add a browsertest that parallels the existing site
+// settings browsertests that open the page info button, and click through to
+// the file system site settings page for a given origin.
+void ShowSiteSettingsFileSystemImpl(Browser* browser,
+                                    Profile* profile,
+                                    const GURL& url) {
+  constexpr char kParamRequest[] = "site";
+  GURL link_destination = GetSettingsUrl(chrome::kFileSystemSettingsSubpage);
+
+  // If origin is valid, open a file system site settings page specific to the
+  // current origin of the page. Otherwise, open the File System Site Settings
+  // page.
+  if (base::FeatureList::IsEnabled(
+          features::kFileSystemAccessPersistentPermissions) &&
+      SiteGURLIsValid(url)) {
+    // TODO(crbug.com/40946480): Update `origin_string` to remove the encoded
+    // trailing slash, once it's no longer required to correctly navigate to
+    // file system site settings page for the given origin.
+    const std::string origin_string =
+        base::StrCat({url::Origin::Create(url).Serialize(), "/"});
+    link_destination = net::AppendQueryParameter(link_destination,
+                                                 kParamRequest, origin_string);
+  }
+  NavigateParams params(profile, link_destination, ui::PAGE_TRANSITION_TYPED);
+  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  params.browser = browser;
+  Navigate(&params);
+}
+
+#if BUILDFLAG(IS_CHROMEOS)
+void ShowSystemAppInternal(Profile* profile,
+                           const ash::SystemWebAppType type,
+                           const ash::SystemAppLaunchParams& params) {
+  ash::LaunchSystemWebAppAsync(profile, type, params);
+}
+void ShowSystemAppInternal(Profile* profile, const ash::SystemWebAppType type) {
+  ash::SystemAppLaunchParams params;
+  params.launch_source = apps::LaunchSource::kUnknown;
+  ash::LaunchSystemWebAppAsync(profile, type, params);
+}
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
+Browser* GetOrCreateBrowserForProfile(Profile* profile) {
+  Browser* browser = chrome::FindTabbedBrowser(profile, false);
+  if (!browser) {
+    return Browser::Create(Browser::CreateParams(profile, true));
+  }
+  return browser;
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 void ShowBookmarkManager(Browser* browser) {
@@ -242,12 +346,17 @@ void ShowHistory(Browser* browser) {
 
 void ShowDownloads(Browser* browser) {
   base::RecordAction(UserMetricsAction("ShowDownloads"));
-  if (browser->window() && browser->window()->IsDownloadShelfVisible())
+  if (browser->window() && browser->window()->IsDownloadShelfVisible()) {
     browser->window()->GetDownloadShelf()->Close();
+<<<<<<< HEAD
+  }
+  ShowSingletonTabOverwritingNTP(browser, GURL(kChromeUIDownloadsURL));
+=======
 
   NavigateParams params(
       GetSingletonTabNavigateParams(browser, GURL(kChromeUIDownloadsURL)));
   ShowSingletonTabOverwritingNTP(browser, &params);
+>>>>>>> chromium
 }
 
 void ShowExtensions(Browser* browser,
@@ -283,8 +392,13 @@ void ShowChromeWhatsNew(Browser* browser) {
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
+<<<<<<< HEAD
+void LaunchReleaseNotes(Profile* profile, apps::LaunchSource source) {
+#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+=======
 void LaunchReleaseNotes(Profile* profile, apps::mojom::LaunchSource source) {
 #if BUILDFLAG(IS_CHROMEOS_ASH) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
+>>>>>>> chromium
   LaunchReleaseNotesImpl(profile, source);
 #endif
 }
@@ -298,7 +412,7 @@ void ShowPolicy(Browser* browser) {
 }
 
 void ShowSlow(Browser* browser) {
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
   ShowSingletonTab(browser, GURL(kChromeUISlowURL));
 #endif
 }
@@ -309,14 +423,17 @@ GURL GetSettingsUrl(const std::string& sub_page) {
 
 bool IsTrustedPopupWindowWithScheme(const Browser* browser,
                                     const std::string& scheme) {
-  if (browser->is_type_normal() || !browser->is_trusted_source())
+  if (browser->is_type_normal() || !browser->is_trusted_source()) {
     return false;
-  if (scheme.empty())  // Any trusted popup window
+  }
+  if (scheme.empty()) {  // Any trusted popup window
     return true;
+  }
   content::WebContents* web_contents =
       browser->tab_strip_model()->GetWebContentsAt(0);
-  if (!web_contents)
+  if (!web_contents) {
     return false;
+  }
   GURL url(web_contents->GetURL());
   return url.SchemeIs(scheme);
 }
@@ -325,8 +442,13 @@ void ShowSettings(Browser* browser) {
   ShowSettingsSubPage(browser, std::string());
 }
 
+<<<<<<< HEAD
+void ShowSettingsSubPage(Browser* browser, std::string_view sub_page) {
+#if BUILDFLAG(IS_CHROMEOS)
+=======
 void ShowSettingsSubPage(Browser* browser, const std::string& sub_page) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   ShowSettingsSubPageForProfile(browser->profile(), sub_page);
 #else
   ShowSettingsSubPageInTabbedBrowser(browser, sub_page);
@@ -334,15 +456,18 @@ void ShowSettingsSubPage(Browser* browser, const std::string& sub_page) {
 }
 
 void ShowSettingsSubPageForProfile(Profile* profile,
+<<<<<<< HEAD
+                                   std::string_view sub_page) {
+#if BUILDFLAG(IS_CHROMEOS)
+=======
                                    const std::string& sub_page) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   // OS settings sub-pages are handled else where and should never be
   // encountered here.
   DCHECK(!chromeos::settings::IsOSSettingsSubPage(sub_page)) << sub_page;
 #endif
-  Browser* browser = chrome::FindTabbedBrowser(profile, false);
-  if (!browser)
-    browser = Browser::Create(Browser::CreateParams(profile, true));
+  Browser* browser = GetOrCreateBrowserForProfile(profile);
   ShowSettingsSubPageInTabbedBrowser(browser, sub_page);
 }
 
@@ -355,6 +480,12 @@ void ShowSettingsSubPageInTabbedBrowser(Browser* browser,
   // about to be shown) is focused. (See crbug/926492 for motivation.)
   FocusWebContents(browser);
   ShowSingletonTabIgnorePathOverwriteNTP(browser, GetSettingsUrl(sub_page));
+}
+
+void ShowPageWithPromoForProfile(Profile* profile,
+                                 ShowPromoInPage::Params promo_params) {
+  Browser* browser = GetOrCreateBrowserForProfile(profile);
+  ShowPromoInPage::Start(browser, std::move(promo_params));
 }
 
 void ShowContentSettingsExceptions(Browser* browser,
@@ -430,6 +561,10 @@ void ShowEnterpriseManagementPageInTabbedBrowser(Browser* browser) {
   ShowSingletonTabIgnorePathOverwriteNTP(browser, GURL(kChromeUIManagementURL));
 }
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+=======
+>>>>>>> chromium
 void ShowAppManagementPage(Profile* profile,
                            const std::string& app_id,
                            AppManagementEntryPoint entry_point) {
@@ -446,6 +581,84 @@ void ShowAppManagementPage(Profile* profile,
                                                                sub_page);
 }
 
+<<<<<<< HEAD
+void ShowGraduationApp(Profile* profile) {
+  ash::SystemAppLaunchParams params;
+  params.launch_source = apps::LaunchSource::kFromOtherApp;
+  ShowSystemAppInternal(profile, ash::SystemWebAppType::GRADUATION, params);
+}
+
+GURL GetOSSettingsUrl(std::string_view sub_page) {
+  DCHECK(sub_page.empty() || chromeos::settings::IsOSSettingsSubPage(sub_page))
+      << sub_page;
+  return GURL(base::StrCat({kChromeUIOSSettingsURL, sub_page}));
+}
+
+void ShowPrintManagementApp(Profile* profile) {
+  ShowSystemAppInternal(profile, ash::SystemWebAppType::PRINT_MANAGEMENT);
+}
+
+void ShowConnectivityDiagnosticsApp(Profile* profile) {
+  ShowSystemAppInternal(profile,
+                        ash::SystemWebAppType::CONNECTIVITY_DIAGNOSTICS);
+}
+
+void ShowScanningApp(Profile* profile) {
+  ShowSystemAppInternal(profile, ash::SystemWebAppType::SCANNING);
+}
+
+void ShowDiagnosticsApp(Profile* profile) {
+  ShowSystemAppInternal(profile, ash::SystemWebAppType::DIAGNOSTICS);
+}
+
+void ShowFirmwareUpdatesApp(Profile* profile) {
+  ShowSystemAppInternal(profile, ash::SystemWebAppType::FIRMWARE_UPDATE);
+}
+
+void ShowShortcutCustomizationApp(Profile* profile) {
+  ShowSystemAppInternal(profile, ash::SystemWebAppType::SHORTCUT_CUSTOMIZATION);
+}
+
+void ShowShortcutCustomizationApp(Profile* profile,
+                                  const std::string& action,
+                                  const std::string& category) {
+  const std::string query_string =
+      base::StrCat({"action=", action, "&category=", category});
+  ash::SystemAppLaunchParams params;
+  params.launch_source = apps::LaunchSource::kUnknown;
+  params.url = GURL(base::StrCat(
+      {ash::kChromeUIShortcutCustomizationAppURL, "?", query_string}));
+  ShowSystemAppInternal(profile, ash::SystemWebAppType::SHORTCUT_CUSTOMIZATION,
+                        params);
+}
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+void ShowWebAppSettingsImpl(Browser* browser,
+                            Profile* profile,
+                            const std::string& app_id,
+                            web_app::AppSettingsPageEntryPoint entry_point) {
+  base::UmaHistogramEnumeration(
+      web_app::kAppSettingsPageEntryPointsHistogramName, entry_point);
+
+  const GURL link_destination(chrome::kChromeUIWebAppSettingsURL + app_id);
+  NavigateParams params(profile, link_destination, ui::PAGE_TRANSITION_TYPED);
+  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  params.browser = browser;
+  Navigate(&params);
+}
+
+void ShowWebAppSettings(Browser* browser,
+                        const std::string& app_id,
+                        web_app::AppSettingsPageEntryPoint entry_point) {
+  ShowWebAppSettingsImpl(browser, browser->profile(), app_id, entry_point);
+}
+
+void ShowWebAppSettings(Profile* profile,
+                        const std::string& app_id,
+                        web_app::AppSettingsPageEntryPoint entry_point) {
+  ShowWebAppSettingsImpl(/*browser=*/nullptr, profile, app_id, entry_point);
+=======
 void ShowPrintManagementApp(Profile* profile) {
   LaunchSystemWebAppAsync(profile, web_app::SystemAppType::PRINT_MANAGEMENT);
 }
@@ -515,7 +728,12 @@ void ShowBrowserSigninOrSettings(Browser* browser,
     ShowSettings(browser);
   else
     ShowBrowserSignin(browser, access_point, signin::ConsentLevel::kSync);
+>>>>>>> chromium
 }
 #endif
+
+void ShowAllComparisonTables(Browser* browser) {
+  ShowSingletonTab(browser, GURL(commerce::kChromeUICompareUrl));
+}
 
 }  // namespace chrome

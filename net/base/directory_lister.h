@@ -120,10 +120,14 @@ class NET_EXPORT DirectoryLister  {
     // Only used on the origin thread.
     DirectoryLister* lister_;
 
-    // Set to 1 on cancellation. Used both to abort listing files early on the
+    // Set to true on cancellation. Used both to abort listing files early on the
     // worker pool thread for performance reasons and to ensure |lister_| isn't
     // called after cancellation on the origin thread.
+<<<<<<< HEAD
+    std::atomic<bool> cancelled_ = {};
+=======
     base::subtle::Atomic32 cancelled_;
+>>>>>>> chromium
   };
 
   // Call into the corresponding DirectoryListerDelegate. Must not be called

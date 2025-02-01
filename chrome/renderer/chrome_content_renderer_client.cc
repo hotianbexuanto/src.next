@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "base/bind.h"
 #include "base/check_op.h"
@@ -18,6 +19,11 @@
 #include "base/metrics/user_metrics_action.h"
 #include "base/no_destructor.h"
 #include "base/notreached.h"
+<<<<<<< HEAD
+#include "base/process/current_process.h"
+#include "base/profiler/thread_group_profiler.h"
+=======
+>>>>>>> chromium
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -34,8 +40,16 @@
 #include "chrome/common/crash_keys.h"
 #include "chrome/common/pdf_util.h"
 #include "chrome/common/pepper_permission_util.h"
+<<<<<<< HEAD
+#include "chrome/common/ppapi_utils.h"
+#include "chrome/common/profiler/chrome_thread_group_profiler_client.h"
+#include "chrome/common/profiler/chrome_thread_profiler_client.h"
+#include "chrome/common/profiler/core_unwinders.h"
+#include "chrome/common/profiler/thread_profiler_configuration.h"
+=======
 #include "chrome/common/privacy_budget/privacy_budget_settings_provider.h"
 #include "chrome/common/profiler/thread_profiler.h"
+>>>>>>> chromium
 #include "chrome/common/secure_origin_allowlist.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
@@ -166,7 +180,13 @@
 
 #if defined(OS_ANDROID)
 #include "chrome/renderer/sandbox_status_extension_android.h"
+<<<<<<< HEAD
+#include "chrome/renderer/wallet/boarding_pass_extractor.h"
+#include "components/feed/content/renderer/rss_link_reader.h"
+#include "components/feed/feed_feature_list.h"
+=======
 #include "components/continuous_search/renderer/search_result_extractor_impl.h"  // nogncheck
+>>>>>>> chromium
 #else
 #include "chrome/renderer/cart/commerce_hint_agent.h"
 #include "chrome/renderer/media/chrome_speech_recognition_client.h"
@@ -192,6 +212,7 @@
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "chrome/common/initialize_extensions_client.h"
+#include "chrome/renderer/extensions/api/chrome_extensions_renderer_api_provider.h"
 #include "chrome/renderer/extensions/chrome_extensions_renderer_client.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension_urls.h"
@@ -203,12 +224,22 @@
 #include "extensions/renderer/renderer_extension_registry.h"
 #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom.h"
 #include "third_party/blink/public/web/web_settings.h"
+<<<<<<< HEAD
+#endif  // BUIDFLAG(ENABLE_EXTENSIONS_CORE)
+
+#if BUILDFLAG(ENABLE_GUEST_VIEW)
+#include "extensions/renderer/guest_view/mime_handler_view/mime_handler_view_container_manager.h"
+#endif  // BUILDFLAG(ENABLE_GUEST_VIEW)
+
+#if BUILDFLAG(ENABLE_PDF)
+=======
 #include "third_party/blink/public/web/web_view.h"
 #endif
 
 #if BUILDFLAG(ENABLE_PDF)
 #include "chrome/renderer/pdf/chrome_pdf_internal_plugin_delegate.h"
 #include "components/pdf/common/internal_plugin_helpers.h"
+>>>>>>> chromium
 #include "components/pdf/renderer/internal_plugin_renderer_helpers.h"
 #endif  // BUILDFLAG(ENABLE_PDF)
 
@@ -268,7 +299,6 @@ using blink::WebURL;
 using blink::WebURLError;
 using blink::WebURLRequest;
 using blink::WebURLResponse;
-using blink::WebVector;
 using blink::mojom::FetchCacheMode;
 using content::RenderFrame;
 using content::RenderThread;
@@ -285,17 +315,23 @@ const char* const kPredefinedAllowedCameraDeviceOrigins[] = {
     "4EB74897CB187C7633357C2FE832E0AD6A44883A"};
 #endif
 
+#if BUILDFLAG(ENABLE_PDF)
+std::vector<url::Origin> GetAdditionalPdfInternalPluginAllowedOrigins() {
+  return {url::Origin::Create(GURL(chrome::kChromeUIPrintURL))};
+}
+#endif  // BUILDFLAG(ENABLE_PDF)
+
 #if BUILDFLAG(ENABLE_PLUGINS)
 void AppendParams(
     const std::vector<WebPluginMimeType::Param>& additional_params,
-    WebVector<WebString>* existing_names,
-    WebVector<WebString>* existing_values) {
+    std::vector<WebString>* existing_names,
+    std::vector<WebString>* existing_values) {
   DCHECK(existing_names->size() == existing_values->size());
   size_t existing_size = existing_names->size();
   size_t total_size = existing_size + additional_params.size();
 
-  WebVector<WebString> names(total_size);
-  WebVector<WebString> values(total_size);
+  std::vector<WebString> names(total_size);
+  std::vector<WebString> values(total_size);
 
   for (size_t i = 0; i < existing_size; ++i) {
     names[i] = (*existing_names)[i];
@@ -353,8 +389,25 @@ ChromeContentRendererClient::ChromeContentRendererClient()
 #if defined(OS_WIN)
       remote_module_watcher_(nullptr, base::OnTaskRunnerDeleter(nullptr)),
 #endif
+<<<<<<< HEAD
+{
+  base::ThreadGroupProfiler::SetClient(
+      std::make_unique<ChromeThreadGroupProfilerClient>());
+  sampling_profiler::ThreadProfiler::SetClient(
+      std::make_unique<ChromeThreadProfilerClient>());
+
+  // The profiler can't start before the sandbox is initialized on
+  // ChromeOS due to ChromeOS's sandbox initialization code's use of
+  // AssertSingleThreaded().
+#if !BUILDFLAG(IS_CHROMEOS)
+  main_thread_profiler_ =
+      sampling_profiler::ThreadProfiler::CreateAndStartOnMainThread();
+#endif
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+=======
       main_thread_profiler_(ThreadProfiler::CreateAndStartOnMainThread()) {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+>>>>>>> chromium
   EnsureExtensionsClientInitialized();
   extensions::ExtensionsRendererClient::Set(
       ChromeExtensionsRendererClient::GetInstance());
@@ -365,7 +418,7 @@ ChromeContentRendererClient::ChromeContentRendererClient()
 #endif
 }
 
-ChromeContentRendererClient::~ChromeContentRendererClient() {}
+ChromeContentRendererClient::~ChromeContentRendererClient() = default;
 
 void ChromeContentRendererClient::RenderThreadStarted() {
   RenderThread* thread = RenderThread::Get();
@@ -396,8 +449,26 @@ void ChromeContentRendererClient::RenderThreadStarted() {
   chrome_observer_ = std::make_unique<ChromeRenderThreadObserver>();
   web_cache_impl_ = std::make_unique<web_cache::WebCacheImpl>();
 
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  auto* extensions_renderer_client =
+      extensions::ExtensionsRendererClient::Get();
+  extensions_renderer_client->AddAPIProvider(
+      std::make_unique<extensions::CoreExtensionsRendererAPIProvider>());
+  extensions_renderer_client->AddAPIProvider(
+      std::make_unique<extensions::ChromeExtensionsRendererAPIProvider>());
+
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+  extensions_renderer_client->AddAPIProvider(
+      std::make_unique<
+          controlled_frame::ControlledFrameExtensionsRendererAPIProvider>());
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+
+  extensions_renderer_client->RenderThreadStarted();
+=======
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   ChromeExtensionsRendererClient::GetInstance()->RenderThreadStarted();
+>>>>>>> chromium
   WebSecurityPolicy::RegisterURLSchemeAsExtension(
       WebString::FromASCII(extensions::kExtensionScheme));
 #endif
@@ -514,7 +585,7 @@ void ChromeContentRendererClient::RenderFrameCreated(
           switches::kInstantProcess);
   auto content_settings_delegate =
       std::make_unique<ChromeContentSettingsAgentDelegate>(render_frame);
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   content_settings_delegate->SetExtensionDispatcher(
       ChromeExtensionsRendererClient::GetInstance()->extension_dispatcher());
 #endif
@@ -607,6 +678,19 @@ void ChromeContentRendererClient::RenderFrameCreated(
 
   blink::AssociatedInterfaceRegistry* associated_interfaces =
       render_frame_observer->associated_interfaces();
+<<<<<<< HEAD
+
+  if (!render_frame->IsInFencedFrameTree() ||
+      base::FeatureList::IsEnabled(blink::features::kFencedFramesAPIChanges)) {
+    auto password_autofill_agent = std::make_unique<PasswordAutofillAgent>(
+        render_frame, associated_interfaces);
+    auto password_generation_agent = std::make_unique<PasswordGenerationAgent>(
+        render_frame, password_autofill_agent.get(), associated_interfaces);
+    new AutofillAgent(render_frame, std::move(password_autofill_agent),
+                      std::move(password_generation_agent),
+                      associated_interfaces);
+  }
+=======
   PasswordAutofillAgent* password_autofill_agent =
       new PasswordAutofillAgent(render_frame, associated_interfaces);
   PasswordGenerationAgent* password_generation_agent =
@@ -617,6 +701,7 @@ void ChromeContentRendererClient::RenderFrameCreated(
   new AutofillAgent(render_frame, password_autofill_agent,
                     password_generation_agent, autofill_assistant_agent,
                     associated_interfaces);
+>>>>>>> chromium
 
   if (content_capture::features::IsContentCaptureEnabled()) {
     new content_capture::ContentCaptureSender(render_frame,
@@ -746,6 +831,11 @@ bool ChromeContentRendererClient::IsPluginHandledExternally(
     // Only actually treat the internal PDF plugin as externally handled if
     // used within an origin allowed to create the internal PDF plugin;
     // otherwise, let Blink try to create the in-process PDF plugin.
+<<<<<<< HEAD
+    if (IsPdfInternalPluginAllowedOrigin(
+            render_frame->GetWebFrame()->GetSecurityOrigin(),
+            GetAdditionalPdfInternalPluginAllowedOrigins())) {
+=======
     url::Origin frame_origin = render_frame->GetWebFrame()->GetSecurityOrigin();
     if (IsPdfInternalPluginAllowedOrigin(frame_origin)) {
       // TODO(crbug.com/1225756): Until this is fixed, allow Print Preview to
@@ -755,6 +845,7 @@ bool ChromeContentRendererClient::IsPluginHandledExternally(
         DCHECK_EQ(original_url.GetOrigin(), chrome::kChromeUIPrintURL);
         return false;
       }
+>>>>>>> chromium
       return true;
     }
   }
@@ -771,7 +862,12 @@ v8::Local<v8::Object> ChromeContentRendererClient::GetScriptableObject(
     const blink::WebElement& plugin_element,
     v8::Isolate* isolate) {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+<<<<<<< HEAD
+  // Used for plugins.
+  return extensions::ExtensionsRendererClient::Get()->GetScriptableObject(
+=======
   return ChromeExtensionsRendererClient::GetInstance()->GetScriptableObject(
+>>>>>>> chromium
       plugin_element, isolate);
 #else
   return v8::Local<v8::Object>();
@@ -784,7 +880,12 @@ bool ChromeContentRendererClient::OverrideCreatePlugin(
     WebPlugin** plugin) {
   std::string orig_mime_type = params.mime_type.Utf8();
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+<<<<<<< HEAD
+  // Used for plugins.
+  if (!extensions::ExtensionsRendererClient::Get()->OverrideCreatePlugin(
+=======
   if (!ChromeExtensionsRendererClient::GetInstance()->OverrideCreatePlugin(
+>>>>>>> chromium
           render_frame, params)) {
     return false;
   }
@@ -1050,8 +1151,13 @@ WebPlugin* ChromeContentRendererClient::CreatePlugin(
         if (info.name ==
             ASCIIToUTF16(ChromeContentClient::kPDFInternalPluginName)) {
           return pdf::CreateInternalPlugin(
+<<<<<<< HEAD
+              std::move(params), render_frame,
+              GetAdditionalPdfInternalPluginAllowedOrigins());
+=======
               info, std::move(params), render_frame,
               std::make_unique<ChromePdfInternalPluginDelegate>(render_frame));
+>>>>>>> chromium
         }
 #endif  // BUILDFLAG(ENABLE_PDF)
 
@@ -1317,17 +1423,42 @@ bool ChromeContentRendererClient::RunIdleHandlerWhenWidgetsHidden() {
 }
 
 bool ChromeContentRendererClient::AllowPopup() {
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  return extensions::ExtensionsRendererClient::Get()->AllowPopup();
+#else
+  return false;
+#endif
+}
+
+bool ChromeContentRendererClient::ShouldNotifyServiceWorkerOnWebSocketActivity(
+    v8::Local<v8::Context> context) {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  return extensions::Dispatcher::ShouldNotifyServiceWorkerOnWebSocketActivity(
+      context);
+=======
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   return ChromeExtensionsRendererClient::GetInstance()->AllowPopup();
+>>>>>>> chromium
 #else
   return false;
 #endif
 }
 
 blink::ProtocolHandlerSecurityLevel
+<<<<<<< HEAD
+ChromeContentRendererClient::GetProtocolHandlerSecurityLevel(
+    const url::Origin& origin) {
+  if (origin.scheme() == chrome::kIsolatedAppScheme) {
+    return blink::ProtocolHandlerSecurityLevel::kSameOrigin;
+  }
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  return extensions::ExtensionsRendererClient::Get()
+=======
 ChromeContentRendererClient::GetProtocolHandlerSecurityLevel() {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   return ChromeExtensionsRendererClient::GetInstance()
+>>>>>>> chromium
       ->GetProtocolHandlerSecurityLevel();
 #else
   return blink::ProtocolHandlerSecurityLevel::kStrict;
@@ -1341,7 +1472,7 @@ void ChromeContentRendererClient::WillSendRequest(
     const net::SiteForCookies& site_for_cookies,
     const url::Origin* initiator_origin,
     GURL* new_url) {
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   // Check whether the request should be allowed. If not allowed, we reset the
   // URL to something invalid to prevent the request and cause an error.
   ChromeExtensionsRendererClient::GetInstance()->WillSendRequest(
@@ -1476,7 +1607,7 @@ bool ChromeContentRendererClient::IsKeySystemsUpdateNeeded() {
 
 bool ChromeContentRendererClient::ShouldReportDetailedMessageForSource(
     const std::u16string& source) {
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   return extensions::IsSourceFromAnExtension(source);
 #else
   return false;
@@ -1550,6 +1681,19 @@ void ChromeContentRendererClient::
 
   if (base::FeatureList::IsEnabled(subresource_filter::kAdTagging))
     blink::WebRuntimeFeatures::EnableAdTagging(true);
+<<<<<<< HEAD
+
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+  // WebHID and WebUSB on service workers is only available in extensions.
+  if (IsStandaloneContentExtensionProcess()) {
+    blink::WebRuntimeFeatures::EnableWebUSBOnServiceWorkers(true);
+#if !BUILDFLAG(IS_ANDROID)
+    blink::WebRuntimeFeatures::EnableWebHIDOnServiceWorkers(true);
+#endif  // !BUILDFLAG(IS_ANDROID)
+  }
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+=======
+>>>>>>> chromium
 }
 
 bool ChromeContentRendererClient::AllowScriptExtensionForServiceWorker(
@@ -1682,8 +1826,22 @@ void ChromeContentRendererClient::DidSetUserAgent(
 
 void ChromeContentRendererClient::AppendContentSecurityPolicy(
     const blink::WebURL& url,
+<<<<<<< HEAD
+    std::vector<blink::WebContentSecurityPolicyHeader>* csp) {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#if BUILDFLAG(ENABLE_PDF)
+  // Don't apply default CSP to PDF renderers.
+  // TODO(crbug.com/40792950): Lock down the CSP once style and script are no
+  // longer injected inline by `pdf::PluginResponseWriter`. That class may be a
+  // better place to define such CSP, or we may continue doing so here.
+  if (pdf::IsPdfRenderer())
+    return;
+#endif  // BUILDFLAG(ENABLE_PDF)
+
+=======
     blink::WebVector<blink::WebContentSecurityPolicyHeader>* csp) {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+>>>>>>> chromium
   DCHECK(csp);
   GURL gurl(url);
   const extensions::Extension* extension =

@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 
+#include <array>
 #include <memory>
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -114,7 +115,7 @@ TEST_F(FlatTreeTraversalTest, childAt) {
   Element* s04 = shadow_root->QuerySelector("#s04");
 
   const unsigned kNumberOfChildNodes = 5;
-  Node* expected_child_nodes[5] = {s00, m01, s02, s03, s04};
+  std::array<Node*, 5> expected_child_nodes = {s00, m01, s02, s03, s04};
 
   ASSERT_EQ(kNumberOfChildNodes,
             FlatTreeTraversal::CountChildren(*shadow_host));

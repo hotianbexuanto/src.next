@@ -35,7 +35,13 @@
 #include "third_party/blink/public/strings/grit/blink_strings.h"
 #include "third_party/blink/renderer/core/display_lock/display_lock_utilities.h"
 #include "third_party/blink/renderer/core/dom/document.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/dom/focus_params.h"
+#include "third_party/blink/renderer/core/dom/scroll_marker_group_pseudo_element.h"
+#include "third_party/blink/renderer/core/dom/scroll_marker_pseudo_element.h"
+=======
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/editing/ime/input_method_controller.h"
 #include "third_party/blink/renderer/core/editing/position_with_affinity.h"
@@ -241,8 +247,12 @@ LayoutUnit FileUploadControlIntrinsicInlineSize(const HTMLInputElement& input,
   // characters (using "0" as the nominal character).
   constexpr int kDefaultWidthNumChars = 34;
   constexpr UChar kCharacter = '0';
+<<<<<<< HEAD
+  const String character_as_string = String(base::span_from_ref(kCharacter));
+=======
   const String character_as_string = String(&kCharacter, 1);
   const Font& font = box.StyleRef().GetFont();
+>>>>>>> chromium
   const float min_default_label_width =
       kDefaultWidthNumChars *
       font.Width(ConstructTextRun(font, character_as_string, box.StyleRef(),
@@ -306,11 +316,17 @@ LayoutUnit MenuListIntrinsicInlineSize(const HTMLSelectElement& select,
   const ComputedStyle& style = box.StyleRef();
   float max_option_width = 0;
   if (!box.ShouldApplySizeContainment()) {
+<<<<<<< HEAD
+    for (const auto& option : select.GetOptionList()) {
+      String text =
+          style.ApplyTextTransform(option.TextIndentedToRespectGroupLabel());
+=======
     for (auto* const option : select.GetOptionList()) {
       String text = option->TextIndentedToRespectGroupLabel();
       const ComputedStyle* item_style =
           option->GetComputedStyle() ? option->GetComputedStyle() : &style;
       item_style->ApplyTextTransform(&text);
+>>>>>>> chromium
       // We apply SELECT's style, not OPTION's style because max_option_width is
       // used to determine intrinsic width of the menulist box.
       TextRun text_run = ConstructTextRun(style.GetFont(), text, style);
@@ -1254,9 +1270,19 @@ LayoutUnit LayoutBox::DefaultIntrinsicContentInlineSize() const {
     return kIndefiniteSize;
   const Element& element = *To<Element>(GetNode());
 
+<<<<<<< HEAD
+  const bool apply_fixed_size = StyleRef().ApplyControlFixedSize(&element);
+  const auto* select = DynamicTo<HTMLSelectElement>(element);
+  if (select && select->UsesMenuList() &&
+      StyleRef().EffectiveAppearance() != AppearanceValue::kBaseSelect)
+      [[unlikely]] {
+    return apply_fixed_size ? MenuListIntrinsicInlineSize(*select, *this)
+                            : kIndefiniteSize;
+=======
   auto* select = DynamicTo<HTMLSelectElement>(element);
   if (UNLIKELY(select && select->UsesMenuList())) {
     return MenuListIntrinsicInlineSize(*select, *this);
+>>>>>>> chromium
   }
   auto* input = DynamicTo<HTMLInputElement>(element);
   if (UNLIKELY(input)) {
@@ -1267,6 +1293,19 @@ LayoutUnit LayoutBox::DefaultIntrinsicContentInlineSize() const {
       return FileUploadControlIntrinsicInlineSize(*input, *this);
     else if (type == input_type_names::kRange)
       return SliderIntrinsicInlineSize(*this);
+<<<<<<< HEAD
+    }
+    auto effective_appearance = StyleRef().EffectiveAppearance();
+    if (effective_appearance == AppearanceValue::kCheckbox) {
+      return ThemePartIntrinsicSize(*this, WebThemeEngine::kPartCheckbox)
+          .inline_size;
+    }
+    if (effective_appearance == AppearanceValue::kRadio) {
+      return ThemePartIntrinsicSize(*this, WebThemeEngine::kPartRadio)
+          .inline_size;
+    }
+=======
+>>>>>>> chromium
     return kIndefiniteSize;
   }
   auto* textarea = DynamicTo<HTMLTextAreaElement>(element);
@@ -1284,12 +1323,32 @@ LayoutUnit LayoutBox::DefaultIntrinsicContentBlockSize() const {
   // get here.
   DCHECK(!HasOverrideIntrinsicContentLogicalHeight());
 
+<<<<<<< HEAD
+  auto effective_appearance = StyleRef().EffectiveAppearance();
+  if (effective_appearance == AppearanceValue::kCheckbox) {
+    return ThemePartIntrinsicSize(*this, WebThemeEngine::kPartCheckbox)
+        .block_size;
+  }
+  if (effective_appearance == AppearanceValue::kRadio) {
+    return ThemePartIntrinsicSize(*this, WebThemeEngine::kPartRadio).block_size;
+  }
+
+  if (!StyleRef().ApplyControlFixedSize(GetNode())) {
+    return kIndefiniteSize;
+  }
+  if (const auto* select = DynamicTo<HTMLSelectElement>(GetNode())) {
+    if (!select->UsesMenuList()) {
+      return ListBoxItemBlockSize(*select, *this) * select->ListBoxSize() -
+=======
   if (const auto* select = DynamicTo<HTMLSelectElement>(GetNode())) {
     if (select->UsesMenuList()) {
       return MenuListIntrinsicBlockSize(*select, *this);
     } else {
       return ListBoxItemHeight(*select, *this) * select->ListBoxSize() -
+>>>>>>> chromium
              ComputeLogicalScrollbars().BlockSum();
+    } else if (effective_appearance != AppearanceValue::kBaseSelect) {
+      return MenuListIntrinsicBlockSize(*select, *this);
     }
   } else if (IsTextFieldIncludingNG()) {
     return TextFieldIntrinsicBlockSize(*To<HTMLInputElement>(GetNode()), *this);
@@ -3161,6 +3220,10 @@ PhysicalOffset LayoutBox::OffsetFromContainerInternal(
   if (IsInFlowPositioned())
     offset += OffsetForInFlowPosition();
 
+<<<<<<< HEAD
+  if (NeedsAnchorPositionScrollAdjustment()) {
+    offset += AnchorPositionScrollTranslationOffset();
+=======
   offset += PhysicalLocation();
 
   if (o->IsScrollContainer())
@@ -3169,9 +3232,10 @@ PhysicalOffset LayoutBox::OffsetFromContainerInternal(
   if (IsOutOfFlowPositioned() && o->IsLayoutInline() &&
       o->CanContainOutOfFlowPositionedElement(StyleRef().GetPosition())) {
     offset += To<LayoutInline>(o)->OffsetForInFlowPositionedInline(*this);
+>>>>>>> chromium
   }
 
-  return offset;
+  return offset + LayoutBoxModelObject::OffsetFromContainerInternal(o, mode);
 }
 
 InlineBox* LayoutBox::CreateInlineBox() {
@@ -3364,11 +3428,25 @@ void LayoutBox::ReplaceLayoutResult(scoped_refptr<const NGLayoutResult> result,
   AddLayoutResult(std::move(result));
 }
 
+<<<<<<< HEAD
+void LayoutBox::RebuildFragmentTreeSpine() {
+  DCHECK(PhysicalFragmentCount());
+  // If this box has an associated layout-result, rebuild the spine of the
+  // fragment-tree to ensure consistency.
+  LayoutBox* container = this;
+  while (container && container->PhysicalFragmentCount() &&
+         !container->NeedsLayout()) {
+    for (auto& result : container->layout_results_)
+      result = LayoutResult::CloneWithPostLayoutFragments(*result);
+    container = container->ContainingNGBox();
+  }
+=======
 void LayoutBox::ClearLayoutResults() {
   NOT_DESTROYED();
   if (measure_result_)
     InvalidateItems(*measure_result_);
   measure_result_ = nullptr;
+>>>>>>> chromium
 
   ShrinkLayoutResults(0);
 }
@@ -8276,4 +8354,461 @@ void LayoutBox::InvalidatePaintForTickmarks() {
   scrollbar->SetNeedsPaintInvalidation(static_cast<ScrollbarPart>(~kThumbPart));
 }
 
+<<<<<<< HEAD
+static bool HasInsetBoxShadow(const ComputedStyle& style) {
+  if (!style.BoxShadow())
+    return false;
+  for (const ShadowData& shadow : style.BoxShadow()->Shadows()) {
+    if (shadow.Style() == ShadowStyle::kInset)
+      return true;
+  }
+  return false;
+}
+
+// If all borders and scrollbars are opaque, then background-clip: border-box
+// is equivalent to background-clip: padding-box.
+bool LayoutBox::BackgroundClipBorderBoxIsEquivalentToPaddingBox() const {
+  const auto* scrollable_area = GetScrollableArea();
+  if (scrollable_area) {
+    if (auto* scrollbar = scrollable_area->HorizontalScrollbar()) {
+      if (!scrollbar->IsOverlayScrollbar() && !scrollbar->IsOpaque()) {
+        return false;
+      }
+    }
+    if (auto* scrollbar = scrollable_area->VerticalScrollbar()) {
+      if (!scrollbar->IsOverlayScrollbar() && !scrollbar->IsOpaque()) {
+        return false;
+      }
+    }
+  }
+
+  if (StyleRef().BorderTopWidth() &&
+      (!ResolveColor(GetCSSPropertyBorderTopColor()).IsOpaque() ||
+       StyleRef().BorderTopStyle() != EBorderStyle::kSolid)) {
+    return false;
+  }
+  if (StyleRef().BorderRightWidth() &&
+      (!ResolveColor(GetCSSPropertyBorderRightColor()).IsOpaque() ||
+       StyleRef().BorderRightStyle() != EBorderStyle::kSolid)) {
+    return false;
+  }
+  if (StyleRef().BorderBottomWidth() &&
+      (!ResolveColor(GetCSSPropertyBorderBottomColor()).IsOpaque() ||
+       StyleRef().BorderBottomStyle() != EBorderStyle::kSolid)) {
+    return false;
+  }
+  if (StyleRef().BorderLeftWidth() &&
+      (!ResolveColor(GetCSSPropertyBorderLeftColor()).IsOpaque() ||
+       StyleRef().BorderLeftStyle() != EBorderStyle::kSolid)) {
+    return false;
+  }
+
+  if (!StyleRef().IsScrollbarGutterAuto()) {
+    return false;
+  }
+
+  return true;
+}
+
+BackgroundPaintLocation LayoutBox::ComputeBackgroundPaintLocation() const {
+  NOT_DESTROYED();
+  bool may_have_scrolling_layers_without_scrolling = IsA<LayoutView>(this);
+  const auto* scrollable_area = GetScrollableArea();
+  bool scrolls_overflow = scrollable_area && scrollable_area->ScrollsOverflow();
+  if (!scrolls_overflow && !may_have_scrolling_layers_without_scrolling)
+    return kBackgroundPaintInBorderBoxSpace;
+
+  // If we care about LCD text, paint root backgrounds into scrolling contents
+  // layer even if style suggests otherwise. (For non-root scrollers, we just
+  // avoid compositing - see PLSA::ComputeNeedsCompositedScrolling.)
+  if (IsA<LayoutView>(this) &&
+      GetDocument().GetSettings()->GetLCDTextPreference() ==
+          LCDTextPreference::kStronglyPreferred) {
+    return kBackgroundPaintInContentsSpace;
+  }
+
+  // Inset box shadow is painted in the scrolling area above the background, and
+  // it doesn't scroll, so the background can only be painted in the main layer.
+  if (HasInsetBoxShadow(StyleRef()))
+    return kBackgroundPaintInBorderBoxSpace;
+
+  // For simplicity, assume any border image can have inset, like the above.
+  if (StyleRef().BorderImage().GetImage()) {
+    return kBackgroundPaintInBorderBoxSpace;
+  }
+
+  // Assume optimistically that the background can be painted in the scrolling
+  // contents until we find otherwise.
+  BackgroundPaintLocation paint_location = kBackgroundPaintInContentsSpace;
+
+  Color background_color = ResolveColor(GetCSSPropertyBackgroundColor());
+  const FillLayer* layer = &(StyleRef().BackgroundLayers());
+  for (; layer; layer = layer->Next()) {
+    if (layer->Attachment() == EFillAttachment::kLocal)
+      continue;
+
+    // The background color is either the only background or it's the
+    // bottommost value from the background property (see final-bg-layer in
+    // https://drafts.csswg.org/css-backgrounds/#the-background).
+    if (!layer->GetImage() && !layer->Next() &&
+        !background_color.IsFullyTransparent() &&
+        StyleRef().IsScrollbarGutterAuto()) {
+      // Solid color layers with an effective background clip of the padding box
+      // can be treated as local.
+      EFillBox clip = layer->Clip();
+      if (clip == EFillBox::kPadding)
+        continue;
+      // A border box can be treated as a padding box if the border is opaque or
+      // there is no border and we don't have custom scrollbars.
+      if (clip == EFillBox::kBorder) {
+        if (BackgroundClipBorderBoxIsEquivalentToPaddingBox())
+          continue;
+        // If we have an opaque background color, we can safely paint it into
+        // both the scrolling contents layer and the graphics layer to preserve
+        // LCD text. The background color is either the only background or
+        // behind background-attachment:local images (ensured by previous
+        // iterations of the loop). For the latter case, the first paint of the
+        // images doesn't matter because it will be covered by the second paint
+        // of the opaque color.
+        if (background_color.IsOpaque()) {
+          paint_location = kBackgroundPaintInBothSpaces;
+          continue;
+        }
+      } else if (clip == EFillBox::kContent &&
+                 StyleRef().PaddingTop().IsZero() &&
+                 StyleRef().PaddingLeft().IsZero() &&
+                 StyleRef().PaddingRight().IsZero() &&
+                 StyleRef().PaddingBottom().IsZero()) {
+        // A content fill box can be treated as a padding fill box if there is
+        // no padding.
+        continue;
+      }
+    }
+    return kBackgroundPaintInBorderBoxSpace;
+  }
+
+  // It can't paint in the scrolling contents because it has different 3d
+  // context than the scrolling contents.
+  if (!StyleRef().Preserves3D() && Parent() &&
+      Parent()->StyleRef().Preserves3D()) {
+    return kBackgroundPaintInBorderBoxSpace;
+  }
+
+  return paint_location;
+}
+
+bool LayoutBox::ComputeCanCompositeBackgroundAttachmentFixed() const {
+  NOT_DESTROYED();
+  DCHECK(IsBackgroundAttachmentFixedObject());
+  if (GetDocument().GetSettings()->GetLCDTextPreference() ==
+      LCDTextPreference::kStronglyPreferred) {
+    return false;
+  }
+  // The fixed attachment background must be the only background layer.
+  if (StyleRef().BackgroundLayers().Next() ||
+      StyleRef().BackgroundLayers().Clip() == EFillBox::kText) {
+    return false;
+  }
+  // To support box shadow, we'll need to paint the outset and inset box
+  // shadows in separate display items in case there are outset box shadow,
+  // background, inset box shadow and border in paint order.
+  if (StyleRef().BoxShadow()) {
+    return false;
+  }
+  // The theme may paint the background differently for an appearance.
+  if (StyleRef().HasEffectiveAppearance()) {
+    return false;
+  }
+  // For now the BackgroundClip paint property node doesn't support rounded
+  // corners. If we want to support this, we need to ensure
+  // - there is no obvious bleeding issues, and
+  // - both the fast path and the slow path of composited rounded clip work.
+  if (StyleRef().HasBorderRadius()) {
+    return false;
+  }
+  return true;
+}
+
+bool LayoutBox::IsFixedToView(
+    const LayoutObject* container_for_fixed_position) const {
+  if (!IsFixedPositioned())
+    return false;
+
+  const auto* container = container_for_fixed_position;
+  if (!container)
+    container = Container();
+  else
+    DCHECK_EQ(container, Container());
+  return container->IsLayoutView();
+}
+
+PhysicalRect LayoutBox::ComputeStickyConstrainingRect() const {
+  NOT_DESTROYED();
+  DCHECK(IsScrollContainer());
+  PhysicalRect constraining_rect(OverflowClipRect(PhysicalOffset()));
+  constraining_rect.Move(PhysicalOffset(-BorderLeft() + PaddingLeft(),
+                                        -BorderTop() + PaddingTop()));
+  constraining_rect.ContractEdges(LayoutUnit(), PaddingLeft() + PaddingRight(),
+                                  PaddingTop() + PaddingBottom(), LayoutUnit());
+
+  // Subtract off the scroll origin to move into scrolling content space.
+  constraining_rect.Move(-PhysicalOffset(ScrollOrigin()));
+  return constraining_rect;
+}
+
+AnchorPositionScrollData* LayoutBox::GetAnchorPositionScrollData() const {
+  if (Element* element = DynamicTo<Element>(GetNode())) {
+    return element->GetAnchorPositionScrollData();
+  }
+  return nullptr;
+}
+
+bool LayoutBox::NeedsAnchorPositionScrollAdjustment() const {
+  if (auto* data = GetAnchorPositionScrollData()) {
+    return data->NeedsScrollAdjustment();
+  }
+  return false;
+}
+
+bool LayoutBox::AnchorPositionScrollAdjustmentAfectedByViewportScrolling()
+    const {
+  if (auto* data = GetAnchorPositionScrollData()) {
+    return data->NeedsScrollAdjustment() &&
+           data->IsAffectedByViewportScrolling();
+  }
+  return false;
+}
+
+PhysicalOffset LayoutBox::AnchorPositionScrollTranslationOffset() const {
+  if (auto* data = GetAnchorPositionScrollData()) {
+    return data->TranslationAsPhysicalOffset();
+  }
+  return PhysicalOffset();
+}
+
+namespace {
+
+template <typename Function>
+void ForEachAnchorQueryOnContainer(const LayoutBox& box, Function func) {
+  const LayoutObject* container = box.Container();
+  if (container->IsLayoutBlock()) {
+    for (const PhysicalBoxFragment& fragment :
+         To<LayoutBlock>(container)->PhysicalFragments()) {
+      if (const PhysicalAnchorQuery* anchor_query = fragment.AnchorQuery()) {
+        func(*anchor_query);
+      }
+    }
+    return;
+  }
+
+  // Now the container is an inline box that's also an abspos containing block.
+  CHECK(container->IsLayoutInline());
+  const LayoutInline* inline_container = To<LayoutInline>(container);
+  if (!inline_container->HasInlineFragments()) {
+    return;
+  }
+  InlineCursor cursor;
+  cursor.MoveTo(*container);
+  for (; cursor; cursor.MoveToNextForSameLayoutObject()) {
+    if (const PhysicalBoxFragment* fragment = cursor.Current().BoxFragment()) {
+      if (const PhysicalAnchorQuery* anchor_query = fragment->AnchorQuery()) {
+        func(*anchor_query);
+      }
+    }
+  }
+}
+
+#if EXPENSIVE_DCHECKS_ARE_ON()
+template <typename Function>
+void AssertSameDataOnLayoutResults(
+    const LayoutBox::LayoutResultList& layout_results,
+    Function func) {
+  // When an out-of-flow box is fragmented, the position fallback results on all
+  // fragments should be the same.
+  for (wtf_size_t i = 1; i < layout_results.size(); ++i) {
+    DCHECK(func(layout_results[i]) == func(layout_results[i - 1]));
+  }
+}
+
+#endif
+
+}  // namespace
+
+const LayoutObject* LayoutBox::FindTargetAnchor(
+    const ScopedCSSName& anchor_name) const {
+  if (!IsOutOfFlowPositioned()) {
+    return nullptr;
+  }
+
+  // Go through the already built PhysicalAnchorQuery to avoid tree traversal.
+  const LayoutObject* anchor = nullptr;
+  auto search_for_anchor = [&](const PhysicalAnchorQuery& anchor_query) {
+    if (const LayoutObject* current =
+            anchor_query.AnchorLayoutObject(*this, &anchor_name)) {
+      if (!anchor ||
+          (anchor != current && anchor->IsBeforeInPreOrder(*current))) {
+        anchor = current;
+      }
+    }
+  };
+  ForEachAnchorQueryOnContainer(*this, search_for_anchor);
+  return anchor;
+}
+
+const LayoutObject* LayoutBox::AcceptableImplicitAnchor() const {
+  if (!IsOutOfFlowPositioned()) {
+    return nullptr;
+  }
+  Element* element = DynamicTo<Element>(GetNode());
+  Element* anchor_element =
+      element ? element->ImplicitAnchorElement() : nullptr;
+  LayoutObject* anchor_layout_object =
+      anchor_element ? anchor_element->GetLayoutObject() : nullptr;
+  if (!anchor_layout_object) {
+    return nullptr;
+  }
+  // Go through the already built PhysicalAnchorQuery to avoid tree traversal.
+  bool is_acceptable_anchor = false;
+  auto validate_anchor = [&](const PhysicalAnchorQuery& anchor_query) {
+    if (anchor_query.AnchorLayoutObject(*this, anchor_element)) {
+      is_acceptable_anchor = true;
+    }
+  };
+  ForEachAnchorQueryOnContainer(*this, validate_anchor);
+  return is_acceptable_anchor ? anchor_layout_object : nullptr;
+}
+
+const HeapVector<NonOverflowingScrollRange>*
+LayoutBox::NonOverflowingScrollRanges() const {
+  const auto& layout_results = GetLayoutResults();
+  if (layout_results.empty()) {
+    return nullptr;
+  }
+  // We only need to check the first fragment, because when the box is
+  // fragmented, position fallback results are duplicated on all fragments.
+#if EXPENSIVE_DCHECKS_ARE_ON()
+  for (wtf_size_t i = 1; i < layout_results.size(); ++i) {
+    DCHECK(base::ValuesEquivalent(
+        layout_results[i]->NonOverflowingScrollRanges(),
+        layout_results[i - 1]->NonOverflowingScrollRanges()));
+  }
+#endif
+  return layout_results.front()->NonOverflowingScrollRanges();
+}
+
+const BoxStrut& LayoutBox::OutOfFlowInsetsForGetComputedStyle() const {
+  const auto& layout_results = GetLayoutResults();
+  // We should call this function only after the node is laid out.
+  CHECK(layout_results.size());
+  // We only need to check the first fragment, because when the box is
+  // fragmented, insets are duplicated on all fragments.
+#if EXPENSIVE_DCHECKS_ARE_ON()
+  AssertSameDataOnLayoutResults(layout_results, [](const auto& result) {
+    return result->OutOfFlowInsetsForGetComputedStyle();
+  });
+#endif
+  return GetLayoutResults().front()->OutOfFlowInsetsForGetComputedStyle();
+}
+
+Element* LayoutBox::AccessibilityAnchor() const {
+  const auto& layout_results = GetLayoutResults();
+  if (layout_results.empty()) {
+    return nullptr;
+  }
+  return layout_results.front()->AccessibilityAnchor();
+}
+
+const HeapHashSet<Member<Element>>* LayoutBox::DisplayLocksAffectedByAnchors()
+    const {
+  const auto& layout_results = GetLayoutResults();
+  if (layout_results.empty()) {
+    return nullptr;
+  }
+  return layout_results.front()->DisplayLocksAffectedByAnchors();
+}
+
+void LayoutBox::NotifyContainingDisplayLocksForAnchorPositioning(
+    const HeapHashSet<Member<Element>>* past_display_locks_affected_by_anchors,
+    const HeapHashSet<Member<Element>>* display_locks_affected_by_anchors)
+    const {
+  auto notify_display_locks =
+      [](const HeapHashSet<Member<Element>>* display_locks) {
+        if (!display_locks) {
+          return;
+        }
+        for (auto& display_lock_element : *display_locks) {
+          display_lock_element->GetDisplayLockContext()
+              ->SetAnchorPositioningRenderStateMayHaveChanged();
+        }
+      };
+
+  notify_display_locks(past_display_locks_affected_by_anchors);
+  notify_display_locks(display_locks_affected_by_anchors);
+}
+
+bool LayoutBox::NeedsAnchorPositionScrollAdjustmentInX() const {
+  const auto& layout_results = GetLayoutResults();
+  if (layout_results.empty()) {
+    return false;
+  }
+  // We only need to check the first fragment, because when the box is
+  // fragmented, position fallback results are duplicated on all fragments.
+#if EXPENSIVE_DCHECKS_ARE_ON()
+  AssertSameDataOnLayoutResults(layout_results, [](const auto& result) {
+    return result->NeedsAnchorPositionScrollAdjustmentInX();
+  });
+#endif
+  return layout_results.front()->NeedsAnchorPositionScrollAdjustmentInX();
+}
+
+bool LayoutBox::NeedsAnchorPositionScrollAdjustmentInY() const {
+  const auto& layout_results = GetLayoutResults();
+  if (layout_results.empty()) {
+    return false;
+  }
+  // We only need to check the first fragment, because when the box is
+  // fragmented, position fallback results are duplicated on all fragments.
+#if EXPENSIVE_DCHECKS_ARE_ON()
+  AssertSameDataOnLayoutResults(layout_results, [](const auto& result) {
+    return result->NeedsAnchorPositionScrollAdjustmentInY();
+  });
+#endif
+  return layout_results.front()->NeedsAnchorPositionScrollAdjustmentInY();
+}
+
+WritingModeConverter LayoutBox::CreateWritingModeConverter() const {
+  return WritingModeConverter({Style()->GetWritingMode(), TextDirection::kLtr},
+                              Size());
+}
+
+bool LayoutBox::IsReadingFlowContainer() const {
+  if (!RuntimeEnabledFeatures::CSSReadingFlowEnabled()) {
+    return false;
+  }
+  const ComputedStyle& style = StyleRef();
+  switch (style.ReadingFlow()) {
+    case EReadingFlow::kNormal:
+      return false;
+    case EReadingFlow::kFlexVisual:
+    case EReadingFlow::kFlexFlow:
+      return IsFlexibleBox();
+    case EReadingFlow::kGridRows:
+    case EReadingFlow::kGridColumns:
+    case EReadingFlow::kGridOrder:
+      return IsLayoutGrid();
+  }
+  return false;
+}
+
+const HeapVector<Member<Node>>& LayoutBox::ReadingFlowNodes() const {
+  if (const auto* nodes = GetPhysicalFragment(0)->ReadingFlowNodes()) {
+    return *nodes;
+  }
+  DEFINE_STATIC_LOCAL(Persistent<HeapVector<Member<Node>>>, empty_vector,
+                      (MakeGarbageCollected<HeapVector<Member<Node>>>()));
+  return *empty_vector;
+}
+
+=======
+>>>>>>> chromium
 }  // namespace blink

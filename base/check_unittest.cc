@@ -2,8 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#include <array>
+#include <string>
+#include <string_view>
+#include <tuple>
+
+#include "base/check_deref.h"
+#include "base/check_version_internal.h"
+#include "base/dcheck_is_on.h"
+#include "base/debug/dump_without_crashing.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
+=======
 #include "base/bind.h"
 #include "base/callback.h"
+>>>>>>> chromium
 #include "base/logging.h"
 #include "base/strings/string_piece.h"
 #include "base/test/gtest_util.h"
@@ -142,7 +156,42 @@ TEST_F(CheckTest, CheckOp) {
   // clang-format on
 }
 
+<<<<<<< HEAD
+TEST(CheckDeathTest, CheckOpStrings) {
+  std::string_view sv = "1";
+  base::cstring_view csv = "2";
+  std::string s = "3";
+
+  EXPECT_CHECK("Check failed: sv == csv (1 vs. 2)", CHECK_EQ(sv, csv));
+  EXPECT_CHECK("Check failed: csv == s (2 vs. 3)", CHECK_EQ(csv, s));
+  EXPECT_CHECK("Check failed: sv == s (1 vs. 3)", CHECK_EQ(sv, s));
+
+  EXPECT_DCHECK("Check failed: sv == csv (1 vs. 2)", DCHECK_EQ(sv, csv));
+  EXPECT_DCHECK("Check failed: csv == s (2 vs. 3)", DCHECK_EQ(csv, s));
+  EXPECT_DCHECK("Check failed: sv == s (1 vs. 3)", DCHECK_EQ(sv, s));
+}
+
+TEST(CheckDeathTest, CheckOpPointers) {
+  auto arr = std::to_array<uint8_t>({3, 2, 1, 0});
+  uint8_t* arr_start = &arr[0];
+  // Print pointers and not the binary data in `arr`.
+#if BUILDFLAG(IS_WIN)
+  EXPECT_CHECK(
+      "=~Check failed: arr_start != arr_start \\([0-9A-F]+ vs. "
+      "[0-9A-F]+\\)",
+      CHECK_NE(arr_start, arr_start));
+#else
+  EXPECT_CHECK(
+      "=~Check failed: arr_start != arr_start \\(0x[0-9a-f]+ vs. "
+      "0x[0-9a-f]+\\)",
+      CHECK_NE(arr_start, arr_start));
+#endif
+}
+
+TEST(CheckTest, CheckStreamsAreLazy) {
+=======
 TEST_F(CheckTest, CheckStreamsAreLazy) {
+>>>>>>> chromium
   int called_count = 0;
   int not_called_count = 0;
 
@@ -280,26 +329,30 @@ TEST_F(CheckTest, DcheckReleaseBehavior) {
 
 TEST_F(CheckTest, DCheckEqStatements) {
   bool reached = false;
-  if (false)
+  if (false) {
     DCHECK_EQ(false, true);  // Unreached.
-  else
+  } else {
     DCHECK_EQ(true, reached = true);  // Reached, passed.
+  }
   ASSERT_EQ(DCHECK_IS_ON() ? true : false, reached);
 
-  if (false)
+  if (false) {
     DCHECK_EQ(false, true);  // Unreached.
+  }
 }
 
 TEST_F(CheckTest, CheckEqStatements) {
   bool reached = false;
-  if (false)
+  if (false) {
     CHECK_EQ(false, true);  // Unreached.
-  else
+  } else {
     CHECK_EQ(true, reached = true);  // Reached, passed.
+  }
   ASSERT_TRUE(reached);
 
-  if (false)
+  if (false) {
     CHECK_EQ(false, true);  // Unreached.
+  }
 }
 
 #if defined(DCHECK_IS_CONFIGURABLE)
@@ -404,6 +457,70 @@ TEST_F(CheckTest, OstreamVsToString) {
                CHECK_EQ(g, h));
 }
 
+<<<<<<< HEAD
+TEST(CheckDeathTest, NotReached) {
+  // Expect to be CHECK fatal but with a different error message.
+  EXPECT_CHECK("NOTREACHED hit. foo", NOTREACHED() << "foo");
+}
+
+// These non-void functions are here to make sure that CHECK failures and
+// NOTREACHED() are properly annotated as [[noreturn]] by not requiring a return
+// statement.
+int NotReachedInFunction() {
+  NOTREACHED();
+  // No return statement here.
+}
+
+int CheckFailureInFunction() {
+  constexpr int kFalse = false;
+  CHECK(kFalse);
+
+  // No return statement here.
+}
+
+int PCheckFailureInFunction() {
+  constexpr int kFalse = false;
+  PCHECK(kFalse);
+
+  // No return statement here.
+}
+
+TEST(CheckDeathTest, CheckFailuresAreNoreturn) {
+  // This call can't use EXPECT_CHECK as the NOTREACHED happens on a different
+  // line.
+  EXPECT_DEATH_IF_SUPPORTED(NotReachedInFunction(),
+                            CHECK_WILL_STREAM() ? "NOTREACHED hit. " : "");
+
+  // This call can't use EXPECT_CHECK as the CHECK failure happens on a
+  // different line.
+  EXPECT_DEATH_IF_SUPPORTED(CheckFailureInFunction(),
+                            CHECK_WILL_STREAM() ? "Check failed: " : "");
+
+  // This call can't use EXPECT_CHECK as the PCHECK failure happens on a
+  // different line.
+  EXPECT_DEATH_IF_SUPPORTED(PCheckFailureInFunction(),
+                            CHECK_WILL_STREAM() ? "Check failed: " : "");
+
+  // TODO(crbug.com/40122554): Make sure CHECK_LT(1, 1) is [[noreturn]]. That
+  // doesn't work in the current developer build.
+}
+
+TEST(CheckDeathTest, DumpWillBeCheck) {
+  DUMP_WILL_BE_CHECK(true);
+
+  EXPECT_DUMP_WILL_BE_CHECK("Check failed: false. foo",
+                            DUMP_WILL_BE_CHECK(false) << "foo");
+}
+
+TEST(CheckDeathTest, DumpWillBeNotReachedNoreturn) {
+  EXPECT_DUMP_WILL_BE_CHECK("NOTREACHED hit. foo", DUMP_WILL_BE_NOTREACHED()
+                                                       << "foo");
+}
+
+static const std::string kNotImplementedMessage = "Not implemented reached in ";
+
+TEST(CheckTest, NotImplemented) {
+=======
 #define EXPECT_LOG_ERROR(msg, expr, expected_line)                             \
   do {                                                                         \
     static bool got_log_message = false;                                       \
@@ -448,6 +565,7 @@ TEST_F(CheckTest, NotReached) {
 }
 
 TEST_F(CheckTest, NotImplemented) {
+>>>>>>> chromium
   static const std::string expected_msg =
       std::string("Not implemented reached in ") + __PRETTY_FUNCTION__;
 

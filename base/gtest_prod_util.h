@@ -19,8 +19,8 @@
 //   FRIEND_TEST_ALL_PREFIXES(MyClassTest, MyMethod);
 // };
 #define FRIEND_TEST_ALL_PREFIXES(test_case_name, test_name) \
-  FRIEND_TEST(test_case_name, test_name); \
-  FRIEND_TEST(test_case_name, DISABLED_##test_name); \
+  FRIEND_TEST(test_case_name, test_name);                   \
+  FRIEND_TEST(test_case_name, DISABLED_##test_name);        \
   FRIEND_TEST(test_case_name, FLAKY_##test_name)
 
 // C++ compilers will refuse to compile the following code:
@@ -59,7 +59,7 @@
 // }
 
 #define FORWARD_DECLARE_TEST(test_case_name, test_name) \
-  class test_case_name##_##test_name##_Test; \
+  class test_case_name##_##test_name##_Test;            \
   class test_case_name##_##DISABLED_##test_name##_Test; \
   class test_case_name##_##FLAKY_##test_name##_Test
 

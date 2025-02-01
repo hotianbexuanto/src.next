@@ -293,6 +293,39 @@ class AppMenu implements OnItemClickListener, OnKeyListener, AppMenuClickHandler
         // See crbug.com/761726.
         mListView.setAdapter(mAdapter);
 
+<<<<<<< HEAD
+        anchorView.getLocationOnScreen(mTempLocation);
+        // getLocationOnScreen() may return incorrect location when anchorView is scrolled up and
+        // leave the screen. In this case, we reset the location as 0 to indicate that the
+        // anchorView is out of the visible screen area. See https://crbug.com/392698392.
+        mTempLocation[1] = Math.max(mTempLocation[1], 0);
+
+        int anchorViewOffset =
+                Math.min(
+                        Math.abs(mTempLocation[1] - visibleDisplayFrame.top),
+                        Math.abs(mTempLocation[1] - visibleDisplayFrame.bottom));
+        setMenuHeight(
+                menuItemIds,
+                heightList,
+                visibleDisplayFrame,
+                sizingPadding,
+                footerHeight,
+                headerHeight,
+                anchorView,
+                groupDividerResourceId,
+                anchorViewOffset);
+        int[] popupPosition =
+                getPopupPosition(
+                        mTempLocation,
+                        mIsByPermanentButton,
+                        mNegativeSoftwareVerticalOffset,
+                        mCurrentScreenRotation,
+                        visibleDisplayFrame,
+                        sizingPadding,
+                        anchorView,
+                        popupWidth,
+                        anchorView.getRootView().getLayoutDirection());
+=======
         int popupHeight = setMenuHeight(menuItems, heightList, visibleDisplayFrame, screenHeight,
                 sizingPadding, footerHeight, headerHeight, anchorView, groupDividerResourceId);
         int[] popupPosition = getPopupPosition(mTempLocation, mIsByPermanentButton,
@@ -300,6 +333,7 @@ class AppMenu implements OnItemClickListener, OnKeyListener, AppMenuClickHandler
                 mCurrentScreenRotation, visibleDisplayFrame, sizingPadding, anchorView, popupWidth,
                 popupHeight, anchorView.getRootView().getLayoutDirection());
 
+>>>>>>> chromium
         mPopup.setContentView(contentView);
 
         try {

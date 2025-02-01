@@ -77,10 +77,31 @@ class PLATFORM_EXPORT ParkableImage final
 
   scoped_refptr<SegmentReader> GetSegmentReader() LOCKS_EXCLUDED(lock_);
 
+<<<<<<< HEAD
+  // Factory method to construct a ParkableImageImpl.
+  static scoped_refptr<ParkableImageImpl> Create(size_t initial_capacity = 0);
+
+  // Implementations of the methods of the same name from ParkableImage.
+  void Freeze() LOCKS_EXCLUDED(lock_);
+  void Append(WTF::SharedBuffer* buffer, size_t offset = 0)
+      LOCKS_EXCLUDED(lock_);
+  scoped_refptr<SharedBuffer> Data() LOCKS_EXCLUDED(lock_);
+  void LockData() EXCLUSIVE_LOCKS_REQUIRED(lock_);
+  void UnlockData() EXCLUSIVE_LOCKS_REQUIRED(lock_);
+  size_t size() const;
+
+  bool is_frozen() const { return !frozen_time_.is_null(); }
+
+  bool ShouldReschedule() const LOCKS_EXCLUDED(lock_) {
+    base::AutoLock lock(lock_);
+    return TransientlyUnableToPark();
+  }
+=======
   // Locks and Unlocks the ParkableImage. A locked ParkableImage cannot be
   // parked. Every call to Lock must have a corresponding call to Unlock.
   void Lock() EXCLUSIVE_LOCKS_REQUIRED(lock_);
   void Unlock() EXCLUSIVE_LOCKS_REQUIRED(lock_);
+>>>>>>> chromium
 
   // Attempt to park to disk. Returns false if it cannot be parked right now for
   // whatever reason, true if we will _attempt_ to park it to disk.

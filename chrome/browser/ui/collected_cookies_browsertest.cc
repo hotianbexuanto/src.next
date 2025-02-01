@@ -20,7 +20,7 @@
 
 class CollectedCookiesTest : public DialogBrowserTest {
  public:
-  CollectedCookiesTest() {}
+  CollectedCookiesTest() = default;
 
   // DialogBrowserTest:
   void ShowUi(const std::string& name) override {

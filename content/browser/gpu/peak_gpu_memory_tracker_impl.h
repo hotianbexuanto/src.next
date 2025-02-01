@@ -5,11 +5,18 @@
 #ifndef CONTENT_BROWSER_GPU_PEAK_GPU_MEMORY_TRACKER_IMPL_H_
 #define CONTENT_BROWSER_GPU_PEAK_GPU_MEMORY_TRACKER_IMPL_H_
 
+<<<<<<< HEAD
+#include "base/functional/callback_forward.h"
+#include "base/functional/callback_helpers.h"
+#include "base/task/single_thread_task_runner.h"
+#include "components/viz/common/resources/peak_gpu_memory_tracker.h"
+=======
 #include "base/callback_forward.h"
 #include "base/callback_helpers.h"
 #include "base/single_thread_task_runner.h"
 #include "content/common/content_export.h"
 #include "content/public/browser/peak_gpu_memory_tracker.h"
+>>>>>>> chromium
 
 namespace content {
 
@@ -21,11 +28,19 @@ namespace content {
 // be no report to UMA Histograms. The same for if there is never a successful
 // GPU connection.
 //
+<<<<<<< HEAD
+// This is instantiated via `PeakGpuMemoryTrackerFactory::Create`.
+class PeakGpuMemoryTrackerImpl : public viz::PeakGpuMemoryTracker {
+ public:
+  // Requests the GPU service to begin peak memory tracking.
+  PeakGpuMemoryTrackerImpl(viz::PeakGpuMemoryTracker::Usage usage);
+=======
 // This is instaniated via PeakGpuMemoryTracker::Create.
 class CONTENT_EXPORT PeakGpuMemoryTrackerImpl : public PeakGpuMemoryTracker {
  public:
   // Requests the GPU service to begin peak memory tracking.
   PeakGpuMemoryTrackerImpl(PeakGpuMemoryTracker::Usage usage);
+>>>>>>> chromium
   // Requests the GPU service provides the peak memory, the result is presented
   // to UMA Histograms.
   ~PeakGpuMemoryTrackerImpl() override;
@@ -42,12 +57,14 @@ class CONTENT_EXPORT PeakGpuMemoryTrackerImpl : public PeakGpuMemoryTracker {
   // GpuService. For use by tests to synchronize work done on the IO thread.
   base::OnceClosure post_gpu_service_callback_for_testing_ = base::DoNothing();
 
-  // Provides the unique identifier for each PeakGpuMemoryTrackerImpl.
-  static uint32_t next_sequence_number_;
-
   bool canceled_ = false;
+<<<<<<< HEAD
+  viz::PeakGpuMemoryTracker::Usage usage_;
+  uint32_t sequence_num_;
+=======
   PeakGpuMemoryTracker::Usage usage_;
   uint32_t sequence_num_ = next_sequence_number_++;
+>>>>>>> chromium
 };
 
 }  // namespace content

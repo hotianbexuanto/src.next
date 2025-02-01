@@ -26,6 +26,11 @@
 
 #include "third_party/blink/renderer/core/dom/tree_scope.h"
 
+<<<<<<< HEAD
+#include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
+#include "third_party/blink/renderer/core/animation/document_animations.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/resolver/scoped_style_resolver.h"
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
@@ -35,7 +40,12 @@
 #include "third_party/blink/renderer/core/dom/element_traversal.h"
 #include "third_party/blink/renderer/core/dom/events/event_path.h"
 #include "third_party/blink/renderer/core/dom/id_target_observer_registry.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/dom/scroll_marker_group_pseudo_element.h"
+#include "third_party/blink/renderer/core/dom/scroll_marker_pseudo_element.h"
+=======
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/dom/tree_scope_adopter.h"
 #include "third_party/blink/renderer/core/editing/dom_selection.h"
@@ -340,6 +350,70 @@ const HeapVector<Member<CSSStyleSheet>>& TreeScope::AdoptedStyleSheets() {
   return adopted_style_sheets_;
 }
 
+<<<<<<< HEAD
+void TreeScope::StyleSheetWasRemoved(CSSStyleSheet* sheet) {
+  GetDocument().GetStyleEngine().AdoptedStyleSheetRemoved(*this, sheet);
+}
+
+// We pass TreeScope to the bindings array to be informed via set and delete
+// callbacks. Bindings doesn't know about DOM types, so we can only pass
+// ScriptWrappable (i.e. Document or ShadowRoot) or a GarbageCollectedMixin. We
+// choose the mixin as that avoids dispatching from Document back to TreeScope
+// essentially implementing a cast. The mixin is passed as void*-like object
+// that is only passed back from the observable array into the set/delete
+// callbacks where it is again used as TreeScope.
+//
+// static
+void TreeScope::OnAdoptedStyleSheetSet(
+    GarbageCollectedMixin* tree_scope,
+    ScriptState* script_state,
+    V8ObservableArrayCSSStyleSheet& observable_array,
+    uint32_t index,
+    Member<CSSStyleSheet>& sheet) {
+  if (!sheet->IsConstructed()) {
+    V8ThrowDOMException::Throw(script_state->GetIsolate(),
+                               DOMExceptionCode::kNotAllowedError,
+                               "Can't adopt non-constructed stylesheets.");
+    return;
+  }
+  TreeScope* self = reinterpret_cast<TreeScope*>(tree_scope);
+  Document* document = sheet->ConstructorDocument();
+  if (document && *document != self->GetDocument()) {
+    V8ThrowDOMException::Throw(
+        script_state->GetIsolate(), DOMExceptionCode::kNotAllowedError,
+        "Sharing constructed stylesheets in multiple documents is not allowed");
+    return;
+  }
+  self->StyleSheetWasAdded(sheet.Get());
+}
+
+// See OnAdoptedStyleSheetSet() for description around inner workings.
+//
+// static
+void TreeScope::OnAdoptedStyleSheetDelete(
+    GarbageCollectedMixin* tree_scope,
+    ScriptState* script_state,
+    V8ObservableArrayCSSStyleSheet& observable_array,
+    uint32_t index) {
+  TreeScope* self = reinterpret_cast<TreeScope*>(tree_scope);
+  self->StyleSheetWasRemoved(self->adopted_style_sheets_->at(index));
+}
+
+void TreeScope::ClearAdoptedStyleSheets() {
+  if (!HasAdoptedStyleSheets()) {
+    return;
+  }
+  HeapVector<Member<CSSStyleSheet>> removed;
+  removed.AppendRange(adopted_style_sheets_->begin(),
+                      adopted_style_sheets_->end());
+  adopted_style_sheets_->clear();
+  for (auto sheet : removed) {
+    StyleSheetWasRemoved(sheet);
+  }
+}
+
+void TreeScope::SetAdoptedStyleSheetsForTesting(
+=======
 void TreeScope::SetAdoptedStyleSheets(
     HeapVector<Member<CSSStyleSheet>>& adopted_style_sheets,
     ExceptionState& exception_state) {
@@ -362,6 +436,7 @@ void TreeScope::SetAdoptedStyleSheets(
 }
 
 void TreeScope::SetAdoptedStyleSheets(
+>>>>>>> chromium
     HeapVector<Member<CSSStyleSheet>>& adopted_style_sheets) {
   GetDocument().GetStyleEngine().AdoptedStyleSheetsWillChange(
       *this, adopted_style_sheets_, adopted_style_sheets);

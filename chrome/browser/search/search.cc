@@ -141,11 +141,20 @@ bool IsURLAllowedForSupervisedUser(const GURL& url, Profile* profile) {
   // fairly expensive.
   if (!profile->IsSupervised())
     return true;
+<<<<<<< HEAD
+  }
+  supervised_user::SupervisedUserService* supervised_user_service =
+      SupervisedUserServiceFactory::GetForProfile(&profile);
+  supervised_user::SupervisedUserURLFilter* url_filter =
+      supervised_user_service->GetURLFilter();
+  if (url_filter->GetFilteringBehavior(url).IsBlocked()) {
+=======
   SupervisedUserService* supervised_user_service =
       SupervisedUserServiceFactory::GetForProfile(profile);
   SupervisedUserURLFilter* url_filter = supervised_user_service->GetURLFilter();
   if (url_filter->GetFilteringBehaviorForURL(url) ==
           SupervisedUserURLFilter::BLOCK) {
+>>>>>>> chromium
     return false;
   }
 #endif
@@ -223,7 +232,7 @@ bool IsRenderedInInstantProcess(content::WebContents* contents,
   if (!instant_service)
     return false;
 
-  return instant_service->IsInstantProcess(process_host->GetID());
+  return instant_service->IsInstantProcess(process_host->GetDeprecatedID());
 #endif
 }
 

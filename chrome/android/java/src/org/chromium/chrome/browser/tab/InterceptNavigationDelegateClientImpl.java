@@ -8,11 +8,14 @@ import android.app.Activity;
 
 import androidx.annotation.Nullable;
 
+<<<<<<< HEAD
+import org.chromium.chrome.browser.tabmodel.TabClosureParams;
+=======
 import org.chromium.chrome.browser.AppHooks;
 import org.chromium.chrome.browser.app.ChromeActivity;
 import org.chromium.components.external_intents.AuthenticatorNavigationInterceptor;
+>>>>>>> chromium
 import org.chromium.components.external_intents.ExternalNavigationHandler;
-import org.chromium.components.external_intents.ExternalNavigationHandler.OverrideUrlLoadingResult;
 import org.chromium.components.external_intents.InterceptNavigationDelegateClient;
 import org.chromium.components.external_intents.InterceptNavigationDelegateImpl;
 import org.chromium.components.external_intents.RedirectHandler;
@@ -38,6 +41,17 @@ public class InterceptNavigationDelegateClientImpl implements InterceptNavigatio
                 mInterceptNavigationDelegate.associateWithWebContents(tab.getWebContents());
             }
 
+<<<<<<< HEAD
+                    @Override
+                    public void onActivityAttachmentChanged(
+                            Tab tab, @Nullable WindowAndroid window) {
+                        if (window != null) {
+                            mInterceptNavigationDelegate.setExternalNavigationHandler(
+                                    createExternalNavigationHandler());
+                        }
+                        mInterceptNavigationDelegate.onActivityAttachmentChanged(window != null);
+                    }
+=======
             @Override
             public void onActivityAttachmentChanged(Tab tab, @Nullable WindowAndroid window) {
                 if (window != null) {
@@ -45,6 +59,7 @@ public class InterceptNavigationDelegateClientImpl implements InterceptNavigatio
                             createExternalNavigationHandler());
                 }
             }
+>>>>>>> chromium
 
             @Override
             public void onDidFinishNavigation(Tab tab, NavigationHandle navigation) {
@@ -69,12 +84,6 @@ public class InterceptNavigationDelegateClientImpl implements InterceptNavigatio
     }
 
     @Override
-    public long getLastUserInteractionTime() {
-        ChromeActivity associatedActivity = mTab.getActivity();
-        return (associatedActivity == null) ? -1 : associatedActivity.getLastUserInteractionTime();
-    }
-
-    @Override
     public RedirectHandler getOrCreateRedirectHandler() {
         return RedirectHandlerTabHelper.getOrCreateHandlerFor(mTab);
     }
@@ -85,6 +94,8 @@ public class InterceptNavigationDelegateClientImpl implements InterceptNavigatio
     }
 
     @Override
+<<<<<<< HEAD
+=======
     public boolean isIncognito() {
         return mTab.isIncognito();
     }
@@ -100,6 +111,7 @@ public class InterceptNavigationDelegateClientImpl implements InterceptNavigatio
     }
 
     @Override
+>>>>>>> chromium
     public Activity getActivity() {
         return mTab.getActivity();
     }
@@ -116,6 +128,16 @@ public class InterceptNavigationDelegateClientImpl implements InterceptNavigatio
 
     @Override
     public void closeTab() {
+<<<<<<< HEAD
+        if (mTab.isClosing()) return;
+        mTab.getActivity()
+                .getTabModelSelector()
+                .tryCloseTab(
+                        TabClosureParams.closeTab(mTab).allowUndo(false).build(),
+                        /* allowDialog= */ false);
+    }
+
+=======
         mTab.getActivity().getTabModelSelector().closeTab(mTab);
     }
 
@@ -126,6 +148,7 @@ public class InterceptNavigationDelegateClientImpl implements InterceptNavigatio
     public void onDecisionReachedForNavigation(
             NavigationParams params, OverrideUrlLoadingResult overrideUrlLoadingResult) {}
 
+>>>>>>> chromium
     public void initializeWithDelegate(InterceptNavigationDelegateImpl delegate) {
         mInterceptNavigationDelegate = delegate;
         mTab.addObserver(mTabObserver);

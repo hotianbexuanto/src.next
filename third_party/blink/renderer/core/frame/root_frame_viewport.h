@@ -5,7 +5,13 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_ROOT_FRAME_VIEWPORT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_ROOT_FRAME_VIEWPORT_H_
 
+<<<<<<< HEAD
+#include "base/gtest_prod_util.h"
+#include "base/task/single_thread_task_runner.h"
+#include "cc/input/scroll_snap_data.h"
+=======
 #include "base/single_thread_task_runner.h"
+>>>>>>> chromium
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/scroll/scrollable_area.h"
@@ -58,7 +64,8 @@ class CORE_EXPORT RootFrameViewport final
   void SetScrollOffset(const ScrollOffset&,
                        mojom::blink::ScrollType,
                        mojom::blink::ScrollBehavior,
-                       ScrollCallback on_finish) override;
+                       ScrollCallback on_finish,
+                       bool targeted_scroll = false) override;
   PhysicalRect ScrollIntoView(
       const PhysicalRect&,
       const mojom::blink::ScrollIntoViewParamsPtr&) override;
@@ -129,9 +136,15 @@ class CORE_EXPORT RootFrameViewport final
   bool SetTargetSnapAreaElementIds(cc::TargetSnapAreaElementIds) override;
   bool SnapContainerDataNeedsUpdate() const override;
   void SetSnapContainerDataNeedsUpdate(bool) override;
+<<<<<<< HEAD
+  std::optional<cc::SnapPositionData> GetSnapPosition(
+      const cc::SnapSelectionStrategy& strategy) const override;
+  std::optional<gfx::PointF> GetSnapPositionAndSetTarget(
+=======
   bool NeedsResnap() const override;
   void SetNeedsResnap(bool) override;
   absl::optional<FloatPoint> GetSnapPositionAndSetTarget(
+>>>>>>> chromium
       const cc::SnapSelectionStrategy& strategy) override;
 
   void SetPendingHistoryRestoreScrollOffset(

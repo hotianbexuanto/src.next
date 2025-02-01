@@ -30,7 +30,6 @@
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/dom/first_letter_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/node.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/text.h"
 #include "third_party/blink/renderer/core/html_names.h"
@@ -65,6 +64,21 @@ LayoutObject* LayoutTreeBuilderForElement::NextLayoutObject() const {
 LayoutObject* LayoutTreeBuilderForElement::ParentLayoutObject() const {
   if (node_->IsInTopLayer())
     return node_->GetDocument().GetLayoutView();
+<<<<<<< HEAD
+  }
+#if DCHECK_IS_ON()
+  // Box of ::scroll-marker-group and ::scroll-button is previous/next
+  // sibling of its originating element, so the parent should be originating
+  // element's parent.
+  if (node_->IsScrollMarkerGroupPseudoElement() ||
+      node_->IsScrollButtonPseudoElement()) {
+    ContainerNode* parent_element =
+        LayoutTreeBuilderTraversal::LayoutParent(*node_->parentElement());
+    DCHECK_EQ(parent_element->GetLayoutObject(), context_.parent);
+  }
+#endif  // DCHECK_IS_ON()
+=======
+>>>>>>> chromium
   return context_.parent;
 }
 

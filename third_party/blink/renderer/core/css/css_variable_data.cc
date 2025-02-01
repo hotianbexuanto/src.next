@@ -4,6 +4,11 @@
 
 #include "third_party/blink/renderer/core/css/css_variable_data.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/css_syntax_definition.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser_context.h"
 #include "third_party/blink/renderer/platform/wtf/text/character_names.h"
@@ -47,6 +52,50 @@ static bool IsFontUnitToken(CSSParserToken token) {
 
 static bool IsRootFontUnitToken(CSSParserToken token) {
   return token.GetType() == kDimensionToken &&
+<<<<<<< HEAD
+         token.GetUnitType() == CSSPrimitiveValue::UnitType::kLhs;
+}
+
+void CSSVariableData::ExtractFeatures(const CSSParserToken& token,
+                                      bool& has_font_units,
+                                      bool& has_root_font_units,
+                                      bool& has_line_height_units) {
+  has_font_units |= IsFontUnitToken(token);
+  has_root_font_units |= IsRootFontUnitToken(token);
+  has_line_height_units |= IsLineHeightUnitToken(token);
+}
+
+CSSVariableData* CSSVariableData::Create(const String& original_text,
+                                         bool is_animation_tainted,
+                                         bool is_attr_tainted,
+                                         bool needs_variable_resolution) {
+  bool has_font_units = false;
+  bool has_root_font_units = false;
+  bool has_line_height_units = false;
+  CSSParserTokenStream stream(original_text);
+  while (!stream.AtEnd()) {
+    ExtractFeatures(stream.ConsumeRaw(), has_font_units, has_root_font_units,
+                    has_line_height_units);
+  }
+  return Create(original_text, is_animation_tainted, is_attr_tainted,
+                needs_variable_resolution, has_font_units, has_root_font_units,
+                has_line_height_units);
+}
+
+String CSSVariableData::Serialize() const {
+  if (length_ > 0 && OriginalText()[length_ - 1] == '\\') {
+    // https://drafts.csswg.org/css-syntax/#consume-escaped-code-point
+    // '\' followed by EOF is consumed as U+FFFD.
+    // https://drafts.csswg.org/css-syntax/#consume-string-token
+    // '\' followed by EOF in a string token is ignored.
+    //
+    // The tokenizer handles both of these cases when returning tokens, but
+    // since we're working with the original string, we need to deal with them
+    // ourselves.
+    StringBuilder serialized_text;
+    serialized_text.Append(OriginalText());
+    serialized_text.Resize(serialized_text.length() - 1);
+=======
          token.GetUnitType() == CSSPrimitiveValue::UnitType::kRems;
 }
 
@@ -68,6 +117,7 @@ String CSSVariableData::Serialize() const {
       const CSSParserToken& last = tokens_.back();
       if (last.GetType() != kStringToken)
         serialized_text.Append(kReplacementCharacter);
+>>>>>>> chromium
 
       // Certain token types implicitly include terminators when serialized.
       // https://drafts.csswg.org/cssom/#common-serializing-idioms
@@ -79,6 +129,35 @@ String CSSVariableData::Serialize() const {
       return serialized_text.ToString();
     }
 
+<<<<<<< HEAD
+    if (last_token_type != kStringToken) {
+      serialized_text.Append(kReplacementCharacter);
+    }
+
+    // Certain token types implicitly include terminators when serialized.
+    // https://drafts.csswg.org/cssom/#common-serializing-idioms
+    if (last_token_type == kStringToken) {
+      serialized_text.Append('"');
+    }
+    if (last_token_type == kUrlToken) {
+      serialized_text.Append(')');
+    }
+
+    return serialized_text.ReleaseString();
+  }
+
+  return OriginalText().ToString();
+}
+
+bool CSSVariableData::EqualsIgnoringAttrTainting(
+    const CSSVariableData& other) const {
+  return OriginalText() == other.OriginalText();
+}
+
+bool CSSVariableData::operator==(const CSSVariableData& other) const {
+  return OriginalText() == other.OriginalText() &&
+         IsAttrTainted() == other.IsAttrTainted();
+=======
     return original_text_;
   }
   return TokenRange().Serialize();
@@ -107,20 +186,37 @@ void CSSVariableData::ConsumeAndUpdateTokens(const CSSParserTokenRange& range) {
     UpdateTokens<LChar>(range, backing_string, tokens_);
   else
     UpdateTokens<UChar>(range, backing_string, tokens_);
+>>>>>>> chromium
 }
 
 CSSVariableData::CSSVariableData(const CSSTokenizedValue& tokenized_value,
                                  bool is_animation_tainted,
+                                 bool is_attr_tainted,
                                  bool needs_variable_resolution,
                                  const KURL& base_url,
                                  const WTF::TextEncoding& charset)
     : original_text_(tokenized_value.text.ToString()),
       is_animation_tainted_(is_animation_tainted),
+      is_attr_tainted_(is_attr_tainted),
       needs_variable_resolution_(needs_variable_resolution),
+<<<<<<< HEAD
+      is_8bit_(original_text.Is8Bit()),
+      has_font_units_(has_font_units),
+      has_root_font_units_(has_root_font_units),
+      has_line_height_units_(has_line_height_units) {
+  if (is_8bit_) {
+    std::ranges::copy(original_text.Span8(),
+                      reinterpret_cast<LChar*>(this + 1));
+  } else {
+    std::ranges::copy(original_text.Span16(),
+                      reinterpret_cast<UChar*>(this + 1));
+  }
+=======
       base_url_(base_url.IsValid() ? base_url.GetString() : String()),
       charset_(charset) {
   DCHECK(!tokenized_value.range.AtEnd());
   ConsumeAndUpdateTokens(tokenized_value.range);
+>>>>>>> chromium
 }
 
 const CSSValue* CSSVariableData::ParseForSyntax(
@@ -131,7 +227,7 @@ const CSSValue* CSSVariableData::ParseForSyntax(
   // relative URL resolution.
   return syntax.Parse(TokenRange(),
                       *StrictCSSParserContext(secure_context_mode),
-                      is_animation_tainted_);
+                      is_animation_tainted_, is_attr_tainted_);
 }
 
 }  // namespace blink

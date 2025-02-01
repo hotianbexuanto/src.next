@@ -66,7 +66,17 @@ ChildProcessLauncher::ChildProcessLauncher(
     Client* client,
     mojo::OutgoingInvitation mojo_invitation,
     const mojo::ProcessErrorCallback& process_error_callback,
+<<<<<<< HEAD
+    std::unique_ptr<ChildProcessLauncherFileData> file_data,
+    scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+        histogram_memory_region,
+    scoped_refptr<base::RefCountedData<base::ReadOnlySharedMemoryRegion>>
+        tracing_config_memory_region,
+    scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>>
+        tracing_output_memory_region,
+=======
     std::map<std::string, base::FilePath> files_to_preload,
+>>>>>>> chromium
     bool terminate_on_shutdown)
     : client_(client),
       starting_(true),
@@ -86,8 +96,15 @@ ChildProcessLauncher::ChildProcessLauncher(
 #if defined(OS_ANDROID)
       client_->CanUseWarmUpConnection(),
 #endif
+<<<<<<< HEAD
+      std::move(mojo_invitation), process_error_callback, std::move(file_data),
+      std::move(histogram_memory_region),
+      std::move(tracing_config_memory_region),
+      std::move(tracing_output_memory_region));
+=======
       std::move(mojo_invitation), process_error_callback,
       std::move(files_to_preload));
+>>>>>>> chromium
   helper_->StartLaunchOnClientThread();
 }
 

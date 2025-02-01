@@ -59,9 +59,13 @@ class DownloadDialogBridge {
 
   void OnComplete(JNIEnv* env,
                   const base::android::JavaParamRef<jobject>& obj,
+<<<<<<< HEAD
+                  std::string& returned_path);
+=======
                   const base::android::JavaParamRef<jstring>& returned_path,
                   jboolean on_wifi,
                   jlong start_time);
+>>>>>>> chromium
 
   void OnCanceled(JNIEnv* env, const base::android::JavaParamRef<jobject>& obj);
 

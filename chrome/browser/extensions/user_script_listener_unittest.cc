@@ -80,6 +80,14 @@ class UserScriptListenerTest : public testing::Test {
         profile_manager_(
             new TestingProfileManager(TestingBrowserProcess::GetGlobal())) {}
 
+<<<<<<< HEAD
+  ~UserScriptListenerTest() override = default;
+
+  UserScriptListenerTest(const UserScriptListenerTest&) = delete;
+  UserScriptListenerTest& operator=(const UserScriptListenerTest&) = delete;
+
+=======
+>>>>>>> chromium
   void SetUp() override {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
     user_manager_enabler_ = std::make_unique<user_manager::ScopedUserManager>(
@@ -94,7 +102,7 @@ class UserScriptListenerTest : public testing::Test {
         base::CommandLine::ForCurrentProcess(), base::FilePath(), false);
 
     auto instance = content::SiteInstance::Create(profile_);
-    instance->GetProcess()->Init();
+    instance->GetOrCreateProcess()->Init();
     web_contents_ = content::WebContentsTester::CreateTestWebContents(
         profile_, std::move(instance));
   }

@@ -14,14 +14,21 @@
 #include "base/test/scoped_path_override.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+<<<<<<< HEAD
+#include "chrome/browser/extensions/extension_browser_test_util.h"
+#include "chrome/browser/extensions/extension_platform_browsertest.h"
+=======
 #include "chrome/browser/extensions/chrome_extension_test_notification_observer.h"
+>>>>>>> chromium
 #include "chrome/browser/extensions/install_verifier.h"
 #include "chrome/browser/extensions/updater/extension_updater.h"
+<<<<<<< HEAD
+=======
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/test/base/in_process_browser_test.h"
+>>>>>>> chromium
 #include "content/public/browser/web_contents.h"
-#include "extensions/browser/browsertest_util.h"
 #include "extensions/browser/extension_creator.h"
 #include "extensions/browser/extension_host.h"
 #include "extensions/browser/extension_protocols.h"
@@ -45,6 +52,28 @@ class ProcessManager;
 
 // Base class for extension browser tests. Provides utilities for loading,
 // unloading, and installing extensions.
+<<<<<<< HEAD
+class ExtensionBrowserTest : public ExtensionPlatformBrowserTest,
+                             public ExtensionRegistryObserver {
+ public:
+  using ContextType = extensions::browser_test_util::ContextType;
+  using LoadOptions = extensions::browser_test_util::LoadOptions;
+
+  ExtensionBrowserTest(const ExtensionBrowserTest&) = delete;
+  ExtensionBrowserTest& operator=(const ExtensionBrowserTest&) = delete;
+
+  // ExtensionRegistryObserver:
+  void OnExtensionLoaded(content::BrowserContext* browser_context,
+                         const Extension* extension) override;
+  void OnShutdown(ExtensionRegistry* registry) override;
+
+  bool IsContextTypeForServiceWorker() const {
+    return IsServiceWorkerContext(context_type_);
+  }
+
+ protected:
+  explicit ExtensionBrowserTest(ContextType context_type = ContextType::kNone);
+=======
 class ExtensionBrowserTest : virtual public InProcessBrowserTest {
  public:
   // Different types of extension's lazy background contexts used in some tests.
@@ -87,6 +116,7 @@ class ExtensionBrowserTest : virtual public InProcessBrowserTest {
   };
 
   ExtensionBrowserTest();
+>>>>>>> chromium
   ~ExtensionBrowserTest() override;
 
   // Useful accessors.
@@ -117,10 +147,16 @@ class ExtensionBrowserTest : virtual public InProcessBrowserTest {
   // about install verification.
   virtual bool ShouldEnableInstallVerification();
 
+<<<<<<< HEAD
+  // Whether MV2 extensions should be allowed. Defaults to true for testing
+  // (since many tests are parameterized to exercise both MV2 + MV3 logic).
+  virtual bool ShouldAllowMV2Extensions();
+=======
   // Returns the path of the directory from which to serve resources when they
   // are prefixed with "_test_resources/".
   // The default is chrome/test/data/extensions/.
   virtual base::FilePath GetTestResourcesParentDir();
+>>>>>>> chromium
 
   static const Extension* GetExtensionByPath(const ExtensionSet& extensions,
                                              const base::FilePath& path);
@@ -131,11 +167,17 @@ class ExtensionBrowserTest : virtual public InProcessBrowserTest {
   void SetUpOnMainThread() override;
   void TearDownOnMainThread() override;
 
+  // These functions intentionally shadow the versions in the base class
+  // ExtensionPlatformBrowserTest. They cannot be made virtual because there
+  // are too many individual tests that define a LoadExtension() function and
+  // shadowing virtual functions is not allowed.
   const Extension* LoadExtension(const base::FilePath& path);
-
   const Extension* LoadExtension(const base::FilePath& path,
                                  const LoadOptions& options);
 
+<<<<<<< HEAD
+  void DisableExtension(const std::string& extension_id, int disable_reasons);
+=======
   // Converts an extension from |path| to a Service Worker based extension and
   // returns true on success.
   // If successful, |out_path| contains path of the converted extension.
@@ -145,6 +187,7 @@ class ExtensionBrowserTest : virtual public InProcessBrowserTest {
   // background.page are not supported.
   bool CreateServiceWorkerBasedExtension(const base::FilePath& path,
                                          base::FilePath* out_path);
+>>>>>>> chromium
 
   // Loads unpacked extension from |path| with manifest |manifest_relative_path|
   // and imitates that it is a component extension.
@@ -321,6 +364,16 @@ class ExtensionBrowserTest : virtual public InProcessBrowserTest {
                                   const std::string& path,
                                   int expected_hosts);
 
+<<<<<<< HEAD
+  // Get the ServiceWorkerContext for the default browser's profile.
+  content::ServiceWorkerContext* GetServiceWorkerContext();
+
+  // Get the ServiceWorkerContext for the `browser_context`.
+  static content::ServiceWorkerContext* GetServiceWorkerContext(
+      content::BrowserContext* browser_context);
+
+#if BUILDFLAG(IS_CHROMEOS)
+=======
   // Returns
   // browsertest_util::ExecuteScriptInBackgroundPage(profile(),
   // extension_id, script).
@@ -338,14 +391,11 @@ class ExtensionBrowserTest : virtual public InProcessBrowserTest {
                                            const std::string& script);
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   // True if the command line should be tweaked as if ChromeOS user is
   // already logged in.
   bool set_chromeos_user_;
 #endif
-
-  // Set to "chrome/test/data/extensions". Derived classes may override.
-  // TODO(michaelpg): Don't override protected data members.
-  base::FilePath test_data_dir_;
 
   std::unique_ptr<ChromeExtensionTestNotificationObserver> observer_;
 
@@ -410,10 +460,6 @@ class ExtensionBrowserTest : virtual public InProcessBrowserTest {
 
   // Cache cache implementation.
   std::unique_ptr<ExtensionCacheFake> test_extension_cache_;
-
-  // An override so that chrome-extensions://<extension_id>/_test_resources/foo
-  // maps to chrome/test/data/extensions/foo.
-  ExtensionProtocolTestHandler test_protocol_handler_;
 
   // Conditionally disable content verification.
   std::unique_ptr<ScopedIgnoreContentVerifierForTest>

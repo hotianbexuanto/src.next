@@ -70,6 +70,21 @@ class RuleFeatureSetTest : public testing::Test {
     return result;
   }
 
+<<<<<<< HEAD
+  static SelectorPreMatch CollectFeaturesTo(
+      const String& selector_text,
+      RuleFeatureSet& set,
+      CSSNestingType nesting_type,
+      StyleRule* parent_rule_for_nesting) {
+    HeapVector<CSSSelector> arena;
+    base::span<CSSSelector> selector_vector = CSSParser::ParseSelector(
+        StrictCSSParserContext(SecureContextMode::kInsecureContext),
+        nesting_type, parent_rule_for_nesting, nullptr, selector_text, arena);
+    return CollectFeaturesTo(selector_vector, nullptr /* style_scope */, set);
+  }
+
+=======
+>>>>>>> chromium
   void ClearFeatures() { rule_feature_set_.Clear(); }
 
   void CollectInvalidationSetsForClass(InvalidationLists& invalidation_lists,
@@ -1803,10 +1818,767 @@ TEST_F(RuleFeatureSetTest, CopyOnWrite_SelfInvalidation) {
   // Adding the SelfInvalidationSet to the SelfInvalidationSet does not cause
   // a copy.
   RuleFeatureSet global;
+<<<<<<< HEAD
+  global.Merge(local1);
+  EXPECT_TRUE(HasRefCountForClassInvalidationSet(global, "a", RefCount::kMany));
+  global.Merge(local2);
+  EXPECT_TRUE(HasRefCountForClassInvalidationSet(global, "a", RefCount::kMany));
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas1) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch, CollectFeatures(".a:has(:is(.b .c))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasClassInvalidation("a", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas2) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(:is(.b > .c))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasClassInvalidation("a", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas3) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(.b ~ .c))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas4) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(.b + .c))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas5) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(.b .c ~ .d))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasClassInvalidation("a", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas6) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(.b > .c + .d))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasClassInvalidation("a", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas7) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(:is(.b ~ .c .d))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingAndSiblingDescendantInvalidationForLogicalCombinationsInHas(
+            "a", "c", "a", invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasClassInvalidation("a", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas8) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(:is(.b + .c > .d))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingAndSiblingDescendantInvalidationForLogicalCombinationsInHas(
+            "a", "c", "a", invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasClassInvalidation("a", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas9) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(:is(:is(.b, .c) .d))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasClassInvalidation("a", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasClassInvalidation("a", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas10) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(:is(.b, .c) ~ .d))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas11) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch, CollectFeatures(":has(:is(.a .b))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasWholeSubtreeInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas12) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(":has(~ :is(.a ~ .b))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas13) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(.b ~ .c .d ~ .e))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingAndSiblingDescendantInvalidationForLogicalCombinationsInHas(
+            "a", "c", "a", invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasClassInvalidation("a", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "e");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas14) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(.b ~ .c)) .d"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasSiblingDescendantInvalidation(
+        SiblingInvalidationSet::kDirectAdjacentMax, "a", "d",
+        invalidation_lists.siblings));
+    EXPECT_TRUE(HasNoSelfInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas15) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(* ~ .b))"));
+  {
+    InvalidationLists invalidation_lists;
+    CollectUniversalSiblingInvalidationSet(invalidation_lists);
+
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas16) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(* ~ .b)) .c"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectUniversalSiblingInvalidationSet(invalidation_lists);
+
+    EXPECT_TRUE(HasSiblingDescendantInvalidation(
+        SiblingInvalidationSet::kDirectAdjacentMax, "a", "c",
+        invalidation_lists.siblings));
+    EXPECT_TRUE(HasNoSelfInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas17) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a :has(:is(.b .c)).d"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasClassInvalidation("d", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasWholeSubtreeInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas18) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(.b ~ :is(.c ~ .d)))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, isPseudoContainingComplexInsideHas19) {
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(".a:has(~ :is(:is(.b ~ .c) ~ .d))"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "b");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(
+        HasSiblingClassInvalidation(SiblingInvalidationSet::kDirectAdjacentMax,
+                                    "a", invalidation_lists.siblings));
+    EXPECT_TRUE(
+        HasSiblingNoDescendantInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "d");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, NestedSelector) {
+  // Create a parent rule.
+  HeapVector<CSSSelector> arena;
+  base::span<CSSSelector> selector_vector = CSSParser::ParseSelector(
+      StrictCSSParserContext(SecureContextMode::kInsecureContext),
+      CSSNestingType::kNone,
+      /*parent_rule_for_nesting=*/nullptr, nullptr, ".a, .b", arena);
+  auto* parent_rule = StyleRule::Create(
+      selector_vector,
+      MakeGarbageCollected<MutableCSSPropertyValueSet>(kHTMLStandardMode));
+
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures("& .c", CSSNestingType::kNesting,
+                            /*parent_rule_for_nesting=*/parent_rule));
+
+  for (const char* parent_class : {"a", "b"}) {
+    SCOPED_TRACE(parent_class);
+
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, parent_class);
+    EXPECT_TRUE(HasClassInvalidation("c", invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "c");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, BloomFilterForClassSelfInvalidation) {
+  // Add enough dummy classes that the filter will be created.
+  for (unsigned i = 0; i < 100; ++i) {
+    CollectFeatures(".dummy");
+  }
+
+  EXPECT_EQ(SelectorPreMatch::kMayMatch, CollectFeatures(".p"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "p");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "q");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, BloomFilterForIdSelfInvalidation) {
+  // Add enough dummy IDs that the filter will be created.
+  for (unsigned i = 0; i < 100; ++i) {
+    CollectFeatures("#dummy");
+  }
+
+  EXPECT_EQ(SelectorPreMatch::kMayMatch, CollectFeatures("#foo"));
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForId(invalidation_lists, "foo");
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForId(invalidation_lists, "bar");
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+}
+
+TEST_F(RuleFeatureSetTest, NestingSelectorPointingToScopeInsideHas) {
+  Document* document =
+      Document::CreateForTest(execution_context_.GetExecutionContext());
+  StyleRuleBase* parent_rule_base =
+      css_test_helpers::ParseRule(*document, "@scope (.a) { :scope {} }");
+  ASSERT_TRUE(parent_rule_base);
+
+  const StyleScope* scope = nullptr;
+
+  auto& scope_rule = To<StyleRuleScope>(*parent_rule_base);
+  scope = scope_rule.GetStyleScope().CopyWithParent(scope);
+  const HeapVector<Member<StyleRuleBase>>& scope_child_rules =
+      scope_rule.ChildRules();
+  ASSERT_EQ(1u, scope_child_rules.size());
+  parent_rule_base = scope_child_rules[0].Get();
+
+  auto* parent_rule = DynamicTo<StyleRule>(parent_rule_base);
+  ASSERT_TRUE(parent_rule);
+  CollectFeatures(parent_rule, scope);
+
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(":has(&)", CSSNestingType::kNesting,
+                            /*parent_rule_for_nesting=*/parent_rule));
+
+  // TODO(crbug.com/40208848): This test currently expects whole-subtree
+  // invalidation, because we don't extract any features from :scope.
+  // That should be improved.
+  {
+    InvalidationLists invalidation_lists;
+    CollectInvalidationSetsForClass(invalidation_lists, "a");
+    EXPECT_TRUE(HasWholeSubtreeInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+    EXPECT_TRUE(HasNoInvalidation(invalidation_lists.siblings));
+  }
+=======
   global.Add(local1);
   ExpectRefCountForClassInvalidationSet(global, "a", RefCount::kMany);
   global.Add(local2);
   ExpectRefCountForClassInvalidationSet(global, "a", RefCount::kMany);
+>>>>>>> chromium
+}
+
+TEST_F(RuleFeatureSetTest, NestingSelectorInsideHasPointingToPart) {
+  Document* document =
+      Document::CreateForTest(execution_context_.GetExecutionContext());
+  auto* parent_rule = DynamicTo<StyleRule>(
+      css_test_helpers::ParseRule(*document, "::part(foo) {}"));
+  ASSERT_TRUE(parent_rule);
+
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            CollectFeatures(":has(&)", CSSNestingType::kNesting,
+                            /*parent_rule_for_nesting=*/parent_rule));
+}
+
+TEST_F(RuleFeatureSetTest, PseudoElementInParentPseudoPreMatch) {
+  Document* document =
+      Document::CreateForTest(execution_context_.GetExecutionContext());
+
+  auto collect_nested_features = [&](String outer_rule) {
+    auto* parent_rule_for_nesting = DynamicTo<StyleRule>(
+        css_test_helpers::ParseRule(*document, outer_rule));
+    CHECK(parent_rule_for_nesting);
+    return CollectFeatures("&", CSSNestingType::kNesting,
+                           parent_rule_for_nesting);
+  };
+
+  EXPECT_EQ(SelectorPreMatch::kNeverMatches,
+            collect_nested_features("::before {}"));
+  EXPECT_EQ(SelectorPreMatch::kNeverMatches,
+            collect_nested_features("::after {}"));
+  EXPECT_EQ(SelectorPreMatch::kNeverMatches,
+            collect_nested_features("::placeholder {}"));
+  EXPECT_EQ(SelectorPreMatch::kNeverMatches,
+            collect_nested_features("::before, ::after {}"));
+  EXPECT_EQ(SelectorPreMatch::kNeverMatches,
+            collect_nested_features("::before, ::after {}"));
+  EXPECT_EQ(SelectorPreMatch::kNeverMatches,
+            collect_nested_features("::before, ::placeholder {}"));
+
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            collect_nested_features("::before, .a {}"));
+  EXPECT_EQ(SelectorPreMatch::kMayMatch,
+            collect_nested_features(".a, ::before {}"));
 }
 
 }  // namespace blink

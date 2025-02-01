@@ -124,6 +124,67 @@ def _CheckWebDevStyle(input_api, output_api):
   return results
 
 
+<<<<<<< HEAD
+def CheckWebDevStyle(input_api, output_api):
+  presubmit_support = _ImportWebDevStyle(input_api)
+  return presubmit_support.CheckStyle(input_api, output_api)
+
+
+def CheckNoNewJs(input_api, output_api):
+  EXCLUDED_PATHS = [
+    'chrome/browser/resources/bluetooth_internals/',
+    'chrome/browser/resources/chromeos/',
+    'chrome/browser/resources/device_log/',
+    'chrome/browser/resources/gaia_auth_host/',
+    'chrome/browser/resources/hangout_services/',
+    'chrome/browser/resources/inspect/',
+    'chrome/browser/resources/net_internals/',
+    'chrome/browser/resources/network_speech_synthesis/',
+    'chrome/browser/resources/new_tab_page_incognito_guest/',
+    'chrome/browser/resources/reading_mode_gdocs_helper/',
+  ]
+
+  normalized_excluded_paths = []
+  for path in EXCLUDED_PATHS:
+    normalized_excluded_paths.append(input_api.os_path.normpath(path))
+
+  def excluded_path(f):
+    for path in normalized_excluded_paths:
+      if f.LocalPath().startswith(path) or '.eslintrc.js' in f.LocalPath():
+        return True
+    return False
+
+  presubmit_support = _ImportWebDevStyle(input_api)
+  return presubmit_support.DisallowNewJsFiles(input_api, output_api,
+                                              lambda f: not excluded_path(f))
+
+
+def CheckNoNewPolymer(input_api, output_api):
+  EXCLUDED_PATHS = [
+    'chrome/browser/resources/ash/',
+    'chrome/browser/resources/chromeos/',
+    'chrome/browser/resources/password_manager/',
+    'chrome/browser/resources/print_preview/',
+    'chrome/browser/resources/settings/',
+  ]
+
+  normalized_excluded_paths = []
+  for path in EXCLUDED_PATHS:
+    normalized_excluded_paths.append(input_api.os_path.normpath(path))
+
+  def excluded_path(f):
+    for path in normalized_excluded_paths:
+      if f.LocalPath().startswith(path):
+        return True
+    return False
+
+  presubmit_support = _ImportWebDevStyle(input_api)
+  return presubmit_support.DisallowNewPolymerElements(
+      input_api, output_api, lambda f: not excluded_path(f))
+
+def CheckPatchFormatted(input_api, output_api):
+  results = input_api.canned_checks.CheckPatchFormatted(input_api, output_api,
+=======
 def _CheckChangeOnUploadOrCommit(input_api, output_api):
   results = CheckUserActionUpdate(input_api, output_api, ACTION_XML_PATH)
   affected = input_api.AffectedFiles()
@@ -132,6 +193,7 @@ def _CheckChangeOnUploadOrCommit(input_api, output_api):
   results += _CheckSvgsOptimized(input_api, output_api)
   results += _CheckWebDevStyle(input_api, output_api)
   results += input_api.canned_checks.CheckPatchFormatted(input_api, output_api,
+>>>>>>> chromium
                                                          check_js=True)
   return results
 

@@ -14,6 +14,7 @@
 
 #include "base/bind.h"
 #include "base/command_line.h"
+#include "base/containers/to_vector.h"
 #include "base/files/file_enumerator.h"
 #include "base/files/file_util.h"
 #include "base/i18n/rtl.h"
@@ -171,8 +172,7 @@ void SandboxedUnpackerClient::ShouldComputeHashesForOffWebstoreExtension(
 
 void SandboxedUnpackerClient::GetContentVerifierKey(
     base::OnceCallback<void(ContentVerifierKey)> callback) {
-  std::move(callback).Run(ContentVerifierKey(kWebstoreSignaturesPublicKey,
-                                             kWebstoreSignaturesPublicKeySize));
+  std::move(callback).Run(kWebstoreSignaturesPublicKey);
 }
 
 SandboxedUnpacker::ScopedVerifierFormatOverrideForTest::
@@ -391,9 +391,13 @@ void SandboxedUnpacker::OnVerifiedContentsUncompressed(
   }
   // Make a copy, since |result| may store data in shared memory, accessible by
   // some other processes.
+<<<<<<< HEAD
+  std::vector<uint8_t> verified_contents = base::ToVector(*result);
+=======
   std::vector<uint8_t> verified_contents(
       result.value.value().data(),
       result.value.value().data() + result.value.value().size());
+>>>>>>> chromium
 
   client_->GetContentVerifierKey(
       base::BindOnce(&SandboxedUnpacker::StoreVerifiedContentsInExtensionDir,

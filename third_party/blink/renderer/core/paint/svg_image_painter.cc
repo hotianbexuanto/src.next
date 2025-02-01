@@ -135,8 +135,14 @@ FloatSize SVGImagePainter::ComputeImageViewportSize() const {
     return svg_image->ConcreteObjectSize(
         layout_svg_image_.ObjectBoundingBox().Size());
   }
+<<<<<<< HEAD
+  const NaturalSizingInfo sizing_info =
+      image_resource.GetNaturalDimensions(zoom);
+  return ConcreteObjectSize(sizing_info, default_object_size);
+=======
   // The orientation here does not matter. Just use kRespectImageOrientation.
   return image->SizeAsFloat(kRespectImageOrientation);
+>>>>>>> chromium
 }
 
 }  // namespace blink

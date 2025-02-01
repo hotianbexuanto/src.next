@@ -11,7 +11,14 @@
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+#include "base/containers/flat_map.h"
+#include "base/functional/callback_forward.h"
+#include "base/memory/raw_ptr.h"
+#include "base/values.h"
+=======
 #include "base/macros.h"
+>>>>>>> chromium
 #include "extensions/common/event_filter.h"
 #include "extensions/common/extension_id.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_registration.mojom.h"
@@ -200,8 +207,17 @@ class EventListenerMap {
                           int worker_thread_id,
                           const std::string& extension_id) const;
 
+<<<<<<< HEAD
+  // Removes all listeners that |extension_id| has added, both lazy and active.
+  void RemoveListenersForExtension(const ExtensionId& extension_id);
+=======
   // Removes any listeners that |extension_id| has added, both lazy and regular.
   void RemoveListenersForExtension(const std::string& extension_id);
+>>>>>>> chromium
+
+  // Removes any active listeners that |extension_id| has added.
+  void RemoveActiveServiceWorkerListenersForExtension(
+      const ExtensionId& extension_id);
 
   // Adds unfiltered lazy listeners as described their serialised descriptions.
   // |event_names| the names of the lazy events.
@@ -223,6 +239,11 @@ class EventListenerMap {
                                  const base::DictionaryValue& filtered);
 
  private:
+  // Removes all listeners for `extension_id` where `removal_predicate` is true.
+  void RemoveListenersForExtensionImpl(
+      const ExtensionId& extension_id,
+      base::RepeatingCallback<bool(const ExtensionId&, EventListener*)>
+          removal_predicate);
 
   void CleanupListener(EventListener* listener);
   bool IsFilteredEvent(const Event& event) const;

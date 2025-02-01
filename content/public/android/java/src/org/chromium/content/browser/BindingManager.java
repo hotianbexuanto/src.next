@@ -14,6 +14,8 @@ import org.chromium.base.Log;
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.process_launcher.ChildProcessConnection;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.Set;
@@ -22,6 +24,7 @@ import java.util.Set;
  * Manages oom bindings used to bound child services.
  * This object must only be accessed from the launcher thread.
  */
+@NullMarked
 class BindingManager implements ComponentCallbacks2 {
     private static final String TAG = "BindingManager";
 
@@ -31,7 +34,13 @@ class BindingManager implements ComponentCallbacks2 {
     private static final float MODERATE_BINDING_HIGH_REDUCE_RATIO = 0.5f;
 
     // Delays used when clearing moderate binding pool when onSentToBackground happens.
+<<<<<<< HEAD
+    private static final long BINDING_POOL_CLEARER_DELAY_MILLIS = 10 * 1000;
+
+    private static @Nullable Boolean sUseNotPerceptibleBindingForTesting;
+=======
     private static final long MODERATE_BINDING_POOL_CLEARER_DELAY_MILLIS = 10 * 1000;
+>>>>>>> chromium
 
     private final boolean mBindWaiveCpu;
     private final Set<ChildProcessConnection> mConnections = new ArraySet<ChildProcessConnection>();
@@ -40,9 +49,15 @@ class BindingManager implements ComponentCallbacks2 {
     private final Iterable<ChildProcessConnection> mRanking;
     private final Runnable mDelayedClearer;
 
+<<<<<<< HEAD
+    // If not null, this is the connection in |mConnections| that does not have a binding added
+    // by BindingManager.
+    private @Nullable ChildProcessConnection mWaivedConnection;
+=======
     // If not null, this is a connection in |mConnections| that does not have a moderate binding
     // added by BindingManager.
     private ChildProcessConnection mWaivedConnection;
+>>>>>>> chromium
 
     @Override
     public void onTrimMemory(final int level) {

@@ -38,6 +38,16 @@
 namespace blink {
 
 DocumentLoadTiming::DocumentLoadTiming(DocumentLoader& document_loader)
+<<<<<<< HEAD
+    : user_timing_mark_fully_loaded_(std::nullopt),
+      user_timing_mark_fully_visible_(std::nullopt),
+      user_timing_mark_interactive_(std::nullopt),
+      clock_(base::DefaultClock::GetInstance()),
+      tick_clock_(base::DefaultTickClock::GetInstance()),
+      document_loader_(document_loader),
+      document_load_timing_values_(
+          MakeGarbageCollected<DocumentLoadTimingValues>()) {}
+=======
     : user_timing_mark_fully_loaded_(absl::nullopt),
       user_timing_mark_fully_visible_(absl::nullopt),
       user_timing_mark_interactive_(absl::nullopt),
@@ -47,9 +57,11 @@ DocumentLoadTiming::DocumentLoadTiming(DocumentLoader& document_loader)
       clock_(base::DefaultClock::GetInstance()),
       tick_clock_(base::DefaultTickClock::GetInstance()),
       document_loader_(document_loader) {}
+>>>>>>> chromium
 
 void DocumentLoadTiming::Trace(Visitor* visitor) const {
   visitor->Trace(document_loader_);
+  visitor->Trace(document_load_timing_values_);
 }
 
 void DocumentLoadTiming::SetTickClockForTesting(
@@ -185,7 +197,7 @@ void DocumentLoadTiming::SetUserTimingMarkInteractive(
 
 void DocumentLoadTiming::AddRedirect(const KURL& redirecting_url,
                                      const KURL& redirected_url) {
-  redirect_count_++;
+  document_load_timing_values_->redirect_count++;
 
   // Note: we update load timings for redirects in WebDocumentLoaderImpl::
   // UpdateNavigation, hence updating no timings here.
@@ -194,21 +206,35 @@ void DocumentLoadTiming::AddRedirect(const KURL& redirecting_url,
   // timing information.
   scoped_refptr<const SecurityOrigin> redirected_security_origin =
       SecurityOrigin::Create(redirected_url);
-  has_cross_origin_redirect_ |=
+  document_load_timing_values_->has_cross_origin_redirect |=
       !redirected_security_origin->CanRequest(redirecting_url);
 }
 
 void DocumentLoadTiming::SetRedirectStart(base::TimeTicks redirect_start) {
-  redirect_start_ = redirect_start;
+  document_load_timing_values_->redirect_start = redirect_start;
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "redirectStart",
+<<<<<<< HEAD
+                                   redirect_start, "frame",
+                                   GetFrameIdForTracing(GetFrame()));
+=======
                                    redirect_start_, "frame",
                                    ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 
 void DocumentLoadTiming::SetRedirectEnd(base::TimeTicks redirect_end) {
-  redirect_end_ = redirect_end;
+  document_load_timing_values_->redirect_end = redirect_end;
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "redirectEnd",
+<<<<<<< HEAD
+                                   redirect_end, "frame",
+                                   GetFrameIdForTracing(GetFrame()));
+  NotifyDocumentTimingChanged();
+}
+
+void DocumentLoadTiming::SetUnloadEventStart(base::TimeTicks start_time) {
+  document_load_timing_values_->unload_event_start = start_time;
+=======
                                    redirect_end_, "frame",
                                    ToTraceValue(GetFrame()));
   NotifyDocumentTimingChanged();
@@ -216,14 +242,20 @@ void DocumentLoadTiming::SetRedirectEnd(base::TimeTicks redirect_end) {
 
 void DocumentLoadTiming::MarkUnloadEventStart(base::TimeTicks start_time) {
   unload_event_start_ = start_time;
+>>>>>>> chromium
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "unloadEventStart",
                                    start_time, "frame",
                                    ToTraceValue(GetFrame()));
   NotifyDocumentTimingChanged();
 }
 
+<<<<<<< HEAD
+void DocumentLoadTiming::SetUnloadEventEnd(base::TimeTicks end_time) {
+  document_load_timing_values_->unload_event_end = end_time;
+=======
 void DocumentLoadTiming::MarkUnloadEventEnd(base::TimeTicks end_time) {
   unload_event_end_ = end_time;
+>>>>>>> chromium
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "unloadEventEnd",
                                    end_time, "frame", ToTraceValue(GetFrame()));
   NotifyDocumentTimingChanged();
@@ -234,42 +266,70 @@ void DocumentLoadTiming::MarkFetchStart() {
 }
 
 void DocumentLoadTiming::SetFetchStart(base::TimeTicks fetch_start) {
-  fetch_start_ = fetch_start;
+  document_load_timing_values_->fetch_start = fetch_start;
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "fetchStart",
+<<<<<<< HEAD
+                                   fetch_start, "frame",
+                                   GetFrameIdForTracing(GetFrame()));
+=======
                                    fetch_start_, "frame",
                                    ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 
 void DocumentLoadTiming::SetResponseEnd(base::TimeTicks response_end) {
-  response_end_ = response_end;
+  document_load_timing_values_->response_end = response_end;
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "responseEnd",
+<<<<<<< HEAD
+                                   response_end, "frame",
+                                   GetFrameIdForTracing(GetFrame()));
+=======
                                    response_end_, "frame",
                                    ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 
 void DocumentLoadTiming::MarkLoadEventStart() {
+<<<<<<< HEAD
+  document_load_timing_values_->load_event_start = tick_clock_->NowTicks();
+  TRACE_EVENT_MARK_WITH_TIMESTAMP1(
+      "blink.user_timing", "loadEventStart",
+      document_load_timing_values_->load_event_start, "frame",
+      GetFrameIdForTracing(GetFrame()));
+=======
   load_event_start_ = tick_clock_->NowTicks();
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "loadEventStart",
                                    load_event_start_, "frame",
                                    ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 
 void DocumentLoadTiming::MarkLoadEventEnd() {
-  load_event_end_ = tick_clock_->NowTicks();
+  document_load_timing_values_->load_event_end = tick_clock_->NowTicks();
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "loadEventEnd",
+<<<<<<< HEAD
+                                   document_load_timing_values_->load_event_end,
+                                   "frame", GetFrameIdForTracing(GetFrame()));
+=======
                                    load_event_end_, "frame",
                                    ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 
 void DocumentLoadTiming::MarkRedirectEnd() {
-  redirect_end_ = tick_clock_->NowTicks();
+  document_load_timing_values_->redirect_end = tick_clock_->NowTicks();
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "redirectEnd",
+<<<<<<< HEAD
+                                   document_load_timing_values_->redirect_end,
+                                   "frame", GetFrameIdForTracing(GetFrame()));
+=======
                                    redirect_end_, "frame",
                                    ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 
@@ -281,11 +341,31 @@ void DocumentLoadTiming::MarkCommitNavigationEnd() {
   NotifyDocumentTimingChanged();
 }
 
+<<<<<<< HEAD
+void DocumentLoadTiming::SetActivationStart(base::TimeTicks activation_start) {
+  document_load_timing_values_->activation_start = activation_start;
+  TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "activationStart",
+                                   activation_start, "frame",
+                                   GetFrameIdForTracing(GetFrame()));
+  NotifyDocumentTimingChanged();
+}
+
+void DocumentLoadTiming::SetCriticalCHRestart(
+    base::TimeTicks critical_ch_restart) {
+  document_load_timing_values_->critical_ch_restart = critical_ch_restart;
+  NotifyDocumentTimingChanged();
+}
+
+void DocumentLoadTiming::SetRandomizedConfidence(
+    const std::optional<RandomizedConfidenceValue>& value) {
+  document_load_timing_values_->randomized_confidence = value;
+=======
 void DocumentLoadTiming::MarkActivationStart(base::TimeTicks activation_start) {
   activation_start_ = activation_start;
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "activationtart",
                                    activation_start, "frame",
                                    ToTraceValue(GetFrame()));
+>>>>>>> chromium
   NotifyDocumentTimingChanged();
 }
 

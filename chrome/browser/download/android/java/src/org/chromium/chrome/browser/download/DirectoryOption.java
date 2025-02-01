@@ -6,12 +6,20 @@ package org.chromium.chrome.browser.download;
 
 import androidx.annotation.IntDef;
 
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+<<<<<<< HEAD
+/** Denotes a given option for directory selection; includes name, location, and space. */
+@NullMarked
+=======
 /**
  * Denotes a given option for directory selection; includes name, location, and space.
  */
+>>>>>>> chromium
 public class DirectoryOption {
     // Type to track user's selection of directory option. This enum is used in histogram and must
     // match DownloadLocationDirectoryType in enums.xml, so don't delete or reuse values.
@@ -26,6 +34,13 @@ public class DirectoryOption {
         int NUM_ENTRIES = 3;
     }
 
+<<<<<<< HEAD
+    /** Name of the current download directory. */
+    public @Nullable String name;
+
+    /** The absolute path of the download location. */
+    public final @Nullable String location;
+=======
     /**
      * Name of the current download directory.
      */
@@ -35,6 +50,7 @@ public class DirectoryOption {
      * The absolute path of the download location.
      */
     public final String location;
+>>>>>>> chromium
 
     /**
      * The available space in this download directory.
@@ -51,13 +67,28 @@ public class DirectoryOption {
      */
     public final @DownloadLocationDirectoryType int type;
 
+<<<<<<< HEAD
+    public DirectoryOption(
+            @Nullable String name,
+            @Nullable String location,
+            long availableSpace,
+            long totalSpace,
+=======
     public DirectoryOption(String name, String location, long availableSpace, long totalSpace,
+>>>>>>> chromium
             @DownloadLocationDirectoryType int type) {
         this(location, availableSpace, totalSpace, type);
         this.name = name;
     }
 
+<<<<<<< HEAD
+    public DirectoryOption(
+            @Nullable String location,
+            long availableSpace,
+            long totalSpace,
+=======
     public DirectoryOption(String location, long availableSpace, long totalSpace,
+>>>>>>> chromium
             @DownloadLocationDirectoryType int type) {
         this.location = location;
         this.availableSpace = availableSpace;

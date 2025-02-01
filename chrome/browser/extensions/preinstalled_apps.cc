@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include <array>
 #include <memory>
 #include <set>
 #include <string>
@@ -39,10 +40,18 @@ bool IsLocaleSupported() {
   // that they don't work.
   // TODO(rogerta): Do this check dynamically once the webstore can expose
   // an API. See http://crbug.com/101357
+<<<<<<< HEAD
+  std::string locale =
+      extensions::ExtensionsBrowserClient::Get()->GetApplicationLocale();
+  static constexpr const char* unsupported_locales[] = {"CN", "TR", "IR"};
+  for (const char* unsupported : unsupported_locales) {
+    if (base::EndsWith(locale, unsupported,
+=======
   const std::string& locale = g_browser_process->GetApplicationLocale();
   static const char* const unsupported_locales[] = {"CN", "TR", "IR"};
   for (size_t i = 0; i < base::size(unsupported_locales); ++i) {
     if (base::EndsWith(locale, unsupported_locales[i],
+>>>>>>> chromium
                        base::CompareCase::INSENSITIVE_ASCII)) {
       return false;
     }

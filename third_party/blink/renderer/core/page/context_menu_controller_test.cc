@@ -4,9 +4,33 @@
 
 #include "third_party/blink/renderer/core/page/context_menu_controller.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+#include <limits>
+#include <memory>
+#include <optional>
+#include <utility>
+#include <vector>
+
+#include "base/barrier_closure.h"
+#include "base/functional/callback.h"
+#include "base/run_loop.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
+#include "components/attribution_reporting/data_host.mojom-blink.h"
+#include "components/attribution_reporting/os_registration.h"
+#include "components/attribution_reporting/registration_header_error.h"
+#include "components/attribution_reporting/source_registration.h"
+#include "components/attribution_reporting/suitable_origin.h"
+#include "components/attribution_reporting/trigger_registration.h"
+#include "mojo/public/cpp/bindings/receiver_set.h"
+#include "services/network/public/mojom/attribution.mojom-blink.h"
+=======
+#include "base/test/metrics/histogram_tester.h"
+#include "base/test/scoped_feature_list.h"
+#include "build/build_config.h"
+>>>>>>> chromium
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
@@ -25,6 +49,12 @@
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/geometry/dom_rect.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/html/forms/html_input_element.h"
+#include "third_party/blink/renderer/core/html/html_anchor_element.h"
+#include "third_party/blink/renderer/core/html/html_area_element.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
 #include "third_party/blink/renderer/core/input/context_menu_allowed_scope.h"
@@ -36,8 +66,12 @@
 #include "third_party/blink/renderer/platform/testing/empty_web_media_player.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/platform/weborigin/kurl.h"
+=======
 #include "third_party/blink/renderer/platform/testing/weburl_loader_mock.h"
 #include "third_party/blink/renderer/platform/testing/weburl_loader_mock_factory_impl.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
 using testing::Return;
@@ -93,7 +127,103 @@ void RegisterMockedImageURLLoad(const String& url) {
       test::CoreTestDataPath(kTestResourceFilename), kTestResourceMimeType);
 }
 
+<<<<<<< HEAD
+class MockAttributionHost
+    : public mojom::blink::AttributionHost,
+      public attribution_reporting::mojom::blink::DataHost {
+ public:
+  explicit MockAttributionHost(blink::AssociatedInterfaceProvider* provider)
+      : provider_(provider), on_data_host_bound_(base::DoNothing()) {
+    provider_->OverrideBinderForTesting(
+        mojom::blink::AttributionHost::Name_,
+        WTF::BindRepeating(&MockAttributionHost::BindReceiver,
+                           WTF::Unretained(this)));
+  }
+
+  ~MockAttributionHost() override {
+    CHECK(provider_);
+    provider_->OverrideBinderForTesting(mojom::blink::AttributionHost::Name_,
+                                        base::NullCallback());
+  }
+
+  size_t NumBoundDataHosts() {
+    // Ensure that any pending disconnects have been propagated.
+    receiver_.FlushForTesting();
+    return data_hosts_.size();
+  }
+
+  void WaitUntilDataHostsBound(size_t expected) {
+    if (data_hosts_.size() >= expected) {
+      return;
+    }
+    base::RunLoop wait_loop;
+    on_data_host_bound_ = base::BarrierClosure(expected - data_hosts_.size(),
+                                               wait_loop.QuitClosure());
+    wait_loop.Run();
+  }
+
+ private:
+  // mojom::blink::AttributionHost:
+
+  void BindReceiver(mojo::ScopedInterfaceEndpointHandle handle) {
+    receiver_.Bind(
+        mojo::PendingAssociatedReceiver<mojom::blink::AttributionHost>(
+            std::move(handle)));
+  }
+
+  void RegisterDataHost(
+      mojo::PendingReceiver<attribution_reporting::mojom::blink::DataHost>,
+      attribution_reporting::mojom::RegistrationEligibility,
+      bool is_for_background_requests) override {}
+
+  void RegisterNavigationDataHost(
+      mojo::PendingReceiver<attribution_reporting::mojom::blink::DataHost>
+          data_host,
+      const AttributionSrcToken&) override {
+    data_hosts_.Add(this, std::move(data_host));
+    on_data_host_bound_.Run();
+  }
+
+  void NotifyNavigationWithBackgroundRegistrationsWillStart(
+      const AttributionSrcToken&,
+      uint32_t expected_registrations) override {}
+
+  // attribution_reporting::mojom::blink::DataHost:
+
+  void SourceDataAvailable(
+      attribution_reporting::SuitableOrigin reporting_origin,
+      attribution_reporting::SourceRegistration,
+      bool was_fetched_via_serivce_worker) override {}
+
+  void TriggerDataAvailable(
+      attribution_reporting::SuitableOrigin reporting_origin,
+      attribution_reporting::TriggerRegistration,
+      bool was_fetched_via_serivce_worker) override {}
+
+  void OsSourceDataAvailable(
+      std::vector<attribution_reporting::OsRegistrationItem>,
+      bool was_fetched_via_serivce_worker) override {}
+
+  void OsTriggerDataAvailable(
+      std::vector<attribution_reporting::OsRegistrationItem>,
+      bool was_fetched_via_serivce_worker) override {}
+
+  void ReportRegistrationHeaderError(
+      attribution_reporting::SuitableOrigin reporting_origin,
+      attribution_reporting::RegistrationHeaderError) override {}
+
+  blink::AssociatedInterfaceProvider* provider_;
+  mojo::AssociatedReceiver<mojom::blink::AttributionHost> receiver_{this};
+
+  base::RepeatingClosure on_data_host_bound_;
+
+  mojo::ReceiverSet<attribution_reporting::mojom::blink::DataHost> data_hosts_;
+};
+
+}  // namespace
+=======
 }  // anonymous namespace
+>>>>>>> chromium
 
 class ContextMenuControllerTest : public testing::Test,
                                   public ::testing::WithParamInterface<bool> {
@@ -153,6 +283,8 @@ class ContextMenuControllerTest : public testing::Test,
   const TestWebFrameClientImpl& GetWebFrameClient() const {
     return web_frame_client_;
   }
+
+  TestWebFrameClientImpl& GetWebFrameClient() { return web_frame_client_; }
 
   void DurationChanged(HTMLVideoElement* video) { video->DurationChanged(); }
 
@@ -1713,6 +1845,354 @@ TEST_P(ContextMenuControllerTest, OpenedFromHighlight) {
   EXPECT_TRUE(context_menu_data.opened_from_highlight);
 }
 
+<<<<<<< HEAD
+// Test that opening context menu with keyboard does not change text selection.
+TEST_F(ContextMenuControllerTest,
+       KeyboardTriggeredContextMenuPreservesSelection) {
+  ContextMenuAllowedScope context_menu_allowed_scope;
+
+  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+    <body>
+      <p id='first'>This is a sample text."</p>
+    </body>
+  )HTML");
+
+  Node* first_paragraph =
+      GetDocument()->getElementById(AtomicString("first"))->firstChild();
+  const auto& selected_start = Position(first_paragraph, 5);
+  const auto& selected_end = Position(first_paragraph, 9);
+
+  GetDocument()->GetFrame()->Selection().SetSelection(
+      SelectionInDOMTree::Builder()
+          .SetBaseAndExtent(selected_start, selected_end)
+          .Build(),
+      SetSelectionOptions());
+  base::RunLoop().RunUntilIdle();
+  EXPECT_EQ(GetDocument()->GetFrame()->Selection().SelectedText(), "is a");
+
+  PhysicalOffset location(LayoutUnit(5), LayoutUnit(5));
+  EXPECT_TRUE(ShowContextMenu(location, kMenuSourceKeyboard));
+  EXPECT_EQ(GetDocument()->GetFrame()->Selection().SelectedText(), "is a");
+}
+
+TEST_F(ContextMenuControllerTest, CheckRendererIdFromContextMenuOnTextField) {
+  WebURL url = url_test_helpers::ToKURL("http://www.test.com/");
+  frame_test_helpers::LoadHTMLString(LocalMainFrame(),
+                                     R"(<html><head><style>body
+      {background-color:transparent}</style></head>
+      <form>
+      <label for="name">Name:</label><br>
+      <input type="text" id="name" name="name"><br>
+      <label for="address">Address:</label><br>
+      <textarea id="address" name="address"></textarea>
+      </form>
+      <p id="one">This is a test page one</p>
+      <label for="two">Two:</label><br>
+      <input type="text" id="two" name="two"><br>
+      <label for="three">Three:</label><br>
+      <textarea id="three" name="three"></textarea>
+      </html>
+      )",
+                                     url);
+
+  Document* document = GetDocument();
+  ASSERT_TRUE(IsA<HTMLDocument>(document));
+
+  // field_id, is_form_renderer_id_present, is_field_renderer_id_present,
+  // form_control_type
+  std::vector<std::tuple<AtomicString, bool, bool,
+                         std::optional<mojom::FormControlType>>>
+      expectations = {// Input Text Field
+                      {AtomicString("name"), true, true,
+                       mojom::FormControlType::kInputText},
+                      // Text Area Field
+                      {AtomicString("address"), true, true,
+                       mojom::FormControlType::kTextArea},
+                      // Non form element
+                      {AtomicString("one"), false, false, std::nullopt},
+                      // Formless Input field
+                      {AtomicString("two"), false, true,
+                       mojom::FormControlType::kInputText},
+                      // Formless text area field
+                      {AtomicString("three"), false, true,
+                       mojom::FormControlType::kTextArea}};
+
+  for (const auto& expectation : expectations) {
+    auto [field_id, is_form_renderer_id_present, is_field_renderer_id_present,
+          form_control_type] = expectation;
+    Element* form_element = document->getElementById(field_id);
+    EXPECT_TRUE(ShowContextMenuForElement(form_element, kMenuSourceMouse));
+    ContextMenuData context_menu_data =
+        GetWebFrameClient().GetContextMenuData();
+    EXPECT_EQ(context_menu_data.form_renderer_id != 0,
+              is_form_renderer_id_present);
+    EXPECT_EQ(context_menu_data.form_control_type, form_control_type);
+  }
+}
+
+TEST_F(ContextMenuControllerTest, AttributionSrc) {
+  // The context must be secure for attributionsrc to work at all.
+  frame_test_helpers::LoadHTMLString(
+      LocalMainFrame(), R"(<html><body>)",
+      url_test_helpers::ToKURL("https://test.com/"));
+
+  static constexpr char kSecureURL[] = "https://a.com/";
+  static constexpr char kInsecureURL[] = "http://b.com/";
+
+  const struct {
+    const char* href;
+    const char* attributionsrc;
+    bool impression_expected;
+  } kTestCases[] = {
+      {
+          .href = nullptr,
+          .attributionsrc = nullptr,
+          .impression_expected = false,
+      },
+      {
+          .href = nullptr,
+          .attributionsrc = "",
+          .impression_expected = false,
+      },
+      {
+          .href = nullptr,
+          .attributionsrc = kInsecureURL,
+          .impression_expected = false,
+      },
+      {
+          .href = nullptr,
+          .attributionsrc = kSecureURL,
+          .impression_expected = false,
+      },
+      {
+          .href = kInsecureURL,
+          .attributionsrc = nullptr,
+          .impression_expected = false,
+      },
+      {
+          .href = kInsecureURL,
+          .attributionsrc = "",
+          .impression_expected = false,
+      },
+      {
+          .href = kInsecureURL,
+          .attributionsrc = kInsecureURL,
+          .impression_expected = false,
+      },
+      {
+          .href = kInsecureURL,
+          .attributionsrc = kSecureURL,
+          .impression_expected = true,
+      },
+      {
+          .href = kSecureURL,
+          .attributionsrc = nullptr,
+          .impression_expected = false,
+      },
+      {
+          .href = kSecureURL,
+          .attributionsrc = "",
+          .impression_expected = true,
+      },
+      {
+          .href = kSecureURL,
+          .attributionsrc = kInsecureURL,
+          .impression_expected = true,
+      },
+      {
+          .href = kSecureURL,
+          .attributionsrc = kSecureURL,
+          .impression_expected = true,
+      },
+  };
+
+  for (bool use_anchor : {true, false}) {
+    for (const auto& test_case : kTestCases) {
+      Persistent<HTMLAnchorElementBase> anchor;
+      if (use_anchor) {
+        anchor = MakeGarbageCollected<HTMLAnchorElement>(*GetDocument());
+      } else {
+        anchor = MakeGarbageCollected<HTMLAreaElement>(*GetDocument());
+      }
+
+      anchor->setInnerText("abc");
+
+      if (test_case.href) {
+        anchor->SetHref(AtomicString(test_case.href));
+      }
+
+      if (test_case.attributionsrc) {
+        anchor->setAttribute(html_names::kAttributionsrcAttr,
+                             AtomicString(test_case.attributionsrc));
+      }
+
+      GetPage()->SetAttributionSupport(
+          network::mojom::AttributionSupport::kWeb);
+
+      GetDocument()->body()->AppendChild(anchor);
+      ASSERT_TRUE(ShowContextMenuForElement(anchor, kMenuSourceMouse));
+
+      ContextMenuData context_menu_data =
+          GetWebFrameClient().GetContextMenuData();
+
+      EXPECT_EQ(context_menu_data.impression.has_value(),
+                test_case.impression_expected);
+    }
+  }
+}
+
+TEST_F(ContextMenuControllerTest, AttributionSrc_DataHostLifetime) {
+  // The context must be secure for attributionsrc to work at all.
+  frame_test_helpers::LoadHTMLString(
+      LocalMainFrame(), R"(<html><body>)",
+      url_test_helpers::ToKURL("https://test.com/"));
+
+  Persistent<HTMLAnchorElement> anchor =
+      MakeGarbageCollected<HTMLAnchorElement>(*GetDocument());
+  anchor->setInnerText("abc");
+
+  anchor->SetHref(AtomicString("https://a.com/"));
+
+  anchor->setAttribute(html_names::kAttributionsrcAttr,
+                       AtomicString("https://b.com/ https://c.com/"));
+
+  GetPage()->SetAttributionSupport(network::mojom::AttributionSupport::kWeb);
+
+  GetDocument()->body()->AppendChild(anchor);
+
+  enum CloseMechanism {
+    kContextMenuClosedInvalidNavigationUrl,
+    kContextMenuClosedValidNavigationUrl,
+    kClearContextMenu,
+  };
+
+  for (CloseMechanism close_mechanism :
+       {kContextMenuClosedInvalidNavigationUrl,
+        kContextMenuClosedValidNavigationUrl, kClearContextMenu}) {
+    SCOPED_TRACE(close_mechanism);
+
+    MockAttributionHost host(
+        GetWebFrameClient().GetRemoteNavigationAssociatedInterfaces());
+
+    ASSERT_TRUE(ShowContextMenuForElement(anchor, kMenuSourceMouse));
+
+    // https://b.com/ and https://c.com/ should share a single data host.
+    host.WaitUntilDataHostsBound(/*expected=*/1);
+
+    ContextMenuData context_menu_data =
+        GetWebFrameClient().GetContextMenuData();
+
+    ASSERT_TRUE(context_menu_data.impression.has_value());
+
+    switch (close_mechanism) {
+      case kContextMenuClosedInvalidNavigationUrl:
+        GetPage()->GetContextMenuController().ContextMenuClosed(
+            KURL(), context_menu_data.impression);
+        EXPECT_EQ(host.NumBoundDataHosts(), 0u);
+        break;
+      case kContextMenuClosedValidNavigationUrl:
+        RegisterMockedImageURLLoad("https://b.com/");
+        RegisterMockedImageURLLoad("https://c.com/");
+
+        GetPage()->GetContextMenuController().ContextMenuClosed(
+            url_test_helpers::ToKURL("https://d.com/"),
+            context_menu_data.impression);
+
+        // The data host should remain bound because it will be used to handle
+        // responses from https://b.com/ and https://c.com/.
+        EXPECT_EQ(host.NumBoundDataHosts(), 1u);
+
+        // Flush the image-loading microtasks to prevent DCHECK failure on test
+        // exit.
+        base::RunLoop().RunUntilIdle();
+        url_test_helpers::ServeAsynchronousRequests();
+        break;
+      case kClearContextMenu:
+        GetPage()->GetContextMenuController().ClearContextMenu();
+        EXPECT_EQ(host.NumBoundDataHosts(), 0u);
+        break;
+    }
+  }
+}
+
+// Test that if text selection contains unselectable content, the opened context
+// menu should omit the unselectable content.
+TEST_F(ContextMenuControllerTest, SelectUnselectableContent) {
+  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+    <body>
+      <p id="test">A <span style="user-select:none;">test_none <span>test_span
+        </span><span style="user-select:all;">test_all</span></span> B</p>
+    </body>
+  )HTML");
+
+  Document* document = GetDocument();
+  Element* element = document->getElementById(AtomicString("test"));
+
+  // Select text, which has nested unselectable and selectable content.
+  const auto& start = Position(element->firstChild(), 0);
+  const auto& end = Position(element->lastChild(), 2);
+  document->GetFrame()->Selection().SetSelection(
+      SelectionInDOMTree::Builder().SetBaseAndExtent(start, end).Build(),
+      SetSelectionOptions());
+
+  // The context menu should omit the unselectable content from the selected
+  // text.
+  EXPECT_TRUE(ShowContextMenuForElement(element, kMenuSourceMouse));
+  ContextMenuData context_menu_data = GetWebFrameClient().GetContextMenuData();
+  EXPECT_EQ(context_menu_data.selected_text, "A test_all B");
+}
+
+class ContextMenuControllerRemoteParentFrameTest : public testing::Test {
+ public:
+  ContextMenuControllerRemoteParentFrameTest() = default;
+
+  void SetUp() override {
+    web_view_helper_.InitializeRemote();
+    web_view_helper_.RemoteMainFrame()->View()->DisableAutoResizeForTesting(
+        gfx::Size(640, 480));
+
+    child_frame_ = web_view_helper_.CreateLocalChild(
+        *web_view_helper_.RemoteMainFrame(),
+        /*name=*/"child",
+        /*properties=*/{},
+        /*previous_sibling=*/nullptr, &child_web_frame_client_);
+    frame_test_helpers::LoadFrame(child_frame_, "data:text/html,some page");
+
+    auto& focus_controller =
+        child_frame_->GetFrame()->GetPage()->GetFocusController();
+    focus_controller.SetActive(true);
+    focus_controller.SetFocusedFrame(child_frame_->GetFrame());
+  }
+
+  void ShowContextMenu(const gfx::Point& point) {
+    child_frame_->LocalRootFrameWidget()->ShowContextMenu(
+        ui::mojom::blink::MenuSourceType::kMouse, point);
+    base::RunLoop().RunUntilIdle();
+  }
+
+  const TestWebFrameClientImpl& child_web_frame_client() const {
+    return child_web_frame_client_;
+  }
+
+ protected:
+  test::TaskEnvironment task_environment_;
+  base::test::ScopedFeatureList feature_list_;
+  TestWebFrameClientImpl child_web_frame_client_;
+  frame_test_helpers::WebViewHelper web_view_helper_;
+  Persistent<WebLocalFrameImpl> child_frame_;
+};
+
+TEST_F(ContextMenuControllerRemoteParentFrameTest, ShowContextMenuInChild) {
+  const gfx::Point kPoint(123, 234);
+  ShowContextMenu(kPoint);
+
+  const std::optional<gfx::Point>& host_context_menu_location =
+      child_web_frame_client().host_context_menu_location();
+  ASSERT_TRUE(host_context_menu_location.has_value());
+  EXPECT_EQ(kPoint, host_context_menu_location.value());
+}
+=======
 // TODO(crbug.com/1184996): Add additional unit test for blocking frame logging.
+>>>>>>> chromium
 
 }  // namespace blink

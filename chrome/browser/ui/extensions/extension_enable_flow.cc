@@ -6,9 +6,15 @@
 
 #include <memory>
 
+<<<<<<< HEAD
+#include "base/check.h"
+#include "base/functional/bind.h"
+#include "base/notreached.h"
+=======
 #include "base/bind.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/chrome_notification_types.h"
+>>>>>>> chromium
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/profiles/profile.h"
@@ -17,9 +23,15 @@
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_system.h"
 
+<<<<<<< HEAD
+#if !BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/ui/profiles/profile_picker.h"
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+=======
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ui/profile_picker.h"
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 
 #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
 #include "chrome/browser/supervised_user/supervised_user_service.h"
@@ -65,8 +77,9 @@ void ExtensionEnableFlow::Run() {
     extension = registry->terminated_extensions().GetByID(extension_id_);
     // It's possible (though unlikely) the app could have been uninstalled since
     // the user clicked on it.
-    if (!extension)
+    if (!extension) {
       return;
+    }
     // If the app was terminated, reload it first.
     service->ReloadExtension(extension_id_);
 
@@ -130,10 +143,16 @@ void ExtensionEnableFlow::CheckPermissionAndMaybePromptUser() {
   }
 
   if (profiles::IsProfileLocked(profile_->GetPath())) {
+<<<<<<< HEAD
+#if !BUILDFLAG(IS_CHROMEOS)
+    ProfilePicker::Show(ProfilePicker::Params::FromEntryPoint(
+        ProfilePicker::EntryPoint::kProfileLocked));
+=======
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
     ProfilePicker::Show(ProfilePicker::EntryPoint::kProfileLocked);
+>>>>>>> chromium
 
-#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // !BUILDFLAG(IS_CHROMEOS)
     return;
   }
 
@@ -250,10 +269,23 @@ void ExtensionEnableFlow::EnableExtension() {
 #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
   if (profile_->IsChild()) {
     // We need to add parent approval first.
+<<<<<<< HEAD
+    extensions::SupervisedUserExtensionsDelegate*
+        supervised_user_extensions_delegate =
+            extensions::ManagementAPI::GetFactoryInstance()
+                ->Get(profile_)
+                ->GetSupervisedUserExtensionsDelegate();
+    CHECK(supervised_user_extensions_delegate);
+    supervised_user_extensions_delegate->AddExtensionApproval(*extension);
+    supervised_user_extensions_delegate->MaybeRecordPermissionsIncreaseMetrics(
+        *extension);
+    supervised_user_extensions_delegate->RecordExtensionEnablementUmaMetrics(
+=======
     SupervisedUserService* supervised_user_service =
         SupervisedUserServiceFactory::GetForProfile(profile_);
     supervised_user_service->AddExtensionApproval(*extension);
     supervised_user_service->RecordExtensionEnablementUmaMetrics(
+>>>>>>> chromium
         /*enabled=*/true);
   }
 #endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)

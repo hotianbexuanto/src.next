@@ -139,6 +139,21 @@ class CORE_EXPORT ContainerNode : public Node {
   // These methods are only used during parsing.
   // They don't send DOM mutation events or accept DocumentFragments.
   void ParserAppendChild(Node*);
+<<<<<<< HEAD
+
+  // Called when the parser adds a child to a DocumentFragment as the result
+  // of parsing inner/outer html.
+  void ParserAppendChildInDocumentFragment(Node* new_child);
+  // Called when the parser has finished building a DocumentFragment. This is
+  // not called if the parser fails parsing (if parsing fails, the
+  // DocumentFragment is orphaned and will eventually be gc'd).
+  //
+  // ShouldNotifyInsertedNodes controls whether to skip notifications that are
+  // redone if the contents of the DocumentFragment are moved to a new parent.
+  enum class ShouldNotifyInsertedNodes { kNotify, kSkip };
+  void ParserFinishedBuildingDocumentFragment(ShouldNotifyInsertedNodes);
+=======
+>>>>>>> chromium
   void ParserRemoveChild(Node&);
   void ParserInsertBefore(Node* new_child, Node& ref_child);
   void ParserTakeAllChildrenFrom(ContainerNode&);
@@ -289,7 +304,8 @@ class CORE_EXPORT ContainerNode : public Node {
                                    Node* node_before_change,
                                    Node* node_after_change);
   void RecalcDescendantStyles(const StyleRecalcChange,
-                              const StyleRecalcContext&);
+                              const StyleRecalcContext&,
+                              Element& host_or_element);
   void RebuildChildrenLayoutTrees(WhitespaceAttacher&);
   void RebuildLayoutTreeForChild(Node* child, WhitespaceAttacher&);
 
@@ -397,6 +413,33 @@ class CORE_EXPORT ContainerNode : public Node {
   // a descendant LayoutBox.
   virtual LayoutBox* GetLayoutBoxForScrolling() const;
 
+<<<<<<< HEAD
+  Element* GetAutofocusDelegate() const;
+
+  bool IsReadingFlowContainer() const;
+
+  HTMLCollection* PopoverInvokers() {
+    DCHECK(IsTreeScope());
+    return EnsureCachedCollection<HTMLCollection>(kPopoverInvokers);
+  }
+
+  void ReplaceChildren(const VectorOf<Node>& nodes,
+                       ExceptionState& exception_state);
+
+  // Common implementation of getHTML and getInnerHTML. These are exposed (via
+  // IDL) on Element and ShadowRoot only.
+  String getInnerHTML(const GetInnerHTMLOptions* options) const;
+  String getHTML(const GetHTMLOptions*, ExceptionState&) const;
+
+  // DocumentOrElementEventHandlers:
+  // These event listeners are only actually web-exposed on interfaces that
+  // include the DocumentOrElementEventHandlers mixin in their idl.
+  DEFINE_ATTRIBUTE_EVENT_LISTENER(copy, kCopy)
+  DEFINE_ATTRIBUTE_EVENT_LISTENER(cut, kCut)
+  DEFINE_ATTRIBUTE_EVENT_LISTENER(paste, kPaste)
+
+=======
+>>>>>>> chromium
   void Trace(Visitor*) const override;
 
  protected:
@@ -410,12 +453,8 @@ class CORE_EXPORT ContainerNode : public Node {
                                            Element* attribute_owner_element,
                                            const ChildrenChange*);
 
-  void SetFirstChild(Node* child) {
-    first_child_ = child;
-  }
-  void SetLastChild(Node* child) {
-    last_child_ = child;
-  }
+  void SetFirstChild(Node* child) { first_child_ = child; }
+  void SetLastChild(Node* child) { last_child_ = child; }
 
   // Utility functions for NodeListsNodeData API.
   template <typename Collection>
@@ -428,6 +467,8 @@ class CORE_EXPORT ContainerNode : public Node {
                                      const AtomicString& local_name);
   template <typename Collection>
   Collection* CachedCollection(CollectionType);
+  template <typename Collection>
+  const Collection* CachedCollection(CollectionType) const;
 
  private:
   bool IsContainerNode() const =
@@ -435,6 +476,16 @@ class CORE_EXPORT ContainerNode : public Node {
   bool IsTextNode() const =
       delete;  // This will catch anyone doing an unnecessary check.
 
+<<<<<<< HEAD
+  // Called from ParserFinishedBuildingDocumentFragment() to notify `node` that
+  // it was inserted.
+  void NotifyNodeAtEndOfBuildingFragmentTree(Node& node,
+                                             const ChildrenChange& change,
+                                             bool may_contain_shadow_roots,
+                                             ShouldNotifyInsertedNodes);
+
+=======
+>>>>>>> chromium
   NodeListsNodeData& EnsureNodeLists();
   void RemoveBetween(Node* previous_child, Node* next_child, Node& old_child);
   // Inserts the specified nodes before |next|.

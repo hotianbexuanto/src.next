@@ -9,6 +9,26 @@ for more details about the presubmit API built into depot_tools.
 
 import difflib
 import os
+<<<<<<< HEAD
+import sys
+
+# pyright: reportMissingImports=false
+def RuntimeEnabledFeatures(input_api, filename):
+    """Returns the features present in the specified features JSON5 file."""
+
+    # We need to wait until we have an input_api object and use this
+    # roundabout construct to import json5 because this file is
+    # eval-ed and thus doesn't have __file__.
+    try:
+        json5_path = input_api.os_path.join(input_api.PresubmitLocalPath(),
+                                            '..', '..', '..', 'pyjson5', 'src')
+        sys.path.append(json5_path)
+        import json5
+        return json5.load(open(filename, encoding='utf-8'))['data']
+    finally:
+        # Restore sys.path to what it was before.
+        sys.path.remove(json5_path)
+=======
 import re
 
 USE_PYTHON3 = True
@@ -23,6 +43,7 @@ def RuntimeEnabledFeatureNames(filename):
             match = RUNTIMEENABLED_NAME.match(line)
             if match:
                 yield match.group(1)
+>>>>>>> chromium
 
 
 def _CheckRuntimeEnabledFeaturesSorted(input_api, output_api):
@@ -53,7 +74,12 @@ def _CheckRuntimeEnabledFeaturesSorted(input_api, output_api):
 def _CommonChecks(input_api, output_api):
     """Checks common to both upload and commit."""
     results = []
+<<<<<<< HEAD
+    results.extend(_CheckRuntimeEnabledFeaturesSorted(features, output_api))
+
+=======
     results.extend(_CheckRuntimeEnabledFeaturesSorted(input_api, output_api))
+>>>>>>> chromium
     return results
 
 

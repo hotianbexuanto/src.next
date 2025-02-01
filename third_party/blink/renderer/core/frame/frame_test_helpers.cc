@@ -63,7 +63,7 @@
 #include "third_party/blink/public/web/web_navigation_params.h"
 #include "third_party/blink/public/web/web_settings.h"
 #include "third_party/blink/public/web/web_view_client.h"
-#include "third_party/blink/renderer/core/frame/csp/conversion_util.h"
+#include "third_party/blink/renderer/core/frame/csp/test_util.h"
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/frame/web_remote_frame_impl.h"
@@ -329,6 +329,28 @@ WebRemoteFrameImpl* CreateRemoteChild(
   return frame;
 }
 
+<<<<<<< HEAD
+void SwapRemoteFrame(
+    WebFrame* old_frame,
+    WebRemoteFrame* new_remote_frame,
+    mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost> frame_host) {
+  mojom::FrameReplicationStatePtr replicated_state =
+      mojom::FrameReplicationState::New();
+  // Preserve the frame's name on swap.
+  replicated_state->name =
+      WebFrame::ToCoreFrame(*old_frame)->Tree().GetName().Utf8();
+
+  old_frame->Swap(new_remote_frame,
+                  CreateStubRemoteIfNeeded<mojom::blink::RemoteFrameHost>(
+                      std::move(frame_host)),
+                  mojo::AssociatedRemote<mojom::blink::RemoteFrame>()
+                      .BindNewEndpointAndPassDedicatedReceiver(),
+                  std::move(replicated_state),
+                  /*devtools_frame_token=*/std::nullopt);
+}
+
+=======
+>>>>>>> chromium
 WebViewHelper::WebViewHelper(
     CreateTestWebFrameWidgetCallback create_web_frame_callback)
     : web_view_(nullptr),
@@ -612,10 +634,34 @@ void WebViewHelper::Resize(const gfx::Size& size) {
   GetWebView()->MainFrameWidget()->Resize(size);
 }
 
+<<<<<<< HEAD
+void WebViewHelper::InitializeWebView(
+    WebViewClient* web_view_client,
+    class WebView* opener,
+    std::optional<blink::FencedFrame::DeprecatedFencedFrameMode>
+        fenced_frame_mode,
+    bool is_prerendering) {
+  auto browsing_context_group_info = BrowsingContextGroupInfo::CreateUnique();
+  if (opener) {
+    WebViewImpl* opener_impl = To<WebViewImpl>(opener);
+    browsing_context_group_info.browsing_context_group_token =
+        opener_impl->GetPage()->BrowsingContextGroupToken();
+  }
+  web_view_client =
+      CreateDefaultClientIfNeeded(web_view_client, owned_web_view_client_);
+  blink::mojom::PrerenderParamPtr prerender_param = nullptr;
+  if (is_prerendering) {
+    prerender_param = blink::mojom::PrerenderParam::New();
+    prerender_param->page_metric_suffix = "for_testing";
+    prerender_param->should_prepare_paint_tree = true;
+  }
+
+=======
 void WebViewHelper::InitializeWebView(TestWebViewClient* web_view_client,
                                       class WebView* opener) {
   test_web_view_client_ =
       CreateDefaultClientIfNeeded(web_view_client, owned_test_web_view_client_);
+>>>>>>> chromium
   web_view_ = To<WebViewImpl>(
       WebView::Create(test_web_view_client_,
                       /*is_hidden=*/false,
@@ -654,7 +700,8 @@ void WebViewHelper::InitializeWebView(TestWebViewClient* web_view_client,
 int TestWebFrameClient::loads_in_progress_ = 0;
 
 TestWebFrameClient::TestWebFrameClient()
-    : associated_interface_provider_(new AssociatedInterfaceProvider(nullptr)),
+    : associated_interface_provider_(new AssociatedInterfaceProvider(
+          base::SingleThreadTaskRunner::GetCurrentDefault())),
       effective_connection_type_(WebEffectiveConnectionType::kTypeUnknown) {}
 
 TestWebFrameClient::~TestWebFrameClient() = default;
@@ -810,6 +857,44 @@ TestWidgetInputHandlerHost* TestWebFrameWidget::GetInputHandlerHost() {
   return widget_input_handler_host_.get();
 }
 
+<<<<<<< HEAD
+WidgetInputHandlerManager* TestWebFrameWidget::GetWidgetInputHandlerManager()
+    const {
+  return widget_base_for_testing()->widget_input_handler_manager();
+}
+
+void TestWebFrameWidget::FlushInputHandlerTasks() {
+  base::RunLoop().RunUntilIdle();
+}
+
+void TestWebFrameWidget::DispatchThroughCcInputHandler(
+    const WebInputEvent& event) {
+  GetWidgetInputHandlerManager()->DispatchEvent(
+      std::make_unique<WebCoalescedInputEvent>(event.Clone(),
+                                               ui::LatencyInfo()),
+      WTF::BindOnce(
+          [](TestWebFrameWidget* widget, mojom::blink::InputEventResultSource,
+             const ui::LatencyInfo&, mojom::blink::InputEventResultState,
+             mojom::blink::DidOverscrollParamsPtr overscroll,
+             mojom::blink::TouchActionOptionalPtr) {
+            if (widget)
+              widget->last_overscroll_ = std::move(overscroll);
+          },
+          WrapWeakPersistent(this)));
+  FlushInputHandlerTasks();
+}
+
+void TestWebFrameWidget::RequestDecode(
+    const cc::DrawImage&,
+    base::OnceCallback<void(bool)> callback) {
+  // TODO(paint-dev): probably this should `std::move(callback).Run(true)`, but
+  // that could cause deep recursion into
+  // ResourceFetcher::MaybeStartSpeculativeImageDecode(). Currently, nothing
+  // depends on the callback actually running, so we just drop it.
+}
+
+=======
+>>>>>>> chromium
 display::ScreenInfo TestWebFrameWidget::GetInitialScreenInfo() {
   return display::ScreenInfo();
 }

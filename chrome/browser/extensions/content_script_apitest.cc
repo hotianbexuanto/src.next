@@ -109,10 +109,24 @@ const char kNewTabHtml[] = "<html>NewTabOverride!</html>";
 
 }  // namespace
 
+<<<<<<< HEAD
+using ContextType = extensions::browser_test_util::ContextType;
+
+class ContentScriptApiTest : public ExtensionApiTest {
+ public:
+  explicit ContentScriptApiTest(ContextType context_type = ContextType::kNone)
+      : ExtensionApiTest(context_type) {}
+
+  ContentScriptApiTest(const ContentScriptApiTest&) = delete;
+  ContentScriptApiTest& operator=(const ContentScriptApiTest&) = delete;
+
+  ~ContentScriptApiTest() override = default;
+=======
 class ContentScriptApiTest : public ExtensionApiTest {
  public:
   ContentScriptApiTest() {}
   ~ContentScriptApiTest() override {}
+>>>>>>> chromium
 
   void SetUpOnMainThread() override {
     ExtensionApiTest::SetUpOnMainThread();

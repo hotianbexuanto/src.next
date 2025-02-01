@@ -11,6 +11,9 @@ import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.MainDex;
 import org.chromium.base.annotations.NativeMethods;
 
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+
 /**
  * This UncaughtExceptionHandler will create a breakpad minidump when there is an uncaught
  * exception.
@@ -18,6 +21,7 @@ import org.chromium.base.annotations.NativeMethods;
  * The exception's stack trace will be added to the minidump's data. This allows java-only crashes
  * to be reported in the same way as other native crashes.
  */
+@NullMarked
 @JNINamespace("base::android")
 @MainDex
 public class JavaExceptionReporter implements Thread.UncaughtExceptionHandler {
@@ -77,7 +81,13 @@ public class JavaExceptionReporter implements Thread.UncaughtExceptionHandler {
 
     @NativeMethods
     interface Natives {
+<<<<<<< HEAD
+        void reportJavaException(boolean crashAfterReport, @Nullable Throwable e);
+
+        void reportJavaStackTrace(@JniType("std::string") String stackTrace);
+=======
         void reportJavaException(boolean crashAfterReport, Throwable e);
         void reportJavaStackTrace(String stackTrace);
+>>>>>>> chromium
     }
 }

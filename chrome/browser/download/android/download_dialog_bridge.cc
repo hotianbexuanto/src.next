@@ -86,22 +86,30 @@ void DownloadDialogBridge::ShowDialog(
   Java_DownloadDialogBridge_showDialog(
       env, java_obj_, native_window->GetJavaObject(),
       static_cast<long>(total_bytes), static_cast<int>(connection_type),
+<<<<<<< HEAD
+      static_cast<int>(dialog_type), suggested_path.AsUTF8Unsafe(),
+      profile->GetJavaObject());
+=======
       static_cast<int>(dialog_type),
       base::android::ConvertUTF8ToJavaString(env,
                                              suggested_path.AsUTF8Unsafe()),
       supports_later_dialog);
+>>>>>>> chromium
 }
 
 void DownloadDialogBridge::OnComplete(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& obj,
+<<<<<<< HEAD
+    std::string& returned_path) {
+=======
     const base::android::JavaParamRef<jstring>& returned_path,
     jboolean on_wifi,
     jlong start_time) {
+>>>>>>> chromium
   DownloadDialogResult dialog_result;
   dialog_result.location_result = DownloadLocationDialogResult::USER_CONFIRMED;
-  dialog_result.file_path = base::FilePath(
-      base::android::ConvertJavaStringToUTF8(env, returned_path));
+  dialog_result.file_path = base::FilePath(returned_path);
 
   if (on_wifi) {
     dialog_result.download_schedule =
@@ -150,11 +158,16 @@ JNI_DownloadDialogBridge_GetDownloadDefaultDirectory(JNIEnv* env) {
 // static
 void JNI_DownloadDialogBridge_SetDownloadAndSaveFileDefaultDirectory(
     JNIEnv* env,
+<<<<<<< HEAD
+    const base::android::JavaParamRef<jobject>& jpref_service,
+    std::string& directory) {
+=======
     const base::android::JavaParamRef<jstring>& directory) {
+>>>>>>> chromium
   PrefService* pref_service =
       ProfileManager::GetActiveUserProfile()->GetOriginalProfile()->GetPrefs();
 
-  base::FilePath path(base::android::ConvertJavaStringToUTF8(env, directory));
+  base::FilePath path(directory);
   pref_service->SetFilePath(prefs::kDownloadDefaultDirectory, path);
   pref_service->SetFilePath(prefs::kSaveFileDefaultDirectory, path);
 }

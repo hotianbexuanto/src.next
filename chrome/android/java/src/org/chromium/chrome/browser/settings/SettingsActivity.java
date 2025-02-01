@@ -57,9 +57,21 @@ import org.chromium.chrome.browser.signin.SyncConsentActivityLauncherImpl;
 import org.chromium.chrome.browser.site_settings.ChromeSiteSettingsDelegate;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager.SnackbarManageable;
+<<<<<<< HEAD
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetControllerFactory;
+import org.chromium.components.browser_ui.bottomsheet.ManagedBottomSheetController;
+import org.chromium.components.browser_ui.modaldialog.AppModalPresenter;
+import org.chromium.components.browser_ui.settings.EmbeddableSettingsPage;
+import org.chromium.components.browser_ui.util.TraceEventVectorDrawableCompat;
+import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
+import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
+import org.chromium.ui.KeyboardVisibilityDelegate;
+=======
 import org.chromium.components.browser_ui.settings.FragmentSettingsLauncher;
 import org.chromium.components.browser_ui.settings.SettingsLauncher;
 import org.chromium.components.browser_ui.site_settings.SiteSettingsPreferenceFragment;
+>>>>>>> chromium
 import org.chromium.ui.UiUtils;
 
 /**
@@ -96,8 +108,17 @@ public class SettingsActivity extends ChromeBaseAppCompatActivity
 
     private static boolean sActivityNotExportedChecked;
 
+<<<<<<< HEAD
+    private boolean mStandalone;
+    private Profile mProfile;
+    private ScrimManager mScrimManager;
+    private ManagedBottomSheetController mManagedBottomSheetController;
+    private final OneshotSupplierImpl<BottomSheetController> mBottomSheetControllerSupplier =
+            new OneshotSupplierImpl<>();
+=======
     /** An instance of settings launcher that can be injected into a fragment */
     private SettingsLauncher mSettingsLauncher = new SettingsLauncherImpl();
+>>>>>>> chromium
 
     private SnackbarManager mSnackbarManager;
 
@@ -142,6 +163,69 @@ public class SettingsActivity extends ChromeBaseAppCompatActivity
                 ApiCompatibilityUtils.getColor(res, R.color.default_primary_color)));
 
         setStatusBarColor();
+<<<<<<< HEAD
+        initBottomSheet();
+
+        mSnackbarManagerSupplier.set(
+                new SnackbarManager(this, findViewById(android.R.id.content), null));
+
+        mIntentRequestTracker = IntentRequestTracker.createFromActivity(this);
+    }
+
+    @Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+
+        // This callback is called only when the settings UI is operating in the single activity
+        // mode.
+        assert ChromeFeatureList.sSettingsSingleActivity.isEnabled();
+
+        if (mStandalone) {
+            // A standalone activity attempted to launch a non-standalone activity, but the intent
+            // was delivered to the standalone activity itself because of FLAG_ACTIVITY_SINGLE_TOP.
+            // Resend the intent without the flag to start a new activity. Bouncing activities has
+            // some cost in terms of time to launch the final activity, but this is fairly a rare
+            // flow anyway.
+            intent.removeFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent);
+            return;
+        }
+
+        // Android system briefly pauses an activity before calling its onNewIntent, then resume it
+        // soon. We defer making a fragment transaction to onResume because doing it here breaks
+        // fragment animations as all pending animations are cleared when an activity is resumed.
+        assert mPendingNewIntent == null;
+        mPendingNewIntent = intent;
+    }
+
+    private Fragment instantiateMainFragment(Intent intent) {
+        String fragmentName = intent.getStringExtra(EXTRA_SHOW_FRAGMENT);
+        if (fragmentName == null) {
+            fragmentName = MainSettings.class.getName();
+        }
+        Bundle arguments = intent.getBundleExtra(EXTRA_SHOW_FRAGMENT_ARGUMENTS);
+
+        return Fragment.instantiate(this, fragmentName, arguments);
+    }
+
+    /** Set up the bottom sheet for this activity. */
+    private void initBottomSheet() {
+        ViewGroup sheetContainer = findViewById(R.id.sheet_container);
+        // TODO: Observe scrim changes if status bar needs to change color with the scrim.
+        mScrimManager = new ScrimManager(this, (ViewGroup) sheetContainer.getParent());
+
+        mManagedBottomSheetController =
+                BottomSheetControllerFactory.createBottomSheetController(
+                        () -> mScrimManager,
+                        CallbackUtils.emptyCallback(),
+                        getWindow(),
+                        KeyboardVisibilityDelegate.getInstance(),
+                        () -> sheetContainer,
+                        () -> 0,
+                        /* desktopWindowStateManager= */ null);
+        mBottomSheetControllerSupplier.set(mManagedBottomSheetController);
+=======
+>>>>>>> chromium
     }
 
     // OnPreferenceStartFragmentCallback:
@@ -217,6 +301,15 @@ public class SettingsActivity extends ChromeBaseAppCompatActivity
         if (sResumedInstance == this) sResumedInstance = null;
     }
 
+<<<<<<< HEAD
+    @Override
+    protected void onDestroy() {
+        mScrimManager.destroy();
+        super.onDestroy();
+    }
+
+=======
+>>>>>>> chromium
     /**
      * Returns the fragment showing as this activity's main content, typically a {@link
      * PreferenceFragmentCompat}. This does not include dialogs or other {@link Fragment}s shown on

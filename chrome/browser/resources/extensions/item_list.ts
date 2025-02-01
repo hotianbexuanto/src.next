@@ -104,11 +104,99 @@ class ExtensionsItemListElement extends ExtensionsItemListElementBase {
                s => s.toLowerCase().includes(formattedFilter));
   }
 
+<<<<<<< HEAD
+  /**
+   * Computes the extensions that are affected by the manifest v2 deprecation
+   * and should be visible in the MV2 deprecation panel.
+   */
+  private computeMv2DeprecatedExtensions_():
+      chrome.developerPrivate.ExtensionInfo[] {
+    return this.extensions.filter((extension) => {
+      switch (this.mv2ExperimentStage_) {
+        case Mv2ExperimentStage.NONE:
+          return false;
+        case Mv2ExperimentStage.WARNING:
+          return extension.isAffectedByMV2Deprecation &&
+              !extension.didAcknowledgeMV2DeprecationNotice;
+        case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+          return extension.isAffectedByMV2Deprecation &&
+              extension.disableReasons.unsupportedManifestVersion &&
+              !extension.didAcknowledgeMV2DeprecationNotice;
+        case Mv2ExperimentStage.UNSUPPORTED:
+          return extension.isAffectedByMV2Deprecation &&
+              extension.disableReasons.unsupportedManifestVersion;
+      }
+    });
+  }
+
+  /**
+   * Computes the extensions that are potentially unsafe and should be visible
+   * in the review panel.
+   */
+  private computeUnsafeExtensions_(): chrome.developerPrivate.ExtensionInfo[] {
+    return this.extensions.filter(
+        extension =>
+            !!(extension.safetyCheckText &&
+               extension.safetyCheckText.panelString));
+  }
+
+  /**
+   * Returns whether the review deprecation panel should be visible.
+   */
+  private computeShowSafetyCheckReviewPanel_(): boolean {
+    // If there are any unsafe extensions, they will be shown in the panel.
+    // Store this, so we can show the completion info in the panel when there
+    // are no unsafe extensions left after the user finished reviewing the
+    // extensions.
+    if (this.unsafeExtensions_.length !== 0) {
+      this.reviewPanelShown_ = true;
+    }
+
+    // Panel is visible if there are any unsafe extensions, or the there are
+    // none left after the user finished reviewing the extensions.
+    return this.unsafeExtensions_.length !== 0 || this.reviewPanelShown_;
+  }
+
+
+  /*
+   * Indicates whether the mv2 deprecation panel is shown.
+   */
+  protected hasSafetyCheckTriggeringExtension_(): boolean {
+    for (const extension of this.extensions) {
+      if (!!extension.safetyCheckText &&
+          !!extension.safetyCheckText.panelString &&
+          this.showSafetyCheckReviewPanel_) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Returns whether the manifest v2 deprecation panel should be visible.
+   */
+  protected shouldShowMv2DeprecationPanel_(): boolean {
+    switch (this.mv2ExperimentStage_) {
+      case Mv2ExperimentStage.NONE:
+        return false;
+      case Mv2ExperimentStage.WARNING:
+      case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+      case Mv2ExperimentStage.UNSUPPORTED:
+        // Panel is visible when it has not been dismissed and at least one
+        // extension is affected by the MV2 deprecation.
+        return !this.isMv2DeprecationNoticeDismissed &&
+            this.mv2DeprecatedExtensions_?.length !== 0;
+    }
+  }
+
+  protected shouldShowEmptyItemsMessage_(): boolean {
+=======
   private shouldShowEmptyItemsMessage_() {
     if (!this.apps || !this.extensions) {
       return;
     }
 
+>>>>>>> chromium
     return this.apps.length === 0 && this.extensions.length === 0;
   }
 

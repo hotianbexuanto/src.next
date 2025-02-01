@@ -8,7 +8,11 @@
 #include <string>
 
 #include "base/check_op.h"
+<<<<<<< HEAD
+#include "base/containers/fixed_flat_set.h"
+=======
 #include "base/containers/flat_set.h"
+>>>>>>> chromium
 #include "base/feature_list.h"
 #include "base/no_destructor.h"
 #include "base/strings/string_piece.h"
@@ -22,8 +26,18 @@
 namespace content {
 
 bool HasWebUIScheme(const GURL& url) {
+<<<<<<< HEAD
+  return HasWebUIOrigin(url::Origin::Create(url));
+}
+
+bool HasWebUIOrigin(const url::Origin& origin) {
+  return origin.scheme() == content::kChromeUIScheme ||
+         origin.scheme() == content::kChromeUIUntrustedScheme ||
+         origin.scheme() == content::kChromeDevToolsScheme;
+=======
   return url.SchemeIs(kChromeDevToolsScheme) || url.SchemeIs(kChromeUIScheme) ||
          url.SchemeIs(kChromeUIUntrustedScheme);
+>>>>>>> chromium
 }
 
 bool IsSavableURL(const GURL& url) {

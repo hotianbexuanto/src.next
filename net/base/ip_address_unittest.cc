@@ -4,6 +4,11 @@
 
 #include "net/base/ip_address.h"
 
+<<<<<<< HEAD
+#include <array>
+#include <optional>
+=======
+>>>>>>> chromium
 #include <vector>
 
 #include "base/cxx17_backports.h"
@@ -33,9 +38,15 @@ TEST(IPAddressBytesTest, ConstructEmpty) {
 }
 
 TEST(IPAddressBytesTest, ConstructIPv4) {
+<<<<<<< HEAD
+  auto data = std::to_array<uint8_t>({192, 168, 1, 1});
+  IPAddressBytes bytes(data);
+  ASSERT_EQ(std::size(data), bytes.size());
+=======
   uint8_t data[] = {192, 168, 1, 1};
   IPAddressBytes bytes(data, base::size(data));
   ASSERT_EQ(base::size(data), bytes.size());
+>>>>>>> chromium
   size_t i = 0;
   for (uint8_t byte : bytes)
     EXPECT_EQ(data[i++], byte);
@@ -43,9 +54,32 @@ TEST(IPAddressBytesTest, ConstructIPv4) {
 }
 
 TEST(IPAddressBytesTest, ConstructIPv6) {
+<<<<<<< HEAD
+  auto data = std::to_array<uint8_t>({
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+  });
+  IPAddressBytes bytes(data);
+  ASSERT_EQ(std::size(data), bytes.size());
+=======
   uint8_t data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   IPAddressBytes bytes(data, base::size(data));
   ASSERT_EQ(base::size(data), bytes.size());
+>>>>>>> chromium
   size_t i = 0;
   for (uint8_t byte : bytes)
     EXPECT_EQ(data[i++], byte);

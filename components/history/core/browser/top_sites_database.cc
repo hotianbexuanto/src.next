@@ -308,8 +308,20 @@ bool TopSitesDatabase::Init(const base::FilePath& db_name) {
 bool TopSitesDatabase::InitImpl(const base::FilePath& db_name) {
   const bool file_existed = base::PathExists(db_name);
 
+<<<<<<< HEAD
+  // Settings copied from FaviconDatabase.
+  db_ = std::make_unique<sql::Database>(
+      sql::DatabaseOptions{.page_size = 4096, .cache_size = 32},
+      sql::Database::Tag("TopSites"));
+  db_->set_error_callback(
+      base::BindRepeating(&TopSitesDatabase::DatabaseErrorCallback,
+                          base::Unretained(this), db_name));
+
+  if (!db_->Open(db_name))
+=======
   db_ = CreateDB(db_name);
   if (!db_)
+>>>>>>> chromium
     return false;
 
   // An older version had data with no meta table.  Deprecate by razing.

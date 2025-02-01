@@ -1291,8 +1291,13 @@ static inline bool NeedsToReinsertIntoFlowThread(
   // re-evaluate the need for column sets. There may be out-of-flow descendants
   // further down that become part of the flow thread, or cease to be part of
   // the flow thread, because of this change.
+<<<<<<< HEAD
+  if (object.ComputeIsFixedContainer(old_style) !=
+      object.ComputeIsFixedContainer(new_style)) {
+=======
   if (box.ComputeIsFixedContainer(&old_style) !=
       box.ComputeIsFixedContainer(&new_style))
+>>>>>>> chromium
     return true;
   return old_style.GetPosition() != new_style.GetPosition();
 }

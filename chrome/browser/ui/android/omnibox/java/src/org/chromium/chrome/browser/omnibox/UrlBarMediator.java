@@ -251,6 +251,11 @@ class UrlBarMediator
         mModel.set(UrlBarProperties.URL_DIRECTION_LISTENER, listener);
     }
 
+    /** Sets the property indicating the URL bar is used by Custom Tab. */
+    public void setIsInCct(boolean isInCct) {
+        mModel.set(UrlBarProperties.IS_IN_CCT, isInCct);
+    }
+
     @Override
     public String getReplacementCutCopyText(
             String currentText, int selectionStart, int selectionEnd) {

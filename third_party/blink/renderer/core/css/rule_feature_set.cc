@@ -32,16 +32,28 @@
 
 #include <algorithm>
 #include <bitset>
+<<<<<<< HEAD
+
+#include "third_party/blink/public/common/features.h"
+=======
 #include "base/auto_reset.h"
 #include "third_party/blink/renderer/core/css/css_custom_ident_value.h"
 #include "third_party/blink/renderer/core/css/css_function_value.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/css_selector.h"
 #include "third_party/blink/renderer/core/css/css_selector_list.h"
 #include "third_party/blink/renderer/core/css/css_value_list.h"
 #include "third_party/blink/renderer/core/css/invalidation/invalidation_set.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/css/invalidation/rule_invalidation_data_builder.h"
+#include "third_party/blink/renderer/core/css/invalidation/rule_invalidation_data_tracer.h"
+#include "third_party/blink/renderer/core/css/media_query_exp.h"
+#include "third_party/blink/renderer/core/css/style_scope.h"
+=======
 #include "third_party/blink/renderer/core/css/rule_set.h"
 #include "third_party/blink/renderer/core/css/style_rule.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"

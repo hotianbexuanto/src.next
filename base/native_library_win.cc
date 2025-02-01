@@ -133,8 +133,9 @@ NativeLibrary LoadNativeLibraryHelper(const FilePath& library_path,
   if (!module && error)
     error->code = ::GetLastError();
 
-  if (restore_directory)
+  if (restore_directory) {
     SetCurrentDirectory(current_directory);
+  }
 
   // Get the library loading result and log it to UMA.
   LogLibrarayLoadResultToUMA(
@@ -158,11 +159,15 @@ NativeLibrary LoadSystemLibraryHelper(const FilePath& library_path,
                                              : LOAD_WITH_ALTERED_SEARCH_PATH;
     module = ::LoadLibraryExW(library_path.value().c_str(), nullptr, flags);
 
-    if (!module && error)
+    if (!module && error) {
       error->code = ::GetLastError();
+<<<<<<< HEAD
+    }
+=======
 
     LogLibrarayLoadResultToUMA(
         GetLoadLibraryResult(are_search_flags_available, !!module));
+>>>>>>> chromium
   }
 
   return module;
@@ -171,8 +176,9 @@ NativeLibrary LoadSystemLibraryHelper(const FilePath& library_path,
 FilePath GetSystemLibraryName(FilePath::StringPieceType name) {
   FilePath library_path;
   // Use an absolute path to load the DLL to avoid DLL preloading attacks.
-  if (PathService::Get(DIR_SYSTEM, &library_path))
+  if (PathService::Get(DIR_SYSTEM, &library_path)) {
     library_path = library_path.Append(name);
+  }
   return library_path;
 }
 
@@ -210,8 +216,9 @@ NativeLibrary LoadSystemLibrary(FilePath::StringPieceType name,
                                 NativeLibraryLoadError* error) {
   FilePath library_path = GetSystemLibraryName(name);
   if (library_path.empty()) {
-    if (error)
+    if (error) {
       error->code = ERROR_NOT_FOUND;
+    }
     return nullptr;
   }
   return LoadSystemLibraryHelper(library_path, error);
@@ -221,8 +228,9 @@ NativeLibrary PinSystemLibrary(FilePath::StringPieceType name,
                                NativeLibraryLoadError* error) {
   FilePath library_path = GetSystemLibraryName(name);
   if (library_path.empty()) {
-    if (error)
+    if (error) {
       error->code = ERROR_NOT_FOUND;
+    }
     return nullptr;
   }
 
@@ -238,8 +246,9 @@ NativeLibrary PinSystemLibrary(FilePath::StringPieceType name,
 
   // Load and pin the library since it wasn't already loaded.
   module = ScopedNativeLibrary(LoadSystemLibraryHelper(library_path, error));
-  if (!module.is_valid())
+  if (!module.is_valid()) {
     return nullptr;
+  }
 
   ScopedNativeLibrary temp;
   if (::GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN,
@@ -248,8 +257,9 @@ NativeLibrary PinSystemLibrary(FilePath::StringPieceType name,
     return module.release();
   }
 
-  if (error)
+  if (error) {
     error->code = ::GetLastError();
+  }
   // Return nullptr since we failed to pin the module.
   return nullptr;
 }

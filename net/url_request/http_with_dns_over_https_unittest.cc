@@ -222,6 +222,19 @@ class TestHttpDelegate : public HttpStreamRequest::Delegate {
 
   void OnQuicBroken() override {}
 
+<<<<<<< HEAD
+  void OnSwitchesToHttpStreamPool(
+      HttpStreamPoolRequestInfo request_info) override {
+    CHECK(base::FeatureList::IsEnabled(features::kHappyEyeballsV3));
+    request_ = session_->http_stream_pool()->RequestStream(
+        this, std::move(request_info), DEFAULT_PRIORITY,
+        /*allowed_bad_certs=*/{},
+        /*enable_ip_based_pooling=*/false,
+        /*enable_alternative_services=*/false, NetLogWithSource());
+  }
+
+=======
+>>>>>>> chromium
  private:
   base::RunLoop* loop_;
 };

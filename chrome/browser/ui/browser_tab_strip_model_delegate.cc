@@ -10,7 +10,6 @@
 #include "base/command_line.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sessions/tab_restore_service_factory.h"
-#include "chrome/browser/task_manager/web_contents_tags.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_list.h"
@@ -73,12 +72,23 @@ Browser* BrowserTabStripModelDelegate::CreateNewStripWithContents(
 
     // Enforce that there is an active tab in the strip at all times by forcing
     // the first web contents to be marked as active.
+<<<<<<< HEAD
+    if (i == 0) {
+      item.add_types |= AddTabTypes::ADD_ACTIVE;
+    }
+
+    content::WebContents* const raw_web_contents =
+        item.tab.get()->GetContents();
+    new_model->InsertDetachedTabAt(static_cast<int>(i), std::move(item.tab),
+                                   item.add_types);
+=======
     if (i == 0)
       item.add_types |= TabStripModel::ADD_ACTIVE;
 
     content::WebContents* raw_web_contents = item.web_contents.get();
     new_model->InsertWebContentsAt(
         static_cast<int>(i), std::move(item.web_contents), item.add_types);
+>>>>>>> chromium
     // Make sure the loading state is updated correctly, otherwise the throbber
     // won't start if the page is loading.
     // TODO(beng): find a better way of doing this.
@@ -92,9 +102,6 @@ Browser* BrowserTabStripModelDelegate::CreateNewStripWithContents(
 void BrowserTabStripModelDelegate::WillAddWebContents(
     content::WebContents* contents) {
   TabHelpers::AttachTabHelpers(contents);
-
-  // Make the tab show up in the task manager.
-  task_manager::WebContentsTags::CreateForTabContents(contents);
 }
 
 int BrowserTabStripModelDelegate::GetDragActions() const {
@@ -165,15 +172,25 @@ void BrowserTabStripModelDelegate::MoveTabsToNewWindow(
 
 void BrowserTabStripModelDelegate::MoveGroupToNewWindow(
     const tab_groups::TabGroupId& group) {
+<<<<<<< HEAD
+  TabGroupModel* group_model = browser_->tab_strip_model()->group_model();
+  if (!group_model) {
+    return;
+  }
+
+  gfx::Range range = group_model->GetTabGroup(group)->ListTabs();
+=======
   gfx::Range range = browser_->tab_strip_model()
                          ->group_model()
                          ->GetTabGroup(group)
                          ->ListTabs();
+>>>>>>> chromium
 
   std::vector<int> indices;
   indices.reserve(range.length());
-  for (auto i = range.start(); i < range.end(); ++i)
+  for (auto i = range.start(); i < range.end(); ++i) {
     indices.push_back(i);
+  }
 
   // chrome:: to disambiguate the free function from
   // BrowserTabStripModelDelegate::MoveTabsToNewWindow().
@@ -182,8 +199,14 @@ void BrowserTabStripModelDelegate::MoveGroupToNewWindow(
 
 absl::optional<SessionID> BrowserTabStripModelDelegate::CreateHistoricalTab(
     content::WebContents* contents) {
+<<<<<<< HEAD
+  if (!BrowserSupportsHistoricalEntries()) {
+    return std::nullopt;
+  }
+=======
   if (!BrowserSupportsHistoricalEntries())
     return absl::nullopt;
+>>>>>>> chromium
 
   sessions::TabRestoreService* service =
       TabRestoreServiceFactory::GetForProfile(browser_->profile());
@@ -199,8 +222,9 @@ absl::optional<SessionID> BrowserTabStripModelDelegate::CreateHistoricalTab(
 
 void BrowserTabStripModelDelegate::CreateHistoricalGroup(
     const tab_groups::TabGroupId& group) {
-  if (!BrowserSupportsHistoricalEntries())
+  if (!BrowserSupportsHistoricalEntries()) {
     return;
+  }
 
   sessions::TabRestoreService* service =
       TabRestoreServiceFactory::GetForProfile(browser_->profile());
@@ -215,8 +239,9 @@ void BrowserTabStripModelDelegate::GroupCloseStopped(
     const tab_groups::TabGroupId& group) {
   sessions::TabRestoreService* service =
       TabRestoreServiceFactory::GetForProfile(browser_->profile());
-  if (service)
+  if (service) {
     service->GroupCloseStopped(group);
+  }
 }
 
 bool BrowserTabStripModelDelegate::RunUnloadListenerBeforeClosing(
@@ -231,9 +256,95 @@ bool BrowserTabStripModelDelegate::ShouldRunUnloadListenerBeforeClosing(
 
 bool BrowserTabStripModelDelegate::ShouldDisplayFavicon(
     content::WebContents* contents) const {
+<<<<<<< HEAD
+  // Don't show favicon when on an interstitial.
+  security_interstitials::SecurityInterstitialTabHelper*
+      security_interstitial_tab_helper = security_interstitials::
+          SecurityInterstitialTabHelper::FromWebContents(contents);
+  if (security_interstitial_tab_helper &&
+      security_interstitial_tab_helper->IsDisplayingInterstitial()) {
+    return false;
+  }
+
   return browser_->ShouldDisplayFavicon(contents);
 }
 
+bool BrowserTabStripModelDelegate::CanReload() const {
+  return chrome::CanReload(browser_);
+}
+
+void BrowserTabStripModelDelegate::AddToReadLater(
+    content::WebContents* web_contents) {
+  ReadingListModel* model =
+      ReadingListModelFactory::GetForBrowserContext(browser_->profile());
+  if (!model || !model->loaded()) {
+    return;
+  }
+
+  chrome::MoveTabToReadLater(browser_, web_contents);
+}
+
+bool BrowserTabStripModelDelegate::SupportsReadLater() {
+  return !browser_->profile()->IsGuestSession() && !IsForWebApp();
+}
+
+bool BrowserTabStripModelDelegate::IsForWebApp() {
+  return web_app::AppBrowserController::IsWebApp(browser_);
+}
+
+void BrowserTabStripModelDelegate::CopyURL(content::WebContents* web_contents) {
+  chrome::CopyURL(browser_, web_contents);
+}
+
+void BrowserTabStripModelDelegate::GoBack(content::WebContents* web_contents) {
+  chrome::GoBack(web_contents);
+}
+
+bool BrowserTabStripModelDelegate::CanGoBack(
+    content::WebContents* web_contents) {
+  return chrome::CanGoBack(web_contents);
+}
+
+bool BrowserTabStripModelDelegate::IsNormalWindow() {
+  return browser_->is_type_normal();
+}
+
+BrowserWindowInterface*
+BrowserTabStripModelDelegate::GetBrowserWindowInterface() {
+  return browser_;
+}
+
+void BrowserTabStripModelDelegate::OnGroupsDestruction(
+    const std::vector<tab_groups::TabGroupId>& group_ids,
+    base::OnceCallback<void()> close_callback,
+    bool delete_groups) {
+  if (!delete_groups && tab_groups::IsTabGroupsSaveV2Enabled()) {
+    // Close the groups rather than delete them to retain the saved group.
+    for (auto group_id : group_ids) {
+      tab_groups::SavedTabGroupUtils::RemoveGroupFromTabstrip(browser_,
+                                                              group_id);
+    }
+    std::move(close_callback).Run();
+  } else {
+    tab_groups::SavedTabGroupUtils::MaybeShowSavedTabGroupDeletionDialog(
+        browser_, tab_groups::GroupDeletionReason::ClosedLastTab, group_ids,
+        std::move(close_callback));
+  }
+}
+
+void BrowserTabStripModelDelegate::OnRemovingAllTabsFromGroups(
+    const std::vector<tab_groups::TabGroupId>& group_ids,
+    base::OnceCallback<void()> callback) {
+  tab_groups::SavedTabGroupUtils::MaybeShowSavedTabGroupDeletionDialog(
+      browser_, tab_groups::GroupDeletionReason::UngroupedLastTab, group_ids,
+      std::move(callback));
+}
+
+=======
+  return browser_->ShouldDisplayFavicon(contents);
+}
+
+>>>>>>> chromium
 ////////////////////////////////////////////////////////////////////////////////
 // BrowserTabStripModelDelegate, private:
 

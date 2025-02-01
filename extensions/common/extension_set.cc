@@ -113,22 +113,40 @@ const Extension* ExtensionSet::GetAppByURL(const GURL& url) const {
 }
 
 const Extension* ExtensionSet::GetHostedAppByURL(const GURL& url) const {
+<<<<<<< HEAD
+  auto hosted_app_itr =
+      std::ranges::find_if(extensions_, [&](const auto& extension_info) {
+        return extension_info.second->web_extent().MatchesURL(url);
+      });
+  return hosted_app_itr != extensions_.end() ? hosted_app_itr->second.get()
+                                             : nullptr;
+=======
   for (auto iter = extensions_.cbegin(); iter != extensions_.cend(); ++iter) {
     if (iter->second->web_extent().MatchesURL(url))
       return iter->second.get();
   }
 
   return NULL;
+>>>>>>> chromium
 }
 
 const Extension* ExtensionSet::GetHostedAppByOverlappingWebExtent(
     const URLPatternSet& extent) const {
+<<<<<<< HEAD
+  auto hosted_app_itr =
+      std::ranges::find_if(extensions_, [&](const auto& extension_info) {
+        return extension_info.second->web_extent().OverlapsWith(extent);
+      });
+  return hosted_app_itr != extensions_.end() ? hosted_app_itr->second.get()
+                                             : nullptr;
+=======
   for (auto iter = extensions_.cbegin(); iter != extensions_.cend(); ++iter) {
     if (iter->second->web_extent().OverlapsWith(extent))
       return iter->second.get();
   }
 
   return NULL;
+>>>>>>> chromium
 }
 
 bool ExtensionSet::InSameExtent(const GURL& old_url,
@@ -138,10 +156,29 @@ bool ExtensionSet::InSameExtent(const GURL& old_url,
 }
 
 const Extension* ExtensionSet::GetByID(const ExtensionId& id) const {
+<<<<<<< HEAD
+  return base::FindPtrOrNull(extensions_, id);
+}
+
+const Extension* ExtensionSet::GetByGUID(const std::string& guid) const {
+  auto extension_itr = std::ranges::find(
+      extensions_, guid,
+      [](const auto& extension_info) { return extension_info.second->guid(); });
+  return extension_itr != extensions_.end() ? extension_itr->second.get()
+                                            : nullptr;
+}
+
+const Extension* ExtensionSet::GetByIDorGUID(
+    const std::string& id_or_guid) const {
+  if (auto* extension = GetByID(id_or_guid))
+    return extension;
+  return GetByGUID(id_or_guid);
+=======
   auto i = extensions_.find(id);
   if (i != extensions_.end())
     return i->second.get();
   return nullptr;
+>>>>>>> chromium
 }
 
 ExtensionIdSet ExtensionSet::GetIDs() const {
@@ -156,6 +193,13 @@ bool ExtensionSet::ExtensionBindingsAllowed(const GURL& url) const {
   if (url.SchemeIs(kExtensionScheme))
     return true;
 
+<<<<<<< HEAD
+  return std::ranges::any_of(extensions_, [&url](const auto& extension_info) {
+    const Extension* extension = extension_info.second.get();
+    return extension->location() == mojom::ManifestLocation::kComponent &&
+           extension->web_extent().MatchesURL(url);
+  });
+=======
   for (auto it = extensions_.cbegin(); it != extensions_.cend(); ++it) {
     if (it->second->location() == mojom::ManifestLocation::kComponent &&
         it->second->web_extent().MatchesURL(url))
@@ -163,6 +207,7 @@ bool ExtensionSet::ExtensionBindingsAllowed(const GURL& url) const {
   }
 
   return false;
+>>>>>>> chromium
 }
 
 }  // namespace extensions

@@ -24,7 +24,12 @@
 #include "extensions/browser/view_type_utils.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
+<<<<<<< HEAD
+#include "extensions/common/extension_features.h"
+#include "extensions/common/extension_id.h"
+=======
 #include "extensions/common/extension_messages.h"
+>>>>>>> chromium
 #include "extensions/common/mojom/view_type.mojom.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/mojom/autoplay/autoplay.mojom.h"
@@ -75,6 +80,12 @@ ExtensionWebContentsObserver::ExtensionWebContentsObserver(
 ExtensionWebContentsObserver::~ExtensionWebContentsObserver() {
 }
 
+content::WebContents* ExtensionWebContentsObserver::GetAssociatedWebContents()
+    const {
+  DCHECK(initialized_);
+  return web_contents();
+}
+
 void ExtensionWebContentsObserver::InitializeRenderFrame(
     content::RenderFrameHost* render_frame_host) {
   DCHECK(initialized_);
@@ -95,6 +106,14 @@ void ExtensionWebContentsObserver::InitializeRenderFrame(
   // to request pages from the extension's origin.
   content::ChildProcessSecurityPolicy* security_policy =
       content::ChildProcessSecurityPolicy::GetInstance();
+<<<<<<< HEAD
+  int process_id = render_frame_host->GetProcess()->GetDeprecatedID();
+  security_policy->GrantRequestOrigin(process_id, frame_extension->origin());
+
+  // Notify the render frame of the view type.
+  GetLocalFrameChecked(render_frame_host)
+      .NotifyRenderViewType(GetViewType(render_frame_host));
+=======
   int process_id = render_frame_host->GetProcess()->GetID();
   security_policy->GrantRequestOrigin(
       process_id, url::Origin::Create(frame_extension->url()));
@@ -102,19 +121,13 @@ void ExtensionWebContentsObserver::InitializeRenderFrame(
   // Notify the render frame of the view type.
   GetLocalFrame(render_frame_host)
       ->NotifyRenderViewType(GetViewType(web_contents()));
+>>>>>>> chromium
 
   ProcessManager::Get(browser_context_)
-      ->RegisterRenderFrameHost(web_contents(), render_frame_host,
-                                frame_extension);
+      ->RegisterRenderFrameHost(render_frame_host, frame_extension);
 }
 
-content::WebContents* ExtensionWebContentsObserver::GetAssociatedWebContents()
-    const {
-  DCHECK(initialized_);
-  return web_contents();
-}
-
-void ExtensionWebContentsObserver::RenderFrameCreated(
+void ExtensionWebContentsObserver::SetUpRenderFrameHost(
     content::RenderFrameHost* render_frame_host) {
   DCHECK(initialized_);
   InitializeRenderFrame(render_frame_host);
@@ -138,6 +151,11 @@ void ExtensionWebContentsObserver::RenderFrameCreated(
   // ChromeContentBrowserClient::RegisterNonNetworkSubresourceURLLoaderFactories.
   if (type == Manifest::TYPE_EXTENSION ||
       type == Manifest::TYPE_LEGACY_PACKAGED_APP) {
+<<<<<<< HEAD
+    util::InitializeFileSchemeAccessForExtension(
+        render_frame_host->GetProcess()->GetDeprecatedID(), extension->id(),
+        browser_context_);
+=======
     ExtensionPrefs* prefs = ExtensionPrefs::Get(browser_context_);
     // TODO(karandeepb): This should probably use
     // extensions::util::AllowFileAccess.
@@ -145,6 +163,7 @@ void ExtensionWebContentsObserver::RenderFrameCreated(
       content::ChildProcessSecurityPolicy::GetInstance()->GrantRequestScheme(
           render_frame_host->GetProcess()->GetID(), url::kFileScheme);
     }
+>>>>>>> chromium
   }
 
   // Tells the new frame that it's hosted in an extension process.
@@ -159,6 +178,16 @@ void ExtensionWebContentsObserver::RenderFrameCreated(
       ->ActivateExtensionInProcess(*extension, render_frame_host->GetProcess());
 }
 
+void ExtensionWebContentsObserver::RenderFrameCreated(
+    content::RenderFrameHost* render_frame_host) {
+  if (base::FeatureList::IsEnabled(
+          extensions_features::kRemoveCoreSiteInstance)) {
+    // If the primordial SiteInstance in ProcessManager is not used, we need
+    // to wait until `ReadyToCommitNavigation()` to set up the render frame.
+    return;
+  }
+  SetUpRenderFrameHost(render_frame_host);
+}
 void ExtensionWebContentsObserver::RenderFrameDeleted(
     content::RenderFrameHost* render_frame_host) {
   DCHECK(initialized_);
@@ -171,7 +200,23 @@ void ExtensionWebContentsObserver::RenderFrameDeleted(
 
 void ExtensionWebContentsObserver::ReadyToCommitNavigation(
     content::NavigationHandle* navigation_handle) {
+<<<<<<< HEAD
+  if (base::FeatureList::IsEnabled(
+          extensions_features::kRemoveCoreSiteInstance)) {
+    SetUpRenderFrameHost(navigation_handle->GetRenderFrameHost());
+  }
+
+  ScriptInjectionTracker::ReadyToCommitNavigation(PassKey(), navigation_handle);
+
+  // We don't force autoplay to allow while prerendering.
+  if (navigation_handle->GetRenderFrameHost()->GetLifecycleState() ==
+          content::RenderFrameHost::LifecycleState::kPrerendering &&
+      !navigation_handle->IsPrerenderedPageActivation()) {
+    return;
+  }
+=======
   ContentScriptTracker::ReadyToCommitNavigation(PassKey(), navigation_handle);
+>>>>>>> chromium
 
   const ExtensionRegistry* const registry =
       ExtensionRegistry::Get(browser_context_);
@@ -218,8 +263,7 @@ void ExtensionWebContentsObserver::DidFinishNavigation(
     if (!frame_extension)
       pm->UnregisterRenderFrameHost(render_frame_host);
   } else if (frame_extension && render_frame_host->IsRenderFrameLive()) {
-    pm->RegisterRenderFrameHost(web_contents(), render_frame_host,
-                                frame_extension);
+    pm->RegisterRenderFrameHost(render_frame_host, frame_extension);
   }
 }
 

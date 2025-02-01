@@ -72,11 +72,19 @@ std::unique_ptr<HttpStreamFactory::Job> TestJobFactory::CreateMainJob(
     GURL origin_url,
     bool is_websocket,
     bool enable_ip_based_pooling,
+<<<<<<< HEAD
+    NetLog* net_log,
+    NextProto alternative_protocol = NextProto::kProtoUnknown,
+    quic::ParsedQuicVersion quic_version =
+        quic::ParsedQuicVersion::Unsupported()) {
+  auto job = std::make_unique<MockHttpStreamFactoryJob>(
+=======
     NetLog* net_log) {
   if (override_main_job_url_)
     origin_url = main_job_alternative_url_;
 
   auto main_job = std::make_unique<MockHttpStreamFactoryJob>(
+>>>>>>> chromium
       delegate, job_type, session, request_info, priority, proxy_info,
       SSLConfig(), SSLConfig(), std::move(destination), origin_url,
       kProtoUnknown, quic::ParsedQuicVersion::Unsupported(), is_websocket,

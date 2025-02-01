@@ -6,12 +6,19 @@ package org.chromium.base;
 
 import androidx.annotation.IntDef;
 
+import org.chromium.build.annotations.NullMarked;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+<<<<<<< HEAD
+/** A set of states that represent the last state change of an Activity. */
+@NullMarked
+=======
 /**
  * A set of states that represent the last state change of an Activity.
  */
+>>>>>>> chromium
 @Retention(RetentionPolicy.SOURCE)
 @IntDef({ActivityState.CREATED, ActivityState.STARTED, ActivityState.RESUMED, ActivityState.PAUSED,
         ActivityState.STOPPED, ActivityState.DESTROYED})

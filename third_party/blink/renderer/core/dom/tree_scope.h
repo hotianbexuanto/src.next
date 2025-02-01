@@ -160,6 +160,19 @@ class CORE_EXPORT TreeScope : public GarbageCollectedMixin {
   void SetNeedsStyleRecalcForViewportUnits();
 
  private:
+<<<<<<< HEAD
+  static void OnAdoptedStyleSheetSet(GarbageCollectedMixin*,
+                                     ScriptState*,
+                                     V8ObservableArrayCSSStyleSheet&,
+                                     uint32_t,
+                                     Member<CSSStyleSheet>&);
+  static void OnAdoptedStyleSheetDelete(GarbageCollectedMixin*,
+                                        ScriptState*,
+                                        V8ObservableArrayCSSStyleSheet&,
+                                        uint32_t);
+
+=======
+>>>>>>> chromium
   Element* HitTestPointInternal(Node*, HitTestPointType) const;
   Element* FindAnchorWithName(const String& name);
 

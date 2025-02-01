@@ -102,8 +102,332 @@ class SerializerMarkupAccumulator : public MarkupAccumulator {
   void AppendExtraForHeadElement(const Element&);
   void AppendStylesheets(Document* document, bool style_element_only);
 
+<<<<<<< HEAD
+    // Append the rewritten attribute.
+    // TODO(tiger): Refactor MarkupAccumulator so it is easier to append an
+    // attribute like this.
+    markup_.Append(' ');
+    markup_.Append(attribute_name);
+    markup_.Append("=\"");
+    AppendAttributeValue(attribute_value);
+    markup_.Append("\"");
+  }
+
+  void AddResourceForElement(Document& document, const Element& element) {
+    // We have to process in-line style as it might contain some resources
+    // (typically background images).
+    if (element.IsStyledElement()) {
+      RetrieveResourcesForProperties(element.InlineStyle(), document);
+      RetrieveResourcesForProperties(
+          const_cast<Element&>(element).PresentationAttributeStyle(), document);
+    }
+
+    if (const auto* image = DynamicTo<HTMLImageElement>(element)) {
+      AtomicString image_url_value;
+      const Element* parent = element.parentElement();
+      if (parent && IsA<HTMLPictureElement>(parent)) {
+        // If parent element is <picture>, use ImageSourceURL() to get best fit
+        // image URL from sibling source.
+        image_url_value = image->ImageSourceURL();
+      } else {
+        // Otherwise, it is single <img> element. We should get image url
+        // contained in href attribute. ImageSourceURL() may return a different
+        // URL from srcset attribute.
+        image_url_value = image->FastGetAttribute(html_names::kSrcAttr);
+      }
+      ImageResourceContent* cached_image = image->CachedImage();
+      resource_serializer_->AddImageToResources(
+          cached_image, document.CompleteURL(image_url_value));
+    } else if (const auto* svg_image = DynamicTo<SVGImageElement>(element)) {
+      if (MHTMLImprovementsEnabled()) {
+        ImageResourceContent* cached_image = svg_image->CachedImage();
+        if (cached_image) {
+          resource_serializer_->AddImageToResources(
+              cached_image, document.CompleteURL(svg_image->SourceURL()));
+        }
+      }
+    } else if (const auto* input = DynamicTo<HTMLInputElement>(element)) {
+      if (input->FormControlType() == FormControlType::kInputImage &&
+          input->ImageLoader()) {
+        KURL image_url = input->Src();
+        ImageResourceContent* cached_image = input->ImageLoader()->GetContent();
+        resource_serializer_->AddImageToResources(cached_image, image_url);
+      }
+    } else if (const auto* link = DynamicTo<HTMLLinkElement>(element)) {
+      if (CSSStyleSheet* sheet = link->sheet()) {
+        KURL sheet_url =
+            document.CompleteURL(link->FastGetAttribute(html_names::kHrefAttr));
+        if (MHTMLImprovementsEnabled()) {
+          SerializeCSSResources(*sheet);
+          SerializeCSSFile(document, sheet_url);
+        } else {
+          SerializeCSSStyleSheet(*sheet, sheet_url);
+        }
+      }
+    } else if (const auto* style = DynamicTo<HTMLStyleElement>(element)) {
+      if (CSSStyleSheet* sheet = style->sheet()) {
+        SerializeCSSStyleSheet(*sheet, NullURL());
+      }
+    } else if (const auto* plugin = DynamicTo<HTMLPlugInElement>(&element)) {
+      if (plugin->IsImageType() && plugin->ImageLoader()) {
+        KURL image_url = document.CompleteURL(plugin->Url());
+        ImageResourceContent* cached_image =
+            plugin->ImageLoader()->GetContent();
+        resource_serializer_->AddImageToResources(cached_image, image_url);
+      }
+    }
+  }
+
+  // Serializes `style_sheet` as text that can be added to an inline <style>
+  // tag. Ensures the style sheet does not include the </style> end tag.
+  String SerializeInlineCSSStyleSheet(CSSStyleSheet& style_sheet) {
+    StringBuilder css_text;
+    for (unsigned i = 0; i < style_sheet.length(); ++i) {
+      CSSRule* rule = style_sheet.ItemInternal(i);
+      String item_text = rule->cssText();
+      if (!item_text.empty()) {
+        css_text.Append(item_text);
+        if (i < style_sheet.length() - 1) {
+          css_text.Append("\n\n");
+        }
+      }
+    }
+
+    // `css_text` is the text that has already been parsed from the <style> tag,
+    // so it does not retain escape sequences. The only time we would need to
+    // emit an escape sequence is if the </style> tag appears within `css_text`.
+    // Parsing <style> contents is described in
+    // https://html.spec.whatwg.org/multipage/parsing.html#rawtext-state.
+    // Note that when replacing the "style" text. HTML tags are case
+    // insensitive, but this is escaped, so it's not not actually an HTML end
+    // tag.
+    return blink::internal::ReplaceAllCaseInsensitive(
+        css_text.ToString(), "</style", [](const String& text) {
+          StringBuilder builder;
+          builder.Append("\\3C/");  // \3C = '<'.
+          builder.Append(text.Substring(2));
+          return builder.ReleaseString();
+        });
+  }
+
+  void SerializeCSSFile(Document& document, const KURL& url) {
+    if (!url.IsValid() || !url.ProtocolIsInHTTPFamily()) {
+      return;
+    }
+
+    resource_serializer_->FetchAndAddResource(
+        document, url, mojom::blink::RequestContextType::STYLE,
+        // A missing CSS file will usually have a large impact on page
+        // appearance. Allow fetching from the cache or network to improve the
+        // chances of getting the resource.
+        mojom::blink::FetchCacheMode::kDefault);
+  }
+
+  // Attempts to serialize a stylesheet, if necessary. Does a couple things:
+  // 1. If `url` is valid and not a data URL, and we haven't already serialized
+  // this url, then serialize the stylesheet into a new resource. Note that this
+  // process is lossy, and may not perfectly reflect the intended style.
+  // 2. Even if `url` is invalid or a data URL, serialize the resources within
+  // `style_sheet`.
+  void SerializeCSSStyleSheet(CSSStyleSheet& style_sheet, const KURL& url) {
+    // If the URL is invalid or if it is a data URL this means that this CSS is
+    // defined inline, respectively in a <style> tag or in the data URL itself.
+    bool is_inline_css = !url.IsValid() || url.ProtocolIsData();
+    // If this CSS is not inline then it is identifiable by its URL. So just
+    // skip it if it has already been analyzed before.
+    if (!is_inline_css && !resource_serializer_->ShouldAddURL(url)) {
+      return;
+    }
+
+    TRACE_EVENT2("page-serialization",
+                 "FrameSerializer::serializeCSSStyleSheet", "type", "CSS",
+                 "url", url.ElidedString().Utf8());
+
+    const auto& charset = style_sheet.Contents()->Charset();
+
+    // If this CSS is inlined its definition was already serialized with the
+    // frame HTML code that was previously generated. No need to regenerate it
+    // here.
+    if (!is_inline_css) {
+      StringBuilder css_text;
+      // Adopted stylesheets may not have a defined charset, so use UTF-8 in
+      // that case.
+      css_text.Append("@charset \"");
+      css_text.Append(charset.IsValid()
+                          ? charset.GetName().GetString().DeprecatedLower()
+                          : "utf-8");
+      css_text.Append("\";\n\n");
+
+      for (unsigned i = 0; i < style_sheet.length(); ++i) {
+        CSSRule* rule = style_sheet.ItemInternal(i);
+        String item_text = rule->cssText();
+        if (!item_text.empty()) {
+          css_text.Append(item_text);
+          if (i < style_sheet.length() - 1) {
+            css_text.Append("\n\n");
+          }
+        }
+      }
+
+      String text_string = css_text.ToString();
+      std::string text;
+      if (charset.IsValid()) {
+        WTF::TextEncoding text_encoding(charset);
+        text = text_encoding.Encode(text_string,
+                                    WTF::kCSSEncodedEntitiesForUnencodables);
+      } else {
+        text = WTF::UTF8Encoding().Encode(
+            text_string, WTF::kCSSEncodedEntitiesForUnencodables);
+      }
+
+      resource_serializer_->AddToResources(String("text/css"),
+                                           SharedBuffer::Create(text), url);
+    }
+
+    // Sub resources need to be serialized even if the CSS definition doesn't
+    // need to be.
+    SerializeCSSResources(style_sheet);
+  }
+
+  // Serializes resources referred to by `style_sheet`.
+  void SerializeCSSResources(CSSStyleSheet& style_sheet) {
+    for (unsigned i = 0; i < style_sheet.length(); ++i) {
+      SerializeCSSRuleResources(style_sheet.ItemInternal(i));
+    }
+  }
+
+  void SerializeCSSRuleResources(CSSRule* rule) {
+    DCHECK(rule->parentStyleSheet()->OwnerDocument());
+    Document& document = *rule->parentStyleSheet()->OwnerDocument();
+
+    switch (rule->GetType()) {
+      case CSSRule::kStyleRule:
+        RetrieveResourcesForProperties(
+            &To<CSSStyleRule>(rule)->GetStyleRule()->Properties(), document);
+        break;
+
+      case CSSRule::kImportRule: {
+        CSSImportRule* import_rule = To<CSSImportRule>(rule);
+        KURL sheet_base_url = rule->parentStyleSheet()->BaseURL();
+        DCHECK(sheet_base_url.IsValid());
+        KURL import_url = KURL(sheet_base_url, import_rule->href());
+        if (import_rule->styleSheet()) {
+          if (MHTMLImprovementsEnabled()) {
+            SerializeCSSResources(*import_rule->styleSheet());
+            SerializeCSSFile(document, import_url);
+          } else {
+            SerializeCSSStyleSheet(*import_rule->styleSheet(), import_url);
+          }
+        }
+        break;
+      }
+
+      // Rules inheriting CSSGroupingRule
+      case CSSRule::kNestedDeclarationsRule:
+      case CSSRule::kMediaRule:
+      case CSSRule::kSupportsRule:
+      case CSSRule::kContainerRule:
+      case CSSRule::kLayerBlockRule:
+      case CSSRule::kScopeRule:
+      case CSSRule::kStartingStyleRule: {
+        CSSRuleList* rule_list = rule->cssRules();
+        for (unsigned i = 0; i < rule_list->length(); ++i) {
+          SerializeCSSRuleResources(rule_list->item(i));
+        }
+        break;
+      }
+
+      case CSSRule::kFontFaceRule:
+        RetrieveResourcesForProperties(
+            &To<CSSFontFaceRule>(rule)->StyleRule()->Properties(), document);
+        break;
+
+      case CSSRule::kCounterStyleRule:
+        // TODO(crbug.com/1176323): Handle image symbols in @counter-style rules
+        // when we implement it.
+        break;
+
+      case CSSRule::kMarginRule:
+      case CSSRule::kPageRule:
+        // TODO(crbug.com/40341678): Both page and margin rules may contain
+        // external resources (e.g. via background-image). FrameSerializer is at
+        // the mercy of whatever resource loading has already been triggered (by
+        // regular lifecycle updates). See crbug.com/364331857 . As such, unless
+        // the user has actually tried to print the page, resources inside @page
+        // rules won't have been loaded. Rather than introducing flaky behavior
+        // (sometimes @page resources are loaded, sometimes not), let's wait for
+        // that bug to be fixed.
+        break;
+
+      // Rules in which no external resources can be referenced
+      case CSSRule::kCharsetRule:
+      case CSSRule::kFontPaletteValuesRule:
+      case CSSRule::kFontFeatureRule:
+      case CSSRule::kFontFeatureValuesRule:
+      case CSSRule::kPropertyRule:
+      case CSSRule::kKeyframesRule:
+      case CSSRule::kKeyframeRule:
+      case CSSRule::kNamespaceRule:
+      case CSSRule::kLayerStatementRule:
+      case CSSRule::kViewTransitionRule:
+      case CSSRule::kPositionTryRule:
+      case CSSRule::kFunctionDeclarationsRule:
+      case CSSRule::kFunctionRule:
+        break;
+    }
+  }
+
+  void RetrieveResourcesForProperties(
+      const CSSPropertyValueSet* style_declaration,
+      Document& document) {
+    if (!style_declaration) {
+      return;
+    }
+
+    // The background-image and list-style-image (for ul or ol) are the CSS
+    // properties that make use of images. We iterate to make sure we include
+    // any other image properties there might be.
+    for (const CSSPropertyValue& property : style_declaration->Properties()) {
+      RetrieveResourcesForCSSValue(property.Value(), document);
+    }
+  }
+
+  void RetrieveResourcesForCSSValue(const CSSValue& css_value,
+                                    Document& document) {
+    if (const auto* image_value = DynamicTo<CSSImageValue>(css_value)) {
+      if (image_value->IsCachePending()) {
+        return;
+      }
+      StyleImage* style_image = image_value->CachedImage();
+      if (!style_image || !style_image->IsImageResource()) {
+        return;
+      }
+
+      resource_serializer_->AddImageToResources(
+          style_image->CachedImage(), style_image->CachedImage()->Url());
+    } else if (const auto* font_face_src_value =
+                   DynamicTo<CSSFontFaceSrcValue>(css_value)) {
+      if (font_face_src_value->IsLocal()) {
+        return;
+      }
+
+      resource_serializer_->AddFontToResources(
+          document,
+          font_face_src_value->Fetch(document.GetExecutionContext(), nullptr));
+    } else if (const auto* css_value_list =
+                   DynamicTo<CSSValueList>(css_value)) {
+      for (unsigned i = 0; i < css_value_list->length(); i++) {
+        RetrieveResourcesForCSSValue(css_value_list->Item(i), document);
+      }
+    }
+  }
+
+  MultiResourcePacker* resource_serializer_;
+  WebFrameSerializer::MHTMLPartsGenerationDelegate* web_delegate_;
+=======
   FrameSerializer::Delegate& delegate_;
   FrameSerializerResourceDelegate& resource_delegate_;
+>>>>>>> chromium
   Document* document_;
 
   // Elements with links rewritten via appendAttribute method.
@@ -317,6 +641,11 @@ void FrameSerializer::SerializeFrame(const LocalFrame& frame) {
 
     std::string frame_html =
         document.Encoding().Encode(text, WTF::kEntitiesForUnencodables);
+<<<<<<< HEAD
+    resource_serializer->AddMainResource(document.SuggestedMIMEType(),
+                                         SharedBuffer::Create(frame_html), url);
+    resource_serializer->Finish(std::move(callback));
+=======
     // Note that the frame has to be 1st resource.
     resources_->push_front(SerializedResource(
         url, document.SuggestedMIMEType(),
@@ -619,6 +948,7 @@ void FrameSerializer::RetrieveResourcesForCSSValue(const CSSValue& css_value,
   } else if (const auto* css_value_list = DynamicTo<CSSValueList>(css_value)) {
     for (unsigned i = 0; i < css_value_list->length(); i++)
       RetrieveResourcesForCSSValue(css_value_list->Item(i), document);
+>>>>>>> chromium
   }
 }
 

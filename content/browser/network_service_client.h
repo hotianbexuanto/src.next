@@ -106,6 +106,15 @@ class CONTENT_EXPORT NetworkServiceClient
   void OnDataUseUpdate(int32_t network_traffic_annotation_id_hash,
                        int64_t recv_bytes,
                        int64_t sent_bytes) override;
+<<<<<<< HEAD
+  void OnSharedStorageHeaderReceived(
+      const url::Origin& request_origin,
+      std::vector<network::mojom::SharedStorageModifierMethodWithOptionsPtr>
+          methods_with_options,
+      const std::optional<std::string>& with_lock,
+      OnSharedStorageHeaderReceivedCallback callback) override;
+=======
+>>>>>>> chromium
   void Clone(
       mojo::PendingReceiver<network::mojom::URLLoaderNetworkServiceObserver>
           listener) override;

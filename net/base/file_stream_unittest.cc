@@ -38,6 +38,10 @@ using net::test::IsOk;
 
 #if defined(OS_ANDROID)
 #include "base/test/test_file_util.h"
+#elif BUILDFLAG(IS_WIN)
+#include <windows.h>
+
+#include <namedpipeapi.h>
 #endif
 
 namespace net {

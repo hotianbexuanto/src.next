@@ -46,6 +46,28 @@ include_rules = [
 ]
 
 specific_include_rules = {
+<<<<<<< HEAD
+  'HistoricalTabModelObserver\.java': [
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabList.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabModel.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabGroupModelFilter.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelObserver.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelSelector.java",
+    "+chrome/browser/tab_group/java/src/org/chromium/chrome/browser/tasks/tab_groups/TabGroupColorUtils.java",
+    "+chrome/browser/tab_group/java/src/org/chromium/chrome/browser/tasks/tab_groups/TabGroupTitleUtils.java",
+    "+chrome/browser/tab_group_sync/android/java/src/org/chromium/chrome/browser/tab_group_sync/TabGroupSyncServiceFactory.java",
+  ],
+  'HistoricalTabSaver\.java': [
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabModel.java",
+  ],
+  'HistoricalTabSaverImpl\.java': [
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabModel.java",
+  ],
+  'InterceptNavigationDelegateClientImpl.java': [
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabClosureParams.java",
+  ],
+=======
+>>>>>>> chromium
   'RedirectHandlerTabHelper\.java': [
     "+chrome/android/java/src/org/chromium/chrome/browser/IntentHandler.java",
     "+chrome/android/java/src/org/chromium/chrome/browser/LaunchIntentDispatcher.java",
@@ -85,5 +107,26 @@ specific_include_rules = {
   ],
   'TabWebContentsObserver\.java': [
     "+chrome/android/java/src/org/chromium/chrome/browser/display_cutout/DisplayCutoutTabHelper.java",
+<<<<<<< HEAD
+    "+chrome/browser/ui/android/pdf/java/src/org/chromium/chrome/browser/pdf/PdfUtils.java",
+  ],
+  'TabArchiverImpl\.java': [
+    "+chrome/android/java/src/org/chromium/chrome/browser/app/tab_activity_glue/ReparentingTask.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/AsyncTabParamsManager.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabClosureParams.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabCreator.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabModel.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabReparentingParams.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabList.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabModel.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelSelector.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabModelUtils.java",
+    "+chrome/browser/tabmodel/android/java/src/org/chromium/chrome/browser/tabmodel/TabWindowManager.java"
+  ],
+  'TabHelpers\.java': [
+    "+chrome/android/java/src/org/chromium/chrome/browser/display_cutout/DisplayCutoutTabHelper.java",
+    "+chrome/browser/ui/android/edge_to_edge/internal/java/src/org/chromium/chrome/browser/ui/edge_to_edge/EdgeToEdgeControllerFactory.java"
+=======
+>>>>>>> chromium
   ]
 }

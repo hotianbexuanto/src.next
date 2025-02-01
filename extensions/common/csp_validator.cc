@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #include "extensions/common/csp_validator.h"
 
 #include <stddef.h>
@@ -16,8 +21,17 @@
 #include "base/bind.h"
 #include "base/callback.h"
 #include "base/check_op.h"
+<<<<<<< HEAD
+#include "base/containers/contains.h"
+#include "base/feature_list.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
+#include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ref.h"
+=======
 #include "base/cxx17_backports.h"
 #include "base/strings/string_piece.h"
+>>>>>>> chromium
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "content/public/common/url_constants.h"
@@ -531,8 +545,14 @@ Directive::Directive(base::StringPiece directive_string,
       directive_name(std::move(directive_name)),
       directive_values(std::move(directive_values)) {
   // |directive_name| should be lower cased.
+<<<<<<< HEAD
+  // Note: Using |this->directive_name|, because |directive_name| refers to the
+  // already-moved-from input parameter.
+  DCHECK(std::ranges::none_of(this->directive_name, base::IsAsciiUpper<char>));
+=======
   DCHECK(std::none_of(directive_name.begin(), directive_name.end(),
                       base::IsAsciiUpper<char>));
+>>>>>>> chromium
 }
 
 CSPParser::Directive::~Directive() = default;
@@ -649,8 +669,13 @@ bool DoesCSPDisallowRemoteCode(const std::string& content_security_policy,
     // Find the first matching directive. As per
     // http://www.w3.org/TR/CSP/#parse-a-csp-policy, duplicate directive names
     // are ignored.
+<<<<<<< HEAD
+    auto it = std::ranges::find_if(
+        csp_parser.directives(),
+=======
     auto it = std::find_if(
         csp_parser.directives().begin(), csp_parser.directives().end(),
+>>>>>>> chromium
         [mapping](const CSPParser::Directive& directive) {
           return mapping->status.Matches(directive.directive_name);
         });
@@ -690,9 +715,14 @@ bool DoesCSPDisallowRemoteCode(const std::string& content_security_policy,
     }
 
     auto directive_values = mapping.directive->directive_values;
+<<<<<<< HEAD
+    auto it =
+        std::ranges::find_if_not(directive_values, [](std::string_view source) {
+=======
     auto it = std::find_if_not(
         directive_values.begin(), directive_values.end(),
         [](base::StringPiece source) {
+>>>>>>> chromium
           std::string source_lower = base::ToLowerASCII(source);
           return source_lower == kSelfSource || source_lower == kNoneSource ||
                  IsLocalHostSource(source_lower);

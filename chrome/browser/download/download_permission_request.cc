@@ -21,7 +21,7 @@ DownloadPermissionRequest::DownloadPermissionRequest(
     const url::Origin& request_origin)
     : host_(host), request_origin_(request_origin) {}
 
-DownloadPermissionRequest::~DownloadPermissionRequest() {}
+DownloadPermissionRequest::~DownloadPermissionRequest() = default;
 
 permissions::RequestType DownloadPermissionRequest::GetRequestType() const {
   return permissions::RequestType::kMultipleDownloads;

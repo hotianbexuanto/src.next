@@ -16,7 +16,12 @@
 #include "chrome/browser/android/preferences/clipboard_android.h"
 #include "chrome/browser/android/seccomp_support_detector.h"
 #include "chrome/browser/browser_process.h"
+<<<<<<< HEAD
+#include "chrome/browser/data_saver/data_saver.h"
+#include "chrome/browser/profiles/profile.h"
+=======
 #include "chrome/browser/profiles/profile_manager.h"
+>>>>>>> chromium
 #include "chrome/browser/webauthn/android/cable_module_android.h"
 #include "components/crash/content/browser/child_exit_observer_android.h"
 #include "components/crash/content/browser/child_process_crash_observer_android.h"
@@ -35,8 +40,7 @@ ChromeBrowserMainPartsAndroid::ChromeBrowserMainPartsAndroid(
     StartupData* startup_data)
     : ChromeBrowserMainParts(parameters, startup_data) {}
 
-ChromeBrowserMainPartsAndroid::~ChromeBrowserMainPartsAndroid() {
-}
+ChromeBrowserMainPartsAndroid::~ChromeBrowserMainPartsAndroid() = default;
 
 int ChromeBrowserMainPartsAndroid::PreCreateThreads() {
   TRACE_EVENT0("startup", "ChromeBrowserMainPartsAndroid::PreCreateThreads");
@@ -63,7 +67,16 @@ void ChromeBrowserMainPartsAndroid::PostProfileInit() {
 
   // Start watching the preferences that need to be backed up backup using
   // Android backup, so that we create a new backup if they change.
+<<<<<<< HEAD
+  base::android::ScopedJavaGlobalRef<jobject> watcher;
+  watcher.Reset(android::Java_ChromeBackupWatcher_Constructor(
+      base::android::AttachCurrentThread(), profile));
+  backup_watcher_runner_.ReplaceClosure(
+      base::BindOnce(&android::Java_ChromeBackupWatcher_destroy,
+                     base::android::AttachCurrentThread(), watcher));
+=======
   backup_watcher_ = std::make_unique<android::ChromeBackupWatcher>(profile());
+>>>>>>> chromium
 
   // The GCM driver can be used at this point because the primary profile has
   // been created. Register non-profile-specific things that use GCM so that no

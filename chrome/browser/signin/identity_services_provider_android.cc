@@ -12,12 +12,19 @@
 using base::android::JavaParamRef;
 using base::android::ScopedJavaLocalRef;
 
+<<<<<<< HEAD
+static signin::IdentityManager* JNI_IdentityServicesProvider_GetIdentityManager(
+    JNIEnv* env,
+    Profile* profile) {
+  return IdentityManagerFactory::GetForProfile(profile);
+=======
 static ScopedJavaLocalRef<jobject>
 JNI_IdentityServicesProvider_GetIdentityManager(
     JNIEnv* env,
     const JavaParamRef<jobject>& j_profile_android) {
   Profile* profile = ProfileAndroid::FromProfileAndroid(j_profile_android);
   return IdentityManagerFactory::GetForProfile(profile)->GetJavaObject();
+>>>>>>> chromium
 }
 
 static ScopedJavaLocalRef<jobject>

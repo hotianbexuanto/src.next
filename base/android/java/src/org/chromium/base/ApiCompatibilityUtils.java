@@ -43,6 +43,9 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+=======
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.widget.ImageViewCompat;
@@ -53,6 +56,7 @@ import org.chromium.base.annotations.VerifiesOnN;
 import org.chromium.base.annotations.VerifiesOnO;
 import org.chromium.base.annotations.VerifiesOnP;
 import org.chromium.base.annotations.VerifiesOnQ;
+>>>>>>> chromium
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -65,6 +69,7 @@ import java.util.List;
  * Do not inline because we use many new APIs, and if they are inlined, they could cause dex
  * validation errors on low Android versions.
  */
+@NullMarked
 public class ApiCompatibilityUtils {
     private ApiCompatibilityUtils() {
     }
@@ -360,10 +365,14 @@ public class ApiCompatibilityUtils {
             // For Android Oreo+, Resources.getDrawable(id, null) delegates to
             // Resources.getDrawableForDensity(id, 0, null), but before that the two functions are
             // independent. This check can be removed after Oreo becomes the minimum supported API.
+            Drawable ret;
             if (density == 0) {
-                return res.getDrawable(id, null);
+                ret = res.getDrawable(id, null);
+            } else {
+                ret = res.getDrawableForDensity(id, density, null);
             }
-            return res.getDrawableForDensity(id, density, null);
+            assert ret != null : "Drawable " + id;
+            return ret;
         } finally {
             StrictMode.setThreadPolicy(oldPolicy);
         }
@@ -439,7 +448,6 @@ public class ApiCompatibilityUtils {
      * @return A list of display ids. Empty if there is none or version is less than Q, or
      *         windowAndroid does not contain an activity.
      */
-    @NonNull
     public static List<Integer> getTargetableDisplayIds(Activity activity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             return ApisQ.getTargetableDisplayIds(activity);
@@ -451,10 +459,17 @@ public class ApiCompatibilityUtils {
      * Disables the Smart Select {@link TextClassifier} for the given {@link TextView} instance.
      * @param textView The {@link TextView} that should have its classifier disabled.
      */
+<<<<<<< HEAD
+    public static void setActivityOptionsBackgroundActivityStartMode(ActivityOptions options) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return;
+        options.setPendingIntentBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+=======
     public static void disableSmartSelectionTextClassifier(TextView textView) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ApisO.disableSmartSelectionTextClassifier(textView);
         }
+>>>>>>> chromium
     }
 
     /**
@@ -462,11 +477,19 @@ public class ApiCompatibilityUtils {
      * @param displayId The id of the display to launch into.
      * @return The created bundle, or null if unsupported.
      */
+<<<<<<< HEAD
+    public static void setCreatorActivityOptionsBackgroundActivityStartMode(
+            ActivityOptions options) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return;
+        options.setPendingIntentCreatorBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+=======
     public static Bundle createLaunchDisplayIdActivityOptions(int displayId) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             return ApisO.createLaunchDisplayIdActivityOptions(displayId);
         }
         return null;
+>>>>>>> chromium
     }
 
     /**

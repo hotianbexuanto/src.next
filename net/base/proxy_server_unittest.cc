@@ -3,7 +3,16 @@
 // found in the LICENSE file.
 
 #include "net/base/proxy_server.h"
+<<<<<<< HEAD
+
+#include <array>
+#include <optional>
+
+#include "base/strings/string_number_conversions.h"
+#include "net/base/proxy_string_util.h"
+=======
 #include "base/cxx17_backports.h"
+>>>>>>> chromium
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace net {
@@ -149,6 +158,61 @@ TEST(ProxyServerTest, DefaultConstructor) {
   EXPECT_FALSE(proxy_server.is_valid());
 }
 
+<<<<<<< HEAD
+TEST(ProxyServerTest, FromSchemeHostAndPort) {
+  struct Tests {
+    const ProxyServer::Scheme input_scheme;
+    const char* const input_host;
+    const std::optional<uint16_t> input_port;
+    const char* const input_port_str;
+    const char* const expected_host;
+    const uint16_t expected_port;
+  };
+  const auto tests = std::to_array<Tests>({
+      {ProxyServer::SCHEME_HTTP, "foopy", 80, "80", "foopy", 80},
+
+      // Non-standard port
+      {ProxyServer::SCHEME_HTTP, "foopy", 10, "10", "foopy", 10},
+      {ProxyServer::SCHEME_HTTP, "foopy", 0, "0", "foopy", 0},
+
+      // Hostname canonicalization
+      {ProxyServer::SCHEME_HTTP, "FoOpY", 80, "80", "foopy", 80},
+      {ProxyServer::SCHEME_HTTP, "f\u00fcpy", 80, "80", "xn--fpy-hoa", 80},
+
+      // IPv4 literal
+      {ProxyServer::SCHEME_HTTP, "1.2.3.4", 80, "80", "1.2.3.4", 80},
+
+      // IPv4 literal canonicalization
+      {ProxyServer::SCHEME_HTTP, "127.1", 80, "80", "127.0.0.1", 80},
+      {ProxyServer::SCHEME_HTTP, "0x7F.0x1", 80, "80", "127.0.0.1", 80},
+      {ProxyServer::SCHEME_HTTP, "0177.01", 80, "80", "127.0.0.1", 80},
+
+      // IPv6 literal
+      {ProxyServer::SCHEME_HTTP, "[3ffe:2a00:100:7031::1]", 80, "80",
+       "[3ffe:2a00:100:7031::1]", 80},
+      {ProxyServer::SCHEME_HTTP, "3ffe:2a00:100:7031::1", 80, "80",
+       "[3ffe:2a00:100:7031::1]", 80},
+
+      // IPv6 literal canonicalization
+      {ProxyServer::SCHEME_HTTP, "FEDC:BA98:7654:3210:FEDC:BA98:7654:3210", 80,
+       "80", "[fedc:ba98:7654:3210:fedc:ba98:7654:3210]", 80},
+      {ProxyServer::SCHEME_HTTP, "::192.9.5.5", 80, "80", "[::c009:505]", 80},
+
+      // Other schemes
+      {ProxyServer::SCHEME_HTTPS, "foopy", 111, "111", "foopy", 111},
+      {ProxyServer::SCHEME_QUIC, "foopy", 111, "111", "foopy", 111},
+      {ProxyServer::SCHEME_SOCKS4, "foopy", 111, "111", "foopy", 111},
+      {ProxyServer::SCHEME_SOCKS5, "foopy", 111, "111", "foopy", 111},
+      {ProxyServer::SCHEME_HTTPS, " foopy \n", 111, "111", "foopy", 111},
+
+      // Default ports
+      {ProxyServer::SCHEME_HTTP, "foopy", std::nullopt, "", "foopy", 80},
+      {ProxyServer::SCHEME_HTTPS, "foopy", std::nullopt, "", "foopy", 443},
+      {ProxyServer::SCHEME_QUIC, "foopy", std::nullopt, "", "foopy", 443},
+      {ProxyServer::SCHEME_SOCKS4, "foopy", std::nullopt, "", "foopy", 1080},
+      {ProxyServer::SCHEME_SOCKS5, "foopy", std::nullopt, "", "foopy", 1080},
+  });
+=======
 // Test parsing of the special URI form "direct://". Analagous to the "DIRECT"
 // entry in a PAC result.
 TEST(ProxyServerTest, Direct) {
@@ -246,6 +310,7 @@ TEST(ProxyServerTest, FromPACString) {
        "https://foopy:10",
     },
   };
+>>>>>>> chromium
 
   for (size_t i = 0; i < base::size(tests); ++i) {
     ProxyServer uri = ProxyServer::FromPacString(tests[i].input_pac);
@@ -254,6 +319,43 @@ TEST(ProxyServerTest, FromPACString) {
   }
 }
 
+<<<<<<< HEAD
+TEST(ProxyServerTest, InvalidHostname) {
+  const auto tests = std::to_array<const char*>({
+      "",
+      "[]",
+      "[foo]",
+      "foo:",
+      "foo:80",
+      ":",
+      "http://foo",
+      "3ffe:2a00:100:7031::1]",
+      "[3ffe:2a00:100:7031::1",
+      "foo.80",
+  });
+
+  for (size_t i = 0; i < std::size(tests); ++i) {
+    SCOPED_TRACE(base::NumberToString(i) + ": " + tests[i]);
+    auto proxy = ProxyServer::FromSchemeHostAndPort(ProxyServer::SCHEME_HTTP,
+                                                    tests[i], 80);
+    EXPECT_FALSE(proxy.is_valid());
+  }
+}
+
+TEST(ProxyServerTest, InvalidPort) {
+  const auto tests = std::to_array<const char*>({
+      "-1",
+      "65536",
+      "foo",
+      "0x35",
+  });
+
+  for (size_t i = 0; i < std::size(tests); ++i) {
+    SCOPED_TRACE(base::NumberToString(i) + ": " + tests[i]);
+    auto proxy = ProxyServer::FromSchemeHostAndPort(ProxyServer::SCHEME_HTTP,
+                                                    "foopy", tests[i]);
+    EXPECT_FALSE(proxy.is_valid());
+=======
 // Test parsing a ProxyServer from an invalid PAC representation.
 TEST(ProxyServerTest, FromPACStringInvalid) {
   const char* const tests[] = {
@@ -266,6 +368,7 @@ TEST(ProxyServerTest, FromPACStringInvalid) {
   for (size_t i = 0; i < base::size(tests); ++i) {
     ProxyServer uri = ProxyServer::FromPacString(tests[i]);
     EXPECT_FALSE(uri.is_valid());
+>>>>>>> chromium
   }
 }
 

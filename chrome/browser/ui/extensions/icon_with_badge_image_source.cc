@@ -52,7 +52,7 @@ IconWithBadgeImageSource::Badge::Badge(const std::string& text,
                                        SkColor background_color)
     : text(text), text_color(text_color), background_color(background_color) {}
 
-IconWithBadgeImageSource::Badge::~Badge() {}
+IconWithBadgeImageSource::Badge::~Badge() = default;
 
 IconWithBadgeImageSource::IconWithBadgeImageSource(const gfx::Size& size)
     : gfx::CanvasImageSource(size) {}
@@ -66,8 +66,9 @@ void IconWithBadgeImageSource::SetIcon(const gfx::Image& icon) {
 void IconWithBadgeImageSource::SetBadge(std::unique_ptr<Badge> badge) {
   badge_ = std::move(badge);
 
-  if (!badge_ || badge_->text.empty())
+  if (!badge_ || badge_->text.empty()) {
     return;
+  }
 
   // Generate the badge's render text.
   SkColor text_color = SkColorGetA(badge_->text_color) == SK_AlphaTRANSPARENT
@@ -106,9 +107,14 @@ void IconWithBadgeImageSource::SetBadge(std::unique_ptr<Badge> badge) {
 
   // Force the pixel width of badge to be either odd (if the icon width is odd)
   // or even otherwise. If there is a mismatch you get http://crbug.com/26400.
-  if (icon_area.width() != 0 && (badge_width % 2 != icon_area.width() % 2))
+  if (icon_area.width() != 0 && (badge_width % 2 != icon_area.width() % 2)) {
     badge_width += 1;
+<<<<<<< HEAD
+  }
+  badge_width = std::max(badge_height, badge_width);
+=======
   badge_width = std::max(kBadgeHeight, badge_width);
+>>>>>>> chromium
 
   // The minimum width for center-aligning the badge.
   constexpr int kCenterAlignThreshold = 20;
@@ -137,11 +143,13 @@ void IconWithBadgeImageSource::Draw(gfx::Canvas* canvas) {
   // TODO(https://crbug.com/842856): There should be a cleaner delineation
   // between what is drawn here and what is handled by the button itself.
 
-  if (icon_.IsEmpty())
+  if (icon_.IsEmpty()) {
     return;
+  }
 
-  if (paint_blocked_actions_decoration_)
+  if (paint_blocked_actions_decoration_) {
     PaintBlockedActionDecoration(canvas);
+  }
 
   gfx::ImageSkia skia = icon_.AsImageSkia();
   gfx::ImageSkiaRep rep = skia.GetRepresentation(canvas->image_scale());
@@ -150,8 +158,9 @@ void IconWithBadgeImageSource::Draw(gfx::Canvas* canvas) {
         ScaleImageSkiaRep(rep, extensions::ExtensionAction::ActionIconSize(),
                           canvas->image_scale()));
   }
-  if (grayscale_)
+  if (grayscale_) {
     skia = gfx::ImageSkiaOperations::CreateHSLShiftedImage(skia, {-1, 0, 0.6});
+  }
 
   int x_offset = std::floor(
       (size().width() - extensions::ExtensionAction::ActionIconSize()) / 2.0);
@@ -165,8 +174,9 @@ void IconWithBadgeImageSource::Draw(gfx::Canvas* canvas) {
 
 // Paints badge with specified parameters to |canvas|.
 void IconWithBadgeImageSource::PaintBadge(gfx::Canvas* canvas) {
-  if (!badge_text_)
+  if (!badge_text_) {
     return;
+  }
 
   // Make sure the background color is opaque. See http://crbug.com/619499
   SkColor background_color =

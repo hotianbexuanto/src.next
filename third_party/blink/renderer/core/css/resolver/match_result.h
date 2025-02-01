@@ -21,6 +21,11 @@
  *
  */
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_MATCH_RESULT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_MATCH_RESULT_H_
 
@@ -132,10 +137,15 @@ class CORE_EXPORT MatchResult {
   MatchResult(const MatchResult&) = delete;
   MatchResult& operator=(const MatchResult&) = delete;
 
+<<<<<<< HEAD
+  void AddMatchedProperties(const CSSPropertyValueSet* properties,
+                            MatchedProperties::Data types);
+=======
   void AddMatchedProperties(
       const CSSPropertyValueSet* properties,
       unsigned link_match_type = CSSSelector::kMatchAll,
       ValidPropertyFilter = ValidPropertyFilter::kNoFilter);
+>>>>>>> chromium
   bool HasMatchedProperties() const { return matched_properties_.size(); }
 
   void FinishAddingUARules();

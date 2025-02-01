@@ -104,7 +104,7 @@ class ChromeServiceWorkerTest : public InProcessBrowserTest {
         service_worker_dir_.GetPath().Append(
             FILE_PATH_LITERAL("scope")), nullptr));
   }
-  ~ChromeServiceWorkerTest() override {}
+  ~ChromeServiceWorkerTest() override = default;
 
   void WriteFile(const base::FilePath::StringType& filename,
                  base::StringPiece contents) {
@@ -304,8 +304,8 @@ IN_PROC_BROWSER_TEST_F(ChromeServiceWorkerTest,
 
 class ChromeServiceWorkerFetchTest : public ChromeServiceWorkerTest {
  protected:
-  ChromeServiceWorkerFetchTest() {}
-  ~ChromeServiceWorkerFetchTest() override {}
+  ChromeServiceWorkerFetchTest() = default;
+  ~ChromeServiceWorkerFetchTest() override = default;
 
   void SetUpOnMainThread() override {
     WriteServiceWorkerFetchTestFiles();
@@ -449,8 +449,8 @@ class FaviconUpdateWaiter : public favicon::FaviconDriverObserver {
 
 class ChromeServiceWorkerLinkFetchTest : public ChromeServiceWorkerFetchTest {
  protected:
-  ChromeServiceWorkerLinkFetchTest() {}
-  ~ChromeServiceWorkerLinkFetchTest() override {}
+  ChromeServiceWorkerLinkFetchTest() = default;
+  ~ChromeServiceWorkerLinkFetchTest() override = default;
   void SetUpOnMainThread() override {
     // Map all hosts to localhost and setup the EmbeddedTestServer for
     // redirects.
@@ -596,8 +596,8 @@ IN_PROC_BROWSER_TEST_F(ChromeServiceWorkerLinkFetchTest, FaviconOtherOrigin) {
 // iframe.
 class ChromeServiceWorkerFetchPPAPITest : public ChromeServiceWorkerFetchTest {
  protected:
-  ChromeServiceWorkerFetchPPAPITest() {}
-  ~ChromeServiceWorkerFetchPPAPITest() override {}
+  ChromeServiceWorkerFetchPPAPITest() = default;
+  ~ChromeServiceWorkerFetchPPAPITest() override = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     ChromeServiceWorkerFetchTest::SetUpCommandLine(command_line);

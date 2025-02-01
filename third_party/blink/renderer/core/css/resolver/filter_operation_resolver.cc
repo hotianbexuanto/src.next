@@ -143,9 +143,27 @@ double FilterOperationResolver::ResolveNumericArgumentForFunction(
       double amount = 1;
       if (filter.length() == 1) {
         const CSSPrimitiveValue& value = To<CSSPrimitiveValue>(filter.Item(0));
+<<<<<<< HEAD
+        double computed_value;
+        if (value.IsPercentage()) {
+          computed_value = value.ComputePercentage(length_resolver) / 100;
+        } else {
+          computed_value = value.ComputeNumber(length_resolver);
+        }
+        if (filter.FunctionType() != CSSValueID::kBrightness &&
+            filter.FunctionType() != CSSValueID::kSaturate &&
+            filter.FunctionType() != CSSValueID::kContrast) {
+          // Most values will be clamped at parse time, but the ones within
+          // calc() will not, so we need to clamp them again here.
+          return std::clamp(computed_value, 0.0, 1.0);
+        } else {
+          return computed_value;
+        }
+=======
         amount = value.GetDoubleValue();
         if (value.IsPercentage())
           amount /= 100;
+>>>>>>> chromium
       }
       return amount;
     }
@@ -263,10 +281,19 @@ FilterOperations FilterOperationResolver::CreateOffscreenFilterOperations(
       kOffScreenCanvasEmFontSize, kOffScreenCanvasRemFontSize, &font, zoom);
   CSSToLengthConversionData::ViewportSize viewport_size(0, 0);
   CSSToLengthConversionData::ContainerSizes container_sizes;
+<<<<<<< HEAD
+  CSSToLengthConversionData::AnchorData anchor_data;
+  CSSToLengthConversionData::Flags ignored_flags = 0;
+  CSSToLengthConversionData conversion_data(
+      WritingMode::kHorizontalTb, font_sizes, line_height_size, viewport_size,
+      container_sizes, anchor_data, 1 /* zoom */, ignored_flags,
+      /*element=*/nullptr);
+=======
   CSSToLengthConversionData conversion_data(nullptr,  // ComputedStyle
                                             font_sizes, viewport_size,
                                             container_sizes,
                                             1);  // zoom
+>>>>>>> chromium
 
   for (auto& curr_value : To<CSSValueList>(in_value)) {
     if (curr_value->IsURIValue())

@@ -27,6 +27,15 @@
 #include "base/win/win_util.h"
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
+#endif
+
+using extensions::mojom::ManifestLocation;
+
+=======
+>>>>>>> chromium
 namespace extensions {
 
 const char kTestPref[] = "unit_test.test_pref";

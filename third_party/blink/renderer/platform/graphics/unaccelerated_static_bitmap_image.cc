@@ -134,6 +134,31 @@ bool UnacceleratedStaticBitmapImage::CopyToResourceProvider(
     return false;
 
   const void* pixels = pixmap.addr();
+<<<<<<< HEAD
+  const size_t source_row_bytes = pixmap.rowBytes();
+  const size_t source_height = pixmap.height();
+
+  SkImageInfo copy_rect_info = paint_image_.GetSkImageInfo().makeWH(
+      copy_rect.width(), copy_rect.height());
+  const size_t dest_row_bytes =
+      copy_rect_info.bytesPerPixel() * static_cast<size_t>(copy_rect.width());
+  const size_t dest_height = static_cast<size_t>(copy_rect.height());
+
+  std::vector<uint8_t> dest_pixels;
+  if (source_row_bytes != dest_row_bytes || source_height != dest_height) {
+    dest_pixels.resize(dest_row_bytes * dest_height);
+
+    const size_t x_offset_bytes =
+        copy_rect_info.bytesPerPixel() * static_cast<size_t>(copy_rect.x());
+    const size_t y_offset = copy_rect.y();
+
+    for (size_t dst_y = 0; dst_y < dest_height; ++dst_y) {
+      const size_t src_y = dst_y;
+      memcpy(dest_pixels.data() + dst_y * dest_row_bytes,
+             static_cast<const uint8_t*>(pixels) +
+                 (y_offset + src_y) * source_row_bytes + x_offset_bytes,
+             dest_row_bytes);
+=======
   const size_t row_bytes = pixmap.rowBytes();
   std::vector<uint8_t> flipped;
   DCHECK(IsOriginTopLeft());
@@ -144,6 +169,7 @@ bool UnacceleratedStaticBitmapImage::CopyToResourceProvider(
       memcpy(flipped.data() + i * row_bytes,
              static_cast<const uint8_t*>(pixels) + (height - 1 - i) * row_bytes,
              row_bytes);
+>>>>>>> chromium
     }
     pixels = flipped.data();
   }

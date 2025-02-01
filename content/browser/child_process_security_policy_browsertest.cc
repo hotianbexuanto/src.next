@@ -43,19 +43,35 @@ class ChildProcessSecurityPolicyInProcessBrowserTest
   }
 };
 
+<<<<<<< HEAD
+#if !defined(NDEBUG) && BUILDFLAG(IS_MAC)
+#define MAYBE_NoLeak DISABLED_NoLeak
+=======
 #if !defined(NDEBUG) && defined(OS_MAC)
 IN_PROC_BROWSER_TEST_F(ChildProcessSecurityPolicyInProcessBrowserTest, DISABLED_NoLeak) {
+>>>>>>> chromium
 #else
-IN_PROC_BROWSER_TEST_F(ChildProcessSecurityPolicyInProcessBrowserTest, NoLeak) {
+#define MAYBE_NoLeak NoLeak
 #endif
+IN_PROC_BROWSER_TEST_F(ChildProcessSecurityPolicyInProcessBrowserTest,
+                       MAYBE_NoLeak) {
   GURL url = GetTestUrl("", "simple_page.html");
   auto* policy = ChildProcessSecurityPolicyImpl::GetInstance();
+<<<<<<< HEAD
+  EXPECT_TRUE(NavigateToURL(shell(), url));
+  {
+    base::AutoLock lock(policy->lock_);
+    size_t spare_count =
+        content::SpareRenderProcessHostManager::Get().GetSpares().size();
+    EXPECT_EQ(1u + spare_count, policy->security_state_.size());
+=======
 
   EXPECT_TRUE(NavigateToURL(shell(), url));
   {
     base::AutoLock lock(policy->lock_);
     EXPECT_EQ(RenderProcessHostImpl::IsSpareProcessKeptAtAllTimes() ? 2u : 1u,
               policy->security_state_.size());
+>>>>>>> chromium
   }
 
   WebContents* web_contents = shell()->web_contents();
@@ -68,8 +84,14 @@ IN_PROC_BROWSER_TEST_F(ChildProcessSecurityPolicyInProcessBrowserTest, NoLeak) {
   web_contents->GetController().Reload(ReloadType::NORMAL, true);
   {
     base::AutoLock lock(policy->lock_);
+<<<<<<< HEAD
+    size_t spare_count =
+        content::SpareRenderProcessHostManager::Get().GetSpares().size();
+    EXPECT_EQ(1u + spare_count, policy->security_state_.size());
+=======
     EXPECT_EQ(RenderProcessHostImpl::IsSpareProcessKeptAtAllTimes() ? 2u : 1u,
               policy->security_state_.size());
+>>>>>>> chromium
   }
 }
 

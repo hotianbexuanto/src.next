@@ -25,7 +25,7 @@ void CollectedCookiesInfoBarDelegate::Create(
 CollectedCookiesInfoBarDelegate::CollectedCookiesInfoBarDelegate()
     : ConfirmInfoBarDelegate() {}
 
-CollectedCookiesInfoBarDelegate::~CollectedCookiesInfoBarDelegate() {}
+CollectedCookiesInfoBarDelegate::~CollectedCookiesInfoBarDelegate() = default;
 
 infobars::InfoBarDelegate::InfoBarIdentifier
 CollectedCookiesInfoBarDelegate::GetIdentifier() const {

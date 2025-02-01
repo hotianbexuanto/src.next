@@ -2,14 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #include "chrome/browser/extensions/extension_management.h"
 
 #include <memory>
 #include <string>
 #include <utility>
 
+<<<<<<< HEAD
+#include "base/command_line.h"
+=======
 #include "base/bind.h"
 #include "base/callback_helpers.h"
+>>>>>>> chromium
 #include "base/containers/contains.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
@@ -30,12 +39,22 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
+<<<<<<< HEAD
+#include "chrome/common/chrome_features.h"
+#include "chrome/common/chrome_switches.h"
+=======
+>>>>>>> chromium
 #include "chrome/common/extensions/extension_constants.h"
 #include "chrome/common/pref_names.h"
 #include "components/crx_file/id_util.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
+<<<<<<< HEAD
+#include "content/public/common/content_switches.h"
+#include "extensions/browser/extension_prefs.h"
+=======
+>>>>>>> chromium
 #include "extensions/browser/pref_names.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_urls.h"
@@ -267,6 +286,176 @@ bool ExtensionManagement::IsAllowedManifestType(
   return base::Contains(allowed_types, manifest_type);
 }
 
+<<<<<<< HEAD
+bool ExtensionManagement::IsAllowedManifestVersion(
+    int manifest_version,
+    const std::string& extension_id,
+    Manifest::Type manifest_type) {
+  bool enabled_by_default =
+      !base::FeatureList::IsEnabled(
+          extensions_features::kExtensionsManifestV3Only) ||
+      manifest_version >= 3;
+
+  // Manifest version policy only supports normal extensions and Chrome OS login
+  // screen extension.
+  if (manifest_type != Manifest::Type::TYPE_EXTENSION &&
+      manifest_type != Manifest::Type::TYPE_LOGIN_SCREEN_EXTENSION) {
+    return enabled_by_default;
+  }
+  switch (global_settings_->manifest_v2_setting) {
+    case internal::GlobalSettings::ManifestV2Setting::kDefault:
+      return enabled_by_default;
+    case internal::GlobalSettings::ManifestV2Setting::kDisabled:
+      return manifest_version >= 3;
+    case internal::GlobalSettings::ManifestV2Setting::kEnabled:
+      return true;
+    case internal::GlobalSettings::ManifestV2Setting::kEnabledForForceInstalled:
+      auto installation_mode =
+          GetInstallationMode(extension_id, /*update_url=*/std::string());
+      return manifest_version >= 3 ||
+             installation_mode == INSTALLATION_FORCED ||
+             installation_mode == INSTALLATION_RECOMMENDED;
+  }
+}
+
+bool ExtensionManagement::IsAllowedManifestVersion(const Extension* extension) {
+  return IsAllowedManifestVersion(extension->manifest_version(),
+                                  extension->id(), extension->GetType());
+}
+
+bool ExtensionManagement::IsExemptFromMV2DeprecationByPolicy(
+    int manifest_version,
+    const std::string& extension_id,
+    Manifest::Type manifest_type) {
+  // This policy only affects MV2 extensions.
+  if (manifest_version != 2) {
+    return false;
+  }
+  if (manifest_type != Manifest::Type::TYPE_EXTENSION &&
+      manifest_type != Manifest::Type::TYPE_LOGIN_SCREEN_EXTENSION) {
+    return false;
+  }
+
+  switch (global_settings_->manifest_v2_setting) {
+    case internal::GlobalSettings::ManifestV2Setting::kDefault:
+      // Default browser behavior. Not exempt.
+      return false;
+    case internal::GlobalSettings::ManifestV2Setting::kDisabled:
+      // All MV2 extensions are disallowed. Not exempt.
+      return false;
+    case internal::GlobalSettings::ManifestV2Setting::kEnabled:
+      // All MV2 extensions are allowed. Exempt.
+      return true;
+    case internal::GlobalSettings::ManifestV2Setting::kEnabledForForceInstalled:
+      // Force-installed MV2 extensions are allowed. Exempt if it's a force-
+      // installed extension only.
+      auto installation_mode =
+          GetInstallationMode(extension_id, /*update_url=*/std::string());
+      return installation_mode == INSTALLATION_FORCED ||
+             installation_mode == INSTALLATION_RECOMMENDED;
+  }
+
+  return false;
+}
+
+bool ExtensionManagement::IsAllowedByUnpublishedAvailabilityPolicy(
+    const Extension* extension) {
+  // This policy only applies to extensions that update from CWS.
+  if (!UpdatesFromWebstore(*extension)) {
+    return true;
+  }
+  if (global_settings_->unpublished_availability_setting ==
+      internal::GlobalSettings::UnpublishedAvailability::kAllowUnpublished) {
+    return true;
+  }
+  if (!cws_info_service_) {
+    cws_info_service_ = CWSInfoService::Get(profile_);
+  }
+  // Return the current published status of the extension in CWS if available.
+  // Otherwise assume the extension is currently published and return true.
+  // Ignore extensions taken down for malware as they are blocklisted and
+  // unloaded independently of policy.
+  // Current publish status may not available if the policy setting just changed
+  // to |kDisableUnpublished|. The actual publish status will be retrieved
+  // by CWSInfoService separately and will trigger this same policy check.
+  std::optional<CWSInfoServiceInterface::CWSInfo> cws_info =
+      cws_info_service_->GetCWSInfo(*extension);
+  if (cws_info.has_value() && cws_info->is_present &&
+      cws_info->violation_type !=
+          CWSInfoServiceInterface::CWSViolationType::kMalware) {
+    return cws_info->is_live;
+  }
+  return true;
+}
+
+bool ExtensionManagement::IsAllowedByUnpackedDeveloperModePolicy(
+    const Extension& extension) {
+  if (!base::FeatureList::IsEnabled(
+          extensions_features::kExtensionDisableUnsupportedDeveloper)) {
+    return true;
+  }
+  if (!extension.is_extension()) {
+    return true;
+  }
+  if (extension.location() != mojom::ManifestLocation::kUnpacked) {
+    return true;
+  }
+  // Allow extensions loaded from DevTools' "Extensions.loadUnpacked" command.
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kEnableUnsafeExtensionDebugging)) {
+    return true;
+  }
+
+  bool in_developer_mode =
+      profile_->GetPrefs()->GetBoolean(prefs::kExtensionsUIDeveloperMode);
+  return in_developer_mode;
+}
+
+bool ExtensionManagement::IsForceInstalledInLowTrustEnvironment(
+    const Extension& extension) {
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+  if (GetInstallationMode(&extension) != INSTALLATION_FORCED) {
+    return false;
+  }
+
+  if (!Manifest::IsPolicyLocation(extension.location())) {
+    return false;
+  }
+
+  return GetHighestTrustworthiness(profile_) <
+         policy::ManagementAuthorityTrustworthiness::TRUSTED;
+#else
+  return false;
+#endif
+}
+
+bool ExtensionManagement::ShouldBlockForceInstalledOffstoreExtension(
+    const Extension& extension) {
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+  if (!base::FeatureList::IsEnabled(
+          kDisableOffstoreForceInstalledExtensionsInLowTrustEnviroment)) {
+    return false;
+  }
+  if (extension.from_webstore() || UpdatesFromWebstore(extension)) {
+    return false;
+  }
+  if (GetInstallationMode(&extension) !=
+      ExtensionManagement::INSTALLATION_FORCED) {
+    return false;
+  }
+  if (!Manifest::IsPolicyLocation(extension.location())) {
+    return false;
+  }
+
+  return GetHighestTrustworthiness(profile_) <
+         policy::ManagementAuthorityTrustworthiness::TRUSTED;
+#else
+  return false;
+#endif
+}
+
+=======
+>>>>>>> chromium
 APIPermissionSet ExtensionManagement::GetBlockedAPIPermissions(
     const Extension* extension) const {
   std::string update_url;
@@ -722,8 +911,12 @@ ExtensionManagementFactory::ExtensionManagementFactory()
   DependsOn(InstallStageTrackerFactory::GetInstance());
 }
 
+<<<<<<< HEAD
+ExtensionManagementFactory::~ExtensionManagementFactory() = default;
+=======
 ExtensionManagementFactory::~ExtensionManagementFactory() {
 }
+>>>>>>> chromium
 
 KeyedService* ExtensionManagementFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {

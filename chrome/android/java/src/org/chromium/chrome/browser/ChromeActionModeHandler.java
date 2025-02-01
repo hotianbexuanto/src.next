@@ -24,6 +24,7 @@ import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.firstrun.FirstRunStatus;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.locale.LocaleManager;
@@ -62,6 +63,60 @@ public class ChromeActionModeHandler {
      *        has changed.
      * @param searchCallback Callback to run when search action is selected in the action mode.
      * @param shareDelegateSupplier The {@link Supplier} of the {@link ShareDelegate} that will be
+<<<<<<< HEAD
+     *     notified when a share action is performed.
+     * @param controlsState Provides browser controls visibility state.
+     * @param readAloudControllerSupplier Supplies {@link ReadAloudController}.
+     */
+    public ChromeActionModeHandler(
+            ActivityTabProvider activityTabProvider,
+            Callback<String> searchCallback,
+            boolean showWebSearch,
+            Supplier<ShareDelegate> shareDelegateSupplier,
+            BrowserControlsStateProvider controlsState,
+            Supplier<ReadAloudController> readAloudControllerSupplier) {
+        mInitWebContentsObserver =
+                (webContents) -> {
+                    SelectionPopupController spc =
+                            SelectionPopupController.fromWebContents(webContents);
+                    spc.setActionModeCallback(
+                            new ChromeActionModeCallback(
+                                    mActiveTab,
+                                    webContents,
+                                    searchCallback,
+                                    showWebSearch,
+                                    shareDelegateSupplier,
+                                    controlsState,
+                                    readAloudControllerSupplier));
+                    spc.setDropdownMenuDelegate(new ChromeSelectionDropdownMenuDelegate());
+                };
+
+        new ActivityTabProvider.ActivityTabTabObserver(activityTabProvider) {
+            @Override
+            public void onObservingDifferentTab(Tab tab, boolean hint) {
+                // ActivityTabProvider will null out the tab passed to onObservingDifferentTab when
+                // the tab is non-interactive (e.g. when entering the TabSwitcher), but in those
+                // cases we actually still want to use the most recently selected tab.
+                if (tab == null || tab == mActiveTab) return;
+                if (mActiveTab != null && mActiveTab.isInitialized()) {
+                    TabWebContentsObserver.from(mActiveTab)
+                            .removeInitWebContentsObserver(mInitWebContentsObserver);
+                }
+                mActiveTab = tab;
+                TabWebContentsObserver.from(tab)
+                        .addInitWebContentsObserver(mInitWebContentsObserver);
+            }
+
+            @Override
+            public void onPageLoadStarted(Tab tab, GURL url) {
+                SelectionPopupController.fromWebContents(tab.getWebContents()).clearSelection();
+            }
+
+            @Override
+            public void onContentChanged(Tab tab) {
+                SelectionPopupController.fromWebContents(tab.getWebContents()).clearSelection();
+            }
+=======
      *        notified when a share action is performed.
      */
     public ChromeActionModeHandler(ActivityTabProvider activityTabProvider,
@@ -71,6 +126,7 @@ public class ChromeActionModeHandler {
             SelectionPopupController.fromWebContents(webContents)
                     .setActionModeCallback(new ActionModeCallback(mActiveTab, webContents,
                             actionBarObserver, searchCallback, shareDelegateSupplier));
+>>>>>>> chromium
         };
 
         mActivityTabTabObserver =
@@ -107,17 +163,38 @@ public class ChromeActionModeHandler {
         private final Consumer<Boolean> mActionBarObserver;
         private final Callback<String> mSearchCallback;
         private final Supplier<ShareDelegate> mShareDelegateSupplier;
+<<<<<<< HEAD
+        private final Supplier<ReadAloudController> mReadAloudControllerSupplier;
+        private final BrowserControlsStateProvider mControlsState;
+=======
+>>>>>>> chromium
 
         // Used for recording UMA histograms.
         private long mContextMenuStartTime;
 
+<<<<<<< HEAD
+        ChromeActionModeCallback(
+                Tab tab,
+                WebContents webContents,
+                Callback<String> searchCallback,
+                boolean showWebSearch,
+                Supplier<ShareDelegate> shareDelegateSupplier,
+                BrowserControlsStateProvider controlsState,
+                Supplier<ReadAloudController> readAloudControllerSupplier) {
+=======
         ActionModeCallback(Tab tab, WebContents webContents, Consumer<Boolean> observer,
                 Callback<String> searchCallback, Supplier<ShareDelegate> shareDelegateSupplier) {
+>>>>>>> chromium
             mTab = tab;
             mHelper = getActionModeCallbackHelper(webContents);
             mActionBarObserver = observer;
             mSearchCallback = searchCallback;
             mShareDelegateSupplier = shareDelegateSupplier;
+<<<<<<< HEAD
+            mControlsState = controlsState;
+            mReadAloudControllerSupplier = readAloudControllerSupplier;
+=======
+>>>>>>> chromium
         }
 
         @VisibleForTesting
@@ -212,6 +289,26 @@ public class ChromeActionModeHandler {
                 RecordUserAction.record(SelectionPopupController.UMA_MOBILE_ACTION_MODE_SHARE);
                 RecordHistogram.recordMediumTimesHistogram("ContextMenu.TimeToSelectShare",
                         System.currentTimeMillis() - mContextMenuStartTime);
+<<<<<<< HEAD
+                mShareDelegateSupplier
+                        .get()
+                        .share(
+                                new ShareParams.Builder(
+                                                mTab.getWindowAndroid(),
+                                                /* title= */ "",
+                                                /* url= */ "")
+                                        .setText(sanitizeTextForShare(mHelper.getSelectedText()))
+                                        .build(),
+                                new ChromeShareExtras.Builder()
+                                        .setSaveLastUsed(true)
+                                        .setRenderFrameHost(mHelper.getRenderFrameHost())
+                                        .setDetailedContentType(
+                                                ChromeShareExtras.DetailedContentType
+                                                        .HIGHLIGHTED_TEXT)
+                                        .build(),
+                                ShareOrigin.MOBILE_ACTION_MODE);
+                return true;
+=======
                 mShareDelegateSupplier.get().share(
                         new ShareParams.Builder(mTab.getWindowAndroid(), /*url=*/"", /*title=*/"")
                                 .setText(sanitizeTextForShare(mHelper.getSelectedText()))
@@ -224,6 +321,7 @@ public class ChromeActionModeHandler {
                         ShareOrigin.MOBILE_ACTION_MODE);
             } else {
                 return mHelper.onActionItemClicked(mode, item);
+>>>>>>> chromium
             }
             return true;
         }
@@ -234,8 +332,25 @@ public class ChromeActionModeHandler {
             notifyContextualActionBarVisibilityChanged(false);
         }
 
+<<<<<<< HEAD
+        @Override
+        public void onGetContentRect(ActionMode mode, View view, Rect outRect) {
+            mHelper.onGetContentRect(mode, view, outRect);
+            boolean controlsVisible = mControlsState.getBrowserControlHiddenRatio() < 1.f;
+            int controlsHeight = mControlsState.getTopControlsHeight();
+            if (controlsVisible && outRect.top < 2 * controlsHeight) {
+                // Make |outRect| taller to so the framework thinks there is not enough space
+                // above the selected text to place the floating action mode. This helps the action
+                // mode and the top controls avoid overlapping - the action mode will be positioned
+                // below the text.
+                // The right condition should be |outRect.top < controlsHeight + actionModeHeight|
+                // but we do not know |actionModeHeight|. Assume actionModeHeight ~= controlsHeight.
+                outRect.top -= controlsHeight;
+            }
+=======
         private void notifyContextualActionBarVisibilityChanged(boolean show) {
             if (!mHelper.supportsFloatingActionMode()) mActionBarObserver.accept(show);
+>>>>>>> chromium
         }
 
         private Set<String> getPackageNames(List<ResolveInfo> list) {

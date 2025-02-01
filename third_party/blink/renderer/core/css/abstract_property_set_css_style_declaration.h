@@ -61,6 +61,7 @@ class AbstractPropertySetCSSStyleDeclaration : public CSSStyleDeclaration {
                    const String& priority,
                    ExceptionState&) final;
   String removeProperty(const String& property_name, ExceptionState&) final;
+  void QuietlyRemoveProperty(const String& property_name) final;
   String CssFloat() const;
   void SetCSSFloat(const String&, ExceptionState&);
   String cssText() const final;

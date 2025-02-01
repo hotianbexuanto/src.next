@@ -57,10 +57,14 @@ class CORE_EXPORT StaticRange final : public AbstractRange {
     return start_container_ == end_container_ && start_offset_ == end_offset_;
   }
 
+<<<<<<< HEAD
+  Range* toRange(ExceptionState&) const;
+=======
   void setStart(Node* container, unsigned offset);
   void setEnd(Node* container, unsigned offset);
 
   Range* toRange(ExceptionState& = ASSERT_NO_EXCEPTION) const;
+>>>>>>> chromium
 
   bool IsValid() const;
   bool CrossesContainBoundary() const;

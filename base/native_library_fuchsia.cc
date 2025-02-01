@@ -44,6 +44,18 @@ NativeLibrary LoadNativeLibraryWithOptions(const FilePath& library_path,
     return nullptr;
   }
 
+<<<<<<< HEAD
+  // Use fdio_open3_fd (a Fuchsia-specific API) here so we can pass the
+  // appropriate FS rights flags to request executability.
+  // TODO(crbug.com/40655456): Teach base::File about FLAG_WIN_EXECUTE on
+  // Fuchsia, and then use it here instead of using fdio_open3_fd() directly.
+  base::ScopedFD fd;
+  zx_status_t status =
+      fdio_open3_fd(computed_path.value().c_str(),
+                    static_cast<uint64_t>(fuchsia::io::PERM_READABLE |
+                                          fuchsia::io::PERM_EXECUTABLE),
+                    base::ScopedFD::Receiver(fd).get());
+=======
   FilePath computed_path;
   base::PathService::Get(DIR_SOURCE_ROOT, &computed_path);
   computed_path = computed_path.AppendASCII("lib").Append(components[0]);
@@ -57,6 +69,7 @@ NativeLibrary LoadNativeLibraryWithOptions(const FilePath& library_path,
       computed_path.value().c_str(),
       fuchsia::io::OPEN_RIGHT_READABLE | fuchsia::io::OPEN_RIGHT_EXECUTABLE,
       base::ScopedFD::Receiver(fd).get());
+>>>>>>> chromium
   if (status != ZX_OK) {
     if (error) {
       error->message =

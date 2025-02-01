@@ -7,7 +7,11 @@ package org.chromium.chrome.browser.tasks.tab_management;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.InsetDrawable;
+<<<<<<< HEAD
+import android.view.LayoutInflater;
+=======
 import android.os.Build;
+>>>>>>> chromium
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -32,6 +36,43 @@ class TabListViewBinder {
             PropertyModel model, ViewGroup view, @Nullable PropertyKey propertyKey) {
         View fastView = view;
 
+<<<<<<< HEAD
+        ((TabListView) view).setTabActionState(tabActionState);
+        bindListTab(model, (ViewLookupCachingFrameLayout) view, propertyKey);
+        if (tabActionState == TabActionState.CLOSABLE) {
+            bindClosableListTab(model, (ViewLookupCachingFrameLayout) view, propertyKey);
+        } else if (tabActionState == TabActionState.SELECTABLE) {
+            bindSelectableListTab(model, (ViewLookupCachingFrameLayout) view, propertyKey);
+        } else {
+            assert false : "Unsupported TabActionState provided to bindTab.";
+        }
+    }
+
+    /**
+     * Handles any cleanup for recycled views that might be expensive to keep around in the pool.
+     *
+     * @param model The property model to possibly cleanup.
+     * @param view The view to possibly cleanup.
+     */
+    public static void onViewRecycled(PropertyModel model, View view) {
+        if (view instanceof TabListView tabListView) {
+            ImageView faviconView = tabListView.findViewById(R.id.start_icon);
+            faviconView.setImageDrawable(null);
+
+            FrameLayout colorContainer = tabListView.findViewById(R.id.after_title_container);
+            TabCardViewBinderUtils.detachTabGroupColorView(colorContainer);
+
+            FrameLayout labelContainer =
+                    tabListView.findViewById(R.id.before_description_container);
+            labelContainer.removeAllViews();
+        }
+    }
+
+    // TODO(crbug.com/40107066): Merge with TabGridViewBinder for shared properties.
+    private static void bindListTab(
+            PropertyModel model, ViewGroup view, @Nullable PropertyKey propertyKey) {
+=======
+>>>>>>> chromium
         if (TabProperties.TITLE == propertyKey) {
             String title = model.get(TabProperties.TITLE);
             ((TextView) fastView.findViewById(R.id.title)).setText(title);
@@ -81,11 +122,128 @@ class TabListViewBinder {
             }
         } else if (TabProperties.URL_DOMAIN == propertyKey) {
             String domain = model.get(TabProperties.URL_DOMAIN);
+<<<<<<< HEAD
+            ((TextView) view.findViewById(R.id.description)).setText(domain);
+        } else if (TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER == propertyKey) {
+            @Nullable
+            TabGroupColorViewProvider provider =
+                    model.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER);
+            FrameLayout container = view.findViewById(R.id.after_title_container);
+            TabCardViewBinderUtils.updateTabGroupColorView(container, provider);
+        } else if (TabProperties.TAB_ACTION_BUTTON_DATA == propertyKey) {
+            @Nullable TabActionButtonData data = model.get(TabProperties.TAB_ACTION_BUTTON_DATA);
+            @Nullable
+            TabActionListener tabActionListener = data == null ? null : data.tabActionListener;
+            ImageView actionButton = view.findViewById(R.id.end_button);
+            TabGridViewBinder.setNullableClickListener(tabActionListener, actionButton, model);
+
+            if (data == null) return;
+
+            Resources res = view.getResources();
+            if (data.type == TabActionButtonType.OVERFLOW) {
+                actionButton.setImageDrawable(
+                        ResourcesCompat.getDrawable(
+                                res, R.drawable.ic_more_vert_24dp, view.getContext().getTheme()));
+            } else if (data.type == TabActionButtonType.CLOSE) {
+                int closeButtonSize = (int) res.getDimension(R.dimen.tab_grid_close_button_size);
+                Bitmap bitmap = BitmapFactory.decodeResource(res, R.drawable.btn_close);
+                Bitmap.createScaledBitmap(bitmap, closeButtonSize, closeButtonSize, true);
+                actionButton.setImageBitmap(bitmap);
+            } else if (data.type == TabActionButtonType.SELECT) {
+                // Intentional no-op. Handled as part of setTabActionState.
+            } else {
+                assert false : "Not reached";
+            }
+        } else if (TabProperties.TAB_CLICK_LISTENER == propertyKey) {
+            TabGridViewBinder.setNullableClickListener(
+                    model.get(TabProperties.TAB_CLICK_LISTENER), view, model);
+        } else if (TabProperties.TAB_LONG_CLICK_LISTENER == propertyKey) {
+            TabGridViewBinder.setNullableLongClickListener(
+                    model.get(TabProperties.TAB_LONG_CLICK_LISTENER), view, model);
+        } else if (TabProperties.TAB_CARD_LABEL_DATA == propertyKey) {
+            // Ignore this data for tab card labels in selectable mode.
+            updateTabCardLabel(view, /* tabCardLabelData= */ null);
+=======
             ((TextView) fastView.findViewById(R.id.description)).setText(domain);
+>>>>>>> chromium
         }
     }
 
     /**
+<<<<<<< HEAD
+     * Bind a closable tab to view.
+     *
+     * @param model The model to bind.
+     * @param view The view to bind to.
+     * @param propertyKey The property that changed.
+     */
+    private static void bindClosableListTab(
+            PropertyModel model, ViewGroup view, @Nullable PropertyKey propertyKey) {
+        bindListTab(model, view, propertyKey);
+
+        if (TabProperties.IS_SELECTED == propertyKey
+                || TabProperties.TAB_ACTION_BUTTON_DATA == propertyKey) {
+            ImageView closeButton = view.findViewById(R.id.end_button);
+            ImageViewCompat.setImageTintList(
+                    closeButton,
+                    TabUiThemeProvider.getActionButtonTintList(
+                            view.getContext(),
+                            model.get(TabProperties.IS_INCOGNITO),
+                            /* isSelected= */ false));
+        } else if (TabProperties.ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
+            TextResolver actionButtonDescriptionTextResolver =
+                    model.get(TabProperties.ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER);
+            CharSequence actionButtonDescriptionString =
+                    TabCardViewBinderUtils.resolveNullSafe(
+                            actionButtonDescriptionTextResolver, view.getContext());
+            view.findViewById(R.id.end_button).setContentDescription(actionButtonDescriptionString);
+        } else if (TabProperties.TAB_CARD_LABEL_DATA == propertyKey) {
+            updateTabCardLabel(view, model.get(TabProperties.TAB_CARD_LABEL_DATA));
+        }
+    }
+
+    /**
+     * Bind color updates.
+     *
+     * @param view The root view of the item (either Selectable/ClosableTabListView).
+     * @param isIncognito Whether the model is in incognito mode.
+     * @param isSelected Whether the item is selected.
+     */
+    private static void updateColors(ViewGroup view, boolean isIncognito) {
+        // TODO(crbug.com/40272756): isSelected is ignored as the selected row is only outlined not
+        // colored so it should use the unselected color. This will be addressed in a fixit.
+
+        // Shared by both classes, from tab_list_card_item.
+        View contentView = view.findViewById(R.id.content_view);
+        contentView.getBackground().mutate();
+        final @ColorInt int backgroundColor =
+                TabUiThemeUtils.getCardViewBackgroundColor(
+                        view.getContext(), isIncognito, /* isSelected= */ false);
+        ViewCompat.setBackgroundTintList(contentView, ColorStateList.valueOf(backgroundColor));
+
+        final @ColorInt int textColor =
+                TabUiThemeUtils.getTitleTextColor(
+                        view.getContext(), isIncognito, /* isSelected= */ false);
+        TextView titleView = view.findViewById(R.id.title);
+        TextView descriptionView = view.findViewById(R.id.description);
+        titleView.setTextColor(textColor);
+        descriptionView.setTextColor(textColor);
+
+        ImageView faviconView = view.findViewById(R.id.start_icon);
+        if (faviconView.getBackground() == null) {
+            faviconView.setBackgroundResource(R.drawable.list_item_icon_modern_bg);
+        }
+        faviconView.getBackground().mutate();
+        final @ColorInt int faviconBackgroundColor =
+                TabUiThemeUtils.getMiniThumbnailPlaceholderColor(
+                        view.getContext(), isIncognito, /* isSelected= */ false);
+        ViewCompat.setBackgroundTintList(
+                faviconView, ColorStateList.valueOf(faviconBackgroundColor));
+    }
+
+    /**
+=======
+>>>>>>> chromium
      * Bind a selectable tab to view.
      * @param model The model to bind.
      * @param view The view to bind to.
@@ -137,4 +295,69 @@ class TabListViewBinder {
             if (isSelected) ((AnimatedVectorDrawableCompat) actionButton.getDrawable()).start();
         }
     }
+<<<<<<< HEAD
+
+    private static void setFavicon(View view, Drawable favicon) {
+        ImageView faviconView = view.findViewById(R.id.start_icon);
+        faviconView.setImageDrawable(favicon);
+    }
+
+    private static ColorStateList getCheckedDrawableColorStateList(
+            Context context, boolean isIncognito) {
+        return ColorStateList.valueOf(
+                isIncognito
+                        ? context.getColor(R.color.default_icon_color_dark)
+                        : SemanticColorUtils.getDefaultIconColorInverse(context));
+    }
+
+    private static ColorStateList getBackgroundColorStateList(
+            Context context, boolean isSelected, boolean isIncognito) {
+        if (isSelected) {
+            return ColorStateList.valueOf(
+                    isIncognito
+                            ? context.getColor(R.color.baseline_primary_80)
+                            : SemanticColorUtils.getDefaultControlColorActive(context));
+        } else {
+            return AppCompatResources.getColorStateList(
+                    context,
+                    isIncognito
+                            ? R.color.default_icon_color_light
+                            : R.color.default_icon_color_tint_list);
+        }
+    }
+
+    private static void updateTabCardLabel(
+            ViewGroup view, @Nullable TabCardLabelData tabCardLabelData) {
+        TabCardLabelView labelView = getOrSetupTabCardLabelView(view);
+        labelView.setData(tabCardLabelData);
+    }
+
+    private static TabCardLabelView getOrSetupTabCardLabelView(ViewGroup view) {
+        FrameLayout labelContainer = view.findViewById(R.id.before_description_container);
+        if (labelContainer.getChildCount() > 0) {
+            return (TabCardLabelView) labelContainer.getChildAt(0);
+        }
+        Context context = labelContainer.getContext();
+        TabCardLabelView labelView =
+                (TabCardLabelView)
+                        LayoutInflater.from(context)
+                                .inflate(R.layout.tab_card_label_layout, labelContainer, false);
+        labelContainer.addView(labelView);
+
+        Resources res = context.getResources();
+        int marginEnd = res.getDimensionPixelSize(R.dimen.tab_card_label_list_margin_end);
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) labelView.getLayoutParams();
+        params.setMarginEnd(marginEnd);
+        labelView.setLayoutParams(params);
+
+        // TODO(crbug.com/362306803): This is technically supposed to have elevation. However,
+        // propagating clipToPadding=false and clipChildren=false all the way from
+        // title_and_description_layout up to tab_list_card_item to make it look right is not worth
+        // the complexity/risk of impacting other list UI when this UI is likely to be deprecated in
+        // 2025.
+        labelView.setElevation(0);
+        return labelView;
+    }
+=======
+>>>>>>> chromium
 }

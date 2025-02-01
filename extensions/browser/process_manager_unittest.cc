@@ -89,54 +89,54 @@ class ProcessManagerTest : public ExtensionsTest {
 // because ExtensionHost is tightly coupled to WebContents and can't be
 // constructed in unit tests.
 TEST_F(ProcessManagerTest, CreateBackgroundHostsOnExtensionsReady) {
-  std::unique_ptr<ProcessManager> manager(ProcessManager::CreateForTesting(
-      original_context(), extension_registry()));
-  ASSERT_FALSE(manager->startup_background_hosts_created_for_test());
+  ProcessManager manager(original_context(), extension_registry());
+  ASSERT_FALSE(manager.startup_background_hosts_created_for_test());
 
   // Simulate the extension system becoming ready.
   extension_system()->SetReady();
   base::RunLoop().RunUntilIdle();
-  EXPECT_TRUE(manager->startup_background_hosts_created_for_test());
+  EXPECT_TRUE(manager.startup_background_hosts_created_for_test());
 }
 
 // Test that the embedder can defer background host creation. Chrome does this
 // when the profile is created asynchronously, which may take a while.
 TEST_F(ProcessManagerTest, CreateBackgroundHostsDeferred) {
-  std::unique_ptr<ProcessManager> manager(ProcessManager::CreateForTesting(
-      original_context(), extension_registry()));
-  ASSERT_FALSE(manager->startup_background_hosts_created_for_test());
+  ProcessManager manager(original_context(), extension_registry());
+  ASSERT_FALSE(manager.startup_background_hosts_created_for_test());
 
   // Don't create background hosts if the delegate says to defer them.
   process_manager_delegate()->defer_creating_startup_background_hosts_ = true;
-  manager->MaybeCreateStartupBackgroundHosts();
-  EXPECT_FALSE(manager->startup_background_hosts_created_for_test());
+  manager.MaybeCreateStartupBackgroundHosts();
+  EXPECT_FALSE(manager.startup_background_hosts_created_for_test());
 
   // The extension system becoming ready still doesn't create the hosts.
   extension_system()->SetReady();
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(manager->startup_background_hosts_created_for_test());
+  EXPECT_FALSE(manager.startup_background_hosts_created_for_test());
 
   // Once the embedder is ready the background hosts can be created.
   process_manager_delegate()->defer_creating_startup_background_hosts_ = false;
-  manager->MaybeCreateStartupBackgroundHosts();
-  EXPECT_TRUE(manager->startup_background_hosts_created_for_test());
+  manager.MaybeCreateStartupBackgroundHosts();
+  EXPECT_TRUE(manager.startup_background_hosts_created_for_test());
 }
 
 // Test that the embedder can disallow background host creation.
 // Chrome OS does this in guest mode.
 TEST_F(ProcessManagerTest, IsBackgroundHostAllowed) {
-  std::unique_ptr<ProcessManager> manager(ProcessManager::CreateForTesting(
-      original_context(), extension_registry()));
-  ASSERT_FALSE(manager->startup_background_hosts_created_for_test());
+  ProcessManager manager(original_context(), extension_registry());
+  ASSERT_FALSE(manager.startup_background_hosts_created_for_test());
 
   // Don't create background hosts if the delegate disallows them.
   process_manager_delegate()->is_background_page_allowed_ = false;
-  manager->MaybeCreateStartupBackgroundHosts();
-  EXPECT_FALSE(manager->startup_background_hosts_created_for_test());
+  manager.MaybeCreateStartupBackgroundHosts();
+  EXPECT_FALSE(manager.startup_background_hosts_created_for_test());
 
   // The extension system becoming ready still doesn't create the hosts.
   extension_system()->SetReady();
   base::RunLoop().RunUntilIdle();
+<<<<<<< HEAD
+  EXPECT_FALSE(manager.startup_background_hosts_created_for_test());
+=======
   EXPECT_FALSE(manager->startup_background_hosts_created_for_test());
 }
 
@@ -176,6 +176,7 @@ TEST_F(ProcessManagerTest, ProcessGrouping) {
 
   BrowserContextDependencyManager::GetInstance()->DestroyBrowserContextServices(
       &another_context);
+>>>>>>> chromium
 }
 
 }  // namespace extensions

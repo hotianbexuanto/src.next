@@ -8,6 +8,7 @@
 #include "third_party/blink/renderer/core/layout/background_bleed_avoidance.h"
 #include "third_party/blink/renderer/core/layout/geometry/box_sides.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_size.h"
+#include "third_party/blink/renderer/core/paint/paint_flags.h"
 #include "third_party/blink/renderer/core/style/style_image.h"
 #include "third_party/blink/renderer/platform/geometry/layout_rect_outsets.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
@@ -119,7 +120,12 @@ class BoxPainterBase {
                   RespectImageOrientationEnum,
                   PhysicalBoxSides sides_to_include,
                   bool is_inline,
+<<<<<<< HEAD
+                  bool is_painting_background_in_contents_space,
+                  PaintFlags paint_flags);
+=======
                   bool is_painting_scrolling_background);
+>>>>>>> chromium
 
     // FillLayerInfo is a temporary, stack-allocated container which cannot
     // outlive the StyleImage.  This would normally be a raw pointer, if not for
@@ -165,8 +171,13 @@ class BoxPainterBase {
       const Color&,
       const FillLayer&,
       BackgroundBleedAvoidance,
+<<<<<<< HEAD
+      bool is_painting_background_in_contents_space,
+      PaintFlags paint_flags) const = 0;
+=======
       bool is_painting_scrolling_background) const = 0;
   virtual bool IsPaintingScrollingBackground(const PaintInfo&) const = 0;
+>>>>>>> chromium
   static void PaintInsetBoxShadow(
       const PaintInfo&,
       const FloatRoundedRect&,

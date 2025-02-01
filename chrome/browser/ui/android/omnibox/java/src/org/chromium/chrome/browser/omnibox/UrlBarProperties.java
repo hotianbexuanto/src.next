@@ -88,6 +88,9 @@ class UrlBarProperties {
     /** Whether focus should be allowed on the view. */
     public static final WritableBooleanPropertyKey ALLOW_FOCUS = new WritableBooleanPropertyKey();
 
+    /** Whether UrlBar is running in Cct. */
+    public static final WritableBooleanPropertyKey IS_IN_CCT = new WritableBooleanPropertyKey();
+
     /** Specified the autocomplete text to be shown to the user. */
     public static final WritableObjectPropertyKey<AutocompleteText> AUTOCOMPLETE_TEXT =
             new WritableObjectPropertyKey<>();
@@ -131,8 +134,37 @@ class UrlBarProperties {
     public static final WritableObjectPropertyKey<WindowDelegate> WINDOW_DELEGATE =
             new WritableObjectPropertyKey<>();
 
+<<<<<<< HEAD
+    /** Specifies the resource ID for the url bar hint text. */
+    public static final WritableIntPropertyKey HINT_TEXT = new WritableIntPropertyKey();
+
+    public static final PropertyKey[] ALL_KEYS =
+            new PropertyKey[] {
+                ACTION_MODE_CALLBACK,
+                ALLOW_FOCUS,
+                IS_IN_CCT,
+                AUTOCOMPLETE_TEXT,
+                DELEGATE,
+                FOCUS_CHANGE_CALLBACK,
+                SHOW_CURSOR,
+                TEXT_CONTEXT_MENU_DELEGATE,
+                TEXT_STATE,
+                URL_DIRECTION_LISTENER,
+                TEXT_CHANGE_LISTENER,
+                TYPING_STARTED_LISTENER,
+                KEY_DOWN_LISTENER,
+                INCOGNITO_COLORS_ENABLED,
+                HAS_URL_SUGGESTIONS,
+                TEXT_COLOR,
+                HINT_TEXT_COLOR,
+                SELECT_ALL_ON_FOCUS,
+                LONG_CLICK_LISTENER,
+                HINT_TEXT
+            };
+=======
     public static final PropertyKey[] ALL_KEYS = new PropertyKey[] {ACTION_MODE_CALLBACK,
             ALLOW_FOCUS, AUTOCOMPLETE_TEXT, DELEGATE, FOCUS_CHANGE_CALLBACK, SHOW_CURSOR,
             TEXT_CONTEXT_MENU_DELEGATE, TEXT_STATE, URL_DIRECTION_LISTENER,
             URL_TEXT_CHANGE_LISTENER, TEXT_CHANGED_LISTENER, USE_DARK_TEXT_COLORS, WINDOW_DELEGATE};
+>>>>>>> chromium
 }

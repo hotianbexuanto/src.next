@@ -53,9 +53,21 @@ struct CONTENT_EXPORT CdmInfo {
   Robustness robustness;
 
   // CDM capability, e.g. video codecs, encryption schemes and session types.
+<<<<<<< HEAD
+  std::optional<media::CdmCapability> capability;
+
+  // Status of the CDM capability query. Optional since this is done only by a
+  // lazy capability query. Used to inspect the reason when no capability
+  // reported.
+  std::optional<media::CdmCapabilityQueryStatus> capability_query_status;
+
+  // Whether the CdmInfo is enabled etc. This only affects capability query.
+  Status status = Status::kEnabled;
+=======
   // Optional to allow lazy initialization, i.e. to populate the capability
   // after registration.
   absl::optional<media::CdmCapability> capability;
+>>>>>>> chromium
 
   // Whether we also support sub key systems of the `key_system`.
   // A sub key system to a key system is like a sub domain to a domain.

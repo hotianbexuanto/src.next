@@ -68,6 +68,23 @@ class RendererStartupHelper : public KeyedService,
   void OnExtensionUnloaded(const Extension& extension);
   void OnExtensionLoaded(const Extension& extension);
 
+<<<<<<< HEAD
+  // Sends a message to all renderers to update the developer mode.
+  void OnDeveloperModeChanged(bool in_developer_mode);
+
+  // Sets properties for the user script world of the given `world_id` for
+  // the given `extension` in all applicable renderers.
+  void SetUserScriptWorldProperties(const Extension& extension,
+                                    mojom::UserScriptWorldInfoPtr world_info);
+
+  // Notifies renderers to clear any properties for the user script world
+  // associated with the given `extension` and `world_id`.
+  void ClearUserScriptWorldProperties(
+      const Extension& extension,
+      const std::optional<std::string>& world_id);
+
+=======
+>>>>>>> chromium
   // Returns mojom::Renderer* corresponding to |process|. This would return
   // nullptr when it's called before |process| is inserted to
   // |process_mojo_map_| or after it's deleted. Note that the callers should

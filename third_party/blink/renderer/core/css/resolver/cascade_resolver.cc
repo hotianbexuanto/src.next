@@ -16,6 +16,10 @@ bool CascadeResolver::IsLocked(const CSSProperty& property) const {
   return Find(property) != kNotFound;
 }
 
+bool CascadeResolver::IsLocked(const String& attribute) const {
+  return Find(attribute) != kNotFound;
+}
+
 bool CascadeResolver::AllowSubstitution(CSSVariableData* data) const {
   if (data && data->IsAnimationTainted() && stack_.size()) {
     const CSSProperty* property = CurrentProperty();
@@ -27,8 +31,20 @@ bool CascadeResolver::AllowSubstitution(CSSVariableData* data) const {
 }
 
 bool CascadeResolver::DetectCycle(const CSSProperty& property) {
+<<<<<<< HEAD
+  return DetectCycle(Find(property));
+}
+
+bool CascadeResolver::DetectCycle(const String& attribute) {
+  return DetectCycle(Find(attribute));
+}
+
+bool CascadeResolver::DetectCycle(wtf_size_t index) {
+  if (index == kNotFound) {
+=======
   wtf_size_t index = Find(property);
   if (index == kNotFound)
+>>>>>>> chromium
     return false;
   cycle_start_ = std::min(cycle_start_, index);
   cycle_end_ = stack_.size();
@@ -42,8 +58,27 @@ bool CascadeResolver::InCycle() const {
 
 wtf_size_t CascadeResolver::Find(const CSSProperty& property) const {
   wtf_size_t index = 0;
+<<<<<<< HEAD
+  for (CycleElem elem : stack_) {
+    if (absl::holds_alternative<const CSSProperty*>(elem) &&
+        absl::get<const CSSProperty*>(elem)->HasEqualCSSPropertyName(
+            property)) {
+      return index;
+    }
+    ++index;
+  }
+  return kNotFound;
+}
+
+wtf_size_t CascadeResolver::Find(const String& attribute) const {
+  wtf_size_t index = 0;
+  for (CycleElem elem : stack_) {
+    if (absl::holds_alternative<const String*>(elem) &&
+        *(absl::get<const String*>(elem)) == attribute) {
+=======
   for (const CSSProperty* p : stack_) {
     if (p->GetCSSPropertyName() == property.GetCSSPropertyName())
+>>>>>>> chromium
       return index;
     ++index;
   }
@@ -55,6 +90,13 @@ CascadeResolver::AutoLock::AutoLock(const CSSProperty& property,
     : resolver_(resolver) {
   DCHECK(!resolver.IsLocked(property));
   resolver_.stack_.push_back(&property);
+}
+
+CascadeResolver::AutoLock::AutoLock(const String& attribute,
+                                    CascadeResolver& resolver)
+    : resolver_(resolver) {
+  DCHECK(!resolver.IsLocked(attribute));
+  resolver_.stack_.push_back(&attribute);
 }
 
 CascadeResolver::AutoLock::~AutoLock() {

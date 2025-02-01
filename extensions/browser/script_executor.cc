@@ -4,6 +4,11 @@
 
 #include "extensions/browser/script_executor.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+#include <map>
+=======
+>>>>>>> chromium
 #include <set>
 #include <string>
 
@@ -15,7 +20,6 @@
 #include "base/hash/hash.h"
 #include "base/memory/weak_ptr.h"
 #include "base/pickle.h"
-#include "base/ranges/algorithm.h"
 #include "base/strings/stringprintf.h"
 #include "base/types/pass_key.h"
 #include "content/public/browser/render_frame_host.h"
@@ -29,6 +33,7 @@
 #include "extensions/browser/extension_web_contents_observer.h"
 #include "extensions/common/extension_messages.h"
 #include "extensions/common/mojom/host_id.mojom.h"
+#include "extensions/common/mojom/match_origin_as_fallback.mojom-shared.h"
 #include "ipc/ipc_message.h"
 #include "ipc/ipc_message_macros.h"
 
@@ -117,18 +122,26 @@ class Handler : public content::WebContentsObserver {
 
  private:
   // This class manages its own lifetime.
-  ~Handler() override {}
+  ~Handler() override = default;
 
   // content::WebContentsObserver:
   // TODO(devlin): Could we just rely on the RenderFrameDeleted() notification?
   // If so, we could remove this.
   void WebContentsDestroyed() override {
     for (content::RenderFrameHost* frame : pending_render_frames_) {
+<<<<<<< HEAD
+      ScriptExecutor::FrameResult& frame_result =
+          GetFrameResult(frame->GetFrameToken());
+      frame_result.error =
+          base::StringPrintf("Tab containing frame with ID %d was removed.",
+                             frame_result.frame_id);
+=======
       int frame_id = ExtensionApiFrameIdMap::GetFrameId(frame);
       AddWillNotInjectResult(
           frame_id,
           base::StringPrintf("Tab containing frame with ID %d was removed.",
                              frame_id));
+>>>>>>> chromium
     }
     pending_render_frames_.clear();
     Finish();
@@ -136,15 +149,27 @@ class Handler : public content::WebContentsObserver {
 
   void RenderFrameDeleted(
       content::RenderFrameHost* render_frame_host) override {
+<<<<<<< HEAD
+    int erased_count = std::erase(pending_render_frames_, render_frame_host);
+=======
     int erased_count = base::Erase(pending_render_frames_, render_frame_host);
     DCHECK_LE(erased_count, 1);
+>>>>>>> chromium
     if (erased_count == 0)
       return;
+    CHECK_EQ(erased_count, 1);
 
+<<<<<<< HEAD
+    ScriptExecutor::FrameResult& frame_result =
+        GetFrameResult(render_frame_host->GetFrameToken());
+    frame_result.error = base::StringPrintf("Frame with ID %d was removed.",
+                                            frame_result.frame_id);
+=======
     int frame_id = ExtensionApiFrameIdMap::GetFrameId(render_frame_host);
     AddWillNotInjectResult(
         frame_id,
         base::StringPrintf("Frame with ID %d was removed.", frame_id));
+>>>>>>> chromium
     if (pending_render_frames_.empty())
       Finish();
   }
@@ -153,7 +178,30 @@ class Handler : public content::WebContentsObserver {
     ScriptExecutor::FrameResult result;
     result.frame_id = frame_id;
     result.error = std::move(error);
+<<<<<<< HEAD
+    invalid_injection_results_.push_back(std::move(result));
+  }
+
+  void UpdateResult(content::RenderFrameHost* render_frame_host,
+                    const std::string& error,
+                    const GURL& url,
+                    std::optional<base::Value> result) {
+    ScriptExecutor::FrameResult& frame_result =
+        GetFrameResult(render_frame_host->GetFrameToken());
+    frame_result.frame_responded = true;
+    frame_result.error = error;
+    frame_result.url = url;
+    if (result.has_value())
+      frame_result.value = std::move(*result);
+  }
+
+  ScriptExecutor::FrameResult& GetFrameResult(
+      const blink::LocalFrameToken& frame_token) {
+    DCHECK(base::Contains(results_, frame_token));
+    return results_[frame_token];
+=======
     results_.push_back(std::move(result));
+>>>>>>> chromium
   }
 
   // Sends an ExecuteCode message to the given frame host, and increments
@@ -165,12 +213,21 @@ class Handler : public content::WebContentsObserver {
     DCHECK(base::Contains(pending_render_frames_, frame));
     ContentScriptTracker::WillExecuteCode(pass_key, frame, host_id_);
     ExtensionWebContentsObserver::GetForWebContents(web_contents())
+<<<<<<< HEAD
+        ->GetLocalFrameChecked(frame)
+        .ExecuteCode(std::move(params),
+                     base::BindOnce(&Handler::OnExecuteCodeFinished,
+                                    weak_ptr_factory_.GetWeakPtr(),
+                                    frame->GetProcess()->GetDeprecatedID(),
+                                    frame->GetRoutingID()));
+=======
         ->GetLocalFrame(frame)
         ->ExecuteCode(std::move(params),
                       base::BindOnce(&Handler::OnExecuteCodeFinished,
                                      weak_ptr_factory_.GetWeakPtr(),
                                      frame->GetProcess()->GetID(),
                                      frame->GetRoutingID()));
+>>>>>>> chromium
   }
 
   // Handles the ExecuteCodeFinished message.
@@ -284,15 +341,16 @@ std::string ScriptExecutor::GenerateInjectionKey(const mojom::HostID& host_id,
                             host_id.id.c_str(), base::FastHash(source));
 }
 
-void ScriptExecutor::ExecuteScript(const mojom::HostID& host_id,
-                                   mojom::CodeInjectionPtr injection,
-                                   ScriptExecutor::FrameScope frame_scope,
-                                   const std::set<int>& frame_ids,
-                                   ScriptExecutor::MatchAboutBlank about_blank,
-                                   mojom::RunLocation run_at,
-                                   ScriptExecutor::ProcessType process_type,
-                                   const GURL& webview_src,
-                                   ScriptFinishedCallback callback) {
+void ScriptExecutor::ExecuteScript(
+    const mojom::HostID& host_id,
+    mojom::CodeInjectionPtr injection,
+    ScriptExecutor::FrameScope frame_scope,
+    const std::set<int>& frame_ids,
+    mojom::MatchOriginAsFallbackBehavior match_origin_as_fallback_behavior,
+    mojom::RunLocation run_at,
+    ScriptExecutor::ProcessType process_type,
+    const GURL& webview_src,
+    ScriptFinishedCallback callback) {
   if (host_id.type == mojom::HostID::HostType::kExtensions) {
     // Don't execute if the extension has been unloaded.
     const Extension* extension =
@@ -314,7 +372,7 @@ void ScriptExecutor::ExecuteScript(const mojom::HostID& host_id,
       DCHECK(expect_injection_key)
           << "Only extensions (with injection keys supplied) can remove CSS.";
     }
-    DCHECK(base::ranges::all_of(
+    DCHECK(std::ranges::all_of(
         injection->get_css()->sources,
         [expect_injection_key](const mojom::CSSSourcePtr& source) {
           return expect_injection_key == source->key.has_value();
@@ -325,7 +383,7 @@ void ScriptExecutor::ExecuteScript(const mojom::HostID& host_id,
   auto params = mojom::ExecuteCodeParams::New();
   params->host_id = host_id.Clone();
   params->injection = std::move(injection);
-  params->match_about_blank = (about_blank == MATCH_ABOUT_BLANK);
+  params->match_origin_as_fallback_behavior = match_origin_as_fallback_behavior;
   params->run_at = run_at;
   params->is_web_view = (process_type == WEB_VIEW_PROCESS);
   params->webview_src = webview_src;

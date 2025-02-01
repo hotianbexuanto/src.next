@@ -159,12 +159,25 @@ DispatchEventResult EventDispatcher::Dispatch() {
     // path.
     return DispatchEventResult::kNotCanceled;
   }
+<<<<<<< HEAD
+  std::optional<EventTiming> eventTiming;
+  auto& document = node_->GetDocument();
+  LocalFrame* frame = document.GetFrame();
+  LocalDOMWindow* window = nullptr;
+  if (frame) {
+    window = frame->DomWindow();
+  }
+
+  if (frame && window) {
+    eventTiming = EventTiming::TryCreate(window, *event_, event_->target());
+=======
   std::unique_ptr<EventTiming> eventTiming;
   LocalFrame* frame = node_->GetDocument().GetFrame();
   if (frame && frame->DomWindow()) {
     eventTiming = EventTiming::Create(frame->DomWindow(), *event_);
     // TODO(hbsong): Calculate First Input Delay for filtered events.
     EventTiming::HandleInputDelay(frame->DomWindow(), *event_);
+>>>>>>> chromium
   }
 
   if (event_->type() == event_type_names::kChange && event_->isTrusted() &&
@@ -386,6 +399,10 @@ inline void EventDispatcher::DispatchEventPostProcess(
     if (event_->type() == event_type_names::kKeypress && view_)
       view_->GetFrame().GetEditor().SyncSelection(SyncCondition::kForced);
 #endif  // defined(OS_MAC)
+  }
+
+  if (event_->IsMouseEvent() && event_->type() == event_type_names::kMouseup) {
+    node_->GetDocument().SetCustomizableSelectMousedownLocation(std::nullopt);
   }
 
   auto* keyboard_event = DynamicTo<KeyboardEvent>(event_);

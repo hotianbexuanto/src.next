@@ -28,6 +28,15 @@ public class TabBrowserControlsConstraintsHelper implements UserData {
     private long mNativeTabBrowserControlsConstraintsHelper; // Lazily initialized in |update|
     private BrowserControlsVisibilityDelegate mVisibilityDelegate;
 
+<<<<<<< HEAD
+    // These OffsetTags are used in:
+    //   - Browser, to tag the layers that move with top controls to be moved by viz.
+    //   - Renderer, to tag the corresponding scroll offset in the compositor frame's metadata.
+    // When visibility of the browser controls are forced by the browser, this token will be null.
+    private BrowserControlsOffsetTagsInfo mOffsetTags;
+
+=======
+>>>>>>> chromium
     public static void createForTab(Tab tab) {
         tab.getUserDataHost().setUserData(
                 USER_DATA_KEY, new TabBrowserControlsConstraintsHelper(tab));
@@ -76,6 +85,17 @@ public class TabBrowserControlsConstraintsHelper implements UserData {
 
     /** Constructor */
     private TabBrowserControlsConstraintsHelper(Tab tab) {
+<<<<<<< HEAD
+        mOffsetTags = new BrowserControlsOffsetTagsInfo(null, null, null);
+        mTab = (TabImpl) tab;
+        mConstraintsChangedCallback = unused_constraints -> updateEnabledState();
+        mTab.addObserver(
+                new EmptyTabObserver() {
+                    @Override
+                    public void onInitialized(Tab tab, String appId) {
+                        updateVisibilityDelegate();
+                    }
+=======
         mTab = (TabImpl) tab;
         mConstraintsChangedCallback = (constraints) -> updateEnabledState();
         mTab.addObserver(new EmptyTabObserver() {
@@ -105,6 +125,7 @@ public class TabBrowserControlsConstraintsHelper implements UserData {
                     updateEnabledState();
                 }
             }
+>>>>>>> chromium
 
             @Override
             public void onDidFinishNavigation(Tab tab, NavigationHandle navigationHandle) {
@@ -126,6 +147,11 @@ public class TabBrowserControlsConstraintsHelper implements UserData {
 
     @Override
     public void destroy() {
+        if (mVisibilityDelegate != null) {
+            mVisibilityDelegate.removeObserver(mConstraintsChangedCallback);
+            mVisibilityDelegate = null;
+        }
+
         if (mNativeTabBrowserControlsConstraintsHelper != 0) {
             TabBrowserControlsConstraintsHelperJni.get().onDestroyed(
                     mNativeTabBrowserControlsConstraintsHelper,
@@ -144,11 +170,77 @@ public class TabBrowserControlsConstraintsHelper implements UserData {
         }
     }
 
+<<<<<<< HEAD
+    private boolean isStateForced(int state) {
+        return state == BrowserControlsState.HIDDEN || state == BrowserControlsState.SHOWN;
+    }
+
+=======
+>>>>>>> chromium
     private void updateEnabledState() {
         if (mTab.isFrozen()) return;
         update(BrowserControlsState.BOTH, getConstraints() != BrowserControlsState.HIDDEN);
     }
 
+<<<<<<< HEAD
+    /** Unregister all OffsetTags (for now, only the top controls have an OffsetTag.) */
+    private void unregisterOffsetTags() {
+        updateOffsetTags(new BrowserControlsOffsetTagsInfo(null, null, null), getConstraints());
+    }
+
+    private void updateOffsetTags(
+            BrowserControlsOffsetTagsInfo newOffsetTags, @BrowserControlsState int constraints) {
+        if (newOffsetTags == mOffsetTags) {
+            return;
+        }
+
+        // Relies on BrowserControlsManager and BottomControlsMediator to set the heights of the
+        // top/bottom controls and their shadows.
+        RewindableIterator<TabObserver> observers = mTab.getTabObservers();
+        while (observers.hasNext()) {
+            observers
+                    .next()
+                    .onBrowserControlsConstraintsChanged(
+                            mTab, mOffsetTags, newOffsetTags, constraints);
+        }
+
+        mOffsetTags = newOffsetTags;
+    }
+
+    private void generateOffsetTags(@BrowserControlsState int constraints) {
+        if (mTab.isHidden()) {
+            return;
+        }
+
+        boolean isNewStateForced = isStateForced(constraints);
+        if (!mOffsetTags.hasTags() && !isNewStateForced) {
+            OffsetTag topControlsOffsetTag = null;
+            OffsetTag bottomControlsOffsetTag = null;
+
+            if (ChromeFeatureList.sBcivZeroBrowserFrames.isEnabled()) {
+                // Create 2 tags so the top controls can move separately from other views so that
+                // renderer+viz can correctly control the visibility of the toolbar hairline without
+                // additional browser frames.
+                topControlsOffsetTag = OffsetTag.createRandom();
+            }
+
+            if (ChromeFeatureList.sBcivBottomControls.isEnabled()) {
+                bottomControlsOffsetTag = OffsetTag.createRandom();
+            }
+
+            updateOffsetTags(
+                    new BrowserControlsOffsetTagsInfo(
+                            topControlsOffsetTag,
+                            OffsetTag.createRandom(),
+                            bottomControlsOffsetTag),
+                    constraints);
+        } else if (mOffsetTags.hasTags() && isNewStateForced) {
+            updateOffsetTags(new BrowserControlsOffsetTagsInfo(null, null, null), constraints);
+        }
+    }
+
+=======
+>>>>>>> chromium
     /**
      * Updates the browser controls state for this tab.  As these values are set at the renderer
      * level, there is potential for this impacting other tabs that might share the same

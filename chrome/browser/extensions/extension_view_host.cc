@@ -16,7 +16,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/color_chooser.h"
 #include "components/autofill/content/browser/content_autofill_driver_factory.h"
-#include "components/autofill/core/browser/browser_autofill_manager.h"
+#include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 #include "components/web_modal/web_contents_modal_dialog_manager.h"
 #include "content/public/browser/color_chooser.h"
 #include "content/public/browser/file_select_listener.h"
@@ -34,6 +34,20 @@
 
 namespace extensions {
 
+<<<<<<< HEAD
+ExtensionViewHost::ExtensionViewHost(
+    const Extension* extension,
+    content::SiteInstance* site_instance,
+    content::BrowserContext* browser_context_param,
+    const GURL& url,
+    mojom::ViewType host_type,
+    Browser* browser)
+    : ExtensionHost(extension,
+                    site_instance,
+                    browser_context_param,
+                    url,
+                    host_type),
+=======
 // Notifies an ExtensionViewHost when a WebContents is destroyed.
 class ExtensionViewHost::AssociatedWebContentsObserver
     : public content::WebContentsObserver {
@@ -62,6 +76,7 @@ ExtensionViewHost::ExtensionViewHost(const Extension* extension,
                                      mojom::ViewType host_type,
                                      Browser* browser)
     : ExtensionHost(extension, site_instance, url, host_type),
+>>>>>>> chromium
       browser_(browser) {
   // Not used for panels, see PanelHost.
   DCHECK(host_type == mojom::ViewType::kExtensionDialog ||
@@ -78,6 +93,8 @@ ExtensionViewHost::ExtensionViewHost(const Extension* extension,
   // in TabHelpers::AttachTabHelpers, but popups don't.
   // TODO(kalman): How much of TabHelpers::AttachTabHelpers should be here?
   autofill::ChromeAutofillClient::CreateForWebContents(host_contents());
+<<<<<<< HEAD
+=======
   autofill::ContentAutofillDriverFactory::CreateForWebContentsAndDelegate(
       host_contents(),
       autofill::ChromeAutofillClient::FromWebContents(host_contents()),
@@ -98,6 +115,7 @@ ExtensionViewHost::ExtensionViewHost(const Extension* extension,
         host_contents()->GetMainFrame()->GetRenderViewHost()->GetRoutingID(),
         zoom_map->GetDefaultZoomLevel());
   }
+>>>>>>> chromium
 }
 
 ExtensionViewHost::~ExtensionViewHost() {
@@ -156,6 +174,24 @@ void ExtensionViewHost::LoadInitialURL() {
 
 bool ExtensionViewHost::IsBackgroundPage() const {
   return false;
+}
+
+void ExtensionViewHost::ReadyToCommitNavigation(
+    content::NavigationHandle* navigation_handle) {
+  ExtensionHost::ReadyToCommitNavigation(navigation_handle);
+
+  // The popup itself cannot be zoomed, but we must specify a zoom level to use.
+  // Otherwise, if a user zooms a page of the same extension, the popup would
+  // use the per-origin zoom level.
+  // We do this right before commit (rather than in the constructor) because the
+  // RenderFrameHost may be swapped during the creation/load process.
+  if (extension_host_type() == mojom::ViewType::kExtensionPopup) {
+    content::HostZoomMap* zoom_map =
+        content::HostZoomMap::GetForWebContents(host_contents());
+    zoom_map->SetTemporaryZoomLevel(
+        host_contents()->GetPrimaryMainFrame()->GetGlobalId(),
+        zoom_map->GetDefaultZoomLevel());
+  }
 }
 
 content::WebContents* ExtensionViewHost::OpenURLFromTab(

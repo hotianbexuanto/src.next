@@ -26,8 +26,27 @@ import("//build/config/compiler/compiler.gni")
 # -O2 optimiziation. If there is common inlined implementations, put this in
 # foo-inl.h and include that in both foo.cc and foo-hot.cc.
 blink_core_hot_sources_dom = [
+<<<<<<< HEAD
+  "container_node.cc",
+  "container_node.h",
+  "document.cc",
+  "document.h",
+  "element.cc",
+  "element.h",
+  "element_data_cache.cc",
+  "element_data_cache.h",
+  "events/event_dispatcher.cc",
+  "events/event_dispatcher.h",
+  "events/event_path.cc",
+  "events/event_path.h",
+  "qualified_name.cc",
+  "qualified_name.h",
+  "tree_scope.cc",
+  "tree_scope.h",
+=======
   "element-hot.cc",
   "element-inl.h",
+>>>>>>> chromium
 ]
 
 blink_core_sources_dom = [
@@ -57,6 +76,11 @@ blink_core_sources_dom = [
   "class_collection.cc",
   "class_collection.h",
   "collection_index_cache.h",
+<<<<<<< HEAD
+  "column_pseudo_element.cc",
+  "column_pseudo_element.h",
+=======
+>>>>>>> chromium
   "comment.cc",
   "comment.h",
   "container_node.cc",
@@ -176,7 +200,12 @@ blink_core_sources_dom = [
   "ignore_opens_during_unload_count_incrementer.h",
   "increment_load_event_delay_count.cc",
   "increment_load_event_delay_count.h",
+<<<<<<< HEAD
+  "interest_invoker_data.h",
+  "interest_invoker_target_data.h",
+=======
   "iterator.h",
+>>>>>>> chromium
   "layout_tree_builder.cc",
   "layout_tree_builder.h",
   "layout_tree_builder_traversal.cc",
@@ -259,8 +288,13 @@ blink_core_sources_dom = [
   "static_node_list.h",
   "static_range.cc",
   "static_range.h",
+<<<<<<< HEAD
+  "subscriber.cc",
+  "subscriber.h",
+=======
   "synchronous_mutation_observer.cc",
   "synchronous_mutation_observer.h",
+>>>>>>> chromium
   "tag_collection.cc",
   "tag_collection.h",
   "task_type_traits.h",
@@ -273,7 +307,6 @@ blink_core_sources_dom = [
   "transform_source.h",
   "transform_source_libxslt.cc",
   "traversal_range.h",
-  "tree_ordered_list.cc",
   "tree_ordered_list.h",
   "tree_ordered_map.cc",
   "tree_ordered_map.h",
@@ -315,7 +348,12 @@ blink_core_tests_dom = [
   "nth_index_cache_test.cc",
   "range_test.cc",
   "scripted_animation_controller_test.cc",
+<<<<<<< HEAD
+  "scroll_button_pseudo_element_test.cc",
+  "shadow_including_tree_order_traversal_test.cc",
+=======
   "scripted_idle_task_controller_test.cc",
+>>>>>>> chromium
   "slot_assignment_test.cc",
   "space_split_string_test.cc",
   "static_range_test.cc",

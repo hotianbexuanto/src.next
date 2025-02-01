@@ -4,8 +4,16 @@
 
 #include "content/browser/child_process_task_port_provider_mac.h"
 
+<<<<<<< HEAD
+#include <map>
+
+#include "base/apple/foundation_util.h"
+#include "base/apple/mach_logging.h"
+#include "base/functional/bind.h"
+=======
 #include "base/bind.h"
 #include "base/containers/cxx20_erase.h"
+>>>>>>> chromium
 #include "base/logging.h"
 #include "base/mac/foundation_util.h"
 #include "base/mac/mach_logging.h"
@@ -13,6 +21,13 @@
 #include "content/common/child_process.mojom.h"
 #include "mojo/public/cpp/system/platform_handle.h"
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_MAC)
+#include "content/common/mac/system_policy.h"
+#endif
+
+=======
+>>>>>>> chromium
 namespace content {
 
 ChildProcessTaskPortProvider* ChildProcessTaskPortProvider::GetInstance() {
@@ -51,6 +66,23 @@ ChildProcessTaskPortProvider::ChildProcessTaskPortProvider() {
 
 ChildProcessTaskPortProvider::~ChildProcessTaskPortProvider() {}
 
+<<<<<<< HEAD
+bool ChildProcessTaskPortProvider::ShouldRequestTaskPorts() const {
+#if BUILDFLAG(IS_MAC)
+  static const bool should_request_task_ports = []() -> bool {
+    auto policy = GetMachTaskPortPolicy();
+    return policy
+        .transform([](auto policy) { return !policy.AmfiIsAllowEverything(); })
+        .value_or(true);
+  }();
+  return should_request_task_ports;
+#else
+  return true;
+#endif
+}
+
+=======
+>>>>>>> chromium
 void ChildProcessTaskPortProvider::OnTaskPortReceived(
     base::ProcessHandle pid,
     mojo::PlatformHandle task_port) {

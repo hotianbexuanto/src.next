@@ -19,6 +19,10 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewStub;
 import android.widget.ImageButton;
+<<<<<<< HEAD
+import android.widget.ImageView;
+=======
+>>>>>>> chromium
 
 import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.content.res.AppCompatResources;
@@ -71,7 +75,12 @@ public class ToolbarTablet extends ToolbarLayout
          */
         void downloadPage(Context context, Tab tab);
     }
+<<<<<<< HEAD
+
+    private ImageButton mHomeButton;
+=======
     private HomeButton mHomeButton;
+>>>>>>> chromium
     private ImageButton mBackButton;
     private ImageButton mForwardButton;
     private ImageButton mReloadButton;
@@ -121,6 +130,10 @@ public class ToolbarTablet extends ToolbarLayout
         mBackButton = findViewById(R.id.back_button);
         mForwardButton = findViewById(R.id.forward_button);
         mReloadButton = findViewById(R.id.refresh_button);
+<<<<<<< HEAD
+
+=======
+>>>>>>> chromium
         // ImageView tinting doesn't work with LevelListDrawable, use Drawable tinting instead.
         // See https://crbug.com/891593 for details.
         // Also, using Drawable tinting doesn't work correctly with LevelListDrawable on Android L
@@ -166,6 +179,26 @@ public class ToolbarTablet extends ToolbarLayout
     public void onNativeLibraryReady() {
         super.onNativeLibraryReady();
         mHomeButton.setOnClickListener(this);
+<<<<<<< HEAD
+        mHomeButton.setOnKeyListener(
+                new KeyboardNavigationListener() {
+                    @Override
+                    public View getNextFocusForward() {
+                        if (mBackButton.isFocusable()) {
+                            return findViewById(R.id.back_button);
+                        } else if (mForwardButton.isFocusable()) {
+                            return findViewById(R.id.forward_button);
+                        } else {
+                            return findViewById(R.id.refresh_button);
+                        }
+                    }
+
+                    @Override
+                    public View getNextFocusBackward() {
+                        return findViewById(R.id.menu_button);
+                    }
+                });
+=======
         mHomeButton.setOnKeyListener(new KeyboardNavigationListener() {
             @Override
             public View getNextFocusForward() {
@@ -183,6 +216,7 @@ public class ToolbarTablet extends ToolbarLayout
                 return findViewById(R.id.menu_button);
             }
         });
+>>>>>>> chromium
 
         mBackButton.setOnClickListener(this);
         mBackButton.setLongClickable(true);
@@ -196,6 +230,17 @@ public class ToolbarTablet extends ToolbarLayout
                 }
             }
 
+<<<<<<< HEAD
+                    @Override
+                    public View getNextFocusBackward() {
+                        if (mHomeButton.getVisibility() == VISIBLE) {
+                            return findViewById(R.id.home_button);
+                        } else {
+                            return findViewById(R.id.menu_button);
+                        }
+                    }
+                });
+=======
             @Override
             public View getNextFocusBackward() {
                 if (mHomeButton.getVisibility() == VISIBLE) {
@@ -205,6 +250,7 @@ public class ToolbarTablet extends ToolbarLayout
                 }
             }
         });
+>>>>>>> chromium
 
         mForwardButton.setOnClickListener(this);
         mForwardButton.setLongClickable(true);
@@ -214,6 +260,43 @@ public class ToolbarTablet extends ToolbarLayout
                 return findViewById(R.id.refresh_button);
             }
 
+<<<<<<< HEAD
+                    @Override
+                    public View getNextFocusBackward() {
+                        if (mBackButton.isFocusable()) {
+                            return mBackButton;
+                        } else if (mHomeButton.getVisibility() == VISIBLE) {
+                            return findViewById(R.id.home_button);
+                        } else {
+                            return findViewById(R.id.menu_button);
+                        }
+                    }
+                });
+
+        mReloadButton.setOnClickListener(this);
+        mReloadButton.setOnLongClickListener(this);
+        mReloadButton.setOnKeyListener(
+                new KeyboardNavigationListener() {
+                    @Override
+                    public View getNextFocusForward() {
+                        return findViewById(R.id.url_bar);
+                    }
+
+                    @Override
+                    public View getNextFocusBackward() {
+                        if (mForwardButton.isFocusable()) {
+                            return mForwardButton;
+                        } else if (mBackButton.isFocusable()) {
+                            return mBackButton;
+                        } else if (mHomeButton.getVisibility() == VISIBLE) {
+                            return findViewById(R.id.home_button);
+                        } else {
+                            return findViewById(R.id.menu_button);
+                        }
+                    }
+                });
+        initReloadButtonTouchListener();
+=======
             @Override
             public View getNextFocusBackward() {
                 if (mBackButton.isFocusable()) {
@@ -247,6 +330,7 @@ public class ToolbarTablet extends ToolbarLayout
                 }
             }
         });
+>>>>>>> chromium
 
         mBookmarkButton.setOnClickListener(this);
         mBookmarkButton.setOnLongClickListener(this);

@@ -219,6 +219,15 @@ public class ToolbarButtonInProductHelpController
         });
     }
 
+<<<<<<< HEAD
+    private void showDownloadHomeIph() {
+        mUserEducationHelper.requestShowIph(
+                new IphCommandBuilder(
+                                mActivity.getResources(),
+                                FeatureConstants.DOWNLOAD_HOME_FEATURE,
+                                R.string.iph_download_home_text,
+                                R.string.iph_download_home_accessibility_text)
+=======
     // Private methods.
     private static int getDataReductionMenuItemHighlight() {
         return R.id.app_menu_footer;
@@ -268,6 +277,7 @@ public class ToolbarButtonInProductHelpController
                 new IPHCommandBuilder(mActivity.getResources(),
                         FeatureConstants.DOWNLOAD_HOME_FEATURE, R.string.iph_download_home_text,
                         R.string.iph_download_home_accessibility_text)
+>>>>>>> chromium
                         .setAnchorView(mMenuButtonAnchorView)
                         .setOnShowCallback(() -> turnOnHighlightForMenuItem(R.id.downloads_menu_id))
                         .setOnDismissCallback(this::turnOffHighlightForMenuItem)

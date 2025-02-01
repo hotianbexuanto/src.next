@@ -39,7 +39,11 @@ class CORE_EXPORT FindInPage final : public GarbageCollected<FindInPage>,
                     bool* active_now = nullptr);
 
   void SetTickmarks(const WebElement& target,
+<<<<<<< HEAD
+                    const std::vector<gfx::Rect>& tickmarks_in_layout_space);
+=======
                     const WebVector<gfx::Rect>& tickmarks);
+>>>>>>> chromium
 
   int FindMatchMarkersVersion() const;
 

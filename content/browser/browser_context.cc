@@ -27,12 +27,19 @@
 #include "base/metrics/field_trial_params.h"
 #include "base/no_destructor.h"
 #include "base/notreached.h"
+<<<<<<< HEAD
+#include "base/unguessable_token.h"
+#include "build/build_config.h"
+#include "components/download/public/common/in_progress_download_manager.h"
+#include "components/services/storage/privileged/mojom/indexed_db_control.mojom.h"
+=======
 #include "base/threading/sequenced_task_runner_handle.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "base/trace_event/typed_macros.h"
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "content/browser/blob_storage/chrome_blob_storage_context.h"
 #include "content/browser/browser_context_impl.h"
 #include "content/browser/child_process_security_policy_impl.h"
@@ -46,6 +53,11 @@
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/permission_controller.h"
+<<<<<<< HEAD
+#include "content/public/browser/prefetch_service_delegate.h"
+#include "content/public/browser/preloading_trigger_type.h"
+=======
+>>>>>>> chromium
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/browser/storage_partition_config.h"
@@ -58,12 +70,19 @@
 #include "storage/browser/blob/blob_storage_context.h"
 #include "storage/browser/database/database_tracker.h"
 #include "storage/browser/file_system/external_mount_points.h"
+#include "third_party/blink/public/mojom/loader/referrer.mojom.h"
 #include "third_party/blink/public/mojom/push_messaging/push_messaging.mojom.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_proto.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_value.h"
 
 namespace content {
 
+<<<<<<< HEAD
+class PrefetchService;
+class PrefetchServiceDelegate;
+
+=======
+>>>>>>> chromium
 namespace {
 
 using perfetto::protos::pbzero::ChromeBrowserContext;
@@ -186,6 +205,48 @@ StoragePartition* BrowserContext::GetDefaultStoragePartition() {
   return GetStoragePartition(StoragePartitionConfig::CreateDefault(this));
 }
 
+<<<<<<< HEAD
+void BrowserContext::StartBrowserPrefetchRequest(
+    const GURL& url,
+    bool javascript_enabled,
+    std::optional<net::HttpNoVarySearchData> no_vary_search_hint,
+    const net::HttpRequestHeaders& additional_headers,
+    std::unique_ptr<PrefetchRequestStatusListener> request_status_listener) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  TRACE_EVENT0("loading", "BrowserContext::StartBrowserPrefetchRequest");
+
+  PrefetchService* prefetch_service =
+      BrowserContextImpl::From(this)->GetPrefetchService();
+  if (!prefetch_service) {
+    if (request_status_listener) {
+      request_status_listener->OnPrefetchStartFailed();
+    }
+    return;
+  }
+
+  PrefetchType prefetch_type(PreloadingTriggerType::kEmbedder,
+                             /*use_prefetch_proxy=*/false);
+  auto container = std::make_unique<PrefetchContainer>(
+      this, url, prefetch_type, blink::mojom::Referrer(), javascript_enabled,
+      /*referring_origin=*/std::nullopt, std::move(no_vary_search_hint),
+      /*attempt=*/nullptr, additional_headers,
+      std::move(request_status_listener));
+  prefetch_service->AddPrefetchContainer(std::move(container));
+}
+
+void BrowserContext::UpdatePrefetchServiceDelegateAcceptLanguageHeader(
+    std::string accept_language_header) {
+  PrefetchService* prefetch_service =
+      BrowserContextImpl::From(this)->GetPrefetchService();
+  if (!prefetch_service) {
+    return;
+  }
+  prefetch_service->GetPrefetchServiceDelegate()->SetAcceptLanguageHeader(
+      accept_language_header);
+}
+
+=======
+>>>>>>> chromium
 void BrowserContext::CreateMemoryBackedBlob(base::span<const uint8_t> data,
                                             const std::string& content_type,
                                             BlobCallback callback) {
@@ -343,9 +404,27 @@ void BrowserContext::WriteIntoTrace(perfetto::TracedValue context) {
 }
 
 void BrowserContext::WriteIntoTrace(
+<<<<<<< HEAD
+    perfetto::TracedProto<ChromeBrowserContext> proto) const {
+  perfetto::WriteIntoTracedProto(std::move(proto), impl());
+}
+
+ResourceContext* BrowserContext::GetResourceContext() const {
+  return impl()->GetResourceContext();
+}
+
+void BrowserContext::BackfillPopupHeuristicGrants(
+    base::OnceCallback<void(bool)> callback) {
+  return impl_->BackfillPopupHeuristicGrants(std::move(callback));
+}
+
+base::WeakPtr<BrowserContext> BrowserContext::GetWeakPtr() {
+  return weak_factory_.GetWeakPtr();
+=======
     perfetto::TracedProto<ChromeBrowserContext> proto) {
   if (impl())
     proto->set_id(impl()->UniqueId());
+>>>>>>> chromium
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -412,5 +491,11 @@ FederatedIdentitySharingPermissionContextDelegate*
 BrowserContext::GetFederatedIdentitySharingPermissionContext() {
   return nullptr;
 }
+
+#if BUILDFLAG(IS_ANDROID)
+std::string BrowserContext::GetExtraHeadersForUrl(const GURL& url) {
+  return std::string();
+}
+#endif  // BUILDFLAG(IS_ANDROID)
 
 }  // namespace content

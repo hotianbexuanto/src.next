@@ -59,8 +59,17 @@ public class RedirectHandlerTabHelper extends EmptyTabObserver implements UserDa
 
     /**
      * Replace {@link RedirectHandler} instance for the Tab with the new one.
+     *
      * @return Old {@link RedirectHandler} associated with the Tab. Could be {@code null}.
      */
+<<<<<<< HEAD
+    public static RedirectHandler swapHandlerForTesting(Tab tab, RedirectHandler newHandler) {
+        assert newHandler != null;
+        RedirectHandlerTabHelper helper = tab.getUserDataHost().getUserData(USER_DATA_KEY);
+        if (helper == null) {
+            getOrCreateHandlerFor(tab);
+            helper = tab.getUserDataHost().getUserData(USER_DATA_KEY);
+=======
     public static RedirectHandler swapHandlerFor(Tab tab, @Nullable RedirectHandler newHandler) {
         UserDataHost host = tab.getUserDataHost();
         RedirectHandlerTabHelper oldHelper = host.getUserData(USER_DATA_KEY);
@@ -69,6 +78,7 @@ public class RedirectHandlerTabHelper extends EmptyTabObserver implements UserDa
             host.setUserData(USER_DATA_KEY, newHelper);
         } else {
             host.removeUserData(USER_DATA_KEY);
+>>>>>>> chromium
         }
 
         if (oldHelper == null) return null;
@@ -78,11 +88,6 @@ public class RedirectHandlerTabHelper extends EmptyTabObserver implements UserDa
     private RedirectHandlerTabHelper(Tab tab) {
         mTab = tab;
         mRedirectHandler = RedirectHandler.create();
-    }
-
-    private RedirectHandlerTabHelper(Tab tab, RedirectHandler handler) {
-        mTab = tab;
-        mRedirectHandler = handler;
     }
 
     @Override

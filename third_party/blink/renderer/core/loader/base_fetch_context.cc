@@ -571,6 +571,9 @@ BaseFetchContext::CanRequestInternal(
     }
   }
 
+<<<<<<< HEAD
+  return std::nullopt;
+=======
   return absl::nullopt;
 }
 
@@ -621,6 +624,7 @@ void BaseFetchContext::AddBackForwardCacheExperimentHTTPHeaderIfNeeded(
       features::kBackForwardCacheABExperimentGroup);
   request.SetHttpHeaderField("Sec-bfcache-experiment",
                              experiment_group.c_str());
+>>>>>>> chromium
 }
 
 void BaseFetchContext::Trace(Visitor* visitor) const {

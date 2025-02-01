@@ -10,6 +10,10 @@
 #include "base/strings/utf_string_conversions.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
+<<<<<<< HEAD
+#include "url/scheme_host_port.h"
+=======
+>>>>>>> chromium
 #include "url/url_util.h"
 
 using base::ASCIIToUTF16;
@@ -498,6 +502,45 @@ TEST(UrlUtilTest, SimplifyUrlForRequest) {
     const char* const input_url;
     const char* const expected_simplified_url;
   } tests[] = {
+<<<<<<< HEAD
+      {
+          // Reference section should be stripped.
+          "http://www.google.com:78/foobar?query=1#hash",
+          "http://www.google.com:78/foobar?query=1",
+      },
+      {
+          // Reference section can itself contain #.
+          "http://192.168.0.1?query=1#hash#10#11#13#14",
+          "http://192.168.0.1?query=1",
+      },
+      {
+          // Strip username/password.
+          "http://user:pass@google.com",
+          "http://google.com/",
+      },
+      {
+          // Strip both the reference and the username/password.
+          "http://user:pass@google.com:80/sup?yo#X#X",
+          "http://google.com/sup?yo",
+      },
+      {
+          // Try an HTTPS URL -- strip both the reference and the
+          // username/password.
+          "https://user:pass@google.com:80/sup?yo#X#X",
+          "https://google.com:80/sup?yo",
+      },
+      {
+          // Try an FTP URL -- strip both the reference and the
+          // username/password.
+          "ftp://user:pass@google.com:80/sup?yo#X#X",
+          "ftp://google.com:80/sup?yo",
+      },
+      {
+          // Try a non-special URL.
+          "foobar://user:pass@google.com:80/sup?yo#X#X",
+          "foobar://google.com:80/sup?yo",
+      },
+=======
     {
       // Reference section should be stripped.
       "http://www.google.com:78/foobar?query=1#hash",
@@ -528,6 +571,7 @@ TEST(UrlUtilTest, SimplifyUrlForRequest) {
       "foobar://user:pass@google.com:80/sup?yo#X#X",
       "foobar://user:pass@google.com:80/sup?yo",
     },
+>>>>>>> chromium
   };
   for (const auto& test : tests) {
     SCOPED_TRACE(test.input_url);

@@ -25,9 +25,14 @@ bool MockExtensionSpecialStoragePolicy::HasSessionOnlyOrigins() {
   return false;
 }
 
+<<<<<<< HEAD
+MockExtensionSpecialStoragePolicy::~MockExtensionSpecialStoragePolicy() =
+    default;
+=======
 network::DeleteCookiePredicate
 MockExtensionSpecialStoragePolicy::CreateDeleteCookieOnExitPredicate() {
   return network::DeleteCookiePredicate();
 }
 
 MockExtensionSpecialStoragePolicy::~MockExtensionSpecialStoragePolicy() {}
+>>>>>>> chromium

@@ -24,8 +24,7 @@ ChromeExtensionFunctionDetails::ChromeExtensionFunctionDetails(
     ExtensionFunction* function)
     : function_(function) {}
 
-ChromeExtensionFunctionDetails::~ChromeExtensionFunctionDetails() {
-}
+ChromeExtensionFunctionDetails::~ChromeExtensionFunctionDetails() = default;
 
 Browser* ChromeExtensionFunctionDetails::GetCurrentBrowser() const {
   // If the delegate has an associated browser, return it.

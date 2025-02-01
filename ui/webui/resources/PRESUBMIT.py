@@ -93,6 +93,16 @@ def _CheckJsModulizer(input_api, output_api):
   return results
 
 
+<<<<<<< HEAD
+def CheckNoNewPolymer(input_api, output_api):
+  from web_dev_style import presubmit_support
+  return presubmit_support.DisallowNewPolymerElements(input_api, output_api)
+
+
+def CheckPatchFormatted(input_api, output_api):
+  return input_api.canned_checks.CheckPatchFormatted(input_api, output_api,
+                                                     check_js=True)
+=======
 def _CheckGenerateGrd(input_api, output_api):
   affected = input_api.AffectedFiles()
   affected_files = [input_api.os_path.basename(f.LocalPath()) for f in affected]
@@ -117,3 +127,4 @@ def _CommonChecks(input_api, output_api):
   results += input_api.canned_checks.CheckPatchFormatted(input_api, output_api,
                                                          check_js=True)
   return results
+>>>>>>> chromium

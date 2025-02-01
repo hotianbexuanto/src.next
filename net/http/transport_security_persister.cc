@@ -31,6 +31,33 @@ namespace net {
 
 namespace {
 
+<<<<<<< HEAD
+// From kDefaultCommitInterval in base/files/important_file_writer.cc.
+// kTransportSecurityFileWriterScheduleCommitInterval won't set the commit
+// interval to less than this, for performance.
+constexpr base::TimeDelta kMinCommitInterval = base::Seconds(10);
+
+// Max safe commit interval for the ImportantFileWriter.
+constexpr base::TimeDelta kMaxCommitInterval = base::Minutes(10);
+
+// Overrides the default commit interval for the ImportantFileWriter.
+//
+// go/transport-security-file-writer-schedule-impact explains why the value
+// varies by platform.
+const base::FeatureParam<base::TimeDelta> kCommitIntervalParam(
+    &kTransportSecurityFileWriterSchedule,
+    "commit_interval",
+#if BUILDFLAG(IS_ANDROID)
+    kMinCommitInterval
+#else
+    kMaxCommitInterval
+#endif
+);
+
+constexpr const char* kHistogramSuffix = "TransportSecurityPersister";
+
+=======
+>>>>>>> chromium
 // This function converts the binary hashes to a base64 string which we can
 // include in a JSON file.
 std::string HashedDomainToExternalString(const std::string& hashed) {
@@ -368,19 +395,49 @@ void TransportSecurityPersister::LoadEntries(const std::string& serialized) {
   Deserialize(serialized, transport_security_state_);
 }
 
+<<<<<<< HEAD
+// static
+base::TimeDelta TransportSecurityPersister::GetCommitInterval() {
+  return std::clamp(kCommitIntervalParam.Get(), kMinCommitInterval,
+                    kMaxCommitInterval);
+}
+
+void TransportSecurityPersister::Deserialize(
+    const std::string& serialized,
+    TransportSecurityState* state,
+    bool& contains_legacy_expect_ct_data) {
+  std::optional<base::Value::Dict> value =
+      base::JSONReader::ReadDict(serialized);
+  if (!value) {
+=======
 void TransportSecurityPersister::Deserialize(const std::string& serialized,
                                              TransportSecurityState* state) {
   absl::optional<base::Value> value = base::JSONReader::Read(serialized);
   if (!value || !value->is_dict())
+>>>>>>> chromium
     return;
+  }
 
+<<<<<<< HEAD
+  std::optional<int> version = value->FindInt(kVersionKey);
+=======
   absl::optional<int> version = value->FindIntKey(kVersionKey);
+>>>>>>> chromium
 
   // Stop if the data is out of date (or in the previous format that didn't have
   // a version number).
   if (!version || *version != kCurrentVersionValue)
     return;
 
+<<<<<<< HEAD
+  base::Value* sts_value = value->Find(kSTSKey);
+  if (sts_value)
+    DeserializeSTSData(*sts_value, state);
+
+  // If an Expect-CT key is found on deserialization, record this so that a
+  // write can be scheduled to clear it from disk.
+  contains_legacy_expect_ct_data = !!value->Find(kExpectCTKey);
+=======
   base::Value* sts_value = value->FindKey(kSTSKey);
   if (sts_value)
     DeserializeSTSData(*sts_value, state);
@@ -392,6 +449,7 @@ void TransportSecurityPersister::Deserialize(const std::string& serialized,
   UMA_HISTOGRAM_CUSTOM_COUNTS("Net.ExpectCT.EntriesOnLoad",
                               state->num_expect_ct_entries(), 1 /* min */,
                               2000 /* max */, 40 /* buckets */);
+>>>>>>> chromium
 }
 
 void TransportSecurityPersister::CompleteLoad(const std::string& state) {

@@ -5,6 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_STYLE_CASCADE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_STYLE_CASCADE_H_
 
+#include <utility>
+
 #include "third_party/blink/renderer/core/animation/interpolation.h"
 #include "third_party/blink/renderer/core/css/css_property_id_templates.h"
 #include "third_party/blink/renderer/core/css/css_property_name.h"
@@ -243,11 +245,36 @@ class CORE_EXPORT StyleCascade {
     bool IsAnimationTainted() const { return is_animation_tainted_; }
     CSSParserTokenRange TokenRange() const { return tokens_; }
 
+<<<<<<< HEAD
+    bool Append(StringView str,
+                bool is_attr_tainted,
+                wtf_size_t byte_limit = std::numeric_limits<wtf_size_t>::max());
+    bool Append(CSSVariableData* data,
+                bool is_attr_tainted,
+                wtf_size_t byte_limit = std::numeric_limits<wtf_size_t>::max());
+    bool Append(const CSSValue* data,
+                bool is_attr_tainted,
+                wtf_size_t byte_limit = std::numeric_limits<wtf_size_t>::max());
+    void Append(const CSSParserToken&, bool is_attr_tainted, StringView string);
+
+    // NOTE: Strips trailing whitespace.
+    bool AppendFallback(const TokenSequence&,
+                        bool is_attr_tainted,
+                        wtf_size_t byte_limit);
+
+    const Vector<std::pair<wtf_size_t, wtf_size_t>>* GetAttrTaintedRanges()
+        const {
+      return &attr_taint_ranges_;
+    }
+
+    CSSVariableData* BuildVariableData();
+=======
     void Append(const TokenSequence&);
     void Append(const CSSVariableData*);
     void Append(const CSSParserToken&);
 
     scoped_refptr<CSSVariableData> BuildVariableData();
+>>>>>>> chromium
 
    private:
     Vector<CSSParserToken> tokens_;
@@ -257,6 +284,11 @@ class CORE_EXPORT StyleCascade {
     // https://drafts.css-houdini.org/css-properties-values-api-1/#dependency-cycles
     bool has_font_units_ = false;
     bool has_root_font_units_ = false;
+<<<<<<< HEAD
+    bool has_line_height_units_ = false;
+    // Attr tainted intervals [start, end).
+    Vector<std::pair<wtf_size_t, wtf_size_t>> attr_taint_ranges_;
+=======
 
     // The base URL and charset are currently needed to calculate the computed
     // value of <url>-registered custom properties correctly.
@@ -267,6 +299,7 @@ class CORE_EXPORT StyleCascade {
     // https://drafts.css-houdini.org/css-properties-values-api-1/#relative-urls
     String base_url_;
     WTF::TextEncoding charset_;
+>>>>>>> chromium
   };
 
   // Resolving Values
@@ -304,8 +337,53 @@ class CORE_EXPORT StyleCascade {
                                 CascadeOrigin&,
                                 CascadeResolver&);
 
+<<<<<<< HEAD
+  CSSVariableData* ResolveVariableData(CSSVariableData*,
+                                       const CSSParserContext&,
+                                       CascadeResolver&);
+
+  // Certain parts of CSS function evaluation may need some local context
+  // supplied by the caller. Given the current scoping strategy, the only
+  // relevant context is the arguments given to the function in current scope,
+  // as well as locals within that function. (If we are not currently
+  // evaluating a function, this will be nullptr.) If we get to the point of
+  // supporting more dynamic scope, there may be a call stack or similar here.
+  //
+  // Arguments and Locals
+  // ====================
+  //
+  // Generally, when a var() is encountered, it must be substituted by some
+  // value that does not itself contain any substitution functions (e.g. another
+  // var()). For a var() that is evaluated in the context of a function, we try
+  // the following things, in order:
+  //
+  //  1. If there is a matching local variable, resolve any substitution
+  //     functions in its value, and substitute the result.
+  //  2. Otherwise, if there is a matching argument, substitute its value.
+  //     Note that argument values (stored within FunctionContext) never
+  //     contain substitution functions.
+  //  3. Otherwise, if there is a matching custom property, substitute its
+  //     computed value.
+  //  4. Otherwise, if there is a fallback, resolve any substitution functions
+  //     in the fallback value, and substitute that result.
+  //  5. Otherwise, it's invalid at computed-value time.
+  struct FunctionContext {
+    STACK_ALLOCATED();
+
+   public:
+    // Note that `arguments` only contains resolved values, meaning that
+    // they never contain any substitution functions, such as var().
+    // This is because arguments are evaluated at the call site.
+    HeapHashMap<String, Member<const CSSValue>> arguments;
+    // Locals, however, are stored here unresolved; they *may* contain
+    // substitution functions, such as var(). This is because locals,
+    // unlike arguments, can refer to other locals using var().
+    HeapHashMap<String, Member<const CSSValue>> locals;
+  };
+=======
   scoped_refptr<CSSVariableData> ResolveVariableData(CSSVariableData*,
                                                      CascadeResolver&);
+>>>>>>> chromium
 
   // The Resolve*Into functions either resolve dependencies, append to the
   // TokenSequence accordingly, and return true; or it returns false when
@@ -315,9 +393,60 @@ class CORE_EXPORT StyleCascade {
   //
   // [1] https://drafts.csswg.org/css-variables/#invalid-at-computed-value-time
 
+<<<<<<< HEAD
+  bool ResolveTokensInto(CSSParserTokenStream&,
+                         CascadeResolver&,
+                         const CSSParserContext&,
+                         const FunctionContext*,
+                         CSSParserTokenType stop_type,
+                         TokenSequence&);
+  bool ResolveVarInto(CSSParserTokenStream&,
+                      CascadeResolver&,
+                      const CSSParserContext&,
+                      const FunctionContext*,
+                      TokenSequence&);
+  bool ResolveEnvInto(CSSParserTokenStream&,
+                      CascadeResolver&,
+                      const CSSParserContext&,
+                      TokenSequence&);
+  bool ResolveAttrInto(CSSParserTokenStream&,
+                       CascadeResolver&,
+                       const CSSParserContext&,
+                       TokenSequence&);
+  bool ResolveAutoBaseInto(CSSParserTokenStream&,
+                                           CascadeResolver&,
+                                           const CSSParserContext&,
+                                           TokenSequence&);
+
+  // NOTE: The FunctionContext object must be the _caller's_ function context,
+  // not the one the function itself sets up. This is because it is used to
+  // resolve arguments given to this function. See comment within the
+  // definition.
+  bool ResolveFunctionInto(StringView function_name,
+                           CSSParserTokenStream& stream,
+                           CascadeResolver& resolver,
+                           const CSSParserContext& context,
+                           const FunctionContext* function_context,
+                           TokenSequence& out);
+  bool ResolveArgumentOrLocalInto(const CSSValue& value,
+                                  CSSParserTokenStream& stream,
+                                  CascadeResolver& resolver,
+                                  const CSSParserContext& context,
+                                  const FunctionContext* function_context,
+                                  const TokenSequence* fallback,
+                                  TokenSequence& out);
+
+  const CSSValue* ResolveFunctionExpression(
+      StringView expr,
+      const CSSSyntaxDefinition& type,
+      CascadeResolver& resolver,
+      const CSSParserContext& context,
+      const FunctionContext* function_context);
+=======
   bool ResolveTokensInto(CSSParserTokenRange, CascadeResolver&, TokenSequence&);
   bool ResolveVarInto(CSSParserTokenRange, CascadeResolver&, TokenSequence&);
   bool ResolveEnvInto(CSSParserTokenRange, CascadeResolver&, TokenSequence&);
+>>>>>>> chromium
 
   CSSVariableData* GetVariableData(const CustomProperty&) const;
   CSSVariableData* GetEnvironmentVariable(const AtomicString&) const;
@@ -340,6 +469,14 @@ class CORE_EXPORT StyleCascade {
   // Marks a CSSProperty as having a reference to a custom property. Needed to
   // disable the matched property cache in some cases.
   void MarkHasVariableReference(const CSSProperty&);
+  // Set ComputedStyle bits that require parsing unresolved env() variables.
+  void ApplyUnresolvedEnv();
+  // See comments on IsBottomRelativeToSafeAreaInset in
+  // computed_style_extra_fields.json5.
+  void ApplyIsBottomRelativeToSafeAreaInset();
+  // See comments on ReferencesSafeAreaInsetBottom in
+  // computed_style_extra_fields.json5.
+  void ApplyReferencesSafeAreaInsetBottom();
 
   const Document& GetDocument() const;
   const CSSProperty& ResolveSurrogate(const CSSProperty& surrogate);

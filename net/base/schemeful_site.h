@@ -5,6 +5,11 @@
 #ifndef NET_BASE_SCHEMEFUL_SITE_H_
 #define NET_BASE_SCHEMEFUL_SITE_H_
 
+<<<<<<< HEAD
+#include <compare>
+#include <optional>
+=======
+>>>>>>> chromium
 #include <ostream>
 #include <string>
 
@@ -117,11 +122,19 @@ class NET_EXPORT SchemefulSite {
     return registrable_domain_or_host();
   }
 
+<<<<<<< HEAD
+  // Estimates dynamic memory usage.
+  // See base/trace_event/memory_usage_estimator.h for more info.
+  size_t EstimateMemoryUsage() const;
+
+  std::strong_ordering operator<=>(const SchemefulSite& other) const = default;
+=======
   bool operator==(const SchemefulSite& other) const;
 
   bool operator!=(const SchemefulSite& other) const;
 
   bool operator<(const SchemefulSite& other) const;
+>>>>>>> chromium
 
  private:
   // IPC serialization code needs to access internal origin.
@@ -175,9 +188,13 @@ class NET_EXPORT SchemefulSite {
   // Returns the host of the underlying `origin`, which will usually be the
   // registrable domain. This is private because if it were public, it would
   // trivially allow circumvention of the "Schemeful"-ness of this class.
+<<<<<<< HEAD
+  const std::string& registrable_domain_or_host() const {
+=======
   // However, the CookieMonster currently needs access to this, since it ignores
   // the schemes of domains.
   std::string registrable_domain_or_host() const {
+>>>>>>> chromium
     return site_as_origin_.host();
   }
 

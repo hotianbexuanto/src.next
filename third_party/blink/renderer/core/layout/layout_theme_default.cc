@@ -111,6 +111,17 @@ void LayoutThemeDefault::AdjustSliderThumbSize(ComputedStyle& style) const {
   if (!Platform::Current()->ThemeEngine())
     return;
 
+<<<<<<< HEAD
+  float zoom_level = builder.EffectiveZoom();
+  if (builder.EffectiveAppearance() ==
+      AppearanceValue::kSliderThumbHorizontal) {
+    builder.SetWidth(Length::Fixed(size.width() * zoom_level));
+    builder.SetHeight(Length::Fixed(size.height() * zoom_level));
+  } else if (builder.EffectiveAppearance() ==
+             AppearanceValue::kSliderThumbVertical) {
+    builder.SetWidth(Length::Fixed(size.height() * zoom_level));
+    builder.SetHeight(Length::Fixed(size.width() * zoom_level));
+=======
   IntSize size = IntSize(Platform::Current()->ThemeEngine()->GetSize(
       WebThemeEngine::kPartSliderThumb));
 
@@ -121,6 +132,7 @@ void LayoutThemeDefault::AdjustSliderThumbSize(ComputedStyle& style) const {
   } else if (style.EffectiveAppearance() == kSliderThumbVerticalPart) {
     style.SetWidth(Length::Fixed(size.Height() * zoom_level));
     style.SetHeight(Length::Fixed(size.Width() * zoom_level));
+>>>>>>> chromium
   }
 }
 
@@ -211,7 +223,13 @@ void LayoutThemeDefault::AdjustButtonStyle(ComputedStyle& style) const {
 
 void LayoutThemeDefault::AdjustSearchFieldStyle(ComputedStyle& style) const {
   // Ignore line-height.
+<<<<<<< HEAD
+  if (builder.EffectiveAppearance() == AppearanceValue::kPushButton) {
+    builder.SetLineHeight(ComputedStyleInitialValues::InitialLineHeight());
+  }
+=======
   style.SetLineHeight(ComputedStyleInitialValues::InitialLineHeight());
+>>>>>>> chromium
 }
 
 void LayoutThemeDefault::AdjustSearchFieldCancelButtonStyle(

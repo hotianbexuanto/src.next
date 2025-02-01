@@ -15,6 +15,21 @@
 namespace base {
 namespace android {
 
+<<<<<<< HEAD
+static void JNI_EarlyTraceEvent_RecordEarlyBeginEvent(JNIEnv* env,
+                                                      std::string& name,
+                                                      jlong time_ns,
+                                                      jint thread_id,
+                                                      jlong thread_time_ms) {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+  static const unsigned char* category_group_enabled =
+      TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(internal::kJavaTraceCategory);
+  trace_event_internal::AddTraceEventWithThreadIdAndTimestamps(
+      TRACE_EVENT_PHASE_BEGIN, category_group_enabled, name.c_str(),
+      /*scope=*/nullptr, trace_event_internal::kNoId, thread_id,
+      TimeTicks::FromJavaNanoTime(time_ns),
+      ThreadTicks() + Milliseconds(thread_time_ms),
+=======
 static void JNI_EarlyTraceEvent_RecordEarlyBeginEvent(
     JNIEnv* env,
     const JavaParamRef<jstring>& jname,
@@ -28,9 +43,25 @@ static void JNI_EarlyTraceEvent_RecordEarlyBeginEvent(
       trace_event_internal::kNoId, thread_id,
       TimeTicks() + TimeDelta::FromNanoseconds(time_ns),
       ThreadTicks() + TimeDelta::FromMilliseconds(thread_time_ms),
+>>>>>>> chromium
       TRACE_EVENT_FLAG_JAVA_STRING_LITERALS | TRACE_EVENT_FLAG_COPY);
 }
 
+<<<<<<< HEAD
+static void JNI_EarlyTraceEvent_RecordEarlyEndEvent(JNIEnv* env,
+                                                    std::string& name,
+                                                    jlong time_ns,
+                                                    jint thread_id,
+                                                    jlong thread_time_ms) {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+  static const unsigned char* category_group_enabled =
+      TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(internal::kJavaTraceCategory);
+  trace_event_internal::AddTraceEventWithThreadIdAndTimestamps(
+      TRACE_EVENT_PHASE_END, category_group_enabled, name.c_str(),
+      /*scope=*/nullptr, trace_event_internal::kNoId, thread_id,
+      TimeTicks::FromJavaNanoTime(time_ns),
+      ThreadTicks() + Milliseconds(thread_time_ms),
+=======
 static void JNI_EarlyTraceEvent_RecordEarlyEndEvent(
     JNIEnv* env,
     const JavaParamRef<jstring>& jname,
@@ -44,15 +75,27 @@ static void JNI_EarlyTraceEvent_RecordEarlyEndEvent(
       trace_event_internal::kNoId, thread_id,
       TimeTicks() + TimeDelta::FromNanoseconds(time_ns),
       ThreadTicks() + TimeDelta::FromMilliseconds(thread_time_ms),
+>>>>>>> chromium
       TRACE_EVENT_FLAG_JAVA_STRING_LITERALS | TRACE_EVENT_FLAG_COPY);
 }
 
 static void JNI_EarlyTraceEvent_RecordEarlyToplevelBeginEvent(
     JNIEnv* env,
-    const JavaParamRef<jstring>& jname,
+    std::string& name,
     jlong time_ns,
     jint thread_id,
     jlong thread_time_ms) {
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+  static const unsigned char* category_group_enabled =
+      TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(
+          internal::kToplevelTraceCategory);
+  trace_event_internal::AddTraceEventWithThreadIdAndTimestamps(
+      TRACE_EVENT_PHASE_BEGIN, category_group_enabled, name.c_str(),
+      /*scope=*/nullptr, trace_event_internal::kNoId, thread_id,
+      TimeTicks::FromJavaNanoTime(time_ns),
+      ThreadTicks() + Milliseconds(thread_time_ms),
+=======
   std::string name = ConvertJavaStringToUTF8(env, jname);
 
   INTERNAL_TRACE_EVENT_ADD_WITH_ID_TID_AND_TIMESTAMPS(
@@ -60,15 +103,27 @@ static void JNI_EarlyTraceEvent_RecordEarlyToplevelBeginEvent(
       trace_event_internal::kNoId, thread_id,
       TimeTicks() + TimeDelta::FromNanoseconds(time_ns),
       ThreadTicks() + TimeDelta::FromMilliseconds(thread_time_ms),
+>>>>>>> chromium
       TRACE_EVENT_FLAG_JAVA_STRING_LITERALS | TRACE_EVENT_FLAG_COPY);
 }
 
 static void JNI_EarlyTraceEvent_RecordEarlyToplevelEndEvent(
     JNIEnv* env,
-    const JavaParamRef<jstring>& jname,
+    std::string& name,
     jlong time_ns,
     jint thread_id,
     jlong thread_time_ms) {
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+  static const unsigned char* category_group_enabled =
+      TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(
+          internal::kToplevelTraceCategory);
+  trace_event_internal::AddTraceEventWithThreadIdAndTimestamps(
+      TRACE_EVENT_PHASE_END, category_group_enabled, name.c_str(),
+      /*scope=*/nullptr, trace_event_internal::kNoId, thread_id,
+      TimeTicks::FromJavaNanoTime(time_ns),
+      ThreadTicks() + Milliseconds(thread_time_ms),
+=======
   std::string name = ConvertJavaStringToUTF8(env, jname);
 
   INTERNAL_TRACE_EVENT_ADD_WITH_ID_TID_AND_TIMESTAMPS(
@@ -76,9 +131,22 @@ static void JNI_EarlyTraceEvent_RecordEarlyToplevelEndEvent(
       trace_event_internal::kNoId, thread_id,
       TimeTicks() + TimeDelta::FromNanoseconds(time_ns),
       ThreadTicks() + TimeDelta::FromMilliseconds(thread_time_ms),
+>>>>>>> chromium
       TRACE_EVENT_FLAG_JAVA_STRING_LITERALS | TRACE_EVENT_FLAG_COPY);
 }
 
+<<<<<<< HEAD
+static void JNI_EarlyTraceEvent_RecordEarlyAsyncBeginEvent(JNIEnv* env,
+                                                           std::string& name,
+                                                           jlong id,
+                                                           jlong time_ns) {
+  TRACE_EVENT_BEGIN(internal::kJavaTraceCategory, nullptr,
+                    perfetto::Track(static_cast<uint64_t>(id)),
+                    TimeTicks::FromJavaNanoTime(time_ns),
+                    [&](::perfetto::EventContext& ctx) {
+                      ctx.event()->set_name(name.c_str());
+                    });
+=======
 static void JNI_EarlyTraceEvent_RecordEarlyAsyncBeginEvent(
     JNIEnv* env,
     const JavaParamRef<jstring>& jname,
@@ -90,6 +158,7 @@ static void JNI_EarlyTraceEvent_RecordEarlyAsyncBeginEvent(
       internal::kJavaTraceCategory, name.c_str(), TRACE_ID_LOCAL(id),
       base::TimeTicks() + base::TimeDelta::FromNanoseconds(timestamp_ns),
       TRACE_EVENT_FLAG_JAVA_STRING_LITERALS | TRACE_EVENT_FLAG_COPY);
+>>>>>>> chromium
 }
 
 static void JNI_EarlyTraceEvent_RecordEarlyAsyncEndEvent(

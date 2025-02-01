@@ -4,6 +4,11 @@
 
 package org.chromium.chrome.browser.omnibox.suggestions;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.components.omnibox.AutocompleteInput;
+=======
+>>>>>>> chromium
 import org.chromium.components.omnibox.AutocompleteMatch;
 import org.chromium.ui.modelutil.PropertyModel;
 
@@ -11,6 +16,7 @@ import org.chromium.ui.modelutil.PropertyModel;
  * A processor of omnibox suggestions. Implementers are provided the opportunity to analyze a
  * suggestion and create a custom model.
  */
+@NullMarked
 public interface SuggestionProcessor extends DropdownItemProcessor {
     /**
      * @param suggestion The suggestion to process.
@@ -25,5 +31,13 @@ public interface SuggestionProcessor extends DropdownItemProcessor {
      * @param model The model to populate.
      * @param position The position of the suggestion in the list.
      */
+<<<<<<< HEAD
+    void populateModel(
+            AutocompleteInput input,
+            AutocompleteMatch suggestion,
+            PropertyModel model,
+            int position);
+=======
     void populateModel(AutocompleteMatch suggestion, PropertyModel model, int position);
+>>>>>>> chromium
 }

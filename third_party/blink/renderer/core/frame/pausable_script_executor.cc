@@ -6,10 +6,10 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-blink.h"
 #include "third_party/blink/public/platform/task_type.h"
-#include "third_party/blink/public/platform/web_vector.h"
 #include "third_party/blink/public/web/web_script_execution_callback.h"
 #include "third_party/blink/renderer/bindings/core/v8/sanitize_script_errors.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_source_code.h"
@@ -29,6 +29,105 @@ namespace blink {
 
 namespace {
 
+<<<<<<< HEAD
+// A helper class that aggregates the result of multiple values, including
+// waiting for the results if those values are promises (or otherwise
+// then-able).
+class PromiseAggregator : public GarbageCollected<PromiseAggregator> {
+ public:
+  using Callback = base::OnceCallback<void(const v8::LocalVector<v8::Value>&)>;
+
+  PromiseAggregator(ScriptState* script_state,
+                    const v8::LocalVector<v8::Value>& values,
+                    Callback callback);
+
+  void Trace(Visitor* visitor) const { visitor->Trace(results_); }
+
+ private:
+  // A helper class that handles a result from a single promise value.
+  class OnSettled : public ThenCallable<IDLAny, OnSettled> {
+   public:
+    OnSettled(PromiseAggregator* aggregator,
+              wtf_size_t index,
+              bool was_fulfilled)
+        : aggregator_(aggregator),
+          index_(index),
+          was_fulfilled_(was_fulfilled) {}
+    OnSettled(const OnSettled&) = delete;
+    OnSettled& operator=(const OnSettled&) = delete;
+    ~OnSettled() override = default;
+
+    void React(ScriptState* script_state, ScriptValue value) {
+      DCHECK_GT(aggregator_->outstanding_, 0u);
+
+      if (was_fulfilled_) {
+        aggregator_->results_[index_].Reset(script_state->GetIsolate(),
+                                            value.V8Value());
+      }
+
+      if (--aggregator_->outstanding_ == 0) {
+        aggregator_->OnAllSettled(script_state->GetIsolate());
+      }
+    }
+
+    void Trace(Visitor* visitor) const override {
+      visitor->Trace(aggregator_);
+      ThenCallable<IDLAny, OnSettled>::Trace(visitor);
+    }
+
+   private:
+    Member<PromiseAggregator> aggregator_;
+    const wtf_size_t index_;
+    const bool was_fulfilled_;
+  };
+
+  // Called when all results have been settled.
+  void OnAllSettled(v8::Isolate* isolate);
+
+  // The accumulated vector of results from the promises.
+  HeapVector<TraceWrapperV8Reference<v8::Value>> results_;
+  // The number of outstanding promises we're waiting on.
+  wtf_size_t outstanding_ = 0;
+  // The callback to invoke when all promises are settled.
+  Callback callback_;
+};
+
+PromiseAggregator::PromiseAggregator(ScriptState* script_state,
+                                     const v8::LocalVector<v8::Value>& values,
+                                     Callback callback)
+    : results_(static_cast<wtf_size_t>(values.size())),
+      callback_(std::move(callback)) {
+  for (wtf_size_t i = 0; i < values.size(); ++i) {
+    if (values[i].IsEmpty())
+      continue;
+
+    ++outstanding_;
+    // ToResolvedPromise<> will turn any non-promise into a promise that
+    // resolves to the value. Calling ToResolvedPromise<>.React() will either
+    // wait for the promise (or then-able) to settle, or will immediately finish
+    // with the value. Thus, it's safe to just do this for every value.
+    ToResolvedPromise<IDLAny>(script_state, values[i])
+        .Then(
+            script_state,
+            MakeGarbageCollected<OnSettled>(this, i, /*was_fulfilled=*/true),
+            MakeGarbageCollected<OnSettled>(this, i, /*was_fulfilled=*/false));
+  }
+
+  if (outstanding_ == 0)
+    OnAllSettled(script_state->GetIsolate());
+}
+
+void PromiseAggregator::OnAllSettled(v8::Isolate* isolate) {
+  DCHECK_EQ(0u, outstanding_);
+  v8::LocalVector<v8::Value> converted_results(isolate, results_.size());
+  for (wtf_size_t i = 0; i < results_.size(); ++i)
+    converted_results[i] = results_[i].Get(isolate);
+
+  std::move(callback_).Run(std::move(converted_results));
+}
+
+=======
+>>>>>>> chromium
 class WebScriptExecutor : public PausableScriptExecutor::Executor {
  public:
   WebScriptExecutor(const HeapVector<ScriptSourceCode>& sources,

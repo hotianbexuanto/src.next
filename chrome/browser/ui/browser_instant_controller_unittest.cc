@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include <array>
 #include <vector>
 
 #include "base/cxx17_backports.h"
@@ -43,11 +44,13 @@ struct TabReloadTestCase {
 };
 
 // Test cases for when Google is the initial, but not final provider.
-const TabReloadTestCase kTabReloadTestCasesFinalProviderNotGoogle[] = {
-    {"NTP", chrome::kChromeUINewTabPageURL, false, true},
-    {"Remote SERP", "https://www.google.com/url?bar=search+terms", false,
-     false},
-    {"Other NTP", "https://bar.com/newtab", false, false}};
+const auto kTabReloadTestCasesFinalProviderNotGoogle =
+    std::to_array<TabReloadTestCase>({
+        {"NTP", chrome::kChromeUINewTabPageURL, false, true},
+        {"Remote SERP", "https://www.google.com/url?bar=search+terms", false,
+         false},
+        {"Other NTP", "https://bar.com/newtab", false, false},
+    });
 
 class FakeWebContentsObserver : public content::WebContentsObserver {
  public:
@@ -55,14 +58,19 @@ class FakeWebContentsObserver : public content::WebContentsObserver {
       : WebContentsObserver(contents),
         contents_(contents),
         did_start_observer_(contents),
-        url_(contents->GetURL()),
-        num_reloads_(0) {}
+        url_(contents->GetURL()) {}
 
   void DidStartNavigation(content::NavigationHandle* navigation) override {
-    if (navigation->GetReloadType() == content::ReloadType::NONE)
+    if (navigation->GetReloadType() == content::ReloadType::NONE) {
       return;
+<<<<<<< HEAD
+    }
+    if (*url_ == navigation->GetURL()) {
+=======
     if (url_ == navigation->GetURL())
+>>>>>>> chromium
       num_reloads_++;
+    }
     current_url_ = navigation->GetURL();
   }
 
@@ -87,7 +95,7 @@ class FakeWebContentsObserver : public content::WebContentsObserver {
   content::DidStartNavigationObserver did_start_observer_;
   const GURL& url_;
   GURL current_url_;
-  int num_reloads_;
+  int num_reloads_ = 0;
 };
 
 TEST_F(BrowserInstantControllerTest, DefaultSearchProviderChanged) {
@@ -101,9 +109,16 @@ TEST_F(BrowserInstantControllerTest, DefaultSearchProviderChanged) {
         browser()->tab_strip_model()->GetActiveWebContents();
 
     // Validate initial instant state.
+<<<<<<< HEAD
+    EXPECT_EQ(
+        test.start_in_instant_process,
+        instant_service_->IsInstantProcess(
+            contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID()))
+=======
     EXPECT_EQ(test.start_in_instant_process,
               instant_service_->IsInstantProcess(
                   contents->GetMainFrame()->GetProcess()->GetID()))
+>>>>>>> chromium
         << test.description;
 
     // Setup an observer to verify reload or absence thereof.

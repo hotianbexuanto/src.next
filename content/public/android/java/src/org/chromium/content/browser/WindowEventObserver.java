@@ -6,6 +6,8 @@ package org.chromium.content.browser;
 
 import android.content.res.Configuration;
 
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroid.DisplayAndroidObserver;
 
@@ -13,6 +15,7 @@ import org.chromium.ui.display.DisplayAndroid.DisplayAndroidObserver;
  * Interface to implement if Window-related events are needed.
  * This also includes an event for {@link WindowAndroid} (not Android window).
  */
+@NullMarked
 public interface WindowEventObserver extends DisplayAndroidObserver {
     /**
      * This is called when the container view is attached to a window.
@@ -29,10 +32,15 @@ public interface WindowEventObserver extends DisplayAndroidObserver {
      */
     default void onWindowFocusChanged(boolean gainFocus) {}
 
+<<<<<<< HEAD
+    /** Notifies observer when WindowAndroid is changed. */
+    default void onWindowAndroidChanged(@Nullable WindowAndroid newWindowAndroid) {}
+=======
     /**
      * Notifies observer when WindowAndroid is changed.
      */
     default void onWindowAndroidChanged(WindowAndroid newWindowAndroid) {}
+>>>>>>> chromium
 
     /**
      * @see View#onConfigurationChanged()

@@ -72,20 +72,37 @@ TEST(SelectorQueryTest, NotMatchingPseudoElement) {
 
   CSSSelectorList selector_list = CSSParser::ParseSelector(
       MakeGarbageCollected<CSSParserContext>(
+<<<<<<< HEAD
+          *document, NullURL(), true /* origin_clean */, Referrer()),
+      CSSNestingType::kNone, /*parent_rule_for_nesting=*/nullptr, nullptr,
+      "span::before", arena);
+  CSSSelectorList* selector_list =
+      CSSSelectorList::AdoptSelectorVector(selector_vector);
+  SelectorQuery* query = MakeGarbageCollected<SelectorQuery>(selector_list);
+=======
           *document, NullURL(), true /* origin_clean */, Referrer(),
           WTF::TextEncoding(), CSSParserContext::kSnapshotProfile),
       nullptr, "span::before");
   std::unique_ptr<SelectorQuery> query =
       SelectorQuery::Adopt(std::move(selector_list));
+>>>>>>> chromium
   Element* elm = query->QueryFirst(*document);
   EXPECT_EQ(nullptr, elm);
 
   selector_list = CSSParser::ParseSelector(
       MakeGarbageCollected<CSSParserContext>(
+<<<<<<< HEAD
+          *document, NullURL(), true /* origin_clean */, Referrer()),
+      CSSNestingType::kNone, /*parent_rule_for_nesting=*/nullptr, nullptr,
+      "span", arena);
+  selector_list = CSSSelectorList::AdoptSelectorVector(selector_vector);
+  query = MakeGarbageCollected<SelectorQuery>(selector_list);
+=======
           *document, NullURL(), true /* origin_clean */, Referrer(),
           WTF::TextEncoding(), CSSParserContext::kSnapshotProfile),
       nullptr, "span");
   query = SelectorQuery::Adopt(std::move(selector_list));
+>>>>>>> chromium
   elm = query->QueryFirst(*document);
   EXPECT_NE(nullptr, elm);
 }
@@ -101,11 +118,20 @@ TEST(SelectorQueryTest, LastOfTypeNotFinishedParsing) {
 
   CSSSelectorList selector_list = CSSParser::ParseSelector(
       MakeGarbageCollected<CSSParserContext>(
+<<<<<<< HEAD
+          *document, NullURL(), true /* origin_clean */, Referrer()),
+      CSSNestingType::kNone, /*parent_rule_for_nesting=*/nullptr, nullptr,
+      "p:last-of-type", arena);
+  CSSSelectorList* selector_list =
+      CSSSelectorList::AdoptSelectorVector(selector_vector);
+  SelectorQuery* query = MakeGarbageCollected<SelectorQuery>(selector_list);
+=======
           *document, NullURL(), true /* origin_clean */, Referrer(),
           WTF::TextEncoding(), CSSParserContext::kSnapshotProfile),
       nullptr, "p:last-of-type");
   std::unique_ptr<SelectorQuery> query =
       SelectorQuery::Adopt(std::move(selector_list));
+>>>>>>> chromium
   Element* elm = query->QueryFirst(*document);
   ASSERT_TRUE(elm);
   EXPECT_EQ("last", elm->IdForStyleResolution());

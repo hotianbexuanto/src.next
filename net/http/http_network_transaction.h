@@ -121,7 +121,15 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
                          SSLCertRequestInfo* cert_info) override;
 
   void OnQuicBroken() override;
+<<<<<<< HEAD
+
+  void OnSwitchesToHttpStreamPool(
+      HttpStreamPoolRequestInfo request_info) override;
+
+  ConnectionAttempts GetConnectionAttempts() const override;
+=======
   void GetConnectionAttempts(ConnectionAttempts* out) const override;
+>>>>>>> chromium
 
  private:
   FRIEND_TEST_ALL_PREFIXES(HttpNetworkTransactionTest, ResetStateForRestart);
@@ -312,6 +320,25 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
 
   void ResumeAfterConnected(int result);
 
+<<<<<<< HEAD
+  void RecordStreamRequestResult(int result);
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class QuicProtocolErrorRetryStatus {
+    kNoRetryExceededMaxRetries = 0,
+    kNoRetryHeaderReceived = 1,
+    kNoRetryNoAlternativeService = 2,
+    kRetryAltServiceBroken = 3,
+    kRetryAltServiceNotBroken = 4,
+    kMaxValue = kRetryAltServiceNotBroken,
+  };
+
+  static void SetProxyInfoInResponse(const ProxyInfo& proxy_info,
+                                     HttpResponseInfo* response_info);
+
+=======
+>>>>>>> chromium
   scoped_refptr<HttpAuthController>
       auth_controllers_[HttpAuth::AUTH_NUM_TARGETS];
 
@@ -326,6 +353,8 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   HttpNetworkSession* session_;
 
   NetLogWithSource net_log_;
+
+  base::TimeTicks start_timeticks_;
 
   // Reset to null at the start of the Read state machine.
   const HttpRequestInfo* request_;
@@ -375,8 +404,12 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   std::string request_method_;
   std::string request_referrer_;
   std::string request_user_agent_;
+<<<<<<< HEAD
+  int request_reporting_upload_depth_ = 0;
+=======
   int request_reporting_upload_depth_;
   base::TimeTicks start_timeticks_;
+>>>>>>> chromium
 #endif
 
   // The size in bytes of the buffer we use to drain the response body that
@@ -400,6 +433,10 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   // the body, if present.
   base::TimeTicks send_start_time_;
   base::TimeTicks send_end_time_;
+
+  // When the connection and request headers are reset, and the request is
+  // resent.
+  base::TimeTicks reset_connection_and_request_for_resend_start_time_;
 
   // The next state in the state machine.
   State next_state_;
@@ -434,6 +471,7 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   IPEndPoint remote_endpoint_;
   // Network error details for this transaction.
   NetErrorDetails net_error_details_;
+  NextProto negotiated_protocol_ = NextProto::kProtoUnknown;
 
   // Number of retries made for network errors like ERR_HTTP2_PING_FAILED,
   // ERR_HTTP2_SERVER_REFUSED_STREAM, ERR_QUIC_HANDSHAKE_FAILED and

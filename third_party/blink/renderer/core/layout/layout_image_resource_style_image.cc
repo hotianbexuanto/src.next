@@ -28,8 +28,13 @@
 
 #include "third_party/blink/renderer/core/layout/layout_image_resource_style_image.h"
 
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/layout/layout_object.h"
+#include "third_party/blink/renderer/core/layout/natural_sizing_info.h"
+=======
 #include "third_party/blink/renderer/core/layout/layout_list_marker_image.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/style/style_fetched_image.h"
 
 namespace blink {
@@ -69,6 +74,13 @@ scoped_refptr<Image> LayoutImageResourceStyleImage::GetImage(
                                 layout_object_->StyleRef(), size);
 }
 
+<<<<<<< HEAD
+NaturalSizingInfo LayoutImageResourceStyleImage::GetNaturalDimensions(
+    float multiplier) const {
+  // Always respect the orientation of opaque origin images to avoid leaking
+  // image data. Otherwise pull orientation from the layout object's style.
+  return style_image_->GetNaturalSizingInfo(multiplier, ImageOrientation());
+=======
 FloatSize LayoutImageResourceStyleImage::ImageSize(float multiplier) const {
   // TODO(davve): Find out the correct default object size in this context.
   FloatSize default_size =
@@ -85,6 +97,7 @@ FloatSize LayoutImageResourceStyleImage::ImageSizeWithDefaultSize(
   return style_image_->ImageSize(
       multiplier, default_size,
       LayoutObject::ShouldRespectImageOrientation(layout_object_));
+>>>>>>> chromium
 }
 
 RespectImageOrientationEnum LayoutImageResourceStyleImage::ImageOrientation()

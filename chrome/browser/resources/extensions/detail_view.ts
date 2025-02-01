@@ -18,6 +18,7 @@ import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 import 'chrome://resources/polymer/v3_0/paper-spinner/paper-spinner-lite.js';
 import 'chrome://resources/polymer/v3_0/paper-styles/color.js';
 import './host_permissions_toggle_list.js';
+import './icons.html.js';
 import './runtime_host_permissions.js';
 import './shared_style.js';
 import './shared_vars.js';
@@ -162,11 +163,29 @@ export class ExtensionsDetailViewElement extends
   private hasSevereWarnings_(): boolean {
     return this.data.disableReasons.corruptInstall ||
         this.data.disableReasons.suspiciousInstall ||
+<<<<<<< HEAD
+        this.data.disableReasons.publishedInStoreRequired ||
+        this.data.disableReasons.unsupportedDeveloperExtension ||
+        this.data.disableReasons.updateRequired || !!this.data.blocklistText ||
+        this.data.runtimeWarnings.length > 0;
+  }
+
+  protected showAccountUploadButton_(): boolean {
+    return this.data.canUploadAsAccountExtension;
+  }
+
+  protected showDevReloadButton_(): boolean {
+    return this.canReloadItem();
+  }
+
+  protected computeEnabledStyle_(): string {
+=======
         this.data.disableReasons.updateRequired || !!this.data.blacklistText ||
         this.data.runtimeWarnings.length > 0;
   }
 
   private computeEnabledStyle_(): string {
+>>>>>>> chromium
     return this.isEnabled_() ? 'enabled-text' : '';
   }
 
@@ -215,7 +234,22 @@ export class ExtensionsDetailViewElement extends
     });
   }
 
+<<<<<<< HEAD
+  protected onUploadClick_() {
+    this.delegate.uploadItemToAccount(this.data.id);
+  }
+
+  protected onRemoveClick_() {
+    if (this.showSafetyCheck_) {
+      chrome.metricsPrivate.recordUserAction('SafetyCheck.DetailRemoveClicked');
+      chrome.metricsPrivate.recordEnumerationValue(
+          SAFETY_HUB_EXTENSION_REMOVED_HISTOGRAM_NAME,
+          convertSafetyCheckReason(this.data.safetyCheckWarningReason),
+          SAFETY_HUB_WARNING_REASON_MAX_SIZE);
+    }
+=======
   private onRemoveTap_() {
+>>>>>>> chromium
     this.delegate.deleteItem(this.data.id);
   }
 
@@ -297,7 +331,123 @@ export class ExtensionsDetailViewElement extends
     return getEnableControl(this.data) === EnableControl.RELOAD;
   }
 
+<<<<<<< HEAD
+  private computeShowSafetyCheck_(): boolean {
+    const ExtensionType = chrome.developerPrivate.ExtensionType;
+    // Check to make sure this is an extension and not a Chrome app.
+    if (!(this.data.type === ExtensionType.EXTENSION ||
+          this.data.type === ExtensionType.SHARED_MODULE)) {
+      return false;
+    }
+    return !!(
+        this.data.safetyCheckText && this.data.safetyCheckText.detailString);
+  }
+
+  /**
+   * Returns whether the mv2 deprecation message should be displayed.
+   */
+  protected shouldShowMv2DeprecationMessage_(): boolean {
+    switch (this.mv2ExperimentStage_) {
+      case Mv2ExperimentStage.NONE:
+        return false;
+      case Mv2ExperimentStage.WARNING:
+        return this.data.isAffectedByMV2Deprecation;
+      case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+        return this.data.isAffectedByMV2Deprecation &&
+            this.data.disableReasons.unsupportedManifestVersion &&
+            !this.data.didAcknowledgeMV2DeprecationNotice;
+      case Mv2ExperimentStage.UNSUPPORTED:
+        return this.data.isAffectedByMV2Deprecation &&
+          this.data.disableReasons.unsupportedManifestVersion;
+      default:
+        assertNotReached();
+    }
+  }
+
+  /**
+   * Returns whether the find alternative button in the mv2 deprecation message
+   * should be displayed.
+   */
+  protected shouldShowMv2DeprecationFindAlternativeButton_(): boolean {
+    return this.mv2ExperimentStage_ === Mv2ExperimentStage.WARNING &&
+        !!this.data.recommendationsUrl;
+  }
+
+  /**
+   * Returns whether the remove button in the mv2 deprecation message should be
+   * displayed.
+   */
+  protected shouldShowMv2DeprecationRemoveButton_(): boolean {
+    switch (this.mv2ExperimentStage_) {
+      case Mv2ExperimentStage.NONE:
+      case Mv2ExperimentStage.WARNING:
+        return false;
+      case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+      case Mv2ExperimentStage.UNSUPPORTED:
+        return !this.data.mustRemainInstalled;
+    }
+  }
+
+  /**
+   * Returns whether the action menu button in the mv2 deprecation message
+   * should be displayed.
+   */
+  protected shouldShowMv2DeprecationActionMenu_(): boolean {
+    switch (this.mv2ExperimentStage_) {
+      case Mv2ExperimentStage.NONE:
+      case Mv2ExperimentStage.WARNING:
+        return false;
+      case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+        return true;
+      case Mv2ExperimentStage.UNSUPPORTED:
+        // 'Find alternative' is the only action for this stage. Thus, we only
+        // show the menu if the action should be visible. For UNSUPPORTED, this
+        // is when the recommendationsUrl is non-empty.
+        return !!this.data.recommendationsUrl;
+    }
+  }
+
+  /**
+   * Returns whether the find alternative button in mv2 deprecation message
+   * action menu should be displayed.
+   */
+  protected shouldShowMv2DeprecationFindAlternativeAction_(): boolean {
+    switch (this.mv2ExperimentStage_) {
+      case Mv2ExperimentStage.NONE:
+      case Mv2ExperimentStage.WARNING:
+        return false;
+      case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+      case Mv2ExperimentStage.UNSUPPORTED:
+        return !!this.data.recommendationsUrl;
+    }
+  }
+
+  /**
+   * Returns whether the keep button in mv2 deprecation message action menu
+   * should be displayed.
+   */
+  protected shouldShowMv2DeprecationKeepAction_(): boolean {
+    return this.mv2ExperimentStage_ ===
+        Mv2ExperimentStage.DISABLE_WITH_REENABLE;
+  }
+
+  protected shouldShowBlocklistText_(): boolean {
+    return !this.showSafetyCheck_ && !!this.data.blocklistText;
+  }
+
+  /**
+   * Shows only one text if both unsupported developer extension and safety
+   * check texts are present. Safety check text takes precedence.
+   */
+  protected shouldShowUnsupportedDeveloperExtensionText_(): boolean {
+    return !this.showSafetyCheck_ &&
+        this.data.disableReasons.unsupportedDeveloperExtension;
+  }
+
+  protected showRepairButton_(): boolean {
+=======
   private showRepairButton_(): boolean {
+>>>>>>> chromium
     return getEnableControl(this.data) === EnableControl.REPAIR;
   }
 
@@ -314,7 +464,128 @@ export class ExtensionsDetailViewElement extends
     // would be redundant since all blocklisted items are necessarily not
     // included in the Safe Browsing allowlist.
     return this.data.showSafeBrowsingAllowlistWarning &&
+<<<<<<< HEAD
+        !this.data.blocklistText;
+  }
+
+  /** Opens the action menu for the extension. */
+  protected onActionMenuButtonClick_(event: MouseEvent): void {
+    this.$.actionMenu.showAt(
+        event.target as HTMLElement,
+        {anchorAlignmentY: AnchorAlignment.AFTER_END});
+  }
+
+  /**
+   * Opens a URL in the Web Store with extensions recommendations for the
+   * extension.
+   */
+  protected onFindAlternativeActionClick_(): void {
+    switch (this.mv2ExperimentStage_) {
+      case Mv2ExperimentStage.NONE:
+      case Mv2ExperimentStage.WARNING:
+        assertNotReached();
+      case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+        chrome.metricsPrivate.recordUserAction(
+            'Extensions.Mv2Deprecation.Disabled.FindAlternativeForExtension.DetailPage');
+        break;
+      case Mv2ExperimentStage.UNSUPPORTED:
+        chrome.metricsPrivate.recordUserAction(
+            'Extensions.Mv2Deprecation.Unsupported.FindAlternativeForExtension.DetailPage');
+        break;
+    }
+
+    this.$.actionMenu.close();
+
+    const recommendationsUrl: string|undefined = this.data.recommendationsUrl;
+    assert(!!recommendationsUrl);
+    this.delegate.openUrl(recommendationsUrl);
+  }
+
+  /**
+   * Dismisses the notice for a given extension in the disable experiment stage.
+   * It will not be shown again during this stage.
+   */
+  protected onKeepActionClick_(): void {
+    assert(
+        this.mv2ExperimentStage_ === Mv2ExperimentStage.DISABLE_WITH_REENABLE);
+    chrome.metricsPrivate.recordUserAction(
+        'Extensions.Mv2Deprecation.Disabled.DismissedForExtension.DetailPage');
+    this.$.actionMenu.close();
+    this.delegate.dismissMv2DeprecationNoticeForExtension(this.data.id);
+  }
+
+  /**
+   * Returns the Manifest V2 deprecation message header.
+   */
+  protected getMv2DeprecationMessageHeader_(): string {
+    switch (this.mv2ExperimentStage_) {
+      case Mv2ExperimentStage.NONE:
+        return '';
+      case Mv2ExperimentStage.WARNING:
+        return this.i18n('mv2DeprecationMessageWarningHeader');
+      case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+      case Mv2ExperimentStage.UNSUPPORTED:
+        return this.i18n('mv2DeprecationMessageDisabledHeader');
+      default:
+        assertNotReached();
+    }
+  }
+
+  /**
+   * Returns the HTML representation of the Manifest V2 deprecation message
+   * subtitle string. We need the HTML representation instead of the string
+   * since the string holds substitutions.
+   */
+  protected getMv2DeprecationMessageSubtitle_(): TrustedHTML {
+    switch (this.mv2ExperimentStage_) {
+      case Mv2ExperimentStage.NONE:
+        return window.trustedTypes!.emptyHTML;
+      case Mv2ExperimentStage.WARNING:
+        return this.i18nAdvanced('mv2DeprecationMessageWarningSubtitle', {
+          substitutions: [
+            'https://chromewebstore.google.com/category/extensions',
+            this.i18n('opensInNewTab'),
+          ],
+          attrs: ['aria-description'],
+        });
+      case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+      case Mv2ExperimentStage.UNSUPPORTED:
+        return this.i18nAdvanced('mv2DeprecationMessageDisabledSubtitle', {
+          substitutions: [
+            'https://support.google.com/chrome_webstore' +
+                '?p=unsupported_extensions',
+            this.i18n('opensInNewTab'),
+          ],
+          attrs: ['aria-description'],
+        });
+      default:
+        assertNotReached();
+    }
+  }
+
+  /**
+   * Returns the Manifest V2 deprecation message icon.
+   */
+  protected getMv2DeprecationMessageIcon_(): string {
+    switch (this.mv2ExperimentStage_) {
+      case Mv2ExperimentStage.NONE:
+      case Mv2ExperimentStage.WARNING:
+        return 'extensions-icons:my_extensions';
+      case Mv2ExperimentStage.DISABLE_WITH_REENABLE:
+      case Mv2ExperimentStage.UNSUPPORTED:
+        return 'extensions-icons:extension_off';
+      default:
+        assertNotReached();
+    }
+  }
+
+  /** Returns the accessible label for the action menu button */
+  protected getActionMenuButtonLabel_(): string {
+    return this.i18n(
+        'mv2DeprecationPanelExtensionActionMenuLabel', this.data.name);
+=======
         !this.data.blacklistText;
+>>>>>>> chromium
   }
 }
 

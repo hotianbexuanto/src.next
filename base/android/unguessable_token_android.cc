@@ -4,7 +4,20 @@
 
 #include "base/android/unguessable_token_android.h"
 
+<<<<<<< HEAD
+#include "build/robolectric_buildflags.h"
+
+// Must come after all headers that specialize FromJniType() / ToJniType().
+#if BUILDFLAG(IS_ROBOLECTRIC)
+#include "base/base_robolectric_jni/TokenBase_jni.h"         // nogncheck
+#include "base/base_robolectric_jni/UnguessableToken_jni.h"  // nogncheck
+#else
+#include "base/base_jni/TokenBase_jni.h"
+#include "base/base_jni/UnguessableToken_jni.h"
+#endif
+=======
 #include "base/base_jni_headers/UnguessableToken_jni.h"
+>>>>>>> chromium
 
 namespace base {
 namespace android {

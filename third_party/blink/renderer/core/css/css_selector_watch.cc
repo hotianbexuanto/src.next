@@ -156,9 +156,16 @@ void CSSSelectorWatch::WatchCSSSelectors(const Vector<String>& selectors) {
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kUASheetMode, SecureContextMode::kInsecureContext);
   for (const auto& selector : selectors) {
+<<<<<<< HEAD
+    base::span<CSSSelector> selector_vector = CSSParser::ParseSelector(
+        context, CSSNestingType::kNone, /*parent_rule_for_nesting=*/nullptr,
+        nullptr, selector, arena);
+    if (selector_vector.empty()) {
+=======
     CSSSelectorList selector_list =
         CSSParser::ParseSelector(context, nullptr, selector);
     if (!selector_list.IsValid())
+>>>>>>> chromium
       continue;
 
     // Only accept Compound Selectors, since they're cheaper to match.

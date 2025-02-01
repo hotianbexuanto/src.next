@@ -44,6 +44,50 @@
 
 namespace blink {
 
+<<<<<<< HEAD
+namespace {
+
+template <typename T>
+T ConvertIdentifierTo(const CSSValue* value, T initial_value) {
+  if (const auto* ident = DynamicTo<CSSIdentifierValue>(value)) {
+    return ident->ConvertTo<T>();
+  }
+  DCHECK(value->IsInitialValue());
+  return initial_value;
+}
+
+inline WhiteSpaceCollapse ToWhiteSpaceCollapse(const CSSValue* value) {
+  return ConvertIdentifierTo<WhiteSpaceCollapse>(
+      value, ComputedStyleInitialValues::InitialWhiteSpaceCollapse());
+}
+
+inline TextWrapMode ToTextWrapMode(const CSSValue* value) {
+  return ConvertIdentifierTo<TextWrapMode>(
+      value, ComputedStyleInitialValues::InitialTextWrapMode());
+}
+
+inline TextWrapStyle ToTextWrapStyle(const CSSValue* value) {
+  return ConvertIdentifierTo<TextWrapStyle>(
+      value, ComputedStyleInitialValues::InitialTextWrapStyle());
+}
+
+bool IsZeroPercent(const CSSValue* value) {
+  if (const auto* num = DynamicTo<CSSNumericLiteralValue>(value)) {
+    return num->GetValueIfKnown() == 0.0 && num->IsPercentage();
+  }
+
+  return false;
+}
+
+template <typename T>
+StringView PlatformEnumToCSSValueString(T e) {
+  return GetCSSValueNameAs<StringView>(PlatformEnumToCSSValueID(e));
+}
+
+}  // namespace
+
+=======
+>>>>>>> chromium
 StylePropertySerializer::CSSPropertyValueSetForSerializer::
     CSSPropertyValueSetForSerializer(const CSSPropertyValueSet& properties)
     : property_set_(&properties),
@@ -52,11 +96,9 @@ StylePropertySerializer::CSSPropertyValueSetForSerializer::
   if (!HasAllProperty())
     return;
 
-  CSSPropertyValueSet::PropertyReference all_property =
-      property_set_->PropertyAt(all_index_);
+  const CSSPropertyValue& all_property = property_set_->PropertyAt(all_index_);
   for (unsigned i = 0; i < property_set_->PropertyCount(); ++i) {
-    CSSPropertyValueSet::PropertyReference property =
-        property_set_->PropertyAt(i);
+    const CSSPropertyValue& property = property_set_->PropertyAt(i);
     if (property.IsAffectedByAll()) {
       if (all_property.IsImportant() && !property.IsImportant())
         continue;
@@ -67,9 +109,16 @@ StylePropertySerializer::CSSPropertyValueSetForSerializer::
         continue;
       need_to_expand_all_ = true;
     }
+<<<<<<< HEAD
+    if (!IsCSSPropertyIDWithName(property.PropertyID())) {
+      continue;
+    }
+    longhand_property_used_.set(GetCSSPropertyIDIndex(property.PropertyID()));
+=======
     if (!IsCSSPropertyIDWithName(property.Id()))
       continue;
     longhand_property_used_.set(GetCSSPropertyIDIndex(property.Id()));
+>>>>>>> chromium
   }
 }
 
@@ -103,8 +152,7 @@ StylePropertySerializer::CSSPropertyValueSetForSerializer::PropertyAt(
         property_set_->PropertyAt(real_index));
   }
 
-  CSSPropertyValueSet::PropertyReference property =
-      property_set_->PropertyAt(all_index_);
+  const CSSPropertyValue& property = property_set_->PropertyAt(all_index_);
   return StylePropertySerializer::PropertyValueForSerializer(
       CSSProperty::Get(property_id), &property.Value(), property.IsImportant());
 }
@@ -118,6 +166,28 @@ bool StylePropertySerializer::CSSPropertyValueSetForSerializer::
   // If all is not expanded, we need to process "all" and properties which
   // are not overwritten by "all".
   if (!need_to_expand_all_) {
+<<<<<<< HEAD
+    const CSSPropertyValue& property = property_set_->PropertyAt(index);
+    if (property.PropertyID() == CSSPropertyID::kAll ||
+        !property.IsAffectedByAll()) {
+      return true;
+    }
+    if (!IsCSSPropertyIDWithName(property.PropertyID())) {
+      return false;
+    }
+    return longhand_property_used_.test(
+        GetCSSPropertyIDIndex(property.PropertyID()));
+  }
+
+  // Custom property declarations are never overridden by "all" and are only
+  // traversed for the indices into the property set.
+  if (IsIndexInPropertySet(index)) {
+    return property_set_->PropertyAt(index).PropertyID() ==
+           CSSPropertyID::kVariable;
+  }
+
+  CSSPropertyID property_id = IndexToPropertyID(index);
+=======
     CSSPropertyValueSet::PropertyReference property =
         property_set_->PropertyAt(index);
     if (property.Id() == CSSPropertyID::kAll || !property.IsAffectedByAll())
@@ -129,6 +199,7 @@ bool StylePropertySerializer::CSSPropertyValueSetForSerializer::
 
   CSSPropertyID property_id =
       static_cast<CSSPropertyID>(index + kIntFirstCSSProperty);
+>>>>>>> chromium
   DCHECK(IsCSSPropertyIDWithName(property_id));
   const CSSProperty& property_class =
       CSSProperty::Get(ResolveCSSPropertyID(property_id));
@@ -169,8 +240,13 @@ StylePropertySerializer::CSSPropertyValueSetForSerializer::GetPropertyCSSValue(
 
 bool StylePropertySerializer::CSSPropertyValueSetForSerializer::
     IsDescriptorContext() const {
+<<<<<<< HEAD
+  CSSParserMode mode = property_set_->CssParserMode();
+  return mode == kCSSFontFaceRuleMode || mode == kCSSFunctionDescriptorsMode;
+=======
   return property_set_->CssParserMode() == kCSSViewportRuleMode ||
          property_set_->CssParserMode() == kCSSFontFaceRuleMode;
+>>>>>>> chromium
 }
 
 StylePropertySerializer::StylePropertySerializer(
@@ -426,6 +502,17 @@ String StylePropertySerializer::SerializeShorthand(
   switch (property_id) {
     case CSSPropertyID::kAnimation:
       return GetLayeredShorthandValue(animationShorthand());
+<<<<<<< HEAD
+    case CSSPropertyID::kAnimationRange:
+      return AnimationRangeShorthandValue();
+    case CSSPropertyID::kAnimationTrigger:
+      return GetLayeredShorthandValue(animationTriggerShorthand());
+    case CSSPropertyID::kAnimationTriggerRange:
+      return AnimationTriggerRangeShorthandValue();
+    case CSSPropertyID::kAnimationTriggerExitRange:
+      return AnimationTriggerExitRangeShorthandValue();
+=======
+>>>>>>> chromium
     case CSSPropertyID::kBorderSpacing:
       return Get2Values(borderSpacingShorthand());
     case CSSPropertyID::kBackgroundPosition:
@@ -503,6 +590,8 @@ String StylePropertySerializer::SerializeShorthand(
       return Get2Values(gapShorthand());
     case CSSPropertyID::kInset:
       return Get4Values(insetShorthand());
+    case CSSPropertyID::kInterestTargetDelay:
+      return Get2Values(interestTargetDelayShorthand());
     case CSSPropertyID::kInsetBlock:
       return Get2Values(insetBlockShorthand());
     case CSSPropertyID::kInsetInline:
@@ -523,6 +612,13 @@ String StylePropertySerializer::SerializeShorthand(
       return Get2Values(marginBlockShorthand());
     case CSSPropertyID::kMarginInline:
       return Get2Values(marginInlineShorthand());
+<<<<<<< HEAD
+    case CSSPropertyID::kMasonryFlow:
+      return GetShorthandValue(masonryFlowShorthand());
+    case CSSPropertyID::kMasonryTrack:
+      return GetShorthandValueForMasonryTrack();
+=======
+>>>>>>> chromium
     case CSSPropertyID::kOffset:
       return OffsetValue();
     case CSSPropertyID::kOverflow:
@@ -591,13 +687,23 @@ String StylePropertySerializer::SerializeShorthand(
 // The font shorthand only allows keyword font-stretch values. Thus, we check if
 // a percentage value can be parsed as a keyword, and if so, serialize it as
 // that keyword.
+//
+// It's not very well specified what to do with calc(), so we follow the other
+// browsers here and try to stay flexible.
 const CSSValue* GetFontStretchKeyword(const CSSValue* font_stretch_value) {
   if (IsA<CSSIdentifierValue>(font_stretch_value))
     return font_stretch_value;
+<<<<<<< HEAD
+  }
+  if (auto* literal_value = DynamicTo<CSSPrimitiveValue>(font_stretch_value)) {
+    std::optional<double> value = literal_value->GetValueIfKnown();
+    if (value == 50) {
+=======
   if (auto* primitive_value =
           DynamicTo<CSSPrimitiveValue>(font_stretch_value)) {
     double value = primitive_value->GetDoubleValue();
     if (value == 50)
+>>>>>>> chromium
       return CSSIdentifierValue::Create(CSSValueID::kUltraCondensed);
     if (value == 62.5)
       return CSSIdentifierValue::Create(CSSValueID::kExtraCondensed);
@@ -693,9 +799,261 @@ String StylePropertySerializer::ContainerValue() const {
 
   list->Append(*type);
 
+<<<<<<< HEAD
+  if (const auto* ident_value = DynamicTo<CSSIdentifierValue>(type);
+      !ident_value || ident_value->GetValueID() != CSSValueID::kNormal) {
+    list->Append(*type);
+  }
+
+  return list->CssText();
+}
+
+namespace {
+
+bool IsIdentifier(const CSSValue& value, CSSValueID ident) {
+  const auto* ident_value = DynamicTo<CSSIdentifierValue>(value);
+  return ident_value && ident_value->GetValueID() == ident;
+}
+
+bool IsIdentifierPair(const CSSValue& value, CSSValueID ident) {
+  const auto* pair_value = DynamicTo<CSSValuePair>(value);
+  return pair_value && IsIdentifier(pair_value->First(), ident) &&
+         IsIdentifier(pair_value->Second(), ident);
+}
+
+CSSValue* TimelineValueItem(wtf_size_t index,
+                            const CSSValueList& name_list,
+                            const CSSValueList& axis_list,
+                            const CSSValueList* inset_list) {
+  DCHECK_LT(index, name_list.length());
+  DCHECK_LT(index, axis_list.length());
+  DCHECK(!inset_list || index < inset_list->length());
+
+  const CSSValue& name = name_list.Item(index);
+  const CSSValue& axis = axis_list.Item(index);
+  const CSSValue* inset = inset_list ? &inset_list->Item(index) : nullptr;
+
+  CSSValueList* list = CSSValueList::CreateSpaceSeparated();
+
+  // Note that the name part can never be omitted, since e.g. serializing
+  // "view-timeline:none inline" as "view-timeline:inline" doesn't roundtrip.
+  // (It would set view-timeline-name to inline).
+  list->Append(name);
+
+  if (!IsIdentifier(axis, CSSValueID::kBlock)) {
+    list->Append(axis);
+  }
+  if (inset && !IsIdentifierPair(*inset, CSSValueID::kAuto)) {
+    list->Append(*inset);
+  }
+
+  return list;
+}
+
+}  // namespace
+
+String StylePropertySerializer::TimelineValue(
+    const StylePropertyShorthand& shorthand) const {
+  CHECK_GE(shorthand.length(), 2u);
+  CHECK_LE(shorthand.length(), 3u);
+
+  const CSSValueList& name_list = To<CSSValueList>(
+      *property_set_.GetPropertyCSSValue(*shorthand.properties()[0]));
+  const CSSValueList& axis_list = To<CSSValueList>(
+      *property_set_.GetPropertyCSSValue(*shorthand.properties()[1]));
+  const CSSValueList* inset_list =
+      shorthand.length() == 3u
+          ? To<CSSValueList>(
+                property_set_.GetPropertyCSSValue(*shorthand.properties()[2]))
+          : nullptr;
+
+  // The scroll/view-timeline shorthand can not expand to longhands of two
+  // different lengths, so we can also not contract two different-longhands
+  // into a single shorthand.
+  if (name_list.length() != axis_list.length()) {
+    return "";
+  }
+  if (inset_list && name_list.length() != inset_list->length()) {
+    return "";
+  }
+
+  CSSValueList* list = CSSValueList::CreateCommaSeparated();
+
+  for (wtf_size_t i = 0; i < name_list.length(); ++i) {
+    list->Append(*TimelineValueItem(i, name_list, axis_list, inset_list));
+  }
+
+  return list->CssText();
+}
+
+String StylePropertySerializer::ScrollTimelineValue() const {
+  CHECK_EQ(scrollTimelineShorthand().length(), 2u);
+  CHECK_EQ(scrollTimelineShorthand().properties()[0],
+           &GetCSSPropertyScrollTimelineName());
+  CHECK_EQ(scrollTimelineShorthand().properties()[1],
+           &GetCSSPropertyScrollTimelineAxis());
+  return TimelineValue(scrollTimelineShorthand());
+}
+
+String StylePropertySerializer::ViewTimelineValue() const {
+  CHECK_EQ(viewTimelineShorthand().length(), 3u);
+  CHECK_EQ(viewTimelineShorthand().properties()[0],
+           &GetCSSPropertyViewTimelineName());
+  CHECK_EQ(viewTimelineShorthand().properties()[1],
+           &GetCSSPropertyViewTimelineAxis());
+  CHECK_EQ(viewTimelineShorthand().properties()[2],
+           &GetCSSPropertyViewTimelineInset());
+  return TimelineValue(viewTimelineShorthand());
+}
+
+namespace {
+
+// Return the name and offset (in percent). This is useful for
+// contracting '<somename> 0%' and '<somename> 100%' into just <somename>.
+//
+// If the offset is present, but not a <percentage>, -1 is returned as the
+// offset. Otherwise (also in the 'normal' case), the `default_offset_percent`
+// is returned.
+std::pair<CSSValueID, double> GetTimelineRangePercent(
+    const CSSValue& value,
+    double default_offset_percent) {
+  const auto* list = DynamicTo<CSSValueList>(value);
+  if (!list) {
+    return {CSSValueID::kNormal, default_offset_percent};
+  }
+  DCHECK_GE(list->length(), 1u);
+  DCHECK_LE(list->length(), 2u);
+  CSSValueID name = CSSValueID::kNormal;
+  double offset_percent = default_offset_percent;
+
+  if (list->Item(0).IsIdentifierValue()) {
+    name = To<CSSIdentifierValue>(list->Item(0)).GetValueID();
+    if (list->length() == 2u) {
+      const auto& offset = To<CSSPrimitiveValue>(list->Item(1));
+      offset_percent =
+          offset.IsPercentage() && offset.GetValueIfKnown().has_value()
+              ? *offset.GetValueIfKnown()
+              : -1.0;
+    }
+  } else {
+    const auto& offset = To<CSSPrimitiveValue>(list->Item(0));
+    offset_percent =
+        offset.IsPercentage() && offset.GetValueIfKnown().has_value()
+            ? *offset.GetValueIfKnown()
+            : -1.0;
+  }
+
+  return {name, offset_percent};
+}
+
+CSSValue* AnimationRangeShorthandValueItem(wtf_size_t index,
+                                           const CSSValueList& start_list,
+                                           const CSSValueList& end_list) {
+  DCHECK_LT(index, start_list.length());
+  DCHECK_LT(index, end_list.length());
+
+  const CSSValue& start = start_list.Item(index);
+  const CSSValue& end = end_list.Item(index);
+
+  CSSValueList* list = CSSValueList::CreateSpaceSeparated();
+
+  list->Append(start);
+
+  // The form "name X name 100%" must contract to "name X".
+  //
+  // https://github.com/w3c/csswg-drafts/issues/8438
+  const auto& start_pair = GetTimelineRangePercent(start, 0.0);
+  const auto& end_pair = GetTimelineRangePercent(end, 100.0);
+  std::pair<CSSValueID, double> omittable_end = {start_pair.first, 100.0};
+  if (end_pair != omittable_end) {
+    list->Append(end);
+  }
+
+  return list;
+}
+
+}  // namespace
+
+String StylePropertySerializer::AnimationRangeShorthandValue() const {
+  CHECK_EQ(animationRangeShorthand().length(), 2u);
+  CHECK_EQ(animationRangeShorthand().properties()[0],
+           &GetCSSPropertyAnimationRangeStart());
+  CHECK_EQ(animationRangeShorthand().properties()[1],
+           &GetCSSPropertyAnimationRangeEnd());
+
+  const CSSValueList& start_list = To<CSSValueList>(
+      *property_set_.GetPropertyCSSValue(GetCSSPropertyAnimationRangeStart()));
+  const CSSValueList& end_list = To<CSSValueList>(
+      *property_set_.GetPropertyCSSValue(GetCSSPropertyAnimationRangeEnd()));
+
+  if (start_list.length() != end_list.length()) {
+    return "";
+  }
+
+  CSSValueList* list = CSSValueList::CreateCommaSeparated();
+
+  for (wtf_size_t i = 0; i < start_list.length(); ++i) {
+    list->Append(*AnimationRangeShorthandValueItem(i, start_list, end_list));
+=======
   if (!(IsA<CSSIdentifierValue>(name) &&
         To<CSSIdentifierValue>(*name).GetValueID() == CSSValueID::kNone)) {
     list->Append(*name);
+>>>>>>> chromium
+  }
+
+  return list->CssText();
+}
+
+String StylePropertySerializer::AnimationTriggerRangeShorthandValue() const {
+  CHECK_EQ(animationTriggerRangeShorthand().length(), 2u);
+  CHECK_EQ(animationTriggerRangeShorthand().properties()[0],
+           &GetCSSPropertyAnimationTriggerRangeStart());
+  CHECK_EQ(animationTriggerRangeShorthand().properties()[1],
+           &GetCSSPropertyAnimationTriggerRangeEnd());
+
+  const CSSValueList& start_list =
+      To<CSSValueList>(*property_set_.GetPropertyCSSValue(
+          GetCSSPropertyAnimationTriggerRangeStart()));
+  const CSSValueList& end_list =
+      To<CSSValueList>(*property_set_.GetPropertyCSSValue(
+          GetCSSPropertyAnimationTriggerRangeEnd()));
+
+  if (start_list.length() != end_list.length()) {
+    return "";
+  }
+
+  CSSValueList* list = CSSValueList::CreateCommaSeparated();
+
+  for (wtf_size_t i = 0; i < start_list.length(); ++i) {
+    list->Append(*AnimationRangeShorthandValueItem(i, start_list, end_list));
+  }
+
+  return list->CssText();
+}
+
+String StylePropertySerializer::AnimationTriggerExitRangeShorthandValue()
+    const {
+  CHECK_EQ(animationTriggerExitRangeShorthand().length(), 2u);
+  CHECK_EQ(animationTriggerExitRangeShorthand().properties()[0],
+           &GetCSSPropertyAnimationTriggerExitRangeStart());
+  CHECK_EQ(animationTriggerExitRangeShorthand().properties()[1],
+           &GetCSSPropertyAnimationTriggerExitRangeEnd());
+
+  const CSSValueList& start_list =
+      To<CSSValueList>(*property_set_.GetPropertyCSSValue(
+          GetCSSPropertyAnimationTriggerExitRangeStart()));
+  const CSSValueList& end_list =
+      To<CSSValueList>(*property_set_.GetPropertyCSSValue(
+          GetCSSPropertyAnimationTriggerExitRangeEnd()));
+
+  if (start_list.length() != end_list.length()) {
+    return "";
+  }
+
+  CSSValueList* list = CSSValueList::CreateCommaSeparated();
+
+  for (wtf_size_t i = 0; i < start_list.length(); ++i) {
+    list->Append(*AnimationRangeShorthandValueItem(i, start_list, end_list));
   }
 
   return list->CssText();
@@ -766,16 +1124,28 @@ String StylePropertySerializer::FontValue() const {
   const CSSValue* first = property_set_.GetPropertyCSSValue(*longhands[0]);
   if (const auto* system_font =
           DynamicTo<cssvalue::CSSPendingSystemFontValue>(first)) {
+<<<<<<< HEAD
+    for (const CSSProperty* const longhand : longhands.subspan<1>()) {
+      const CSSValue* value = property_set_.GetPropertyCSSValue(*longhand);
+      if (!base::ValuesEquivalent(first, value)) {
+=======
     for (unsigned i = 1; i < length; i++) {
       const CSSValue* value = property_set_.GetPropertyCSSValue(*longhands[i]);
       if (!DataEquivalent(first, value))
+>>>>>>> chromium
         return g_empty_string;
     }
     return getValueName(system_font->SystemFontId());
   } else {
+<<<<<<< HEAD
+    for (const CSSProperty* const longhand : longhands.subspan<1>()) {
+      const CSSValue* value = property_set_.GetPropertyCSSValue(*longhand);
+      if (value->IsPendingSystemFontValue()) {
+=======
     for (unsigned i = 1; i < length; i++) {
       const CSSValue* value = property_set_.GetPropertyCSSValue(*longhands[i]);
       if (value->IsPendingSystemFontValue())
+>>>>>>> chromium
         return g_empty_string;
     }
   }
@@ -1066,6 +1436,60 @@ String StylePropertySerializer::GetLayeredShorthandValue(
       // if doesn't change the meaning of the overall value.
       // https://drafts.csswg.org/cssom/#serializing-css-values
       if (property->IDEquals(CSSPropertyID::kAnimationTimeline)) {
+<<<<<<< HEAD
+        auto* ident = DynamicTo<CSSIdentifierValue>(value);
+        if (!ident ||
+            (ident->GetValueID() !=
+             CSSAnimationData::InitialTimeline().GetKeyword()) ||
+            layer > 0) {
+          return g_empty_string;
+        }
+        omit_value = true;
+      }
+      if (property->IDEquals(CSSPropertyID::kAnimationRangeStart)) {
+        auto* ident = DynamicTo<CSSIdentifierValue>(value);
+        if (!ident || (ident->GetValueID() != CSSValueID::kNormal) ||
+            layer > 0) {
+          return g_empty_string;
+        }
+        omit_value = true;
+      }
+      if (property->IDEquals(CSSPropertyID::kAnimationRangeEnd)) {
+        auto* ident = DynamicTo<CSSIdentifierValue>(value);
+        if (!ident || (ident->GetValueID() != CSSValueID::kNormal) ||
+            layer > 0) {
+          return g_empty_string;
+        }
+        omit_value = true;
+      }
+
+      if (property->IDEquals(CSSPropertyID::kTransitionBehavior)) {
+        CHECK_EQ(shorthand.id(), CSSPropertyID::kTransition);
+        auto* ident = DynamicTo<CSSIdentifierValue>(value);
+        CHECK(ident) << " transition-behavior should only have a "
+                        "CSSIdentifierValue for a value. CssText: "
+                     << value->CssText();
+        if (ident->GetValueID() == CSSValueID::kNormal) {
+          // transition-behavior overrides InitialValue to return "normal"
+          // instead of "initial", but we don't want to include "normal" in the
+          // shorthand serialization, so this special case is needed.
+          // TODO(http://crbug.com/501673): We should have a better solution
+          // before fixing all CSS properties to fix the above bug.
+          omit_value = true;
+        }
+      }
+      // The transition shorthand should only serialize values which aren't
+      // set to their default value:
+      // https://github.com/web-platform-tests/wpt/issues/43574
+      if (property->IDEquals(CSSPropertyID::kTransitionDelay) ||
+          property->IDEquals(CSSPropertyID::kTransitionDuration)) {
+        auto* numeric_value = DynamicTo<CSSNumericLiteralValue>(value);
+        if (numeric_value && numeric_value->GetValueIfKnown() == 0.0) {
+          omit_value = true;
+        }
+      } else if (property->IDEquals(CSSPropertyID::kTransitionTimingFunction)) {
+=======
+>>>>>>> chromium
         if (auto* ident = DynamicTo<CSSIdentifierValue>(value)) {
           if (ident->GetValueID() ==
               CSSAnimationData::InitialTimeline().GetKeyword()) {

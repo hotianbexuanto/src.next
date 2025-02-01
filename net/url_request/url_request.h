@@ -71,6 +71,13 @@ class URLRequestContext;
 class URLRequestJob;
 class X509Certificate;
 
+<<<<<<< HEAD
+namespace device_bound_sessions {
+struct SessionAccess;
+}
+
+=======
+>>>>>>> chromium
 //-----------------------------------------------------------------------------
 // A class  representing the asynchronous load of a data stream from an URL.
 //
@@ -741,6 +748,26 @@ class NET_EXPORT URLRequest : public base::SupportsUserData {
   // is received from the remote party.
   void SetEarlyResponseHeadersCallback(ResponseHeadersCallback callback);
 
+<<<<<<< HEAD
+  // Set a callback that will be invoked when a matching shared dictionary is
+  // available to determine whether it is allowed to use the dictionary.
+  void SetIsSharedDictionaryReadAllowedCallback(
+      base::RepeatingCallback<bool()> callback);
+
+  // Set a callback that will be invoked each time a device bound
+  // session is accessed as part of this URL request. Because device
+  // bound sessions can be accessed asynchronously after this request
+  // completes, this callback must be able to safely outlive `this`.
+  void SetDeviceBoundSessionAccessCallback(
+      base::RepeatingCallback<void(const device_bound_sessions::SessionAccess&)>
+          callback);
+  base::RepeatingCallback<void(const device_bound_sessions::SessionAccess&)>
+  device_bound_session_access_callback() {
+    return device_bound_session_access_callback_;
+  }
+
+=======
+>>>>>>> chromium
   // Sets socket tag to be applied to all sockets used to execute this request.
   // Must be set before Start() is called.  Only currently supported for HTTP
   // and HTTPS requests on Android; UID tagging requires
@@ -1027,6 +1054,18 @@ class NET_EXPORT URLRequest : public base::SupportsUserData {
   // Idempotency of the request.
   Idempotency idempotency_ = DEFAULT_IDEMPOTENCY;
 
+<<<<<<< HEAD
+  SharedDictionaryGetter shared_dictionary_getter_;
+
+  // The storage access status for this request. If this is nullopt, this
+  // request will not include the Sec-Fetch-Storage-Access header.
+  std::optional<net::cookie_util::StorageAccessStatus> storage_access_status_;
+
+  base::RepeatingCallback<void(const device_bound_sessions::SessionAccess&)>
+      device_bound_session_access_callback_;
+
+=======
+>>>>>>> chromium
   THREAD_CHECKER(thread_checker_);
 
   base::WeakPtrFactory<URLRequest> weak_factory_{this};

@@ -31,6 +31,76 @@ bool ShouldSample(WebFeature feature) {
           IdentifiableSurface::Type::kWebFeature, feature));
 }
 
+<<<<<<< HEAD
+using CalledJsApi = perfetto::protos::pbzero::BlinkHighEntropyAPI::CalledJsApi;
+using JSFunctionArgument =
+    perfetto::protos::pbzero::BlinkHighEntropyAPI::JSFunctionArgument;
+using ArgumentType = perfetto::protos::pbzero::BlinkHighEntropyAPI::
+    JSFunctionArgument::ArgumentType;
+using ChromeTrackEvent = perfetto::protos::pbzero::ChromeTrackEvent;
+using HighEntropyAPI = perfetto::protos::pbzero::BlinkHighEntropyAPI;
+using ExecutionContextProto = perfetto::protos::pbzero::BlinkExecutionContext;
+using SourceLocationProto = perfetto::protos::pbzero::BlinkSourceLocation;
+using FontLookup = perfetto::protos::pbzero::BlinkHighEntropyAPI::FontLookup;
+using FontLookupType =
+    perfetto::protos::pbzero::BlinkHighEntropyAPI::FontLookup::FontLookupType;
+
+ArgumentType GetArgumentType(v8::Local<v8::Value> value) {
+  if (value->IsUndefined()) {
+    return ArgumentType::UNDEFINED;
+  }
+  if (value->IsNull()) {
+    return ArgumentType::NULL_TYPE;
+  }
+  if (value->IsBigInt()) {
+    return ArgumentType::BIGINT;
+  }
+  if (value->IsBoolean()) {
+    return ArgumentType::BOOLEAN;
+  }
+  if (value->IsFunction()) {
+    return ArgumentType::FUNCTION;
+  }
+  if (value->IsNumber()) {
+    return ArgumentType::NUMBER;
+  }
+  if (value->IsString()) {
+    return ArgumentType::STRING;
+  }
+  if (value->IsSymbol()) {
+    return ArgumentType::SYMBOL;
+  }
+  if (value->IsObject()) {
+    return ArgumentType::OBJECT;
+  }
+
+  return ArgumentType::UNKNOWN_TYPE;
+}
+
+// Returns the stringified object on success and an empty string on failure
+String V8ValueToString(v8::Local<v8::Context> current_context,
+                       v8::Isolate* isolate,
+                       const v8::Local<v8::Value>& value) {
+  v8::Local<v8::String> v8_string;
+
+  if (!value->ToDetailString(current_context).ToLocal(&v8_string)) {
+    return g_empty_string;
+  }
+
+  return ToBlinkString<String>(isolate, v8_string, kDoNotExternalize);
+}
+
+FontLookupType ToTypeProto(Dactyloscoper::FontLookupType lookup_type) {
+  switch (lookup_type) {
+    case Dactyloscoper::FontLookupType::kUniqueOrFamilyName:
+      return FontLookupType::FONT_LOOKUP_UNIQUE_OR_FAMILY_NAME;
+    case Dactyloscoper::FontLookupType::kUniqueNameOnly:
+      return FontLookupType::FONT_LOOKUP_UNIQUE_NAME_ONLY;
+  }
+}
+
+=======
+>>>>>>> chromium
 }  // namespace
 
 // static

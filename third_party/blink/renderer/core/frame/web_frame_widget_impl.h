@@ -60,12 +60,18 @@
 #include "third_party/blink/renderer/core/page/event_with_hit_test_results.h"
 #include "third_party/blink/renderer/core/page/page_widget_delegate.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"
+#include "third_party/blink/renderer/platform/allow_discouraged_type.h"
 #include "third_party/blink/renderer/platform/graphics/apply_viewport_changes.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_image.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_receiver.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_remote.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_receiver.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/platform/mojo/heap_mojo_receiver_set.h"
+#include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_wrapper_mode.h"
 #include "third_party/blink/renderer/platform/text/text_direction.h"
 #include "third_party/blink/renderer/platform/widget/frame_widget.h"
@@ -187,11 +193,16 @@ class CORE_EXPORT WebFrameWidgetImpl
       const cc::OverscrollBehavior& overscroll_behavior) final;
   void RequestAnimationAfterDelay(const base::TimeDelta&) final;
   void SetRootLayer(scoped_refptr<cc::Layer>) override;
+<<<<<<< HEAD
+  void RequestDecode(const cc::DrawImage&,
+                     base::OnceCallback<void(bool)>) override;
+=======
   void RegisterSelection(cc::LayerSelection selection) final;
   void RequestDecode(const cc::PaintImage&,
                      base::OnceCallback<void(bool)>) override;
   void NotifyPresentationTimeInBlink(
       WebReportTimeCallback presentation_callback) final;
+>>>>>>> chromium
   void RequestBeginMainFrameNotExpected(bool request) final;
   int GetLayerTreeId() final;
   const cc::LayerTreeSettings& GetLayerTreeSettings() final;
@@ -203,7 +214,13 @@ class CORE_EXPORT WebFrameWidgetImpl
   cc::EventListenerProperties EventListenerProperties(
       cc::EventListenerClass) const final;
   mojom::blink::DisplayMode DisplayMode() const override;
+<<<<<<< HEAD
+  ui::mojom::blink::WindowShowState WindowShowState() const override;
+  bool Resizable() const override;
+  const std::vector<gfx::Rect>& ViewportSegments() const override;
+=======
   const WebVector<gfx::Rect>& WindowSegments() const override;
+>>>>>>> chromium
   void SetDelegatedInkMetadata(
       std::unique_ptr<gfx::DelegatedInkMetadata> metadata) final;
   void DidOverscroll(const gfx::Vector2dF& overscroll_delta,
@@ -253,7 +270,7 @@ class CORE_EXPORT WebFrameWidgetImpl
   void SetEditCommandsForNextKeyEvent(
       Vector<mojom::blink::EditCommandPtr> edit_commands) override;
   Vector<ui::mojom::blink::ImeTextSpanInfoPtr> GetImeTextSpansInfo(
-      const WebVector<ui::ImeTextSpan>& ime_text_spans) override;
+      const std::vector<ui::ImeTextSpan>& ime_text_spans) override;
   void RequestMouseLock(
       bool has_transient_user_activation,
       bool request_unadjusted_movement,
@@ -262,7 +279,6 @@ class CORE_EXPORT WebFrameWidgetImpl
   gfx::RectF BlinkSpaceToDIPs(const gfx::RectF& rect) override;
   gfx::Rect BlinkSpaceToEnclosedDIPs(const gfx::Rect& rect) override;
   gfx::Size BlinkSpaceToFlooredDIPs(const gfx::Size& size) override;
-  gfx::RectF DIPsToBlinkSpace(const gfx::RectF& rect) override;
   gfx::PointF DIPsToBlinkSpace(const gfx::PointF& point) override;
   gfx::Point DIPsToRoundedBlinkSpace(const gfx::Point& point) override;
   float DIPsToBlinkSpace(float scalar) override;
@@ -282,6 +298,29 @@ class CORE_EXPORT WebFrameWidgetImpl
   float GetCompositingScaleFactor() override;
   const cc::LayerTreeDebugState& GetLayerTreeDebugState() override;
   void SetLayerTreeDebugState(const cc::LayerTreeDebugState& state) override;
+<<<<<<< HEAD
+  void SetMayThrottleIfUndrawnFrames(
+      bool may_throttle_if_undrawn_frames) override;
+  int GetVirtualKeyboardResizeHeight() const override;
+
+  void OnTaskCompletedForFrame(base::TimeTicks start_time,
+                               base::TimeTicks end_time,
+                               LocalFrame*) override;
+  void SetVirtualKeyboardResizeHeightForTesting(int);
+  bool GetMayThrottleIfUndrawnFramesForTesting();
+
+  // AnimationFrameTimingMonitor::Client overrides
+  bool ShouldReportLongAnimationFrameTiming() const override;
+  void ReportLongTaskTiming(base::TimeTicks start_time,
+                            base::TimeTicks end,
+                            ExecutionContext* task_context) override;
+  bool RequestedMainFramePending() override;
+  AnimationFrameTimingInfo* RecordRenderingUpdateEndTime(
+      base::TimeTicks) override;
+  ukm::UkmRecorder* MainFrameUkmRecorder() override;
+  ukm::SourceId MainFrameUkmSourceId() override;
+=======
+>>>>>>> chromium
 
   // WebFrameWidget overrides.
   void InitializeNonCompositing(WebNonCompositedWidgetClient* client) override;
@@ -374,7 +413,12 @@ class CORE_EXPORT WebFrameWidgetImpl
   float GetEmulatorScale() override;
 
   // WidgetBaseClient overrides:
+<<<<<<< HEAD
+  void OnCommitRequested() override;
+  void BeginMainFrame(const viz::BeginFrameArgs& args) override;
+=======
   void BeginMainFrame(base::TimeTicks last_frame_time) override;
+>>>>>>> chromium
   void UpdateLifecycle(WebLifecycleUpdate requested_update,
                        DocumentUpdateReason reason) override;
 
@@ -388,6 +432,24 @@ class CORE_EXPORT WebFrameWidgetImpl
                          const gfx::PointF& screen_point,
                          ui::mojom::blink::DragOperation,
                          base::OnceClosure callback) override;
+<<<<<<< HEAD
+  void OnStartStylusWriting(
+#if BUILDFLAG(IS_WIN)
+      const gfx::Rect& focus_widget_rect_in_dips,
+#endif  // BUILDFLAG(IS_WIN)
+      OnStartStylusWritingCallback callback) override;
+#if BUILDFLAG(IS_ANDROID)
+  void PassImeRenderWidgetHost(
+      mojo::PendingRemote<mojom::blink::ImeRenderWidgetHost>) override;
+#endif
+  void NotifyClearedDisplayedGraphics() override;
+
+  // mojom::blink::FrameWidgetInputHandler overrides:
+  void HandleStylusWritingGestureAction(
+      mojom::blink::StylusWritingGestureDataPtr gesture_data,
+      HandleStylusWritingGestureActionCallback callback) override;
+=======
+>>>>>>> chromium
 
   // Sets the display mode, which comes from the top-level browsing context and
   // is applied to all widgets.
@@ -472,6 +534,8 @@ class CORE_EXPORT WebFrameWidgetImpl
   // content (only clip it).
   void SetBrowserControlsParams(cc::BrowserControlsParams params);
 
+  void SetMaxSafeAreaInsets(const gfx::InsetsF& max_safe_area_insets);
+
   // This function provides zooming for find in page results when browsing with
   // page autosize.
   void ZoomToFindInPageRect(const gfx::Rect& rect_in_root_frame);
@@ -553,8 +617,8 @@ class CORE_EXPORT WebFrameWidgetImpl
       bool enabled,
       const blink::DeviceEmulationParams& params);
   void SetScreenInfoAndSize(const display::ScreenInfos& screen_infos,
-                            const gfx::Size& widget_size,
-                            const gfx::Size& visible_viewport_size);
+                            const gfx::Size& widget_size_in_dips,
+                            const gfx::Size& visible_viewport_size_in_dips);
 
   // Update the surface allocation information, compositor viewport rect and
   // screen info on the widget.
@@ -594,6 +658,33 @@ class CORE_EXPORT WebFrameWidgetImpl
   // Ask compositor to create the shared memory for smoothness ukm region.
   base::ReadOnlySharedMemoryRegion CreateSharedMemoryForSmoothnessUkm();
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_ANDROID)
+  // Calculate and cache the most up to date line bounding boxes in the document
+  // coordinate space.
+  Vector<gfx::Rect> CalculateVisibleLineBoundsOnScreen();
+#endif  // BUILDFLAG(IS_ANDROID)
+
+  // Returns true if this widget corresponds to a frame which is being replaced.
+  // The compositor for the widget has been detached and passed to the new
+  // widget.
+  bool WillBeDestroyed() const;
+
+  bool IsScrollGestureActive() const;
+
+  // Request the compositor thread to tell the GPU process to generate a
+  // screenshot of the current viewport. The screenshot is tagged with `token`.
+  // The caller must have requested a new `viz::LocalSurfaceID` before making
+  // this request.
+  void RequestViewportScreenshot(const base::UnguessableToken& token);
+
+  // Request a new `viz::LocalSurfaceId` on the compositor thread.
+  void RequestNewLocalSurfaceId();
+
+  void OnDevToolsSessionConnectionChanged(bool attached);
+
+=======
+>>>>>>> chromium
  protected:
   // WidgetBaseClient overrides:
   void ScheduleAnimation() override;
@@ -872,7 +963,32 @@ class CORE_EXPORT WebFrameWidgetImpl
   // Returns the current state of synchronous resize mode for testing.
   bool SynchronousResizeModeForTestingEnabled();
 
+<<<<<<< HEAD
+  // True when `this` should ignore input events.
+  bool ShouldIgnoreInputEvents();
+
+  // Triggers onmove event for window.
+  void EnqueueMoveEvent();
+
+  // Let latched scroller know to unpin its selected scroll-marker.
+  void NotifyLatchedScrollMarkerGroup(
+      const cc::CompositorCommitData& commit_data);
+
+#if BUILDFLAG(IS_WIN)
+  // Computes a contiguous range of character bounds within proximity of
+  // `pivot_position` to enable gesture support for StylusHandwritingWin.
+  mojom::blink::ProximateCharacterRangeBoundsPtr
+  ComputeProximateCharacterBounds(
+      const PositionWithAffinity& pivot_position) const;
+#endif  // BUILDFLAG(IS_WIN)
+
+  // Stores the current composition line bounds. These bounds are rectangles
+  // which surround each line of text in a currently focused input or textarea
+  // element.
+  Vector<gfx::Rect> input_visible_line_bounds_;
+=======
   void NotifyZoomLevelChanged(LocalFrame* root);
+>>>>>>> chromium
 
   // A copy of the web drop data object we received from the browser.
   Member<DataObject> current_drag_data_;
@@ -923,7 +1039,12 @@ class CORE_EXPORT WebFrameWidgetImpl
 
   mojom::blink::DisplayMode display_mode_;
 
+<<<<<<< HEAD
+  std::vector<gfx::Rect> viewport_segments_
+      ALLOW_DISCOURAGED_TYPE("Will be passed to FrameVisualProperties");
+=======
   WebVector<gfx::Rect> window_segments_;
+>>>>>>> chromium
 
   // This is owned by the LayerTreeHostImpl, and should only be used on the
   // compositor thread, so we keep the TaskRunner where you post tasks to
@@ -945,8 +1066,8 @@ class CORE_EXPORT WebFrameWidgetImpl
   // WebFrameWidgetImpl is not tied to ExecutionContext
   HeapMojoAssociatedReceiver<mojom::blink::FrameWidget, WebFrameWidgetImpl>
       receiver_{this, nullptr};
-  HeapMojoReceiver<viz::mojom::blink::InputTargetClient, WebFrameWidgetImpl>
-      input_target_receiver_{this, nullptr};
+  HeapMojoReceiverSet<viz::mojom::blink::InputTargetClient, WebFrameWidgetImpl>
+      input_target_receivers_;
 
   // Different consumers in the browser process makes different assumptions, so
   // must always send the first IPC regardless of value.
@@ -1010,6 +1131,11 @@ class CORE_EXPORT WebFrameWidgetImpl
   // It is always valid to read this variable but it can only be set for main
   // frame widgets.
   float device_scale_factor_for_testing_ = 0;
+
+  // When device_scale_factor_for_testing_ is set (i.e. nonzero), this
+  // stores the device scale factor before the testing override was set.
+  // Otherwise it is set to zero.
+  float non_testing_device_scale_factor_ = 0;
 
   // This struct contains data that is only valid for main frame widgets.
   // You should use `main_data()` to access it.

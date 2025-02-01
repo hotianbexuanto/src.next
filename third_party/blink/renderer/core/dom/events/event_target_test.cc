@@ -84,4 +84,121 @@ TEST_F(EventTargetTest, UseCountAbortSignal) {
       GetDocument().IsUseCounted(WebFeature::kAddEventListenerWithAbortSignal));
 }
 
+<<<<<<< HEAD
+TEST_F(EventTargetTest, UseCountScrollend) {
+  EXPECT_FALSE(GetDocument().IsUseCounted(WebFeature::kScrollend));
+  GetDocument().GetSettings()->SetScriptEnabled(true);
+  ClassicScript::CreateUnspecifiedScript(R"HTML(
+                       const element = document.createElement('div');
+                       element.addEventListener('scrollend', () => {});
+                       )HTML")
+      ->RunScript(GetDocument().domWindow());
+  EXPECT_TRUE(GetDocument().IsUseCounted(WebFeature::kScrollend));
+}
+
+// See https://crbug.com/1357453.
+// Tests that we don't crash when adding a unload event handler to a target
+// that has no ExecutionContext.
+TEST_F(EventTargetTest, UnloadWithoutExecutionContext) {
+  GetDocument().GetSettings()->SetScriptEnabled(true);
+  ClassicScript::CreateUnspecifiedScript(R"JS(
+      document.createElement("track").track.addEventListener(
+          "unload",() => {});
+                      )JS")
+      ->RunScript(GetDocument().domWindow());
+}
+
+// See https://crbug.com/1472739.
+// Tests that we don't crash if the abort algorithm for a destroyed EventTarget
+// runs because the associated EventListener hasn't yet been GCed.
+TEST_F(EventTargetTest, EventTargetWithAbortSignalDestroyed) {
+  V8TestingScope scope;
+  Persistent<AbortController> controller =
+      AbortController::Create(scope.GetScriptState());
+  Persistent<EventListener> listener = JSEventListener::CreateOrNull(
+      V8EventListener::Create(scope.GetContext()->Global()));
+  {
+    EventTarget* event_target = EventTarget::Create(scope.GetScriptState());
+    auto* options = AddEventListenerOptions::Create();
+    options->setSignal(controller->signal());
+    event_target->addEventListener(
+        AtomicString("test"), listener.Get(),
+        MakeGarbageCollected<AddEventListenerOptionsResolved>(options));
+    event_target = nullptr;
+  }
+  ThreadState::Current()->CollectAllGarbageForTesting();
+  controller->abort(scope.GetScriptState());
+}
+
+// EventTarget-constructed Observables add an event listener for each
+// subscription. Ensure that when a subscription becomes inactive, the event
+// listener is removed.
+TEST_F(EventTargetTest,
+       ObservableSubscriptionBecomingInactiveRemovesEventListener) {
+  V8TestingScope scope;
+  EventTarget* event_target = EventTarget::Create(scope.GetScriptState());
+  Observable* observable = event_target->when(
+      AtomicString("test"),
+      MakeGarbageCollected<ObservableEventListenerOptions>());
+  EXPECT_FALSE(event_target->HasEventListeners());
+
+  AbortController* controller = AbortController::Create(scope.GetScriptState());
+
+  Observer* observer = MakeGarbageCollected<Observer>();
+  V8UnionObserverOrObserverCallback* observer_union =
+      MakeGarbageCollected<V8UnionObserverOrObserverCallback>(observer);
+  SubscribeOptions* options = MakeGarbageCollected<SubscribeOptions>();
+  options->setSignal(controller->signal());
+  observable->subscribe(scope.GetScriptState(), observer_union,
+                        /*options=*/options);
+  EXPECT_TRUE(event_target->HasEventListeners());
+
+  controller->abort(scope.GetScriptState());
+  EXPECT_FALSE(event_target->HasEventListeners());
+}
+
+TEST_F(EventTargetTest, UseCountScrollsnapchanging) {
+  EXPECT_FALSE(GetDocument().IsUseCounted(WebFeature::kSnapEvent));
+  GetDocument().GetSettings()->SetScriptEnabled(true);
+  ClassicScript::CreateUnspecifiedScript(R"HTML(
+    const element = document.createElement('div');
+    element.addEventListener('scrollsnapchanging', () => {});
+  )HTML")
+      ->RunScript(GetDocument().domWindow());
+  EXPECT_TRUE(GetDocument().IsUseCounted(WebFeature::kSnapEvent));
+}
+
+TEST_F(EventTargetTest, UseCountScrollsnapchange) {
+  EXPECT_FALSE(GetDocument().IsUseCounted(WebFeature::kSnapEvent));
+  GetDocument().GetSettings()->SetScriptEnabled(true);
+  ClassicScript::CreateUnspecifiedScript(R"HTML(
+    const element = document.createElement('div');
+    element.addEventListener('scrollsnapchange', () => {});
+  )HTML")
+      ->RunScript(GetDocument().domWindow());
+  EXPECT_TRUE(GetDocument().IsUseCounted(WebFeature::kSnapEvent));
+}
+
+TEST_F(EventTargetTest, UseCountMove) {
+  EXPECT_FALSE(GetDocument().IsUseCounted(WebFeature::kMoveEvent));
+  GetDocument().GetSettings()->SetScriptEnabled(true);
+  ClassicScript::CreateUnspecifiedScript(R"HTML(
+    window.addEventListener('move', () => {});
+  )HTML")
+      ->RunScript(GetDocument().domWindow());
+  EXPECT_TRUE(GetDocument().IsUseCounted(WebFeature::kMoveEvent));
+}
+
+TEST_F(EventTargetTest, UseCountOnMove) {
+  EXPECT_FALSE(GetDocument().IsUseCounted(WebFeature::kMoveEvent));
+  GetDocument().GetSettings()->SetScriptEnabled(true);
+  ClassicScript::CreateUnspecifiedScript(R"HTML(
+    window.onmove = () => {};
+  )HTML")
+      ->RunScript(GetDocument().domWindow());
+  EXPECT_TRUE(GetDocument().IsUseCounted(WebFeature::kMoveEvent));
+}
+
+=======
+>>>>>>> chromium
 }  // namespace blink

@@ -40,7 +40,6 @@
 #include "third_party/blink/renderer/core/dom/document_fragment.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/node.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/dom/text.h"
 #include "third_party/blink/renderer/core/editing/commands/drag_and_drop_command.h"
@@ -76,6 +75,7 @@
 #include "third_party/blink/renderer/core/page/drag_data.h"
 #include "third_party/blink/renderer/core/page/drag_image.h"
 #include "third_party/blink/renderer/core/page/drag_state.h"
+#include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image_for_container.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
@@ -215,6 +215,12 @@ void DragController::DragEnded() {
   drag_initiator_ = nullptr;
   did_initiate_drag_ = false;
   page_->GetDragCaret().Clear();
+  // When dragging occurs, the mousedown event is triggered, causing the caret's
+  // blinking state to be suspended. Therefore, it is necessary to reset the
+  // blinking state after dragging.
+  if (auto* focused_frame = page_->GetFocusController().FocusedFrame()) {
+    focused_frame->Selection().SetCaretBlinkingSuspended(false);
+  }
 }
 
 void DragController::DragExited(DragData* drag_data, LocalFrame& local_root) {
@@ -287,27 +293,58 @@ void DragController::PerformDrag(DragData* drag_data, LocalFrame& local_root) {
   }
 
   if (OperationForLoad(drag_data, local_root) != DragOperation::kNone) {
+<<<<<<< HEAD
+    Vector<String> urls;
+    if (base::FeatureList::IsEnabled(
+            blink::features::kOpenAllUrlsOrFilesOnDrop)) {
+      urls = drag_data->AsURLs();
+    } else {
+      urls.push_back(drag_data->AsURL());
+    }
+    bool has_transient_user_activation = LocalFrame::HasTransientUserActivation(
+        document_under_mouse_ ? document_under_mouse_->GetFrame() : nullptr);
+    bool should_focus_tab = true;
+    for (const String& url : urls) {
+      ResourceRequest resource_request(url);
+      resource_request.SetHasUserGesture(has_transient_user_activation);
+=======
     if (page_->GetSettings().GetNavigateOnDragDrop()) {
       ResourceRequest resource_request(drag_data->AsURL());
       resource_request.SetHasUserGesture(LocalFrame::HasTransientUserActivation(
           document_under_mouse_ ? document_under_mouse_->GetFrame() : nullptr));
+>>>>>>> chromium
 
       // Use a unique origin to match other navigations that are initiated
       // outside of a renderer process (e.g. omnibox navigations).  Here, the
       // initiator of the navigation is a user dragging files from *outside* of
       // the current page.  See also https://crbug.com/930049.
       //
+<<<<<<< HEAD
+      // TODO(crbug.com/331733543): Once supported, use the source of the drag
+      // as the initiator of the navigation below.
+=======
       // TODO(lukasza): Once drag-and-drop remembers the source of the drag
       // (unique origin for drags started from top-level Chrome like bookmarks
       // or for drags started from other apps like Windows Explorer;  specific
       // origin for drags started from another tab) we should use the source of
       // the drag as the initiator of the navigation below.
+>>>>>>> chromium
       resource_request.SetRequestorOrigin(SecurityOrigin::CreateUniqueOpaque());
 
       FrameLoadRequest request(nullptr, resource_request);
 
       // Open the dropped URL in a new tab to avoid potential data-loss in the
       // current tab. See https://crbug.com/451659.
+<<<<<<< HEAD
+      // First tab should be focused, the rest should be background tabs.
+      request.SetNavigationPolicy(
+          should_focus_tab
+              ? NavigationPolicy::kNavigationPolicyNewForegroundTab
+              : NavigationPolicy::kNavigationPolicyNewBackgroundTab);
+      local_root.Navigate(request, WebFrameLoadType::kStandard);
+      should_focus_tab = false;
+    }
+=======
       request.SetNavigationPolicy(
           NavigationPolicy::kNavigationPolicyNewForegroundTab);
       local_root.Navigate(request, WebFrameLoadType::kStandard);
@@ -319,6 +356,7 @@ void DragController::PerformDrag(DragData* drag_data, LocalFrame& local_root) {
     // `dragend` events but for plugins we wont navigate so it seems we should
     // be sending these events. crbug.com/748243.
     local_root.GetEventHandler().ClearDragState();
+>>>>>>> chromium
   }
 
   document_under_mouse_ = nullptr;
@@ -1058,8 +1096,9 @@ static bool CanDragImage(const Element& element) {
     return false;
   const ImageResourceContent* image_content = layout_image->CachedImage();
   if (!image_content || image_content->ErrorOccurred() ||
-      image_content->GetImage()->IsNull())
+      !image_content->HasImage()) {
     return false;
+  }
   scoped_refptr<const SharedBuffer> buffer = image_content->ResourceBuffer();
   if (!buffer || !buffer->size())
     return false;

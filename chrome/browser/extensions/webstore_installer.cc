@@ -196,8 +196,14 @@ GURL WebstoreInstaller::GetWebstoreInstallURL(
   if (cmd_line->HasSwitch(::switches::kAppsGalleryDownloadURL)) {
     std::string download_url =
         cmd_line->GetSwitchValueASCII(::switches::kAppsGalleryDownloadURL);
+<<<<<<< HEAD
+    base::ReplaceFirstSubstringAfterOffset(&download_url, 0, "%s",
+                                           extension_id);
+    return GURL(download_url);
+=======
     return GURL(base::StringPrintf(download_url.c_str(),
                                    extension_id.c_str()));
+>>>>>>> chromium
   }
   std::vector<base::StringPiece> params;
   std::string extension_param = "id=" + extension_id;
@@ -263,7 +269,7 @@ WebstoreInstaller::Approval::CreateWithNoInstallPrompt(
   return result;
 }
 
-WebstoreInstaller::Approval::~Approval() {}
+WebstoreInstaller::Approval::~Approval() = default;
 
 const WebstoreInstaller::Approval* WebstoreInstaller::GetAssociatedApproval(
     const DownloadItem& download) {
@@ -622,8 +628,15 @@ void WebstoreInstaller::StartDownload(const std::string& extension_id,
   // The download url for the given extension is contained in |download_url_|.
   // We will navigate the current tab to this url to start the download. The
   // download system will then pass the crx to the CrxInstaller.
+<<<<<<< HEAD
+  int render_process_host_id = web_contents_->GetPrimaryMainFrame()
+                                   ->GetRenderViewHost()
+                                   ->GetProcess()
+                                   ->GetDeprecatedID();
+=======
   int render_process_host_id =
       contents->GetMainFrame()->GetRenderViewHost()->GetProcess()->GetID();
+>>>>>>> chromium
 
   content::RenderFrameHost* render_frame_host = contents->GetMainFrame();
   net::NetworkTrafficAnnotationTag traffic_annotation =

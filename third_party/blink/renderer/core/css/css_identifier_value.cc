@@ -43,6 +43,12 @@ CSSIdentifierValue::CSSIdentifierValue(const Length& length)
     case Length::kMaxContent:
       value_id_ = CSSValueID::kMaxContent;
       break;
+<<<<<<< HEAD
+    case Length::kStretch:
+      value_id_ = CSSValueID::kStretch;
+      break;
+=======
+>>>>>>> chromium
     case Length::kFillAvailable:
       value_id_ = CSSValueID::kWebkitFillAvailable;
       break;

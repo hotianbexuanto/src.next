@@ -28,7 +28,8 @@ MockTabModalConfirmDialogDelegate::MockTabModalConfirmDialogDelegate(
     Delegate* delegate)
     : TabModalConfirmDialogDelegate(web_contents), delegate_(delegate) {}
 
-MockTabModalConfirmDialogDelegate::~MockTabModalConfirmDialogDelegate() {}
+MockTabModalConfirmDialogDelegate::~MockTabModalConfirmDialogDelegate() =
+    default;
 
 std::u16string MockTabModalConfirmDialogDelegate::GetTitle() {
   return std::u16string();
@@ -39,18 +40,21 @@ std::u16string MockTabModalConfirmDialogDelegate::GetDialogMessage() {
 }
 
 void MockTabModalConfirmDialogDelegate::OnAccepted() {
-  if (delegate_)
+  if (delegate_) {
     delegate_->OnAccepted();
+  }
 }
 
 void MockTabModalConfirmDialogDelegate::OnCanceled() {
-  if (delegate_)
+  if (delegate_) {
     delegate_->OnCanceled();
+  }
 }
 
 void MockTabModalConfirmDialogDelegate::OnClosed() {
-  if (delegate_)
+  if (delegate_) {
     delegate_->OnClosed();
+  }
 }
 
 TabModalConfirmDialogTest::TabModalConfirmDialogTest()

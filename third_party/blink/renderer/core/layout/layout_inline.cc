@@ -61,7 +61,13 @@ namespace {
 bool CanBeHitTestTargetPseudoNodeStyle(const ComputedStyle& style) {
   switch (style.StyleType()) {
     case kPseudoIdBefore:
+<<<<<<< HEAD
+    case kPseudoIdCheckMark:
     case kPseudoIdAfter:
+    case kPseudoIdPickerIcon:
+=======
+    case kPseudoIdAfter:
+>>>>>>> chromium
     case kPseudoIdFirstLetter:
       return true;
     default:
@@ -389,17 +395,32 @@ bool LayoutInline::ComputeInitialShouldCreateBoxFragment(
       style.MayHaveMargin())
     return true;
 
+<<<<<<< HEAD
+  if (style.AnchorName())
+    return true;
+
+  if (const Element* element = DynamicTo<Element>(GetNode())) {
+    if (element->HasImplicitlyAnchoredElement()) {
+      return true;
+    }
+  }
+
+  return HasPaintedOutline(style, GetNode()) ||
+=======
   return ComputeIsAbsoluteContainer(&style) ||
          NGOutlineUtils::HasPaintedOutline(style, GetNode()) ||
+>>>>>>> chromium
          CanBeHitTestTargetPseudoNodeStyle(style);
 }
 
 bool LayoutInline::ComputeInitialShouldCreateBoxFragment() const {
   NOT_DESTROYED();
   const ComputedStyle& style = StyleRef();
-  if (HasSelfPaintingLayer() || ComputeInitialShouldCreateBoxFragment(style) ||
-      ShouldApplyPaintContainment() || ShouldApplyLayoutContainment())
+  if (HasSelfPaintingLayer() || CanContainAbsolutePositionObjects() ||
+      ComputeInitialShouldCreateBoxFragment(style) ||
+      ShouldApplyPaintContainment() || ShouldApplyLayoutContainment()) {
     return true;
+  }
 
   const ComputedStyle& first_line_style = FirstLineStyleRef();
   if (UNLIKELY(&style != &first_line_style &&
@@ -1572,6 +1593,8 @@ bool LayoutInline::MapToVisualRectInAncestorSpaceInternal(
       ancestor, transform_state, visual_rect_flags);
 }
 
+<<<<<<< HEAD
+=======
 PhysicalOffset LayoutInline::OffsetFromContainerInternal(
     const LayoutObject* container,
     bool ignore_scroll_offset) const {
@@ -1588,6 +1611,7 @@ PhysicalOffset LayoutInline::OffsetFromContainerInternal(
   return offset;
 }
 
+>>>>>>> chromium
 PaintLayerType LayoutInline::LayerTypeRequired() const {
   NOT_DESTROYED();
   return IsInFlowPositioned() || CreatesGroup() ||

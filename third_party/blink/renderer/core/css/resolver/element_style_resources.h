@@ -59,14 +59,27 @@ class ElementStyleResources {
   SVGResource* GetSVGResourceFromValue(CSSPropertyID,
                                        const cssvalue::CSSURIValue&);
 
+<<<<<<< HEAD
+  void LoadPendingResources(ComputedStyleBuilder&, const CSSLengthResolver&);
+
+  void UpdateLengthConversionData(const CSSToLengthConversionData*);
+=======
   void LoadPendingResources(ComputedStyle&);
+>>>>>>> chromium
 
  private:
   bool IsPending(const CSSValue&) const;
   StyleImage* CachedStyleImage(const CSSValue&) const;
 
+<<<<<<< HEAD
+  StyleImage* LoadMaskSource(CSSValue&);
+
+  void LoadPendingSVGResources(ComputedStyleBuilder&);
+  void LoadPendingImages(ComputedStyleBuilder&, const CSSLengthResolver&);
+=======
   void LoadPendingSVGResources(ComputedStyle&);
   void LoadPendingImages(ComputedStyle&);
+>>>>>>> chromium
 
   Element& element_;
   HashSet<CSSPropertyID> pending_image_properties_;

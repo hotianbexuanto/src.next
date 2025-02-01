@@ -120,6 +120,34 @@ EInsideLink VisitedLinkState::DetermineLinkStateSlowCase(
   if (attribute.IsNull())
     return EInsideLink::kNotInsideLink;  // This can happen for <img usemap>
 
+<<<<<<< HEAD
+  // Cache the feature status to avoid frequent calculation.
+  static const bool are_partitioned_visited_links_enabled =
+      base::FeatureList::IsEnabled(
+          blink::features::kPartitionVisitedLinkDatabase) ||
+      base::FeatureList::IsEnabled(
+          blink::features::kPartitionVisitedLinkDatabaseWithSelfLinks);
+
+  if (are_partitioned_visited_links_enabled) {
+    // In a partitioned :visited model, we don't want to display :visited-ness
+    // inside credentialless iframes.
+    if (GetDocument()
+            .GetExecutionContext()
+            ->GetPolicyContainer()
+            ->GetPolicies()
+            .is_credentialless) {
+      return EInsideLink::kNotInsideLink;
+    }
+    // In a partitioned :visited model, we don't want to display :visited-ness
+    // inside Fenced Frames or any frame which has a Fenced Frame in its
+    // FrameTree.
+    if (GetDocument().GetFrame()->IsInFencedFrameTree()) {
+      return EInsideLink::kNotInsideLink;
+    }
+  }
+
+=======
+>>>>>>> chromium
   // An empty attribute refers to the document itself which is always
   // visited. It is useful to check this explicitly so that visited
   // links can be tested in platform independent manner, without

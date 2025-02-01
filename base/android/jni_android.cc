@@ -141,6 +141,8 @@ void InitVM(JavaVM* vm) {
   g_jvm = vm;
 }
 
+<<<<<<< HEAD
+=======
 bool IsVMInitialized() {
   return g_jvm != NULL;
 }
@@ -280,6 +282,7 @@ bool ClearException(JNIEnv* env) {
   return true;
 }
 
+>>>>>>> chromium
 void CheckException(JNIEnv* env) {
   if (!HasException(env))
     return;
@@ -302,6 +305,74 @@ void CheckException(JNIEnv* env) {
     }
   }
 
+<<<<<<< HEAD
+  // We cannot use `ScopedJavaLocalRef` directly because that ends up calling
+  // env->GetObjectRefType() when DCHECK is on, and that call is not allowed
+  // with a pending exception according to the JNI spec.
+  jthrowable raw_throwable = env->ExceptionOccurred();
+  // Now that we saved the reference to the throwable, clear the exception.
+  //
+  // We need to do this as early as possible to remove the risk that code below
+  // might accidentally call back into Java, which is not allowed when `env`
+  // has an exception set, per the JNI spec. (For example, LOG(FATAL) doesn't
+  // work with a JNI exception set, because it calls
+  // GetJavaStackTraceIfPresent()).
+  env->ExceptionClear();
+  // The reference returned by `ExceptionOccurred()` is a local reference.
+  // `ExceptionClear()` merely removes the exception information from `env`;
+  // it doesn't delete the reference, which is why this call is valid.
+  auto throwable = ScopedJavaLocalRef<jthrowable>::Adopt(env, raw_throwable);
+
+  if (!handle_exception_in_java) {
+    base::android::SetJavaException(
+        GetJavaExceptionInfo(env, throwable).c_str());
+    if (g_log_fatal_callback_for_testing) {
+      g_log_fatal_callback_for_testing(kUncaughtExceptionMessage);
+    } else {
+      LOG(FATAL) << kUncaughtExceptionMessage;
+    }
+    // Needed for tests, which do not terminate from LOG(FATAL).
+    g_reentering = false;
+    return;
+  }
+
+  // We don't need to call SetJavaException() in this branch because we
+  // expect handleException() to eventually call JavaExceptionReporter through
+  // the global uncaught exception handler.
+
+  const std::string native_stack_trace = base::debug::StackTrace().ToString();
+  LOG(ERROR) << "Native stack trace:" << std::endl << native_stack_trace;
+
+  ScopedJavaLocalRef<jthrowable> secondary_exception =
+      Java_JniAndroid_handleException(env, throwable, native_stack_trace);
+
+  // Ideally handleException() should have terminated the process and we should
+  // not get here. This can happen in the case of OutOfMemoryError or if the
+  // app that embedded WebView installed an exception handler that does not
+  // terminate, or itself threw an exception. We cannot be confident that
+  // JavaExceptionReporter ran, so set the java exception explicitly.
+  base::android::SetJavaException(
+      GetJavaExceptionInfo(
+          env, secondary_exception ? secondary_exception : throwable)
+          .c_str());
+  if (g_log_fatal_callback_for_testing) {
+    g_log_fatal_callback_for_testing(kUncaughtExceptionHandlerFailedMessage);
+  } else {
+    LOG(FATAL) << kUncaughtExceptionHandlerFailedMessage;
+  }
+  // Needed for tests, which do not terminate from LOG(FATAL).
+  g_reentering = false;
+}
+
+std::string GetJavaExceptionInfo(JNIEnv* env,
+                                 const JavaRef<jthrowable>& throwable) {
+  std::string sanitized_exception_string =
+      Java_JniAndroid_sanitizedStacktraceForUnhandledException(env, throwable);
+  // Returns null when PiiElider results in an OutOfMemoryError.
+  return !sanitized_exception_string.empty()
+             ? sanitized_exception_string
+             : kOomInGetJavaExceptionInfoMessage;
+=======
   // Now, feel good about it and die.
   LOG(FATAL) << "Please include Java exception stack in crash report";
 }
@@ -331,6 +402,7 @@ std::string GetJavaExceptionInfo(JNIEnv* env, jthrowable java_throwable) {
   CheckException(env);
 
   return ConvertJavaStringToUTF8(sanitized_exception_string);
+>>>>>>> chromium
 }
 
 #if BUILDFLAG(CAN_UNWIND_WITH_FRAME_POINTERS)

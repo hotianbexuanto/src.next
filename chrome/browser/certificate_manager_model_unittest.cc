@@ -20,9 +20,13 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+<<<<<<< HEAD
+#include "chromeos/ash/components/kcer/extra_instances.h"
+=======
 #include "chrome/browser/ash/certificate_provider/certificate_provider.h"
 #include "chromeos/network/onc/certificate_scope.h"
 #include "chromeos/network/policy_certificate_provider.h"
+>>>>>>> chromium
 #endif
 
 namespace {
@@ -63,7 +67,7 @@ CertificateManagerModel::CertInfo* GetCertInfoFromOrgGroupingMap(
 
 class CertificateManagerModelTest : public testing::Test {
  public:
-  CertificateManagerModelTest() {}
+  CertificateManagerModelTest() = default;
 
  protected:
   void SetUp() override {

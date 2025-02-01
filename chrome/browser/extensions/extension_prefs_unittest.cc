@@ -4,6 +4,7 @@
 
 #include "chrome/browser/extensions/extension_prefs_unittest.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -134,7 +135,7 @@ class ExtensionPrefsExtensionState : public ExtensionPrefsTest {
   void Initialize() override {
     extension = prefs_.AddExtension("test");
     prefs()->SetExtensionDisabled(extension->id(),
-                                  disable_reason::DISABLE_USER_ACTION);
+                                  {disable_reason::DISABLE_USER_ACTION});
   }
 
   void Verify() override {
@@ -151,10 +152,11 @@ class ExtensionPrefsDeprecatedDisableReason : public ExtensionPrefsTest {
  public:
   void Initialize() override {
     extension1_ = prefs_.AddExtension("test1");
-    int disable_reasons = disable_reason::DEPRECATED_DISABLE_UNKNOWN_FROM_SYNC;
+    DisableReasonSet disable_reasons = {
+        disable_reason::DEPRECATED_DISABLE_UNKNOWN_FROM_SYNC};
     prefs()->SetExtensionDisabled(extension1_->id(), disable_reasons);
     extension2_ = prefs_.AddExtension("test2");
-    disable_reasons |= disable_reason::DISABLE_PERMISSIONS_INCREASE;
+    disable_reasons.insert(disable_reason::DISABLE_PERMISSIONS_INCREASE);
     prefs()->SetExtensionDisabled(extension2_->id(), disable_reasons);
     prefs()->MigrateDeprecatedDisableReasons();
   }
@@ -175,12 +177,64 @@ class ExtensionPrefsDeprecatedDisableReason : public ExtensionPrefsTest {
 
 TEST_F(ExtensionPrefsDeprecatedDisableReason, MigrateExtensionState) {}
 
+class ExtensionPrefsDisableReasonsBitflagToListMigration
+    : public ExtensionPrefsTest {
+ public:
+  void Initialize() override {
+    extension_1_ = prefs_.AddExtension("test1");
+    prefs()->SetExtensionDisabled(
+        extension_1_->id(), BitflagToIntegerSet(extension_1_disable_reasons_));
+
+    extension_2_ = prefs_.AddExtension("test2");
+    prefs()->SetExtensionDisabled(
+        extension_2_->id(), BitflagToIntegerSet(extension_2_disable_reasons_));
+  }
+
+  void Verify() override {
+    // Verify that the disable reasons are returned correctly.
+    EXPECT_EQ(prefs()->GetDisableReasons(extension_1_->id()),
+              extension_1_disable_reasons_);
+    EXPECT_EQ(prefs()->GetDisableReasons(extension_2_->id()),
+              extension_2_disable_reasons_);
+
+    // Verify() is called twice.
+    // In the first execution, we have the modern state. We wipe out this state
+    // and simulate the legacy state. In the second execution, `ExtensionPrefs`
+    // is re-constructed. It should re-construct the modern state from the
+    // simulated legacy state.
+    SimulateLegacyState();
+  }
+
+ private:
+  void SimulateLegacyState() {
+    // Write the disable reasons to the preference as a bitflag.
+    constexpr const char kPrefDisableReasons[] = "disable_reasons";
+    prefs()->UpdateExtensionPref(extension_1_->id(), kPrefDisableReasons,
+                                 base::Value(extension_1_disable_reasons_));
+    prefs()->UpdateExtensionPref(extension_2_->id(), kPrefDisableReasons,
+                                 base::Value(extension_2_disable_reasons_));
+  }
+
+  scoped_refptr<Extension> extension_1_;
+  const int extension_1_disable_reasons_ =
+      disable_reason::DISABLE_USER_ACTION |
+      disable_reason::DISABLE_BLOCKED_BY_POLICY;
+
+  scoped_refptr<Extension> extension_2_;
+  const int extension_2_disable_reasons_ =
+      disable_reason::DISABLE_PERMISSIONS_INCREASE |
+      disable_reason::DISABLE_NOT_VERIFIED |
+      disable_reason::DISABLE_USER_ACTION;
+};
+
+TEST_F(ExtensionPrefsDisableReasonsBitflagToListMigration, TestPrefMigration) {}
+
 class ExtensionPrefsEscalatePermissions : public ExtensionPrefsTest {
  public:
   void Initialize() override {
     extension = prefs_.AddExtension("test");
-    prefs()->SetExtensionDisabled(extension->id(),
-                                  disable_reason::DISABLE_PERMISSIONS_INCREASE);
+    prefs()->SetExtensionDisabled(
+        extension->id(), {disable_reason::DISABLE_PERMISSIONS_INCREASE});
   }
 
   void Verify() override {
@@ -518,11 +572,18 @@ class ExtensionPrefsDelayedInstallInfo : public ExtensionPrefsTest {
 
   bool HasInfoForId(ExtensionPrefs::ExtensionsInfo* info,
                     const std::string& id) {
+<<<<<<< HEAD
+    return std::ranges::find_if(info.begin(), info.end(),
+                                [&id](const ExtensionInfo& info) {
+                                  return info.extension_id == id;
+                                }) != info.end();
+=======
     for (size_t i = 0; i < info->size(); ++i) {
       if (info->at(i)->extension_id == id)
         return true;
     }
     return false;
+>>>>>>> chromium
   }
 
   void Initialize() override {
@@ -677,8 +738,97 @@ class ExtensionPrefsOnExtensionInstalled : public ExtensionPrefsTest {
  private:
   scoped_refptr<Extension> extension_;
 };
+<<<<<<< HEAD
+TEST_F(ExtensionPrefsOnExtensionInstalled, ExtensionPrefsOnExtensionInstalled) {
+}
+
+class ExtensionPrefsPopulatesInstallTimePrefs : public ExtensionPrefsTest {
+ public:
+  void Initialize() override {
+    extension_ = prefs_.AddExtension("test1");
+    // Cache the first install time.
+    first_install_time_ = GetFirstInstallTime(prefs(), extension_->id());
+    auto last_update_time = GetLastUpdateTime(prefs(), extension_->id());
+    // First time install will result in same value for both first_install_time
+    // and last_update_time prefs.
+    EXPECT_NE(base::Time(), first_install_time_);
+    EXPECT_NE(base::Time(), last_update_time);
+    EXPECT_EQ(first_install_time_, last_update_time);
+
+    // Update the extension.
+    extension_ = prefs_.AddExtension("test1");
+  }
+
+  void Verify() override {
+    auto first_install_time = GetFirstInstallTime(prefs(), extension_->id());
+    auto last_update_time = GetLastUpdateTime(prefs(), extension_->id());
+    EXPECT_NE(base::Time(), first_install_time);
+    EXPECT_NE(base::Time(), last_update_time);
+    // Verify that the first_install_time remains unchanged after the extension
+    // update.
+    EXPECT_EQ(first_install_time, first_install_time_);
+    // Verify that the last_update_time is no longer the same as the
+    // first_install_time after the extension update.
+    EXPECT_NE(first_install_time, last_update_time);
+  }
+
+ private:
+  scoped_refptr<Extension> extension_;
+  base::Time first_install_time_;
+};
+TEST_F(ExtensionPrefsPopulatesInstallTimePrefs,
+       ExtensionPrefsPopulatesInstallTimePrefs) {}
+
+class ExtensionPrefsMigratesToLastUpdateTime : public ExtensionPrefsTest {
+ public:
+  void Initialize() override {
+    extension_ = prefs_.AddExtension("test1");
+    // Re-create migration scenario by removing the new first_install_time,
+    // last_update_time pref keys and adding back the legacy install_time key.
+    prefs()->UpdateExtensionPref(extension_->id(), kLastUpdateTimePrefKey,
+                                 std::nullopt);
+    prefs()->UpdateExtensionPref(extension_->id(), kFirstInstallTimePrefKey,
+                                 std::nullopt);
+    time_str_ = base::NumberToString(
+        base::Time::Now().ToDeltaSinceWindowsEpoch().InMicroseconds());
+    prefs()->SetStringPref(extension_->id(), kOldInstallTimePrefMap, time_str_);
+
+    // Run the migration routine.
+    prefs()->BackfillAndMigrateInstallTimePrefs();
+  }
+
+  void Verify() override {
+    auto* dict = prefs()->GetExtensionPref(extension_->id());
+
+    // Verify the legacy install_time key has been removed and replaced by
+    // the last_update_time key. Also verify that the first_install_time key
+    // has been added and has the same value as the last_update_time key.
+    EXPECT_FALSE(dict->FindString(kOldInstallTimePrefKey));
+    const std::string* first_install_time =
+        dict->FindString(kFirstInstallTimePrefKey);
+    ASSERT_TRUE(first_install_time);
+    EXPECT_EQ(*first_install_time, time_str_);
+    const std::string* last_update_time =
+        dict->FindString(kLastUpdateTimePrefKey);
+    ASSERT_TRUE(last_update_time);
+    EXPECT_EQ(*last_update_time, time_str_);
+  }
+
+ private:
+  scoped_refptr<Extension> extension_;
+  std::string time_str_;
+  static constexpr char kFirstInstallTimePrefKey[] = "first_install_time";
+  static constexpr char kLastUpdateTimePrefKey[] = "last_update_time";
+  static constexpr char kOldInstallTimePrefKey[] = "install_time";
+  static constexpr PrefMap kOldInstallTimePrefMap = {
+      kOldInstallTimePrefKey, PrefType::kString, PrefScope::kExtensionSpecific};
+};
+TEST_F(ExtensionPrefsMigratesToLastUpdateTime,
+       ExtensionPrefsMigratesToLastUpdateTime) {}
+=======
 TEST_F(ExtensionPrefsOnExtensionInstalled,
        ExtensionPrefsOnExtensionInstalled) {}
+>>>>>>> chromium
 
 // Tests that the bit map pref value is cleared if the value matches the default
 // bit.
@@ -758,6 +908,11 @@ class ExtensionPrefsFlags : public ExtensionPrefsTest {
   }
 
   void Verify() override {
+<<<<<<< HEAD
+    EXPECT_TRUE(IsFromWebStore(prefs(), webstore_extension_->id()));
+    EXPECT_TRUE(WasInstalledByDefault(prefs(), default_extension_->id()));
+    EXPECT_TRUE(WasInstalledByOem(prefs(), oem_extension_->id()));
+=======
     EXPECT_TRUE(prefs()->IsFromWebStore(webstore_extension_->id()));
     EXPECT_FALSE(prefs()->IsFromBookmark(webstore_extension_->id()));
 
@@ -766,6 +921,7 @@ class ExtensionPrefsFlags : public ExtensionPrefsTest {
 
     EXPECT_TRUE(prefs()->WasInstalledByDefault(default_extension_->id()));
     EXPECT_TRUE(prefs()->WasInstalledByOem(oem_extension_->id()));
+>>>>>>> chromium
   }
 
  private:
@@ -801,9 +957,6 @@ PrefsPrepopulatedTestBase::PrefsPrepopulatedTestBase()
   internal_extension_ = Extension::Create(
       prefs_.temp_dir().AppendASCII("internal extension"),
       ManifestLocation::kInternal, simple_dict, Extension::NO_FLAGS, &error);
-
-  for (size_t i = 0; i < kNumInstalledExtensions; ++i)
-    installed_[i] = false;
 }
 
 PrefsPrepopulatedTestBase::~PrefsPrepopulatedTestBase() {
@@ -936,7 +1089,7 @@ TEST_F(ExtensionPrefsBlocklistState, ExtensionPrefsBlocklistState) {}
 // Tests clearing the last launched preference.
 class ExtensionPrefsClearLastLaunched : public ExtensionPrefsTest {
  public:
-  ~ExtensionPrefsClearLastLaunched() override {}
+  ~ExtensionPrefsClearLastLaunched() override = default;
 
   void Initialize() override {
     extension_a_ = prefs_.AddExtension("a");
@@ -970,7 +1123,7 @@ TEST_F(ExtensionPrefsClearLastLaunched, ExtensionPrefsClearLastLaunched) {}
 
 class ExtensionPrefsComponentExtension : public ExtensionPrefsTest {
  public:
-  ~ExtensionPrefsComponentExtension() override {}
+  ~ExtensionPrefsComponentExtension() override = default;
   void Initialize() override {
     // Adding a component extension.
     component_extension_ =
@@ -1050,7 +1203,17 @@ TEST_F(ExtensionPrefsComponentExtension, ExtensionPrefsComponentExtension) {
 class ExtensionPrefsRuntimeGrantedPermissions : public ExtensionPrefsTest {
  public:
   ExtensionPrefsRuntimeGrantedPermissions() = default;
+<<<<<<< HEAD
+
+  ExtensionPrefsRuntimeGrantedPermissions(
+      const ExtensionPrefsRuntimeGrantedPermissions&) = delete;
+  ExtensionPrefsRuntimeGrantedPermissions& operator=(
+      const ExtensionPrefsRuntimeGrantedPermissions&) = delete;
+
+  ~ExtensionPrefsRuntimeGrantedPermissions() override = default;
+=======
   ~ExtensionPrefsRuntimeGrantedPermissions() override {}
+>>>>>>> chromium
 
   void Initialize() override {
     extension_a_ = prefs_.AddExtension("a");
@@ -1404,6 +1567,43 @@ TEST_F(ExtensionPrefsSimpleTest, MigrateToNewExternalUninstallBits) {
       prefs.prefs()->IsExternalExtensionUninstalled(external_extension));
   EXPECT_FALSE(
       prefs.prefs()->IsExternalExtensionUninstalled(internal_extension));
+}
+
+// Tests that raw manipulation of extension disable reasons works and unknown
+// values can be written / read back.
+TEST_F(ExtensionPrefsSimpleTest, DisableReasonsRawManipulation) {
+  content::BrowserTaskEnvironment task_environment;
+  TestExtensionPrefs prefs(base::SingleThreadTaskRunner::GetCurrentDefault());
+  std::string extension_id = prefs.AddExtension("Test Extension")->id();
+
+  ExtensionPrefs* extension_prefs = prefs.prefs();
+  ASSERT_FALSE(extension_prefs->IsExtensionDisabled(extension_id));
+
+  auto passkey = ExtensionPrefs::DisableReasonRawManipulationPasskey();
+  constexpr int kUnknownReason_1 = disable_reason::DISABLE_REASON_LAST + 1;
+  constexpr int kUnknownReason_2 = disable_reason::DISABLE_REASON_LAST + 2;
+  constexpr int kUnknownReason_3 = disable_reason::DISABLE_REASON_LAST + 3;
+  constexpr int kKnownReason_1 = disable_reason::DISABLE_USER_ACTION;
+  constexpr int kKnownReason_2 = disable_reason::DISABLE_PERMISSIONS_INCREASE;
+
+  // Disable the extension with known and unknown reasons.
+  extension_prefs->SetExtensionDisabled(passkey, extension_id,
+                                        {kKnownReason_1, kUnknownReason_1});
+  EXPECT_THAT(extension_prefs->GetDisableReasons(passkey, extension_id),
+              testing::UnorderedElementsAre(kKnownReason_1, kUnknownReason_1));
+
+  // Add one known and one unknown reason.
+  extension_prefs->AddDisableReasons(passkey, extension_id,
+                                     {kKnownReason_2, kUnknownReason_2});
+  EXPECT_THAT(extension_prefs->GetDisableReasons(passkey, extension_id),
+              testing::UnorderedElementsAre(kKnownReason_1, kUnknownReason_1,
+                                            kKnownReason_2, kUnknownReason_2));
+
+  // Try replacing the disable reason set.
+  extension_prefs->ReplaceDisableReasons(passkey, extension_id,
+                                         {kUnknownReason_3, kKnownReason_1});
+  EXPECT_THAT(extension_prefs->GetDisableReasons(passkey, extension_id),
+              testing::UnorderedElementsAre(kUnknownReason_3, kKnownReason_1));
 }
 
 // Tests the generic Get/Set functions for profile wide extension prefs.

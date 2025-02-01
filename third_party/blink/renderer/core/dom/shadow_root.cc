@@ -39,6 +39,12 @@
 #include "third_party/blink/renderer/core/dom/text.h"
 #include "third_party/blink/renderer/core/dom/whitespace_attacher.h"
 #include "third_party/blink/renderer/core/editing/serializers/serialization.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#include "third_party/blink/renderer/core/frame/web_feature.h"
+#include "third_party/blink/renderer/core/html/custom/custom_element_registry.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/html/html_slot_element.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_types_util.h"
@@ -225,12 +231,42 @@ StyleSheetList& ShadowRoot::StyleSheets() {
   return *style_sheet_list_;
 }
 
+<<<<<<< HEAD
+void ShadowRoot::setReferenceTarget(const AtomicString& reference_target) {
+  if (!RuntimeEnabledFeatures::ShadowRootReferenceTargetEnabled(
+          GetDocument().GetExecutionContext())) {
+    return;
+  }
+
+  UseCounter::CountWebDXFeature(GetDocument(),
+                                WebDXFeature::kDRAFT_ReferenceTarget);
+
+  if (referenceTarget() == reference_target) {
+    return;
+  }
+
+  const Element* previous_reference_target_element = referenceTargetElement();
+
+  if (reference_target_id_observer_) {
+    reference_target_id_observer_->Unregister();
+  }
+
+  reference_target_id_observer_ =
+      reference_target ? MakeGarbageCollected<ReferenceTargetIdObserver>(
+                             reference_target, this)
+                       : nullptr;
+
+  if (previous_reference_target_element != referenceTargetElement()) {
+    ReferenceTargetChanged();
+  }
+=======
 void ShadowRoot::EnableNameBasedSlotAssignment() {
   DCHECK(IsUserAgent());
   supports_name_based_slot_assignment_ = true;
   // Mark that the document contains a shadow tree since we rely on slotchange
   // events.
   GetDocument().SetShadowCascadeOrder(ShadowCascadeOrder::kShadowCascade);
+>>>>>>> chromium
 }
 
 bool ShadowRoot::SupportsNameBasedSlotAssignment() const {

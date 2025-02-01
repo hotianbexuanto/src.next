@@ -205,7 +205,18 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
     return unit == UnitType::kHertz || unit == UnitType::kKilohertz;
   }
   bool IsCalculated() const { return IsMathFunctionValue(); }
-  bool IsCalculatedPercentageWithLength() const;
+
+  // Whether we are able to resolve to a single value (possibly with a unit)
+  // before layout time; i.e. when parsing or calculating style. Things that
+  // must wait until layout include all sorts of size-dependent calculations,
+  // e.g. calc(100% + 10px) (will be reduced to a length in pixels, but only
+  // once we know how wide/tall 100% is), calc(sign(1em - 1px)) (-1, 0 or 1
+  // depending on the font size) and so on. Note that pure percentages
+  // (e.g. calc(80%)) are specifically allowed; a percentage value counts as
+  // a single value with the unit “%”. All values that are _not_ calc()
+  // will also by definition return true here.
+  bool IsResolvableBeforeLayout() const;
+
   static bool IsResolution(UnitType type) {
     return type >= UnitType::kDotsPerPixel &&
            type <= UnitType::kDotsPerCentimeter;
@@ -236,7 +247,47 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
   // Converts to a Length (Fixed, Percent or Calculated)
   Length ConvertToLength(const CSSToLengthConversionData&) const;
 
+<<<<<<< HEAD
+  // this + value
+  CSSPrimitiveValue* Add(double value, UnitType unit_type) const;
+  // value + this
+  CSSPrimitiveValue* AddTo(double value, UnitType unit_type) const;
+  // this + value
+  CSSPrimitiveValue* Add(const CSSPrimitiveValue& value) const;
+  // value + this
+  CSSPrimitiveValue* AddTo(const CSSPrimitiveValue& value) const;
+  // this - value
+  CSSPrimitiveValue* Subtract(double value, UnitType unit_type) const;
+  // value - this
+  CSSPrimitiveValue* SubtractFrom(double value, UnitType unit_type) const;
+  // this - value
+  CSSPrimitiveValue* Subtract(const CSSPrimitiveValue& value) const;
+  // value - this
+  CSSPrimitiveValue* SubtractFrom(const CSSPrimitiveValue& value) const;
+  // this * value
+  CSSPrimitiveValue* Multiply(double value, UnitType unit_type) const;
+  // value * this
+  CSSPrimitiveValue* MultiplyBy(double value, UnitType unit_type) const;
+  // this * value
+  CSSPrimitiveValue* Multiply(const CSSPrimitiveValue& value) const;
+  // value * this
+  CSSPrimitiveValue* MultiplyBy(const CSSPrimitiveValue& value) const;
+  // this / value
+  CSSPrimitiveValue* Divide(double value, UnitType unit_type) const;
+  // Note: value / this is not allowed until typed arithmetic is implemented.
+  CSSPrimitiveValue* DivideBy(double value, UnitType unit_type) const = delete;
+  // Note: this / value is not allowed until typed arithmetic is implemented.
+  CSSPrimitiveValue* Divide(const CSSPrimitiveValue& value) const = delete;
+  // Note: value / this is not allowed until typed arithmetic is implemented.
+  CSSPrimitiveValue* DivideBy(const CSSPrimitiveValue& value) const = delete;
+  // Replaces every percentage numeric literal node with number typed numeric
+  // literal node with value divided by 100 (e.g. 93% -> 0.93). This is needed
+  // e.g. for interpolation between <number> and <percentage>, see
+  // https://www.w3.org/TR/filter-effects-1/#interpolation-of-filter-functions.
+  CSSPrimitiveValue* ConvertLiteralsFromPercentageToNumber() const;
+=======
   bool IsZero() const;
+>>>>>>> chromium
 
   // TODO(crbug.com/979895): The semantics of these untyped getters are not very
   // clear if |this| is a math function. Do not add new callers before further
@@ -244,6 +295,8 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
   // These getters can be called only when |this| is a numeric literal or a math
   // expression can be resolved into a single numeric value *without any type
   // conversion* (e.g., between px and em). Otherwise, it hits a DCHECK.
+  // In particular, you cannot call this if IsResolvableBeforeLayout()
+  // returns false.
   double GetDoubleValue() const;
 
   // Returns Double Value including infinity, -infinity, and NaN.
@@ -257,7 +310,23 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
   }
 
   template <typename T>
+<<<<<<< HEAD
+  inline T ConvertTo(const CSSLengthResolver&)
+      const;  // Defined in CSSPrimitiveValueMappings.h
+
+  int ComputeInteger(const CSSLengthResolver&) const;
+  // NOTE: As a special exception, we allow treating percentage values
+  // implicitly as numbers divided by 100. This allows us to parse using
+  // ConsumeNumberOrPercent() and call ComputeNumber() on whatever we get
+  // back.
+  double ComputeNumber(const CSSLengthResolver&) const;
+  double ComputePercentage(const CSSLengthResolver&) const;
+  double ComputeValueInCanonicalUnit(const CSSLengthResolver&) const;
+=======
   inline T ConvertTo() const;  // Defined in CSSPrimitiveValueMappings.h
+>>>>>>> chromium
+
+  std::optional<double> GetValueIfKnown() const;
 
   static const char* UnitTypeToString(UnitType);
   static UnitType StringToUnitType(StringView string) {

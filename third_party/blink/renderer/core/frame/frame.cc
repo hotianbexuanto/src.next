@@ -40,7 +40,6 @@
 #include "third_party/blink/renderer/core/dom/document_type.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/increment_load_event_delay_count.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/execution_context/window_agent_factory.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/page_dismissal_scope.h"
@@ -275,8 +274,7 @@ void Frame::NotifyUserActivationInFrameTree(
   // See the "Same-origin Visibility" section in |UserActivationState| class
   // doc.
   auto* local_frame = DynamicTo<LocalFrame>(this);
-  if (local_frame &&
-      RuntimeEnabledFeatures::UserActivationSameOriginVisibilityEnabled()) {
+  if (local_frame) {
     const SecurityOrigin* security_origin =
         local_frame->GetSecurityContext()->GetSecurityOrigin();
 
@@ -536,7 +534,55 @@ Frame* Frame::Top() {
   return parent;
 }
 
+<<<<<<< HEAD
+bool Frame::AllowFocusWithoutUserActivation() {
+  if (!features::IsFencedFramesEnabled())
+    return true;
+
+  if (IsDetached()) {
+    return true;
+  }
+
+  if (!IsInFencedFrameTree())
+    return true;
+
+  // Inside a fenced frame tree, a frame can only request focus is its focus
+  // controller already has focus.
+  return GetPage()->GetFocusController().IsFocused();
+}
+
+bool Frame::Swap(WebLocalFrame* new_web_frame) {
+  return SwapImpl(new_web_frame, mojo::NullAssociatedRemote(),
+                  mojo::NullAssociatedReceiver(),
+                  /*devtools_frame_token=*/std::nullopt);
+}
+
+bool Frame::Swap(
+    WebRemoteFrame* new_web_frame,
+    mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost>
+        remote_frame_host,
+    mojo::PendingAssociatedReceiver<mojom::blink::RemoteFrame>
+        remote_frame_receiver,
+    const std::optional<base::UnguessableToken>& devtools_frame_token) {
+  return SwapImpl(new_web_frame, std::move(remote_frame_host),
+                  std::move(remote_frame_receiver), devtools_frame_token);
+}
+
+bool Frame::SwapImpl(
+    WebFrame* new_web_frame,
+    mojo::PendingAssociatedRemote<mojom::blink::RemoteFrameHost>
+        remote_frame_host,
+    mojo::PendingAssociatedReceiver<mojom::blink::RemoteFrame>
+        remote_frame_receiver,
+    const std::optional<base::UnguessableToken>& devtools_frame_token) {
+  TRACE_EVENT0("navigation", "Frame::SwapImpl");
+  std::string_view histogram_suffix =
+      (new_web_frame->IsWebLocalFrame() ? "Local" : "Remote");
+  base::ScopedUmaHistogramTimer histogram_timer(
+      base::StrCat({"Navigation.Frame.SwapImpl.", histogram_suffix}));
+=======
 bool Frame::Swap(WebFrame* new_web_frame) {
+>>>>>>> chromium
   DCHECK(IsAttached());
 
   using std::swap;
@@ -592,9 +638,17 @@ bool Frame::Swap(WebFrame* new_web_frame) {
   if (new_web_frame->IsWebRemoteFrame()) {
     CHECK(!WebFrame::ToCoreFrame(*new_web_frame));
     To<WebRemoteFrameImpl>(new_web_frame)
+<<<<<<< HEAD
+        ->InitializeCoreFrame(
+            *page, owner, WebFrame::FromCoreFrame(parent_), nullptr,
+            FrameInsertType::kInsertLater, name, &window_agent_factory(),
+            devtools_frame_token.value_or(devtools_frame_token_),
+            std::move(remote_frame_host), std::move(remote_frame_receiver));
+=======
         ->InitializeCoreFrame(*page, owner, WebFrame::FromCoreFrame(parent_),
                               nullptr, FrameInsertType::kInsertLater, name,
                               &window_agent_factory(), devtools_frame_token_);
+>>>>>>> chromium
     // At this point, a `RemoteFrame` will have already updated
     // `Page::MainFrame()` or `FrameOwner::ContentFrame()` as appropriate, and
     // its `parent_` pointer is also populated.

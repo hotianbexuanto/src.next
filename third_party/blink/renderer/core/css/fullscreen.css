@@ -14,8 +14,21 @@
     height: 100% !important;
     transform: none !important;
 
+<<<<<<< HEAD
+  /* intentionally not !important */
+  object-fit: contain;
+  user-select: text;
+}
+
+/* Reducing specificity to ensure [inert] UA rule overrides this one for the
+   interactivity declaration. */
+:where(:fullscreen) {
+  overlay: auto !important;
+  interactivity: auto;
+=======
     /* intentionally not !important */
     object-fit: contain;
+>>>>>>> chromium
 }
 
 iframe:fullscreen {

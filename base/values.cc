@@ -4,6 +4,10 @@
 
 #include "base/values.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+#include <array>
+=======
 // values.h is a widely included header and its size has significant impact on
 // build time. Try not to raise this limit unless absolutely necessary. See
 // https://chromium.googlesource.com/chromium/src/+/HEAD/docs/wmax_tokens.md
@@ -12,6 +16,7 @@
 #endif
 
 #include <algorithm>
+>>>>>>> chromium
 #include <cmath>
 #include <ostream>
 #include <tuple>
@@ -27,7 +32,6 @@
 #include "base/macros.h"
 #include "base/memory/ptr_util.h"
 #include "base/notreached.h"
-#include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/base_tracing.h"
@@ -212,6 +216,13 @@ Value::Value(std::string&& in_string) noexcept : data_(std::move(in_string)) {
 
 Value::Value(const char16_t* in_string16) : Value(StringPiece16(in_string16)) {}
 
+<<<<<<< HEAD
+Value::Value(base::span<const uint8_t> value)
+    : data_(absl::in_place_type_t<BlobStorage>(), value.size()) {
+  // This is 100x faster than using the "range" constructor for a 512k blob:
+  // crbug.com/1343636
+  std::ranges::copy(value, absl::get<BlobStorage>(data_).data());
+=======
 Value::Value(StringPiece16 in_string16) : Value(UTF16ToUTF8(in_string16)) {}
 
 Value::Value(const std::vector<char>& in_blob)
@@ -233,6 +244,7 @@ Value::Value(const DictStorage& in_dict)
     dict().try_emplace(dict().end(), it.first,
                        std::make_unique<Value>(it.second.Clone()));
   }
+>>>>>>> chromium
 }
 
 Value::Value(DictStorage&& in_dict) noexcept
@@ -318,12 +330,20 @@ int Value::GetInt() const {
 }
 
 double Value::GetDouble() const {
+<<<<<<< HEAD
+  if (is_double()) {
+    return absl::get<DoubleStorage>(data_);
+  }
+  CHECK(is_int());
+  return GetInt();
+=======
   if (is_double())
     return AsDoubleInternal();
   if (is_int())
     return GetInt();
   CHECK(false);
   return 0.0;
+>>>>>>> chromium
 }
 
 const std::string& Value::GetString() const {
@@ -439,9 +459,26 @@ absl::optional<bool> Value::FindBoolKey(StringPiece key) const {
   return result ? absl::make_optional(result->GetBool()) : absl::nullopt;
 }
 
+<<<<<<< HEAD
+Value::Dict Value::Dict::Clone() const {
+  std::vector<std::pair<std::string, std::unique_ptr<Value>>> storage;
+  storage.reserve(storage_.size());
+
+  for (const auto& [key, value] : storage_) {
+    storage.emplace_back(key, std::make_unique<Value>(value->Clone()));
+  }
+
+  Dict result;
+  // `storage` is already sorted and unique by construction, which allows us to
+  // avoid an additional O(n log n) step.
+  result.storage_ = flat_map<std::string, std::unique_ptr<Value>>(
+      sorted_unique, std::move(storage));
+  return result;
+=======
 absl::optional<int> Value::FindIntKey(StringPiece key) const {
   const Value* result = FindKeyOfType(key, Type::INTEGER);
   return result ? absl::make_optional(result->GetInt()) : absl::nullopt;
+>>>>>>> chromium
 }
 
 absl::optional<double> Value::FindDoubleKey(StringPiece key) const {
@@ -882,6 +919,398 @@ bool Value::GetAsDictionary(DictionaryValue** out_value) {
   return is_dict();
 }
 
+<<<<<<< HEAD
+bool operator==(const Value::Dict& lhs, const Value::Dict& rhs) {
+  auto deref_2nd = [](const auto& p) { return std::tie(p.first, *p.second); };
+  return std::ranges::equal(lhs.storage_, rhs.storage_, {}, deref_2nd,
+                            deref_2nd);
+}
+
+bool operator!=(const Value::Dict& lhs, const Value::Dict& rhs) {
+  return !(lhs == rhs);
+}
+
+bool operator<(const Value::Dict& lhs, const Value::Dict& rhs) {
+  auto deref_2nd = [](const auto& p) { return std::tie(p.first, *p.second); };
+  return std::ranges::lexicographical_compare(lhs.storage_, rhs.storage_, {},
+                                              deref_2nd, deref_2nd);
+}
+
+bool operator>(const Value::Dict& lhs, const Value::Dict& rhs) {
+  return rhs < lhs;
+}
+
+bool operator<=(const Value::Dict& lhs, const Value::Dict& rhs) {
+  return !(rhs < lhs);
+}
+
+bool operator>=(const Value::Dict& lhs, const Value::Dict& rhs) {
+  return !(lhs < rhs);
+}
+
+// static
+Value::List Value::List::with_capacity(size_t capacity) {
+  Value::List result;
+  result.reserve(capacity);
+  return result;
+}
+
+Value::List::List() = default;
+
+Value::List::List(List&&) noexcept = default;
+
+Value::List& Value::List::operator=(List&&) noexcept = default;
+
+Value::List::~List() = default;
+
+bool Value::List::empty() const {
+  return storage_.empty();
+}
+
+size_t Value::List::size() const {
+  return storage_.size();
+}
+
+Value::List::iterator Value::List::begin() {
+  // SAFETY: Both iterators point to a single allocation.
+  return UNSAFE_BUFFERS(iterator(base::to_address(storage_.begin()),
+                                 base::to_address(storage_.end())));
+}
+
+Value::List::const_iterator Value::List::begin() const {
+  // SAFETY: Both iterators point to a single allocation.
+  return UNSAFE_BUFFERS(const_iterator(base::to_address(storage_.begin()),
+                                       base::to_address(storage_.end())));
+}
+
+Value::List::const_iterator Value::List::cbegin() const {
+  // SAFETY: Both iterators point to a single allocation.
+  return UNSAFE_BUFFERS(const_iterator(base::to_address(storage_.cbegin()),
+                                       base::to_address(storage_.cend())));
+}
+
+Value::List::iterator Value::List::end() {
+  // SAFETY: All iterators point to a single allocation.
+  return UNSAFE_BUFFERS(iterator(base::to_address(storage_.begin()),
+                                 base::to_address(storage_.end()),
+                                 base::to_address(storage_.end())));
+}
+
+Value::List::const_iterator Value::List::end() const {
+  // SAFETY: All iterators point to a single allocation.
+  return UNSAFE_BUFFERS(const_iterator(base::to_address(storage_.begin()),
+                                       base::to_address(storage_.end()),
+                                       base::to_address(storage_.end())));
+}
+
+Value::List::const_iterator Value::List::cend() const {
+  // SAFETY: All iterators point to a single allocation.
+  return UNSAFE_BUFFERS(const_iterator(base::to_address(storage_.cbegin()),
+                                       base::to_address(storage_.cend()),
+                                       base::to_address(storage_.cend())));
+}
+
+Value::List::reverse_iterator Value::List::rend() {
+  return reverse_iterator(begin());
+}
+
+Value::List::const_reverse_iterator Value::List::rend() const {
+  return const_reverse_iterator(begin());
+}
+
+Value::List::reverse_iterator Value::List::rbegin() {
+  return reverse_iterator(end());
+}
+
+Value::List::const_reverse_iterator Value::List::rbegin() const {
+  return const_reverse_iterator(end());
+}
+
+const Value& Value::List::front() const {
+  CHECK(!storage_.empty());
+  return storage_.front();
+}
+
+Value& Value::List::front() {
+  CHECK(!storage_.empty());
+  return storage_.front();
+}
+
+const Value& Value::List::back() const {
+  CHECK(!storage_.empty());
+  return storage_.back();
+}
+
+Value& Value::List::back() {
+  CHECK(!storage_.empty());
+  return storage_.back();
+}
+
+void Value::List::reserve(size_t capacity) {
+  storage_.reserve(capacity);
+}
+
+void Value::List::resize(size_t new_size) {
+  storage_.resize(new_size);
+}
+
+const Value& Value::List::operator[](size_t index) const {
+  CHECK_LT(index, storage_.size());
+  return storage_[index];
+}
+
+Value& Value::List::operator[](size_t index) {
+  CHECK_LT(index, storage_.size());
+  return storage_[index];
+}
+
+bool Value::List::contains(bool val) const {
+  return contains(val, &Value::is_bool, &Value::GetBool);
+}
+
+bool Value::List::contains(int val) const {
+  return contains(val, &Value::is_int, &Value::GetInt);
+}
+
+bool Value::List::contains(double val) const {
+  return contains(val, &Value::is_double, &Value::GetDouble);
+}
+
+bool Value::List::contains(std::string_view val) const {
+  return contains(val, &Value::is_string, &Value::GetString);
+}
+
+bool Value::List::contains(const char* val) const {
+  return contains(std::string_view(val), &Value::is_string, &Value::GetString);
+}
+
+bool Value::List::contains(const BlobStorage& val) const {
+  return contains(val, &Value::is_blob, &Value::GetBlob);
+}
+
+bool Value::List::contains(const Dict& val) const {
+  return contains(val, &Value::is_dict, &Value::GetDict);
+}
+
+bool Value::List::contains(const List& val) const {
+  return contains(val, &Value::is_list, &Value::GetList);
+}
+
+void Value::List::clear() {
+  storage_.clear();
+}
+
+Value::List::iterator Value::List::erase(iterator pos) {
+  auto next_it = storage_.erase(storage_.begin() + (pos - begin()));
+  // SAFETY: All iterators point to a single allocation.
+  return UNSAFE_BUFFERS(iterator(base::to_address(storage_.begin()),
+                                 base::to_address(next_it),
+                                 base::to_address(storage_.end())));
+}
+
+Value::List::const_iterator Value::List::erase(const_iterator pos) {
+  auto next_it = storage_.erase(storage_.begin() + (pos - begin()));
+  // SAFETY: All iterators point to a single allocation.
+  return UNSAFE_BUFFERS(const_iterator(base::to_address(storage_.begin()),
+                                       base::to_address(next_it),
+                                       base::to_address(storage_.end())));
+}
+
+Value::List::iterator Value::List::erase(iterator first, iterator last) {
+  auto next_it = storage_.erase(storage_.begin() + (first - begin()),
+                                storage_.begin() + (last - begin()));
+  // SAFETY: All iterators point to a single allocation.
+  return UNSAFE_BUFFERS(iterator(base::to_address(storage_.begin()),
+                                 base::to_address(next_it),
+                                 base::to_address(storage_.end())));
+}
+
+Value::List::const_iterator Value::List::erase(const_iterator first,
+                                               const_iterator last) {
+  auto next_it = storage_.erase(storage_.begin() + (first - begin()),
+                                storage_.begin() + (last - begin()));
+  // SAFETY: All iterators point to a single allocation.
+  return UNSAFE_BUFFERS(const_iterator(base::to_address(storage_.begin()),
+                                       base::to_address(next_it),
+                                       base::to_address(storage_.end())));
+}
+
+Value::List Value::List::Clone() const {
+  return List(storage_);
+}
+
+void Value::List::Append(Value&& value) & {
+  storage_.emplace_back(std::move(value));
+}
+
+void Value::List::Append(bool value) & {
+  storage_.emplace_back(value);
+}
+
+void Value::List::Append(int value) & {
+  storage_.emplace_back(value);
+}
+
+void Value::List::Append(double value) & {
+  storage_.emplace_back(value);
+}
+
+void Value::List::Append(std::string_view value) & {
+  Append(Value(value));
+}
+
+void Value::List::Append(std::u16string_view value) & {
+  storage_.emplace_back(value);
+}
+
+void Value::List::Append(const char* value) & {
+  storage_.emplace_back(value);
+}
+
+void Value::List::Append(const char16_t* value) & {
+  storage_.emplace_back(value);
+}
+
+void Value::List::Append(std::string&& value) & {
+  storage_.emplace_back(std::move(value));
+}
+
+void Value::List::Append(BlobStorage&& value) & {
+  storage_.emplace_back(std::move(value));
+}
+
+void Value::List::Append(Dict&& value) & {
+  storage_.emplace_back(std::move(value));
+}
+
+void Value::List::Append(List&& value) & {
+  storage_.emplace_back(std::move(value));
+}
+
+Value::List&& Value::List::Append(Value&& value) && {
+  storage_.emplace_back(std::move(value));
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(bool value) && {
+  storage_.emplace_back(value);
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(int value) && {
+  storage_.emplace_back(value);
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(double value) && {
+  storage_.emplace_back(value);
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(std::string_view value) && {
+  Append(Value(value));
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(std::u16string_view value) && {
+  storage_.emplace_back(value);
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(const char* value) && {
+  storage_.emplace_back(value);
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(const char16_t* value) && {
+  storage_.emplace_back(value);
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(std::string&& value) && {
+  storage_.emplace_back(std::move(value));
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(BlobStorage&& value) && {
+  storage_.emplace_back(std::move(value));
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(Dict&& value) && {
+  storage_.emplace_back(std::move(value));
+  return std::move(*this);
+}
+
+Value::List&& Value::List::Append(List&& value) && {
+  storage_.emplace_back(std::move(value));
+  return std::move(*this);
+}
+
+Value::List::iterator Value::List::Insert(const_iterator pos, Value&& value) {
+  auto inserted_it =
+      storage_.insert(storage_.begin() + (pos - begin()), std::move(value));
+  // SAFETY: All pointers point to a single allocation.
+  return UNSAFE_BUFFERS(iterator(base::to_address(storage_.begin()),
+                                 base::to_address(inserted_it),
+                                 base::to_address(storage_.end())));
+}
+
+size_t Value::List::EraseValue(const Value& value) {
+  return std::erase(storage_, value);
+}
+
+size_t Value::List::EstimateMemoryUsage() const {
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+  return base::trace_event::EstimateMemoryUsage(storage_);
+#else   // BUILDFLAG(ENABLE_BASE_TRACING)
+  return 0;
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
+}
+
+std::string Value::List::DebugString() const {
+  return DebugStringImpl(*this);
+}
+
+#if BUILDFLAG(ENABLE_BASE_TRACING)
+void Value::List::WriteIntoTrace(perfetto::TracedValue context) const {
+  perfetto::TracedArray array = std::move(context).WriteArray();
+  for (const auto& item : *this) {
+    array.Append(item);
+  }
+}
+#endif  // BUILDFLAG(ENABLE_BASE_TRACING)
+
+Value::List::List(const std::vector<Value>& storage) {
+  storage_.reserve(storage.size());
+  for (const auto& value : storage) {
+    storage_.push_back(value.Clone());
+  }
+}
+
+bool operator==(const Value::List& lhs, const Value::List& rhs) {
+  return lhs.storage_ == rhs.storage_;
+}
+
+bool operator!=(const Value::List& lhs, const Value::List& rhs) {
+  return !(lhs == rhs);
+}
+
+bool operator<(const Value::List& lhs, const Value::List& rhs) {
+  return lhs.storage_ < rhs.storage_;
+}
+
+bool operator>(const Value::List& lhs, const Value::List& rhs) {
+  return rhs < lhs;
+}
+
+bool operator<=(const Value::List& lhs, const Value::List& rhs) {
+  return !(rhs < lhs);
+}
+
+bool operator>=(const Value::List& lhs, const Value::List& rhs) {
+  return !(lhs < rhs);
+=======
 bool Value::GetAsDictionary(const DictionaryValue** out_value) const {
   if (out_value && is_dict()) {
     *out_value = static_cast<const DictionaryValue*>(this);
@@ -896,6 +1325,7 @@ Value* Value::DeepCopy() const {
 
 std::unique_ptr<Value> Value::CreateDeepCopy() const {
   return std::make_unique<Value>(Clone());
+>>>>>>> chromium
 }
 
 bool operator==(const Value& lhs, const Value& rhs) {

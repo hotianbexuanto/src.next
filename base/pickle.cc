@@ -2,6 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
+=======
+>>>>>>> chromium
 #include "base/pickle.h"
 
 #include <stdlib.h>
@@ -30,12 +38,17 @@ PickleIterator::PickleIterator(const Pickle& pickle)
 template <typename Type>
 inline bool PickleIterator::ReadBuiltinType(Type* result) {
   const char* read_from = GetReadPointerAndAdvance<Type>();
-  if (!read_from)
+  if (!read_from) {
     return false;
+<<<<<<< HEAD
+  }
+  memcpy(result, read_from, sizeof(*result));
+=======
   if (sizeof(Type) > sizeof(uint32_t))
     memcpy(result, read_from, sizeof(*result));
   else
     *result = *reinterpret_cast<const Type*>(read_from);
+>>>>>>> chromium
   return true;
 }
 
@@ -54,7 +67,7 @@ inline const char* PickleIterator::GetReadPointerAndAdvance() {
     read_index_ = end_index_;
     return nullptr;
   }
-  const char* current_read_ptr = payload_ + read_index_;
+  const char* current_read_ptr = UNSAFE_TODO(payload_ + read_index_);
   Advance(sizeof(Type));
   return current_read_ptr;
 }
@@ -65,7 +78,7 @@ const char* PickleIterator::GetReadPointerAndAdvance(int num_bytes) {
     read_index_ = end_index_;
     return nullptr;
   }
-  const char* current_read_ptr = payload_ + read_index_;
+  const char* current_read_ptr = UNSAFE_TODO(payload_ + read_index_);
   Advance(num_bytes);
   return current_read_ptr;
 }
@@ -73,10 +86,17 @@ const char* PickleIterator::GetReadPointerAndAdvance(int num_bytes) {
 inline const char* PickleIterator::GetReadPointerAndAdvance(
     int num_elements,
     size_t size_element) {
+<<<<<<< HEAD
+  // Check for size_t overflow.
+  size_t num_bytes;
+  if (!CheckMul(num_elements, size_element).AssignIfValid(&num_bytes)) {
+=======
   // Check for int32_t overflow.
   int num_bytes;
   if (!CheckMul(num_elements, size_element).AssignIfValid(&num_bytes))
+>>>>>>> chromium
     return nullptr;
+  }
   return GetReadPointerAndAdvance(num_bytes);
 }
 
@@ -92,11 +112,19 @@ bool PickleIterator::ReadLong(long* result) {
   // Always read long as a 64-bit value to ensure compatibility between 32-bit
   // and 64-bit processes.
   int64_t result_int64 = 0;
-  if (!ReadBuiltinType(&result_int64))
+  if (!ReadBuiltinType(&result_int64)) {
     return false;
+<<<<<<< HEAD
+  }
+  if (!IsValueInRangeForNumericType<long>(result_int64)) {
+    return false;
+  }
+  *result = static_cast<long>(result_int64);
+=======
   // CHECK if the cast truncates the value so that we know to change this IPC
   // parameter to use int64_t.
   *result = base::checked_cast<long>(result_int64);
+>>>>>>> chromium
   return true;
 }
 
@@ -122,8 +150,9 @@ bool PickleIterator::ReadFloat(float* result) {
   // cause SIGBUS on some ARM platforms, so force using memcpy to copy the data
   // into the result.
   const char* read_from = GetReadPointerAndAdvance<float>();
-  if (!read_from)
+  if (!read_from) {
     return false;
+  }
   memcpy(result, read_from, sizeof(*result));
   return true;
 }
@@ -134,55 +163,86 @@ bool PickleIterator::ReadDouble(double* result) {
   // cause SIGBUS on some ARM platforms, so force using memcpy to copy the data
   // into the result.
   const char* read_from = GetReadPointerAndAdvance<double>();
-  if (!read_from)
+  if (!read_from) {
     return false;
+  }
   memcpy(result, read_from, sizeof(*result));
   return true;
 }
 
 bool PickleIterator::ReadString(std::string* result) {
+<<<<<<< HEAD
+  size_t len;
+  if (!ReadLength(&len)) {
+=======
   int len;
   if (!ReadInt(&len))
+>>>>>>> chromium
     return false;
+  }
   const char* read_from = GetReadPointerAndAdvance(len);
-  if (!read_from)
+  if (!read_from) {
     return false;
+  }
 
   result->assign(read_from, len);
   return true;
 }
 
+<<<<<<< HEAD
+bool PickleIterator::ReadStringPiece(std::string_view* result) {
+  size_t len;
+  if (!ReadLength(&len)) {
+=======
 bool PickleIterator::ReadStringPiece(StringPiece* result) {
   int len;
   if (!ReadInt(&len))
+>>>>>>> chromium
     return false;
+  }
   const char* read_from = GetReadPointerAndAdvance(len);
-  if (!read_from)
+  if (!read_from) {
     return false;
+  }
 
   *result = StringPiece(read_from, len);
   return true;
 }
 
 bool PickleIterator::ReadString16(std::u16string* result) {
+<<<<<<< HEAD
+  size_t len;
+  if (!ReadLength(&len)) {
+=======
   int len;
   if (!ReadInt(&len))
+>>>>>>> chromium
     return false;
+  }
   const char* read_from = GetReadPointerAndAdvance(len, sizeof(char16_t));
-  if (!read_from)
+  if (!read_from) {
     return false;
+  }
 
   result->assign(reinterpret_cast<const char16_t*>(read_from), len);
   return true;
 }
 
+<<<<<<< HEAD
+bool PickleIterator::ReadStringPiece16(std::u16string_view* result) {
+  size_t len;
+  if (!ReadLength(&len)) {
+=======
 bool PickleIterator::ReadStringPiece16(StringPiece16* result) {
   int len;
   if (!ReadInt(&len))
+>>>>>>> chromium
     return false;
+  }
   const char* read_from = GetReadPointerAndAdvance(len, sizeof(char16_t));
-  if (!read_from)
+  if (!read_from) {
     return false;
+  }
 
   *result = StringPiece16(reinterpret_cast<const char16_t*>(read_from), len);
   return true;
@@ -192,27 +252,45 @@ bool PickleIterator::ReadData(const char** data, int* length) {
   *length = 0;
   *data = nullptr;
 
+<<<<<<< HEAD
+  if (!ReadLength(length)) {
+=======
   if (!ReadInt(length))
+>>>>>>> chromium
     return false;
+  }
 
   return ReadBytes(data, *length);
 }
 
+<<<<<<< HEAD
+std::optional<span<const uint8_t>> PickleIterator::ReadData() {
+=======
 bool PickleIterator::ReadData(base::span<const uint8_t>* data) {
+>>>>>>> chromium
   const char* ptr;
   int length;
 
+<<<<<<< HEAD
+  if (!ReadData(&ptr, &length)) {
+    return std::nullopt;
+  }
+
+  return as_bytes(UNSAFE_TODO(span(ptr, length)));
+=======
   if (!ReadData(&ptr, &length))
     return false;
 
   *data = base::as_bytes(base::make_span(ptr, length));
   return true;
+>>>>>>> chromium
 }
 
 bool PickleIterator::ReadBytes(const char** data, int length) {
   const char* read_from = GetReadPointerAndAdvance(length);
-  if (!read_from)
+  if (!read_from) {
     return false;
+  }
   *data = read_from;
   return true;
 }
@@ -274,8 +352,9 @@ Pickle::Pickle(const Pickle& other)
 }
 
 Pickle::~Pickle() {
-  if (capacity_after_header_ != kCapacityReadOnly)
+  if (capacity_after_header_ != kCapacityReadOnly) {
     free(header_);
+  }
 }
 
 Pickle& Pickle::operator=(const Pickle& other) {
@@ -308,6 +387,28 @@ void Pickle::WriteString16(const StringPiece16& value) {
   WriteBytes(value.data(), static_cast<int>(value.size()) * sizeof(char16_t));
 }
 
+<<<<<<< HEAD
+void Pickle::WriteData(const char* data, size_t length) {
+  WriteData(as_bytes(UNSAFE_TODO(span(data, length))));
+}
+
+void Pickle::WriteData(std::string_view data) {
+  WriteData(as_byte_span(data));
+}
+
+void Pickle::WriteData(base::span<const uint8_t> data) {
+  WriteInt(checked_cast<int>(data.size()));
+  WriteBytes(data);
+}
+
+void Pickle::WriteBytes(const void* data, size_t length) {
+  WriteBytesCommon(
+      UNSAFE_TODO(span(static_cast<const uint8_t*>(data), length)));
+}
+
+void Pickle::WriteBytes(span<const uint8_t> data) {
+  WriteBytesCommon(data);
+=======
 void Pickle::WriteData(const char* data, int length) {
   DCHECK_GE(length, 0);
   WriteInt(length);
@@ -316,6 +417,7 @@ void Pickle::WriteData(const char* data, int length) {
 
 void Pickle::WriteBytes(const void* data, int length) {
   WriteBytesCommon(data, length);
+>>>>>>> chromium
 }
 
 void Pickle::Reserve(size_t length) {
@@ -326,8 +428,9 @@ void Pickle::Reserve(size_t length) {
 #endif
   DCHECK_LE(write_offset_, std::numeric_limits<uint32_t>::max() - data_len);
   size_t new_size = write_offset_ + data_len;
-  if (new_size > capacity_after_header_)
+  if (new_size > capacity_after_header_) {
     Resize(capacity_after_header_ * 2 + new_size);
+  }
 }
 
 bool Pickle::WriteAttachment(scoped_refptr<Attachment> attachment) {
@@ -359,8 +462,9 @@ void* Pickle::ClaimBytes(size_t num_bytes) {
 }
 
 size_t Pickle::GetTotalAllocatedSize() const {
-  if (capacity_after_header_ == kCapacityReadOnly)
+  if (capacity_after_header_ == kCapacityReadOnly) {
     return 0;
+  }
   return header_size_ + capacity_after_header_;
 }
 
@@ -369,13 +473,15 @@ const char* Pickle::FindNext(size_t header_size,
                              const char* start,
                              const char* end) {
   size_t pickle_size = 0;
-  if (!PeekNext(header_size, start, end, &pickle_size))
+  if (!PeekNext(header_size, start, end, &pickle_size)) {
     return nullptr;
+  }
 
-  if (pickle_size > static_cast<size_t>(end - start))
+  if (pickle_size > static_cast<size_t>(end - start)) {
     return nullptr;
+  }
 
-  return start + pickle_size;
+  return UNSAFE_TODO(start + pickle_size);
 }
 
 // static
@@ -388,12 +494,14 @@ bool Pickle::PeekNext(size_t header_size,
   DCHECK_LE(header_size, static_cast<size_t>(kPayloadUnit));
 
   size_t length = static_cast<size_t>(end - start);
-  if (length < sizeof(Header))
+  if (length < sizeof(Header)) {
     return false;
+  }
 
   const Header* hdr = reinterpret_cast<const Header*>(start);
-  if (length < header_size)
+  if (length < header_size) {
     return false;
+  }
 
   // If payload_size causes an overflow, we return maximum possible
   // pickle size to indicate that.
@@ -401,8 +509,15 @@ bool Pickle::PeekNext(size_t header_size,
   return true;
 }
 
+<<<<<<< HEAD
+template <size_t length>
+void Pickle::WriteBytesStatic(const void* data) {
+  WriteBytesCommon(
+      UNSAFE_TODO(span(static_cast<const uint8_t*>(data), length)));
+=======
 template <size_t length> void Pickle::WriteBytesStatic(const void* data) {
   WriteBytesCommon(data, length);
+>>>>>>> chromium
 }
 
 template void Pickle::WriteBytesStatic<2>(const void* data);
@@ -429,8 +544,14 @@ inline void* Pickle::ClaimUninitializedBytesInternal(size_t length) {
     Resize(std::max(new_capacity, new_size));
   }
 
+<<<<<<< HEAD
+  char* write = UNSAFE_TODO(mutable_payload() + write_offset_);
+  std::fill(UNSAFE_TODO(write + length), UNSAFE_TODO(write + data_len),
+            0);  // Always initialize padding
+=======
   char* write = mutable_payload() + write_offset_;
   memset(write + length, 0, data_len - length);  // Always initialize padding
+>>>>>>> chromium
   header_->payload_size = static_cast<uint32_t>(new_size);
   write_offset_ = new_size;
   return write;
@@ -439,9 +560,16 @@ inline void* Pickle::ClaimUninitializedBytesInternal(size_t length) {
 inline void Pickle::WriteBytesCommon(const void* data, size_t length) {
   DCHECK_NE(kCapacityReadOnly, capacity_after_header_)
       << "oops: pickle is readonly";
+<<<<<<< HEAD
+  MSAN_CHECK_MEM_IS_INITIALIZED(data.data(), data.size());
+  void* write = ClaimUninitializedBytesInternal(data.size());
+  std::copy(data.data(), UNSAFE_TODO(data.data() + data.size()),
+            static_cast<char*>(write));
+=======
   MSAN_CHECK_MEM_IS_INITIALIZED(data, length);
   void* write = ClaimUninitializedBytesInternal(length);
   memcpy(write, data, length);
+>>>>>>> chromium
 }
 
 }  // namespace base

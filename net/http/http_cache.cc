@@ -5,6 +5,11 @@
 #include "net/http/http_cache.h"
 
 #include <algorithm>
+<<<<<<< HEAD
+#include <optional>
+#include <string_view>
+=======
+>>>>>>> chromium
 #include <utility>
 
 #include "base/bind.h"
@@ -21,7 +26,10 @@
 #include "base/metrics/field_trial.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/pickle.h"
+<<<<<<< HEAD
+=======
 #include "base/single_thread_task_runner.h"
+>>>>>>> chromium
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
@@ -273,6 +281,12 @@ HttpCache::HttpCache(std::unique_ptr<HttpTransactionFactory> network_layer,
       network_layer_(std::move(network_layer)),
       clock_(base::DefaultClock::GetInstance()) {
   g_init_cache = true;
+  if (base::FeatureList::IsEnabled(features::kHttpCacheNoVarySearch)) {
+    size_t max_entries = features::kHttpCacheNoVarySearchCacheMaxEntries.Get();
+    if (max_entries) {
+      no_vary_search_cache_.emplace(static_cast<size_t>(max_entries));
+    }
+  }
   HttpNetworkSession* session = network_layer_->GetSession();
   // Session may be NULL in unittests.
   // TODO(mmenke): Seems like tests could be changed to provide a session,
@@ -468,8 +482,190 @@ std::string HttpCache::GetResourceURLFromHttpCacheKey(const std::string& key) {
 }
 
 // static
+<<<<<<< HEAD
+bool HttpCache::CanGenerateCacheKeyForRequest(const HttpRequestInfo* request) {
+  // WARNING: If this function is changed to look at `request->url` in future,
+  // it will break GenerateCacheKeyForRequestWithAlternateURL(). Add an extra
+  // `url` parameter instead.
+  if (IsSplitCacheEnabled()) {
+    if (request->network_isolation_key.IsTransient()) {
+      return false;
+    }
+    // If the initiator is opaque, it would serialize to 'null' if used, which
+    // would mean that navigations initiated from all opaque origins would share
+    // a cache partition. To avoid this, we won't cache navigations where the
+    // initiator is an opaque origin if the initiator would be used as part of
+    // the cache key.
+    if (request->initiator.has_value() && request->initiator->opaque()) {
+      switch (HttpCache::GetExperimentMode()) {
+        case HttpCache::ExperimentMode::kStandard:
+        case HttpCache::ExperimentMode::kCrossSiteInitiatorBoolean:
+          break;
+        case HttpCache::ExperimentMode::kMainFrameNavigationInitiator:
+          if (request->is_main_frame_navigation) {
+            return false;
+          }
+          break;
+        case HttpCache::ExperimentMode::kNavigationInitiator:
+          if (request->is_main_frame_navigation ||
+              request->is_subframe_document_resource) {
+            return false;
+          }
+          break;
+      }
+    }
+  }
+  return true;
+}
+
+// static
+// Generate a key that can be used inside the cache.
+std::string HttpCache::GenerateCacheKey(
+    const GURL& url,
+    int load_flags,
+    const NetworkIsolationKey& network_isolation_key,
+    int64_t upload_data_identifier,
+    bool is_subframe_document_resource,
+    bool is_mainframe_navigation,
+    std::optional<url::Origin> initiator) {
+  // The first character of the key may vary depending on whether or not sending
+  // credentials is permitted for this request. This only happens if the
+  // SplitCacheByIncludeCredentials feature is enabled.
+  const char credential_key = (base::FeatureList::IsEnabled(
+                                   features::kSplitCacheByIncludeCredentials) &&
+                               (load_flags & LOAD_DO_NOT_SAVE_COOKIES))
+                                  ? '0'
+                                  : '1';
+
+  std::string isolation_key;
+  if (IsSplitCacheEnabled()) {
+    // Prepend the key with |kDoubleKeyPrefix| = "_dk_" to mark it as
+    // double-keyed (and makes it an invalid url so that it doesn't get
+    // confused with a single-keyed entry). Separate the origin and url
+    // with invalid whitespace character |kDoubleKeySeparator|.
+    CHECK(!network_isolation_key.IsTransient());
+
+    const ExperimentMode experiment_mode = HttpCache::GetExperimentMode();
+    std::string_view subframe_document_resource_prefix;
+    if (is_subframe_document_resource) {
+      switch (experiment_mode) {
+        case HttpCache::ExperimentMode::kStandard:
+        case HttpCache::ExperimentMode::kCrossSiteInitiatorBoolean:
+        case HttpCache::ExperimentMode::kMainFrameNavigationInitiator:
+          subframe_document_resource_prefix = kSubframeDocumentResourcePrefix;
+          break;
+        case HttpCache::ExperimentMode::kNavigationInitiator:
+          // No need to set `subframe_document_resource_prefix` if we are
+          // keying all cross-site navigations on initiator below.
+          break;
+      }
+    }
+
+    std::string navigation_experiment_prefix;
+    if (initiator.has_value() &&
+        (is_mainframe_navigation || is_subframe_document_resource)) {
+      const auto initiator_site = net::SchemefulSite(*initiator);
+      const bool is_initiator_cross_site =
+          initiator_site != net::SchemefulSite(url);
+
+      if (is_initiator_cross_site) {
+        switch (experiment_mode) {
+          case HttpCache::ExperimentMode::kStandard:
+            break;
+          case HttpCache::ExperimentMode::kCrossSiteInitiatorBoolean:
+            if (is_mainframe_navigation) {
+              navigation_experiment_prefix = "csnb_ ";
+            }
+            break;
+          case HttpCache::ExperimentMode::kMainFrameNavigationInitiator:
+            if (is_mainframe_navigation) {
+              CHECK(!initiator_site.opaque());
+              navigation_experiment_prefix =
+                  base::StrCat({"mfni_", initiator_site.Serialize(), " "});
+            }
+            break;
+          case HttpCache::ExperimentMode::kNavigationInitiator:
+            if (is_mainframe_navigation || is_subframe_document_resource) {
+              CHECK(!initiator_site.opaque());
+              navigation_experiment_prefix =
+                  base::StrCat({"ni_", initiator_site.Serialize(), " "});
+            }
+            break;
+        }
+      }
+    }
+    isolation_key = base::StrCat(
+        {kDoubleKeyPrefix, subframe_document_resource_prefix,
+         navigation_experiment_prefix,
+         *network_isolation_key.ToCacheKeyString(), kDoubleKeySeparator});
+  }
+
+  // The key format is:
+  // credential_key/upload_data_identifier/[isolation_key]url
+
+  // Strip out the reference, username, and password sections of the URL and
+  // concatenate with the credential_key, the post_key, and the network
+  // isolation key if we are splitting the cache.
+  return base::StringPrintf("%c/%" PRId64 "/%s%s", credential_key,
+                            upload_data_identifier, isolation_key.c_str(),
+                            HttpUtil::SpecForRequest(url).c_str());
+}
+
+// static
+HttpCache::ExperimentMode HttpCache::GetExperimentMode() {
+  bool cross_site_main_frame_navigation_boolean_enabled =
+      base::FeatureList::IsEnabled(
+          net::features::kSplitCacheByCrossSiteMainFrameNavigationBoolean);
+  bool main_frame_navigation_initiator_enabled = base::FeatureList::IsEnabled(
+      net::features::kSplitCacheByMainFrameNavigationInitiator);
+  bool navigation_initiator_enabled = base::FeatureList::IsEnabled(
+      net::features::kSplitCacheByNavigationInitiator);
+
+  if (cross_site_main_frame_navigation_boolean_enabled) {
+    if (main_frame_navigation_initiator_enabled ||
+        navigation_initiator_enabled) {
+      return ExperimentMode::kStandard;
+    }
+    return ExperimentMode::kCrossSiteInitiatorBoolean;
+  } else if (main_frame_navigation_initiator_enabled) {
+    if (navigation_initiator_enabled) {
+      return ExperimentMode::kStandard;
+    }
+    return ExperimentMode::kMainFrameNavigationInitiator;
+  } else if (navigation_initiator_enabled) {
+    return ExperimentMode::kNavigationInitiator;
+  }
+  return ExperimentMode::kStandard;
+}
+
+// static
+std::optional<std::string> HttpCache::GenerateCacheKeyForRequest(
+    const HttpRequestInfo* request) {
+  return GenerateCacheKeyForRequestWithAlternateURL(request, request->url);
+}
+
+// static
+std::optional<std::string>
+HttpCache::GenerateCacheKeyForRequestWithAlternateURL(
+    const HttpRequestInfo* request,
+    const GURL& url) {
+  CHECK(request);
+
+  if (!CanGenerateCacheKeyForRequest(request)) {
+    return std::nullopt;
+  }
+
+  const int64_t upload_data_identifier =
+      request->upload_data_stream ? request->upload_data_stream->identifier()
+                                  : int64_t(0);
+  return GenerateCacheKey(
+      url, request->load_flags, request->network_isolation_key,
+      upload_data_identifier, request->is_subframe_document_resource,
+      request->is_main_frame_navigation, request->initiator);
+=======
 std::string HttpCache::GenerateCacheKeyForTest(const HttpRequestInfo* request) {
   return GenerateCacheKey(request);
+>>>>>>> chromium
 }
 
 // static
@@ -908,10 +1104,16 @@ void HttpCache::DoneWithEntry(ActiveEntry* entry,
     entry->disk_entry->CancelSparseIO();
 
   // Transaction is waiting in the done_headers_queue.
+<<<<<<< HEAD
+  auto it = std::ranges::find(entry->done_headers_queue(), transaction);
+  if (it != entry->done_headers_queue().end()) {
+    entry->done_headers_queue().erase(it);
+=======
   auto it = std::find(entry->done_headers_queue.begin(),
                       entry->done_headers_queue.end(), transaction);
   if (it != entry->done_headers_queue.end()) {
     entry->done_headers_queue.erase(it);
+>>>>>>> chromium
 
     // Restart other transactions if this transaction could have written
     // response body.

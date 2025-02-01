@@ -1055,8 +1055,181 @@ IN_PROC_BROWSER_TEST_P(FindRequestManagerTest, DISABLED_HistoryBackAndForth) {
 
 class FindRequestManagerPortalTest : public FindRequestManagerTest {
  public:
+<<<<<<< HEAD
+  // ContentBrowserClient:
+  bool IsFindInPageDisabledForOrigin(const url::Origin& origin) override {
+    return origin.host() == "b.com";
+  }
+};
+
+// Tests that find-in-page won't show results for origins that disabled
+// find-in-page.
+IN_PROC_BROWSER_TEST_P(FindRequestManagerTest, FindInPageDisabledForOrigin) {
+  FindInPageDisabledForOriginBrowserClient browser_client;
+
+  // Start with a basic case to set a baseline.
+  LoadAndWait("/find_in_page.html");
+  url::Origin root_origin = GetOriginForFrameTreeNode(root());
+  url::Origin child_origin = GetOriginForFrameTreeNode(first_child());
+  EXPECT_EQ("a.com", root_origin.host());
+  EXPECT_EQ("a.com", child_origin.host());
+  EXPECT_FALSE(browser_client.IsFindInPageDisabledForOrigin(root_origin));
+  EXPECT_FALSE(browser_client.IsFindInPageDisabledForOrigin(child_origin));
+
+  auto options = blink::mojom::FindOptions::New();
+  options->run_synchronously_for_testing = true;
+  Find("result", options->Clone());
+  delegate()->WaitForFinalReply();
+
+  FindResults results = delegate()->GetFindResults();
+  EXPECT_EQ(last_request_id(), results.request_id);
+  EXPECT_EQ(19, results.number_of_matches);
+
+  // Navigate child frame to b.com.
+  EXPECT_TRUE(NavigateToURLFromRenderer(
+      first_child(), embedded_test_server()->GetURL(
+                         "b.com", first_child()->current_url().path())));
+  root_origin = GetOriginForFrameTreeNode(root());
+  child_origin = GetOriginForFrameTreeNode(first_child());
+  EXPECT_EQ("a.com", root_origin.host());
+  EXPECT_EQ("b.com", child_origin.host());
+  EXPECT_FALSE(browser_client.IsFindInPageDisabledForOrigin(root_origin));
+  EXPECT_TRUE(browser_client.IsFindInPageDisabledForOrigin(child_origin));
+
+  Find("result", options->Clone());
+  delegate()->WaitForFinalReply();
+
+  // Given the custom `browser_client` disabled find-in-page for b.com, only the
+  // results from the root node should show up now.
+  results = delegate()->GetFindResults();
+  EXPECT_EQ(last_request_id(), results.request_id);
+  EXPECT_EQ(2, results.number_of_matches);
+
+  // Navigate child frame, but remain on b.com.
+  EXPECT_TRUE(NavigateToURLFromRenderer(
+      first_child(),
+      embedded_test_server()->GetURL("b.com", "/find_in_simple_page.html")));
+  root_origin = GetOriginForFrameTreeNode(root());
+  child_origin = GetOriginForFrameTreeNode(first_child());
+  EXPECT_EQ("a.com", root_origin.host());
+  EXPECT_EQ("b.com", child_origin.host());
+  EXPECT_FALSE(browser_client.IsFindInPageDisabledForOrigin(root_origin));
+  EXPECT_TRUE(browser_client.IsFindInPageDisabledForOrigin(child_origin));
+
+  // Results from the child frame on b.com still do not show up.
+  results = delegate()->GetFindResults();
+  EXPECT_EQ(last_request_id(), results.request_id);
+  EXPECT_EQ(2, results.number_of_matches);
+
+  // Navigate child frame to a.com again.
+  EXPECT_TRUE(NavigateToURLFromRenderer(
+      first_child(),
+      embedded_test_server()->GetURL("a.com", "/find_in_simple_page.html")));
+  root_origin = GetOriginForFrameTreeNode(root());
+  child_origin = GetOriginForFrameTreeNode(first_child());
+  EXPECT_EQ("a.com", root_origin.host());
+  EXPECT_EQ("a.com", child_origin.host());
+  EXPECT_FALSE(browser_client.IsFindInPageDisabledForOrigin(root_origin));
+  EXPECT_FALSE(browser_client.IsFindInPageDisabledForOrigin(child_origin));
+
+  Find("result", options->Clone());
+  delegate()->WaitForFinalReply();
+
+  // Since the child frame is now on a.com, find-in-page is enabled, so its
+  // results show up again.
+  results = delegate()->GetFindResults();
+  EXPECT_EQ(last_request_id(), results.request_id);
+  EXPECT_EQ(7, results.number_of_matches);
+}
+
+class FindTestWebContentsPrerenderingDelegate
+    : public FindTestWebContentsDelegate {
+ public:
+  PreloadingEligibility IsPrerender2Supported(
+      WebContents& web_contents,
+      PreloadingTriggerType trigger_type) override {
+    return PreloadingEligibility::kEligible;
+  }
+};
+
+class FindRequestManagerPrerenderingTest : public FindRequestManagerTest {
+ public:
+  FindRequestManagerPrerenderingTest()
+      : prerender_helper_(base::BindRepeating(
+            &FindRequestManagerPrerenderingTest::web_contents,
+            base::Unretained(this))) {}
+  ~FindRequestManagerPrerenderingTest() override = default;
+
+  void SetUpOnMainThread() override {
+    FindRequestManagerTest::SetUpOnMainThread();
+    contents()->SetDelegate(&delegate_);
+  }
+
+  content::test::PrerenderTestHelper* prerender_helper() {
+    return &prerender_helper_;
+  }
+
+  content::WebContents* web_contents() { return shell()->web_contents(); }
+
+ private:
+  content::test::PrerenderTestHelper prerender_helper_;
+  FindTestWebContentsPrerenderingDelegate delegate_;
+};
+
+// Tests that find-in-page won't show results inside a prerendering page.
+IN_PROC_BROWSER_TEST_F(FindRequestManagerPrerenderingTest, Basic) {
+  EXPECT_TRUE(
+      NavigateToURL(shell(), embedded_test_server()->GetURL("/empty.html")));
+  auto options = blink::mojom::FindOptions::New();
+  options->run_synchronously_for_testing = true;
+  Find("result", options->Clone());
+  delegate()->WaitForFinalReply();
+
+  // Do a find-in-page on an empty page.
+  FindResults results = delegate()->GetFindResults();
+  EXPECT_EQ(last_request_id(), results.request_id);
+  EXPECT_EQ(0, results.number_of_matches);
+
+  // Load a page that has 5 matches for "result" in the prerender.
+  auto prerender_url =
+      embedded_test_server()->GetURL("/find_in_simple_page.html?prerendering");
+  prerender_helper()->AddPrerender(prerender_url);
+
+  Find("result", options->Clone());
+  delegate()->WaitForFinalReply();
+
+  results = delegate()->GetFindResults();
+  EXPECT_EQ(last_request_id(), results.request_id);
+  // The prerendering page shouldn't affect the results of a find-in-page .
+  EXPECT_EQ(0, results.number_of_matches);
+
+  // Activate the page from the prerendering.
+  prerender_helper()->NavigatePrimaryPage(prerender_url);
+  Find("result", options->Clone());
+  delegate()->WaitForFinalReply();
+
+  results = delegate()->GetFindResults();
+  // The results from the prerendered page getting activated should be 5 as the
+  // mainframe(5 results) and no subframe.
+  EXPECT_EQ(5, results.number_of_matches);
+}
+
+class FindRequestManagerTestWithBFCache : public FindRequestManagerTest {
+ public:
+  FindRequestManagerTestWithBFCache() {
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        GetDefaultEnabledBackForwardCacheFeaturesForTesting(
+            /*ignore_outstanding_network_request=*/false),
+        GetDefaultDisabledBackForwardCacheFeaturesForTesting());
+  }
+  ~FindRequestManagerTestWithBFCache() override = default;
+
+  content::RenderFrameHost* render_frame_host() {
+    return contents()->GetPrimaryMainFrame();
+=======
   FindRequestManagerPortalTest() {
     scoped_feature_list_.InitAndEnableFeature(blink::features::kPortals);
+>>>>>>> chromium
   }
   ~FindRequestManagerPortalTest() override = default;
 

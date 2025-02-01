@@ -67,7 +67,7 @@ void TestMirrorRequestForProfile(net::EmbeddedTestServer* test_server,
 // enabled for child accounts, but not enabled for other account types.
 class ChromeOsMirrorAccountConsistencyTest : public chromeos::LoginManagerTest {
  protected:
-  ~ChromeOsMirrorAccountConsistencyTest() override {}
+  ~ChromeOsMirrorAccountConsistencyTest() override = default;
 
   ChromeOsMirrorAccountConsistencyTest() : LoginManagerTest() {
     login_mixin_.AppendRegularUsers(1);

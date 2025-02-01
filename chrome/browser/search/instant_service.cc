@@ -243,8 +243,17 @@ InstantService::InstantService(Profile* profile)
 
 InstantService::~InstantService() = default;
 
+<<<<<<< HEAD
+void InstantService::AddInstantProcess(content::RenderProcessHost* host) {
+  process_ids_.insert(host->GetDeprecatedID());
+  // The same process may be added for multiple WebContents. Only observe once.
+  if (!host_observation_.IsObservingSource(host)) {
+    host_observation_.AddObservation(host);
+  }
+=======
 void InstantService::AddInstantProcess(int process_id) {
   process_ids_.insert(process_id);
+>>>>>>> chromium
 }
 
 bool InstantService::IsInstantProcess(int process_id) const {
@@ -406,6 +415,14 @@ void InstantService::Shutdown() {
   ThemeServiceFactory::GetForProfile(profile_)->RemoveObserver(this);
 }
 
+<<<<<<< HEAD
+void InstantService::RenderProcessHostDestroyed(
+    content::RenderProcessHost* host) {
+  Profile* renderer_profile = static_cast<Profile*>(host->GetBrowserContext());
+  if (profile_ == renderer_profile) {
+    process_ids_.erase(host->GetDeprecatedID());
+    host_observation_.RemoveObservation(host);
+=======
 void InstantService::OnNextCollectionImageAvailable() {
   auto image = background_service_->next_image();
   std::string attribution1;
@@ -450,6 +467,7 @@ void InstantService::Observe(int type,
     }
     default:
       NOTREACHED() << "Unexpected notification type in InstantService.";
+>>>>>>> chromium
   }
 }
 

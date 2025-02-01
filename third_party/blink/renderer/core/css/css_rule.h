@@ -62,9 +62,28 @@ class CORE_EXPORT CSSRule : public ScriptWrappable {
     // [1] https://wiki.csswg.org/spec/cssom-constants
 
     // Values for internal use, not web-exposed:
+<<<<<<< HEAD
+    kFirstInternalRule = 16,
+    // go/keep-sorted start
+    kContainerRule = kFirstInternalRule,
+    kFontFeatureRule,
+    kFontPaletteValuesRule,
+    kFunctionDeclarationsRule,
+    kFunctionRule,
+    kLayerBlockRule,
+    kLayerStatementRule,
+    kNestedDeclarationsRule,
+    kPositionTryRule,
+    kPropertyRule,
+    kScopeRule,
+    kStartingStyleRule,
+    kViewTransitionRule,
+    // go/keep-sorted end
+=======
     kPropertyRule = 16,
     kScrollTimelineRule = 17,
     kContainerRule = 18,
+>>>>>>> chromium
   };
 
   virtual Type GetType() const = 0;

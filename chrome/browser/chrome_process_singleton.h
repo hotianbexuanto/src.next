@@ -50,7 +50,32 @@ class ChromeProcessSingleton {
   // Executes previously queued command-line invocations and allows future
   // invocations to be executed immediately.
   // This only has an effect the first time it is called.
+<<<<<<< HEAD
+  void Unlock(
+      const ProcessSingleton::NotificationCallback& notification_callback);
+
+  bool IsSingletonInstanceForTesting() const { return is_singleton_instance_; }
+
+#if BUILDFLAG(IS_WIN)
+  // Must only be called both after initialization of FeatureList and
+  // NotifyOtherProcessOrCreate().
+  void InitializeFeatures();
+#endif
+
+  // Create the chrome process singleton instance for the current process.
+  static void CreateInstance(const base::FilePath& user_data_dir);
+  // Delete the chrome process singleton instance.
+  static void DeleteInstance();
+  // Retrieve the chrome process singleton instance for the current process.
+  static ChromeProcessSingleton* GetInstance();
+
+  // Returns true if this process is the singleton instance (i.e., a
+  // ProcessSingleton has been created and NotifyOtherProcessOrCreate() has
+  // returned PROCESS_NONE).
+  static bool IsSingletonInstance();
+=======
   void Unlock();
+>>>>>>> chromium
 
  private:
   // We compose these two locks with the client-supplied notification callback.

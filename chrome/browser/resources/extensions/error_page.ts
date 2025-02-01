@@ -48,9 +48,10 @@ export interface ErrorPageDelegate {
  * unassociated with the extension, this will be the full url.
  */
 function getRelativeUrl(
-    url: string, error: ManifestError|RuntimeError): string {
-  const fullUrl = 'chrome-extension://' + error.extensionId + '/';
-  return url.startsWith(fullUrl) ? url.substring(fullUrl.length) : url;
+    url: string, error: ManifestError|RuntimeError|null): string {
+  const fullUrl = error ? `chrome-extension://${error.extensionId}/` : '';
+  return (fullUrl && url.startsWith(fullUrl)) ? url.substring(fullUrl.length) :
+                                                url;
 }
 
 /**
@@ -141,8 +142,36 @@ class ExtensionsErrorPageElement extends ExtensionsErrorPageElementBase {
     FocusOutlineManager.forDocument(document);
   }
 
+<<<<<<< HEAD
+  override willUpdate(changedProperties: PropertyValues<this>) {
+    super.willUpdate(changedProperties);
+
+    if (changedProperties.has('data') && this.data) {
+      /**
+       * Watches for changes to |data| in order to fetch the corresponding
+       * file source.
+       */
+      this.entries_ = [...this.data.manifestErrors, ...this.data.runtimeErrors];
+      this.selectedEntry_ = this.entries_.length > 0 ? 0 : -1;
+      this.onSelectedErrorChanged_();
+    }
+  }
+
+  override updated(changedProperties: PropertyValues<this>) {
+    super.updated(changedProperties);
+
+    if (changedProperties.has('inDevMode') && !this.inDevMode) {
+      this.onCloseButtonClick_();
+    }
+  }
+
+  getSelectedError(): ManifestError|RuntimeError|null {
+    return this.selectedEntry_ === -1 ? null :
+                                        this.entries_[this.selectedEntry_]!;
+=======
   getSelectedError(): ManifestError|RuntimeError {
     return this.entries_[this.selectedEntry_];
+>>>>>>> chromium
   }
 
   /**
@@ -217,7 +246,8 @@ class ExtensionsErrorPageElement extends ExtensionsErrorPageElementBase {
       return;
     }
 
-    const error = this.getSelectedError();
+    // Safe to use ! here because we check for selectedEntry_ < 0 above.
+    const error = this.getSelectedError()!;
     const args: chrome.developerPrivate.RequestFileSourceProperties = {
       extensionId: error.extensionId,
       message: error.message,
@@ -294,6 +324,11 @@ class ExtensionsErrorPageElement extends ExtensionsErrorPageElementBase {
     this.selectedStackFrame_ = assert(frame);
 
     const selectedError = this.getSelectedError();
+<<<<<<< HEAD
+    assert(selectedError);
+    assert(this.delegate);
+=======
+>>>>>>> chromium
     this.delegate
         .requestFileSource({
           extensionId: selectedError.extensionId,

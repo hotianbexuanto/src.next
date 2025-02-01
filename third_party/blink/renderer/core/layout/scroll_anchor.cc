@@ -30,7 +30,11 @@
 namespace blink {
 
 // With 100 unique strings, a 2^12 slot table has a false positive rate of ~2%.
+<<<<<<< HEAD
+using ClassnameFilter = WTF::BloomFilter<12>;
+=======
 using ClassnameFilter = BloomFilter<12>;
+>>>>>>> chromium
 using Corner = ScrollAnchor::Corner;
 
 ScrollAnchor::ScrollAnchor()

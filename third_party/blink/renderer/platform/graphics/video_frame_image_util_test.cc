@@ -144,10 +144,14 @@ TEST(VideoFrameImageUtilTest, CreateImageFromVideoFrameZeroCopy) {
 
   auto image = CreateImageFromVideoFrame(shared_image_frame);
   ASSERT_TRUE(image->IsTextureBacked());
+<<<<<<< HEAD
+  EXPECT_EQ(image->GetSharedImage(), shared_image_frame->shared_image());
+=======
   EXPECT_EQ(memcmp(image->GetMailboxHolder().mailbox.name,
                    shared_image_frame->mailbox_holder(0).mailbox.name,
                    sizeof(gpu::Mailbox::Name)),
             0);
+>>>>>>> chromium
 }
 #endif
 

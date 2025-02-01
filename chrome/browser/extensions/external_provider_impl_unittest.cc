@@ -94,8 +94,17 @@ const wchar_t kExternalAppRegistryKey[] =
 
 class ExternalProviderImplTest : public ExtensionServiceTestBase {
  public:
+<<<<<<< HEAD
+  ExternalProviderImplTest() = default;
+
+  ExternalProviderImplTest(const ExternalProviderImplTest&) = delete;
+  ExternalProviderImplTest& operator=(const ExternalProviderImplTest&) = delete;
+
+  ~ExternalProviderImplTest() override = default;
+=======
   ExternalProviderImplTest() {}
   ~ExternalProviderImplTest() override {}
+>>>>>>> chromium
 
   void InitService() {
 #if BUILDFLAG(IS_CHROMEOS_ASH)

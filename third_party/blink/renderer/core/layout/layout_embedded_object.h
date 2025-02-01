@@ -64,8 +64,16 @@ class LayoutEmbeddedObject final : public LayoutEmbeddedContent {
     return type == kLayoutObjectEmbeddedObject ||
            LayoutEmbeddedContent::IsOfType(type);
   }
+<<<<<<< HEAD
+  PhysicalNaturalSizingInfo GetNaturalDimensions() const override;
+  bool ShouldApplyObjectViewBox() const override {
+    NOT_DESTROYED();
+    return false;
+  }
+=======
   void ComputeIntrinsicSizingInfo(IntrinsicSizingInfo&) const override;
   bool NeedsPreferredWidthsRecalculation() const override;
+>>>>>>> chromium
 
   PluginAvailability plugin_availability_ = kPluginAvailable;
   String unavailable_plugin_replacement_text_;

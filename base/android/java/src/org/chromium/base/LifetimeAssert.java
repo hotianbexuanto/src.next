@@ -8,6 +8,12 @@ import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.annotations.CheckDiscard;
 import org.chromium.build.BuildConfig;
+<<<<<<< HEAD
+import org.chromium.build.annotations.CheckDiscard;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
+>>>>>>> chromium
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
@@ -31,10 +37,11 @@ import java.util.Set;
  * }
  * </pre>
  */
+@NullMarked
 @CheckDiscard("Lifetime assertions aren't used when DCHECK is off.")
 public class LifetimeAssert {
     interface TestHook {
-        void onCleaned(WrappedReference ref, String msg);
+        void onCleaned(WrappedReference ref, @Nullable String msg);
     }
 
     /**
@@ -56,7 +63,7 @@ public class LifetimeAssert {
     }
 
     // Used only for unit test.
-    static TestHook sTestHook;
+    static @Nullable TestHook sTestHook;
 
     @VisibleForTesting
     final WrappedReference mWrapper;
@@ -128,7 +135,7 @@ public class LifetimeAssert {
         mTarget = target;
     }
 
-    public static LifetimeAssert create(Object target) {
+    public static @Nullable LifetimeAssert create(Object target) {
         if (!BuildConfig.ENABLE_ASSERTS) {
             return null;
         }
@@ -136,7 +143,7 @@ public class LifetimeAssert {
                 new WrappedReference(target, new CreationException(), false), target);
     }
 
-    public static LifetimeAssert create(Object target, boolean safeToGc) {
+    public static @Nullable LifetimeAssert create(Object target, boolean safeToGc) {
         if (!BuildConfig.ENABLE_ASSERTS) {
             return null;
         }
@@ -144,8 +151,9 @@ public class LifetimeAssert {
                 new WrappedReference(target, new CreationException(), safeToGc), target);
     }
 
-    public static void setSafeToGc(LifetimeAssert asserter, boolean value) {
+    public static void setSafeToGc(@Nullable LifetimeAssert asserter, boolean value) {
         if (BuildConfig.ENABLE_ASSERTS) {
+            assert asserter != null;
             // This guaratees that the target object is reachable until after mSafeToGc value
             // is updated here. See comment on Reference.reachabilityFence and review comments
             // on https://chromium-review.googlesource.com/c/chromium/src/+/1887151 for a

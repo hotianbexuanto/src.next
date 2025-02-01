@@ -39,8 +39,9 @@ TabUIHelper::~TabUIHelper() {}
 
 std::u16string TabUIHelper::GetTitle() const {
   const std::u16string& contents_title = web_contents()->GetTitle();
-  if (!contents_title.empty())
+  if (!contents_title.empty()) {
     return contents_title;
+  }
 
   if (tab_ui_data_)
     return tab_ui_data_->title;
@@ -68,8 +69,9 @@ bool TabUIHelper::ShouldHideThrobber() const {
   // We also want to hide a background tab's throbber during page load if it is
   // created by session restore. A restored tab's favicon is already fetched
   // by |SessionRestoreDelegate|.
-  if (created_by_session_restore_ && !was_active_at_least_once_)
+  if (created_by_session_restore_ && !was_active_at_least_once_) {
     return true;
+  }
 
   return false;
 }

@@ -34,6 +34,7 @@
 #include "net/socket/client_socket_pool_manager_impl.h"
 #include "net/socket/next_proto.h"
 #include "net/socket/ssl_client_socket.h"
+#include "net/socket/stream_socket_close_reason.h"
 #include "net/spdy/spdy_session.h"
 #include "net/spdy/spdy_session_pool.h"
 #include "net/third_party/quiche/src/quic/core/crypto/quic_random.h"
@@ -206,14 +207,14 @@ HttpNetworkSession::HttpNetworkSession(const Params& params,
           WEBSOCKET_SOCKET_POOL);
 
   if (params_.enable_http2) {
-    next_protos_.push_back(kProtoHTTP2);
+    next_protos_.push_back(NextProto::kProtoHTTP2);
     if (base::FeatureList::IsEnabled(features::kAlpsForHttp2)) {
       // Enable ALPS for HTTP/2 with empty data.
-      application_settings_[kProtoHTTP2] = {};
+      application_settings_[NextProto::kProtoHTTP2] = {};
     }
   }
 
-  next_protos_.push_back(kProtoHTTP11);
+  next_protos_.push_back(NextProto::kProtoHTTP11);
 
   http_server_properties_->SetMaxServerConfigsStoredInProperties(
       context.quic_context->params()->max_server_configs_stored_in_properties);
@@ -342,8 +343,18 @@ void HttpNetworkSession::CloseAllConnections(int net_error,
                                                          net_log_reason_utf8);
   websocket_socket_pool_manager_->FlushSocketPoolsWithError(
       net_error, net_log_reason_utf8);
+<<<<<<< HEAD
+  if (http_stream_pool_) {
+    http_stream_pool_->FlushWithError(
+        net_error, StreamSocketCloseReason::kCloseAllConnections,
+        net_log_reason_utf8);
+  }
+  spdy_session_pool_.CloseCurrentSessions(static_cast<Error>(net_error));
+  quic_session_pool_.CloseAllSessions(net_error, quic::QUIC_PEER_GOING_AWAY);
+=======
   spdy_session_pool_.CloseCurrentSessions(static_cast<net::Error>(net_error));
   quic_stream_factory_.CloseAllSessions(net_error, quic::QUIC_PEER_GOING_AWAY);
+>>>>>>> chromium
 }
 
 void HttpNetworkSession::CloseIdleConnections(const char* net_log_reason_utf8) {
@@ -430,6 +441,18 @@ CommonConnectJobParams HttpNetworkSession::CreateCommonConnectJobParams(
       context_.socket_performance_watcher_factory,
       context_.network_quality_estimator, context_.net_log,
       for_websockets ? &websocket_endpoint_lock_manager_ : nullptr);
+}
+
+void HttpNetworkSession::ApplyTestingFixedPort(
+    url::SchemeHostPort& endpoint) const {
+  bool using_ssl = GURL::SchemeIsCryptographic(endpoint.scheme());
+  if (!using_ssl && params().testing_fixed_http_port != 0) {
+    endpoint = url::SchemeHostPort(endpoint.scheme(), endpoint.host(),
+                                   params().testing_fixed_http_port);
+  } else if (using_ssl && params().testing_fixed_https_port != 0) {
+    endpoint = url::SchemeHostPort(endpoint.scheme(), endpoint.host(),
+                                   params().testing_fixed_https_port);
+  }
 }
 
 ClientSocketPoolManager* HttpNetworkSession::GetSocketPoolManager(

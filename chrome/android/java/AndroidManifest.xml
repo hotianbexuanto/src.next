@@ -99,6 +99,12 @@ by a child template that "extends" this file.
     <!-- Feature declarations required to support conditional install for VR DFM -->
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false"/>
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false"/>
+<<<<<<< HEAD
+
+    <uses-permission-sdk-23 android:name="android.permission.SCENE_UNDERSTANDING_FINE" />
+    <uses-permission-sdk-23 android:name="android.permission.HAND_TRACKING" />
+=======
+>>>>>>> chromium
     {% endif %}
 
     <permission android:name="{{ manifest_package }}.permission.CHILD_SERVICE" android:protectionLevel="signature" />
@@ -404,6 +410,18 @@ by a child template that "extends" this file.
             <intent-filter>
                 <action android:name="org.chromium.chrome.browser.incognito.OPEN_PRIVATE_TAB" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name="org.chromium.chrome.browser.AutofillOptionsLauncher"
+            android:theme="@style/Theme.BrowserUI.NoDisplay"
+            android:excludeFromRecents="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.APP_BROWSER" />
+                <category android:name="android.intent.category.PREFERENCE" />
             </intent-filter>
         </activity>
 
@@ -1002,8 +1020,19 @@ by a child template that "extends" this file.
             android:clearTaskOnLaunch="true"
             android:excludeFromRecents="true"
             android:windowSoftInputMode="adjustResize"
+<<<<<<< HEAD
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize|uiMode"
+            android:hardwareAccelerated="false">
+            <intent-filter>
+                <action android:name="android.intent.action.WEB_SEARCH" />
+                <!-- Permits Chrome to act as a default handler for WEB_SEARCH intents. -->
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+      </activity>
+=======
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize"
             android:hardwareAccelerated="false" />
+>>>>>>> chromium
 
         <!-- GcmTaskService for registration for Invalidations. Not actually implemented anymore. -->
         <service android:name="com.google.ipc.invalidation.ticl.android2.channel.GcmRegistrationTaskService"
@@ -1033,8 +1062,16 @@ by a child template that "extends" this file.
         <receiver android:name="org.chromium.chrome.browser.notifications.NotificationServiceImpl$Receiver"
             android:exported="false">
             <intent-filter>
+                <action android:name="org.chromium.chrome.browser.notifications.ALWAYS_ALLOW" />
                 <action android:name="org.chromium.chrome.browser.notifications.CLICK_NOTIFICATION" />
                 <action android:name="org.chromium.chrome.browser.notifications.CLOSE_NOTIFICATION" />
+<<<<<<< HEAD
+                <action android:name="org.chromium.chrome.browser.notifications.COMMIT_UNSUBSCRIBE" />
+                <action android:name="org.chromium.chrome.browser.notifications.PRE_UNSUBSCRIBE" />
+                <action android:name="org.chromium.chrome.browser.notifications.SHOW_ORIGINAL_NOTIFICATION" />
+                <action android:name="org.chromium.chrome.browser.notifications.UNDO_UNSUBSCRIBE" />
+=======
+>>>>>>> chromium
             </intent-filter>
         </receiver>
 
@@ -1128,6 +1165,35 @@ by a child template that "extends" this file.
             android:documentLaunchMode="always"
             android:noHistory="true"/>
 
+<<<<<<< HEAD
+        <activity
+            android:name="org.chromium.chrome.browser.price_tracking.PriceDropNotificationManagerImpl$TrampolineActivity"
+            android:theme="@style/Theme.BrowserUI.NoDisplay"
+            android:exported="false"
+            android:autoRemoveFromRecents="true"
+            android:excludeFromRecents="true"
+            android:documentLaunchMode="always"
+            android:noHistory="true"/>
+
+        <activity
+            android:name="org.chromium.chrome.browser.price_tracking.PriceDropNotificationManagerImpl$DismissNotificationChromeActivity"
+            android:theme="@style/Theme.BrowserUI.NoDisplay"
+            android:exported="false"
+            android:autoRemoveFromRecents="true"
+            android:excludeFromRecents="true"
+            android:documentLaunchMode="always"
+            android:noHistory="true"/>
+
+        <!-- Activities for task manager. -->
+        <activity
+            android:name="org.chromium.chrome.browser.task_manager.ui.TaskManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Chromium.Activity"
+            android:launchMode="singleInstance">
+        </activity>
+
+=======
+>>>>>>> chromium
         <receiver android:name="org.chromium.chrome.browser.notifications.scheduler.DisplayAgent$Receiver"
             android:exported="false"/>
 
@@ -1222,7 +1288,7 @@ by a child template that "extends" this file.
           {% endif %} />
       {% endfor %}
 
-      {% set num_privileged_services = 5 %}
+      {% set num_privileged_services = 10 %}
       <meta-data android:name="org.chromium.content.browser.NUM_PRIVILEGED_SERVICES"
           android:value="{{ num_privileged_services }}"/>
 
@@ -1310,10 +1376,23 @@ by a child template that "extends" this file.
                   android:readPermission="android.permission.GLOBAL_SEARCH" />
       </provider>
 
+<<<<<<< HEAD
+      <provider
+            android:name="org.chromium.chrome.browser.provider.PageContentProvider"
+            android:authorities="{{ manifest_package }}.PageContentProvider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+      </provider>
+
+      <!-- Provider for querying the Autofill third party mode state. -->
+      <provider android:name="org.chromium.chrome.browser.autofill.AutofillThirdPartyModeContentProvider"
+          android:authorities="{{ manifest_package }}.AutofillThirdPartyModeContentProvider"
+=======
       <!-- Provider for App to Web impression attribution.
            TODO(https://crbug.com/1210171): Gate this provider behind a custom permission? -->
       <provider android:name="org.chromium.chrome.browser.attribution_reporting.AttributionReportingProvider"
           android:authorities="{{ manifest_package }}.AttributionReporting"
+>>>>>>> chromium
           android:exported="true"
           tools:ignore="ExportedContentProvider">
       </provider>

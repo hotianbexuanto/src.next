@@ -38,8 +38,9 @@ VlogInfo::VmodulePattern::VmodulePattern(const std::string& pattern)
   // If the pattern contains a {forward,back} slash, we assume that
   // it's meant to be tested against the entire __FILE__ string.
   std::string::size_type first_slash = pattern.find_first_of("\\/");
-  if (first_slash != std::string::npos)
+  if (first_slash != std::string::npos) {
     match_target = MATCH_FILE;
+  }
 }
 
 VlogInfo::VmodulePattern::VmodulePattern()
@@ -95,9 +96,15 @@ base::StringPiece GetModule(const base::StringPiece& file) {
   base::StringPiece::size_type extension_start = module.rfind('.');
   module = module.substr(0, extension_start);
   static const char kInlSuffix[] = "-inl";
+<<<<<<< HEAD
+  static const int kInlSuffixLen = std::size(kInlSuffix) - 1;
+  if (base::EndsWith(module, kInlSuffix)) {
+=======
   static const int kInlSuffixLen = base::size(kInlSuffix) - 1;
   if (base::EndsWith(module, kInlSuffix))
+>>>>>>> chromium
     module.remove_suffix(kInlSuffixLen);
+  }
   return module;
 }
 
@@ -109,8 +116,9 @@ int VlogInfo::GetVlogLevel(const base::StringPiece& file) const {
     for (const auto& it : vmodule_levels_) {
       base::StringPiece target(
           (it.match_target == VmodulePattern::MATCH_FILE) ? file : module);
-      if (MatchVlogPattern(target, it.pattern))
+      if (MatchVlogPattern(target, it.pattern)) {
         return it.vlog_level;
+      }
     }
   }
   return GetMaxVlogLevel();

@@ -48,7 +48,30 @@ test("services_unittests") {
       "//services/viz/public/cpp/compositing:tests",
       "//services/viz/public/cpp/gpu:tests",
       "//services/viz/public/cpp/hit_test:tests",
+<<<<<<< HEAD
+      "//services/webnn:tests",
+      "//services/webnn/public/cpp:tests",
+      "//services/webnn/public/mojom:tests",
     ]
+    if (is_ios) {
+      bundle_deps =
+          [ "//services/tracing:services_tracing_perfetto_bundle_data" ]
+    }
+  }
+
+  if (is_android && (current_cpu == "arm" || current_cpu == "arm64")) {
+    deps += [ "//base:base_profiler_test_support_library" ]
+  }
+
+  if (is_chromeos || is_linux || is_fuchsia) {
+    deps += [ "//services/accessibility:tests" ]
+  }
+
+  if (is_win) {
+    deps += [ "//services/proxy_resolver_win:tests" ]
+=======
+    ]
+>>>>>>> chromium
   }
 
   if (is_android) {
@@ -97,6 +120,10 @@ if (!is_ios) {
       "//services/test:run_all_unittests",
       "//services/viz/public/cpp/compositing:perftests",
     ]
+
+    if (is_android) {
+      deps += [ "//components/signin/public/android:java" ]
+    }
   }
 }
 

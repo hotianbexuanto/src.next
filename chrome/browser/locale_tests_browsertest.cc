@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 
+#include <array>
 #include <memory>
 
 #include "base/command_line.h"
@@ -27,14 +28,15 @@ class ScopedLocale {
 #if defined(OS_LINUX) || defined(OS_CHROMEOS)
     old_locale_ = getenv("LC_ALL");
 
-    static const struct {
+    struct Locales {
       const char* chrome_locale;
       const char* system_locale;
-    } kLocales[] = {
-      { "da", "da_DK.UTF-8" },
-      { "he", "he_IL.UTF-8" },
-      { "zh-TW", "zh_TW.UTF-8" }
     };
+    static const auto kLocales = std::to_array<Locales>({
+        {"da", "da_DK.UTF-8"},
+        {"he", "he_IL.UTF-8"},
+        {"zh-TW", "zh_TW.UTF-8"},
+    });
     bool found_locale = false;
     for (size_t i = 0; i < base::size(kLocales); ++i) {
       if (kLocales[i].chrome_locale == locale) {

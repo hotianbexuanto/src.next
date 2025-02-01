@@ -316,6 +316,27 @@ struct NavigateParams {
   // observed and fall back to using http scheme if necessary.
   bool is_using_https_as_default_scheme = false;
 
+<<<<<<< HEAD
+  // True if the navigation was initiated by typing in the omnibox and the typed
+  // text had an explicit http scheme.
+  bool url_typed_with_http_scheme = false;
+
+  // Indicates if the page load occurs during a non-optimal performance state.
+  // This value is only suggested based upon the load context, and can be
+  // overridden by other factors.
+  blink::mojom::SystemEntropy suggested_system_entropy =
+      blink::mojom::SystemEntropy::kNormal;
+
+  // This option forces PWA navigation capturing (which captures some
+  // navigations into PWA windows or tabs) off. This is only recommended to be
+  // used if the navigation MUST not be captured. See
+  // https://bit.ly/pwa-navigation-capturing for a description about what PWA
+  // navigation capturing does. Setting this field to `true` will disable all of
+  // the behaviors listed in that document.
+  bool pwa_navigation_capturing_force_off = false;
+
+=======
+>>>>>>> chromium
  private:
   NavigateParams();
   DISALLOW_COPY_AND_ASSIGN(NavigateParams);

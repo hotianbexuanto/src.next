@@ -9,10 +9,20 @@
 #include "base/bind.h"
 #include "base/command_line.h"
 #include "base/files/file_util.h"
+<<<<<<< HEAD
+#include "base/functional/bind.h"
+#include "base/memory/raw_ptr.h"
+=======
+>>>>>>> chromium
 #include "base/memory/ref_counted.h"
 #include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
+<<<<<<< HEAD
+#include "base/strings/to_string.h"
+#include "base/task/single_thread_task_runner.h"
+=======
+>>>>>>> chromium
 #include "base/test/task_environment.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "build/build_config.h"
@@ -269,9 +279,15 @@ testing::AssertionResult ExtensionServiceTestBase::ValidateBooleanPref(
     const std::string& extension_id,
     const std::string& pref_path,
     bool expected_val) {
+<<<<<<< HEAD
+  std::string msg =
+      base::StringPrintf("while checking: %s %s == %s", extension_id.c_str(),
+                         pref_path.c_str(), base::ToString(expected_val));
+=======
   std::string msg = base::StringPrintf("while checking: %s %s == %s",
                                        extension_id.c_str(), pref_path.c_str(),
                                        expected_val ? "true" : "false");
+>>>>>>> chromium
 
   PrefService* prefs = profile()->GetPrefs();
   const base::DictionaryValue* dict =

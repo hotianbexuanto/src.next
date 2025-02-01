@@ -33,11 +33,40 @@
 #include "third_party/blink/renderer/core/frame/window_or_worker_global_scope.h"
 
 #include "base/containers/span.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/bindings/core/v8/script_value.h"
+=======
 #include "third_party/blink/renderer/bindings/core/v8/scheduled_action.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/bindings/core/v8/v8_gc_for_context_dispose.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/frame/policy_container.h"
+#include "third_party/blink/renderer/platform/bindings/exception_state.h"
+
+namespace blink {
+
+bool WindowOrWorkerGlobalScope::crossOriginIsolated() {
+  return GetExecutionContext()->CrossOriginIsolatedCapability();
+}
+
+// See https://github.com/whatwg/html/issues/7912
+// static
+String WindowOrWorkerGlobalScope::crossOriginEmbedderPolicy() {
+  const PolicyContainer* policy_container =
+      GetExecutionContext()->GetPolicyContainer();
+  CHECK(policy_container);
+  switch (policy_container->GetPolicies().cross_origin_embedder_policy.value) {
+    case network::mojom::CrossOriginEmbedderPolicyValue::kNone:
+      return "unsafe-none";
+    case network::mojom::CrossOriginEmbedderPolicyValue::kCredentialless:
+      return "credentialless";
+    case network::mojom::CrossOriginEmbedderPolicyValue::kRequireCorp:
+      return "require-corp";
+  }
+=======
 #include "third_party/blink/renderer/core/frame/dom_timer.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/page_dismissal_scope.h"
@@ -214,6 +243,7 @@ void WindowOrWorkerGlobalScope::clearInterval(EventTarget& event_target,
 bool WindowOrWorkerGlobalScope::crossOriginIsolated(
     const ExecutionContext& execution_context) {
   return execution_context.CrossOriginIsolatedCapability();
+>>>>>>> chromium
 }
 
 }  // namespace blink

@@ -209,9 +209,15 @@ bool NinePieceImagePainter::Paint(GraphicsContext& graphics_context,
   DEVTOOLS_TIMELINE_TRACE_EVENT_WITH_CATEGORIES(
       TRACE_DISABLED_BY_DEFAULT("devtools.timeline"), "PaintImage",
       inspector_paint_image_event::Data, node, *style_image,
+<<<<<<< HEAD
+      gfx::RectF(image->Rect()), gfx::RectF(border_image_rect));
+  PaintPieces(graphics_context, border_image_rect, style, nine_piece_image,
+              *image, unzoomed_image_size, sides_to_include);
+=======
       FloatRect(image->Rect()), FloatRect(border_image_rect));
   PaintPieces(graphics_context, border_image_rect, style, nine_piece_image,
               image.get(), unzoomed_image_size, sides_to_include);
+>>>>>>> chromium
   return true;
 }
 

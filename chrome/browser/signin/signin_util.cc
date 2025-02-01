@@ -33,6 +33,13 @@
 #include "components/signin/public/identity_manager/identity_utils.h"
 #include "components/signin/public/identity_manager/primary_account_mutator.h"
 #include "google_apis/gaia/gaia_auth_util.h"
+<<<<<<< HEAD
+#include "google_apis/gaia/gaia_constants.h"
+#include "google_apis/gaia/gaia_id.h"
+#include "net/cookies/canonical_cookie.h"
+#include "services/network/public/mojom/cookie_manager.mojom.h"
+=======
+>>>>>>> chromium
 #include "ui/base/l10n/l10n_util.h"
 
 #if defined(OS_WIN) || defined(OS_LINUX) || defined(OS_CHROMEOS) || \
@@ -199,9 +206,18 @@ void ResetForceSigninForTesting() {
   g_is_force_signin_enabled_cache = NOT_CACHED;
 }
 
+<<<<<<< HEAD
+bool IsProfileDeletionAllowed(Profile* profile) {
+#if BUILDFLAG(IS_ANDROID)
+  return false;
+#else
+  return true;
+#endif
+=======
 bool IsUserSignoutAllowedForProfile(Profile* profile) {
   return UserSignoutSetting::GetForProfile(profile)->state() ==
          UserSignoutSetting::State::kAllowed;
+>>>>>>> chromium
 }
 
 void EnsureUserSignoutAllowedIsInitializedForProfile(Profile* profile) {
@@ -218,10 +234,79 @@ void SetUserSignoutAllowedForProfile(Profile* profile, bool is_allowed) {
   UserSignoutSetting::GetForProfile(profile)->set_state(new_state);
 }
 
+<<<<<<< HEAD
+bool ProfileSeparationAllowsKeepingUnmanagedBrowsingDataInManagedProfile(
+    Profile* profile,
+    const policy::ProfileSeparationPolicies&
+        intercepted_account_separation_policies) {
+  // We should not move managed data.
+  if (enterprise_util::UserAcceptedAccountManagement(profile)) {
+    return false;
+  }
+
+  std::string legacy_policy_for_intercepted_profile =
+      intercepted_account_separation_policies
+          .managed_accounts_signin_restrictions()
+          .value_or(std::string());
+  std::string legacy_policy_for_current_profile =
+      profile->GetPrefs()->GetString(prefs::kManagedAccountsSigninRestriction);
+  bool allowed_by_existing_profile =
+      legacy_policy_for_current_profile.empty() ||
+      legacy_policy_for_current_profile == "none" ||
+      base::EndsWith(legacy_policy_for_current_profile, "keep_existing_data");
+  bool allowed_by_intercepted_account =
+      intercepted_account_separation_policies
+              .profile_separation_data_migration_settings()
+              .value_or(policy::ProfileSeparationDataMigrationSettings::
+                            USER_OPT_IN) !=
+          policy::ProfileSeparationDataMigrationSettings::ALWAYS_SEPARATE &&
+      (legacy_policy_for_intercepted_profile.empty() ||
+       legacy_policy_for_intercepted_profile == "none" ||
+       base::EndsWith(legacy_policy_for_intercepted_profile,
+                      "keep_existing_data"));
+  return allowed_by_existing_profile && allowed_by_intercepted_account;
+}
+
+bool IsAccountExemptedFromEnterpriseProfileSeparation(
+    Profile* profile,
+    const std::string& email) {
+  if (profile->GetPrefs()
+          ->FindPreference(prefs::kProfileSeparationDomainExceptionList)
+          ->IsDefaultValue()) {
+    return true;
+  }
+
+  const std::string domain = gaia::ExtractDomainName(email);
+  const auto& allowed_domains = profile->GetPrefs()->GetList(
+      prefs::kProfileSeparationDomainExceptionList);
+  return base::Contains(allowed_domains, base::Value(domain));
+}
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+
+void RecordEnterpriseProfileCreationUserChoice(bool enforced_by_policy,
+                                               bool created) {
+  base::UmaHistogramBoolean(
+      enforced_by_policy
+          ? "Signin.Enterprise.WorkProfile.ProfileCreatedWithPolicySet"
+          : "Signin.Enterprise.WorkProfile.ProfileCreatedwithPolicyUnset",
+      created);
+}
+
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+PrimaryAccountError SetPrimaryAccountWithInvalidToken(
+    Profile* profile,
+    const std::string& user_email,
+    const GaiaId& gaia_id,
+    bool is_under_advanced_protection,
+    signin_metrics::AccessPoint access_point,
+    signin_metrics::SourceForRefreshTokenOperation source) {
+=======
 void EnsurePrimaryAccountAllowedForProfile(Profile* profile) {
 // All primary accounts are allowed on ChromeOS, so this method is a no-op on
 // ChromeOS.
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
   if (!identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync))
     return;
@@ -234,6 +319,53 @@ void EnsurePrimaryAccountAllowedForProfile(Profile* profile) {
     return;
   }
 
+<<<<<<< HEAD
+  DVLOG(1) << "Adding user with gaia id <" << gaia_id << "> and email <"
+           << user_email << "> with invalid refresh token.";
+
+  // Lock AccountReconcilor temporarily to prevent AddOrUpdateAccount failure
+  // since we have an invalid refresh token.
+  AccountReconcilor::Lock account_reconcilor_lock(
+      AccountReconcilorFactory::GetForProfile(profile));
+
+  CoreAccountId account_id =
+      identity_manager->GetAccountsMutator()->AddOrUpdateAccount(
+          gaia_id, user_email, GaiaConstants::kInvalidRefreshToken,
+          is_under_advanced_protection, access_point, source);
+
+  DVLOG(1) << "Account id <" << account_id.ToString()
+           << "> has been added to the profile with invalid token.";
+
+  auto set_primary_account_result =
+      identity_manager->GetPrimaryAccountMutator()->SetPrimaryAccount(
+          account_id, signin::ConsentLevel::kSignin);
+  DVLOG(1) << "Operation of setting account id <" << account_id.ToString()
+           << "> received the following result: "
+           << static_cast<int>(set_primary_account_result);
+
+  return set_primary_account_result;
+}
+
+bool IsSigninPending(signin::IdentityManager* identity_manager) {
+  return !identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync) &&
+         identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin) &&
+         identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
+             identity_manager->GetPrimaryAccountId(
+                 signin::ConsentLevel::kSignin));
+}
+
+SignedInState GetSignedInState(
+    const signin::IdentityManager* identity_manager) {
+  if (!identity_manager) {
+    return SignedInState::kSignedOut;
+  }
+
+  if (identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync)) {
+    if (identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
+            identity_manager->GetPrimaryAccountId(
+                signin::ConsentLevel::kSync))) {
+      return SignedInState::kSyncPaused;
+=======
   UserSignoutSetting* signout_setting =
       UserSignoutSetting::GetForProfile(profile);
   switch (signout_setting->state()) {
@@ -249,6 +381,7 @@ void EnsurePrimaryAccountAllowedForProfile(Profile* profile) {
           signin_metrics::SIGNIN_NOT_ALLOWED_ON_PROFILE_INIT,
           signin_metrics::SignoutDelete::kIgnoreMetric);
       break;
+>>>>>>> chromium
     }
     case UserSignoutSetting::State::kDisallowed:
 #if defined(CAN_DELETE_PROFILE)

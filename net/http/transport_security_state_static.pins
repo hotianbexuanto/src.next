@@ -43,6 +43,13 @@
 #   hash function for preloaded entries again (we have already done so once).
 #
 
+<<<<<<< HEAD
+# Last updated: 2025-01-30 12:57 UTC
+PinsListTimestamp
+1738241860
+
+=======
+>>>>>>> chromium
 TestSPKI
 sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 

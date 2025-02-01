@@ -4,7 +4,12 @@
 
 #include "net/http/http_content_disposition.h"
 
+<<<<<<< HEAD
+#include <array>
+
+=======
 #include "base/cxx17_backports.h"
+>>>>>>> chromium
 #include "base/strings/utf_string_conversions.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -425,10 +430,11 @@ TEST(HttpContentDispositionTest, tc2231) {
 }
 
 TEST(HttpContentDispositionTest, ParseResult) {
-  const struct ParseResultTestCase {
+  struct ParseResultTestCase {
     const char* header;
     int expected_flags;
-  } kTestCases[] = {
+  };
+  const auto kTestCases = std::to_array<ParseResultTestCase>({
       // Basic feature tests
       {"", HttpContentDisposition::INVALID},
       {"example=x", HttpContentDisposition::INVALID},
@@ -486,7 +492,7 @@ TEST(HttpContentDispositionTest, ParseResult) {
        HttpContentDisposition::INVALID},
       {"filename=foo\xcc\x88 foo%cc%88 =?utf-8?Q?foo?; name=x",
        HttpContentDisposition::INVALID},
-  };
+  });
 
   for (size_t i = 0; i < base::size(kTestCases); ++i) {
     const ParseResultTestCase& test_case = kTestCases[i];

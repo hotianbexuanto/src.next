@@ -7,11 +7,17 @@ package org.chromium.content.browser;
 import android.util.Pair;
 
 import org.chromium.base.UserData;
+<<<<<<< HEAD
+import org.chromium.build.annotations.DoNotInline;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.DoNotInline;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.content.browser.remoteobjects.RemoteObjectInjector;
+>>>>>>> chromium
 import org.chromium.content.browser.webcontents.WebContentsImpl;
 import org.chromium.content.browser.webcontents.WebContentsImpl.UserDataFactory;
 import org.chromium.content_public.browser.JavascriptInjector;
@@ -27,6 +33,7 @@ import java.util.Set;
  * Implementation class of the interface {@link JavascriptInjector}.
  */
 @JNINamespace("content")
+@NullMarked
 public class JavascriptInjectorImpl implements JavascriptInjector, UserData {
     private static final class UserDataFactoryLazyHolder {
         private static final UserDataFactory<JavascriptInjectorImpl> INSTANCE =
@@ -48,7 +55,11 @@ public class JavascriptInjectorImpl implements JavascriptInjector, UserData {
      * @return {@link JavascriptInjector} object used for the give WebContents.
      *         Creates one if not present.
      */
+<<<<<<< HEAD
+    public static @Nullable JavascriptInjector fromWebContents(WebContents webContents) {
+=======
     public static JavascriptInjector fromWebContents(WebContents webContents, boolean useMojo) {
+>>>>>>> chromium
         JavascriptInjectorImpl javascriptInjector =
                 ((WebContentsImpl) webContents)
                         .getOrSetUserData(
@@ -95,7 +106,9 @@ public class JavascriptInjectorImpl implements JavascriptInjector, UserData {
 
     @Override
     public void addPossiblyUnsafeInterface(
-            Object object, String name, Class<? extends Annotation> requiredAnnotation) {
+            @Nullable Object object,
+            String name,
+            @Nullable Class<? extends Annotation> requiredAnnotation) {
         if (object == null) return;
 
         assert mUseMojo != null;
@@ -127,8 +140,19 @@ public class JavascriptInjectorImpl implements JavascriptInjector, UserData {
         long init(JavascriptInjectorImpl caller, WebContents webContents, Object retainedObjects);
         void setAllowInspection(
                 long nativeJavascriptInjector, JavascriptInjectorImpl caller, boolean allow);
+<<<<<<< HEAD
+
+        void addInterface(
+                long nativeJavascriptInjector,
+                JavascriptInjectorImpl caller,
+                Object object,
+                String name,
+                @Nullable Class requiredAnnotation);
+
+=======
         void addInterface(long nativeJavascriptInjector, JavascriptInjectorImpl caller,
                 Object object, String name, Class requiredAnnotation);
+>>>>>>> chromium
         void removeInterface(
                 long nativeJavascriptInjector, JavascriptInjectorImpl caller, String name);
     }

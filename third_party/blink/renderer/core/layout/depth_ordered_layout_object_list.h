@@ -35,11 +35,6 @@ struct LayoutObjectWithDepth {
     return depth > other.depth;
   }
 
-  void operator=(LayoutObject* obj) {
-    object = obj;
-    depth = DetermineDepth(obj);
-  }
-
  private:
   static unsigned DetermineDepth(LayoutObject*);
 };

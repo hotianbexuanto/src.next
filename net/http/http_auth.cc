@@ -5,6 +5,12 @@
 #include "net/http/http_auth.h"
 
 #include <algorithm>
+<<<<<<< HEAD
+#include <array>
+#include <optional>
+#include <string_view>
+=======
+>>>>>>> chromium
 
 #include "base/cxx17_backports.h"
 #include "base/strings/string_tokenizer.h"
@@ -25,9 +31,14 @@
 namespace net {
 
 namespace {
-const char* const kSchemeNames[] = {kBasicAuthScheme,     kDigestAuthScheme,
-                                    kNtlmAuthScheme,      kNegotiateAuthScheme,
-                                    kSpdyProxyAuthScheme, kMockAuthScheme};
+const auto kSchemeNames = std::to_array<const char*>({
+    kBasicAuthScheme,
+    kDigestAuthScheme,
+    kNtlmAuthScheme,
+    kNegotiateAuthScheme,
+    kSpdyProxyAuthScheme,
+    kMockAuthScheme,
+});
 }  // namespace
 
 HttpAuth::Identity::Identity() : source(IDENT_SRC_NONE), invalid(true) {}

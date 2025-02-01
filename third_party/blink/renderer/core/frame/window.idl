@@ -94,8 +94,11 @@
     // https://html.spec.whatwg.org/C/#windoworworkerglobalscope-mixin
     // https://wicg.github.io/origin-policy/#monkeypatch-html-windoworworkerglobalscope
     [Replaceable] readonly attribute DOMString origin;
+<<<<<<< HEAD
+=======
     void queueMicrotask(VoidFunction callback);
     [RuntimeEnabled=OriginPolicy, SameObject, SaveSameObject] readonly attribute FrozenArray<DOMString> originPolicyIds;
+>>>>>>> chromium
 
     // AnimationFrameProvider mixin
     // https://html.spec.whatwg.org/C/#animation-frames
@@ -206,13 +209,27 @@
     // Event handler attributes
     attribute EventHandler onsearch;
 
+<<<<<<< HEAD
+    // TrustedTypes API: http://github.com/w3c/trusted-types
+    [CallWith=ScriptState] readonly attribute TrustedTypePolicyFactory trustedTypes;
+
+    // Anonymous iframe:
+    // https://github.com/WICG/anonymous-iframe
+    [RuntimeEnabled=AnonymousIframe] readonly attribute boolean credentialless;
+
+    // Collection of fenced frame APIs
+    // https://github.com/shivanigithub/fenced-frame/issues/14
+    [RuntimeEnabled=FencedFrames] readonly attribute Fence? fence;
+=======
     // https://w3c.github.io/webappsec-secure-contexts/#monkey-patching-global-object
     readonly attribute boolean isSecureContext;
 
     // TrustedTypes API: http://github.com/wicg/trusted-types
     [RuntimeEnabled=TrustedDOMTypes, CallWith=ScriptState] readonly attribute TrustedTypePolicyFactory trustedTypes;
+>>>>>>> chromium
 };
 
 Window includes GlobalEventHandlers;
 Window includes WindowEventHandlers;
+Window includes UniversalGlobalScope;
 Window includes WindowOrWorkerGlobalScope;

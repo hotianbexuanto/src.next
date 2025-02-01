@@ -10,6 +10,13 @@
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/version.h"
+<<<<<<< HEAD
+#include "build/build_config.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/web_applications/preinstalled_web_apps/preinstalled_web_apps.h"
+#include "chrome/common/chrome_features.h"
+=======
+>>>>>>> chromium
 #include "chrome/common/extensions/extension_constants.h"
 #include "content/public/browser/browser_thread.h"
 #include "extensions/browser/extension_prefs.h"
@@ -41,7 +48,7 @@ PendingExtensionManager::PendingExtensionManager(
     content::BrowserContext* context)
     : context_(context) {}
 
-PendingExtensionManager::~PendingExtensionManager() {}
+PendingExtensionManager::~PendingExtensionManager() = default;
 
 const PendingExtensionInfo* PendingExtensionManager::GetById(
     const std::string& id) const {
@@ -87,6 +94,24 @@ bool PendingExtensionManager::HasPendingExtensions() const {
 }
 
 bool PendingExtensionManager::HasPendingExtensionFromSync() const {
+<<<<<<< HEAD
+  return std::ranges::any_of(
+      pending_extensions_,
+      [](const std::pair<const std::string, PendingExtensionInfo>& it) {
+        return it.second.is_from_sync();
+      });
+}
+
+bool PendingExtensionManager::HasHighPriorityPendingExtension() const {
+  return std::ranges::any_of(
+      pending_extensions_,
+      [](const std::pair<const std::string, PendingExtensionInfo>& it) {
+        return it.second.install_source() ==
+                   ManifestLocation::kExternalPolicyDownload ||
+               it.second.install_source() ==
+                   ManifestLocation::kExternalComponent;
+      });
+=======
   PendingExtensionList::const_iterator iter;
   for (iter = pending_extension_list_.begin();
        iter != pending_extension_list_.end();
@@ -140,6 +165,7 @@ bool PendingExtensionManager::IsReinstallForCorruptionExpected(
 
 bool PendingExtensionManager::HasAnyReinstallForCorruption() const {
   return !expected_reinstalls_.empty();
+>>>>>>> chromium
 }
 
 bool PendingExtensionManager::AddFromSync(
@@ -320,7 +346,13 @@ bool PendingExtensionManager::AddExtensionImpl(
     bool mark_acknowledged,
     bool remote_install) {
   CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
-
+#if BUILDFLAG(IS_CHROMEOS)
+  // Demo mode apps are migrate to SWA. Old extensions are still installed from
+  // policy for old devices. Skip install these apps on devices up-to-date.
+  if (extension_misc::IsDemoModeChromeApp(id)) {
+    return false;
+  }
+#endif  // BUILDFLAG(IS_CHROMEOS)
   PendingExtensionInfo info(id, install_parameter, update_url, version,
                             should_allow_install, is_from_sync, install_source,
                             creation_flags, mark_acknowledged, remote_install);

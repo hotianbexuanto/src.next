@@ -8,11 +8,9 @@
 #include "build/build_config.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 
-BrowserProcessPlatformPartBase::BrowserProcessPlatformPartBase() {
-}
+BrowserProcessPlatformPartBase::BrowserProcessPlatformPartBase() = default;
 
-BrowserProcessPlatformPartBase::~BrowserProcessPlatformPartBase() {
-}
+BrowserProcessPlatformPartBase::~BrowserProcessPlatformPartBase() = default;
 
 void BrowserProcessPlatformPartBase::PlatformSpecificCommandLineProcessing(
     const base::CommandLine& /* command_line */) {

@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/dcheck_is_on.h"
+#include "base/functional/function_ref.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -16,6 +17,12 @@
 #include "third_party/blink/renderer/platform/graphics/paint/effect_paint_property_node.h"
 #include "third_party/blink/renderer/platform/graphics/paint/scroll_paint_property_node.h"
 #include "third_party/blink/renderer/platform/graphics/paint/transform_paint_property_node.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/member.h"
+#include "third_party/blink/renderer/platform/sparse_vector.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
 namespace blink {
@@ -47,6 +54,14 @@ class CORE_EXPORT ObjectPaintProperties {
   ~ObjectPaintProperties() { DCHECK(!is_immutable_); }
 #endif
 
+<<<<<<< HEAD
+  void Trace(Visitor* visitor) const { visitor->Trace(nodes_); }
+
+ private:
+// Preprocessor macro declarations.
+//
+=======
+>>>>>>> chromium
 // The following defines 3 functions and one variable:
 // - Foo(): a getter for the property.
 // - UpdateFoo(): an update function.
@@ -73,6 +88,22 @@ class CORE_EXPORT ObjectPaintProperties {
   scoped_refptr<type##PaintPropertyNode> variable
   // (End of ADD_NODE definition)
 
+<<<<<<< HEAD
+#define ADD_ALIAS_NODE(type, function, field_id)                        \
+ public:                                                                \
+  static_assert(field_id == NodeId::k##type##Alias);                    \
+                                                                        \
+  const type##PaintPropertyNodeOrAlias* function() const {              \
+    return GetNode<type##PaintPropertyNodeAlias>(field_id);             \
+  }                                                                     \
+                                                                        \
+  PaintPropertyChangeType Update##function(                             \
+      const type##PaintPropertyNodeOrAlias& parent) {                   \
+    return UpdateAlias<type##PaintPropertyNodeAlias>(field_id, parent); \
+  }                                                                     \
+                                                                        \
+  bool Clear##function() { return nodes_.EraseField(field_id); }        \
+=======
 #define ADD_ALIAS_NODE(type, function, variable)           \
  public:                                                   \
   const type##PaintPropertyNodeOrAlias* function() const { \
@@ -86,6 +117,7 @@ class CORE_EXPORT ObjectPaintProperties {
                                                            \
  private:                                                  \
   scoped_refptr<type##PaintPropertyNodeAlias> variable
+>>>>>>> chromium
   // (End of ADD_ALIAS_NODE definition)
 
 #define ADD_TRANSFORM(function, variable) \
@@ -93,6 +125,126 @@ class CORE_EXPORT ObjectPaintProperties {
 #define ADD_EFFECT(function, variable) ADD_NODE(Effect, function, variable)
 #define ADD_CLIP(function, variable) ADD_NODE(Clip, function, variable)
 
+<<<<<<< HEAD
+  // Identifier used for indexing into the sparse vector of nodes. NOTE: when
+  // adding a new node to this list, make sure to do the following. Update
+  // the kLast<NodeType> value to reflect the value you added, and renumber all
+  // higher value enums. All nodes of NodeType should be bounded between
+  // kFirst<NodeType>() and kLast<NodeType> (both inclusive), and the alias
+  // node id should be after kLast<NodeType>.
+  enum class NodeId : unsigned {
+    // Transforms
+    kFirstTransform = 0,
+    kPaintOffsetTranslation = kFirstTransform,
+    kStickyTranslation = 1,
+    kAnchorPositionScrollTranslation = 2,
+    // Transform nodes for CSS transform operations.
+    kFirstCSSTransform = 3,
+    kTranslate = kFirstCSSTransform,
+    kRotate = 4,
+    kScale = 5,
+    kOffset = 6,
+    kTransform = 7,
+    kLastCSSTransform = kTransform,
+    // End of Transform nodes for CSS transform operations.
+    kPerspective = 8,
+    kReplacedContentTransform = 9,
+    kScrollTranslation = 10,
+    kLastTransform = kScrollTranslation,
+    kTransformAlias = 11,
+
+    kScroll = 12,
+    kFirstScroll = kScroll,
+    kLastScroll = kScroll,
+
+    // Effects
+    kFirstEffect = 13,
+    kElementCaptureEffect = kFirstEffect,
+    kViewTransitionSubframeRootEffect = 14,
+    kViewTransitionEffect = 15,
+    kEffect = 16,
+    kFilter = 17,
+    kMask = 18,
+    kClipPathMask = 19,
+    kVerticalScrollbarEffect = 20,
+    kHorizontalScrollbarEffect = 21,
+    kScrollCornerEffect = 22,
+    kLastEffect = kScrollCornerEffect,
+    kEffectAlias = 23,
+
+    // Clips
+    kFirstClip = 24,
+    kClipPathClip = kFirstClip,
+    kMaskClip = 25,
+    kCssClip = 26,
+    kOverflowControlsClip = 27,
+    kBackgroundClip = 28,
+    kPixelMovingFilterClipExpander = 29,
+    kInnerBorderRadiusClip = 30,
+    kOverflowClip = 31,
+    kCssClipFixedPosition = 32,
+    kLastClip = kCssClipFixedPosition,
+    kClipAlias = 33,
+
+    // Should be updated whenever a higher value NodeType is added.
+    kNumFields = kClipAlias + 1,
+  };
+
+  template <typename NodeType>
+  struct NodeIdRange {};
+
+  template <>
+  struct NodeIdRange<PaintPropertyNode> {
+    static constexpr NodeId kFirst = NodeId::kFirstTransform;
+    static constexpr NodeId kLast = NodeId::kClipAlias;
+  };
+  template <>
+  struct NodeIdRange<TransformPaintPropertyNodeOrAlias> {
+    static constexpr NodeId kFirst = NodeId::kFirstTransform;
+    static constexpr NodeId kLast = NodeId::kTransformAlias;
+  };
+  template <>
+  struct NodeIdRange<TransformPaintPropertyNode> {
+    static constexpr NodeId kFirst = NodeId::kFirstTransform;
+    static constexpr NodeId kLast = NodeId::kLastTransform;
+  };
+  template <>
+  struct NodeIdRange<ScrollPaintPropertyNode> {
+    static constexpr NodeId kFirst = NodeId::kFirstScroll;
+    static constexpr NodeId kLast = NodeId::kLastScroll;
+  };
+  template <>
+  struct NodeIdRange<EffectPaintPropertyNodeOrAlias> {
+    static constexpr NodeId kFirst = NodeId::kFirstEffect;
+    static constexpr NodeId kLast = NodeId::kEffectAlias;
+  };
+  template <>
+  struct NodeIdRange<EffectPaintPropertyNode> {
+    static constexpr NodeId kFirst = NodeId::kFirstEffect;
+    static constexpr NodeId kLast = NodeId::kLastEffect;
+  };
+  template <>
+  struct NodeIdRange<ClipPaintPropertyNodeOrAlias> {
+    static constexpr NodeId kFirst = NodeId::kFirstClip;
+    static constexpr NodeId kLast = NodeId::kClipAlias;
+  };
+  template <>
+  struct NodeIdRange<ClipPaintPropertyNode> {
+    static constexpr NodeId kFirst = NodeId::kFirstClip;
+    static constexpr NodeId kLast = NodeId::kLastClip;
+  };
+
+ public:
+  template <typename NodeType>
+  bool HasNode() const {
+    return nodes_.HasFieldInRange(NodeIdRange<NodeType>::kFirst,
+                                  NodeIdRange<NodeType>::kLast);
+  }
+
+  // Transform node method declarations.
+  //
+=======
+>>>>>>> chromium
   // The hierarchy of the transform subtree created by a LayoutObject is as
   // follows:
   // [ PaintOffsetTranslation ]
@@ -127,12 +279,36 @@ class CORE_EXPORT ObjectPaintProperties {
   //
   // This hierarchy is related to the order of transform operations in
   // https://drafts.csswg.org/css-transforms-2/#accumulated-3d-transformation-matrix-computation
+<<<<<<< HEAD
+  bool HasCSSTransformPropertyNode() const {
+    return nodes_.HasFieldInRange(NodeId::kFirstCSSTransform,
+                                  NodeId::kLastCSSTransform);
+  }
+  std::array<const TransformPaintPropertyNode*, 5>
+  AllCSSTransformPropertiesOutsideToInside() const {
+    return {Translate(), Rotate(), Scale(), Offset(), Transform()};
+  }
+
+  ADD_TRANSFORM(PaintOffsetTranslation, NodeId::kPaintOffsetTranslation)
+  ADD_TRANSFORM(StickyTranslation, NodeId::kStickyTranslation)
+  ADD_TRANSFORM(AnchorPositionScrollTranslation,
+                NodeId::kAnchorPositionScrollTranslation)
+  ADD_TRANSFORM(Translate, NodeId::kTranslate)
+  ADD_TRANSFORM(Rotate, NodeId::kRotate)
+  ADD_TRANSFORM(Scale, NodeId::kScale)
+  ADD_TRANSFORM(Offset, NodeId::kOffset)
+  ADD_TRANSFORM(Transform, NodeId::kTransform)
+  ADD_TRANSFORM(Perspective, NodeId::kPerspective)
+  ADD_TRANSFORM(ReplacedContentTransform, NodeId::kReplacedContentTransform)
+  ADD_TRANSFORM(ScrollTranslation, NodeId::kScrollTranslation)
+=======
   ADD_TRANSFORM(PaintOffsetTranslation, paint_offset_translation_);
   ADD_TRANSFORM(StickyTranslation, sticky_translation_);
   ADD_TRANSFORM(Transform, transform_);
   ADD_TRANSFORM(Perspective, perspective_);
   ADD_TRANSFORM(ReplacedContentTransform, replaced_content_transform_);
   ADD_TRANSFORM(ScrollTranslation, scroll_translation_);
+>>>>>>> chromium
   using ScrollPaintPropertyNodeOrAlias = ScrollPaintPropertyNode;
   ADD_NODE(Scroll, Scroll, scroll_);
   ADD_ALIAS_NODE(Transform, TransformIsolationNode, transform_isolation_node_);
@@ -162,6 +338,23 @@ class CORE_EXPORT ObjectPaintProperties {
   //       This serves as a parent to subtree effects on an element with paint
   //       containment, It is the deepest child of any effect tree on the
   //       contain: paint element.
+<<<<<<< HEAD
+  ADD_EFFECT(ElementCaptureEffect, NodeId::kElementCaptureEffect)
+  ADD_EFFECT(ViewTransitionSubframeRootEffect,
+             NodeId::kViewTransitionSubframeRootEffect)
+  ADD_EFFECT(ViewTransitionEffect, NodeId::kViewTransitionEffect)
+  ADD_EFFECT(Effect, NodeId::kEffect)
+  ADD_EFFECT(Filter, NodeId::kFilter)
+  ADD_EFFECT(Mask, NodeId::kMask)
+  ADD_EFFECT(ClipPathMask, NodeId::kClipPathMask)
+  ADD_EFFECT(VerticalScrollbarEffect, NodeId::kVerticalScrollbarEffect)
+  ADD_EFFECT(HorizontalScrollbarEffect, NodeId::kHorizontalScrollbarEffect)
+  ADD_EFFECT(ScrollCornerEffect, NodeId::kScrollCornerEffect)
+  ADD_ALIAS_NODE(Effect, EffectIsolationNode, NodeId::kEffectAlias)
+
+  // Clip node declarations.
+  //
+=======
   ADD_EFFECT(Effect, effect_);
   ADD_EFFECT(Filter, filter_);
   ADD_EFFECT(VerticalScrollbarEffect, vertical_scrollbar_effect_);
@@ -170,6 +363,7 @@ class CORE_EXPORT ObjectPaintProperties {
   ADD_EFFECT(ClipPathMask, clip_path_mask_);
   ADD_ALIAS_NODE(Effect, EffectIsolationNode, effect_isolation_node_);
 
+>>>>>>> chromium
   // The hierarchy of the clip subtree created by a LayoutObject is as follows:
   // [ FragmentClip ]
   // |    Clips to a fragment's bounds.
@@ -207,6 +401,19 @@ class CORE_EXPORT ObjectPaintProperties {
   //       This serves as a parent to subtree clips on an element with paint
   //       containment. It is the deepest child of any clip tree on the contain:
   //       paint element.
+<<<<<<< HEAD
+  ADD_CLIP(ClipPathClip, NodeId::kClipPathClip)
+  ADD_CLIP(MaskClip, NodeId::kMaskClip)
+  ADD_CLIP(CssClip, NodeId::kCssClip)
+  ADD_CLIP(OverflowControlsClip, NodeId::kOverflowControlsClip)
+  ADD_CLIP(BackgroundClip, NodeId::kBackgroundClip)
+  ADD_CLIP(PixelMovingFilterClipExpander,
+           NodeId::kPixelMovingFilterClipExpander)
+  ADD_CLIP(InnerBorderRadiusClip, NodeId::kInnerBorderRadiusClip)
+  ADD_CLIP(OverflowClip, NodeId::kOverflowClip)
+  ADD_CLIP(CssClipFixedPosition, NodeId::kCssClipFixedPosition)
+  ADD_ALIAS_NODE(Clip, ClipIsolationNode, NodeId::kClipAlias)
+=======
   ADD_CLIP(FragmentClip, fragment_clip_);
   ADD_CLIP(ClipPathClip, clip_path_clip_);
   ADD_CLIP(MaskClip, mask_clip_);
@@ -216,6 +423,7 @@ class CORE_EXPORT ObjectPaintProperties {
   ADD_CLIP(InnerBorderRadiusClip, inner_border_radius_clip_);
   ADD_CLIP(OverflowClip, overflow_clip_);
   ADD_ALIAS_NODE(Clip, ClipIsolationNode, clip_isolation_node_);
+>>>>>>> chromium
 
 #undef ADD_CLIP
 #undef ADD_EFFECT
@@ -223,9 +431,32 @@ class CORE_EXPORT ObjectPaintProperties {
 #undef ADD_NODE
 #undef ADD_ALIAS_NODE
 
+<<<<<<< HEAD
+  // For each node of `NodeType`, runs `action`, and returns true immediately
+  // if `action` returns true, or returns false after iterating the nodes.
+  template <typename NodeType>
+  bool ForNodes(base::FunctionRef<bool(const NodeType&)> action) const {
+    for (NodeId i = NodeIdRange<NodeType>::kFirst;
+         i <= NodeIdRange<NodeType>::kLast;
+         i = static_cast<NodeId>(static_cast<int>(i) + 1)) {
+      if (const auto* node = GetNode<NodeType>(i)) {
+        if (action(*node)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+#if DCHECK_IS_ON()
+  // Debug-only state change validation method implementations.
+  // Used by find_properties_needing_update.h for verifying state doesn't
+  // change.
+=======
  public:
 #if DCHECK_IS_ON()
   // Used by FindPropertiesNeedingUpdate.h for verifying state doesn't change.
+>>>>>>> chromium
   void SetImmutable() const { is_immutable_ = true; }
   bool IsImmutable() const { return is_immutable_; }
   void SetMutable() const { is_immutable_ = false; }
@@ -243,9 +474,89 @@ class CORE_EXPORT ObjectPaintProperties {
         << "Isolation nodes have to be created for all of transform, clip, and "
            "effect trees.";
   }
+<<<<<<< HEAD
+
+  template <typename NodeType>
+  void AddNodesToPrinter(PropertyTreePrinter& printer) const {
+    ForNodes<NodeType>([&printer](const NodeType& node) {
+      printer.AddNode(&node);
+      return false;
+    });
+  }
+=======
+>>>>>>> chromium
 #endif
 
  private:
+<<<<<<< HEAD
+  using NodeList = SparseVector<NodeId, Member<PaintPropertyNode>, 2>;
+
+  template <typename NodeType, typename ParentType>
+  PaintPropertyChangeType Update(
+      NodeId node_id,
+      const ParentType& parent,
+      NodeType::State&& state,
+      const NodeType::AnimationState& animation_state) {
+    // First, check if we need to add a new node.
+    if (!nodes_.HasField(node_id)) {
+      nodes_.SetField(node_id, NodeType::Create(parent, std::move(state)));
+#if DCHECK_IS_ON()
+      DCHECK(!is_immutable_) << "Sparse node added while immutable.";
+#endif
+      return PaintPropertyChangeType::kNodeAddedOrRemoved;
+    }
+    // If not, we just need to update the existing node.
+    auto* node = GetNode<NodeType>(node_id);
+    const PaintPropertyChangeType changed =
+        node->Update(parent, std::move(state), animation_state);
+#if DCHECK_IS_ON()
+    DCHECK(!is_immutable_ || changed == PaintPropertyChangeType::kUnchanged)
+        << "Value changed while immutable.";
+#endif
+    return changed;
+  }
+
+  template <typename AliasType, typename ParentType>
+  PaintPropertyChangeType UpdateAlias(NodeId node_id,
+                                      const ParentType& parent) {
+    // First, check if we need to add a new alias.
+    if (!nodes_.HasField(node_id)) {
+      nodes_.SetField(node_id, AliasType::Create(parent));
+#if DCHECK_IS_ON()
+      DCHECK(!is_immutable_) << "Sparse node added while immutable.";
+#endif
+      return PaintPropertyChangeType::kNodeAddedOrRemoved;
+    }
+    // If not, we just need to update the existing alias.
+    auto* node = GetNode<AliasType>(node_id);
+    DCHECK(node->IsParentAlias());
+    const PaintPropertyChangeType changed = node->SetParent(parent);
+#if DCHECK_IS_ON()
+    DCHECK(!is_immutable_ || changed == PaintPropertyChangeType::kUnchanged)
+        << "Parent changed while immutable. New state:\n"
+        << *node;
+#endif
+    return changed;
+  }
+
+  template <typename NodeType>
+  const NodeType* GetNode(NodeId node_id) const {
+    if (nodes_.HasField(node_id)) {
+      return static_cast<const NodeType*>(nodes_.GetField(node_id).Get());
+    }
+    return nullptr;
+  }
+
+  template <typename NodeType>
+  NodeType* GetNode(NodeId node_id) {
+    if (nodes_.HasField(node_id)) {
+      return static_cast<NodeType*>(nodes_.GetField(node_id).Get());
+    }
+    return nullptr;
+  }
+
+  NodeList nodes_;
+=======
   // Return true if the property tree structure changes (an existing node was
   // deleted), and false otherwise. See the class-level comment ("update & clear
   // implementation note") for details about why this is needed for efficiency.
@@ -305,6 +616,7 @@ class CORE_EXPORT ObjectPaintProperties {
 #endif
     return PaintPropertyChangeType::kNodeAddedOrRemoved;
   }
+>>>>>>> chromium
 
 #if DCHECK_IS_ON()
   mutable bool is_immutable_ = false;

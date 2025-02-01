@@ -33,7 +33,7 @@ class DownloadOfflineContentProviderTest : public testing::Test {
         provider_(&aggregator_, kTestDownloadNamespace),
         coordinator_(base::NullCallback(), false) {}
 
-  ~DownloadOfflineContentProviderTest() override {}
+  ~DownloadOfflineContentProviderTest() override = default;
 
   void InitializeDownloads(bool full_browser) {
     coordinator_.SetSimpleDownloadManager(&mock_manager_, full_browser);

@@ -22,8 +22,12 @@ PermissionsBasedManagementPolicyProvider::
 }
 
 PermissionsBasedManagementPolicyProvider::
+<<<<<<< HEAD
+    ~PermissionsBasedManagementPolicyProvider() = default;
+=======
     ~PermissionsBasedManagementPolicyProvider() {
 }
+>>>>>>> chromium
 
 std::string
 PermissionsBasedManagementPolicyProvider::GetDebugPolicyProviderName() const {

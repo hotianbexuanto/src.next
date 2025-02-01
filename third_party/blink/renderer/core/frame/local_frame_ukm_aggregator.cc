@@ -19,8 +19,8 @@
 
 namespace {
 
-inline base::HistogramBase::Sample ToSample(int64_t value) {
-  return base::saturated_cast<base::HistogramBase::Sample>(value);
+inline base::HistogramBase::Sample32 ToSample(int64_t value) {
+  return base::saturated_cast<base::HistogramBase::Sample32>(value);
 }
 
 }  // namespace
@@ -82,6 +82,53 @@ void LocalFrameUkmAggregator::IterativeTimer::Record() {
   start_time_ = now;
 }
 
+<<<<<<< HEAD
+LocalFrameUkmAggregator::ScopedForcedLayoutTimer::ScopedForcedLayoutTimer(
+    LocalFrameUkmAggregator& aggregator,
+    DocumentUpdateReason update_reason,
+    bool avoid_unnecessary_forced_layout_measurements,
+    bool should_report_uma_this_frame,
+    bool is_pre_fcp,
+    bool record_ukm_for_current_frame)
+    : aggregator_(&aggregator),
+      update_reason_(update_reason),
+      start_time_(!avoid_unnecessary_forced_layout_measurements ||
+                          should_report_uma_this_frame || is_pre_fcp ||
+                          record_ukm_for_current_frame
+                      ? aggregator_->clock_->NowTicks()
+                      : base::TimeTicks()),
+      avoid_unnecessary_forced_layout_measurements_(
+          avoid_unnecessary_forced_layout_measurements),
+      should_report_uma_this_frame_(should_report_uma_this_frame),
+      is_pre_fcp_(is_pre_fcp) {
+  aggregator_->BeginForcedLayout();
+}
+
+LocalFrameUkmAggregator::ScopedForcedLayoutTimer::~ScopedForcedLayoutTimer() {
+  // aggregator_ will be null in a moved-from object.
+  if (!aggregator_) {
+    return;
+  }
+
+  aggregator_->EndForcedLayout(
+      update_reason_,
+      // start_time_ will be null if we don't need to measure this forced
+      // layout, because it won't be reported.
+      !start_time_.is_null() ? aggregator_->clock_->NowTicks() - start_time_
+                             : base::TimeDelta(),
+      avoid_unnecessary_forced_layout_measurements_,
+      should_report_uma_this_frame_, is_pre_fcp_);
+}
+
+LocalFrameUkmAggregator::ScopedForcedLayoutTimer::ScopedForcedLayoutTimer(
+    ScopedForcedLayoutTimer&&) = default;
+
+LocalFrameUkmAggregator::ScopedForcedLayoutTimer&
+LocalFrameUkmAggregator::ScopedForcedLayoutTimer::operator=(
+    ScopedForcedLayoutTimer&&) = default;
+
+=======
+>>>>>>> chromium
 void LocalFrameUkmAggregator::AbsoluteMetricRecord::reset() {
   interval_count = 0;
   main_frame_count = 0;
@@ -323,6 +370,11 @@ void LocalFrameUkmAggregator::RecordForcedLayoutSample(
 
     case DocumentUpdateReason::kAccessibility:
     case DocumentUpdateReason::kBaseColor:
+<<<<<<< HEAD
+    case DocumentUpdateReason::kBaseSelect:
+    case DocumentUpdateReason::kComputedStyle:
+=======
+>>>>>>> chromium
     case DocumentUpdateReason::kDisplayLock:
     case DocumentUpdateReason::kIntersectionObservation:
     case DocumentUpdateReason::kOverlay:
@@ -333,6 +385,7 @@ void LocalFrameUkmAggregator::RecordForcedLayoutSample(
       break;
 
     case DocumentUpdateReason::kCanvas:
+    case DocumentUpdateReason::kCanvasPlaceElement:
     case DocumentUpdateReason::kPlugin:
     case DocumentUpdateReason::kSVGImage:
       sub_metric = kContentDocumentUpdate;

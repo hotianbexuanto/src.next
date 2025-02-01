@@ -51,9 +51,14 @@ extern const char kDisableDevShmUsage[];
 extern const char kEnableCrashReporterForTesting[];
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_ANDROID)
+extern const char kAndroidSkipChildServiceInitForTesting[];
+=======
 #if defined(OS_ANDROID)
 extern const char kEnableReachedCodeProfiler[];
 extern const char kReachedCodeSamplingIntervalUs[];
+>>>>>>> chromium
 extern const char kDefaultCountryCodeAtInstall[];
 extern const char kEnableIdleTracing[];
 extern const char kForceFieldTrialParams[];

@@ -89,7 +89,11 @@ public abstract class UrlBar extends AutocompleteEditText {
     private boolean mAllowFocus = true;
 
     private boolean mPendingScroll;
+<<<<<<< HEAD
+    private boolean mIsInCct;
+=======
     private int mPreviousWidth;
+>>>>>>> chromium
 
     @ScrollType
     private int mPreviousScrollType;
@@ -311,6 +315,11 @@ public abstract class UrlBar extends AutocompleteEditText {
         mAllowFocus = allowFocus;
         setFocusable(allowFocus);
         setFocusableInTouchMode(allowFocus);
+    }
+
+    /** Sets the property indicating the URL bar is used by Custom Tab. */
+    public void setIsInCct(boolean isInCct) {
+        mIsInCct = isInCct;
     }
 
     /**
@@ -870,6 +879,34 @@ public abstract class UrlBar extends AutocompleteEditText {
     }
 
     @Override
+<<<<<<< HEAD
+    public void setTranslationY(float translationY) {
+        // Certain locale (e.g. Burmese) use particularly tall glyphs, which, combined with
+        // font_scale set to 2.0, render outside the Omnibox. We scale these fonts down (see
+        // enforceMaxTextHeight() call below). Despite the computation, Android's ElegantTextHeight
+        // feature imposes an extra margins around the text, forcing the already tall text to
+        // receive additional wide space on top and bottom, shifting the content upwards.
+        // We suppress Y translation here, as the Omnibox is not a vertically scrollable view, and
+        // our font height computation logic appears to produce correct glyph sizes.
+        //
+        // Allows translation in CCT that has to animate URL bar text for branding.
+        // TODO(crbug.com/357399658): Consider a new approach to remove this exception for CCT.
+        if (mIsInCct) super.setTranslationY(translationY);
+    }
+
+    @Override
+    public void requestLayout() {
+        // TODO(crbug.com/40285597): it is speculated that a requestLayout invoked during an active
+        // layout pass is causing Omnibox/Chrome to become unresponsive.
+        // While Android seemingly supports that, emitting just a warning, we can't rule this out
+        // completely. It is currently unclear where the secondary requestLayout could come from.
+        if (isInLayout()) return;
+        super.requestLayout();
+    }
+
+    @Override
+=======
+>>>>>>> chromium
     public Editable getText() {
         if (mRequestingAutofillStructure) {
             // crbug.com/1109186: mTextForAutofillServices must not be null here, but Autofill
@@ -909,6 +946,10 @@ public abstract class UrlBar extends AutocompleteEditText {
 
         mUrlTextChangeListener.onTextChanged(
                 getTextWithoutAutocomplete(), getTextWithAutocomplete());
+    }
+
+    boolean getIsInCctForTesting() {
+        return mIsInCct;
     }
 
     /**

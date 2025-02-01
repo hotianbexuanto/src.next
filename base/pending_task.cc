@@ -27,6 +27,10 @@ PendingTask::~PendingTask() = default;
 
 PendingTask& PendingTask::operator=(PendingTask&& other) = default;
 
+<<<<<<< HEAD
+TimeTicks TaskMetadata::GetDesiredExecutionTime() const {
+  if (!delayed_run_time.is_null()) {
+=======
 bool PendingTask::operator<(const PendingTask& other) const {
   // Since the top of a priority queue is defined as the "greatest" element, we
   // need to invert the comparison here.  We want the smaller time to be at the
@@ -45,8 +49,29 @@ bool PendingTask::operator<(const PendingTask& other) const {
 
 TimeTicks PendingTask::GetDesiredExecutionTime() const {
   if (!delayed_run_time.is_null())
+>>>>>>> chromium
     return delayed_run_time;
+  }
   return queue_time;
 }
 
+<<<<<<< HEAD
+TimeTicks TaskMetadata::earliest_delayed_run_time() const {
+  DCHECK(!delayed_run_time.is_null());
+  if (delay_policy == subtle::DelayPolicy::kFlexiblePreferEarly) {
+    return delayed_run_time - leeway;
+  }
+  return delayed_run_time;
+}
+
+TimeTicks TaskMetadata::latest_delayed_run_time() const {
+  DCHECK(!delayed_run_time.is_null());
+  if (delay_policy == subtle::DelayPolicy::kFlexibleNoSooner) {
+    return delayed_run_time + leeway;
+  }
+  return delayed_run_time;
+}
+
+=======
+>>>>>>> chromium
 }  // namespace base

@@ -52,7 +52,10 @@ std::string GetSourceHistogramName(TileSource source) {
       return kHistogramExploreName;
   }
   NOTREACHED();
+<<<<<<< HEAD
+=======
   return std::string();
+>>>>>>> chromium
 }
 
 const char* GetTileTypeSuffix(TileVisualType type) {

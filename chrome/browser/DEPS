@@ -35,6 +35,23 @@ include_rules = [
   "+chrome/services/sharing/public",
   "+chrome/services/removable_storage_writer/public",
   "+chrome/services/util_win/public",
+<<<<<<< HEAD
+  "+chrome/updater/app/server/win/updater_legacy_idl.h",
+  "+chrome/updater/constants.h",
+  "+chrome/updater/updater_scope.h",
+  "+chrome/updater/update_service.h",
+  "+chromeos",
+  "+components/webui/about",
+  "+components/access_code_cast",
+  "+components/account_id",
+  "+components/account_manager_core",
+  "+components/affiliations",
+  "+components/allocation_recorder",
+  "+components/android_autofill/browser",
+  "+components/app_constants/constants.h",
+  "+components/app_launch_prefetch",
+  "+components/app_restore",
+=======
   "+chromeos",
   "+components/about_ui",
   "+components/account_id",
@@ -42,6 +59,7 @@ include_rules = [
   "+components/arc",
   "+components/accuracy_tips",
   "+components/account_manager_core",
+>>>>>>> chromium
   "+components/assist_ranker",
   "+components/autofill_assistant/browser",
   "+components/autofill/content/browser",
@@ -87,6 +105,12 @@ include_rules = [
   "+components/cloud_devices/common",
   "+components/component_updater",
   "+components/component_updater/installer_policies",
+<<<<<<< HEAD
+  "+components/compose",
+  "+components/autofill_ai",
+  "+components/webui/chrome_urls",
+=======
+>>>>>>> chromium
   "+components/consent_auditor",
   "+components/constrained_window",
   "+components/content_capture/browser",
@@ -223,6 +247,7 @@ include_rules = [
   "+components/paint_preview/features",
   "+components/paint_preview/browser",
   "+components/paint_preview/buildflags",
+  "+components/passage_embeddings",
   "+components/password_manager/content/browser",
   "+components/password_manager/core/browser",
   "+components/password_manager/core/common",
@@ -234,6 +259,12 @@ include_rules = [
   "+components/performance_manager/test_support",
   "+components/performance_manager/performance_manager_impl.h",
   "+components/permissions",
+<<<<<<< HEAD
+  "+components/sampling_profiler",
+  "+components/server_certificate_database",
+  "+components/webid",
+=======
+>>>>>>> chromium
   "+components/pdf/browser",
   "+components/pdf/common",
   "+components/policy",
@@ -253,6 +284,7 @@ include_rules = [
   "+components/reading_list/core",
   "+components/reading_list/features",
   "+components/remote_cocoa/app_shim",
+  "+components/regional_capabilities",
   "+components/remote_cocoa/browser",
   "+components/remote_cocoa/common",
   "+components/renderer_context_menu",
@@ -339,7 +371,11 @@ include_rules = [
   "+components/user_prefs",
   "+components/vector_icons",
   "+components/version_info",
+<<<<<<< HEAD
+  "+components/visited_url_ranking",
+=======
   "+components/version_ui",
+>>>>>>> chromium
   "+components/viz/common",
   "+components/viz/host",
   "+components/web_cache/browser",
@@ -351,7 +387,11 @@ include_rules = [
   "+components/webdata_services",
   "+components/webrtc_logging/browser",
   "+components/webrtc_logging/common",
+<<<<<<< HEAD
+  "+components/webui/version",
+=======
   "+components/wifi",
+>>>>>>> chromium
   "+components/zoom",
   "+content/public/browser",
   "+content/public/common",
@@ -396,12 +436,21 @@ include_rules = [
   "+services/media_session/public",
   "+services/metrics/metrics_mojo_service.h",
   "+services/metrics/public",
+<<<<<<< HEAD
+  "+services/metrics",
+=======
   "+services/network/cert_verifier_with_trust_anchors.h",
+>>>>>>> chromium
   "+services/network/network_service.h",
   "+services/network/public",
   "+services/network/test",
   "+services/network/url_request_context_owner.h",
   "+services/network/url_request_context_builder_mojo.h",
+<<<<<<< HEAD
+  "+services/on_device_model/public",
+  "+services/passage_embeddings/public/mojom",
+=======
+>>>>>>> chromium
   "+services/preferences/public/cpp",
   "+services/preferences/public/mojom",
   "+services/proxy_resolver",  # Android runs the packaged proxy resolver
@@ -420,13 +469,22 @@ include_rules = [
   "+third_party/crashpad",
   "+third_party/cros_system_api",
   "+third_party/metrics_proto",
+<<<<<<< HEAD
+  "+third_party/omnibox_proto",
+  "+third_party/search_engines_data",
+  "+third_party/tflite_support",
+=======
+>>>>>>> chromium
   "+third_party/widevine/cdm/buildflags.h",
   "+third_party/widevine/cdm/widevine_cdm_common.h",
   "+chrome/services/machine_learning",
   "+chrome/services/speech",
   # Code under //ash should be accessed via its public API. See //ash/README.md.
   "-ash",
+<<<<<<< HEAD
+=======
   "+ash/components",
+>>>>>>> chromium
   "+ash/constants",
   "+ash/webui",
   "+ash/public",
@@ -563,6 +621,39 @@ specific_include_rules = {
   ],
   "about_flags\.cc" : [
     "+mojo/core/embedder/features.h",
+<<<<<<< HEAD
+    "+sandbox/policy/features.h",
+    "+skia/rusty_png_feature.h",
+  ],
+  "dbus_memory_pressure_evaluator_linux(_unittest)?\.(cc|h)" : [
+    "+dbus",
+  ],
+  "permission_element_browsertest.cc": [
+    "+chrome/browser/ui/views/permissions/embedded_permission_prompt_content_scrim_view.h",
+  ],
+  "browsing_data_model_browsertest.cc" : [
+    "+components/services/storage/shared_storage/shared_storage_manager.h",
+  ],
+  "ash_session_restore_page_load_metrics_observer_browsertest\.cc": [
+    "+ash/wm/window_restore/window_restore_util.h",
+  ],
+  "render_view_context_menu_browsertest.cc" : [
+    "+ash/wm/window_pin_util.h",
+    "+third_party/libwebp/src/src/webp/decode.h",
+  ],
+  "webauth_interactive_uitest.cc": [
+    "+device/fido",
+  ],
+  "shared_storage_browsertest.cc": [
+    "+components/services/storage/shared_storage/shared_storage_manager.h",
+  ],
+  "certificate_manager_model.cc": [
+    "+chromeos/ash/components/kcer",
+  ],
+  "certificate_manager_model_unittest.cc": [
+    "+chromeos/ash/components/kcer/extra_instances.h",
+=======
+>>>>>>> chromium
   ],
   "app_controller_mac_browsertest\.mm" : [
     "+chrome/browser/ui/views/web_apps/web_app_url_handler_intent_picker_dialog_view.h",

@@ -32,6 +32,17 @@
 #include "third_party/skia/include/core/SkPaint.h"
 #include "third_party/skia/include/core/SkPath.h"
 
+<<<<<<< HEAD
+namespace gfx {
+class ColorSpace;
+}
+
+namespace WTF {
+class String;
+}
+
+=======
+>>>>>>> chromium
 namespace blink {
 
 enum AlphaDisposition {
@@ -207,8 +218,21 @@ PLATFORM_EXPORT bool ParseLineJoin(const String&, LineJoin&);
 PLATFORM_EXPORT String TextAlignName(TextAlign);
 PLATFORM_EXPORT bool ParseTextAlign(const String&, TextAlign&);
 
+<<<<<<< HEAD
+PLATFORM_EXPORT WTF::String TextBaselineName(TextBaseline);
+PLATFORM_EXPORT bool ParseTextBaseline(const WTF::String&, TextBaseline&);
+
+PLATFORM_EXPORT WTF::String ImageDataStorageFormatName(ImageDataStorageFormat);
+=======
 PLATFORM_EXPORT String TextBaselineName(TextBaseline);
 PLATFORM_EXPORT bool ParseTextBaseline(const String&, TextBaseline&);
+>>>>>>> chromium
+
+// Return the gfx::ColorSpace or SkColorSpace for a PredefinedColorSpace.
+PLATFORM_EXPORT gfx::ColorSpace PredefinedColorSpaceToGfxColorSpace(
+    PredefinedColorSpace color_space);
+PLATFORM_EXPORT sk_sp<SkColorSpace> PredefinedColorSpaceToSkColorSpace(
+    PredefinedColorSpace color_space);
 
 }  // namespace blink
 

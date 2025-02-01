@@ -65,10 +65,22 @@ class BASE_EXPORT PickleIterator {
   // mutated). Do not keep the pointer around!
   bool ReadBytes(const char** data, int length) WARN_UNUSED_RESULT;
 
+<<<<<<< HEAD
+  // A version of ReadInt() that checks for the result not being negative. Use
+  // it for reading the object sizes.
+  [[nodiscard]] bool ReadLength(size_t* result) {
+    int result_int;
+    if (!ReadInt(&result_int) || result_int < 0) {
+      return false;
+    }
+    *result = static_cast<size_t>(result_int);
+    return true;
+=======
   // A safer version of ReadInt() that checks for the result not being negative.
   // Use it for reading the object sizes.
   bool ReadLength(int* result) WARN_UNUSED_RESULT {
     return ReadInt(result) && *result >= 0;
+>>>>>>> chromium
   }
 
   // Skips bytes in the read buffer and returns true if there are at least
@@ -89,7 +101,7 @@ class BASE_EXPORT PickleIterator {
   void Advance(size_t size);
 
   // Get read pointer for Type and advance read pointer.
-  template<typename Type>
+  template <typename Type>
   const char* GetReadPointerAndAdvance();
 
   // Get read pointer for |num_bytes| and advance read pointer. This method
@@ -102,8 +114,8 @@ class BASE_EXPORT PickleIterator {
                                        size_t size_element);
 
   const char* payload_;  // Start of our pickle's payload.
-  size_t read_index_;  // Offset of the next readable byte in payload.
-  size_t end_index_;  // Payload size.
+  size_t read_index_;    // Offset of the next readable byte in payload.
+  size_t end_index_;     // Payload size.
 
   FRIEND_TEST_ALL_PREFIXES(PickleTest, GetReadPointerAndAdvance);
 };
@@ -249,19 +261,34 @@ class BASE_EXPORT Pickle {
   }
 
   // The payload is the pickle data immediately following the header.
-  size_t payload_size() const {
-    return header_ ? header_->payload_size : 0;
+  size_t payload_size() const { return header_ ? header_->payload_size : 0; }
+
+<<<<<<< HEAD
+  span<const uint8_t> payload_bytes() const {
+    return as_bytes(UNSAFE_TODO(span(payload(), payload_size())));
   }
 
+ protected:
+  // The protected constructor. Note that this creates a Pickle that does not
+  // own its own data.
+  enum UnownedData { kUnownedData };
+  explicit Pickle(UnownedData, span<const uint8_t> data);
+
+  // Returns size of the header, which can have default value, set by user or
+  // calculated by passed raw data.
+  size_t header_size() const { return header_size_; }
+
+=======
+>>>>>>> chromium
   const char* payload() const {
-    return reinterpret_cast<const char*>(header_) + header_size_;
+    return UNSAFE_TODO(reinterpret_cast<const char*>(header_) + header_size_);
   }
 
   // Returns the address of the byte immediately following the currently valid
   // header + payload.
   const char* end_of_payload() const {
     // This object may be invalid.
-    return header_ ? payload() + payload_size() : NULL;
+    return header_ ? UNSAFE_TODO(payload() + payload_size()) : NULL;
   }
 
  protected:
@@ -270,12 +297,10 @@ class BASE_EXPORT Pickle {
   size_t header_size() const { return header_size_; }
 
   char* mutable_payload() {
-    return reinterpret_cast<char*>(header_) + header_size_;
+    return UNSAFE_TODO(reinterpret_cast<char*>(header_) + header_size_);
   }
 
-  size_t capacity_after_header() const {
-    return capacity_after_header_;
-  }
+  size_t capacity_after_header() const { return capacity_after_header_; }
 
   // Resize the capacity, note that the input value should not include the size
   // of the header.
@@ -322,10 +347,12 @@ class BASE_EXPORT Pickle {
   size_t write_offset_;
 
   // Just like WriteBytes, but with a compile-time size, for performance.
-  template<size_t length> void BASE_EXPORT WriteBytesStatic(const void* data);
+  template <size_t length>
+  void BASE_EXPORT WriteBytesStatic(const void* data);
 
   // Writes a POD by copying its bytes.
-  template <typename T> bool WritePOD(const T& data) {
+  template <typename T>
+  bool WritePOD(const T& data) {
     WriteBytesStatic<sizeof(data)>(&data);
     return true;
   }

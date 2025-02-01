@@ -49,10 +49,6 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
     extension_cache_ = std::move(extension_cache);
   }
 
-  void set_lock_screen_context(content::BrowserContext* context) {
-    lock_screen_context_ = context;
-  }
-
   // Sets a factory to respond to calls of the CreateUpdateClient method.
   void SetUpdateClientFactory(
       base::RepeatingCallback<update_client::UpdateClient*(void)> factory);
@@ -76,7 +72,20 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
       content::BrowserContext* context) override;
   content::BrowserContext* GetOriginalContext(
       content::BrowserContext* context) override;
+<<<<<<< HEAD
+  content::BrowserContext* GetContextRedirectedToOriginal(
+      content::BrowserContext* context) override;
+  content::BrowserContext* GetContextOwnInstance(
+      content::BrowserContext* context) override;
+  content::BrowserContext* GetContextForOriginalOnly(
+      content::BrowserContext* context) override;
+  bool AreExtensionsDisabledForContext(
+      content::BrowserContext* context) override;
+#if BUILDFLAG(IS_CHROMEOS)
+  bool IsActiveContext(content::BrowserContext* browser_context) const override;
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   std::string GetUserIdHashFromContext(
       content::BrowserContext* context) override;
 #endif
@@ -144,7 +153,6 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
   KioskDelegate* GetKioskDelegate() override;
   scoped_refptr<update_client::UpdateClient> CreateUpdateClient(
       content::BrowserContext* context) override;
-  bool IsLockScreenContext(content::BrowserContext* context) override;
   std::string GetApplicationLocale() override;
 
   ExtensionSystemProvider* extension_system_factory() {
@@ -155,9 +163,13 @@ class TestExtensionsBrowserClient : public ExtensionsBrowserClient {
   // Not owned.
   content::BrowserContext* main_context_ = nullptr;
   // Not owned.
+<<<<<<< HEAD
+  raw_ptr<content::BrowserContext> incognito_context_ = nullptr;
+=======
   content::BrowserContext* incognito_context_ = nullptr;
   // Not owned.
   content::BrowserContext* lock_screen_context_ = nullptr;
+>>>>>>> chromium
 
   // Not owned.
   ProcessManagerDelegate* process_manager_delegate_ = nullptr;

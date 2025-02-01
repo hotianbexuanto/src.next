@@ -45,7 +45,13 @@ public class TopToolbarOverlayCoordinator implements SceneOverlay {
             ObservableSupplier<Tab> tabSupplier,
             BrowserControlsStateProvider browserControlsStateProvider,
             Supplier<ResourceManager> resourceManagerSupplier,
+<<<<<<< HEAD
+            TopUiThemeColorProvider topUiThemeColorProvider,
+            ObservableSupplier<Integer> bottomToolbarControlsOffsetSupplier,
+            int layoutsToShowOn,
+=======
             TopUiThemeColorProvider topUiThemeColorProvider, int layoutsToShowOn,
+>>>>>>> chromium
             boolean isVisibilityManuallyControlled) {
         mModel = new PropertyModel.Builder(TopToolbarOverlayProperties.ALL_KEYS)
                          .with(TopToolbarOverlayProperties.RESOURCE_ID, R.id.control_container)
@@ -101,6 +107,11 @@ public class TopToolbarOverlayCoordinator implements SceneOverlay {
     public SceneOverlayLayer getUpdatedSceneOverlayTree(
             RectF viewport, RectF visibleViewport, ResourceManager resourceManager, float yOffset) {
         return mSceneLayer;
+    }
+
+    @Override
+    public void removeFromParent() {
+        mSceneLayer.removeFromParent();
     }
 
     @Override

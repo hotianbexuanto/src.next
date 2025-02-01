@@ -43,6 +43,10 @@
 #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
 #include "third_party/blink/public/common/permissions_policy/document_policy_features.h"
 #include "third_party/blink/public/common/permissions_policy/permissions_policy.h"
+<<<<<<< HEAD
+#include "third_party/blink/public/common/subresource_load_metrics.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/common/use_counter/use_counter_feature.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
@@ -130,11 +134,22 @@ class CORE_EXPORT LocalFrameClient : public FrameClient {
       const ResourceResponse&) = 0;
 
   virtual void DispatchDidHandleOnloadEvents() = 0;
+<<<<<<< HEAD
+  virtual void DidFinishSameDocumentNavigation(
+      WebHistoryCommitType,
+      bool is_synchronously_committed,
+      mojom::blink::SameDocumentNavigationType,
+      bool is_client_redirect,
+      bool is_browser_initiated,
+      bool should_skip_screenshot) {}
+  virtual void DidFailAsyncSameDocumentCommit() {}
+=======
   virtual void DidFinishSameDocumentNavigation(HistoryItem*,
                                                WebHistoryCommitType,
                                                bool is_synchronously_committed,
                                                bool is_history_api_navigation,
                                                bool is_client_redirect) {}
+>>>>>>> chromium
   virtual void DispatchDidOpenDocumentInputStream(const KURL&) {}
   virtual void DispatchDidReceiveTitle(const String&) = 0;
   virtual void DispatchDidCommitLoad(
@@ -182,8 +197,19 @@ class CORE_EXPORT LocalFrameClient : public FrameClient {
 
   // Will be called when |PerformanceTiming| events are updated
   virtual void DidChangePerformanceTiming() {}
+<<<<<<< HEAD
+
+  // Will be called when a user interaction is observed.
+  virtual void DidObserveUserInteraction(
+      base::TimeTicks max_event_start,
+      base::TimeTicks max_event_queued_main_thread,
+      base::TimeTicks max_event_commit_finish,
+      base::TimeTicks max_event_end,
+      uint64_t interaction_offset) {}
+=======
   // Will be called when an |InputEvent| is observed.
   virtual void DidObserveInputDelay(base::TimeDelta input_delay) {}
+>>>>>>> chromium
 
   // Will be called when |CpuTiming| events are updated
   virtual void DidChangeCpuTiming(base::TimeDelta time) {}

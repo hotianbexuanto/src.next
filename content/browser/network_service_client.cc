@@ -28,8 +28,13 @@
 #include "content/public/common/network_service_util.h"
 #include "services/network/public/cpp/network_switches.h"
 #include "services/network/public/mojom/network_context.mojom.h"
+<<<<<<< HEAD
+#include "services/network/public/mojom/shared_storage.mojom.h"
+#include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom.h"
+=======
 #include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/web_feature/web_feature.mojom.h"
+>>>>>>> chromium
 
 #if defined(OS_ANDROID)
 #include "base/android/content_uri_utils.h"
@@ -219,8 +224,22 @@ void NetworkServiceClient::OnDataUseUpdate(
     int64_t recv_bytes,
     int64_t sent_bytes) {
   GetContentClient()->browser()->OnNetworkServiceDataUseUpdate(
+<<<<<<< HEAD
+      GlobalRenderFrameHostId(), network_traffic_annotation_id_hash, recv_bytes,
+      sent_bytes);
+}
+
+void NetworkServiceClient::OnSharedStorageHeaderReceived(
+    const url::Origin& request_origin,
+    std::vector<network::mojom::SharedStorageModifierMethodWithOptionsPtr>
+        methods_with_options,
+    const std::optional<std::string>& with_lock,
+    OnSharedStorageHeaderReceivedCallback callback) {
+  std::move(callback).Run();
+=======
       network::mojom::kBrowserProcessId, MSG_ROUTING_NONE,
       network_traffic_annotation_id_hash, recv_bytes, sent_bytes);
+>>>>>>> chromium
 }
 
 void NetworkServiceClient::Clone(

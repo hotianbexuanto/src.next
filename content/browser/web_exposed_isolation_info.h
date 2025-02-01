@@ -5,8 +5,16 @@
 #ifndef CONTENT_BROWSER_WEB_EXPOSED_ISOLATION_INFO_H_
 #define CONTENT_BROWSER_WEB_EXPOSED_ISOLATION_INFO_H_
 
+<<<<<<< HEAD
+#include <optional>
+
+#include "base/tracing/protos/chrome_track_event.pbzero.h"
+#include "content/common/content_export.h"
+#include "third_party/perfetto/include/perfetto/tracing/traced_proto.h"
+=======
 #include "content/common/content_export.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
+>>>>>>> chromium
 #include "url/origin.h"
 
 namespace content {
@@ -72,6 +80,9 @@ class CONTENT_EXPORT WebExposedIsolationInfo {
   //
   // Origin comparisons determine ordering of isolated contexts.
   bool operator<(const WebExposedIsolationInfo& b) const;
+
+  using TraceProto = perfetto::protos::pbzero::WebExposedIsolationInfo;
+  void WriteIntoTrace(perfetto::TracedProto<TraceProto> proto) const;
 
  private:
   WebExposedIsolationInfo(const absl::optional<url::Origin>& origin,

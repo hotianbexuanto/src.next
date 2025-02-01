@@ -144,8 +144,7 @@ ChromeContentVerifierDelegate::ChromeContentVerifierDelegate(
       policy_extension_reinstaller_(
           std::make_unique<PolicyExtensionReinstaller>(context_)) {}
 
-ChromeContentVerifierDelegate::~ChromeContentVerifierDelegate() {
-}
+ChromeContentVerifierDelegate::~ChromeContentVerifierDelegate() = default;
 
 ContentVerifierDelegate::VerifierSourceType
 ChromeContentVerifierDelegate::GetVerifierSourceType(
@@ -159,8 +158,7 @@ ChromeContentVerifierDelegate::GetVerifierSourceType(
 }
 
 ContentVerifierKey ChromeContentVerifierDelegate::GetPublicKey() {
-  return ContentVerifierKey(kWebstoreSignaturesPublicKey,
-                            kWebstoreSignaturesPublicKeySize);
+  return kWebstoreSignaturesPublicKey;
 }
 
 GURL ChromeContentVerifierDelegate::GetSignatureFetchUrl(

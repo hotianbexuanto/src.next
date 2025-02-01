@@ -35,6 +35,7 @@
 #include "chrome/browser/extensions/crx_installer.h"
 #include "chrome/browser/extensions/extension_install_prompt.h"
 #include "chrome/browser/extensions/extension_install_prompt_show_params.h"
+#include "chrome/browser/extensions/extension_platform_browsertest.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/extensions/load_error_reporter.h"
@@ -62,7 +63,6 @@
 #include "content/public/browser/url_data_source.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_utils.h"
-#include "extensions/browser/browsertest_util.h"
 #include "extensions/browser/disable_reason.h"
 #include "extensions/browser/extension_dialog_auto_confirm.h"
 #include "extensions/browser/extension_host.h"
@@ -80,7 +80,11 @@
 #include "extensions/common/file_util.h"
 #include "extensions/common/manifest_handlers/background_info.h"
 #include "extensions/common/switches.h"
+<<<<<<< HEAD
+#include "extensions/test/extension_background_page_waiter.h"
+=======
 #include "extensions/common/value_builder.h"
+>>>>>>> chromium
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/constants/ash_switches.h"
@@ -92,6 +96,15 @@ namespace extensions {
 
 using extensions::service_worker_test_utils::TestRegistrationObserver;
 
+<<<<<<< HEAD
+ExtensionBrowserTest::ExtensionBrowserTest(ContextType context_type)
+    : ExtensionPlatformBrowserTest(context_type),
+#if BUILDFLAG(IS_CHROMEOS)
+      set_chromeos_user_(true),
+#endif
+      // TODO(crbug.com/40261741): Move this ScopedCurrentChannel down into
+      // tests that specifically require it.
+=======
 namespace {
 
 // Maps all chrome-extension://<id>/_test_resources/foo requests to
@@ -179,6 +192,7 @@ ExtensionBrowserTest::ExtensionBrowserTest()
 #endif
       // Default channel is STABLE but override with UNKNOWN so that unlaunched
       // or incomplete APIs can write tests.
+>>>>>>> chromium
       current_channel_(version_info::Channel::UNKNOWN),
       override_prompt_for_external_extensions_(
           FeatureSwitch::prompt_for_external_extensions(),
@@ -216,6 +230,10 @@ bool ExtensionBrowserTest::ShouldEnableInstallVerification() {
   return false;
 }
 
+<<<<<<< HEAD
+bool ExtensionBrowserTest::ShouldAllowMV2Extensions() {
+  return true;
+=======
 base::FilePath ExtensionBrowserTest::GetTestResourcesParentDir() {
   // Don't use |test_data_dir_| here (even though it points to
   // chrome/test/data/extensions by default) because subclasses have the ability
@@ -223,6 +241,7 @@ base::FilePath ExtensionBrowserTest::GetTestResourcesParentDir() {
   base::FilePath test_root_path;
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_root_path);
   return test_root_path.AppendASCII("extensions");
+>>>>>>> chromium
 }
 
 // static
@@ -242,10 +261,12 @@ const Extension* ExtensionBrowserTest::GetExtensionByPath(
 
 void ExtensionBrowserTest::SetUp() {
   test_extension_cache_ = std::make_unique<ExtensionCacheFake>();
-  InProcessBrowserTest::SetUp();
+  ExtensionPlatformBrowserTest::SetUp();
 }
 
 void ExtensionBrowserTest::SetUpCommandLine(base::CommandLine* command_line) {
+  ExtensionPlatformBrowserTest::SetUpCommandLine(command_line);
+
   base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir_);
   test_data_dir_ = test_data_dir_.AppendASCII("extensions");
 
@@ -283,17 +304,20 @@ void ExtensionBrowserTest::SetUpOnMainThread() {
         test_extension_cache_.get());
   }
 
-  test_protocol_handler_ = base::BindRepeating(
-      &ExtensionProtocolTestResourcesHandler, GetTestResourcesParentDir());
-  SetExtensionProtocolTestHandler(&test_protocol_handler_);
+  SetUpTestProtocolHandler();
   content::URLDataSource::Add(profile(),
                               std::make_unique<ThemeSource>(profile()));
 }
 
 void ExtensionBrowserTest::TearDownOnMainThread() {
+<<<<<<< HEAD
+  TearDownTestProtocolHandler();
+  registry_observation_.Reset();
+=======
   ExtensionMessageBubbleFactory::set_override_for_tests(
       ExtensionMessageBubbleFactory::NO_OVERRIDE);
   SetExtensionProtocolTestHandler(nullptr);
+>>>>>>> chromium
 }
 
 const Extension* ExtensionBrowserTest::LoadExtension(
@@ -304,12 +328,20 @@ const Extension* ExtensionBrowserTest::LoadExtension(
 const Extension* ExtensionBrowserTest::LoadExtension(
     const base::FilePath& path,
     const LoadOptions& options) {
+<<<<<<< HEAD
+  base::FilePath extension_path;
+  if (!extensions::browser_test_util::ModifyExtensionIfNeeded(
+          options, context_type_, GetTestPreCount(), temp_dir_.GetPath(), path,
+          &extension_path)) {
+    return nullptr;
+=======
   // Attempt to convert the extension to run as a Service Worker-based
   // extension if requested.
   base::FilePath extension_path = path;
   if (options.load_as_service_worker) {
     if (!CreateServiceWorkerBasedExtension(path, &extension_path))
       return nullptr;
+>>>>>>> chromium
   }
   if (options.load_as_component) {
     // TODO(https://crbug.com/1171429): Decide if other load options
@@ -352,6 +384,11 @@ const Extension* ExtensionBrowserTest::LoadExtension(
   return extension.get();
 }
 
+<<<<<<< HEAD
+void ExtensionBrowserTest::DisableExtension(const std::string& extension_id,
+                                            int disable_reasons) {
+  extension_service()->DisableExtension(extension_id, disable_reasons);
+=======
 bool ExtensionBrowserTest::CreateServiceWorkerBasedExtension(
     const base::FilePath& path,
     base::FilePath* out_path) {
@@ -480,6 +517,7 @@ bool ExtensionBrowserTest::CreateServiceWorkerBasedExtension(
 
   *out_path = extension_root;
   return true;
+>>>>>>> chromium
 }
 
 const Extension* ExtensionBrowserTest::LoadExtensionAsComponentWithManifest(
@@ -729,6 +767,38 @@ const Extension* ExtensionBrowserTest::InstallOrUpdateExtension(
     return NULL;
   }
 
+<<<<<<< HEAD
+  // If possible, wait for the extension's background context to be loaded.
+  // `WaitForExtensionViewsToLoad()` by itself is insufficient for this, since
+  // it only waits for existent views registered in the process manager, and
+  // the background context may not be registered yet.
+  std::string reason_unused;
+  bool extension_enabled =
+      !install_error &&
+      registry->enabled_extensions().Contains(installer->extension()->id());
+  if (extension_enabled && ExtensionBackgroundPageWaiter::CanWaitFor(
+                               *installer->extension(), reason_unused)) {
+    ExtensionBackgroundPageWaiter(profile(), *installer->extension())
+        .WaitForBackgroundInitialized();
+  }
+
+  if (!observer_->WaitForExtensionViewsToLoad()) {
+    return nullptr;
+  }
+
+  if (install_error) {
+    return nullptr;
+  }
+
+  // Even though we can already get the Extension from the CrxInstaller,
+  // ensure it's also in the list of enabled extensions.
+  return registry->enabled_extensions().GetByID(installer->extension()->id());
+}
+
+void ExtensionBrowserTest::ReloadExtension(
+    const extensions::ExtensionId& extension_id) {
+  scoped_refptr<const Extension> extension =
+=======
   if (!observer_->WaitForExtensionViewsToLoad())
     return NULL;
   return registry->GetExtensionById(last_loaded_extension_id(),
@@ -737,17 +807,26 @@ const Extension* ExtensionBrowserTest::InstallOrUpdateExtension(
 
 void ExtensionBrowserTest::ReloadExtension(const std::string& extension_id) {
   const Extension* extension =
+>>>>>>> chromium
       extension_registry()->GetInstalledExtension(extension_id);
   ASSERT_TRUE(extension);
   TestExtensionRegistryObserver observer(extension_registry(), extension_id);
   extension_service()->ReloadExtension(extension_id);
-  observer.WaitForExtensionLoaded();
-
+  // Re-grab the extension after the reload to get the updated copy.
+  extension = observer.WaitForExtensionLoaded();
   // We need to let other ExtensionRegistryObservers handle the extension load
-  // in order to finish initialization. This has to be done before waiting for
-  // extension views to load, since we only register views after observing
-  // extension load.
+  // in order to finish initialization.
   base::RunLoop().RunUntilIdle();
+
+  // Wait for the background context, if any, to start up.
+  std::string reason_unused;
+  if (extension_registry()->enabled_extensions().Contains(extension_id) &&
+      ExtensionBackgroundPageWaiter::CanWaitFor(*extension, reason_unused)) {
+    ExtensionBackgroundPageWaiter(profile(), *extension)
+        .WaitForBackgroundInitialized();
+  }
+
+  // Wait for any additionally-registered extension views to load.
   observer_->WaitForExtensionViewsToLoad();
 }
 
@@ -833,6 +912,25 @@ ExtensionHost* ExtensionBrowserTest::FindHostWithPath(ProcessManager* manager,
   return result_host;
 }
 
+<<<<<<< HEAD
+content::ServiceWorkerContext* ExtensionBrowserTest::GetServiceWorkerContext() {
+  return GetServiceWorkerContext(profile());
+}
+
+// static
+content::ServiceWorkerContext* ExtensionBrowserTest::GetServiceWorkerContext(
+    content::BrowserContext* browser_context) {
+  return service_worker_test_utils::GetServiceWorkerContext(browser_context);
+}
+
+WindowController* ExtensionBrowserTest::GetWindowController() {
+#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+  // TODO(b/361838438): Provide an implementation for the desktop android build.
+  return nullptr;
+#else
+  return browser()->extension_window_controller();
+#endif
+=======
 std::string ExtensionBrowserTest::ExecuteScriptInBackgroundPage(
     const std::string& extension_id,
     const std::string& script,
@@ -846,6 +944,7 @@ bool ExtensionBrowserTest::ExecuteScriptInBackgroundPageNoWait(
     const std::string& script) {
   return browsertest_util::ExecuteScriptInBackgroundPageNoWait(
       profile(), extension_id, script);
+>>>>>>> chromium
 }
 
 }  // namespace extensions

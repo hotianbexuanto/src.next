@@ -47,11 +47,32 @@ class CORE_EXPORT PseudoElement : public Element {
   bool LayoutObjectIsNeeded(const ComputedStyle&) const override;
   bool CanGeneratePseudoElement(PseudoId) const override;
 
+<<<<<<< HEAD
+  bool CanGenerateContent() const;
+  bool CanHaveNestedPseudoElement() const;
+  bool CanStartSelection() const override { return false; }
+  bool CanContainRangeEndPoint() const override { return false; }
+  PseudoId GetPseudoId() const override { return pseudo_id_; }
+  // PseudoId that can be alias, e.g. kPseudoScrollMarkerGroupAfter is
+  // unresolved = alias, kPseudoScrollMarkerGroup is resolved.
+  // For styling and selector matching, return resolved version.
+  PseudoId GetPseudoIdForStyling() const override;
+
+  // Return the adjusted style needed by layout. In some cases computed style
+  // cannot be used as-is by layout. display:contents needs to be adjusted to
+  // display:inline. Scroll marker pseudo elements may need to blockify the
+  // display type (depending on the parent). Returns nullptr if no adjustment is
+  // necessary.
+  const ComputedStyle* AdjustedLayoutStyle(
+      const ComputedStyle& style,
+      const ComputedStyle& layout_parent_style);
+=======
   bool CanStartSelection() const override { return false; }
   bool CanContainRangeEndPoint() const override { return false; }
   PseudoId GetPseudoId() const override { return pseudo_id_; }
   scoped_refptr<ComputedStyle> LayoutStyleForDisplayContents(
       const ComputedStyle&);
+>>>>>>> chromium
 
   static const AtomicString& PseudoElementNameForEvents(PseudoId);
   static bool IsWebExposed(PseudoId, const Node*);
@@ -62,12 +83,17 @@ class CORE_EXPORT PseudoElement : public Element {
 
   virtual void Dispose();
 
+  static bool IsLayoutSiblingOfOriginatingElement(PseudoId pseudo_id);
+
+ protected:
+  void SetIsGeneratedName(bool generated) { is_generated_name_ = generated; }
+
  private:
   class AttachLayoutTreeScope {
     STACK_ALLOCATED();
 
    public:
-    AttachLayoutTreeScope(PseudoElement*);
+    AttachLayoutTreeScope(PseudoElement*, const AttachContext&);
     ~AttachLayoutTreeScope();
 
    private:
@@ -76,6 +102,11 @@ class CORE_EXPORT PseudoElement : public Element {
   };
 
   PseudoId pseudo_id_;
+<<<<<<< HEAD
+  const AtomicString view_transition_name_;
+  bool is_generated_name_ = false;
+=======
+>>>>>>> chromium
 };
 
 const QualifiedName& PseudoElementTagName(PseudoId);

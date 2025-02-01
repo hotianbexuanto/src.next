@@ -110,9 +110,19 @@ public interface TabModelSelector {
 
     /**
      * Searches through all children models for the specified Tab and closes the tab if it exists.
-     * @param tab the non-null tab to close
-     * @return true if the tab was found
+     * If the tab is pending closure it will be committed.
+     *
+     * <p>Note: this method should ONLY be used when either the tab model or closing state of the
+     * tab are hard to discern. Prefer to use {@code
+     * getModel(isIncognito).getTabRemover().closeTabs()}.
+     *
+     * @param tabClosureParams A {@link TabClosureParams} for a single tab.
+     * @param allowDialog Whether to show a tab removal dialog see {@link TabRemover}
+     * @return true if the tab was found and closed.
      */
+<<<<<<< HEAD
+    boolean tryCloseTab(@NonNull TabClosureParams tabClosureParams, boolean allowDialog);
+=======
     boolean closeTab(Tab tab);
 
     /**
@@ -126,6 +136,7 @@ public interface TabModelSelector {
      *                 the system back button)
      */
     void closeAllTabs(boolean uponExit);
+>>>>>>> chromium
 
     /**
      * Get total tab count across all tab models

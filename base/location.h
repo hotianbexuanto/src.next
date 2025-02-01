@@ -99,6 +99,10 @@ class BASE_EXPORT Location {
   static Location Current();
 #endif
 
+  static Location CurrentWithoutFunctionName(
+      const char* file_name = __builtin_FILE(),
+      int line_number = __builtin_LINE());
+
  private:
   const char* function_name_ = nullptr;
   const char* file_name_ = nullptr;

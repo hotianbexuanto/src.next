@@ -15,8 +15,11 @@
 #include "base/containers/contains.h"
 #include "base/feature_list.h"
 #include "base/location.h"
+<<<<<<< HEAD
+=======
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/sparse_histogram.h"
+>>>>>>> chromium
 #include "base/notreached.h"
 #include "base/single_thread_task_runner.h"
 #include "base/strings/string_number_conversions.h"
@@ -143,6 +146,20 @@ HttpStreamFactory::Job::Job(Delegate* delegate,
       using_ssl_(origin_url_.SchemeIs(url::kHttpsScheme) ||
                  origin_url_.SchemeIs(url::kWssScheme)),
       using_quic_(
+<<<<<<< HEAD
+          alternative_protocol == NextProto::kProtoQUIC ||
+          session->ShouldForceQuic(destination_, proxy_info, is_websocket_) ||
+          job_type == DNS_ALPN_H3 || job_type == PRECONNECT_DNS_ALPN_H3),
+      quic_version_(quic_version),
+      expect_spdy_(alternative_protocol == NextProto::kProtoHTTP2 &&
+                   !using_quic_),
+      quic_request_(session_->quic_session_pool()),
+      spdy_session_key_(using_quic_
+                            ? SpdySessionKey()
+                            : GetSpdySessionKey(proxy_info_.proxy_chain(),
+                                                origin_url_,
+                                                request_info_)) {
+=======
           alternative_protocol == kProtoQUIC ||
           (ShouldForceQuic(session, destination_, proxy_info, using_ssl_))),
       quic_version_(quic_version),
@@ -170,6 +187,7 @@ HttpStreamFactory::Job::Job(Delegate* delegate,
                                           request_info_.secure_dns_policy)),
       stream_type_(HttpStreamRequest::BIDIRECTIONAL_STREAM),
       init_connection_already_resumed_(false) {
+>>>>>>> chromium
   // Websocket `destination` schemes should be converted to HTTP(S).
   DCHECK(base::LowerCaseEqualsASCII(destination_.scheme(), url::kHttpScheme) ||
          base::LowerCaseEqualsASCII(destination_.scheme(), url::kHttpsScheme));
@@ -190,7 +208,7 @@ HttpStreamFactory::Job::Job(Delegate* delegate,
     DCHECK_NE(quic_version_, quic::ParsedQuicVersion::Unsupported());
 
   DCHECK(session);
-  if (alternative_protocol != kProtoUnknown) {
+  if (alternative_protocol != NextProto::kProtoUnknown) {
     // If the alternative service protocol is specified, then the job type must
     // be either ALTERNATIVE or PRECONNECT.
     DCHECK(job_type_ == ALTERNATIVE || job_type_ == PRECONNECT);
@@ -314,7 +332,11 @@ NextProto HttpStreamFactory::Job::negotiated_protocol() const {
 }
 
 bool HttpStreamFactory::Job::using_spdy() const {
+<<<<<<< HEAD
+  return negotiated_protocol_ == NextProto::kProtoHTTP2;
+=======
   return using_spdy_;
+>>>>>>> chromium
 }
 
 size_t HttpStreamFactory::Job::EstimateMemoryUsage() const {
@@ -520,8 +542,16 @@ void HttpStreamFactory::Job::RunLoop(int result) {
   // while doing anything other than waiting to establish a connection.
   spdy_session_request_.reset();
 
+<<<<<<< HEAD
+  // Record histograms which are required for the end of session creation.
+  RecordCompletionHistograms(result);
+
+  if ((job_type_ == PRECONNECT) || (job_type_ == PRECONNECT_DNS_ALPN_H3)) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+=======
   if (job_type_ == PRECONNECT) {
     base::ThreadTaskRunnerHandle::Get()->PostTask(
+>>>>>>> chromium
         FROM_HERE,
         base::BindOnce(&HttpStreamFactory::Job::OnPreconnectsComplete,
                        ptr_factory_.GetWeakPtr()));
@@ -792,7 +822,12 @@ int HttpStreamFactory::Job::DoInitConnectionImpl() {
       // actually need to preconnect any sockets, so we're done.
       if (job_type_ == PRECONNECT)
         return OK;
+<<<<<<< HEAD
+      }
+      negotiated_protocol_ = NextProto::kProtoHTTP2;
+=======
       using_spdy_ = true;
+>>>>>>> chromium
       next_state_ = STATE_CREATE_STREAM;
       return OK;
     }
@@ -930,7 +965,69 @@ int HttpStreamFactory::Job::DoInitConnectionComplete(int result) {
 
   resolve_error_info_ = connection_->resolve_error_info();
 
+<<<<<<< HEAD
+  // Determine the protocol (HTTP/1.1, HTTP/2, or HTTP/3). This covers both the
+  // origin and some proxy cases. First, if the URL is HTTPS (or WSS), we may
+  // negotiate HTTP/2 or HTTP/3 with the origin. Second, non-tunneled requests
+  // (i.e. HTTP URLs) through an HTTPS or QUIC proxy work by sending the request
+  // to the proxy directly. In that case, this logic also handles the proxy's
+  // negotiated protocol. HTTPS requests are always tunneled, so at most one of
+  // these applies.
+  //
+  // Tunneled requests may also negotiate ALPN at the proxy, but
+  // HttpProxyConnectJob handles ALPN. The resulting StreamSocket will not
+  // report an ALPN protocol.
+  if (result == OK) {
+    if (using_quic_) {
+      // TODO(davidben): Record these values consistently between QUIC and TCP
+      // below. In the QUIC case, we only record it for origin connections. In
+      // the TCP case, we also record it for non-tunneled, proxied requests.
+      if (using_ssl_) {
+        negotiated_protocol_ = NextProto::kProtoQUIC;
+      }
+    } else if (connection_->socket()->GetNegotiatedProtocol() !=
+               NextProto::kProtoUnknown) {
+      // Only connections that use TLS (either to the origin or via a GET to a
+      // secure proxy) can negotiate ALPN.
+      bool get_to_secure_proxy =
+          IsGetToProxy(proxy_info_.proxy_chain(), origin_url_) &&
+          proxy_info_.proxy_chain().Last().is_secure_http_like();
+      DCHECK(using_ssl_ || get_to_secure_proxy);
+      negotiated_protocol_ = connection_->socket()->GetNegotiatedProtocol();
+      net_log_.AddEvent(NetLogEventType::HTTP_STREAM_REQUEST_PROTO, [&] {
+        return NetLogHttpStreamProtoParams(negotiated_protocol_);
+      });
+      if (using_spdy()) {
+        if (is_websocket_) {
+          // WebSocket is not supported over a fresh HTTP/2 connection. This
+          // should not be reachable. For the origin, we do not request HTTP/2
+          // on fresh WebSockets connections, because not all HTTP/2 servers
+          // implement RFC 8441. For proxies, WebSockets are always tunneled.
+          //
+          // TODO(davidben): This isn't a CHECK() because, previously, it was
+          // reachable in https://crbug.com/828865. However, if reachable, it
+          // means a bug in the socket pools. The socket pools have since been
+          // cleaned up, so this may no longer be reachable. Restore the CHECK
+          // and see if this is still needed.
+          return ERR_NOT_IMPLEMENTED;
+        }
+      }
+    }
+  }
+
+  if (using_quic_ && result < 0 && !proxy_info_.is_direct() &&
+      proxy_info_.proxy_chain().Last().is_quic()) {
+    return ReconsiderProxyAfterError(result);
+  }
+
+  if (expect_spdy_ && !using_spdy()) {
+    return ERR_ALPN_NEGOTIATION_FAILED;
+  }
+
+  // |result| may be the result of any of the stacked protocols. The following
+=======
   // |result| may be the result of any of the stacked pools. The following
+>>>>>>> chromium
   // logic is used when determining how to interpret an error.
   // If |result| < 0:
   //   and connection_->socket() != NULL, then the SSL handshake ran and it
@@ -1222,7 +1319,11 @@ void HttpStreamFactory::Job::OnSpdySessionAvailable(
     return;
   }
 
+<<<<<<< HEAD
+  negotiated_protocol_ = NextProto::kProtoHTTP2;
+=======
   using_spdy_ = true;
+>>>>>>> chromium
   existing_spdy_session_ = spdy_session;
   next_state_ = STATE_CREATE_STREAM;
 
@@ -1321,7 +1422,66 @@ bool HttpStreamFactory::Job::ShouldThrottleConnectForSpdy() const {
       spdy_session_key_.host_port_pair().port());
   // Only throttle the request if the server is believed to support H2.
   return session_->http_server_properties()->GetSupportsSpdy(
+<<<<<<< HEAD
+      scheme_host_port, request_info_.network_anonymization_key);
+}
+
+void HttpStreamFactory::Job::RecordPreconnectHistograms(int result) {
+  CHECK(job_type_ == PRECONNECT || job_type_ == PRECONNECT_DNS_ALPN_H3);
+  constexpr std::string_view kHistogramBase =
+      "Net.SessionCreate.GoogleSearch.Preconnect";
+  if (!IsGoogleHost(destination_.host())) {
+    return;
+  }
+  bool is_session_reuse = false;
+  if (using_quic_) {
+    auto completion_result_histogram =
+        base::StrCat({kHistogramBase, ".Quic.CompletionResult"});
+    // TODO(crbug.com/376304027): Expand this to non-Quic as well. Currently,
+    // H1 and H2 does not return precise failure reason.
+    base::UmaHistogramSparse(completion_result_histogram, -result);
+    base::UmaHistogramSparse(
+        base::StrCat({completion_result_histogram,
+                      job_type_ == PRECONNECT ? ".PreconnectJob"
+                                              : ".PreconnectDnsAlpnH3Job"}),
+        -result);
+    is_session_reuse = using_existing_quic_session_;
+  } else {
+    is_session_reuse = existing_spdy_session_ != nullptr;
+  }
+
+  base::UmaHistogramBoolean(
+      base::StrCat({kHistogramBase, using_quic_ ? ".Quic" : ".Spdy",
+                    ".IsSessionReused"}),
+      is_session_reuse);
+}
+
+void HttpStreamFactory::Job::RecordCompletionHistograms(int result) {
+  constexpr std::string_view kHistogramBase = "Net.SessionCreate";
+  bool is_session_reuse = using_quic_ ? using_existing_quic_session_
+                                      : existing_spdy_session_ != nullptr;
+  // We only record session creation which succeeded and the ones that we
+  // created a new session.
+  if (result != OK || is_session_reuse) {
+    return;
+  }
+  if (request_info_.traffic_annotation.is_valid()) {
+    base::UmaHistogramSparse(
+        base::StrCat(
+            {kHistogramBase, using_quic_ ? ".Quic" : ".Spdy",
+             ".TrafficAnnotation",
+             IsGoogleHostWithAlpnH3(destination_.host()) ? ".GoogleHost" : ""}),
+        request_info_.traffic_annotation.unique_id_hash_code);
+  }
+  base::UmaHistogramBoolean(
+      base::StrCat(
+          {kHistogramBase, using_quic_ ? ".Quic" : ".Spdy",
+           ".HasTrafficAnnotation",
+           IsGoogleHostWithAlpnH3(destination_.host()) ? ".GoogleHost" : ""}),
+      request_info_.traffic_annotation.is_valid());
+=======
       scheme_host_port, request_info_.network_isolation_key);
+>>>>>>> chromium
 }
 
 }  // namespace net

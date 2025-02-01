@@ -342,9 +342,12 @@ class DeprecationTest : public testing::Test {
  public:
   DeprecationTest()
       : dummy_(std::make_unique<DummyPageHolder>()),
-        deprecation_(dummy_->GetPage().GetDeprecation()),
-        use_counter_(dummy_->GetDocument().Loader()->GetUseCounter()) {
+        deprecation_(dummy_->GetPage().GetDeprecation()) {
     Page::InsertOrdinaryPageForTesting(&dummy_->GetPage());
+  }
+
+  UseCounterImpl& use_counter() {
+    return dummy_->GetDocument().Loader()->GetUseCounter();
   }
 
  protected:
@@ -352,7 +355,6 @@ class DeprecationTest : public testing::Test {
 
   std::unique_ptr<DummyPageHolder> dummy_;
   Deprecation& deprecation_;
-  UseCounterImpl& use_counter_;
 };
 
 TEST_F(DeprecationTest, InspectorDisablesDeprecation) {
@@ -367,26 +369,26 @@ TEST_F(DeprecationTest, InspectorDisablesDeprecation) {
   Deprecation::WarnOnDeprecatedProperties(GetFrame(), property);
   EXPECT_FALSE(deprecation_.IsSuppressed(property));
   Deprecation::CountDeprecation(GetFrame()->DomWindow(), feature);
-  EXPECT_FALSE(use_counter_.IsCounted(feature));
+  EXPECT_FALSE(use_counter().IsCounted(feature));
 
   deprecation_.MuteForInspector();
   Deprecation::WarnOnDeprecatedProperties(GetFrame(), property);
   EXPECT_FALSE(deprecation_.IsSuppressed(property));
   Deprecation::CountDeprecation(GetFrame()->DomWindow(), feature);
-  EXPECT_FALSE(use_counter_.IsCounted(feature));
+  EXPECT_FALSE(use_counter().IsCounted(feature));
 
   deprecation_.UnmuteForInspector();
   Deprecation::WarnOnDeprecatedProperties(GetFrame(), property);
   EXPECT_FALSE(deprecation_.IsSuppressed(property));
   Deprecation::CountDeprecation(GetFrame()->DomWindow(), feature);
-  EXPECT_FALSE(use_counter_.IsCounted(feature));
+  EXPECT_FALSE(use_counter().IsCounted(feature));
 
   deprecation_.UnmuteForInspector();
   Deprecation::WarnOnDeprecatedProperties(GetFrame(), property);
   // TODO: use the actually deprecated property to get a deprecation message.
   EXPECT_FALSE(deprecation_.IsSuppressed(property));
   Deprecation::CountDeprecation(GetFrame()->DomWindow(), feature);
-  EXPECT_TRUE(use_counter_.IsCounted(feature));
+  EXPECT_TRUE(use_counter().IsCounted(feature));
 }
 
 TEST_F(UseCounterImplTest, CSSUnknownNamespacePrefixInSelector) {

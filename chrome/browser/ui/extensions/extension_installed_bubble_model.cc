@@ -26,8 +26,14 @@ absl::optional<extensions::Command> CommandForExtensionAction(
     Profile* profile) {
   const auto* info = extensions::ActionInfo::GetExtensionActionInfo(extension);
 
+<<<<<<< HEAD
+  if (!info) {
+    return std::nullopt;
+  }
+=======
   if (!info)
     return absl::nullopt;
+>>>>>>> chromium
 
   auto* service = extensions::CommandService::Get(profile);
   extensions::Command command;
@@ -45,8 +51,9 @@ std::u16string MakeHowToUseText(const extensions::ActionInfo* action,
                                 absl::optional<extensions::Command> command,
                                 const std::string& keyword) {
   std::u16string extra;
-  if (command.has_value())
+  if (command.has_value()) {
     extra = command->accelerator().GetShortcutText();
+  }
 
   int message_id = 0;
   if (action && action->type == extensions::ActionInfo::TYPE_BROWSER) {
@@ -63,8 +70,9 @@ std::u16string MakeHowToUseText(const extensions::ActionInfo* action,
     message_id = IDS_EXTENSION_INSTALLED_OMNIBOX_KEYWORD_INFO;
   }
 
-  if (!message_id)
+  if (!message_id) {
     return std::u16string();
+  }
 
   return extra.empty() ? l10n_util::GetStringUTF16(message_id)
                        : l10n_util::GetStringFUTF16(message_id, extra);
@@ -103,8 +111,9 @@ ExtensionInstalledBubbleModel::ExtensionInstalledBubbleModel(
   show_sign_in_promo_ = extensions::util::ShouldSync(extension, profile) &&
                         SyncPromoUI::ShouldShowSyncPromo(profile);
 
-  if (show_how_to_use_)
+  if (show_how_to_use_) {
     how_to_use_text_ = MakeHowToUseText(action_info, command, keyword);
+  }
 }
 
 ExtensionInstalledBubbleModel::~ExtensionInstalledBubbleModel() = default;
@@ -117,8 +126,9 @@ std::u16string ExtensionInstalledBubbleModel::GetHowToUseText() const {
 gfx::ImageSkia ExtensionInstalledBubbleModel::MakeIconOfSize(
     const gfx::Size& wanted) const {
   gfx::Size size(icon_.width(), icon_.height());
-  if (size.width() > wanted.width() || size.height() > wanted.height())
+  if (size.width() > wanted.width() || size.height() > wanted.height()) {
     size.SetSize(wanted.width(), wanted.height());
+  }
 
   return gfx::ImageSkiaOperations::CreateResizedImage(
       gfx::ImageSkia::CreateFrom1xBitmap(icon_),

@@ -9,10 +9,20 @@
 #include <stdint.h>
 
 #include <algorithm>
+#include <cmath>
+#include <concepts>
 #include <string>
+<<<<<<< HEAD
+#include <type_traits>
+#include <vector>
+=======
+>>>>>>> chromium
 
 #include "base/base_export.h"
 #include "base/gtest_prod_util.h"
+#include "base/numerics/clamped_math.h"
+#include "base/numerics/safe_conversions.h"
+#include "base/time/time.h"
 #include "build/build_config.h"
 
 namespace blink {
@@ -24,6 +34,21 @@ class MainThreadMetricsHelper;
 
 namespace base {
 
+<<<<<<< HEAD
+namespace internal {
+
+#if !BUILDFLAG(IS_NACL)
+void ConfigureBoringSSLBackedRandBytesFieldTrial();
+#endif
+
+// Returns a random double in range [0, 1). For use in allocator shim to avoid
+// infinite recursion. Thread-safe.
+BASE_EXPORT double RandDoubleAvoidAllocation();
+
+}  // namespace internal
+
+=======
+>>>>>>> chromium
 // Returns a random number in range [0, UINT64_MAX]. Thread-safe.
 BASE_EXPORT uint64_t RandUint64();
 
@@ -36,6 +61,86 @@ BASE_EXPORT uint64_t RandGenerator(uint64_t range);
 // Returns a random double in range [0, 1). Thread-safe.
 BASE_EXPORT double RandDouble();
 
+<<<<<<< HEAD
+// Returns a random float in range [0, 1). Thread-safe.
+BASE_EXPORT float RandFloat();
+
+// Returns a random bool. Thread-safe.
+BASE_EXPORT bool RandBool();
+
+// Returns a random duration in [`start`, `limit`). Thread-safe.
+//
+// REQUIRES: `start` < `limit`
+BASE_EXPORT TimeDelta RandTimeDelta(TimeDelta start, TimeDelta limit);
+
+// Returns a random duration in [`TimeDelta()`, `limit`). Thread-safe.
+//
+// REQUIRES: `limit.is_positive()`
+BASE_EXPORT TimeDelta RandTimeDeltaUpTo(TimeDelta limit);
+
+// Adjusts `value` up or down by a random amount up to `percentage`%, e.g. to
+// add noise/jitter. Thread-safe.
+//
+// More precisely, implements something equivalent to the following pseudocode:
+// (1) Computes `max_adjustment = value * percentage / 100` as a double
+// (2) If `T` is integral, rounds `max_adjustment`, clamped to what is
+//     effectively a 65-bit signed value
+// (3) Computes `result` as a random value in the range of
+//     [`value - max_adjustment`, `value + max_adjustment`)
+// (4) Checks that the `result` is in the valid range of `T` and returns it
+//
+// REQUIRES: inputs are finite, `percentage` >= 0
+template <typename T>
+  requires std::floating_point<T>
+T RandomizeByPercentage(T value, double percentage) {
+  CHECK(!std::isinf(value));
+  CHECK(!std::isnan(value));
+  CHECK(!std::isinf(percentage));
+  CHECK_GE(percentage, 0);
+  return checked_cast<T>(value +
+                         value * (RandDouble() - 0.5) * 2 * percentage / 100);
+}
+template <typename T>
+  requires std::integral<T>
+T RandomizeByPercentage(T value, double percentage) {
+  CHECK(!std::isinf(percentage));
+  CHECK_GE(percentage, 0);
+  // If `T` is signed and `percentage` is sufficiently large, the maximum
+  // adjustment may not fit in a `T`. The clamped value described in pseudocode
+  // step (2) above will always fit in a `uint64_t`, so do math in `uint64_t`s.
+  const uint64_t abs_value = SafeUnsignedAbs(value);
+  const uint64_t max_abs_adjustment =
+      ClampRound<uint64_t>(abs_value * percentage / 100);
+  if (!max_abs_adjustment) {
+    return value;
+  }
+  uint64_t abs_adjustment = RandGenerator(max_abs_adjustment);
+
+  CheckedNumeric<T> checked_value(value);
+  // Random sign bit for the adjustment.
+  if (RandBool()) {
+    // Subtract adjustment.
+    //
+    // Be careful to "translate" the adjustment to the other side of `value` (by
+    // doing the subtraction from `max_abs_adjustment` here) instead of
+    // "mirroring" it (as would happen if this were omitted). This avoids bias
+    // and preserves the desired half-closed interval property of the result
+    // range.
+    abs_adjustment = max_abs_adjustment - abs_adjustment;
+    checked_value -= abs_adjustment;
+  } else {
+    checked_value += abs_adjustment;
+  }
+  return checked_value.ValueOrDie();
+}
+inline TimeDelta RandomizeByPercentage(TimeDelta value, double percentage) {
+  CHECK(!value.is_inf());
+  return Microseconds(
+      RandomizeByPercentage(value.InMicroseconds(), percentage));
+}
+
+=======
+>>>>>>> chromium
 // Given input |bits|, convert with maximum precision to a double in
 // the range [0, 1). Thread-safe.
 BASE_EXPORT double BitsToOpenEndedUnitInterval(uint64_t bits);
@@ -95,8 +200,9 @@ class SequenceManagerImpl;
 //
 // WARNING: This is not the generator you are looking for. This has significant
 // caveats:
-//   - It is non-cryptographic, so easy to miuse
-//   - It is neither fork() nor clone()-safe.
+//   - It is non-cryptographic, so easy to misuse
+//   - It is neither fork() nor clone()-safe because both RNG's after the
+//     fork/clone will have the same state and produce the same number stream.
 //   - Synchronization is up to the client.
 //
 // Always prefer base::Rand*() above, unless you have a use case where its
@@ -125,17 +231,24 @@ class BASE_EXPORT InsecureRandomGenerator {
   // Never use outside testing, not enough entropy.
   void SeedForTesting(uint64_t seed);
 
-  uint32_t RandUint32();
-  uint64_t RandUint64();
+  uint32_t RandUint32() const;
+  uint64_t RandUint64() const;
   // In [0, 1).
-  double RandDouble();
+  double RandDouble() const;
 
  private:
+<<<<<<< HEAD
+  InsecureRandomGenerator();
+  // State. These are mutable to allow Rand* functions to be declared as const.
+  // This, in turn, enables use of `MetricsSubSampler` in const contexts.
+  mutable uint64_t a_ = 0, b_ = 0;
+=======
   InsecureRandomGenerator() = default;
 
   bool seeded_ = false;
   // State.
   uint64_t a_ = 0, b_ = 0;
+>>>>>>> chromium
 
   // Before adding a new friend class, make sure that the overhead of
   // base::Rand*() is too high, using something more representative than a
@@ -162,6 +275,43 @@ class BASE_EXPORT InsecureRandomGenerator {
   FRIEND_TEST_ALL_PREFIXES(RandUtilPerfTest, InsecureRandomRandUint64);
 };
 
+<<<<<<< HEAD
+// Fast class to randomly sub-sample metrics that are logged in high frequency
+// code.
+//
+// WARNING: This uses InsecureRandomGenerator so all the caveats there apply.
+// In particular if a MetricsSubSampler object exists when fork()/clone() is
+// called, calls to ShouldSample() on both sides of the fork will return the
+// same values, possibly introducing metric bias.
+class BASE_EXPORT MetricsSubSampler {
+ public:
+  MetricsSubSampler();
+  bool ShouldSample(double probability) const;
+
+  // Make any call to ShouldSample for any instance of MetricsSubSampler
+  // return true for testing. Cannot be used in conjunction with
+  // ScopedNeverSampleForTesting.
+  class BASE_EXPORT ScopedAlwaysSampleForTesting {
+   public:
+    ScopedAlwaysSampleForTesting();
+    ~ScopedAlwaysSampleForTesting();
+  };
+
+  // Make any call to ShouldSample for any instance of MetricsSubSampler
+  // return false for testing. Cannot be used in conjunction with
+  // ScopedAlwaysSampleForTesting.
+  class BASE_EXPORT ScopedNeverSampleForTesting {
+   public:
+    ScopedNeverSampleForTesting();
+    ~ScopedNeverSampleForTesting();
+  };
+
+ private:
+  InsecureRandomGenerator generator_;
+};
+
+=======
+>>>>>>> chromium
 }  // namespace base
 
 #endif  // BASE_RAND_UTIL_H_

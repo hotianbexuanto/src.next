@@ -35,11 +35,20 @@
 #include <memory>
 
 #include "base/memory/scoped_refptr.h"
+<<<<<<< HEAD
+#include "base/time/time.h"
+=======
 
+>>>>>>> chromium
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote.h"
+<<<<<<< HEAD
+#include "third_party/blink/public/common/performance/performance_timeline_constants.h"
+#include "third_party/blink/public/common/subresource_load_metrics.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/public/mojom/devtools/devtools_agent.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
@@ -94,8 +103,16 @@ class CORE_EXPORT LocalFrameClientImpl final : public LocalFrameClient {
   void DidFinishSameDocumentNavigation(HistoryItem*,
                                        WebHistoryCommitType,
                                        bool is_handled_within_agent,
+<<<<<<< HEAD
+                                       mojom::blink::SameDocumentNavigationType,
+                                       bool is_client_redirect,
+                                       bool is_browser_initiated,
+                                       bool should_skip_screenshot) override;
+  void DidFailAsyncSameDocumentCommit() override;
+=======
                                        bool is_history_api_navigation,
                                        bool is_client_redirect) override;
+>>>>>>> chromium
   void DispatchDidOpenDocumentInputStream(const KURL& url) override;
   void DispatchDidReceiveTitle(const String&) override;
   void DispatchDidCommitLoad(
@@ -135,7 +152,15 @@ class CORE_EXPORT LocalFrameClientImpl final : public LocalFrameClient {
   bool NavigateBackForward(int offset) const override;
   void DidDispatchPingLoader(const KURL&) override;
   void DidChangePerformanceTiming() override;
+<<<<<<< HEAD
+  void DidObserveUserInteraction(base::TimeTicks max_event_start,
+                                 base::TimeTicks max_event_queued_main_thread,
+                                 base::TimeTicks max_event_commit_finish,
+                                 base::TimeTicks max_event_end,
+                                 uint64_t interaction_offset) override;
+=======
   void DidObserveInputDelay(base::TimeDelta) override;
+>>>>>>> chromium
   void DidChangeCpuTiming(base::TimeDelta) override;
   void DidObserveLoadingBehavior(LoadingBehaviorFlag) override;
   void DidObserveNewFeatureUsage(const UseCounterFeature&) override;

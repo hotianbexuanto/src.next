@@ -4,6 +4,10 @@
 
 #include "third_party/blink/renderer/core/paint/cull_rect_updater.h"
 
+<<<<<<< HEAD
+#include "third_party/blink/public/common/features.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
@@ -52,12 +56,15 @@ bool SetFragmentContentsCullRect(PaintLayer& layer,
 void CullRectUpdater::Update() {
   DCHECK(starting_layer_.IsRootLayer());
   UpdateInternal(CullRect::Infinite());
+<<<<<<< HEAD
+=======
 #if DCHECK_IS_ON()
   if (VLOG_IS_ON(2)) {
     VLOG(2) << "PaintLayer tree after cull rect update:";
     showLayerTree(&starting_layer_);
   }
 #endif
+>>>>>>> chromium
 }
 
 void CullRectUpdater::UpdateInternal(const CullRect& input_cull_rect) {
@@ -76,10 +83,30 @@ void CullRectUpdater::UpdateInternal(const CullRect& input_cull_rect) {
       should_use_infinite ? CullRect::Infinite() : input_cull_rect);
   bool force_update_children = SetFragmentContentsCullRect(
       starting_layer_, fragment,
+<<<<<<< HEAD
+      should_use_infinite
+          ? CullRect::Infinite()
+          : ComputeFragmentContentsCullRect(context, starting_layer_, fragment,
+                                            input_cull_rect));
+
+  context.absolute = context.fixed = context.current;
+  UpdateForDescendants(context, starting_layer_);
+
+  if (!g_original_cull_rects)
+    starting_layer_.ClearNeedsCullRectUpdate();
+
+#if DCHECK_IS_ON()
+  if (VLOG_IS_ON(2)) {
+    VLOG(2) << "PaintLayer tree after cull rect update:";
+    ShowLayerTree(&starting_layer_);
+  }
+#endif
+=======
       should_use_infinite ? CullRect::Infinite()
                           : ComputeFragmentContentsCullRect(
                                 starting_layer_, fragment, input_cull_rect));
   UpdateForDescendants(starting_layer_, force_update_children);
+>>>>>>> chromium
 }
 
 void CullRectUpdater::UpdateRecursively(PaintLayer& layer,
@@ -278,6 +305,118 @@ bool CullRectUpdater::ShouldProactivelyUpdate(const PaintLayer& layer) const {
   return layer.SelfOrDescendantNeedsRepaint();
 }
 
+<<<<<<< HEAD
+void CullRectUpdater::PaintPropertiesChanged(
+    const LayoutObject& object,
+    const PaintPropertiesChangeInfo& properties_changed) {
+  // We don't need to update cull rect for kChangedOnlyCompositedValues (except
+  // for some paint translation changes, see below) because we expect no repaint
+  // or PAC update for performance.
+  // Clip nodes and scroll nodes don't have kChangedOnlyCompositedValues, so we
+  // don't need to check ShouldUseInfiniteCullRect before the early return
+  // below.
+  DCHECK_NE(properties_changed.clip_changed,
+            PaintPropertyChangeType::kChangedOnlyCompositedValues);
+  DCHECK_NE(properties_changed.scroll_changed,
+            PaintPropertyChangeType::kChangedOnlyCompositedValues);
+
+  bool should_use_infinite_cull_rect = false;
+  if (object.HasLayer()) {
+    bool subtree_should_use_infinite_cull_rect = false;
+    auto* view_transition_supplement =
+        ViewTransitionSupplement::FromIfExists(object.GetDocument());
+    should_use_infinite_cull_rect = ShouldUseInfiniteCullRect(
+        *To<LayoutBoxModelObject>(object).Layer(), view_transition_supplement,
+        subtree_should_use_infinite_cull_rect);
+    if (should_use_infinite_cull_rect &&
+        object.FirstFragment().GetCullRect().IsInfinite() &&
+        object.FirstFragment().GetContentsCullRect().IsInfinite()) {
+      return;
+    }
+  }
+
+  // Cull rects depend on transforms, clip rects, scroll contents sizes and
+  // scroll offsets.
+  bool needs_cull_rect_update =
+      properties_changed.transform_changed >=
+          PaintPropertyChangeType::kChangedOnlySimpleValues ||
+      properties_changed.clip_changed >=
+          PaintPropertyChangeType::kChangedOnlySimpleValues ||
+      properties_changed.scroll_changed >=
+          PaintPropertyChangeType::kChangedOnlySimpleValues ||
+      HasScrolledEnough(object);
+
+  if (!needs_cull_rect_update) {
+    // For cases that the transform change can be directly updated, we should
+    // use infinite cull rect or rect expanded for composied scroll (in case of
+    // not scrolled enough) to avoid cull rect change and repaint.
+    DCHECK(properties_changed.transform_changed !=
+               PaintPropertyChangeType::kChangedOnlyCompositedValues ||
+           object.IsSVGChild() || should_use_infinite_cull_rect ||
+           !HasScrolledEnough(object));
+    return;
+  }
+
+  if (object.HasLayer()) {
+    PaintLayer* layer = To<LayoutBoxModelObject>(object).Layer();
+    layer->SetNeedsCullRectUpdate();
+
+    // For change of scroll properties (e.g. contents rect), SetNeedsRepaint to
+    // force proactive update of cull rect because the ChangedEnough logic
+    // doesn't apply. In most cases, other code paths also SetNeedsRepaint
+    // on such changes, but not for the case where a containing-block-order
+    // descendant causing the change is not a paint-order descendant of the
+    // scroller.
+    if (properties_changed.scroll_changed >=
+        PaintPropertyChangeType::kChangedOnlySimpleValues) {
+      layer->SetNeedsRepaint();
+    }
+
+    // Fixed-position cull rects depend on view clip. See
+    // ComputeFragmentCullRect().
+    if (const auto* layout_view = DynamicTo<LayoutView>(object)) {
+      if (const auto* clip_node =
+              object.FirstFragment().PaintProperties()->OverflowClip()) {
+        if (clip_node->NodeChanged() != PaintPropertyChangeType::kUnchanged) {
+          for (const auto& fragment : layout_view->PhysicalFragments()) {
+            if (!fragment.HasOutOfFlowFragmentChild()) {
+              continue;
+            }
+            for (const auto& fragment_child : fragment.Children()) {
+              if (!fragment_child->IsFixedPositioned()) {
+                continue;
+              }
+              To<LayoutBox>(fragment_child->GetLayoutObject())
+                  ->Layer()
+                  ->SetNeedsCullRectUpdate();
+            }
+          }
+        }
+      }
+    }
+    return;
+  }
+
+  if (object.SlowFirstChild()) {
+    // This ensures cull rect update of the child PaintLayers affected by the
+    // paint property change on a non-PaintLayer. Though this may unnecessarily
+    // force update of unrelated children, the situation is rare and this is
+    // much easier.
+    object.EnclosingLayer()->SetForcesChildrenCullRectUpdate();
+  }
+}
+
+bool CullRectUpdater::IsOverridingCullRects() {
+  return !!g_original_cull_rects;
+}
+
+FragmentCullRects::FragmentCullRects(FragmentData& fragment)
+    : fragment(&fragment),
+      cull_rect(fragment.GetCullRect()),
+      contents_cull_rect(fragment.GetContentsCullRect()) {}
+
+=======
+>>>>>>> chromium
 OverriddenCullRectScope::OverriddenCullRectScope(PaintLayer& starting_layer,
                                                  const CullRect& cull_rect)
     : starting_layer_(starting_layer) {

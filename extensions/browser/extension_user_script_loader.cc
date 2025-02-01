@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #include "extensions/browser/extension_user_script_loader.h"
 
 #include <stddef.h>
@@ -16,6 +21,7 @@
 #include "base/bind.h"
 #include "base/callback_helpers.h"
 #include "base/containers/contains.h"
+#include "base/containers/span.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/memory/read_only_shared_memory_region.h"
@@ -109,6 +115,29 @@ bool LoadScriptContent(const mojom::HostID& host_id,
                    << script_file->extension_root().value();
       return false;
     }
+<<<<<<< HEAD
+    return {std::nullopt, ReadScriptContentSource::kFile};
+  }
+
+  remaining_length -= content.size();
+  return {std::move(content), ReadScriptContentSource::kFile};
+}
+
+// Verifies file contents as they are read.
+void VerifyContent(ContentVerifier* verifier,
+                   const ExtensionId& extension_id,
+                   const base::FilePath& extension_root,
+                   const base::FilePath& relative_path,
+                   const std::optional<std::string>& content) {
+  DCHECK(verifier);
+  scoped_refptr<ContentVerifyJob> job(ContentVerifier::CreateAndStartJobFor(
+      extension_id, extension_root, relative_path, verifier));
+  CHECK(job);
+  if (content) {
+    job->BytesRead(*content, MOJO_RESULT_OK);
+  } else {
+    job->BytesRead({}, MOJO_RESULT_NOT_FOUND);
+=======
   } else {
     if (!base::ReadFileToString(path, &content)) {
       LOG(WARNING) << "Failed to load user script file: " << path.value();
@@ -127,6 +156,7 @@ bool LoadScriptContent(const mojom::HostID& host_id,
                                     script_file->extension_root(),
                                     script_file->relative_path(), content)));
     }
+>>>>>>> chromium
   }
 
   // Localize the content.

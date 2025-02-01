@@ -318,6 +318,55 @@ class NET_EXPORT URLRequestContextBuilder {
     client_socket_factory_for_testing_ = client_socket_factory_for_testing;
   }
 
+<<<<<<< HEAD
+  // Sets a ClientSocketFactory when the network service sandbox is enabled. The
+  // unique_ptr is moved to a URLRequestContext once Build() is called.
+  void set_client_socket_factory(
+      std::unique_ptr<ClientSocketFactory> client_socket_factory) {
+    set_client_socket_factory(client_socket_factory.get());
+    client_socket_factory_ = std::move(client_socket_factory);
+  }
+
+  void set_cookie_deprecation_label(const std::string& label) {
+    cookie_deprecation_label_ = label;
+  }
+
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+  void set_device_bound_session_service(
+      std::unique_ptr<device_bound_sessions::SessionService>
+          device_bound_session_service);
+#endif  // BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+
+  void set_has_device_bound_session_service(bool enable) {
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+    has_device_bound_session_service_ = enable;
+#else
+    NOTREACHED();
+#endif  // BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+  }
+
+  void set_device_bound_sessions_file_path(
+      const base::FilePath& device_bound_sessions_file_path) {
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+    device_bound_sessions_file_path_ = device_bound_sessions_file_path;
+#else
+    NOTREACHED();
+#endif  // BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+  }
+
+  // Binds the context to `network`. All requests scheduled through the context
+  // built by this builder will be sent using `network`. Requests will fail if
+  // `network` disconnects. `options` allows to specify the ManagerOptions that
+  // will be passed to the special purpose HostResolver created internally.
+  // This also imposes some limitations on the context capabilities:
+  // * By design, QUIC connection migration will be turned off.
+  // Only implemented for Android (API level > 23).
+  void BindToNetwork(
+      handles::NetworkHandle network,
+      std::optional<HostResolver::ManagerOptions> options = std::nullopt);
+
+=======
+>>>>>>> chromium
   // Creates a mostly self-contained URLRequestContext. May only be called once
   // per URLRequestContextBuilder. After this is called, the Builder can be
   // safely destroyed.

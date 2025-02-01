@@ -15,8 +15,12 @@
 #include "base/base_switches.h"
 #include "base/bind.h"
 #include "base/command_line.h"
+<<<<<<< HEAD
+#include "base/debug/leak_annotations.h"
+=======
 #include "base/cxx17_backports.h"
 #include "base/deferred_sequenced_task_runner.h"
+>>>>>>> chromium
 #include "base/feature_list.h"
 #include "base/location.h"
 #include "base/logging.h"
@@ -51,7 +55,6 @@
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "build/chromecast_buildflags.h"
-#include "build/chromeos_buildflags.h"
 #include "cc/base/histograms.h"
 #include "components/discardable_memory/service/discardable_shared_memory_manager.h"
 #include "components/services/storage/dom_storage/storage_area_impl.h"
@@ -120,7 +123,6 @@
 #include "media/audio/audio_manager.h"
 #include "media/audio/audio_system.h"
 #include "media/audio/audio_thread_impl.h"
-#include "media/base/user_input_monitor.h"
 #include "media/media_buildflags.h"
 #include "media/midi/midi_service.h"
 #include "media/mojo/buildflags.h"
@@ -179,13 +181,20 @@
 #include <shellapi.h>
 #include <windows.h>
 
+<<<<<<< HEAD
+=======
 #include "content/browser/renderer_host/dwrite_font_lookup_table_builder_win.h"
+>>>>>>> chromium
 #include "net/base/winsock_init.h"
 #include "sandbox/policy/win/sandbox_win.h"
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/constants/ash_switches.h"
+>>>>>>> chromium
 #include "device/bluetooth/bluetooth_adapter_factory.h"
 #include "services/data_decoder/public/cpp/data_decoder.h"
 #endif
@@ -374,7 +383,7 @@ std::unique_ptr<base::MemoryPressureMonitor> CreateMemoryPressureMonitor(
   return monitor;
 }
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
 mojo::PendingRemote<data_decoder::mojom::BleScanParser> GetBleScanParser() {
   static base::NoDestructor<data_decoder::DataDecoder> decoder;
   mojo::PendingRemote<data_decoder::mojom::BleScanParser> ble_scan_parser;
@@ -382,7 +391,7 @@ mojo::PendingRemote<data_decoder::mojom::BleScanParser> GetBleScanParser() {
       ble_scan_parser.InitWithNewPipeAndPassReceiver());
   return ble_scan_parser;
 }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if defined(OS_WIN)
 // Disable dynamic code using ACG. Prevents the browser process from generating
@@ -554,6 +563,16 @@ int BrowserMainLoop::EarlyInitialization() {
       return pre_early_init_error_code;
   }
 
+<<<<<<< HEAD
+  // SetCurrentThreadType relies on CurrentUIThread on some platforms. The
+  // MessagePumpForUI needs to be bound to the main thread by this point.
+  DCHECK(base::CurrentUIThread::IsSet());
+  base::PlatformThread::SetCurrentThreadType(
+      base::ThreadType::kDisplayCritical);
+
+#if BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || \
+    BUILDFLAG(IS_ANDROID)
+=======
   // Up the priority of the UI thread unless it was already high (since Mac
   // and recent versions of Android (O+) do this automatically).
 #if !defined(OS_MAC)
@@ -568,6 +587,7 @@ int BrowserMainLoop::EarlyInitialization() {
 
 #if defined(OS_MAC) || defined(OS_LINUX) || defined(OS_CHROMEOS) || \
     defined(OS_ANDROID)
+>>>>>>> chromium
   // We use quite a few file descriptors for our IPC as well as disk the disk
   // cache,and the default limit on the Mac is low (256), so bump it up.
 
@@ -737,7 +757,7 @@ void BrowserMainLoop::PostCreateMainMessageLoop() {
 
   base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
       sql::SqlMemoryDumpProvider::GetInstance(), "Sql", nullptr);
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
   device::BluetoothAdapterFactory::SetBleScanParserCallback(
       base::BindRepeating(&GetBleScanParser));
 #else
@@ -919,10 +939,13 @@ int BrowserMainLoop::CreateThreads() {
 int BrowserMainLoop::PostCreateThreads() {
   TRACE_EVENT0("startup", "BrowserMainLoop::PostCreateThreads");
 
+<<<<<<< HEAD
+=======
   tracing_controller_ = std::make_unique<content::TracingControllerImpl>();
   content::BackgroundTracingManagerImpl::GetInstance()
       ->AddMetadataGeneratorFunction();
 
+>>>>>>> chromium
   if (parts_)
     parts_->PostCreateThreads();
 
@@ -1128,10 +1151,14 @@ void BrowserMainLoop::ShutdownThreadsAndCleanUp() {
     if (audio_manager_ && !audio_manager_->Shutdown()) {
       // Intentionally leak AudioManager if shutdown failed.
       // We might run into various CHECK(s) in AudioManager destructor.
+<<<<<<< HEAD
+      std::ignore = audio_manager_.release();
+=======
       ignore_result(audio_manager_.release());
       // |user_input_monitor_| may be in use by stray streams in case
       // AudioManager shutdown failed.
       ignore_result(user_input_monitor_.release());
+>>>>>>> chromium
     }
 
     // Leaking AudioSystem: we cannot correctly destroy it since Audio service
@@ -1317,6 +1344,8 @@ void BrowserMainLoop::PostCreateThreadsImpl() {
 
   {
     TRACE_EVENT0("startup",
+<<<<<<< HEAD
+=======
                  "BrowserMainLoop::PostCreateThreads::InitUserInputMonitor");
     user_input_monitor_ = media::UserInputMonitor::Create(
         io_thread_->task_runner(), base::ThreadTaskRunnerHandle::Get());
@@ -1324,6 +1353,7 @@ void BrowserMainLoop::PostCreateThreadsImpl() {
 
   {
     TRACE_EVENT0("startup",
+>>>>>>> chromium
                  "BrowserMainLoop::PostCreateThreads::SaveFileManager");
     save_file_manager_ = new SaveFileManager();
   }

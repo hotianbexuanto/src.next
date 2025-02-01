@@ -6,6 +6,10 @@ package org.chromium.chrome.browser.settings;
 
 import android.content.Context;
 import android.content.Intent;
+<<<<<<< HEAD
+import android.content.pm.PackageManager;
+=======
+>>>>>>> chromium
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -29,31 +33,63 @@ import org.chromium.chrome.browser.password_manager.ManagePasswordsReferrer;
 import org.chromium.chrome.browser.password_manager.PasswordManagerLauncher;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
+<<<<<<< HEAD
+=======
 import org.chromium.chrome.browser.signin.SyncConsentActivityLauncherImpl;
+>>>>>>> chromium
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.browser.sync.SyncService;
 import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
 import org.chromium.chrome.browser.sync.settings.SignInPreference;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.sync.settings.SyncSettingsUtils;
+import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncFeatures;
+import org.chromium.chrome.browser.toolbar.ToolbarPositionController;
+import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarStatePredictor;
+import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
+import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
+import org.chromium.chrome.browser.ui.settings_promo_card.SettingsPromoCardPreference;
+import org.chromium.chrome.browser.ui.signin.SignOutCoordinator;
+import org.chromium.components.autofill.AutofillFeatures;
+=======
 import org.chromium.chrome.browser.sync.settings.SyncPromoPreference;
 import org.chromium.chrome.browser.sync.settings.SyncPromoPreference.State;
 import org.chromium.chrome.browser.sync.settings.SyncSettingsUtils;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarFeatures;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarStatePredictor;
 import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
+>>>>>>> chromium
 import org.chromium.components.browser_ui.settings.ChromeBasePreference;
 import org.chromium.components.browser_ui.settings.ManagedPreferenceDelegate;
 import org.chromium.components.browser_ui.settings.SettingsLauncher;
 import org.chromium.components.browser_ui.settings.SettingsUtils;
 import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.components.search_engines.TemplateUrlService;
+<<<<<<< HEAD
+import org.chromium.components.signin.AccountManagerFacade;
+import org.chromium.components.signin.AccountManagerFacadeProvider;
+import org.chromium.components.signin.identitymanager.ConsentLevel;
+import org.chromium.components.sync.SyncService;
+import org.chromium.components.user_prefs.UserPrefs;
+import org.chromium.ui.modaldialog.ModalDialogManager;
+=======
 import org.chromium.components.signin.base.CoreAccountInfo;
 import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.metrics.SigninAccessPoint;
+>>>>>>> chromium
 
 import java.util.HashMap;
 import java.util.Map;
 
+<<<<<<< HEAD
+/** The main settings screen, shown when the user first opens Settings. */
+public class MainSettings extends ChromeBaseSettingsFragment
+        implements TemplateUrlService.LoadListener,
+                SyncService.SyncStateChangedListener,
+                SigninManager.SignInStateObserver {
+    public static final String PREF_SETTINGS_PROMO_CARD = "settings_promo_card";
+=======
 /**
  * The main settings screen, shown when the user first opens Settings.
  */
@@ -61,6 +97,7 @@ public class MainSettings extends PreferenceFragmentCompat
         implements TemplateUrlService.LoadListener, SyncService.SyncStateChangedListener,
                    SigninManager.SignInStateObserver {
     public static final String PREF_SYNC_PROMO = "sync_promo";
+>>>>>>> chromium
     public static final String PREF_ACCOUNT_AND_GOOGLE_SERVICES_SECTION =
             "account_and_google_services_section";
     public static final String PREF_SIGN_IN = "sign_in";
@@ -161,6 +198,34 @@ public class MainSettings extends PreferenceFragmentCompat
     private void createPreferences() {
         SettingsUtils.addPreferencesFromResource(this, R.xml.main_preferences);
 
+<<<<<<< HEAD
+        SettingsUtils.addPreferencesFromResource(
+                this,
+                useLegacySettingsOrder() ? R.xml.main_preferences_legacy : R.xml.main_preferences);
+
+        ProfileDataCache profileDataCache =
+                ProfileDataCache.createWithDefaultImageSizeAndNoBadge(getContext());
+        AccountManagerFacade accountManagerFacade = AccountManagerFacadeProvider.getInstance();
+
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.DEFAULT_BROWSER_PROMO_ANDROID2)) {
+            // TODO(crbug.com/364906215): Define SettingsPromoCardPreference in the xml once
+            // SyncPromoPreference is removed.
+            SettingsPromoCardPreference settingsPromoCardPreference =
+                    new SettingsPromoCardPreference(
+                            getContext(), null, TrackerFactory.getTrackerForProfile(getProfile()));
+            settingsPromoCardPreference.setKey(PREF_SETTINGS_PROMO_CARD);
+            settingsPromoCardPreference.setOrder(0);
+            getPreferenceScreen().addPreference(settingsPromoCardPreference);
+        }
+
+        SignInPreference signInPreference = findPreference(PREF_SIGN_IN);
+        signInPreference.initialize(getProfile(), profileDataCache, accountManagerFacade);
+
+        ChromeBasePreference googleServicePreference = findPreference(PREF_GOOGLE_SERVICES);
+        googleServicePreference.setViewId(R.id.account_management_google_services_row);
+
+=======
+>>>>>>> chromium
         cachePreferences();
 
         mSyncPromoPreference.setOnStateChangedCallback(this::onSyncPromoPreferenceStateChanged);
@@ -224,6 +289,15 @@ public class MainSettings extends PreferenceFragmentCompat
     }
 
     private void updatePreferences() {
+<<<<<<< HEAD
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.DEFAULT_BROWSER_PROMO_ANDROID2)) {
+            SettingsPromoCardPreference promoCardPreference =
+                    (SettingsPromoCardPreference) addPreferenceIfAbsent(PREF_SETTINGS_PROMO_CARD);
+            promoCardPreference.updatePreferences();
+        }
+
+=======
+>>>>>>> chromium
         if (IdentityServicesProvider.get()
                         .getSigninManager(Profile.getLastUsedRegularProfile())
                         .isSigninSupported()) {
@@ -234,6 +308,23 @@ public class MainSettings extends PreferenceFragmentCompat
 
         updateManageSyncPreference();
         updateSearchEnginePreference();
+<<<<<<< HEAD
+        updateAutofillPreferences();
+        updatePlusAddressesPreference();
+        updateAddressBarPreference();
+
+        boolean isTabGroupSyncAutoOpenConfigurable =
+                TabGroupSyncFeatures.isTabGroupSyncEnabled(getProfile())
+                        && ChromeFeatureList.isEnabled(
+                                ChromeFeatureList.TAB_GROUP_SYNC_AUTO_OPEN_KILL_SWITCH);
+        if (isTabGroupSyncAutoOpenConfigurable
+                || ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_TAB_DECLUTTER)) {
+            addPreferenceIfAbsent(PREF_TABS);
+        } else {
+            removePreferenceIfPresent(PREF_TABS);
+        }
+=======
+>>>>>>> chromium
 
         Preference homepagePref = addPreferenceIfAbsent(PREF_HOMEPAGE);
         setOnOffSummary(homepagePref, HomepageManager.isHomepageEnabled());
@@ -267,6 +358,34 @@ public class MainSettings extends PreferenceFragmentCompat
     }
 
     private void updateManageSyncPreference() {
+<<<<<<< HEAD
+        // TODO(crbug.com/40067770): Remove usage of ConsentLevel.SYNC after kSync users are
+        // migrated to kSignin in phase 3. See ConsentLevel::kSync documentation for details.
+        boolean isSyncConsentAvailable =
+                IdentityServicesProvider.get()
+                                .getIdentityManager(getProfile())
+                                .getPrimaryAccountInfo(ConsentLevel.SYNC)
+                        != null;
+        mManageSync.setVisible(isSyncConsentAvailable);
+        if (!isSyncConsentAvailable) return;
+
+        mManageSync.setIcon(SyncSettingsUtils.getSyncStatusIcon(getActivity(), getProfile()));
+        mManageSync.setSummary(SyncSettingsUtils.getSyncStatusSummary(getActivity(), getProfile()));
+
+        mManageSync.setOnPreferenceClickListener(
+                pref -> {
+                    Context context = getContext();
+                    if (SyncServiceFactory.getForProfile(getProfile())
+                            .isSyncDisabledByEnterprisePolicy()) {
+                        SyncSettingsUtils.showSyncDisabledByAdministratorToast(context);
+                    } else {
+                        SettingsNavigation settingsNavigation =
+                                SettingsNavigationFactory.createSettingsNavigation();
+                        settingsNavigation.startSettings(context, ManageSyncSettings.class);
+                    }
+                    return true;
+                });
+=======
         String primaryAccountName = CoreAccountInfo.getEmailFrom(
                 IdentityServicesProvider.get()
                         .getIdentityManager(Profile.getLastUsedRegularProfile())
@@ -295,6 +414,7 @@ public class MainSettings extends PreferenceFragmentCompat
             }
             return true;
         });
+>>>>>>> chromium
     }
 
     private void updateSearchEnginePreference() {
@@ -338,6 +458,25 @@ public class MainSettings extends PreferenceFragmentCompat
 
     @Override
     public void onSignedOut() {
+<<<<<<< HEAD
+        // TODO(crbug.com/343933167): The snackbar should be shown from
+        // SignOutCoordinator.startSignOutFlow(), in other words SignOutCoordinator.showSnackbar()
+        // should be private method.
+        if (IdentityServicesProvider.get()
+                        .getIdentityManager(getProfile())
+                        .getPrimaryAccountInfo(ConsentLevel.SIGNIN)
+                == null) {
+            // Show the signout snackbar, or wait until `onStart()` if the fragment is not in the
+            // `STARTED` state.
+            if (getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                showSignoutSnackbar();
+            } else {
+                mShouldShowSnackbar = true;
+            }
+        }
+
+=======
+>>>>>>> chromium
         updatePreferences();
     }
 

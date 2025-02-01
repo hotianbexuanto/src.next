@@ -9,16 +9,27 @@ import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+<<<<<<< HEAD
+import android.os.Handler;
+import android.os.Looper;
+import android.util.AttributeSet;
+=======
 import android.os.Build;
+>>>>>>> chromium
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
+<<<<<<< HEAD
+import android.view.ViewOutlineProvider;
+import android.view.accessibility.AccessibilityEvent;
+=======
 import android.view.ViewParent;
 import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.view.WindowInsets;
+>>>>>>> chromium
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -27,6 +38,11 @@ import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+<<<<<<< HEAD
+import org.chromium.base.Callback;
+import org.chromium.base.TimeUtils;
+=======
+>>>>>>> chromium
 import org.chromium.base.TraceEvent;
 import org.chromium.base.task.PostTask;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -38,11 +54,39 @@ import org.chromium.ui.base.ViewUtils;
 
 /** A widget for showing a list of omnibox suggestions. */
 public class OmniboxSuggestionsDropdown extends RecyclerView {
+<<<<<<< HEAD
+    /** Used to tag and cancel the Accessibility focus events. */
+    private static final Object TOKEN_ACCESSIBILITY_FOCUS = new Object();
+
+    /**
+     * Used to defer the accessibility announcement for list content. This makes core difference
+     * when the list is first shown up, when the interaction with the Omnibox and presence of
+     * virtual keyboard may actually cause throttling of the Accessibility events.
+     *
+     * <p>Note that this delay aims to strike a compromise between multiple directly competing
+     * components for a11y time:
+     *
+     * <ul>
+     *   <li>UrlBar: "facebook.com",
+     *   <li>Soft Keyboard: "f. foxtrot. showing us english q w e r t y", and
+     *   <li>Omnibox Suggestions: "15 suggested items in list below".
+     * </ul>
+     *
+     * The Suggestions list can be announced after a slight pause, as it's best that it's announced
+     * last.
+     */
+    private static final long LIST_COMPOSITION_ACCESSIBILITY_ANNOUNCEMENT_DELAY_MS = 1500;
+
+    private final SuggestionLayoutScrollListener mLayoutScrollListener;
+    private final RecyclerViewSelectionController mSelectionController;
+    private final Handler mHandler;
+=======
     private final int mStandardBgColor;
     private final int mIncognitoBgColor;
 
     private final int[] mTempPosition = new int[2];
     private final Rect mTempRect = new Rect();
+>>>>>>> chromium
 
     private final SuggestionScrollListener mScrollListener;
     private @Nullable OmniboxSuggestionsDropdownAdapter mAdapter;
@@ -129,8 +173,16 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
      * Constructs a new list designed for containing omnibox suggestions.
      * @param context Context used for contained views.
      */
+<<<<<<< HEAD
+    public OmniboxSuggestionsDropdown(@NonNull Context context, AttributeSet attrs) {
+        super(context, attrs, android.R.attr.dropDownListViewStyle);
+
+        mHandler = new Handler(Looper.getMainLooper());
+
+=======
     public OmniboxSuggestionsDropdown(@NonNull Context context) {
         super(context, null, android.R.attr.dropDownListViewStyle);
+>>>>>>> chromium
         setFocusable(true);
         setFocusableInTouchMode(true);
         setRecycledViewPool(new HistogramRecordingRecycledViewPool());
@@ -193,9 +245,21 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
         return manager.findViewByPosition(index);
     }
 
+<<<<<<< HEAD
+    /**
+     * Update the suggestion popup background to reflect the current state.
+     *
+     * @param brandedColorScheme The {@link @BrandedColorScheme}.
+     */
+    public void refreshPopupBackground(@BrandedColorScheme int brandedColorScheme) {
+        int color =
+                OmniboxResourceProvider.getSuggestionsDropdownBackgroundColor(
+                        getContext(), brandedColorScheme);
+=======
     /** Show (and properly size) the suggestions list. */
     public void show() {
         if (getVisibility() == VISIBLE) return;
+>>>>>>> chromium
 
         setVisibility(VISIBLE);
         if (mAdapter != null && mAdapter.getSelectedViewIndex() != 0) {
@@ -430,7 +494,12 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
                 }
             };
         } else {
+<<<<<<< HEAD
+            cancelWindowContentChangedAnnouncement();
+            removeAlignmentObserver();
+=======
             mAlignmentViewLayoutListener = null;
+>>>>>>> chromium
         }
     }
 
@@ -443,10 +512,108 @@ public class OmniboxSuggestionsDropdown extends RecyclerView {
                 getPaddingBottom());
     }
 
+<<<<<<< HEAD
+    private void removeAlignmentObserver() {
+        mEmbedder.ifPresent(
+                e -> {
+                    e.onDetachedFromWindow();
+                    e.removeAlignmentObserver(mOmniboxAlignmentObserver);
+                });
+
+        if (!OmniboxFeatures.shouldPreWarmRecyclerViewPool()) {
+            getRecycledViewPool().clear();
+        }
+    }
+
+    private void onOmniboxAlignmentChanged(@NonNull OmniboxAlignment omniboxAlignment) {
+        boolean isOnlyHorizontalDifference =
+                omniboxAlignment.isOnlyHorizontalDifference(mOmniboxAlignment);
+        boolean isWidthDifference = omniboxAlignment.doesWidthDiffer(mOmniboxAlignment);
+        mOmniboxAlignment = omniboxAlignment;
+        this.setPaddingRelative(
+                getPaddingStart(),
+                getPaddingTop(),
+                getPaddingEnd(),
+                mBaseBottomPadding + mOmniboxAlignment.paddingBottom);
+
+        if (isOnlyHorizontalDifference) {
+            adjustHorizontalPosition();
+            return;
+        } else if (isWidthDifference) {
+            // If our width has changed, we may have views in our pool that are now the wrong width.
+            // Recycle them by calling swapAdapter() to avoid showing views of the wrong size.
+            swapAdapter(mAdapter, true);
+            Configuration configuration = getContext().getResources().getConfiguration();
+            setClipToOutline(
+                    configuration.screenWidthDp >= DeviceFormFactor.MINIMUM_TABLET_WIDTH_DP);
+            BaseSuggestionViewBinder.resetCachedResources();
+        }
+        if (isInLayout()) {
+            // requestLayout doesn't behave predictably in the middle of a layout pass. Even if it
+            // does trigger a second layout pass, measurement caches aren't properly reset,
+            // resulting in stale sizing. Absent a way to abort the current pass and start over the
+            // simplest solution is to wait until the current pass is over to request relayout.
+            PostTask.postTask(
+                    TaskTraits.UI_USER_VISIBLE,
+                    () -> {
+                        ViewUtils.requestLayout(
+                                OmniboxSuggestionsDropdown.this,
+                                "OmniboxSuggestionsDropdown.onOmniboxAlignmentChanged");
+                    });
+        } else {
+            ViewUtils.requestLayout(
+                    (View) OmniboxSuggestionsDropdown.this,
+                    "OmniboxSuggestionsDropdown.onOmniboxAlignmentChanged");
+        }
+    }
+
+    private void adjustHorizontalPosition() {
+        // Set our left edge using translation x. This avoids needing to relayout (like setting
+        // a left margin would) and is less risky than calling View#setLeft(), which is intended
+        // for use by the layout system.
+        setTranslationX(mOmniboxAlignment.left);
+    }
+
+    private void setRoundBottomCorners(boolean roundBottomCorners) {
+        ViewOutlineProvider outlineProvider = getOutlineProvider();
+        if (!(outlineProvider instanceof RoundedCornerOutlineProvider)) return;
+
+        RoundedCornerOutlineProvider roundedCornerOutlineProvider =
+                (RoundedCornerOutlineProvider) outlineProvider;
+        roundedCornerOutlineProvider.setRoundingEdges(true, true, true, roundBottomCorners);
+    }
+
+    public void emitWindowContentChangedAnnouncement() {
+        cancelWindowContentChangedAnnouncement();
+        // Note: can't use postDelayed until minSdk is 28.
+        mHandler.postAtTime(
+                () -> {
+                    setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
+                    setContentDescription(
+                            getContext()
+                                    .getString(
+                                            R.string.accessibility_omnibox_suggested_items,
+                                            mAdapter.getItemCount()));
+                    sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
+                    setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_NONE);
+                },
+                TOKEN_ACCESSIBILITY_FOCUS,
+                TimeUtils.uptimeMillis() + LIST_COMPOSITION_ACCESSIBILITY_ANNOUNCEMENT_DELAY_MS);
+    }
+
+    private void cancelWindowContentChangedAnnouncement() {
+        mHandler.removeCallbacksAndMessages(TOKEN_ACCESSIBILITY_FOCUS);
+    }
+
+    @VisibleForTesting
+    SuggestionLayoutScrollListener getLayoutScrollListener() {
+        return mLayoutScrollListener;
+=======
     /** Return whether Adaptive Suggestions Count feature is enabled. */
     private boolean isAdaptiveSuggestionsCountEnabled() {
         return ChromeFeatureList.isInitialized()
                 && ChromeFeatureList.isEnabled(
                         ChromeFeatureList.OMNIBOX_ADAPTIVE_SUGGESTIONS_COUNT);
+>>>>>>> chromium
     }
 }

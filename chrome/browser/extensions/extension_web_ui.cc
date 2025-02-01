@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include <algorithm>
 #include <iterator>
 #include <set>
 #include <string>
@@ -201,9 +202,14 @@ enum UpdateBehavior {
 bool UpdateOverridesList(base::ListValue* overrides_list,
                          const std::string& override_url,
                          UpdateBehavior behavior) {
+<<<<<<< HEAD
+  auto iter = std::ranges::find_if(
+      overrides_list, [&override_url](const base::Value& value) {
+=======
   auto iter = std::find_if(
       overrides_list->GetList().begin(), overrides_list->GetList().end(),
       [&override_url](const base::Value& value) {
+>>>>>>> chromium
         if (!value.is_dict())
           return false;
         const std::string* entry = value.FindStringKey(kEntry);
@@ -252,6 +258,7 @@ void UpdateOverridesLists(Profile* profile,
       base::RepeatingCallback<void(WebContents*)> callback =
           base::BindRepeating(&UnregisterAndReplaceOverrideForWebContents,
                               page_override_pair.first, profile);
+      // Apply to all existing tabs.
       extensions::ExtensionTabUtil::ForEachTab(callback);
     }
   }

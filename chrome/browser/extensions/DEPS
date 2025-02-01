@@ -1,6 +1,7 @@
 include_rules = [
   "+components/crash/content/browser/error_reporting",
   "+components/live_caption",
+  "+dbus",
   "+extensions/strings/grit/extensions_strings.h",
   "+services/network/public",
   "+ui/base",

@@ -119,6 +119,8 @@ TEST(BitsTest, AlignDownPointer) {
             AlignDown(reinterpret_cast<uint8_t*>(1), kUintPtrTMax / 2 + 1));
 }
 
+<<<<<<< HEAD
+=======
 TEST(BitsTest, CountLeadingZeroBits8) {
   EXPECT_EQ(8u, CountLeadingZeroBits(uint8_t{0}));
   EXPECT_EQ(7u, CountLeadingZeroBits(uint8_t{1}));
@@ -246,6 +248,7 @@ TEST(BitsTest, PowerOfTwo) {
   EXPECT_FALSE(IsPowerOfTwo(int64_t{1} << 63));
 }
 
+>>>>>>> chromium
 TEST(BitsTest, LeftMostBit) {
   // Construction of a signed type from an unsigned one of the same width
   // preserves all bits. Explicitily confirming this behavior here to illustrate

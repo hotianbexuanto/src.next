@@ -31,11 +31,13 @@
 #include "content/public/browser/notification_service.h"
 #include "content/public/common/url_constants.h"
 #include "extensions/browser/allowlist_state.h"
+#include "extensions/browser/disable_reason.h"
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/extension_util.h"
+#include "extensions/browser/install_prefs_helper.h"
 #include "extensions/browser/management_policy.h"
 #include "extensions/browser/pref_types.h"
 #include "extensions/browser/ui_util.h"
@@ -264,8 +266,7 @@ InstalledLoader::InstalledLoader(ExtensionService* extension_service)
       extension_registry_(ExtensionRegistry::Get(extension_service->profile())),
       extension_prefs_(ExtensionPrefs::Get(extension_service->profile())) {}
 
-InstalledLoader::~InstalledLoader() {
-}
+InstalledLoader::~InstalledLoader() = default;
 
 void InstalledLoader::Load(const ExtensionInfo& info, bool write_to_prefs) {
   // TODO(asargent): add a test to confirm that we can't load extensions if
@@ -304,21 +305,39 @@ void InstalledLoader::Load(const ExtensionInfo& info, bool write_to_prefs) {
       extension_service_->profile())->management_policy();
 
   if (extension_prefs_->IsExtensionDisabled(extension->id())) {
-    int disable_reasons = extension_prefs_->GetDisableReasons(extension->id());
+    // TODO(crbug.com/372186532): Remove this conversion code after
+    // GetDisableReasons() is migrated to return a `DisableReasonSet`.
+    const int disable_reasons_legacy_bitflag =
+        extension_prefs_->GetDisableReasons(extension->id());
+    DisableReasonSet disable_reasons =
+        BitflagToIntegerSet(disable_reasons_legacy_bitflag);
 
     // Update the extension prefs to reflect if the extension is no longer
     // blocked due to admin policy.
+<<<<<<< HEAD
+    if (disable_reasons.contains(disable_reason::DISABLE_BLOCKED_BY_POLICY) &&
+        !policy->MustRemainDisabled(extension.get(), nullptr)) {
+      disable_reasons.erase(disable_reason::DISABLE_BLOCKED_BY_POLICY);
+=======
     if ((disable_reasons & disable_reason::DISABLE_BLOCKED_BY_POLICY) &&
         !policy->MustRemainDisabled(extension.get(), nullptr, nullptr)) {
       disable_reasons &= (~disable_reason::DISABLE_BLOCKED_BY_POLICY);
+>>>>>>> chromium
       extension_prefs_->ReplaceDisableReasons(extension->id(), disable_reasons);
-      if (disable_reasons == disable_reason::DISABLE_NONE)
+      if (disable_reasons.empty()) {
         extension_prefs_->SetExtensionEnabled(extension->id());
+      }
     }
 
+<<<<<<< HEAD
+    if ((disable_reasons.contains(disable_reason::DISABLE_CORRUPTED))) {
+      CorruptedExtensionReinstaller* corrupted_extension_reinstaller =
+          extension_service_->corrupted_extension_reinstaller();
+=======
     if ((disable_reasons & disable_reason::DISABLE_CORRUPTED)) {
       PendingExtensionManager* pending_manager =
           extension_service_->pending_extension_manager();
+>>>>>>> chromium
       if (policy->MustRemainEnabled(extension.get(), nullptr)) {
         // This extension must have been disabled due to corruption on a
         // previous run of chrome, and for some reason we weren't successful in
@@ -345,8 +364,14 @@ void InstalledLoader::Load(const ExtensionInfo& info, bool write_to_prefs) {
     // Extension is enabled. Check management policy to verify if it should
     // remain so.
     disable_reason::DisableReason disable_reason = disable_reason::DISABLE_NONE;
+<<<<<<< HEAD
+    if (policy->MustRemainDisabled(extension.get(), &disable_reason)) {
+      DCHECK(disable_reason != disable_reason::DISABLE_NONE);
+      extension_prefs_->SetExtensionDisabled(extension->id(), {disable_reason});
+=======
     if (policy->MustRemainDisabled(extension.get(), &disable_reason, nullptr)) {
       extension_prefs_->SetExtensionDisabled(extension->id(), disable_reason);
+>>>>>>> chromium
     }
   }
 
@@ -526,6 +551,80 @@ void InstalledLoader::RecordExtensionsMetrics() {
       web_request_count++;
     }
 
+<<<<<<< HEAD
+    // 10 is arbitrarily chosen.
+    static constexpr int kMaxManifestVersion = 10;
+    // ManifestVersion split by location for items of type
+    // Manifest::TYPE_EXTENSION. An ungrouped histogram is below, includes all
+    // extension-y types (such as platform apps and hosted apps), and doesn't
+    // include unpacked or component locations.
+    if (extension->is_extension() && is_user_profile) {
+      const char* location_histogram_name = nullptr;
+      ManifestVersion2And3Counts* manifest_version_counts = nullptr;
+      switch (extension->location()) {
+        case mojom::ManifestLocation::kInternal:
+          location_histogram_name =
+              "Extensions.ManifestVersionByLocation.Internal";
+          manifest_version_counts = &internal_manifest_version_counts;
+          break;
+        case mojom::ManifestLocation::kExternalPref:
+        case mojom::ManifestLocation::kExternalPrefDownload:
+        case mojom::ManifestLocation::kExternalRegistry:
+          location_histogram_name =
+              "Extensions.ManifestVersionByLocation.External";
+          manifest_version_counts = &external_manifest_version_counts;
+          break;
+        case mojom::ManifestLocation::kComponent:
+        case mojom::ManifestLocation::kExternalComponent:
+          location_histogram_name =
+              "Extensions.ManifestVersionByLocation.Component";
+          manifest_version_counts = &component_manifest_version_counts;
+          break;
+        case mojom::ManifestLocation::kExternalPolicy:
+        case mojom::ManifestLocation::kExternalPolicyDownload:
+          location_histogram_name =
+              "Extensions.ManifestVersionByLocation.Policy";
+          manifest_version_counts = &policy_manifest_version_counts;
+          break;
+        case mojom::ManifestLocation::kCommandLine:
+        case mojom::ManifestLocation::kUnpacked:
+          location_histogram_name =
+              "Extensions.ManifestVersionByLocation.Unpacked";
+          manifest_version_counts = &unpacked_manifest_version_counts;
+          break;
+        case mojom::ManifestLocation::kInvalidLocation:
+          NOTREACHED();
+      }
+      base::UmaHistogramExactLinear(location_histogram_name,
+                                    extension->manifest_version(),
+                                    kMaxManifestVersion);
+      if (extension->manifest_version() == 2) {
+        manifest_version_counts->version_2_count++;
+      } else if (extension->manifest_version() == 3) {
+        manifest_version_counts->version_3_count++;
+      }
+      // Report the days since the extension was installed.
+      base::Time time_since_install =
+          GetFirstInstallTime(extension_prefs_, extension->id());
+      if (!time_since_install.is_null()) {
+        int days_since_install =
+            (base::Time::Now() - time_since_install).InDays();
+        UMA_HISTOGRAM_CUSTOM_COUNTS("Extensions.DaysSinceInstall",
+                                    days_since_install, 0, 5000, 91);
+      }
+      // Report the days since the extension was last updated.
+      base::Time time_since_last_update =
+          GetLastUpdateTime(extension_prefs_, extension->id());
+      if (!time_since_last_update.is_null()) {
+        int days_since_updated =
+            (base::Time::Now() - time_since_last_update).InDays();
+        UMA_HISTOGRAM_CUSTOM_COUNTS("Extensions.DaysSinceLastUpdate",
+                                    days_since_updated, 0, 5000, 91);
+      }
+    }
+
+=======
+>>>>>>> chromium
     // From now on, don't count component extensions, since they are only
     // extensions as an implementation detail. Continue to count unpacked
     // extensions for a few metrics.

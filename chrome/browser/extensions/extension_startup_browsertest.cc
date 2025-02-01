@@ -406,7 +406,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionsLoadMultipleTest, Test) {
 class DeprecatedLoadComponentExtensionSwitchBrowserTest
     : public extensions::ExtensionBrowserTest {
  public:
-  DeprecatedLoadComponentExtensionSwitchBrowserTest() {}
+  DeprecatedLoadComponentExtensionSwitchBrowserTest() = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override;
 
@@ -453,7 +453,7 @@ IN_PROC_BROWSER_TEST_F(DeprecatedLoadComponentExtensionSwitchBrowserTest,
 class DisableExtensionsExceptBrowserTest
     : public extensions::ExtensionBrowserTest {
  public:
-  DisableExtensionsExceptBrowserTest() {}
+  DisableExtensionsExceptBrowserTest() = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override;
 

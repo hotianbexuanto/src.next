@@ -12,10 +12,13 @@
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "build/chromecast_buildflags.h"
+<<<<<<< HEAD
+=======
 #include "build/chromeos_buildflags.h"
 #include "content/browser/gpu/gpu_data_manager_impl_private.h"
 #include "content/browser/gpu/gpu_data_manager_testing_autogen.h"
 #include "content/browser/gpu/gpu_data_manager_testing_entry_enums_autogen.h"
+>>>>>>> chromium
 #include "content/public/browser/gpu_data_manager_observer.h"
 #include "content/public/common/content_switches.h"
 #include "gpu/command_buffer/service/gpu_switches.h"
@@ -274,9 +277,29 @@ TEST_F(GpuDataManagerImplPrivateTest, UnblockThisDomainFrom3DAPIs) {
 
 // Android and Chrome OS do not support software compositing, while Fuchsia does
 // not support falling back to software from Vulkan.
+<<<<<<< HEAD
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_IOS)
+#if !BUILDFLAG(IS_FUCHSIA)
+TEST_F(GpuDataManagerImplPrivateTest, NoDefaultFallbackToSwiftShader) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(features::kAllowSwiftShaderFallback);
+
+  ScopedGpuDataManagerImplPrivate manager;
+  EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
+
+  manager->FallBackToNextGpuMode();
+  EXPECT_EQ(gpu::GpuMode::DISPLAY_COMPOSITOR, manager->GetGpuMode());
+}
+
+TEST_F(GpuDataManagerImplPrivateTest, ExplicitFallbackToSwiftShader) {
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kEnableUnsafeSwiftShader);
+
+=======
 #if !defined(OS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
 #if !defined(OS_FUCHSIA)
 TEST_F(GpuDataManagerImplPrivateTest, FallbackToSwiftShader) {
+>>>>>>> chromium
   ScopedGpuDataManagerImplPrivate manager;
   EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
 
@@ -302,8 +325,14 @@ TEST_F(GpuDataManagerImplPrivateTest, GpuStartsWithGpuDisabled) {
   ScopedGpuDataManagerImplPrivate manager;
   EXPECT_EQ(gpu::GpuMode::SWIFTSHADER, manager->GetGpuMode());
 }
+<<<<<<< HEAD
+#endif  // !defined(CAST_AUDIO_ONLY)
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS) &&
+        // !BUILDFLAG(IS_IOS)
+=======
 #endif  // !IS_CHROMECAST
 #endif  // !OS_ANDROID && !OS_CHROMEOS
+>>>>>>> chromium
 
 // Chromecast audio-only builds should not launch the GPU process.
 #if defined(CAST_AUDIO_ONLY)
@@ -342,6 +371,8 @@ TEST_F(GpuDataManagerImplPrivateTest, FallbackFromMetalWithGLDisabled) {
 #endif  // OS_MAC
 
 #if BUILDFLAG(ENABLE_VULKAN)
+<<<<<<< HEAD
+=======
 // TODO(crbug.com/1155622): enable tests when Vulkan is supported on LaCrOS.
 #if !BUILDFLAG(IS_CHROMEOS_LACROS)
 TEST_F(GpuDataManagerImplPrivateTest, GpuStartsWithUseVulkanFlag) {
@@ -351,6 +382,7 @@ TEST_F(GpuDataManagerImplPrivateTest, GpuStartsWithUseVulkanFlag) {
   EXPECT_EQ(gpu::GpuMode::HARDWARE_VULKAN, manager->GetGpuMode());
 }
 
+>>>>>>> chromium
 TEST_F(GpuDataManagerImplPrivateTest, GpuStartsWithVulkanFeatureFlag) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(features::kVulkan);
@@ -385,6 +417,18 @@ TEST_F(GpuDataManagerImplPrivateTest, VulkanInitializationFails) {
   // GpuDataManager should update its mode to be GL.
   EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
 
+<<<<<<< HEAD
+  // The first fallback should go to the display compositor on platforms where
+  // fallback to software is allowed.
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_IOS)
+  manager->FallBackToNextGpuMode();
+  EXPECT_EQ(gpu::GpuMode::DISPLAY_COMPOSITOR, manager->GetGpuMode());
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS) &&
+        // !BUILDFLAG(IS_IOS)
+}
+
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_IOS)
+=======
   // The first fallback should go to SwiftShader on platforms where fallback to
   // software is allowed.
 #if !defined(OS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
@@ -394,6 +438,7 @@ TEST_F(GpuDataManagerImplPrivateTest, VulkanInitializationFails) {
 }
 
 #if !defined(OS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 TEST_F(GpuDataManagerImplPrivateTest, FallbackFromVulkanWithGLDisabled) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(features::kVulkan);
@@ -408,9 +453,15 @@ TEST_F(GpuDataManagerImplPrivateTest, FallbackFromVulkanWithGLDisabled) {
   manager->FallBackToNextGpuMode();
   EXPECT_EQ(gpu::GpuMode::SWIFTSHADER, manager->GetGpuMode());
 }
+<<<<<<< HEAD
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS) &&
+        // !BUILDFLAG(IS_IOS)
+#endif  // !BUILDFLAG(IS_FUCHSIA)
+=======
 #endif  // !OS_ANDROID && !OS_CHROMEOS
 #endif  // !OS_FUCHSIA
 #endif  // !IS_CHROMEOS_LACROS
+>>>>>>> chromium
 #endif  // BUILDFLAG(ENABLE_VULKAN)
 
 }  // namespace content

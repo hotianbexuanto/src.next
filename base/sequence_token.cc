@@ -5,9 +5,13 @@
 #include "base/sequence_token.h"
 
 #include "base/atomic_sequence_num.h"
+<<<<<<< HEAD
+#include "base/check.h"
+=======
 #include "base/check_op.h"
 #include "base/no_destructor.h"
 #include "base/threading/thread_local.h"
+>>>>>>> chromium
 
 namespace base {
 

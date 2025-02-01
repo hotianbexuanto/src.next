@@ -26,11 +26,20 @@
 #include "ui/gfx/image/image_skia_operations.h"
 #include "ui/gfx/image/image_unittest_util.h"
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+#include "ash/public/cpp/app_list/app_list_config.h"
+#include "chrome/browser/ash/app_list/arc/arc_app_test.h"
+#include "chrome/browser/ash/arc/arc_util.h"
+#include "chrome/browser/ash/extensions/gfx_utils.h"
+#include "chromeos/ash/experiences/arc/test/fake_app_instance.h"
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/arc/arc_util.h"
 #include "chrome/browser/chromeos/extensions/gfx_utils.h"
 #include "chrome/browser/ui/app_list/arc/arc_app_test.h"
 #include "components/arc/test/fake_app_instance.h"
+>>>>>>> chromium
 #include "ui/chromeos/resources/grit/ui_chromeos_resources.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 

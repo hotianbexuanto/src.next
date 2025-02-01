@@ -175,8 +175,9 @@ void BidirectionalStream::SendvData(
 }
 
 NextProto BidirectionalStream::GetProtocol() const {
-  if (!stream_impl_)
-    return kProtoUnknown;
+  if (!stream_impl_) {
+    return NextProto::kProtoUnknown;
+  }
 
   return stream_impl_->GetProtocol();
 }
@@ -428,6 +429,14 @@ void BidirectionalStream::OnNeedsClientAuth(const SSLConfig& used_ssl_config,
 
 void BidirectionalStream::OnQuicBroken() {}
 
+<<<<<<< HEAD
+void BidirectionalStream::OnSwitchesToHttpStreamPool(
+    HttpStreamPoolRequestInfo request_info) {
+  NOTREACHED();
+}
+
+=======
+>>>>>>> chromium
 void BidirectionalStream::NotifyFailed(int error) {
   delegate_->OnFailed(error);
 }

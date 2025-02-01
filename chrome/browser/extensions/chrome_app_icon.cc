@@ -30,7 +30,16 @@ class RoundedCornersImageSource : public gfx::CanvasImageSource {
  public:
   explicit RoundedCornersImageSource(const gfx::ImageSkia& icon)
       : gfx::CanvasImageSource(icon.size()), icon_(icon) {}
+<<<<<<< HEAD
+
+  RoundedCornersImageSource(const RoundedCornersImageSource&) = delete;
+  RoundedCornersImageSource& operator=(const RoundedCornersImageSource&) =
+      delete;
+
+  ~RoundedCornersImageSource() override = default;
+=======
   ~RoundedCornersImageSource() override {}
+>>>>>>> chromium
 
  private:
   // gfx::CanvasImageSource overrides:

@@ -6,11 +6,16 @@
 
 #include <stddef.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "base/files/file_path.h"
+<<<<<<< HEAD
+#include "base/memory/raw_ptr.h"
+=======
+>>>>>>> chromium
 #include "base/strings/utf_string_conversions.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
@@ -71,8 +76,12 @@ class ManifestHandlerTest : public testing::Test {
                         ParsingWatcher* watcher)
         : name_(name), keys_(keys), prereqs_(prereqs), watcher_(watcher) {
       keys_ptrs_.resize(keys_.size());
+<<<<<<< HEAD
+      std::ranges::transform(keys_, keys_ptrs_.begin(), &std::string::c_str);
+=======
       std::transform(keys_.begin(), keys_.end(), keys_ptrs_.begin(),
                      [](const std::string& s) { return s.c_str(); });
+>>>>>>> chromium
     }
 
     bool Parse(Extension* extension, std::u16string* error) override {
@@ -129,8 +138,12 @@ class ManifestHandlerTest : public testing::Test {
           always_validate_(always_validate),
           keys_(keys) {
       keys_ptrs_.resize(keys_.size());
+<<<<<<< HEAD
+      std::ranges::transform(keys_, keys_ptrs_.begin(), &std::string::c_str);
+=======
       std::transform(keys_.begin(), keys_.end(), keys_ptrs_.begin(),
                      [](const std::string& s) { return s.c_str(); });
+>>>>>>> chromium
     }
 
     bool Parse(Extension* extension, std::u16string* error) override {

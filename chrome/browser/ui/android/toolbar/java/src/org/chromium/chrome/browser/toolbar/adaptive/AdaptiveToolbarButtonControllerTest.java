@@ -101,10 +101,29 @@ public class AdaptiveToolbarButtonControllerTest {
         ShadowChromeFeatureList.sParamValues.clear();
         ShadowRecordHistogram.reset();
         AdaptiveToolbarFeatures.clearParsedParamsForTesting();
+<<<<<<< HEAD
+        SettingsNavigationFactory.setInstanceForTesting(mSettingsNavigation);
+        mButtonData =
+                new ButtonDataImpl(
+                        /* canShow= */ true,
+                        /* drawable= */ null,
+                        mock(View.OnClickListener.class),
+                        /* contentDescription= */ "",
+                        /* supportsTinting= */ false,
+                        /* iphCommandBuilder= */ null,
+                        /* isEnabled= */ true,
+                        AdaptiveToolbarButtonVariant.UNKNOWN,
+                        /* tooltipTextResId= */ Resources.ID_NULL,
+                        /* showHoverhighlight= */ false);
+        mConfiguration.screenWidthDp = 420;
+        doReturn(mProfile).when(mProfile).getOriginalProfile();
+        mProfileSupplier = new ObservableSupplierImpl<>();
+=======
         mButtonData = new ButtonDataImpl(
                 /*canShow=*/true, /*drawable=*/null, mock(View.OnClickListener.class),
                 /*contentDescriptionResId=*/0, /*supportsTinting=*/false,
                 /*iphCommandBuilder=*/null, /*isEnabled=*/true);
+>>>>>>> chromium
     }
 
     @After

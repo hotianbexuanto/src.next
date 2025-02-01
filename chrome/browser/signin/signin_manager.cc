@@ -18,7 +18,25 @@ SigninManager::~SigninManager() {
   identity_manager_->RemoveObserver(this);
 }
 
+<<<<<<< HEAD
+void SigninManager::UpdateUnconsentedPrimaryAccount(
+    signin_metrics::ProfileSignout source) {
+  if (!signin::IsImplicitBrowserSigninOrExplicitDisabled(
+          &identity_manager_.get(), &prefs_.get())) {
+    // Only update the primary account implicitly if the user hasn't explicitly
+    // signed in or `switches::kExplicitBrowserSigninUIOnDesktop` is disabled.
+    return;
+  }
+
+  if (live_account_selection_handles_count_ > 0) {
+    // Don't update the unconsented primary account while some UI flow is also
+    // manipulating it.
+    return;
+  }
+
+=======
 void SigninManager::UpdateUnconsentedPrimaryAccount() {
+>>>>>>> chromium
   // Only update the unconsented primary account only after accounts are loaded.
   if (!identity_manager_->AreRefreshTokensLoaded()) {
     return;
@@ -33,15 +51,39 @@ void SigninManager::UpdateUnconsentedPrimaryAccount() {
             signin::ConsentLevel::kSignin) != account) {
       DCHECK(
           !identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSync));
+<<<<<<< HEAD
+      // The access point is the point from where the last authentication
+      // happened, either through adding the account or a reauth. If it is
+      // unknown, report `kDesktopSigninManager` instead.
+      signin_metrics::AccessPoint access_point =
+          identity_manager_->FindExtendedAccountInfo(account).access_point;
+      if (access_point == signin_metrics::AccessPoint::kUnknown) {
+        access_point = signin_metrics::AccessPoint::kDesktopSigninManager;
+      }
+      base::UmaHistogramEnumeration("Signin.SigninManager.SigninAccessPoint",
+                                    access_point);
+=======
+>>>>>>> chromium
       identity_manager_->GetPrimaryAccountMutator()->SetPrimaryAccount(
           account->account_id, signin::ConsentLevel::kSignin);
     }
   } else if (identity_manager_->HasPrimaryAccount(
                  signin::ConsentLevel::kSignin)) {
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+    // On Lacros, the `SigninManager` only clears the primary account if it is
+    // no longer on the device.
+    source = signin_metrics::ProfileSignout::kAccountRemovedFromDevice;
+#else
+    DCHECK(!identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSync));
+#endif
+    identity_manager_->GetPrimaryAccountMutator()->ClearPrimaryAccount(source);
+=======
     DCHECK(!identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSync));
     identity_manager_->GetPrimaryAccountMutator()->ClearPrimaryAccount(
         signin_metrics::USER_DELETED_ACCOUNT_COOKIES,
         signin_metrics::SignoutDelete::kIgnoreMetric);
+>>>>>>> chromium
   }
 }
 
@@ -130,9 +172,17 @@ void SigninManager::OnPrimaryAccountChanged(
   // the current OnPrimaryAccountChanged() as all observers should see the same
   // value for the unconsented primary account. Schedule the potential update
   // on the next run loop.
+<<<<<<< HEAD
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SigninManager::UpdateUnconsentedPrimaryAccount,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     signin_metrics::ProfileSignout::kSigninManagerUpdateUPA));
+=======
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, base::BindOnce(&SigninManager::UpdateUnconsentedPrimaryAccount,
                                 weak_ptr_factory_.GetWeakPtr()));
+>>>>>>> chromium
 }
 
 void SigninManager::OnRefreshTokenUpdatedForAccount(
@@ -176,3 +226,28 @@ void SigninManager::OnErrorStateOfRefreshTokenUpdatedForAccount(
   if (should_update)
     UpdateUnconsentedPrimaryAccount();
 }
+<<<<<<< HEAD
+
+void SigninManager::OnSigninAllowedPrefChanged() {
+  UpdateUnconsentedPrimaryAccount(
+      signin_metrics::ProfileSignout::kUserDisabledAllowChromeSignIn);
+}
+
+void SigninManager::OnAccountSelectionInProgressHandleDestroyed() {
+  DCHECK_GT(live_account_selection_handles_count_, 0);
+  --live_account_selection_handles_count_;
+
+  // We should reset the primary account in case we missed some relevant events.
+  UpdateUnconsentedPrimaryAccount();
+}
+
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+void SigninManager::OnSigninHelperLacrosComplete(
+    base::OnceCallback<void(const CoreAccountId&)> on_completion_callback,
+    const CoreAccountId& account_id) {
+  std::move(on_completion_callback).Run(account_id);
+  signin_helper_lacros_.reset();
+}
+#endif
+=======
+>>>>>>> chromium

@@ -804,4 +804,41 @@ IN_PROC_BROWSER_TEST_F(NavigationMhtmlBrowserTest, ErrorBaseURL) {
   EXPECT_NE(PAGE_TYPE_ERROR, controller.GetLastCommittedEntry()->GetPageType());
 }
 
+<<<<<<< HEAD
+class NavigationMhtmlFencedFrameBrowserTest
+    : public NavigationMhtmlBrowserTest {
+ public:
+  NavigationMhtmlFencedFrameBrowserTest() {
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        {{blink::features::kFencedFrames, {}}}, /*disabled_features=*/{});
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(NavigationMhtmlFencedFrameBrowserTest,
+                       MhtmlCannotCreateFencedFrame) {
+  MhtmlArchive mhtml_archive;
+  mhtml_archive.AddHtmlDocument(
+      GURL("http://example.com"),
+      "<fencedframe src=\"http://example.com/found.html\"></fencedframe>");
+  mhtml_archive.AddHtmlDocument(GURL("http://example.com/found.html"),
+                                "<iframe></iframe>");
+  GURL mhtml_url = mhtml_archive.Write("index.mhtml");
+
+  EXPECT_TRUE(NavigateToURL(shell(), mhtml_url));
+
+  RenderFrameHostImpl* main_document = main_frame_host();
+  EXPECT_TRUE(main_document->is_mhtml_document());
+  // Ensure nothing was created for the fencedframe element. Only a single
+  // RenderFrameHost, the `main_document`, should exist.
+  int num_documents = 0;
+  main_document->ForEachRenderFrameHostImpl(
+      [&](RenderFrameHostImpl* rfh) { num_documents++; });
+  EXPECT_EQ(1, num_documents);
+}
+
+=======
+>>>>>>> chromium
 }  // namespace content

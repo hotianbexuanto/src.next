@@ -10,7 +10,6 @@
 #include "base/run_loop.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "components/viz/test/gpu_host_impl_test_api.h"
 #include "content/browser/gpu/gpu_process_host.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -65,7 +64,12 @@ class TestGpuService : public viz::mojom::GpuService {
   void SetChannelClientPid(int32_t client_id,
                            base::ProcessId client_pid) override {}
   void CloseChannel(int32_t client_id) override {}
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(USE_CHROMEOS_MEDIA_ACCELERATION)
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   void CreateArcVideoDecodeAccelerator(
       mojo::PendingReceiver<arc::mojom::VideoDecodeAccelerator> vda_receiver)
       override {}
@@ -84,7 +88,23 @@ class TestGpuService : public viz::mojom::GpuService {
   void CreateJpegEncodeAccelerator(
       mojo::PendingReceiver<chromeos_camera::mojom::JpegEncodeAccelerator>
           jea_receiver) override {}
+<<<<<<< HEAD
+#endif  // BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_WIN)
+  void RegisterDCOMPSurfaceHandle(
+      mojo::PlatformHandle surface_handle,
+      RegisterDCOMPSurfaceHandleCallback callback) override {}
+  void UnregisterDCOMPSurfaceHandle(
+      const base::UnguessableToken& token) override {}
+#endif
+
+  void BindClientGmbInterface(
+      mojo::PendingReceiver<gpu::mojom::ClientGmbInterface> receiver,
+      int client_id) override {}
+
+=======
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   void CreateVideoEncodeAcceleratorProvider(
       mojo::PendingReceiver<media::mojom::VideoEncodeAcceleratorProvider>
           receiver) override {}
@@ -178,7 +198,11 @@ class PeakGpuMemoryTrackerImplTest : public ContentBrowserTest {
     gpu_host_impl_test_api_->SetGpuService(std::move(gpu_service_remote));
   }
 
+<<<<<<< HEAD
+  void SetTestingCallback(viz::PeakGpuMemoryTracker* tracker,
+=======
   void SetTestingCallback(PeakGpuMemoryTracker* tracker,
+>>>>>>> chromium
                           base::OnceClosure callback) {
     static_cast<PeakGpuMemoryTrackerImpl*>(tracker)
         ->post_gpu_service_callback_for_testing_ = std::move(callback);
@@ -227,8 +251,14 @@ class PeakGpuMemoryTrackerImplTest : public ContentBrowserTest {
 IN_PROC_BROWSER_TEST_F(PeakGpuMemoryTrackerImplTest, PeakGpuMemoryCallback) {
   base::HistogramTester histogram;
   base::RunLoop run_loop;
+<<<<<<< HEAD
+  std::unique_ptr<viz::PeakGpuMemoryTracker> tracker =
+      PeakGpuMemoryTrackerFactory::Create(
+          viz::PeakGpuMemoryTracker::Usage::PAGE_LOAD);
+=======
   std::unique_ptr<PeakGpuMemoryTracker> tracker =
       PeakGpuMemoryTracker::Create(PeakGpuMemoryTracker::Usage::PAGE_LOAD);
+>>>>>>> chromium
   SetTestingCallback(tracker.get(), run_loop.QuitClosure());
   FlushRemoteForTesting();
   // No report in response to creation.

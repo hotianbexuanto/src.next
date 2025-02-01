@@ -61,4 +61,39 @@ void ChromeExtensionFrameHost::WatchedPageChange(
   tab_helper->OnWatchedPageChanged(css_selectors);
 }
 
+<<<<<<< HEAD
+void ChromeExtensionFrameHost::DetailedConsoleMessageAdded(
+    const std::u16string& message,
+    const std::u16string& source,
+    const StackTrace& stack_trace,
+    blink::mojom::ConsoleMessageLevel level) {
+  if (!IsSourceFromAnExtension(source))
+    return;
+
+  content::RenderFrameHost* render_frame_host =
+      receivers_.GetCurrentTargetFrame();
+  ExtensionId extension_id = util::GetExtensionIdFromFrame(render_frame_host);
+  if (extension_id.empty())
+    extension_id = GURL(source).host();
+
+  content::BrowserContext* browser_context = web_contents_->GetBrowserContext();
+  ErrorConsole::Get(browser_context)
+      ->ReportError(std::unique_ptr<ExtensionError>(new RuntimeError(
+          extension_id, browser_context->IsOffTheRecord(), source, message,
+          stack_trace, web_contents_->GetLastCommittedURL(),
+          blink::ConsoleMessageLevelToLogSeverity(level),
+          render_frame_host->GetRoutingID(),
+          render_frame_host->GetProcess()->GetDeprecatedID())));
+}
+
+void ChromeExtensionFrameHost::ContentScriptsExecuting(
+    const base::flat_map<ExtensionId, std::vector<std::string>>&
+        extension_id_to_scripts,
+    const GURL& frame_url) {
+  ActivityLog::GetInstance(web_contents_->GetBrowserContext())
+      ->OnScriptsExecuted(web_contents_, extension_id_to_scripts, frame_url);
+}
+
+=======
+>>>>>>> chromium
 }  // namespace extensions

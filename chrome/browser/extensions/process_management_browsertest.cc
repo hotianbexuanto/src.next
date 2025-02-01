@@ -253,9 +253,13 @@ IN_PROC_BROWSER_TEST_F(ProcessManagementTest, MAYBE_ProcessOverflow) {
   extensions::ProcessManager* process_manager =
       extensions::ProcessManager::Get(browser()->profile());
   content::RenderProcessHost* extension1_host =
-      process_manager->GetSiteInstanceForURL(extension1_url)->GetProcess();
+      (*process_manager->GetRenderFrameHostsForExtension(extension1->id())
+            .begin())
+          ->GetProcess();
   content::RenderProcessHost* extension2_host =
-      process_manager->GetSiteInstanceForURL(extension2_url)->GetProcess();
+      (*process_manager->GetRenderFrameHostsForExtension(extension2->id())
+            .begin())
+          ->GetProcess();
 
   // An isolated app only shares with other instances of itself, not other
   // isolated apps or anything else.
@@ -451,10 +455,16 @@ IN_PROC_BROWSER_TEST_P(ProcessManagementExtensionIsolationTest,
   for (ExtensionHost* host : epm->background_hosts()) {
     SCOPED_TRACE(testing::Message()
                  << "When testing extension: " << host->extension_id());
+<<<<<<< HEAD
+    // The process should be locked.
+    EXPECT_TRUE(host->render_process_host()->IsProcessLockedToSiteForTesting());
+    process_ids.insert(host->render_process_host()->GetDeprecatedID());
+=======
     // The process should be locked iff process sharing is not allowed.
     EXPECT_NE(IsExtensionProcessSharingAllowed(),
               host->render_process_host()->IsProcessLockedToSiteForTesting());
     process_ids.insert(host->render_process_host()->GetID());
+>>>>>>> chromium
   }
   if (IsExtensionProcessSharingAllowed()) {
     // All extensions share a single process, since this is 1/3 the process
@@ -486,6 +496,22 @@ IN_PROC_BROWSER_TEST_P(ProcessManagementExtensionIsolationTest,
       browser()->tab_strip_model()->GetActiveWebContents();
 
   // Verify the number of processes across extensions and tabs.
+<<<<<<< HEAD
+  process_ids.insert(
+      web_contents1->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID());
+  process_ids.insert(
+      web_contents2->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID());
+  process_ids.insert(
+      web_contents3->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID());
+
+  // The web processes still share 2 processes as if there were a single
+  // extension process (making a total of 5 processes counting the existing 3
+  // extension processes). This avoids starving the web pages with a single
+  // process (if the extensions pushed us past the limit on their own), or
+  // increasing the process count further (if all extension processes were
+  // ignored).
+  EXPECT_EQ(5u, process_ids.size());
+=======
   process_ids.insert(web_contents1->GetMainFrame()->GetProcess()->GetID());
   process_ids.insert(web_contents2->GetMainFrame()->GetProcess()->GetID());
   process_ids.insert(web_contents3->GetMainFrame()->GetProcess()->GetID());
@@ -501,6 +527,7 @@ IN_PROC_BROWSER_TEST_P(ProcessManagementExtensionIsolationTest,
     // ignored).
     EXPECT_EQ(5u, process_ids.size());
   }
+>>>>>>> chromium
 
   // Add a cross-site web process.
   GURL cross_site_url(
@@ -510,7 +537,12 @@ IN_PROC_BROWSER_TEST_P(ProcessManagementExtensionIsolationTest,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
   WebContents* web_contents4 =
       browser()->tab_strip_model()->GetActiveWebContents();
+<<<<<<< HEAD
+  process_ids.insert(
+      web_contents4->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID());
+=======
   process_ids.insert(web_contents4->GetMainFrame()->GetProcess()->GetID());
+>>>>>>> chromium
   // The cross-site process adds 1 more process to the total, to avoid sharing
   // with the existing web renderer processes (due to Site Isolation).
   if (IsExtensionProcessSharingAllowed())
@@ -618,9 +650,17 @@ IN_PROC_BROWSER_TEST_F(ChromeWebStoreProcessTest,
   // Verify that we really have the Chrome Web Store app loaded in the Web
   // Contents.
   content::RenderProcessHost* new_process_host =
+<<<<<<< HEAD
+      web_contents->GetPrimaryMainFrame()->GetProcess();
+  if (GetParam() == kWebstoreURL) {
+    EXPECT_TRUE(extensions::ProcessMap::Get(profile())->Contains(
+        extensions::kWebStoreAppId, new_process_host->GetDeprecatedID()));
+  }
+=======
       web_contents->GetMainFrame()->GetProcess();
   EXPECT_TRUE(extensions::ProcessMap::Get(profile())->Contains(
       extensions::kWebStoreAppId, new_process_host->GetID()));
+>>>>>>> chromium
 
   // Verify that Chrome Web Store is isolated in a separate renderer process.
   EXPECT_NE(old_process_host, new_process_host);
@@ -651,11 +691,29 @@ IN_PROC_BROWSER_TEST_F(ChromeWebStoreInIsolatedOriginTest,
       browser()->tab_strip_model()->GetActiveWebContents();
   EXPECT_EQ(cws_web_url, web_contents->GetLastCommittedURL());
 
+<<<<<<< HEAD
+  // Double-check that the page has access to the restricted APIs we expect to
+  // be available to the Webstore.
+  EXPECT_EQ(true, content::EvalJs(web_contents,
+                                  "!!chrome && !!chrome.webstorePrivate"));
+
+  // Verify that we have the Webstore hosted app loaded into the Web Contents if
+  // this is for the old Webstore URL. Note: The new Webstore and the Webstore
+  // URL override are granted their powers without use of the hosted app, so we
+  // don't do this check for them.
+  if (GetParam() == kWebstoreURL) {
+    content::RenderProcessHost* render_process_host =
+        web_contents->GetPrimaryMainFrame()->GetProcess();
+    EXPECT_TRUE(extensions::ProcessMap::Get(profile())->Contains(
+        extensions::kWebStoreAppId, render_process_host->GetDeprecatedID()));
+  }
+=======
   // Verify that the Chrome Web Store hosted app is really loaded.
   content::RenderProcessHost* render_process_host =
       web_contents->GetMainFrame()->GetProcess();
   EXPECT_TRUE(extensions::ProcessMap::Get(profile())->Contains(
       extensions::kWebStoreAppId, render_process_host->GetID()));
+>>>>>>> chromium
 }
 
 // This test verifies that blocked navigations to extensions pages do not

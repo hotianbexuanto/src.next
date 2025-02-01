@@ -13,7 +13,11 @@ import android.graphics.Rect;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.view.View;
+<<<<<<< HEAD
+import android.view.ViewGroup;
+=======
 import android.widget.ScrollView;
+>>>>>>> chromium
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,11 +33,28 @@ import org.chromium.base.Log;
 import org.chromium.base.MemoryPressureListener;
 import org.chromium.base.ObserverList;
 import org.chromium.base.memory.MemoryPressureCallback;
+import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.chrome.R;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.app.feed.feedmanagement.FeedManagementActivity;
+import org.chromium.chrome.browser.feed.FeedSurfaceProvider.RestoringState;
+import org.chromium.chrome.browser.feed.Stream.ContentChangedListener;
+import org.chromium.chrome.browser.feed.sections.OnSectionHeaderSelectedListener;
+import org.chromium.chrome.browser.feed.sections.SectionHeaderListProperties;
+import org.chromium.chrome.browser.feed.sections.SectionHeaderProperties;
+import org.chromium.chrome.browser.feed.sections.ViewVisibility;
+import org.chromium.chrome.browser.feed.sort_ui.FeedOptionsCoordinator;
+import org.chromium.chrome.browser.feed.sort_ui.FeedOptionsCoordinator.OptionChangedListener;
+import org.chromium.chrome.browser.feed.v2.ContentOrder;
+import org.chromium.chrome.browser.feed.v2.FeedUserActionType;
+import org.chromium.chrome.browser.feed.webfeed.WebFeedBridge;
+=======
 import org.chromium.chrome.browser.app.feedmanagement.FeedManagementActivity;
 import org.chromium.chrome.browser.feed.shared.FeedFeatures;
 import org.chromium.chrome.browser.feed.shared.stream.Stream;
 import org.chromium.chrome.browser.feed.shared.stream.Stream.ContentChangedListener;
+>>>>>>> chromium
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.native_page.ContextMenuManager;
 import org.chromium.chrome.browser.native_page.NativePageNavigationDelegate;
@@ -48,19 +69,39 @@ import org.chromium.chrome.browser.ntp.snippets.SectionHeaderListProperties;
 import org.chromium.chrome.browser.ntp.snippets.SectionHeaderProperties;
 import org.chromium.chrome.browser.ntp.snippets.SectionType;
 import org.chromium.chrome.browser.preferences.Pref;
-import org.chromium.chrome.browser.preferences.PrefChangeRegistrar;
+import org.chromium.chrome.browser.preferences.PrefServiceUtil;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
+=======
+>>>>>>> chromium
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.browser.signin.ui.PersonalizedSigninPromoView;
 import org.chromium.chrome.browser.signin.ui.SigninPromoController;
 import org.chromium.chrome.browser.suggestions.SuggestionsMetrics;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.ui.native_page.TouchEnabledDelegate;
+import org.chromium.chrome.browser.ui.signin.PersonalizedSigninPromoView;
+import org.chromium.chrome.browser.ui.signin.SyncPromoController;
+import org.chromium.chrome.browser.ui.signin.account_picker.AccountPickerBottomSheetStrings;
+import org.chromium.chrome.browser.ui.signin.signin_promo.NtpSigninPromoDelegate;
+import org.chromium.chrome.browser.ui.signin.signin_promo.SigninPromoCoordinator;
+import org.chromium.chrome.browser.xsurface.ListLayoutHelper;
+import org.chromium.chrome.browser.xsurface.feed.FeedUserInteractionReliabilityLogger.ClosedReason;
+import org.chromium.chrome.browser.xsurface.feed.StreamType;
+import org.chromium.components.browser_ui.widget.displaystyle.DisplayStyleObserver;
+import org.chromium.components.browser_ui.widget.displaystyle.HorizontalDisplayStyle;
+import org.chromium.components.browser_ui.widget.displaystyle.UiConfig;
+import org.chromium.components.prefs.PrefChangeRegistrar;
+=======
 import org.chromium.chrome.browser.xsurface.FeedLaunchReliabilityLogger;
 import org.chromium.chrome.features.start_surface.StartSurfaceConfiguration;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenu;
 import org.chromium.components.browser_ui.widget.listmenu.ListMenuItemProperties;
 import org.chromium.components.feed.proto.wire.ReliabilityLoggingEnums.DiscoverLaunchResult;
+>>>>>>> chromium
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
 import org.chromium.components.signin.identitymanager.IdentityManager;
@@ -79,8 +120,8 @@ import java.util.HashMap;
 import java.util.Locale;
 
 /**
- * A mediator for the {@link FeedSurfaceCoordinator} responsible for interacting with the
- * native library and handling business logic.
+ * A mediator for the {@link FeedSurfaceCoordinator} responsible for interacting with the native
+ * library and handling business logic.
  */
 @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
 public class FeedSurfaceMediator
@@ -92,6 +133,10 @@ public class FeedSurfaceMediator
     public static final String FEED_CONTENT_FIRST_LOADED_TIME_MS_UMA = "FeedContentFirstLoadedTime";
     private static final int INTEREST_FEED_HEADER_POSITION = 0;
 
+<<<<<<< HEAD
+    // Position of the in-feed header for the for-you feed.
+    private static final int PRIMARY_FEED_HEADER_POSITION = 0;
+=======
     /**
      * Class for storing scroll state of a feed surface.
      */
@@ -141,6 +186,7 @@ public class FeedSurfaceMediator
             return result;
         }
     }
+>>>>>>> chromium
 
     private class FeedSurfaceHeaderSelectedCallback implements OnSectionHeaderSelectedListener {
         @Override
@@ -162,12 +208,19 @@ public class FeedSurfaceMediator
     }
 
     /**
-     * The {@link SignInPromo} for the Feed.
-     * TODO(huayinz): Update content and visibility through a ModelChangeProcessor.
+     * The {@link SignInPromo} for the Feed. TODO(huayinz): Update content and visibility through a
+     * ModelChangeProcessor.
      */
+<<<<<<< HEAD
+    private class LegacyFeedSignInPromo extends SignInPromo {
+        LegacyFeedSignInPromo(
+                SigninManager signinManager, SyncPromoController syncPromoController) {
+            super(signinManager, syncPromoController);
+=======
     private class FeedSignInPromo extends SignInPromo {
         FeedSignInPromo(SigninManager signinManager) {
             super(signinManager);
+>>>>>>> chromium
             maybeUpdateSignInPromo();
         }
 
@@ -176,7 +229,11 @@ public class FeedSurfaceMediator
             if (isVisible() == visible) return;
 
             super.setVisibilityInternal(visible);
+<<<<<<< HEAD
+            mCoordinator.updateHeaderViews(visible ? mCoordinator.getSigninPromoView() : null);
+=======
             mCoordinator.updateHeaderViews(visible, null);
+>>>>>>> chromium
             maybeUpdateSignInPromo();
         }
 
@@ -197,6 +254,73 @@ public class FeedSurfaceMediator
                         null);
             }
         }
+<<<<<<< HEAD
+
+        @Override
+        public void onDismissPromo() {
+            super.onDismissPromo();
+            mCoordinator.updateHeaderViews(/* signinPromoView= */ null);
+        }
+    }
+
+    /**
+     * Wrapper class on top of {@link SigninPromoCoordinator} to also account for suggestions
+     * available signal.
+     */
+    private class FeedSigninPromo {
+        private final SigninPromoCoordinator mSigninPromoCoordinator;
+        private final View mPromoView;
+        private boolean mCanShowPersonalizedSuggestions;
+        private boolean mCanShowPromo;
+
+        FeedSigninPromo(boolean canShowPersonalizedSuggestions) {
+            mSigninPromoCoordinator =
+                    new SigninPromoCoordinator(
+                            mContext,
+                            mProfile,
+                            new NtpSigninPromoDelegate(
+                                    mContext,
+                                    mProfile,
+                                    SigninAndHistorySyncActivityLauncherImpl.get(),
+                                    this::onPromoStateChange));
+            mCanShowPersonalizedSuggestions = canShowPersonalizedSuggestions;
+            mCanShowPromo =
+                    mSigninPromoCoordinator.canShowPromo() && mCanShowPersonalizedSuggestions;
+
+            mPromoView = mSigninPromoCoordinator.buildPromoView((ViewGroup) mCoordinator.getView());
+            mSigninPromoCoordinator.setView(mPromoView);
+        }
+
+        boolean canShowPromo() {
+            return mCanShowPromo;
+        }
+
+        View getPromoView() {
+            return mPromoView;
+        }
+
+        void setCanShowPersonalizedSuggestions(boolean canShow) {
+            mCanShowPersonalizedSuggestions = canShow;
+            onPromoStateChange();
+        }
+
+        void destroy() {
+            mSigninPromoCoordinator.destroy();
+            mCoordinator.updateHeaderViews(/* signinPromoView= */ null);
+        }
+
+        void onPromoStateChange() {
+            boolean canShowPromo =
+                    mSigninPromoCoordinator.canShowPromo() && mCanShowPersonalizedSuggestions;
+            if (mCanShowPromo == canShowPromo) {
+                return;
+            }
+
+            mCanShowPromo = canShowPromo;
+            mCoordinator.updateHeaderViews(mCanShowPromo ? mPromoView : null);
+        }
+=======
+>>>>>>> chromium
     }
 
     @VisibleForTesting
@@ -215,14 +339,23 @@ public class FeedSurfaceMediator
     private final SigninManager mSigninManager;
     private final PropertyModel mSectionHeaderModel;
 
+<<<<<<< HEAD
+    // It is non-null for NTP on tablets.
+    private @Nullable final UiConfig mUiConfig;
+    private final DisplayStyleObserver mDisplayStyleObserver = this::onDisplayStyleChanged;
+    private final ObservableSupplierImpl<Integer> mGetRestoringStateSupplier =
+            new ObservableSupplierImpl<>(RestoringState.WAITING_TO_RESTORE);
+=======
     private final NativePageNavigationDelegate mPageNavigationDelegate;
+>>>>>>> chromium
 
     private @Nullable RecyclerView.OnScrollListener mStreamScrollListener;
     private final ObserverList<ScrollListener> mScrollListeners =
             new ObserverList<ScrollListener>();
     private ContentChangedListener mStreamContentChangedListener;
     private MemoryPressureCallback mMemoryPressureCallback;
-    private @Nullable SignInPromo mSignInPromo;
+    private @Nullable FeedSigninPromo mSigninPromo;
+    private @Nullable SignInPromo mLegacySignInPromo;
     private RecyclerViewAnimationFinishDetector mRecyclerViewAnimationFinishDetector =
             new RecyclerViewAnimationFinishDetector();
 
@@ -240,6 +373,11 @@ public class FeedSurfaceMediator
 
     /** Whether the Feed content is loading. */
     private boolean mIsLoadingFeed;
+<<<<<<< HEAD
+
+    private FeedScrollState mRestoreScrollState;
+    private int mPositionToRestore = RecyclerView.NO_POSITION;
+=======
     /** Cached parameters for recording the histogram of "FeedContentFirstLoadedTime". */
     private boolean mIsInstantStart;
     private long mActivityCreationTimeMs;
@@ -250,6 +388,7 @@ public class FeedSurfaceMediator
     private boolean mHasPendingUmaRecording;
     private int mToggleswitchMenuIndex;
     private ScrollState mRestoreScrollState;
+>>>>>>> chromium
 
     private final HashMap<Integer, Stream> mTabToStreamMap = new HashMap<>();
     private Stream mCurrentStream;
@@ -278,7 +417,7 @@ public class FeedSurfaceMediator
         if (sTestPrefChangeRegistar != null) {
             mPrefChangeRegistrar = sTestPrefChangeRegistar;
         } else {
-            mPrefChangeRegistrar = new PrefChangeRegistrar();
+            mPrefChangeRegistrar = PrefServiceUtil.createFor(profile);
         }
         mHasHeader = headerModel != null;
         mPrefChangeRegistrar.addObserver(Pref.ENABLE_SNIPPETS, this::updateContent);
@@ -325,7 +464,7 @@ public class FeedSurfaceMediator
                 });
     }
 
-    /** Update the content based on supervised user or enterprise policy. */
+    /** Update the content based on enterprise policy. */
     void updateContent() {
         mFeedEnabled = FeedFeatures.isFeedEnabled();
         if ((mFeedEnabled && !mTabToStreamMap.isEmpty())
@@ -372,12 +511,22 @@ public class FeedSurfaceMediator
 
     /** Restores a previously saved state. */
     void restoreSavedInstanceState(String json) {
+<<<<<<< HEAD
+        FeedScrollState state = FeedScrollState.fromJson(json);
+        if (state == null) {
+            mPositionToRestore = RecyclerView.NO_POSITION;
+            mGetRestoringStateSupplier.set(RestoringState.NO_STATE_TO_RESTORE);
+            return;
+        }
+=======
         ScrollState state = ScrollState.fromJson(json);
         if (state == null) return;
+>>>>>>> chromium
         mRestoreTabId = state.tabId;
         if (mSectionHeaderModel != null) {
             mSectionHeaderModel.set(SectionHeaderListProperties.CURRENT_TAB_INDEX_KEY, state.tabId);
         }
+        mPositionToRestore = state.position;
         if (mCurrentStream == null) {
             mRestoreScrollState = state;
         } else {
@@ -414,11 +563,18 @@ public class FeedSurfaceMediator
             // Build menu after section enabled key is set.
             mFeedMenuModel = buildMenuItems();
 
+<<<<<<< HEAD
+        addHeaderAndStream(
+                getInterestFeedHeaderText(suggestionsVisible),
+                mCoordinator.createFeedStream(StreamKind.FOR_YOU, new StreamsMediatorImpl()));
+        setHeaderIndicatorState(suggestionsVisible);
+=======
             addHeaderAndStream(
                     getInterestFeedHeaderText(suggestionsVisible), null, mCoordinator.getStream());
 
             mCoordinator.initializeIph();
             mSigninManager.getIdentityManager().addObserver(this);
+>>>>>>> chromium
 
             mSectionHeaderModel.set(
                     SectionHeaderListProperties.MENU_MODEL_LIST_KEY, mFeedMenuModel);
@@ -458,6 +614,46 @@ public class FeedSurfaceMediator
                 }
             }
 
+<<<<<<< HEAD
+                    @Override
+                    public void onScrolled(RecyclerView v, int dx, int dy) {
+                        mCoordinator
+                                .getView()
+                                .postOnAnimation(
+                                        () -> {
+                                            if (mSnapScrollHelper != null) {
+                                                mSnapScrollHelper.handleScroll();
+                                            }
+                                            for (ScrollListener listener : mScrollListeners) {
+                                                listener.onScrolled(dx, dy);
+                                            }
+
+                                            // Null if the stream has not been binded yet.
+                                            if (mCoordinator.getHybridListRenderer() != null
+                                                    && mCoordinator
+                                                                    .getHybridListRenderer()
+                                                                    .getListLayoutHelper()
+                                                            != null
+                                                    && mPositionToRestore
+                                                            != RecyclerView.NO_POSITION
+                                                    && mGetRestoringStateSupplier.get()
+                                                            == RestoringState.WAITING_TO_RESTORE) {
+                                                final boolean restored =
+                                                        mCoordinator
+                                                                        .getHybridListRenderer()
+                                                                        .getListLayoutHelper()
+                                                                        .findFirstVisibleItemPosition()
+                                                                >= mPositionToRestore;
+                                                if (restored) {
+                                                    mGetRestoringStateSupplier.set(
+                                                            RestoringState.RESTORED);
+                                                    mPositionToRestore = RecyclerView.NO_POSITION;
+                                                }
+                                            }
+                                        });
+                    }
+                };
+=======
             @Override
             public void onScrolled(RecyclerView v, int dx, int dy) {
                 if (mSnapScrollHelper != null) {
@@ -468,6 +664,7 @@ public class FeedSurfaceMediator
                 }
             }
         };
+>>>>>>> chromium
         mCoordinator.getRecyclerView().addOnScrollListener(mStreamScrollListener);
 
         initStreamHeaderViews();
@@ -543,6 +740,18 @@ public class FeedSurfaceMediator
         mCurrentStream = stream;
         mCurrentStream.addOnContentChangedListener(mStreamContentChangedListener);
 
+<<<<<<< HEAD
+        mGetRestoringStateSupplier.set(RestoringState.WAITING_TO_RESTORE);
+        FeedReliabilityLogger reliabilityLogger = mCoordinator.getReliabilityLogger();
+        mCurrentStream.bind(
+                mCoordinator.getRecyclerView(),
+                mCoordinator.getContentManager(),
+                mRestoreScrollState,
+                mCoordinator.getSurfaceScope(),
+                mCoordinator.getHybridListRenderer(),
+                reliabilityLogger,
+                mHeaderCount);
+=======
         if (FeedFeatures.isAutoScrollToTopEnabled() && mRestoreScrollState == null) {
             mRestoreScrollState = getScrollStateForAutoScrollToTop();
         }
@@ -550,6 +759,7 @@ public class FeedSurfaceMediator
         mCurrentStream.bind(mCoordinator.getRecyclerView(), mCoordinator.getContentManager(),
                 mRestoreScrollState, mCoordinator.getSurfaceScope(),
                 mCoordinator.getHybridListRenderer(), mCoordinator.getLaunchReliabilityLogger());
+>>>>>>> chromium
         mRestoreScrollState = null;
         mCoordinator.getHybridListRenderer().onSurfaceOpened();
     }
@@ -628,6 +838,16 @@ public class FeedSurfaceMediator
     }
 
     private void initStreamHeaderViews() {
+<<<<<<< HEAD
+        boolean signInPromoVisible = shouldShowSigninPromo();
+        if (signInPromoVisible && mSigninPromo != null) {
+            mCoordinator.updateHeaderViews(mSigninPromo.getPromoView());
+        } else if (signInPromoVisible && mLegacySignInPromo != null) {
+            mCoordinator.updateHeaderViews(mCoordinator.getSigninPromoView());
+        } else {
+            mCoordinator.updateHeaderViews(/* signinPromoView= */ null);
+        }
+=======
         boolean signInPromoVisible = createSignInPromoIfNeeded();
         View enhancedProtectionPromoView = null;
         if (!signInPromoVisible) {
@@ -635,12 +855,47 @@ public class FeedSurfaceMediator
         }
         // We are not going to show two promos at the same time.
         mCoordinator.updateHeaderViews(signInPromoVisible, enhancedProtectionPromoView);
+>>>>>>> chromium
     }
 
     /**
      * Create and setup the SignInPromo if necessary.
      * @return Whether the SignPromo should be visible.
      */
+<<<<<<< HEAD
+    private boolean shouldShowSigninPromo() {
+        // TODO(crbug.com/327387704): Move SignInPromo.shouldCreatePromo inside FeedSigninPromo
+        //  after phase 2 follow-up launch.
+        boolean shouldCreatePromo = SignInPromo.shouldCreatePromo();
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.UNO_PHASE_2_FOLLOW_UP)) {
+            if (!shouldCreatePromo) {
+                return false;
+            }
+            if (mSigninPromo == null) {
+                mSigninPromo = new FeedSigninPromo(isSuggestionsVisible());
+            }
+            return mSigninPromo.canShowPromo();
+        } else {
+            AccountPickerBottomSheetStrings bottomSheetStrings =
+                    new AccountPickerBottomSheetStrings.Builder(
+                                    R.string.signin_account_picker_bottom_sheet_title)
+                            .build();
+            SyncPromoController promoController =
+                    new SyncPromoController(
+                            mProfile,
+                            bottomSheetStrings,
+                            SigninAccessPoint.NTP_FEED_TOP_PROMO,
+                            SigninAndHistorySyncActivityLauncherImpl.get());
+            if (!shouldCreatePromo || !promoController.canShowSyncPromo()) {
+                return false;
+            }
+            if (mLegacySignInPromo == null) {
+                mLegacySignInPromo = new LegacyFeedSignInPromo(mSigninManager, promoController);
+                mLegacySignInPromo.setCanShowPersonalizedSuggestions(isSuggestionsVisible());
+            }
+            return mLegacySignInPromo.isVisible();
+        }
+=======
     private boolean createSignInPromoIfNeeded() {
         if (!SignInPromo.shouldCreatePromo()
                 || !SigninPromoController.hasNotReachedImpressionLimit(
@@ -656,6 +911,7 @@ public class FeedSurfaceMediator
             mSignInPromo.setCanShowPersonalizedSuggestions(suggestionsVisible);
         }
         return mSignInPromo.isVisible();
+>>>>>>> chromium
     }
 
     private View createEnhancedProtectionPromoIfNeeded() {
@@ -682,9 +938,13 @@ public class FeedSurfaceMediator
         MemoryPressureListener.removeCallback(mMemoryPressureCallback);
         mMemoryPressureCallback = null;
 
-        if (mSignInPromo != null) {
-            mSignInPromo.destroy();
-            mSignInPromo = null;
+        if (mLegacySignInPromo != null) {
+            mLegacySignInPromo.destroy();
+            mLegacySignInPromo = null;
+        }
+        if (mSigninPromo != null) {
+            mSigninPromo.destroy();
+            mSigninPromo = null;
         }
 
         unbindStream();
@@ -718,6 +978,46 @@ public class FeedSurfaceMediator
         if (mSnapScrollHelper != null) {
             view.getViewTreeObserver().addOnScrollChangedListener(mSnapScrollHelper::handleScroll);
         }
+<<<<<<< HEAD
+        mSectionHeaderModel.set(SectionHeaderListProperties.IS_TAB_MODE_KEY, isTabMode);
+
+        // If not in tab mode, make sure we are on the for-you feed.
+        if (!isTabMode) {
+            mSectionHeaderModel.set(
+                    SectionHeaderListProperties.CURRENT_TAB_INDEX_KEY,
+                    PRIMARY_FEED_HEADER_POSITION);
+        }
+
+        boolean isGoogleSearchEngine = mTemplateUrlService.isDefaultSearchEngineGoogle();
+        // When Google is not the default search engine, we need to show the Logo.
+        mSectionHeaderModel.set(
+                SectionHeaderListProperties.IS_LOGO_KEY,
+                !isGoogleSearchEngine && isSignedIn && suggestionsVisible);
+        ViewVisibility indicatorState;
+        if (!isTabMode) {
+            // Gone when the following/for you tab switcher header is not shown
+            indicatorState = ViewVisibility.GONE;
+        } else if (!isGoogleSearchEngine) {
+            // Visible when Google is not the search engine (show logo).
+            indicatorState = ViewVisibility.VISIBLE;
+        } else {
+            // Invisible when we have centered text (signed in and not shown). This
+            // counterbalances the gear icon so text is properly centered.
+            indicatorState = ViewVisibility.INVISIBLE;
+        }
+        mSectionHeaderModel.set(
+                SectionHeaderListProperties.INDICATOR_VIEW_VISIBILITY_KEY, indicatorState);
+
+        // Make sure to collapse option panel if not shown.
+        if (!suggestionsVisible) {
+            mOptionsCoordinator.ensureGone();
+        }
+
+        // Set enabled last because it makes the animation smoother.
+        mSectionHeaderModel.set(
+                SectionHeaderListProperties.IS_SECTION_ENABLED_KEY, suggestionsVisible);
+=======
+>>>>>>> chromium
     }
 
     /**
@@ -737,11 +1037,27 @@ public class FeedSurfaceMediator
                             getInterestFeedHeaderText(suggestionsVisible));
         }
 
+<<<<<<< HEAD
+        boolean suggestionsVisible = isSuggestionsVisible();
+        mSectionHeaderModel
+                .get(SectionHeaderListProperties.SECTION_HEADERS_KEY)
+                .get(PRIMARY_FEED_HEADER_POSITION)
+                .set(
+                        SectionHeaderProperties.HEADER_TEXT_KEY,
+                        getInterestFeedHeaderText(suggestionsVisible));
+
+        setHeaderIndicatorState(suggestionsVisible);
+
+=======
+>>>>>>> chromium
         // Update toggleswitch item, which is last item in list.
         mFeedMenuModel.update(mToggleswitchMenuIndex, getMenuToggleSwitch(suggestionsVisible, 0));
 
-        if (mSignInPromo != null) {
-            mSignInPromo.setCanShowPersonalizedSuggestions(suggestionsVisible);
+        if (mLegacySignInPromo != null) {
+            mLegacySignInPromo.setCanShowPersonalizedSuggestions(suggestionsVisible);
+        }
+        if (mSigninPromo != null) {
+            mSigninPromo.setCanShowPersonalizedSuggestions(suggestionsVisible);
         }
         if (suggestionsVisible) mCoordinator.getSurfaceLifecycleManager().show();
         mStreamContentChanged = true;
@@ -777,15 +1093,24 @@ public class FeedSurfaceMediator
         }
     }
 
+<<<<<<< HEAD
+    /** Returns the interest feed header text and the selected default search engine. */
+=======
     /** Returns the interest feed header text based on the selected default search engine */
+>>>>>>> chromium
     private String getInterestFeedHeaderText(boolean isExpanded) {
         Resources res = mContext.getResources();
         final boolean isDefaultSearchEngineGoogle =
                 TemplateUrlServiceFactory.get().isDefaultSearchEngineGoogle();
         final int sectionHeaderStringId;
 
+<<<<<<< HEAD
+        if (WebFeedBridge.isWebFeedEnabled() && FeedServiceBridge.isSignedIn() && isExpanded) {
+            return res.getString(R.string.ntp_discover_on);
+=======
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.WEB_FEED)) {
             sectionHeaderStringId = R.string.ntp_for_you;
+>>>>>>> chromium
         } else if (isDefaultSearchEngineGoogle) {
             sectionHeaderStringId =
                     isExpanded ? R.string.ntp_discover_on : R.string.ntp_discover_off;
@@ -800,6 +1125,27 @@ public class FeedSurfaceMediator
     private ModelList buildMenuItems() {
         ModelList itemList = new ModelList();
         int iconId = 0;
+<<<<<<< HEAD
+
+        if (FeedServiceBridge.isSignedIn()) {
+            if (WebFeedBridge.isWebFeedEnabled()) {
+                itemList.add(
+                        buildMenuListItem(
+                                R.string.ntp_manage_feed,
+                                R.id.ntp_feed_header_menu_item_manage,
+                                iconId));
+            } else {
+                itemList.add(
+                        buildMenuListItem(
+                                R.string.ntp_manage_my_activity,
+                                R.id.ntp_feed_header_menu_item_activity,
+                                iconId));
+                itemList.add(
+                        buildMenuListItem(
+                                R.string.ntp_manage_interests,
+                                R.id.ntp_feed_header_menu_item_interest,
+                                iconId));
+=======
         if (mSigninManager.getIdentityManager().hasPrimaryAccount()) {
             if (FeedFeatures.isWebFeedUIEnabled()) {
                 itemList.add(buildMenuListItem(
@@ -813,6 +1159,7 @@ public class FeedSurfaceMediator
             if (ChromeFeatureList.isEnabled(ChromeFeatureList.INTEREST_FEED_V2_HEARTS)) {
                 itemList.add(buildMenuListItem(R.string.ntp_manage_reactions,
                         R.id.ntp_feed_header_menu_item_reactions, iconId));
+>>>>>>> chromium
             }
         }
         if (FeedServiceBridge.isAutoplayEnabled()) {
@@ -1026,9 +1373,21 @@ public class FeedSurfaceMediator
         updateSectionHeader();
     }
 
+<<<<<<< HEAD
+    /**
+     * The state of whether the feed stream is being restored.
+     *
+     * @return The restoring state {@link RestoringState}.
+     */
+    public ObservableSupplier<Integer> getRestoringStateSupplier() {
+        return mGetRestoringStateSupplier;
+    }
+
+=======
     @VisibleForTesting
+>>>>>>> chromium
     public SignInPromo getSignInPromoForTesting() {
-        return mSignInPromo;
+        return mLegacySignInPromo;
     }
 
     void onOverviewShownAtLaunch(long activityCreationTimeMs, boolean isInstantStart) {
@@ -1041,6 +1400,8 @@ public class FeedSurfaceMediator
         }
     }
 
+<<<<<<< HEAD
+=======
     private boolean maybeRecordContentLoadingTime() {
         if (mActivityCreationTimeMs == 0 || mContentFirstAvailableTimeMs == 0) return false;
 
@@ -1056,6 +1417,7 @@ public class FeedSurfaceMediator
         return state;
     }
 
+>>>>>>> chromium
     // Detects animation finishes in RecyclerView.
     // https://stackoverflow.com/questions/33710605/detect-animation-finish-in-androids-recyclerview
     private class RecyclerViewAnimationFinishDetector
@@ -1105,4 +1467,57 @@ public class FeedSurfaceMediator
             new Handler().post(() -> { checkFinish(); });
         }
     }
+<<<<<<< HEAD
+
+    private @StreamType int getStreamType(Stream stream) {
+        switch (stream.getStreamKind()) {
+            case StreamKind.FOR_YOU:
+                return StreamType.FOR_YOU;
+            case StreamKind.FOLLOWING:
+                return StreamType.WEB_FEED;
+            default:
+                return StreamType.UNSPECIFIED;
+        }
+    }
+
+    private void logSwitchedFeeds(Stream switchedToStream) {
+        // Log the end of an ongoing launch and the beginning of a new one.
+        FeedReliabilityLogger reliabilityLogger = mCoordinator.getReliabilityLogger();
+        if (reliabilityLogger != null) {
+            reliabilityLogger.onSwitchStream(getStreamType(switchedToStream));
+        }
+    }
+
+    private boolean isSuggestionsVisible() {
+        return getPrefService().getBoolean(Pref.ARTICLES_LIST_VISIBLE);
+    }
+
+    OnSectionHeaderSelectedListener getOrCreateSectionHeaderListenerForTesting() {
+        OnSectionHeaderSelectedListener listener =
+                mSectionHeaderModel.get(SectionHeaderListProperties.ON_TAB_SELECTED_CALLBACK_KEY);
+        if (listener == null) {
+            listener = new FeedSurfaceHeaderSelectedCallback();
+        }
+        return listener;
+    }
+
+    void setStreamForTesting(int key, Stream stream) {
+        mTabToStreamMap.put(key, stream);
+    }
+
+    int getTabToStreamSizeForTesting() {
+        return mTabToStreamMap.size();
+    }
+
+    private void onDisplayStyleChanged(UiConfig.DisplayStyle newDisplayStyle) {
+        mSectionHeaderModel.set(
+                SectionHeaderListProperties.IS_NARROW_WINDOW_ON_TABLET_KEY,
+                newDisplayStyle.horizontal < HorizontalDisplayStyle.WIDE);
+    }
+
+    public @ClosedReason int getClosedReason() {
+        return mClosedReason;
+    }
+=======
+>>>>>>> chromium
 }

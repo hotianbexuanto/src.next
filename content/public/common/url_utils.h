@@ -15,6 +15,12 @@ namespace content {
 // WebUIControllerFactory::UseWebUIForURL in the browser process.
 CONTENT_EXPORT bool HasWebUIScheme(const GURL& url);
 
+<<<<<<< HEAD
+// Returns true if the origin is a WebUI.
+CONTENT_EXPORT bool HasWebUIOrigin(const url::Origin& origin);
+
+=======
+>>>>>>> chromium
 // Check whether we can do the saving page operation for the specified URL.
 CONTENT_EXPORT bool IsSavableURL(const GURL& url);
 

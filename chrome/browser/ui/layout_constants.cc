@@ -6,6 +6,11 @@
 
 #include "base/notreached.h"
 #include "chrome/browser/ui/ui_features.h"
+<<<<<<< HEAD
+#include "chrome/common/chrome_features.h"
+#include "components/omnibox/common/omnibox_features.h"
+=======
+>>>>>>> chromium
 #include "ui/base/pointer/touch_ui_controller.h"
 
 #if defined(OS_MAC)
@@ -58,6 +63,20 @@ int GetLayoutConstant(LayoutConstant constant) {
       return touch_ui ? 36 : 28;
     case LOCATION_BAR_ICON_SIZE:
       return touch_ui ? 20 : 16;
+<<<<<<< HEAD
+    case LOCATION_BAR_LEADING_ICON_SIZE:
+      return GetLayoutConstant(LOCATION_BAR_ICON_SIZE);
+    case LOCATION_BAR_TRAILING_ICON_SIZE:
+      return 20;
+    case NEW_TAB_BUTTON_LEADING_MARGIN:
+      return features::IsTabstripComboButtonEnabled() &&
+                     !features::HasTabstripComboButtonWithBackground()
+                 ? 4
+                 : 0;
+    case STAR_RATING_ICON_SIZE:
+      return 14;
+=======
+>>>>>>> chromium
     case TAB_AFTER_TITLE_PADDING:
       return touch_ui ? 8 : 4;
     case TAB_ALERT_INDICATOR_CAPTURE_ICON_WIDTH:

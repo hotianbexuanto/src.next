@@ -2,8 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#include "chrome/browser/extensions/extension_special_storage_policy.h"
+
+=======
+>>>>>>> chromium
 #include <stddef.h>
 
+#include <array>
 #include <utility>
 
 #include "base/cxx17_backports.h"
@@ -350,6 +356,19 @@ TEST_F(ExtensionSpecialStoragePolicyTest, NotificationTest) {
   PolicyChangeObserver observer;
   policy_->AddObserver(&observer);
 
+<<<<<<< HEAD
+  auto apps = std::to_array<scoped_refptr<Extension>>({
+      CreateProtectedApp(),
+      CreateUnlimitedApp(),
+  });
+
+  auto change_flags = std::to_array<int>({
+      SpecialStoragePolicy::STORAGE_PROTECTED,
+
+      SpecialStoragePolicy::STORAGE_PROTECTED |
+          SpecialStoragePolicy::STORAGE_UNLIMITED,
+  });
+=======
   scoped_refptr<Extension> apps[] = {
     CreateProtectedApp(),
     CreateUnlimitedApp(),
@@ -361,6 +380,7 @@ TEST_F(ExtensionSpecialStoragePolicyTest, NotificationTest) {
     SpecialStoragePolicy::STORAGE_PROTECTED |
     SpecialStoragePolicy::STORAGE_UNLIMITED,
   };
+>>>>>>> chromium
 
   ASSERT_EQ(base::size(apps), base::size(change_flags));
   for (size_t i = 0; i < base::size(apps); ++i) {

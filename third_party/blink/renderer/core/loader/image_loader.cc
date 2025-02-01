@@ -204,6 +204,41 @@ void ImageLoader::DispatchDecodeRequestsIfComplete() {
   }
 
   LocalFrame* frame = GetElement()->GetDocument().GetFrame();
+<<<<<<< HEAD
+  WTF::EraseIf(decode_requests_, ([&](const auto& request) {
+                 // If the image already in kDispatched state or still in
+                 // kPendingMicrotask
+                 // state, then we don't dispatch decodes for it. So, the only
+                 // case to handle is if we're in kPendingLoad state.
+                 if (request->state() != DecodeRequest::kPendingLoad) {
+                   return false;
+                 }
+                 Image* image = GetContent()->GetImage();
+                 if (!ImageTypeNeedsDecode(*image)) {
+                   // If the image is of a type that doesn't need decode,
+                   // resolve the promise.
+                   request->Resolve();
+                   return true;
+                 }
+                 cc::DrawImage draw_image(
+                     image->PaintImageForCurrentFrame(),
+                     /*use_dark_mode=*/false,
+                     SkIRect::MakeWH(image->width(), image->height()),
+                     cc::PaintFlags::FilterQuality::kNone, SkM44(),
+                     PaintImage::kDefaultFrameIndex);
+                 // ImageLoader should be kept alive when decode is still
+                 // pending. JS may invoke 'decode' without capturing the Image
+                 // object. If GC kicks in, ImageLoader will be destroyed,
+                 // leading to unresolved/unrejected Promise.
+                 frame->GetChromeClient().RequestDecode(
+                     frame, draw_image,
+                     WTF::BindOnce(&ImageLoader::DecodeRequestFinished,
+                                   MakeUnwrappingCrossThreadHandle(this),
+                                   request->request_id()));
+                 request->NotifyDecodeDispatched();
+                 return false;
+               }));
+=======
   auto* it = decode_requests_.begin();
   while (it != decode_requests_.end()) {
     // If the image already in kDispatched state or still in kPendingMicrotask
@@ -232,23 +267,33 @@ void ImageLoader::DispatchDecodeRequestsIfComplete() {
     request->NotifyDecodeDispatched();
     ++it;
   }
+>>>>>>> chromium
 }
 
 void ImageLoader::DecodeRequestFinished(uint64_t request_id, bool success) {
   // First we find the corresponding request id, then we either resolve or
   // reject it and remove it from the list.
+<<<<<<< HEAD
+  auto it = std::find_if(decode_requests_.begin(), decode_requests_.end(),
+                         [request_id](const auto& request) {
+                           return request->request_id() == request_id;
+                         });
+=======
   for (auto* it = decode_requests_.begin(); it != decode_requests_.end();
        ++it) {
     auto& request = *it;
     if (request->request_id() != request_id)
       continue;
+>>>>>>> chromium
 
-    if (success)
+  if (it != decode_requests_.end()) {
+    auto& request = *it;
+    if (success) {
       request->Resolve();
-    else
+    } else {
       request->Reject();
+    }
     decode_requests_.erase(it);
-    break;
   }
 }
 
@@ -261,6 +306,16 @@ void ImageLoader::RejectPendingDecodes(UpdateType update_type) {
   // have to reject even the pending mutation requests because conceptually they
   // would have been scheduled before the synchronous update ran, so they
   // referred to the old image.
+<<<<<<< HEAD
+  WTF::EraseIf(decode_requests_, ([&](const auto& request) {
+                 if (update_type == UpdateType::kAsync &&
+                     request->state() == DecodeRequest::kPendingMicrotask) {
+                   return false;
+                 }
+                 request->Reject();
+                 return true;
+               }));
+=======
   for (auto* it = decode_requests_.begin(); it != decode_requests_.end();) {
     auto& request = *it;
     if (update_type == UpdateType::kAsync &&
@@ -271,6 +326,7 @@ void ImageLoader::RejectPendingDecodes(UpdateType update_type) {
     request->Reject();
     it = decode_requests_.erase(it);
   }
+>>>>>>> chromium
 }
 
 void ImageLoader::Trace(Visitor* visitor) const {
@@ -480,7 +536,7 @@ void ImageLoader::DoUpdateFromElement(
 
     // Correct the RequestContext if necessary.
     if (IsA<HTMLPictureElement>(GetElement()->parentNode()) ||
-        !GetElement()->FastGetAttribute(html_names::kSrcsetAttr).IsNull()) {
+        GetElement()->FastHasAttribute(html_names::kSrcsetAttr)) {
       resource_request.SetRequestContext(
           mojom::blink::RequestContextType::IMAGE_SET);
       resource_request.SetRequestDestination(
@@ -497,6 +553,39 @@ void ImageLoader::DoUpdateFromElement(
           network::mojom::RequestDestination::kEmbed);
     }
 
+<<<<<<< HEAD
+    DCHECK(document.GetFrame());
+    auto* frame = document.GetFrame();
+
+    if (IsA<HTMLImageElement>(GetElement())) {
+      if (GetElement()->FastHasAttribute(html_names::kAttributionsrcAttr) &&
+          frame->GetAttributionSrcLoader()->CanRegister(
+              url, To<HTMLImageElement>(GetElement()))) {
+        resource_request.SetAttributionReportingEligibility(
+            network::mojom::AttributionReportingEligibility::
+                kEventSourceOrTrigger);
+      }
+      bool shared_storage_writable_opted_in =
+          GetElement()->FastHasAttribute(
+              html_names::kSharedstoragewritableAttr) &&
+          RuntimeEnabledFeatures::SharedStorageAPIEnabled(
+              GetElement()->GetExecutionContext()) &&
+          GetElement()->GetExecutionContext()->IsSecureContext() &&
+          !SecurityOrigin::Create(url)->IsOpaque();
+      resource_request.SetSharedStorageWritableOptedIn(
+          shared_storage_writable_opted_in);
+      if (GetElement()->FastHasAttribute(html_names::kBrowsingtopicsAttr) &&
+          RuntimeEnabledFeatures::TopicsAPIEnabled(
+              GetElement()->GetExecutionContext()) &&
+          GetElement()->GetExecutionContext()->IsSecureContext()) {
+        resource_request.SetBrowsingTopics(true);
+        UseCounter::Count(document, mojom::blink::WebFeature::kTopicsAPIImg);
+        UseCounter::Count(document, mojom::blink::WebFeature::kTopicsAPIAll);
+      }
+    }
+
+=======
+>>>>>>> chromium
     bool page_is_being_dismissed =
         document.PageDismissalEventBeingDispatched() != Document::kNoDismissal;
     if (page_is_being_dismissed) {

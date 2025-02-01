@@ -16,7 +16,7 @@ SigninManagerAndroidFactory::SigninManagerAndroidFactory()
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
-SigninManagerAndroidFactory::~SigninManagerAndroidFactory() {}
+SigninManagerAndroidFactory::~SigninManagerAndroidFactory() = default;
 
 // static
 base::android::ScopedJavaLocalRef<jobject>

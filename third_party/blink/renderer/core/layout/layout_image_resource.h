@@ -34,6 +34,10 @@
 namespace blink {
 
 class LayoutObject;
+<<<<<<< HEAD
+struct NaturalSizingInfo;
+=======
+>>>>>>> chromium
 
 class CORE_EXPORT LayoutImageResource
     : public GarbageCollected<LayoutImageResource> {
@@ -65,10 +69,14 @@ class CORE_EXPORT LayoutImageResource
 
   virtual bool HasIntrinsicSize() const;
 
+<<<<<<< HEAD
+  virtual NaturalSizingInfo GetNaturalDimensions(float multiplier) const;
+=======
   virtual FloatSize ImageSize(float multiplier) const;
   // Default size is effective when this is LayoutImageResourceStyleImage.
   virtual FloatSize ImageSizeWithDefaultSize(float multiplier,
                                              const FloatSize&) const;
+>>>>>>> chromium
   virtual RespectImageOrientationEnum ImageOrientation() const;
   virtual WrappedImagePtr ImagePtr() const { return cached_image_.Get(); }
 

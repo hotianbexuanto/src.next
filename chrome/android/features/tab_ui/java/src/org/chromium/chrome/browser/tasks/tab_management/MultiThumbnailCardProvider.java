@@ -22,6 +22,19 @@ import org.chromium.base.MathUtils;
 import org.chromium.base.task.PostTask;
 import org.chromium.chrome.browser.compositor.layouts.content.TabContentManager;
 import org.chromium.chrome.browser.profiles.Profile;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabFavicon;
+import org.chromium.chrome.browser.tab.TabUtils;
+import org.chromium.chrome.browser.tab_ui.TabContentManager;
+import org.chromium.chrome.browser.tab_ui.TabContentManagerThumbnailProvider;
+import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider;
+import org.chromium.chrome.browser.tab_ui.TabUiThemeUtils;
+import org.chromium.chrome.browser.tab_ui.ThumbnailProvider;
+import org.chromium.chrome.browser.tabmodel.TabGroupModelFilter;
+import org.chromium.chrome.tab_ui.R;
+import org.chromium.components.browser_ui.styles.SemanticColorUtils;
+=======
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
@@ -29,6 +42,7 @@ import org.chromium.chrome.browser.tasks.pseudotab.PseudoTab;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.content_public.browser.UiThreadTaskTraits;
 import org.chromium.url.GURL;
+>>>>>>> chromium
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,11 +70,18 @@ public class MultiThumbnailCardProvider implements TabListMediator.ThumbnailProv
     private final Paint mSelectedEmptyThumbnailPaint;
     private final Paint mSelectedTextPaint;
     private final int mFaviconBackgroundPaintColor;
+<<<<<<< HEAD
+
+    private final Context mContext;
+    private final BrowserControlsStateProvider mBrowserControlsStateProvider;
+    private final TabListFaviconProvider mTabListFaviconProvider;
+=======
     private final List<Rect> mFaviconRects = new ArrayList<>(4);
     private final List<RectF> mThumbnailRects = new ArrayList<>(4);
     private final List<RectF> mFaviconBackgroundRects = new ArrayList<>(4);
     private TabListFaviconProvider mTabListFaviconProvider;
     private Context mContext;
+>>>>>>> chromium
 
     private class MultiThumbnailFetcher {
         private final PseudoTab mInitialTab;
@@ -125,8 +146,13 @@ public class MultiThumbnailCardProvider implements TabListMediator.ThumbnailProv
             for (int i = 0; i < 4; i++) {
                 if (mTabs.get(i) != null) {
                     final int index = i;
+<<<<<<< HEAD
+                    final Size tabThumbnailSize =
+                            new Size((int) thumbnailRect.width(), (int) thumbnailRect.height());
+=======
                     final GURL url = mTabs.get(i).getUrl();
                     final boolean isIncognito = mTabs.get(i).isIncognito();
+>>>>>>> chromium
                     // getTabThumbnailWithCallback() might call the callback up to twice,
                     // so use |lastFavicon| to avoid fetching the favicon the second time.
                     // Fetching the favicon after getting the live thumbnail would lead to
@@ -138,8 +164,16 @@ public class MultiThumbnailCardProvider implements TabListMediator.ThumbnailProv
                                 if (lastFavicon.get() != null) {
                                     drawFaviconThenMaybeSendBack(lastFavicon.get(), index);
                                 } else {
+<<<<<<< HEAD
+                                    mTabListFaviconProvider.getFaviconDrawableForTabAsync(
+                                            tab,
+                                            (Drawable favicon) -> {
+                                                if (tab.isClosing() || tab.isDestroyed()) return;
+
+=======
                                     mTabListFaviconProvider.getFaviconForUrlAsync(
                                             url, isIncognito, (Drawable favicon) -> {
+>>>>>>> chromium
                                                 lastFavicon.set(favicon);
                                                 drawFaviconThenMaybeSendBack(favicon, index);
                                             });
@@ -228,7 +262,16 @@ public class MultiThumbnailCardProvider implements TabListMediator.ThumbnailProv
         mFaviconFrameCornerRadius =
                 resource.getDimension(R.dimen.tab_grid_thumbnail_favicon_frame_corner_radius);
 
+<<<<<<< HEAD
+        mTabListFaviconProvider =
+                new TabListFaviconProvider(
+                        context,
+                        false,
+                        R.dimen.default_favicon_corner_radius,
+                        TabFavicon::getBitmap);
+=======
         mTabListFaviconProvider = new TabListFaviconProvider(context, false);
+>>>>>>> chromium
 
         // Initialize Paints to use.
         mEmptyThumbnailPaint = new Paint();
@@ -274,9 +317,16 @@ public class MultiThumbnailCardProvider implements TabListMediator.ThumbnailProv
         mFaviconBackgroundPaint.setColor(mFaviconBackgroundPaintColor);
         mFaviconBackgroundPaint.setStyle(Paint.Style.FILL);
         mFaviconBackgroundPaint.setShadowLayer(
+<<<<<<< HEAD
+                resources.getDimension(R.dimen.tab_grid_thumbnail_favicon_background_radius),
+                0,
+                resources.getDimension(R.dimen.tab_grid_thumbnail_favicon_background_down_shift),
+                context.getColor(R.color.baseline_neutral_20_alpha_38));
+=======
                 resource.getDimension(R.dimen.tab_grid_thumbnail_favicon_background_radius), 0,
                 resource.getDimension(R.dimen.tab_grid_thumbnail_favicon_background_down_shift),
                 resource.getColor(R.color.modern_grey_800_alpha_38));
+>>>>>>> chromium
 
         initializedThumbnailRects(context, expectedThumbnailAspectRatio);
 
@@ -340,6 +390,12 @@ public class MultiThumbnailCardProvider implements TabListMediator.ThumbnailProv
         mTabModelSelector.removeObserver(mTabModelSelectorObserver);
     }
 
+<<<<<<< HEAD
+    /** Destroy any member that needs clean up. */
+    public void destroy() {
+        mCurrentTabGroupModelFilterSupplier.removeObserver(mOnTabGroupModelFilterChanged);
+        mTabListFaviconProvider.destroy();
+=======
     /**
      * Initialize rects used for thumbnails. Depending on whether thene refacotr is enabled, the
      * padding around the thumbnail is different.
@@ -373,6 +429,7 @@ public class MultiThumbnailCardProvider implements TabListMediator.ThumbnailProv
                 centerY + halfThumbnailVerticalPadding,
                 mThumbnailWidth - multiThumbnailHorizontalPadding,
                 mThumbnailHeight - multiThumbnailVerticalPadding));
+>>>>>>> chromium
     }
 
     @Override

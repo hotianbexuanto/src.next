@@ -77,7 +77,7 @@ void PrepareContentAnalysisCompletionCallbackArgs(
 
 class FileSelectHelperTest : public testing::Test {
  public:
-  FileSelectHelperTest() {}
+  FileSelectHelperTest() = default;
 
  protected:
   void SetUp() override {

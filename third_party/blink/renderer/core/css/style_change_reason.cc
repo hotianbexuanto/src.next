@@ -30,8 +30,10 @@ const char kInlineCSSStyleMutated[] =
 const char kInspector[] = "Inspector";
 const char kLanguage[] = "Language";
 const char kLinkColorChange[] = "LinkColorChange";
+const char kNodeInserted[] = "Node was inserted into tree";
 const char kPictureSourceChanged[] = "PictureSourceChange";
 const char kPlatformColorChange[] = "PlatformColorChange";
+const char kPlaceElement[] = "placeElement";
 const char kPluginChanged[] = "Plugin Changed";
 const char kPopupVisibilityChange[] = "Popup Visibility Change";
 const char kPropertyRegistration[] = "PropertyRegistration";
@@ -50,6 +52,19 @@ const char kZoom[] = "Zoom";
 }  // namespace style_change_reason
 
 namespace style_change_extra_data {
+<<<<<<< HEAD
+DEFINE_GLOBAL(, AtomicString, g_active);
+DEFINE_GLOBAL(, AtomicString, g_active_view_transition);
+DEFINE_GLOBAL(, AtomicString, g_active_view_transition_type);
+DEFINE_GLOBAL(, AtomicString, g_disabled);
+DEFINE_GLOBAL(, AtomicString, g_drag);
+DEFINE_GLOBAL(, AtomicString, g_focus);
+DEFINE_GLOBAL(, AtomicString, g_focus_visible);
+DEFINE_GLOBAL(, AtomicString, g_focus_within);
+DEFINE_GLOBAL(, AtomicString, g_hover);
+DEFINE_GLOBAL(, AtomicString, g_past);
+DEFINE_GLOBAL(, AtomicString, g_unresolved);
+=======
 DEFINE_GLOBAL(AtomicString, g_active);
 DEFINE_GLOBAL(AtomicString, g_disabled);
 DEFINE_GLOBAL(AtomicString, g_drag);
@@ -59,6 +74,7 @@ DEFINE_GLOBAL(AtomicString, g_focus_within);
 DEFINE_GLOBAL(AtomicString, g_hover);
 DEFINE_GLOBAL(AtomicString, g_past);
 DEFINE_GLOBAL(AtomicString, g_unresolved);
+>>>>>>> chromium
 
 void Init() {
   DCHECK(IsMainThread());

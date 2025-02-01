@@ -91,7 +91,13 @@ const Vector<LayoutObjectWithDepth>& DepthOrderedLayoutObjectList::Ordered() {
   if (data_->objects_.IsEmpty() || !data_->ordered_objects_.IsEmpty())
     return data_->ordered_objects_;
 
+<<<<<<< HEAD
+  data_->ordered_objects_.assign(data_->objects_, [](LayoutObject* object) {
+    return LayoutObjectWithDepth(object);
+  });
+=======
   CopyToVector(data_->objects_, data_->ordered_objects_);
+>>>>>>> chromium
   std::sort(data_->ordered_objects_.begin(), data_->ordered_objects_.end());
   return data_->ordered_objects_;
 }

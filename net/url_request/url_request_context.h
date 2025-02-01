@@ -63,6 +63,18 @@ class NetworkErrorLoggingService;
 class ReportingService;
 #endif  // BUILDFLAG(ENABLE_REPORTING)
 
+<<<<<<< HEAD
+namespace device_bound_sessions {
+class SessionService;
+class SessionStore;
+}
+
+// Class that provides application-specific context for URLRequest
+// instances. May only be created by URLRequestContextBuilder.
+// Owns most of its member variables, except a few that may be shared
+// with other contexts.
+class NET_EXPORT URLRequestContext final {
+=======
 // Subclass to provide application-specific context for URLRequest
 // instances. URLRequestContext does not own these member variables, since they
 // may be shared with other contexts. URLRequestContextStorage can be used for
@@ -71,6 +83,7 @@ class ReportingService;
 // URLRequestContext is destroyed before its members can be difficult.
 class NET_EXPORT URLRequestContext
     : public base::trace_event::MemoryDumpProvider {
+>>>>>>> chromium
  public:
   URLRequestContext();
   ~URLRequestContext() override;
@@ -274,7 +287,26 @@ class NET_EXPORT URLRequestContext
   }
 #endif  // BUILDFLAG(ENABLE_REPORTING)
 
+<<<<<<< HEAD
+  // May return nullptr if the feature is disabled.
+  device_bound_sessions::SessionStore* device_bound_session_store() const {
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+    return device_bound_session_store_.get();
+#else
+    return nullptr;
+#endif
+  }
+  // May return nullptr if the feature is disabled.
+  device_bound_sessions::SessionService* device_bound_session_service() const {
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+    return device_bound_session_service_.get();
+#else
+    return nullptr;
+#endif
+  }
+=======
   void set_enable_brotli(bool enable_brotli) { enable_brotli_ = enable_brotli; }
+>>>>>>> chromium
 
   bool enable_brotli() const { return enable_brotli_; }
 

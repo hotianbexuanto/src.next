@@ -17,6 +17,15 @@
   "arc-native-bridge-toggle",
   "ash-debug-shortcuts",
   "ash-enable-unified-desktop",
+<<<<<<< HEAD
+  "block-root-window-accessible-name-change-event",
+  "borealis-enable-unsupported-hardware",
+  "cellular-bypass-esim-installation-connectivity-check",
+  "cellular-use-second-euicc",
+  "chrome-labs",
+  "cws-info-fast-check",
+=======
+>>>>>>> chromium
   "dcheck-is-fatal",
   "disable-accelerated-2d-canvas",
   "disable-accelerated-mjpeg-decode",
@@ -82,6 +91,12 @@
   "memlog-sampling-rate",
   "memlog-stack-mode",
   "overlay-strategies",
+<<<<<<< HEAD
+  "prerender2",
+  "printing-ppd-channel",
+  "protected-audience-debug-token",
+=======
+>>>>>>> chromium
   "reader-mode-heuristics",
   "record-web-app-debug-info",
   "release-notes-notification-all-channels",
@@ -109,5 +124,16 @@
   "use-sync-sandbox",
   "use-wallpaper-staging-url",
   "wallet-service-use-sandbox",
+<<<<<<< HEAD
+  "wallpaper-fast-refresh",
+  "web-authentication-permit-enterprise-attestation",
+  "webrtc-hw-decoding",
+  "webrtc-hw-encoding",
+  "webtransport-developer-mode",
+  "webxr-runtime",
+  "webxr-shared-buffers",
+  "windows-system-tracing"
+=======
   "webxr-runtime"
+>>>>>>> chromium
 ]

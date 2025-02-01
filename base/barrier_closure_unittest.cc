@@ -16,8 +16,15 @@ TEST(BarrierClosureTest, RunImmediatelyForZeroClosures) {
   auto done_closure = base::BindOnce(&Increment, base::Unretained(&count));
 
   base::RepeatingClosure barrier_closure =
+<<<<<<< HEAD
+      base::BarrierClosure(0, base::DoNothing());
+  EXPECT_FALSE(barrier_closure.is_null());
+
+  EXPECT_NOTREACHED_DEATH(barrier_closure.Run());
+=======
       base::BarrierClosure(0, std::move(done_closure));
   EXPECT_EQ(1, count);
+>>>>>>> chromium
 }
 
 TEST(BarrierClosureTest, RunAfterNumClosures) {
@@ -38,7 +45,7 @@ TEST(BarrierClosureTest, RunAfterNumClosures) {
 class DestructionIndicator {
  public:
   // Sets |*destructed| to true in destructor.
-  DestructionIndicator(bool* destructed) : destructed_(destructed) {
+  explicit DestructionIndicator(bool* destructed) : destructed_(destructed) {
     *destructed_ = false;
   }
 

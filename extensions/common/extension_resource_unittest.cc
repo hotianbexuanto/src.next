@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "extensions/common/extension_resource.h"
+
 #include <stddef.h>
 
 #include <algorithm>
@@ -13,7 +15,6 @@
 #include "components/crx_file/id_util.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension_paths.h"
-#include "extensions/common/extension_resource.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/l10n/l10n_util.h"
 
@@ -30,7 +31,11 @@ TEST(ExtensionResourceTest, CreateEmptyResource) {
 const base::FilePath::StringType ToLower(
     const base::FilePath::StringType& in_str) {
   base::FilePath::StringType str(in_str);
+<<<<<<< HEAD
+  std::ranges::transform(str, str.begin(), tolower);
+=======
   std::transform(str.begin(), str.end(), str.begin(), tolower);
+>>>>>>> chromium
   return str;
 }
 

@@ -5,6 +5,11 @@
 #include "chrome/browser/ui/browser_commands.h"
 
 #include <memory>
+<<<<<<< HEAD
+#include <numeric>
+#include <optional>
+=======
+>>>>>>> chromium
 #include <utility>
 #include <vector>
 
@@ -98,6 +103,13 @@
 #include "components/find_in_page/find_tab_helper.h"
 #include "components/find_in_page/find_types.h"
 #include "components/google/core/common/google_util.h"
+<<<<<<< HEAD
+#include "components/language_detection/core/constants.h"
+#include "components/lens/buildflags.h"
+#include "components/lens/lens_features.h"
+#include "components/lens/lens_overlay_invocation_source.h"
+=======
+>>>>>>> chromium
 #include "components/media_router/browser/media_router_dialog_controller.h"  // nogncheck
 #include "components/media_router/browser/media_router_metrics.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
@@ -111,7 +123,12 @@
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
 #include "components/translate/core/browser/language_state.h"
+<<<<<<< HEAD
+#include "components/translate/core/browser/translate_manager.h"
+#include "components/user_education/common/feature_promo/feature_promo_controller.h"
+=======
 #include "components/version_info/version_info.h"
+>>>>>>> chromium
 #include "components/web_modal/web_contents_modal_dialog_manager.h"
 #include "components/zoom/page_zoom.h"
 #include "components/zoom/zoom_controller.h"
@@ -164,9 +181,30 @@
 #include "components/rlz/rlz_tracker.h"  // nogncheck
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/chromeos/printing/print_preview/print_view_manager_common.h"
+#endif
+
+#if !BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/apps/link_capturing/enable_link_capturing_infobar_delegate.h"
+#endif
+
+#if BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
+#include "chrome/browser/lens/region_search/lens_region_search_controller.h"
+#include "chrome/browser/lens/region_search/lens_region_search_helper.h"
+#include "components/lens/lens_features.h"
+#endif
+
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/toasts/api/toast_id.h"
+#include "chrome/browser/ui/toasts/toast_controller.h"
+#include "chrome/browser/ui/toasts/toast_features.h"
+=======
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
 #include "chromeos/crosapi/mojom/task_manager.mojom.h"
 #include "chromeos/lacros/lacros_service.h"
+>>>>>>> chromium
 #endif
 
 namespace {
@@ -836,6 +874,10 @@ void MoveActiveTabToNewWindow(Browser* browser) {
   MoveTabsToNewWindow(browser,
                       std::vector<int>(selection.begin(), selection.end()));
 }
+<<<<<<< HEAD
+
+=======
+>>>>>>> chromium
 bool CanMoveTabsToNewWindow(Browser* browser,
                             const std::vector<int>& tab_indices) {
   return browser->tab_strip_model()->count() >
@@ -970,6 +1012,16 @@ void GroupTab(Browser* browser) {
       TabStripModel::ContextMenuCommand::CommandToggleGrouped);
 }
 
+<<<<<<< HEAD
+void CreateNewTabGroup(Browser* browser) {
+  NewTab(browser);
+  browser->tab_strip_model()->ExecuteContextMenuCommand(
+      browser->tab_strip_model()->active_index(),
+      TabStripModel::ContextMenuCommand::CommandAddToNewGroupFromMenuItem);
+}
+
+=======
+>>>>>>> chromium
 void MuteSite(Browser* browser) {
   browser->tab_strip_model()->ExecuteContextMenuCommand(
       browser->tab_strip_model()->active_index(),
@@ -1242,6 +1294,15 @@ void Translate(Browser* browser) {
   chrome_translate_client->GetTranslateLanguages(web_contents, &source_language,
                                                  &target_language);
 
+<<<<<<< HEAD
+  // If the source language matches the target language, we change the source
+  // language to unknown, so that we display "Detected Language".
+  if (source_language == target_language) {
+    source_language = language_detection::kUnknownLanguageCode;
+  }
+
+=======
+>>>>>>> chromium
   translate::TranslateStep step = translate::TRANSLATE_STEP_BEFORE_TRANSLATE;
   if (chrome_translate_client) {
     if (chrome_translate_client->GetLanguageState().translation_pending())
@@ -1318,11 +1379,37 @@ bool CanSavePage(const Browser* browser) {
 void Print(Browser* browser) {
 #if BUILDFLAG(ENABLE_PRINTING)
   auto* web_contents = browser->tab_strip_model()->GetActiveWebContents();
+<<<<<<< HEAD
+
+  // Launch ChromeOS print preview only if in a ChromeOS build and
+  // `kPrintPreviewCrosPrimary` enabled. Otherwise use browser print preview.
+#if BUILDFLAG(IS_CHROMEOS)
+  if (base::FeatureList::IsEnabled(::features::kPrintPreviewCrosPrimary)) {
+    chromeos::printing::StartPrint(
+        web_contents,
+        /*print_renderer=*/mojo::NullAssociatedRemote(),
+        browser->profile()->GetPrefs()->GetBoolean(
+            prefs::kPrintPreviewDisabled),
+        /*has_selection=*/false);
+    return;
+  }
+#endif
+
+  printing::StartPrint(
+      web_contents,
+#if BUILDFLAG(IS_CHROMEOS)
+      /*print_renderer=*/mojo::NullAssociatedRemote(),
+#endif
+      browser->profile()->GetPrefs()->GetBoolean(prefs::kPrintPreviewDisabled),
+      /*has_selection=*/false);
+#endif  // BUILDFLAG(ENABLE_PRINTING)
+=======
   printing::StartPrint(
       web_contents, mojo::NullAssociatedRemote() /* print_renderer */,
       browser->profile()->GetPrefs()->GetBoolean(prefs::kPrintPreviewDisabled),
       false /* has_selection? */);
 #endif
+>>>>>>> chromium
 }
 
 bool CanPrint(Browser* browser) {
@@ -1498,6 +1585,10 @@ bool CanOpenTaskManager() {
 #endif
 }
 
+<<<<<<< HEAD
+void OpenTaskManager(Browser* browser, task_manager::StartAction start_action) {
+#if !BUILDFLAG(IS_ANDROID)
+=======
 void OpenTaskManager(Browser* browser) {
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   // Open linux version of task manager UI if ash TaskManager
@@ -1515,8 +1606,9 @@ void OpenTaskManager(Browser* browser) {
       ->GetRemote<crosapi::mojom::TaskManager>()
       ->ShowTaskManager();
 #elif !defined(OS_ANDROID)
+>>>>>>> chromium
   base::RecordAction(UserMetricsAction("TaskManager"));
-  chrome::ShowTaskManager(browser);
+  chrome::ShowTaskManager(browser, start_action);
 #else
   NOTREACHED();
 #endif
@@ -1627,11 +1719,11 @@ void SetAndroidOsForTabletSite(content::WebContents* current_tab) {
   }
 }
 
-void ToggleFullscreenMode(Browser* browser) {
+void ToggleFullscreenMode(Browser* browser, bool user_initiated) {
   DCHECK(browser);
   browser->exclusive_access_manager()
       ->fullscreen_controller()
-      ->ToggleBrowserFullscreenMode();
+      ->ToggleBrowserFullscreenMode(user_initiated);
 }
 
 void ClearCache(Browser* browser) {
@@ -1651,10 +1743,37 @@ bool IsDebuggerAttachedToCurrentTab(Browser* browser) {
 
 void CopyURL(Browser* browser) {
   ui::ScopedClipboardWriter scw(ui::ClipboardBuffer::kCopyPaste);
+<<<<<<< HEAD
+  scw.WriteText(base::UTF8ToUTF16(web_contents->GetVisibleURL().spec()));
+
+#if !BUILDFLAG(IS_ANDROID)
+  if (toast_features::IsEnabled(toast_features::kLinkCopiedToast)) {
+    ToastController* const toast_controller =
+        browser->GetFeatures().toast_controller();
+    if (toast_controller) {
+      toast_controller->MaybeShowToast(ToastParams(ToastId::kLinkCopied));
+    }
+  }
+#endif
+}
+
+bool CanCopyUrl(const Browser* browser) {
+  return IsWebAppOrCustomTab(browser) ||
+         !sharing_hub::SharingIsDisabledByPolicy(browser->profile());
+}
+
+bool IsWebAppOrCustomTab(const Browser* browser) {
+  return
+#if BUILDFLAG(IS_CHROMEOS)
+      browser->is_type_custom_tab() ||
+#endif
+      web_app::AppBrowserController::IsWebApp(browser);
+=======
   scw.WriteText(base::UTF8ToUTF16(browser->tab_strip_model()
                                       ->GetActiveWebContents()
                                       ->GetVisibleURL()
                                       .spec()));
+>>>>>>> chromium
 }
 
 Browser* OpenInChrome(Browser* hosted_app_browser) {
@@ -1767,11 +1886,83 @@ bool ShouldInterceptChromeURLNavigationInIncognito(Browser* browser,
 
 void ProcessInterceptedChromeURLNavigationInIncognito(Browser* browser,
                                                       const GURL& url) {
+<<<<<<< HEAD
+  if (url == GURL(chrome::kChromeUISettingsURL)
+                 .Resolve(chrome::kClearBrowserDataSubPage)) {
+    ShowIncognitoClearBrowsingDataDialog(browser);
+  } else if (url == GURL(chrome::kChromeUIHistoryURL)) {
+    ShowIncognitoHistoryDisclaimerDialog(browser);
+  } else {
+    NOTREACHED();
+  }
+}
+
+void ExecLensOverlay(Browser* browser) {
+  content::WebContents* web_contents =
+      browser->tab_strip_model()->GetActiveWebContents();
+  CHECK(web_contents);
+
+  LensOverlayController* const controller =
+      LensOverlayController::GetController(web_contents);
+  CHECK(controller);
+  controller->ShowUI(lens::LensOverlayInvocationSource::kAppMenu);
+  browser->window()->NotifyNewBadgeFeatureUsed(lens::features::kLensOverlay);
+}
+
+void ExecLensRegionSearch(Browser* browser) {
+#if BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
+  Profile* profile = browser->profile();
+  TemplateURLService* service =
+      TemplateURLServiceFactory::GetForProfile(profile);
+  WebContents* contents = browser->tab_strip_model()->GetActiveWebContents();
+  GURL url = contents->GetController().GetLastCommittedEntry()->GetURL();
+
+  if (lens::IsRegionSearchEnabled(browser, profile, service, url)) {
+    const bool is_google_dsp = search::DefaultSearchProviderIsGoogle(profile);
+    const lens::AmbientSearchEntryPoint entry_point =
+        is_google_dsp ? lens::AmbientSearchEntryPoint::
+                            CONTEXT_MENU_SEARCH_REGION_WITH_GOOGLE_LENS
+                      : lens::AmbientSearchEntryPoint::
+                            CONTEXT_MENU_SEARCH_REGION_WITH_WEB;
+    auto lens_region_search_controller_data =
+        std::make_unique<lens::LensRegionSearchControllerData>();
+    lens_region_search_controller_data->lens_region_search_controller =
+        std::make_unique<lens::LensRegionSearchController>();
+    lens_region_search_controller_data->lens_region_search_controller->Start(
+        contents, /*use_fullscreen_capture=*/false, is_google_dsp, entry_point);
+    browser->SetUserData(lens::LensRegionSearchControllerData::kDataKey,
+                         std::move(lens_region_search_controller_data));
+  }
+#endif  // BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
+}
+
+void OpenCommerceProductSpecificationsTab(Browser* browser,
+                                          const std::vector<GURL>& urls,
+                                          const int position) {
+  auto* prefs = browser->profile()->GetPrefs();
+  // If user has not accepted the latest disclosure, show the disclosure dialog
+  // first.
+  if (prefs && prefs->GetInteger(
+                   commerce::kProductSpecificationsAcceptedDisclosureVersion) !=
+                   static_cast<int>(commerce::product_specifications::mojom::
+                                        DisclosureVersion::kV1)) {
+    commerce::DialogArgs dialog_args(urls, std::string(), /*set_id=*/"",
+                                     /*in_new_tab=*/true);
+    commerce::ProductSpecificationsDisclosureDialog::ShowDialog(
+        browser->profile(), browser->tab_strip_model()->GetActiveWebContents(),
+        std::move(dialog_args));
+    return;
+  }
+
+  chrome::AddTabAt(browser, commerce::GetProductSpecsTabUrl(urls), position + 1,
+                   true, std::nullopt);
+=======
   DCHECK(url == GURL(chrome::kChromeUISettingsURL)
                     .Resolve(chrome::kClearBrowserDataSubPage));
   DCHECK(base::FeatureList::IsEnabled(
       features::kIncognitoClearBrowsingDataDialogForDesktop));
   ShowIncognitoClearBrowsingDataDialog(browser);
+>>>>>>> chromium
 }
 
 }  // namespace chrome

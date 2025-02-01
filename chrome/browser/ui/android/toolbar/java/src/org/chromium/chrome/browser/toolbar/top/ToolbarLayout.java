@@ -84,7 +84,7 @@ public abstract class ToolbarLayout
 
     private boolean mFindInPageToolbarShowing;
 
-    private ThemeColorProvider mThemeColorProvider;
+    protected ThemeColorProvider mThemeColorProvider;
     private MenuButtonCoordinator mMenuButtonCoordinator;
     private AppMenuButtonHelper mAppMenuButtonHelper;
 
@@ -585,10 +585,6 @@ public abstract class ToolbarLayout
 
     boolean isReadyForTextureCapture() {
         return true;
-    }
-
-    boolean setForceTextureCapture(boolean forceTextureCapture) {
-        return false;
     }
 
     void setLayoutUpdater(Runnable layoutUpdater) {}

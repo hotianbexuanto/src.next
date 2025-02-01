@@ -114,10 +114,17 @@ class ExtensionWebContentsObserver
   void PepperInstanceCreated() override;
   void PepperInstanceDeleted() override;
 
+<<<<<<< HEAD
+  // Temporarily needed to host common code between RenderFrameCreated and
+  // ReadyToCommitNavigation.
+  virtual void SetUpRenderFrameHost(
+      content::RenderFrameHost* render_frame_host);
+=======
   // Returns the extension id associated with the given |render_frame_host|, or
   // the empty string if there is none.
   std::string GetExtensionIdFromFrame(
       content::RenderFrameHost* render_frame_host) const;
+>>>>>>> chromium
 
  private:
   using PassKey = base::PassKey<ExtensionWebContentsObserver>;

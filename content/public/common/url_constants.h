@@ -6,8 +6,12 @@
 #define CONTENT_PUBLIC_COMMON_URL_CONSTANTS_H_
 
 #include "build/build_config.h"
+<<<<<<< HEAD
+#include "device/vr/buildflags/buildflags.h"
+=======
 #include "build/chromeos_buildflags.h"
 #include "content/common/content_export.h"
+>>>>>>> chromium
 #include "url/url_constants.h"
 
 // Contains constants for known URLs and portions thereof.
@@ -17,6 +21,16 @@ namespace content {
 // Canonical schemes you can use as input to GURL.SchemeIs().
 // TODO(jam): some of these don't below in the content layer, but are accessed
 // from there.
+<<<<<<< HEAD
+inline constexpr char kChromeDevToolsScheme[] = "devtools";
+inline constexpr char kChromeErrorScheme[] = "chrome-error";
+inline constexpr char kChromeUIScheme[] = "chrome";  // Used for WebUIs.
+inline constexpr char kChromeNativeScheme[] = "chrome-native";
+inline constexpr char kChromeUIUntrustedScheme[] = "chrome-untrusted";
+inline constexpr char kViewSourceScheme[] = "view-source";
+#if BUILDFLAG(IS_CHROMEOS)
+inline constexpr char kExternalFileScheme[] = "externalfile";
+=======
 CONTENT_EXPORT extern const char kChromeDevToolsScheme[];
 CONTENT_EXPORT extern const char kChromeErrorScheme[];
 CONTENT_EXPORT extern const char kChromeUIScheme[];  // Used for WebUIs.
@@ -25,6 +39,7 @@ CONTENT_EXPORT extern const char kGuestScheme[];
 CONTENT_EXPORT extern const char kViewSourceScheme[];
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 CONTENT_EXPORT extern const char kExternalFileScheme[];
+>>>>>>> chromium
 #endif
 #if defined(OS_ANDROID)
 CONTENT_EXPORT extern const char kAndroidAppScheme[];

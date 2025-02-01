@@ -3,6 +3,12 @@
 // found in the LICENSE file.
 
 #include "components/history/core/browser/visit_annotations_database.h"
+<<<<<<< HEAD
+
+#include <string>
+#include <vector>
+=======
+>>>>>>> chromium
 
 #include "base/cxx17_backports.h"
 #include "base/test/gtest_util.h"
@@ -11,6 +17,7 @@
 #include "components/history/core/browser/url_row.h"
 #include "components/history/core/browser/visit_database.h"
 #include "sql/database.h"
+#include "sql/test/test_helpers.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "visit_annotations_test_utils.h"
@@ -26,10 +33,6 @@ using ::testing::ElementsAre;
 class VisitAnnotationsDatabaseTest : public testing::Test,
                                      public VisitAnnotationsDatabase,
                                      public VisitDatabase {
- public:
-  VisitAnnotationsDatabaseTest() = default;
-  ~VisitAnnotationsDatabaseTest() override = default;
-
  protected:
   VisitID AddVisitWithTime(base::Time visit_time,
                            bool add_context_annotation = true) {
@@ -81,7 +84,7 @@ class VisitAnnotationsDatabaseTest : public testing::Test,
   // VisitAnnotationsDatabase:
   sql::Database& GetDB() override { return db_; }
 
-  sql::Database db_;
+  sql::Database db_{sql::test::kTestTag};
 };
 
 TEST_F(VisitAnnotationsDatabaseTest, AddContentAnnotationsForVisit) {

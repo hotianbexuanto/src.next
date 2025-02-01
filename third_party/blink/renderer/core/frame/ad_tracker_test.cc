@@ -621,7 +621,7 @@ TEST_F(AdTrackerSimTest, ImageLoadedWhileExecutingAdScriptAsyncEnabled) {
   // Put the gif bytes in a Vector to avoid difficulty with
   // non null-terminated char*.
   Vector<char> gif;
-  gif.Append(kSmallGifData, sizeof(kSmallGifData));
+  gif.AppendSpan(base::span(kSmallGifData));
 
   vanilla_image.Complete(gif);
 

@@ -8,6 +8,7 @@
 #include "build/build_config.h"
 #include "components/viz/common/gpu/raster_context_provider.h"
 #include "components/viz/common/resources/release_callback.h"
+#include "components/viz/common/resources/shared_image_format_utils.h"
 #include "gpu/command_buffer/client/raster_interface.h"
 #include "gpu/config/gpu_feature_info.h"
 #include "media/base/video_frame.h"
@@ -18,6 +19,7 @@
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
+#include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/skia/include/core/SkColorSpace.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
@@ -142,7 +144,14 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
     CanvasResourceProvider* resource_provider,
     media::PaintCanvasVideoRenderer* video_renderer,
     const gfx::Rect& dest_rect,
+<<<<<<< HEAD
+    bool prefer_tagged_orientation,
+    bool reinterpret_video_as_srgb) {
+  auto frame_color_space = frame->CompatRGBColorSpace();
+
+=======
     bool prefer_tagged_orientation) {
+>>>>>>> chromium
   DCHECK(frame);
   const auto transform =
       frame->metadata().transformation.value_or(media::kNoTransformation);
@@ -150,11 +159,18 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
       transform == media::kNoTransformation && CanUseZeroCopyImages(*frame)) {
     // TODO(sandersd): Do we need to be able to handle limited-range RGB? It
     // may never happen, and SkColorSpace doesn't know about it.
+<<<<<<< HEAD
+    auto frame_sk_color_space = frame_color_space.ToSkColorSpace();
+    if (!frame_sk_color_space) {
+      frame_sk_color_space = SkColorSpace::MakeSRGB();
+    }
+=======
     auto sk_color_space =
         frame->ColorSpace().GetAsFullRangeRGB().ToSkColorSpace();
     if (!sk_color_space)
       sk_color_space = SkColorSpace::MakeSRGB();
 
+>>>>>>> chromium
     const SkImageInfo sk_image_info = SkImageInfo::Make(
         frame->coded_size().width(), frame->coded_size().height(),
         kN32_SkColorType, kUnpremul_SkAlphaType, std::move(sk_color_space));
@@ -166,16 +182,21 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
            const gpu::SyncToken& sync_token, bool is_lost) {
           if (is_lost || !context_provider)
             return;
-          auto* ri = context_provider->ContextProvider()->RasterInterface();
+          auto* ri = context_provider->ContextProvider().RasterInterface();
           media::WaitAndReplaceSyncTokenClient client(ri);
           frame->UpdateReleaseSyncToken(&client);
         },
         frame, SharedGpuContext::ContextProviderWrapper());
 
+<<<<<<< HEAD
+    return AcceleratedStaticBitmapImage::CreateFromCanvasSharedImage(
+        frame->shared_image(), frame->acquire_sync_token(), 0u, sk_image_info,
+=======
     return AcceleratedStaticBitmapImage::CreateFromCanvasMailbox(
         frame->mailbox_holder(0).mailbox, frame->mailbox_holder(0).sync_token,
         0u, sk_image_info, frame->mailbox_holder(0).texture_target,
         frame->metadata().texture_origin_is_top_left,
+>>>>>>> chromium
         // Pass nullptr for |context_provider_wrapper|, because we don't
         // know which context the mailbox came from. It is used only to
         // detect when the mailbox is invalid due to context loss, and is
@@ -186,7 +207,12 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
         // |is_cross_thread|.
         base::PlatformThreadRef(),
         // The task runner is only used for |release_callback|.
+<<<<<<< HEAD
+        ThreadScheduler::Current()->CleanupTaskRunner(),
+        std::move(release_callback));
+=======
         Thread::Current()->GetTaskRunner(), std::move(release_callback));
+>>>>>>> chromium
   }
 
   gfx::Rect final_dest_rect = dest_rect;
@@ -213,11 +239,21 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
   }
 
   auto raster_context_provider = GetRasterContextProvider();
+<<<<<<< HEAD
+=======
   const auto resource_provider_size = IntSize(final_dest_rect.size());
+>>>>>>> chromium
   std::unique_ptr<CanvasResourceProvider> local_resource_provider;
+  // TODO(https://crbug.com/1341235): The choice of format and alpha type
+  // is inappropriate in many circumstances.
   if (!resource_provider) {
     local_resource_provider = CreateResourceProviderForVideoFrame(
+<<<<<<< HEAD
+        final_dest_rect.size(), GetN32FormatForCanvas(), kPremul_SkAlphaType,
+        frame_color_space, raster_context_provider.get());
+=======
         resource_provider_size, raster_context_provider.get());
+>>>>>>> chromium
     if (!local_resource_provider) {
       DLOG(ERROR) << "Failed to create CanvasResourceProvider.";
       return nullptr;
@@ -295,18 +331,76 @@ bool DrawVideoFrameIntoResourceProvider(
   return true;
 }
 
+<<<<<<< HEAD
+void DrawVideoFrameIntoCanvas(scoped_refptr<media::VideoFrame> frame,
+                              cc::PaintCanvas* canvas,
+                              cc::PaintFlags& flags,
+                              bool ignore_video_transformation) {
+  viz::RasterContextProvider* raster_context_provider = nullptr;
+  if (auto wrapper = SharedGpuContext::ContextProviderWrapper()) {
+    raster_context_provider =
+        wrapper->ContextProvider().RasterContextProvider();
+  }
+
+  media::PaintCanvasVideoRenderer video_renderer;
+  media::PaintCanvasVideoRenderer::PaintParams params;
+  params.dest_rect =
+      gfx::RectF(frame->natural_size().width(), frame->natural_size().height());
+  params.transformation =
+      ignore_video_transformation
+          ? media::kNoTransformation
+          : frame->metadata().transformation.value_or(media::kNoTransformation);
+  video_renderer.Paint(frame, canvas, flags, params, raster_context_provider);
+}
+
+scoped_refptr<viz::RasterContextProvider> GetRasterContextProvider() {
+  auto wrapper = SharedGpuContext::ContextProviderWrapper();
+  if (!wrapper)
+    return nullptr;
+
+  return base::WrapRefCounted(
+      wrapper->ContextProvider().RasterContextProvider());
+}
+
+=======
+>>>>>>> chromium
 std::unique_ptr<CanvasResourceProvider> CreateResourceProviderForVideoFrame(
     IntSize size,
     viz::RasterContextProvider* raster_context_provider) {
+<<<<<<< HEAD
+  return CreateResourceProviderForVideoFrame(
+      gfx::Size(info.width(), info.height()),
+      viz::SkColorTypeToSinglePlaneSharedImageFormat(info.colorType()),
+      info.alphaType(), SkColorSpaceToGfxColorSpace(info.refColorSpace()),
+      raster_context_provider);
+}
+
+std::unique_ptr<CanvasResourceProvider> CreateResourceProviderForVideoFrame(
+    gfx::Size size,
+    viz::SharedImageFormat format,
+    SkAlphaType alpha_type,
+    const gfx::ColorSpace& color_space,
+    viz::RasterContextProvider* raster_context_provider) {
+  constexpr auto kShouldInitialize =
+      CanvasResourceProvider::ShouldInitialize::kNo;
+  if (!ShouldCreateAcceleratedImages(raster_context_provider)) {
+    return CanvasResourceProvider::CreateBitmapProvider(
+        size, format, alpha_type, color_space, kShouldInitialize);
+=======
   if (!ShouldCreateAcceleratedImages(raster_context_provider)) {
     return CanvasResourceProvider::CreateBitmapProvider(
         size, kLow_SkFilterQuality, CanvasResourceParams(),
         CanvasResourceProvider::ShouldInitialize::kNo);
+>>>>>>> chromium
   }
 
   return CanvasResourceProvider::CreateSharedImageProvider(
+<<<<<<< HEAD
+      size, format, alpha_type, color_space, kShouldInitialize,
+=======
       size, kLow_SkFilterQuality, CanvasResourceParams(),
       CanvasResourceProvider::ShouldInitialize::kNo,
+>>>>>>> chromium
       SharedGpuContext::ContextProviderWrapper(), RasterMode::kGPU,
       false,  // Origin of GL texture is bottom left on screen
       gpu::SHARED_IMAGE_USAGE_DISPLAY);

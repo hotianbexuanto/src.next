@@ -109,6 +109,71 @@ class CORE_EXPORT SelectorChecker {
     explicit SelectorCheckingContext(Element* element) : element(element) {}
 
     const CSSSelector* selector = nullptr;
+<<<<<<< HEAD
+
+    // The "tree context" [1] whenever the selector is "matched against
+    // a tree" [2].
+    //
+    // This can most easily be understood as "where a given selector
+    // comes from":
+    //
+    //  - For style rules at the document level, this is a Document.
+    //  - For style rules inside a shadow tree, this is a ShadowRoot.
+    //  - For querySelector, this is the root [3] of the node querySelector
+    //    was called on, meaning it can either be a Document, ShadowRoot,
+    //    or DocumentFragment.
+    //
+    // Some selector matching in Blink takes place with tree_scope==nullptr,
+    // for example UA rules. This should be functionally identical to providing
+    // the Document associated with `element` as the tree scope.
+    //
+    // [1] https://drafts.csswg.org/selectors-4/#match-a-selector-against-a-tree
+    // [2] https://drafts.csswg.org/css-scoping-1/#tree-context
+    // [3] https://dom.spec.whatwg.org/#concept-tree-root
+    const TreeScope* tree_scope = nullptr;
+    // The scoping root [1], whenever the selector is scoped [2].
+    //
+    // This is often the same node as `tree_scope`, but differs when selectors
+    // are scoped to some specific Element within that tree. For example,
+    // for Element.querySelector, `scope` is set to the element querySelector
+    // is invoked on.
+    //
+    // If `scope` is an element, the :scope pseudo-class matches that element,
+    // and only that element. Otherwise, it matches what :root matches.
+    // This behavior is different from what specs expect, see discussion
+    // in Issue 7261 [3].
+    //
+    // See also documentation on `style_scope` below, as it is relevant for
+    // how `scope` is used throughout the evaluation of the selector.
+    //
+    // [1] https://drafts.csswg.org/selectors-4/#scoping-root
+    // [2] https://drafts.csswg.org/selectors-4/#scoped-selector
+    // [3] https://github.com/w3c/csswg-drafts/issues/7261
+    const ContainerNode* scope = nullptr;
+    // The StyleScope (i.e. @scope) associated with the selector.
+    //
+    // This points to the innermost StyleScope, i.e. the StyleScope holding
+    // on to the style rule directly.
+    //
+    // A non-nullptr `style_scope` causes "scope activation" [1] at some point
+    // during selector matching, which is basically lazy evaluation of what
+    // the scoping roots are. For each found scoping root, we'll match the
+    // selector (perhaps partially) with `scope` set to that root.
+    //
+    // Both `scope` and `style_scope` may be specified on the
+    // SelectorCheckingContext passed to SelectorChecker::Match,
+    // but if `style_scope` is non-nullptr, then `scope` is effectively ignored:
+    // `scope` will be assigned a value by the "scope activation" process
+    // referenced above.
+    //
+    // [1] SelectorChecker::MatchForScopeActivation
+    const StyleScope* style_scope = nullptr;
+    // A cache used to carry out the work described for `style_scope`.
+    // Must be non-nullptr when `style_scope` is non-nullptr.
+    StyleScopeFrame* style_scope_frame = nullptr;
+
+=======
+>>>>>>> chromium
     Element* element = nullptr;
     Element* previous_element = nullptr;
     const ContainerNode* scope = nullptr;
@@ -116,9 +181,12 @@ class CORE_EXPORT SelectorChecker {
     bool is_sub_selector = false;
     bool in_rightmost_compound = true;
     bool has_scrollbar_pseudo = false;
+<<<<<<< HEAD
+=======
     bool has_selection_pseudo = false;
     bool treat_shadow_host_as_normal_scope = false;
     Element* vtt_originating_element = nullptr;
+>>>>>>> chromium
     bool in_nested_complex_selector = false;
     bool is_inside_visited_link = false;
   };
@@ -182,6 +250,45 @@ class CORE_EXPORT SelectorChecker {
     // MatchResult instance allocation overhead for none-has matching operations
     HeapVector<Member<Element>>* has_argument_leftmost_compound_matches{
         nullptr};
+<<<<<<< HEAD
+    unsigned proximity{std::numeric_limits<unsigned>::max()};
+    MatchFlags flags{0};
+  };
+
+  // Used for situations where we have "inner" selector matching, such as
+  // :is(...). Ensures that we propagate the necessary sub-result data
+  // to the outer MatchResult.
+  class SubResult : public MatchResult {
+    STACK_ALLOCATED();
+
+   public:
+    explicit SubResult(MatchResult& parent) : parent_(parent) {
+      pseudo_ancestor_index = parent_.pseudo_ancestor_index;
+    }
+    ~SubResult() {
+      parent_.flags |= flags;
+      PropagatePseudoAncestorIndex();
+    }
+    void PropagatePseudoAncestorIndex() {
+      // Propagate only useful change in index, which is either:
+      // a) kNotFound -> 0;
+      // b) increasing index value.
+      // Propagating is needed to later check that we've reached the end of
+      // the ancestors array, meaning that the selector matches the full
+      // ancestors chain.
+      if (pseudo_ancestor_index != kNotFound) {
+        parent_.pseudo_ancestor_index =
+            parent_.pseudo_ancestor_index == kNotFound
+                ? pseudo_ancestor_index
+                : std::max(pseudo_ancestor_index,
+                           parent_.pseudo_ancestor_index);
+      }
+    }
+
+   private:
+    MatchResult& parent_;
+=======
+>>>>>>> chromium
   };
 
   bool Match(const SelectorCheckingContext& context, MatchResult& result) const;
@@ -243,6 +350,35 @@ class CORE_EXPORT SelectorChecker {
   bool CheckPseudoHost(const SelectorCheckingContext&, MatchResult&) const;
   bool CheckPseudoNot(const SelectorCheckingContext&, MatchResult&) const;
   bool CheckPseudoHas(const SelectorCheckingContext&, MatchResult&) const;
+<<<<<<< HEAD
+  bool MatchesAnyInList(const SelectorCheckingContext& context,
+                        const CSSSelector* selector_list,
+                        MatchResult& result) const;
+
+  const StyleScopeActivations& EnsureActivations(const SelectorCheckingContext&,
+                                                 const StyleScope&) const;
+  const StyleScopeActivations* CalculateActivations(
+      const TreeScope*,
+      Element&,
+      const StyleScope&,
+      const StyleScopeActivations& outer_activations,
+      StyleScopeFrame*,
+      bool match_visited) const;
+  bool MatchesWithScope(Element&,
+                        const CSSSelector& selector_list,
+                        const TreeScope*,
+                        const ContainerNode* scope,
+                        bool match_visited,
+                        MatchFlags&) const;
+  // https://drafts.csswg.org/css-cascade-6/#scoping-limit
+  bool ElementIsScopingLimit(const TreeScope*,
+                             const StyleScope&,
+                             const StyleScopeActivation&,
+                             Element& element,
+                             bool match_visited,
+                             MatchFlags&) const;
+=======
+>>>>>>> chromium
 
   ComputedStyle* element_style_;
   CustomScrollbar* scrollbar_;

@@ -9,7 +9,7 @@
 #include "content/public/renderer/render_frame.h"
 #include "third_party/blink/public/web/web_local_frame.h"
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/permissions/api_permission.h"
@@ -37,7 +37,7 @@ ChromeContentSettingsAgentDelegate::ChromeContentSettingsAgentDelegate(
 ChromeContentSettingsAgentDelegate::~ChromeContentSettingsAgentDelegate() =
     default;
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 void ChromeContentSettingsAgentDelegate::SetExtensionDispatcher(
     extensions::Dispatcher* extension_dispatcher) {
   DCHECK(!extension_dispatcher_)
@@ -61,16 +61,21 @@ void ChromeContentSettingsAgentDelegate::AllowPluginTemporarily(
 
 bool ChromeContentSettingsAgentDelegate::IsSchemeAllowlisted(
     const std::string& scheme) {
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   return scheme == extensions::kExtensionScheme;
 #else
   return false;
 #endif
 }
 
+<<<<<<< HEAD
+bool ChromeContentSettingsAgentDelegate::AllowReadFromClipboard() {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+=======
 absl::optional<bool>
 ChromeContentSettingsAgentDelegate::AllowReadFromClipboard() {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+>>>>>>> chromium
   extensions::ScriptContext* current_context =
       extension_dispatcher_->script_context_set().GetCurrent();
   if (current_context &&
@@ -82,9 +87,14 @@ ChromeContentSettingsAgentDelegate::AllowReadFromClipboard() {
   return absl::nullopt;
 }
 
+<<<<<<< HEAD
+bool ChromeContentSettingsAgentDelegate::AllowWriteToClipboard() {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+=======
 absl::optional<bool>
 ChromeContentSettingsAgentDelegate::AllowWriteToClipboard() {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+>>>>>>> chromium
   // All blessed extension pages could historically write to the clipboard, so
   // preserve that for compatibility.
   extensions::ScriptContext* current_context =
@@ -139,7 +149,25 @@ bool ChromeContentSettingsAgentDelegate::IsPlatformApp() {
 #endif
 }
 
+<<<<<<< HEAD
+bool ChromeContentSettingsAgentDelegate::IsAllowListedSystemWebApp() {
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  blink::WebLocalFrame* frame = render_frame_->GetWebFrame();
+  blink::WebSecurityOrigin origin = frame->GetDocument().GetSecurityOrigin();
+  // TODO(crbug.com/1233395): Migrate Files SWA to Clipboard API and remove this
+  // allow-list.
+  if (origin.Protocol().Ascii() == ::content::kChromeUIScheme &&
+      origin.Host().Utf8() == ::ash::file_manager::kChromeUIFileManagerHost) {
+    return true;
+  }
+#endif
+  return false;
+}
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+=======
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+>>>>>>> chromium
 const extensions::Extension* ChromeContentSettingsAgentDelegate::GetExtension(
     const blink::WebSecurityOrigin& origin) const {
   if (origin.Protocol().Ascii() != extensions::kExtensionScheme)

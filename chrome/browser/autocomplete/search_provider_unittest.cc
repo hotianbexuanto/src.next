@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include <array>
 #include <memory>
 #include <string>
 
@@ -17,6 +18,7 @@
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
+#include "base/strings/to_string.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
@@ -40,6 +42,11 @@
 #include "components/omnibox/browser/history_url_provider.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/browser/suggestion_answer.h"
+<<<<<<< HEAD
+#include "components/omnibox/browser/zero_suggest_provider.h"
+#include "components/omnibox/common/omnibox_feature_configs.h"
+=======
+>>>>>>> chromium
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/search_engines/omnibox_focus_type.h"
@@ -113,14 +120,12 @@ class TestAutocompleteProviderClient : public ChromeAutocompleteProviderClient {
                 loader_factory)) {}
   ~TestAutocompleteProviderClient() override {}
 
-  bool IsPersonalizedUrlDataCollectionActive() const override {
-    return is_personalized_url_data_collection_active_;
+  bool IsUrlDataCollectionActive() const override {
+    return is_url_data_collection_active_;
   }
 
-  void set_is_personalized_url_data_collection_active(
-      bool is_personalized_url_data_collection_active) {
-    is_personalized_url_data_collection_active_ =
-        is_personalized_url_data_collection_active;
+  void set_is_url_data_collection_active(bool is_url_data_collection_active) {
+    is_url_data_collection_active_ = is_url_data_collection_active;
   }
 
   scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory()
@@ -129,10 +134,33 @@ class TestAutocompleteProviderClient : public ChromeAutocompleteProviderClient {
   }
 
  private:
+<<<<<<< HEAD
+  bool is_url_data_collection_active_ = true;
+  scoped_refptr<network::SharedURLLoaderFactory> shared_factory_;
+};
+
+std::unique_ptr<KeyedService> BuildRemoteSuggestionsServiceWithURLLoader(
+    network::TestURLLoaderFactory* test_url_loader_factory,
+    content::BrowserContext* context) {
+  return std::make_unique<RemoteSuggestionsService>(
+      /*document_suggestions_service=*/nullptr,
+      /*enterprise_search_aggregator_suggestions_service=*/nullptr,
+      test_url_loader_factory->GetSafeWeakWrapper());
+}
+
+std::string SerializeAndEncodeEntityInfo(
+    const omnibox::EntityInfo& entity_info) {
+  std::string serialized_entity_info;
+  entity_info.SerializeToString(&serialized_entity_info);
+  return base::Base64Encode(serialized_entity_info);
+}
+
+=======
   bool is_personalized_url_data_collection_active_;
   scoped_refptr<network::SharedURLLoaderFactory> shared_factory_;
 };
 
+>>>>>>> chromium
 }  // namespace
 
 // SearchProviderFeatureTestComponent -----------------------------------------
@@ -1023,6 +1051,11 @@ TEST_F(SearchProviderTest, InlineMixedCaseMatches) {
   ASSERT_EQ(2u, provider_->matches().size());
   AutocompleteMatch term_match;
   EXPECT_TRUE(FindMatchWithDestination(term_url, &term_match));
+<<<<<<< HEAD
+  EXPECT_EQ(u"FOO", term_match.fill_into_edit);
+  EXPECT_EQ(u"OO", term_match.inline_autocompletion);
+=======
+>>>>>>> chromium
   EXPECT_GT(term_match.relevance, wyt_match.relevance);
   EXPECT_EQ(u"FOO", term_match.fill_into_edit);
   EXPECT_EQ(u"OO", term_match.inline_autocompletion);
@@ -1540,15 +1573,22 @@ TEST_F(SearchProviderTest, KeywordFetcherSuggestRelevance) {
     bool allowed_to_be_default_match;
   };
   const KeywordFetcherMatch kEmptyMatch = { kNotApplicable, false, false };
-  struct {
+  struct Cases {
     const std::string json;
     const KeywordFetcherMatch matches[6];
     const std::string inline_autocompletion;
+<<<<<<< HEAD
+  };
+  auto cases = std::to_array<Cases>({
+      // clang-format off
+    // Ensure that suggest relevance scores reorder matches.
+=======
   } cases[] = {
     // clang-format off
     // Ensure that suggest relevance scores reorder matches and that
     // the keyword verbatim (lacking a suggested verbatim score) beats
     // the default provider verbatim.
+>>>>>>> chromium
     { "[\"a\",[\"b\", \"c\"],[],[],{\"google:suggestrelevance\":[1, 2]}]",
       { { "a",   true,  true },
         { "k a", false, false },
@@ -1941,8 +1981,13 @@ TEST_F(SearchProviderTest, KeywordFetcherSuggestRelevance) {
         { "k a",    false, false },
         kEmptyMatch },
       "3" },
+<<<<<<< HEAD
+      // clang-format on
+  });
+=======
     // clang-format on
   };
+>>>>>>> chromium
 
   for (size_t i = 0; i < base::size(cases); ++i) {
     // Send the query twice in order to have a synchronous pass after the first
@@ -2227,6 +2272,34 @@ TEST_F(SearchProviderTest, DontCacheCalculatorSuggestions) {
   // processing (receiving first asynchronous response, handling new keystroke
   // synchronously) we have the expected matches.  The new keystroke should
   // immediately invalidate old calculator suggestions.
+<<<<<<< HEAD
+  struct Cases {
+    std::string json;
+    ExpectedMatch async_matches[4];
+    ExpectedMatch sync_matches[4];
+  };
+  auto cases = std::to_array<Cases>({
+      {"[\"1+2\",[\"= 3\", \"1+2+3+4+5\"],[],[],"
+       "{\"google:verbatimrelevance\":1300,"
+       "\"google:suggesttype\":[\"CALCULATOR\", \"QUERY\"],"
+       "\"google:suggestrelevance\":[1200, 900]}]",
+       // The contents of the second match here are set to the query (the result
+       // is placed in the description instead) and therefore the
+       // allowed_to_default_match value is true for the second match (despite
+       // being received asynchronously) because of the logic in
+       // SearchProvider::PersistTopSuggestions which allows it to be promoted
+       // based on the fact that it has the same contents as the previous top
+       // match.
+       {{"1+2", true},
+        {"= 3", false},
+        {"1+2+3+4+5", false},
+        kEmptyExpectedMatch},
+       {{"1+23", true},
+        {"1+2+3+4+5", false},
+        kEmptyExpectedMatch,
+        kEmptyExpectedMatch}},
+  });
+=======
   struct {
     const std::string json;
     const ExpectedMatch async_matches[4];
@@ -2248,6 +2321,7 @@ TEST_F(SearchProviderTest, DontCacheCalculatorSuggestions) {
       { { "1+23", true }, { "1+2+3+4+5", false }, kEmptyExpectedMatch,
         kEmptyExpectedMatch } },
   };
+>>>>>>> chromium
 
   for (size_t i = 0; i < base::size(cases); ++i) {
     // First, send the query "1+2" and receive the JSON response |first_json|.
@@ -2287,56 +2361,59 @@ TEST_F(SearchProviderTest, LocalAndRemoteRelevances) {
   AddSearchToHistory(default_t_url_, term + u"2", 2);
   profile_->BlockUntilHistoryProcessesPendingRequests();
 
-  struct {
+  struct Cases {
     const std::u16string input;
     const std::string json;
     const std::string matches[6];
-  } cases[] = {
-    // The history results outscore the default verbatim score.  term2 has more
-    // visits so it outscores term1.  The suggestions are still returned since
-    // they're server-scored.
-    { term,
-      "[\"term\",[\"a1\", \"a2\", \"a3\"],[],[],"
-       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\"],"
-        "\"google:suggestrelevance\":[1, 2, 3]}]",
-      { "term2", "term1", "term", "a3", "a2", "a1" } },
-    // Because we already have three suggestions by the time we see the history
-    // results, they don't get returned.
-    { term,
-      "[\"term\",[\"a1\", \"a2\", \"a3\"],[],[],"
-       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\"],"
-        "\"google:verbatimrelevance\":1450,"
-        "\"google:suggestrelevance\":[1440, 1430, 1420]}]",
-      { "term", "a1", "a2", "a3", kNotApplicable, kNotApplicable } },
-    // If we only have two suggestions, we have room for a history result.
-    { term,
-      "[\"term\",[\"a1\", \"a2\"],[],[],"
-       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\"],"
-        "\"google:verbatimrelevance\":1450,"
-        "\"google:suggestrelevance\":[1430, 1410]}]",
-      { "term", "a1", "a2", "term2", kNotApplicable, kNotApplicable } },
-    // If we have more than three suggestions, they should all be returned as
-    // long as we have enough total space for them.
-    { term,
-      "[\"term\",[\"a1\", \"a2\", \"a3\", \"a4\"],[],[],"
-       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\", \"QUERY\"],"
-        "\"google:verbatimrelevance\":1450,"
-        "\"google:suggestrelevance\":[1440, 1430, 1420, 1410]}]",
-      { "term", "a1", "a2", "a3", "a4", kNotApplicable } },
-    { term,
-      "[\"term\",[\"a1\", \"a2\", \"a3\", \"a4\", \"a5\", \"a6\"],[],[],"
-       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\", \"QUERY\","
-                                "\"QUERY\", \"QUERY\"],"
-        "\"google:verbatimrelevance\":1450,"
-        "\"google:suggestrelevance\":[1440, 1430, 1420, 1410, 1400, 1390]}]",
-      { "term", "a1", "a2", "a3", "a4", "a5" } },
-    { term,
-      "[\"term\",[\"a1\", \"a2\", \"a3\", \"a4\"],[],[],"
-       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\", \"QUERY\"],"
-        "\"google:verbatimrelevance\":1450,"
-        "\"google:suggestrelevance\":[1430, 1410, 1390, 1370]}]",
-      { "term", "a1", "a2", "term2", "a3", "a4" } }
   };
+  auto cases = std::to_array<Cases>({
+      // The history results outscore the default verbatim score.  term2 has
+      // more
+      // visits so it outscores term1.  The suggestions are still returned since
+      // they're server-scored.
+      {term,
+       "[\"term\",[\"a1\", \"a2\", \"a3\"],[],[],"
+       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\"],"
+       "\"google:suggestrelevance\":[1, 2, 3]}]",
+       {"term2", "term1", "term", "a3", "a2", "a1"}},
+      // Because we already have three suggestions by the time we see the
+      // history
+      // results, they don't get returned.
+      {term,
+       "[\"term\",[\"a1\", \"a2\", \"a3\"],[],[],"
+       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\"],"
+       "\"google:verbatimrelevance\":1450,"
+       "\"google:suggestrelevance\":[1440, 1430, 1420]}]",
+       {"term", "a1", "a2", "a3", kNotApplicable, kNotApplicable}},
+      // If we only have two suggestions, we have room for a history result.
+      {term,
+       "[\"term\",[\"a1\", \"a2\"],[],[],"
+       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\"],"
+       "\"google:verbatimrelevance\":1450,"
+       "\"google:suggestrelevance\":[1430, 1410]}]",
+       {"term", "a1", "a2", "term2", kNotApplicable, kNotApplicable}},
+      // If we have more than three suggestions, they should all be returned as
+      // long as we have enough total space for them.
+      {term,
+       "[\"term\",[\"a1\", \"a2\", \"a3\", \"a4\"],[],[],"
+       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\", \"QUERY\"],"
+       "\"google:verbatimrelevance\":1450,"
+       "\"google:suggestrelevance\":[1440, 1430, 1420, 1410]}]",
+       {"term", "a1", "a2", "a3", "a4", kNotApplicable}},
+      {term,
+       "[\"term\",[\"a1\", \"a2\", \"a3\", \"a4\", \"a5\", \"a6\"],[],[],"
+       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\", \"QUERY\","
+       "\"QUERY\", \"QUERY\"],"
+       "\"google:verbatimrelevance\":1450,"
+       "\"google:suggestrelevance\":[1440, 1430, 1420, 1410, 1400, 1390]}]",
+       {"term", "a1", "a2", "a3", "a4", "a5"}},
+      {term,
+       "[\"term\",[\"a1\", \"a2\", \"a3\", \"a4\"],[],[],"
+       "{\"google:suggesttype\":[\"QUERY\", \"QUERY\", \"QUERY\", \"QUERY\"],"
+       "\"google:verbatimrelevance\":1450,"
+       "\"google:suggestrelevance\":[1430, 1410, 1390, 1370]}]",
+       {"term", "a1", "a2", "term2", "a3", "a4"}},
+  });
 
   for (size_t i = 0; i < base::size(cases); ++i) {
     QueryForInputAndWaitForFetcherResponses(
@@ -2491,9 +2568,21 @@ TEST_F(SearchProviderTest, DefaultProviderSuggestRelevanceScoringUrlInput) {
 
 // A basic test that verifies the field trial triggered parsing logic.
 TEST_F(SearchProviderTest, FieldTrialTriggeredParsing) {
+<<<<<<< HEAD
+  const auto test = [&](bool trigger) {
+    client_->GetOmniboxTriggeredFeatureService()->ResetSession();
+    QueryForInputAndWaitForFetcherResponses(
+        u"foo", false,
+        "[\"foo\",[\"foo bar\"],[\"\"],[],"
+        "{\"google:suggesttype\":[\"QUERY\"],"
+        "\"google:fieldtrialtriggered\":" +
+            base::ToString(trigger) + "}]",
+        std::string());
+=======
   base::FieldTrial* trial = base::FieldTrialList::CreateFieldTrial(
       OmniboxFieldTrial::kBundledExperimentFieldTrialName, "DefaultGroup");
   trial->group();
+>>>>>>> chromium
 
   QueryForInputAndWaitForFetcherResponses(
       u"foo", false,
@@ -3202,45 +3291,52 @@ TEST_F(SearchProviderTest, XSSIGuardedJSONParsing_ValidResponses) {
       kNotApplicable, AutocompleteMatchType::NUM_TYPES
   };
 
-  struct {
+  struct Cases {
     const std::string input_text;
     const std::string default_provider_response_json;
     const Match matches[4];
-  } cases[] = {
-    // No XSSI guard.
-    { "a",
-      "[\"a\",[\"b\", \"c\"],[],[],"
-      "{\"google:suggesttype\":[\"QUERY\",\"QUERY\"],"
-      "\"google:suggestrelevance\":[1, 2]}]",
-      { { "a", AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED },
-        { "c", AutocompleteMatchType::SEARCH_SUGGEST },
-        { "b", AutocompleteMatchType::SEARCH_SUGGEST },
-        kEmptyMatch,
-      },
-    },
-    // Standard XSSI guard - )]}'\n.
-    { "a",
-      ")]}'\n[\"a\",[\"b\", \"c\"],[],[],"
-      "{\"google:suggesttype\":[\"QUERY\",\"QUERY\"],"
-      "\"google:suggestrelevance\":[1, 2]}]",
-      { { "a", AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED },
-        { "c", AutocompleteMatchType::SEARCH_SUGGEST },
-        { "b", AutocompleteMatchType::SEARCH_SUGGEST },
-        kEmptyMatch,
-      },
-    },
-    // Modified XSSI guard - contains "[".
-    { "a",
-      ")]}'\n[)\"[\"a\",[\"b\", \"c\"],[],[],"
-      "{\"google:suggesttype\":[\"QUERY\",\"QUERY\"],"
-      "\"google:suggestrelevance\":[1, 2]}]",
-      { { "a", AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED },
-        { "c", AutocompleteMatchType::SEARCH_SUGGEST },
-        { "b", AutocompleteMatchType::SEARCH_SUGGEST },
-        kEmptyMatch,
-      },
-    },
   };
+  auto cases = std::to_array<Cases>({
+      // No XSSI guard.
+      {
+          "a",
+          "[\"a\",[\"b\", \"c\"],[],[],"
+          "{\"google:suggesttype\":[\"QUERY\",\"QUERY\"],"
+          "\"google:suggestrelevance\":[1, 2]}]",
+          {
+              {"a", AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED},
+              {"c", AutocompleteMatchType::SEARCH_SUGGEST},
+              {"b", AutocompleteMatchType::SEARCH_SUGGEST},
+              kEmptyMatch,
+          },
+      },
+      // Standard XSSI guard - )]}'\n.
+      {
+          "a",
+          ")]}'\n[\"a\",[\"b\", \"c\"],[],[],"
+          "{\"google:suggesttype\":[\"QUERY\",\"QUERY\"],"
+          "\"google:suggestrelevance\":[1, 2]}]",
+          {
+              {"a", AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED},
+              {"c", AutocompleteMatchType::SEARCH_SUGGEST},
+              {"b", AutocompleteMatchType::SEARCH_SUGGEST},
+              kEmptyMatch,
+          },
+      },
+      // Modified XSSI guard - contains "[".
+      {
+          "a",
+          ")]}'\n[)\"[\"a\",[\"b\", \"c\"],[],[],"
+          "{\"google:suggesttype\":[\"QUERY\",\"QUERY\"],"
+          "\"google:suggestrelevance\":[1, 2]}]",
+          {
+              {"a", AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED},
+              {"c", AutocompleteMatchType::SEARCH_SUGGEST},
+              {"b", AutocompleteMatchType::SEARCH_SUGGEST},
+              kEmptyMatch,
+          },
+      },
+  });
 
   for (size_t i = 0; i < base::size(cases); ++i) {
     ClearAllResults();
@@ -3283,12 +3379,12 @@ TEST_F(SearchProviderTest, ParseDeletionUrl) {
   const Match kEmptyMatch = {kNotApplicable, std::string(),
                              AutocompleteMatchType::NUM_TYPES};
 
-  const char* url[] = {
+  auto url = std::to_array<const char*>({
       "http://defaultturl/complete/deleteitems"
       "?delq=ab&client=chrome&deltok=xsrf124",
       "http://defaultturl/complete/deleteitems"
       "?delq=www.amazon.com&client=chrome&deltok=xsrf123",
-  };
+  });
 
   struct {
     const std::string input_text;
@@ -3418,12 +3514,17 @@ TEST_F(SearchProviderTest, CanSendURL) {
       metrics::OmniboxEventProto::OBSOLETE_INSTANT_NTP, SearchTermsData(),
       client_.get(), true));
 
+<<<<<<< HEAD
+  // Enable personalized URL data collection.
+  client_->set_is_url_data_collection_active(true);
+=======
   // HTTPS page URL on same domain as provider.
   EXPECT_TRUE(SearchProvider::CanSendURL(
       GURL("https://www.google.com/search"),
       GURL("https://www.google.com/complete/search"), &google_template_url,
       metrics::OmniboxEventProto::OTHER, SearchTermsData(), client_.get(),
       true));
+>>>>>>> chromium
 
   // Non-HTTP[S] page URL on same domain as provider.
   EXPECT_FALSE(SearchProvider::CanSendURL(
@@ -3464,6 +3565,20 @@ TEST_F(SearchProviderTest, CanSendURL) {
       metrics::OmniboxEventProto::OTHER, SearchTermsData(), &client_incognito,
       true));
 
+<<<<<<< HEAD
+  // Disable personalized URL data collection.
+  client_->set_is_url_data_collection_active(false);
+
+  // Does not require personalized URL data collection to be enabled.
+  EXPECT_TRUE(test_lens(&google_template_url, client_.get()));
+  // Requires personalized URL data collection to be enabled.
+  EXPECT_FALSE(test_other(&google_template_url, client_.get()));
+  // Does not require personalized URL data collection to be enabled.
+  EXPECT_TRUE(test_srp(&google_template_url, client_.get()));
+
+  // Re-enable personalized URL data collection.
+  client_->set_is_url_data_collection_active(true);
+=======
   // Personalized URL data collection not active. Test that we cannot send the
   // URL unless same-origin as suggest server, and search terms are
   // empty.
@@ -3493,6 +3608,7 @@ TEST_F(SearchProviderTest, CanSendURL) {
       metrics::OmniboxEventProto::OTHER, SearchTermsData(), client_.get(),
       false));
   client_->set_is_personalized_url_data_collection_active(true);
+>>>>>>> chromium
 
   // Check that there were no side effects from previous tests.
   EXPECT_TRUE(SearchProvider::CanSendURL(

@@ -9,7 +9,6 @@
 #include "base/macros.h"
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/browser/download/chrome_download_manager_delegate.h"
 #include "chrome/browser/download/download_core_service.h"
 #include "chrome/browser/download/download_core_service_factory.h"
@@ -26,8 +25,18 @@
 
 class TestingDownloadCoreService : public DownloadCoreService {
  public:
+<<<<<<< HEAD
+  TestingDownloadCoreService() = default;
+
+  TestingDownloadCoreService(const TestingDownloadCoreService&) = delete;
+  TestingDownloadCoreService& operator=(const TestingDownloadCoreService&) =
+      delete;
+
+  ~TestingDownloadCoreService() override = default;
+=======
   TestingDownloadCoreService() : download_count_(0) {}
   ~TestingDownloadCoreService() override {}
+>>>>>>> chromium
 
   // All methods that aren't expected to be called in the execution of
   // this unit test are marked to result in test failure.  Using a simple
@@ -74,9 +83,13 @@ class TestingDownloadCoreService : public DownloadCoreService {
   void Shutdown() override {}
 
  private:
+<<<<<<< HEAD
+  int download_count_ = 0;
+=======
   int download_count_;
 
   DISALLOW_COPY_AND_ASSIGN(TestingDownloadCoreService);
+>>>>>>> chromium
 };
 
 static std::unique_ptr<KeyedService> CreateTestingDownloadCoreService(
@@ -86,10 +99,16 @@ static std::unique_ptr<KeyedService> CreateTestingDownloadCoreService(
 
 class BrowserCloseTest : public testing::Test {
  public:
+<<<<<<< HEAD
+  BrowserCloseTest() : profile_manager_(TestingBrowserProcess::GetGlobal()) {
+    base::CommandLine::ForCurrentProcess()->AppendSwitch(switches::kNoFirstRun);
+  }
+=======
   BrowserCloseTest()
       : profile_manager_(TestingBrowserProcess::GetGlobal()), name_index_(0) {}
+>>>>>>> chromium
 
-  ~BrowserCloseTest() override {}
+  ~BrowserCloseTest() override = default;
 
   void SetUp() override { ASSERT_TRUE(profile_manager_.SetUp()); }
 
@@ -187,7 +206,7 @@ class BrowserCloseTest : public testing::Test {
 
   content::BrowserTaskEnvironment task_environment_;
   TestingProfileManager profile_manager_;
-  int name_index_;
+  int name_index_ = 0;
 };
 
 // Last window close (incognito window) will trigger warning.
@@ -272,7 +291,11 @@ TEST_F(BrowserCloseTest, LastRegular) {
   EXPECT_EQ(Browser::DownloadCloseType::kBrowserShutdown,
             browser->OkToCloseWithInProgressDownloads(&num_downloads_blocking));
   EXPECT_EQ(num_downloads_blocking, 1);
+<<<<<<< HEAD
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
+=======
 #if defined(OS_MAC) || BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   EXPECT_EQ(true, browser->CanCloseWithInProgressDownloads());
 #else
   EXPECT_EQ(false, browser->CanCloseWithInProgressDownloads());

@@ -2,8 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#include "extensions/browser/process_manager.h"
+
+=======
+>>>>>>> chromium
 #include <stddef.h>
 
+#include <array>
 #include <memory>
 #include <utility>
 
@@ -47,8 +53,12 @@
 #include "content/public/test/test_utils.h"
 #include "extensions/browser/app_window/app_window.h"
 #include "extensions/browser/app_window/app_window_registry.h"
+<<<<<<< HEAD
+#include "extensions/browser/browsertest_util.h"
+=======
 #include "extensions/browser/process_manager.h"
 #include "extensions/common/extension_features.h"
+>>>>>>> chromium
 #include "extensions/common/manifest_handlers/background_info.h"
 #include "extensions/common/manifest_handlers/web_accessible_resources_info.h"
 #include "extensions/common/permissions/permissions_data.h"
@@ -376,7 +386,6 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
   EXPECT_EQ(1u, pm->background_hosts().size());
   EXPECT_EQ(1u, pm->GetAllFrames().size());
   EXPECT_TRUE(pm->GetBackgroundHostForExtension(extension->id()));
-  EXPECT_TRUE(pm->GetSiteInstanceForURL(extension->url()));
   EXPECT_EQ(1u, pm->GetRenderFrameHostsForExtension(extension->id()).size());
   EXPECT_FALSE(pm->IsBackgroundHostClosing(extension->id()));
 
@@ -387,7 +396,6 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
   EXPECT_EQ(0u, pm->background_hosts().size());
   EXPECT_EQ(0u, pm->GetAllFrames().size());
   EXPECT_FALSE(pm->GetBackgroundHostForExtension(extension->id()));
-  EXPECT_TRUE(pm->GetSiteInstanceForURL(extension->url()));
   EXPECT_EQ(0u, pm->GetRenderFrameHostsForExtension(extension->id()).size());
   EXPECT_FALSE(pm->IsBackgroundHostClosing(extension->id()));
   EXPECT_EQ(-1, pm->GetLazyKeepaliveCount(extension.get()));
@@ -419,7 +427,6 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
   EXPECT_EQ(0u, pm->GetAllFrames().size());
   EXPECT_FALSE(pm->GetBackgroundHostForExtension(popup->id()));
   EXPECT_EQ(0u, pm->GetRenderFrameHostsForExtension(popup->id()).size());
-  EXPECT_TRUE(pm->GetSiteInstanceForURL(popup->url()));
   EXPECT_FALSE(pm->IsBackgroundHostClosing(popup->id()));
 
   // Simulate clicking on the action to open a popup.
@@ -437,7 +444,6 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
   EXPECT_EQ(1u, pm->GetAllFrames().size());
   EXPECT_FALSE(pm->GetBackgroundHostForExtension(popup->id()));
   EXPECT_EQ(1u, pm->GetRenderFrameHostsForExtension(popup->id()).size());
-  EXPECT_TRUE(pm->GetSiteInstanceForURL(popup->url()));
   EXPECT_FALSE(pm->IsBackgroundHostClosing(popup->id()));
   EXPECT_EQ(-1, pm->GetLazyKeepaliveCount(popup.get()));
   EXPECT_TRUE(pm->GetLazyKeepaliveActivities(popup.get()).empty());
@@ -481,13 +487,15 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest, HttpHostMatchingExtensionId) {
   EXPECT_EQ(url, tab_web_contents->GetVisibleURL());
   EXPECT_FALSE(pm->GetExtensionForWebContents(tab_web_contents))
       << "Non-extension content must not have an associated extension";
-  ASSERT_EQ(1u, pm->GetRenderFrameHostsForExtension(extension->id()).size());
+  ProcessManager::FrameSet rfh_set =
+      pm->GetRenderFrameHostsForExtension(extension->id());
+  ASSERT_EQ(1u, rfh_set.size());
+  content::RenderFrameHost* extension_rfh = *rfh_set.begin();
   content::WebContents* extension_web_contents =
-      content::WebContents::FromRenderFrameHost(
-          *pm->GetRenderFrameHostsForExtension(extension->id()).begin());
+      content::WebContents::FromRenderFrameHost(extension_rfh);
   EXPECT_TRUE(extension_web_contents->GetSiteInstance() !=
               tab_web_contents->GetSiteInstance());
-  EXPECT_TRUE(pm->GetSiteInstanceForURL(extension->url()) !=
+  EXPECT_TRUE(extension_rfh->GetSiteInstance() !=
               tab_web_contents->GetSiteInstance());
   EXPECT_TRUE(pm->GetBackgroundHostForExtension(extension->id()));
 }
@@ -754,7 +762,7 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest, ExtensionProcessReuse) {
     EXPECT_EQ(extension->url(),
               extension_host->host_contents()->GetSiteInstance()->GetSiteURL());
 
-    processes.insert(extension_host->render_process_host()->GetID());
+    processes.insert(extension_host->render_process_host()->GetDeprecatedID());
   }
 
   EXPECT_EQ(kNumExtensions, installed_extensions.size());
@@ -835,8 +843,15 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
   // to the process of the extension iframe.
   content::ChildProcessSecurityPolicy* policy =
       content::ChildProcessSecurityPolicy::GetInstance();
-  EXPECT_TRUE(policy->CanRequestURL(extension_frame->GetProcess()->GetID(),
+  EXPECT_TRUE(policy->CanRequestURL(
+      extension_frame->GetProcess()->GetDeprecatedID(), extension_blob_url));
+  EXPECT_TRUE(policy->CanRequestURL(main_frame->GetProcess()->GetDeprecatedID(),
                                     extension_blob_url));
+<<<<<<< HEAD
+  EXPECT_TRUE(policy->CanRequestURL(
+      extension_frame->GetProcess()->GetDeprecatedID(), extension_url));
+  EXPECT_TRUE(policy->CanRequestURL(main_frame->GetProcess()->GetDeprecatedID(),
+=======
   EXPECT_TRUE(policy->CanRequestURL(main_frame->GetProcess()->GetID(),
                                     extension_blob_url));
   EXPECT_TRUE(policy->CanRequestURL(extension_frame->GetProcess()->GetID(),
@@ -844,10 +859,19 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
   EXPECT_TRUE(policy->CanRequestURL(main_frame->GetProcess()->GetID(),
                                     extension_file_system_url));
   EXPECT_TRUE(policy->CanRequestURL(extension_frame->GetProcess()->GetID(),
+>>>>>>> chromium
                                     extension_url));
-  EXPECT_TRUE(
-      policy->CanRequestURL(main_frame->GetProcess()->GetID(), extension_url));
 
+<<<<<<< HEAD
+  EXPECT_TRUE(content::CanCommitURLForTesting(
+      extension_frame->GetProcess()->GetDeprecatedID(), extension_blob_url));
+  EXPECT_FALSE(content::CanCommitURLForTesting(
+      main_frame->GetProcess()->GetDeprecatedID(), extension_blob_url));
+  EXPECT_TRUE(content::CanCommitURLForTesting(
+      extension_frame->GetProcess()->GetDeprecatedID(), extension_url));
+  EXPECT_FALSE(content::CanCommitURLForTesting(
+      main_frame->GetProcess()->GetDeprecatedID(), extension_url));
+=======
   EXPECT_TRUE(policy->CanCommitURL(extension_frame->GetProcess()->GetID(),
                                    extension_blob_url));
   EXPECT_FALSE(policy->CanCommitURL(main_frame->GetProcess()->GetID(),
@@ -860,6 +884,7 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
                                    extension_url));
   EXPECT_FALSE(
       policy->CanCommitURL(main_frame->GetProcess()->GetID(), extension_url));
+>>>>>>> chromium
 
   // Open a new about:blank popup from main frame.  This should stay in the web
   // process.
@@ -1228,6 +1253,18 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
   content::ChildProcessSecurityPolicy* policy =
       content::ChildProcessSecurityPolicy::GetInstance();
   EXPECT_FALSE(policy->CanRequestURL(
+<<<<<<< HEAD
+      web_tab->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID(),
+      app_origin.GetURL()));
+  EXPECT_TRUE(policy->CanRequestURL(
+      guest_render_frame_host->GetProcess()->GetDeprecatedID(),
+      app_origin.GetURL()));
+
+  // Try navigating the web tab to each nested URL with the app's origin.  This
+  // should be blocked.
+  auto nested_urls = std::to_array<GURL>({blob_url, filesystem_url});
+  for (size_t i = 0; i < std::size(nested_urls); i++) {
+=======
       web_tab->GetMainFrame()->GetProcess()->GetID(), app_origin.GetURL()));
   EXPECT_TRUE(policy->CanRequestURL(
       guest->GetMainFrame()->GetProcess()->GetID(), app_origin.GetURL()));
@@ -1236,6 +1273,7 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
   // should be blocked.
   GURL nested_urls[] = {blob_url, filesystem_url};
   for (size_t i = 0; i < base::size(nested_urls); i++) {
+>>>>>>> chromium
     content::TestNavigationObserver observer(web_tab);
     EXPECT_TRUE(ExecuteScript(
         web_tab, "location.href = '" + nested_urls[i].spec() + "';"));
@@ -1351,8 +1389,13 @@ IN_PROC_BROWSER_TEST_F(ProcessManagerBrowserTest,
 
   // Attempt opening the nested urls using window.open(url, '', 'noopener').
   // This should not be allowed.
+<<<<<<< HEAD
+  auto nested_urls = std::to_array<GURL>({blob_url, filesystem_url});
+  for (size_t i = 0; i < std::size(nested_urls); i++) {
+=======
   GURL nested_urls[] = {blob_url, filesystem_url};
   for (size_t i = 0; i < base::size(nested_urls); i++) {
+>>>>>>> chromium
     content::WebContents* new_popup =
         OpenPopupNoOpener(tab->GetMainFrame(), nested_urls[i]);
 

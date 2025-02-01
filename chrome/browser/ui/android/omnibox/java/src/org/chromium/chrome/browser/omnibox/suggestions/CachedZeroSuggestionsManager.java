@@ -23,13 +23,24 @@ import android.text.TextUtils;
 import android.util.Base64;
 import android.util.SparseArray;
 
+<<<<<<< HEAD
+=======
 import androidx.annotation.NonNull;
+>>>>>>> chromium
 import androidx.annotation.VisibleForTesting;
 import androidx.collection.ArraySet;
 
+<<<<<<< HEAD
+import com.google.protobuf.InvalidProtocolBufferException;
+
+import org.chromium.base.ContextUtils;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.base.Function;
 import org.chromium.chrome.browser.omnibox.MatchClassificationStyle;
 import org.chromium.chrome.browser.omnibox.OmniboxSuggestionType;
+>>>>>>> chromium
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.components.omnibox.AutocompleteMatch;
@@ -42,6 +53,79 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+<<<<<<< HEAD
+/** CachedZeroSuggestionsManager manages caching and restoring zero suggestions. */
+@NullMarked
+public class CachedZeroSuggestionsManager {
+    /** Jump-Start Omnibox: the context of the most recently visited page. */
+    public static class JumpStartContext {
+        /** The GURL representing the most recently visited page. */
+        public final GURL url;
+
+        /** {@link PageClassification} value associated with the most recently visited page. */
+        public final int pageClass;
+
+        public JumpStartContext(GURL url, int pageClass) {
+            this.url = url;
+            this.pageClass = pageClass;
+        }
+    }
+
+    /** Persisted Search Engine metadata. */
+    public static class SearchEngineMetadata {
+        /** The keyword associated with the search engine. */
+        public final String keyword;
+
+        public SearchEngineMetadata(String keyword) {
+            this.keyword = keyword;
+        }
+    }
+
+    @VisibleForTesting
+    /* package */ static final String KEY_JUMP_START_URL = "omnibox:jump_start:url";
+
+    @VisibleForTesting
+    /* package */ static final String KEY_JUMP_START_PAGE_CLASS = "omnibox:jump_start:page_class";
+
+    @VisibleForTesting /* package */ static final String KEY_DSE_KEYWORD = "omnibox:dse:keyword";
+
+    @VisibleForTesting
+    /* package */ static final Set<String> ADDITIONAL_KEYS_TO_ERASE =
+            Set.of(KEY_JUMP_START_URL, KEY_JUMP_START_PAGE_CLASS);
+
+    /** Save the content of the CachedZeroSuggestionsManager to SharedPreferences cache. */
+    @SuppressWarnings("ApplySharedPref")
+    public static void saveToCache(int pageClass, AutocompleteResult resultToCache) {
+        SharedPreferences prefs = ContextUtils.getAppSharedPreferences();
+
+        var serializedBytes = resultToCache.serialize().toByteArray();
+
+        // Note: this code has very little time to run. Be sure data is persisted. Don't use
+        // asynchronous `apply()` method, because the asynchronously persisted details may never
+        // make it to the data file.
+        prefs.edit()
+                .putString(
+                        getCacheKey(pageClass),
+                        Base64.encodeToString(serializedBytes, Base64.DEFAULT))
+                .commit();
+
+        eraseOldCachedData();
+    }
+
+    /** Save the details related to currently selected Search Engine. */
+    public static void saveSearchEngineMetadata(SearchEngineMetadata metadata) {
+        SharedPreferences.Editor editor = ContextUtils.getAppSharedPreferences().edit();
+        editor.putString(KEY_DSE_KEYWORD, metadata.keyword).apply();
+    }
+
+    /** Returns the details of the currently persisted Search Engine. */
+    public static @Nullable SearchEngineMetadata readSearchEngineMetadata() {
+        SharedPreferences prefs = ContextUtils.getAppSharedPreferences();
+        var keyword = prefs.getString(KEY_DSE_KEYWORD, null);
+        if (TextUtils.isEmpty(keyword)) return null;
+
+        return new SearchEngineMetadata(keyword);
+=======
 /**
  * CachedZeroSuggestionsManager manages caching and restoring zero suggestions.
  */
@@ -53,12 +137,18 @@ public class CachedZeroSuggestionsManager {
         final SharedPreferencesManager manager = SharedPreferencesManager.getInstance();
         cacheSuggestionList(manager, resultToCache.getSuggestionsList());
         cacheGroupsDetails(manager, resultToCache.getGroupsDetails());
+>>>>>>> chromium
     }
 
     /**
      * Read previously stored AutocompleteResult from cache.
      * @return AutocompleteResult populated with the content of the SharedPreferences cache.
      */
+<<<<<<< HEAD
+    static AutocompleteResult readFromCache(int pageClass) {
+        SharedPreferences prefs = ContextUtils.getAppSharedPreferences();
+        String key = getCacheKey(pageClass);
+=======
     static AutocompleteResult readFromCache() {
         final SharedPreferencesManager manager = SharedPreferencesManager.getInstance();
         List<AutocompleteMatch> suggestions =
@@ -68,6 +158,7 @@ public class CachedZeroSuggestionsManager {
         removeInvalidSuggestionsAndGroupsDetails(suggestions, groupsDetails);
         return AutocompleteResult.fromCache(suggestions, groupsDetails);
     }
+>>>>>>> chromium
 
     /**
      * Cache suggestion list in shared preferences.
@@ -219,6 +310,16 @@ public class CachedZeroSuggestionsManager {
      * @param prefs Shared preferences manager.
      * @return Map of group ID to GroupDetails previously cached in shared preferences.
      */
+<<<<<<< HEAD
+    public static JumpStartContext readJumpStartContext() {
+        SharedPreferences prefs = ContextUtils.getAppSharedPreferences();
+        String url = prefs.getString(KEY_JUMP_START_URL, UrlConstants.NTP_URL);
+        int pageClass =
+                prefs.getInt(
+                        KEY_JUMP_START_PAGE_CLASS,
+                        PageClassification.INSTANT_NTP_WITH_OMNIBOX_AS_STARTING_FOCUS_VALUE);
+        return new JumpStartContext(new GURL(url), pageClass);
+=======
     @NonNull
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     static SparseArray<GroupDetails> readCachedGroupsDetails(SharedPreferencesManager prefs) {
@@ -236,6 +337,7 @@ public class CachedZeroSuggestionsManager {
             groupsDetails.put(groupId, new GroupDetails(groupTitle, collapsedByDefault));
         }
         return groupsDetails;
+>>>>>>> chromium
     }
 
     /**

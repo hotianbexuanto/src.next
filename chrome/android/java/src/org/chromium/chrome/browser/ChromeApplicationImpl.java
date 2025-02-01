@@ -9,19 +9,27 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 
+<<<<<<< HEAD
+import org.chromium.base.BinderCallsListener;
+import org.chromium.base.BundleUtils;
+=======
 import androidx.annotation.Nullable;
 
 import org.chromium.base.ApplicationStatus;
+>>>>>>> chromium
 import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.chrome.browser.background_task_scheduler.ChromeBackgroundTaskFactory;
 import org.chromium.chrome.browser.base.SplitCompatApplication;
 import org.chromium.chrome.browser.crash.PureJavaExceptionReporter;
 import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
+<<<<<<< HEAD
+=======
 import org.chromium.chrome.browser.dependency_injection.ChromeAppComponent;
 import org.chromium.chrome.browser.dependency_injection.ChromeAppModule;
 import org.chromium.chrome.browser.dependency_injection.DaggerChromeAppComponent;
 import org.chromium.chrome.browser.dependency_injection.ModuleFactoryOverrides;
 import org.chromium.chrome.browser.flags.CachedFeatureFlags;
+>>>>>>> chromium
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fonts.FontPreloader;
 import org.chromium.chrome.browser.night_mode.SystemNightModeMonitor;
@@ -39,15 +47,18 @@ import org.chromium.url.GURL;
  * Basic application functionality that should be shared among all browser applications that use
  * chrome layer.
  *
- * Note: All application logic should be added to {@link ChromeApplicationImpl}, which will be
+ * <p>Note: All application logic should be added to {@link ChromeApplicationImpl}, which will be
  * called from the superclass. See {@link SplitCompatApplication} for more info.
  */
 public class ChromeApplicationImpl extends SplitCompatApplication.Impl {
+<<<<<<< HEAD
+=======
     /** Lock on creation of sComponent. */
     private static final Object sLock = new Object();
     @Nullable
     private static volatile ChromeAppComponent sComponent;
 
+>>>>>>> chromium
     public ChromeApplicationImpl() {}
 
     @Override
@@ -57,7 +68,29 @@ public class ChromeApplicationImpl extends SplitCompatApplication.Impl {
         if (SplitCompatApplication.isBrowserProcess()) {
             FontPreloader.getInstance().load(getApplication());
 
+<<<<<<< HEAD
+            // Registers the extensions for all protos which would be in the Chrome split, whether
+            // or not we are actually building with splits.
+            AppHooks.get().registerProtoExtensions();
+
+            // TODO(crbug.com/40266922): Remove this after code changes allow for //components to
+            // access cached flags.
+            BrowserUiUtilsCachedFlags.getInstance()
+                    .setAsyncNotificationManagerFlag(
+                            ChromeFeatureList.sAsyncNotificationManager.isEnabled());
+
+            if (ChromeFeatureList.sTraceBinderIpc.isEnabled()) {
+                BinderCallsListener.getInstance().installListener();
+            }
+
+            // Only load the native library early for bundle builds since some tests use the
+            // "--disable-native-initialization" switch, and the CommandLine is not initialized at
+            // this point to check.
+            if (BundleUtils.isBundle()
+                    && !ChromeFeatureList.sSkipIsolatedSplitPreload.isEnabled()) {
+=======
             if (CachedFeatureFlags.isEnabled(ChromeFeatureList.EARLY_LIBRARY_LOAD)) {
+>>>>>>> chromium
                 // Kick off library loading in a separate thread so it's ready when we need it.
                 new Thread(() -> LibraryLoader.getInstance().ensureMainDexInitialized()).start();
             }
@@ -133,6 +166,8 @@ public class ChromeApplicationImpl extends SplitCompatApplication.Impl {
                        && level < Application.TRIM_MEMORY_UI_HIDDEN)
                 || level >= Application.TRIM_MEMORY_MODERATE;
     }
+<<<<<<< HEAD
+=======
 
     /** Returns the application-scoped component. */
     public static ChromeAppComponent getComponent() {
@@ -162,4 +197,5 @@ public class ChromeApplicationImpl extends SplitCompatApplication.Impl {
                 .appHooksModule(appHooksModule)
                 .build();
     }
+>>>>>>> chromium
 }

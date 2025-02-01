@@ -8,7 +8,6 @@
 #include <string>
 
 #include "base/command_line.h"
-#include "base/metrics/field_trial.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/chrome_extension_frame_host.h"
 #include "chrome/browser/extensions/error_console/error_console.h"
@@ -36,7 +35,8 @@ ChromeExtensionWebContentsObserver::ChromeExtensionWebContentsObserver(
     content::WebContents* web_contents)
     : ExtensionWebContentsObserver(web_contents) {}
 
-ChromeExtensionWebContentsObserver::~ChromeExtensionWebContentsObserver() {}
+ChromeExtensionWebContentsObserver::~ChromeExtensionWebContentsObserver() =
+    default;
 
 // static
 void ChromeExtensionWebContentsObserver::CreateForWebContents(
@@ -59,6 +59,8 @@ void ChromeExtensionWebContentsObserver::RenderFrameCreated(
   DCHECK(initialized());
   ReloadIfTerminated(render_frame_host);
   ExtensionWebContentsObserver::RenderFrameCreated(render_frame_host);
+<<<<<<< HEAD
+=======
 
   // This logic should match
   // ChromeContentBrowserClient::RegisterNonNetworkSubresourceURLLoaderFactories.
@@ -93,6 +95,7 @@ void ChromeExtensionWebContentsObserver::RenderFrameCreated(
         process_id,
         url::Origin::Create(GURL(chrome::kChromeUIExtensionIconURL)));
   }
+>>>>>>> chromium
 }
 
 bool ChromeExtensionWebContentsObserver::OnMessageReceived(
@@ -161,9 +164,55 @@ void ChromeExtensionWebContentsObserver::ReloadIfTerminated(
   // TODO(yoz): This reload doesn't happen synchronously for unpacked
   //            extensions. It seems to be fast enough, but there is a race.
   //            We should delay loading until the extension has reloaded.
+<<<<<<< HEAD
+  if (registry->terminated_extensions().GetByID(extension_id)) {
+    ExtensionSystem::Get(browser_context())
+        ->extension_service()
+        ->ReloadExtension(extension_id);
+  }
+}
+
+void ChromeExtensionWebContentsObserver::SetUpRenderFrameHost(
+    content::RenderFrameHost* render_frame_host) {
+  ExtensionWebContentsObserver::SetUpRenderFrameHost(render_frame_host);
+
+  // This logic should match
+  // ChromeContentBrowserClient::RegisterNonNetworkSubresourceURLLoaderFactories.
+  const Extension* extension = GetExtensionFromFrame(render_frame_host, false);
+  if (!extension) {
+    return;
+  }
+
+  int process_id = render_frame_host->GetProcess()->GetDeprecatedID();
+  auto* policy = content::ChildProcessSecurityPolicy::GetInstance();
+
+  // Components of chrome that are implemented as extensions or platform apps
+  // are allowed to use chrome://resources/ and chrome://theme/ URLs.
+  if ((extension->is_extension() || extension->is_platform_app()) &&
+      Manifest::IsComponentLocation(extension->location())) {
+    policy->GrantRequestOrigin(
+        process_id, url::Origin::Create(GURL(blink::kChromeUIResourcesURL)));
+    policy->GrantRequestOrigin(
+        process_id, url::Origin::Create(GURL(chrome::kChromeUIThemeURL)));
+  }
+
+  // Extensions, legacy packaged apps, and component platform apps are allowed
+  // to use chrome://favicon/ and chrome://extension-icon/ URLs. Hosted apps are
+  // not allowed because they are served via web servers (and are generally
+  // never given access to Chrome APIs).
+  if (extension->is_extension() || extension->is_legacy_packaged_app() ||
+      (extension->is_platform_app() &&
+       Manifest::IsComponentLocation(extension->location()))) {
+    policy->GrantRequestOrigin(
+        process_id, url::Origin::Create(GURL(chrome::kChromeUIFaviconURL)));
+    policy->GrantRequestOrigin(
+        process_id,
+        url::Origin::Create(GURL(chrome::kChromeUIExtensionIconURL)));
+=======
   if (registry->GetExtensionById(extension_id, ExtensionRegistry::TERMINATED)) {
     ExtensionSystem::Get(browser_context())->
         extension_service()->ReloadExtension(extension_id);
+>>>>>>> chromium
   }
 }
 

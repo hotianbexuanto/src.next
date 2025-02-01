@@ -51,6 +51,22 @@ struct NET_EXPORT TransportInfo {
 
   // The value of the ACCEPT_CH HTTP2/3 frame, as pulled in through ALPS.
   std::string accept_ch_frame;
+<<<<<<< HEAD
+
+  // True if the transport layer was secure and the certificate was rooted at a
+  // standard CA root. (As opposed to a user-installed root.)
+  //
+  // Invariant: if `type` is `kCached` or `kCachedFromProxy`, then this is
+  // always false.
+  bool cert_is_issued_by_known_root = false;
+
+  // The negotiated protocol info for the transport layer.
+  //
+  // Invariant: if `type` is `kCached` or `kCachedFromProxy`, then this is
+  // always kProtoUnknown.
+  NextProto negotiated_protocol = NextProto::kProtoUnknown;
+=======
+>>>>>>> chromium
 };
 
 // Instances of these types are streamable for easier debugging.

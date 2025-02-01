@@ -15,7 +15,6 @@
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "content/browser/renderer_host/render_view_host_impl.h"
 #include "content/browser/renderer_host/render_widget_host_impl.h"
 #include "content/browser/web_contents/web_contents_impl.h"
@@ -254,8 +253,14 @@ IN_PROC_BROWSER_TEST_F(SnapshotBrowserTest, SingleWindowTest) {
 //   Linux Chromium OS ASAN LSAN Tests (1)
 //   Linux TSAN Tests
 // See crbug.com/771119
+<<<<<<< HEAD
+// TODO(crbug.com/40834774): Fix and enable on Fuchsia.
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA) || \
+    (BUILDFLAG(IS_LINUX) && defined(THREAD_SANITIZER))
+=======
 #if (defined(OS_WIN) && !defined(NDEBUG)) || (BUILDFLAG(IS_CHROMEOS_ASH)) || \
     ((defined(OS_LINUX) || defined(OS_CHROMEOS)) && defined(THREAD_SANITIZER))
+>>>>>>> chromium
 #define MAYBE_SyncMultiWindowTest DISABLED_SyncMultiWindowTest
 #define MAYBE_AsyncMultiWindowTest DISABLED_AsyncMultiWindowTest
 #else
@@ -314,6 +319,24 @@ IN_PROC_BROWSER_TEST_F(SnapshotBrowserTest, MAYBE_SyncMultiWindowTest) {
   }
 }
 
+<<<<<<< HEAD
+// Timing out either all the time, or infrequently, apparently because
+// they're too slow, on the following configurations:
+//   Windows Debug
+//   Linux Chromium OS ASAN LSAN Tests (1)
+//   Linux TSAN Tests
+// See crbug.com/771119
+// TODO(crbug.com/40740836): recently crashes flakily on
+// linux_chromium_asan_rel_ng and linux-rel.
+// TODO(crbug.com/40834774): Fix and enable on Fuchsia.
+#if (BUILDFLAG(IS_WIN) && !defined(NDEBUG)) || BUILDFLAG(IS_CHROMEOS) || \
+    BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_FUCHSIA)
+#define MAYBE_AsyncMultiWindowTest DISABLED_AsyncMultiWindowTest
+#else
+#define MAYBE_AsyncMultiWindowTest AsyncMultiWindowTest
+#endif
+=======
+>>>>>>> chromium
 IN_PROC_BROWSER_TEST_F(SnapshotBrowserTest, MAYBE_AsyncMultiWindowTest) {
   SetupTestServer();
 

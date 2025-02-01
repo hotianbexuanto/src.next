@@ -100,7 +100,7 @@ class SafeBrowsingClientImpl
       : callback_task_runner_(base::ThreadTaskRunnerHandle::Get()),
         callback_(std::move(callback)) {}
 
-  ~SafeBrowsingClientImpl() override {}
+  ~SafeBrowsingClientImpl() override = default;
 
   // Pass |database_manager| as a parameter to avoid touching
   // SafeBrowsingService on the IO thread.
@@ -185,7 +185,7 @@ Blocklist::Blocklist(ExtensionPrefs* prefs) {
   ObserveNewDatabase();
 }
 
-Blocklist::~Blocklist() {}
+Blocklist::~Blocklist() = default;
 
 // static
 Blocklist* Blocklist::Get(content::BrowserContext* context) {

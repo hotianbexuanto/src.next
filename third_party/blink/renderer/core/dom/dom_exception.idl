@@ -31,9 +31,14 @@
 // https://heycam.github.io/webidl/#es-DOMException
 
 [
+<<<<<<< HEAD
+    Exposed=(Window,Worker,ShadowRealm), // TODO(crbug.com/41480387): This should be Exposed=*
+    Serializable
+=======
     Exposed=(Window,Worker),
     Serializable,
     DoNotCheckConstants
+>>>>>>> chromium
 ] interface DOMException {
     constructor(optional DOMString message = "", optional DOMString name = "Error");
 

@@ -1,3 +1,6 @@
+<<<<<<< HEAD
+mixins: "//ui/webui/COMMON_METADATA"
+=======
 # Metadata information for this directory.
 #
 # For more information on DIR_METADATA files, see:
@@ -9,3 +12,4 @@
 monorail {
   component: "UI>Browser>WebUI"
 }
+>>>>>>> chromium

@@ -52,7 +52,14 @@ class DownloadDangerPromptTest : public InProcessBrowserTest {
         test_safe_browsing_factory_(
             std::make_unique<TestSafeBrowsingServiceFactory>()) {}
 
+<<<<<<< HEAD
+  DownloadDangerPromptTest(const DownloadDangerPromptTest&) = delete;
+  DownloadDangerPromptTest& operator=(const DownloadDangerPromptTest&) = delete;
+
+  ~DownloadDangerPromptTest() override = default;
+=======
   ~DownloadDangerPromptTest() override {}
+>>>>>>> chromium
 
   void SetUp() override {
     SafeBrowsingService::RegisterFactory(test_safe_browsing_factory_.get());

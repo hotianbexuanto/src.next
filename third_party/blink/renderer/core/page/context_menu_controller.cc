@@ -30,10 +30,18 @@
 #include <memory>
 #include <utility>
 
+<<<<<<< HEAD
+#include "base/containers/to_vector.h"
+#include "base/feature_list.h"
+#include "base/metrics/field_trial_params.h"
+#include "base/metrics/histogram_functions.h"
+#include "components/shared_highlighting/core/common/shared_highlighting_features.h"
+=======
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
 #include "services/metrics/public/cpp/ukm_entry_builder.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
+>>>>>>> chromium
 #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
 #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
 #include "third_party/blink/public/common/features.h"
@@ -89,6 +97,35 @@ namespace blink {
 
 namespace {
 
+<<<<<<< HEAD
+void SetAutofillData(Node* node, ContextMenuData& data) {
+  if (auto* form_control = DynamicTo<HTMLFormControlElement>(node)) {
+    data.form_control_type = form_control->FormControlType();
+    data.field_renderer_id = form_control->GetDomNodeId();
+    if (auto* form = form_control->GetOwningFormForAutofill()) {
+      data.form_renderer_id = form->GetDomNodeId();
+    } else {
+      data.form_renderer_id = 0;
+    }
+  }
+  if (auto* html_element =
+          node ? DynamicTo<HTMLElement>(RootEditableElement(*node)) : nullptr) {
+    ContentEditableType content_editable =
+        html_element->contentEditableNormalized();
+    data.is_content_editable_for_autofill =
+        (content_editable == ContentEditableType::kPlaintextOnly ||
+         content_editable == ContentEditableType::kContentEditable) &&
+        !DynamicTo<HTMLFormElement>(node) &&
+        !DynamicTo<HTMLFormControlElement>(node);
+    if (data.is_content_editable_for_autofill) {
+      data.field_renderer_id = html_element->GetDomNodeId();
+      data.form_renderer_id = html_element->GetDomNodeId();
+    }
+  }
+}
+
+=======
+>>>>>>> chromium
 // Returns true if node or any of its ancestors have a context menu event
 // listener. Uses already_visited_nodes to track nodes which have already
 // been checked across multiple calls to this function, which could cause
@@ -148,6 +185,12 @@ void ContextMenuController::Trace(Visitor* visitor) const {
 }
 
 void ContextMenuController::ClearContextMenu() {
+  if (auto* selected_web_frame =
+          WebLocalFrameImpl::FromFrame(hit_test_result_.InnerNodeFrame())) {
+    selected_web_frame->SendAttributionSrc(/*impression=*/std::nullopt,
+                                           /*did_navigate=*/false);
+  }
+
   if (menu_provider_)
     menu_provider_->ContextMenuCleared();
   menu_provider_ = nullptr;
@@ -316,6 +359,22 @@ void ContextMenuController::CustomContextMenuAction(uint32_t action) {
   CustomContextMenuItemSelected(action);
 }
 
+<<<<<<< HEAD
+void ContextMenuController::ContextMenuClosed(
+    const KURL& link_followed,
+    const std::optional<Impression>& impression) {
+  if (auto* selected_web_frame =
+          WebLocalFrameImpl::FromFrame(hit_test_result_.InnerNodeFrame())) {
+    if (link_followed.IsValid()) {
+      selected_web_frame->SendPings(link_followed);
+    }
+    if (impression.has_value()) {
+      selected_web_frame->SendAttributionSrc(impression,
+                                             link_followed.IsValid());
+    }
+  }
+  ClearContextMenu();
+=======
 void ContextMenuController::ContextMenuClosed(const KURL& link_followed) {
   if (!link_followed.IsValid())
     return;
@@ -326,6 +385,7 @@ void ContextMenuController::ContextMenuClosed(const KURL& link_followed) {
     return;
 
   selected_web_frame->SendPings(link_followed);
+>>>>>>> chromium
 }
 
 static int ComputeEditFlags(Document& selected_document, Editor& editor) {
@@ -609,9 +669,7 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame,
       data.src_url = HitTestResult::AbsoluteImageURL(potential_image_node);
       data.media_type = mojom::blink::ContextMenuDataMediaType::kImage;
       data.media_flags |= ContextMenuData::kMediaCanPrint;
-      data.has_image_contents =
-          HitTestResult::GetImage(potential_image_node) &&
-          !HitTestResult::GetImage(potential_image_node)->IsNull();
+      data.has_image_contents = HitTestResult::GetImage(potential_image_node);
     }
   }
   // If it's not a link, an image, a media element, or an image/media link,
@@ -666,36 +724,50 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame,
         spell_checker.SelectMisspellingAsync();
     const String& misspelled_word = misspelled_word_and_description.first;
     if (misspelled_word.length()) {
+<<<<<<< HEAD
+      data.misspelled_word = WebString(misspelled_word).Utf16();
+=======
       data.misspelled_word =
           WebString::FromUTF8(misspelled_word.Utf8()).Utf16();
+>>>>>>> chromium
       const String& description = misspelled_word_and_description.second;
       if (description.length()) {
-        // Suggestions were cached for the misspelled word (won't be true for
-        // Hunspell, or Windows platform spellcheck if the
-        // kWinRetrieveSuggestionsOnlyOnDemand feature flag is set).
+        // Suggestions were cached for the misspelled word (not true for
+        // Hunspell or Windows platform spellcheck).
         Vector<String> suggestions;
         description.Split('\n', suggestions);
+<<<<<<< HEAD
+        data.dictionary_suggestions = base::ToVector(
+            suggestions, [](const String& s) { return WebString(s).Utf16(); });
+=======
         WebVector<std::u16string> web_suggestions(suggestions.size());
         std::transform(suggestions.begin(), suggestions.end(),
                        web_suggestions.begin(), [](const String& s) {
                          return WebString::FromUTF8(s.Utf8()).Utf16();
                        });
         data.dictionary_suggestions = web_suggestions.ReleaseVector();
+>>>>>>> chromium
       } else if (spell_checker.GetTextCheckerClient()) {
         // No suggestions cached for the misspelled word. Retrieve suggestions
         // for it (Windows platform spellchecker will do this later from
         // SpellingMenuObserver::InitMenu on the browser process side to avoid a
         // blocking IPC here).
         size_t misspelled_offset, misspelled_length;
-        WebVector<WebString> web_suggestions;
+        std::vector<WebString> suggestions;
         spell_checker.GetTextCheckerClient()->CheckSpelling(
             WebString::FromUTF16(data.misspelled_word), misspelled_offset,
+<<<<<<< HEAD
+            misspelled_length, &suggestions);
+        data.dictionary_suggestions =
+            base::ToVector(suggestions, &WebString::Utf16);
+=======
             misspelled_length, &web_suggestions);
         WebVector<std::u16string> suggestions(web_suggestions.size());
         std::transform(web_suggestions.begin(), web_suggestions.end(),
                        suggestions.begin(),
                        [](const WebString& s) { return s.Utf16(); });
         data.dictionary_suggestions = suggestions.ReleaseVector();
+>>>>>>> chromium
       }
     }
   }
@@ -717,7 +789,7 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame,
 
   if (menu_provider_) {
     // Filter out custom menu elements and add them into the data.
-    data.custom_items = menu_provider_->PopulateContextMenu().ReleaseVector();
+    data.custom_items = menu_provider_->PopulateContextMenu();
   }
 
   if (auto* anchor = DynamicTo<HTMLAnchorElement>(result.URLElement())) {
@@ -735,7 +807,15 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame,
       data.referrer_policy = network::mojom::ReferrerPolicy::kNever;
 
     data.link_text = anchor->innerText().Utf8();
+  }
 
+<<<<<<< HEAD
+  if (auto* anchor = DynamicTo<HTMLAnchorElementBase>(result.URLElement())) {
+    if (AttributionSrcLoader* attribution_src_loader =
+            selected_frame->GetAttributionSrcLoader()) {
+      data.impression = attribution_src_loader->PrepareContextMenuNavigation(
+          result.AbsoluteLinkURL(), anchor);
+=======
     if (anchor->HasImpression()) {
       absl::optional<WebImpression> web_impression =
           GetImpressionForAnchor(anchor);
@@ -744,6 +824,7 @@ bool ContextMenuController::ShowContextMenu(LocalFrame* frame,
               ? absl::optional<Impression>(
                     ConvertWebImpressionToImpression(web_impression.value()))
               : absl::nullopt;
+>>>>>>> chromium
     }
   }
 

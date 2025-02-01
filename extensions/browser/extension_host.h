@@ -51,6 +51,7 @@ class ExtensionHost : public DeferredStartRenderHost,
  public:
   ExtensionHost(const Extension* extension,
                 content::SiteInstance* site_instance,
+                content::BrowserContext* browser_context,
                 const GURL& url,
                 mojom::ViewType host_type);
   ~ExtensionHost() override;
@@ -159,11 +160,15 @@ class ExtensionHost : public DeferredStartRenderHost,
   // DeferredStartRenderHost:
   void CreateRendererNow() override;
 
+<<<<<<< HEAD
+  void MaybeNotifyRenderProcessReady();
+=======
   // Message handlers.
   void OnEventAck(int event_id);
   void OnIncrementLazyKeepaliveCount();
   void OnDecrementLazyKeepaliveCount();
 
+>>>>>>> chromium
   void NotifyRenderProcessReady();
 
   // Records UMA for load events.

@@ -85,6 +85,9 @@ GetSwitchDependentFeatureOverrides(const base::CommandLine& command_line) {
       {switches::kEnableExperimentalWebPlatformFeatures,
        std::cref(features::kPrefersColorSchemeClientHintHeader),
        base::FeatureList::OVERRIDE_ENABLE_FEATURE},
+      {switches::kEnableExperimentalWebPlatformFeatures,
+       std::cref(network::features::kStorageAccessHeaders),
+       base::FeatureList::OVERRIDE_ENABLE_FEATURE},
 
       // Overrides for --enable-experimental-cookie-features.
       {switches::kEnableExperimentalCookieFeatures,
@@ -100,7 +103,25 @@ GetSwitchDependentFeatureOverrides(const base::CommandLine& command_line) {
        std::cref(net::features::kSameSiteDefaultChecksMethodRigorously),
        base::FeatureList::OVERRIDE_ENABLE_FEATURE},
       {switches::kEnableExperimentalCookieFeatures,
+<<<<<<< HEAD
+       std::cref(net::features::kEnablePortBoundCookies),
+       base::FeatureList::OVERRIDE_ENABLE_FEATURE},
+      {switches::kEnableExperimentalCookieFeatures,
+       std::cref(net::features::kEnableSchemeBoundCookies),
+       base::FeatureList::OVERRIDE_ENABLE_FEATURE},
+      {switches::kEnableExperimentalCookieFeatures,
+       std::cref(net::features::kDisallowNonAsciiCookies),
+       base::FeatureList::OVERRIDE_ENABLE_FEATURE},
+
+      // Test behavior for third-party cookie phaseout.
+      {network::switches::kTestThirdPartyCookiePhaseout,
+       std::cref(net::features::kForceThirdPartyCookieBlocking),
+       base::FeatureList::OVERRIDE_ENABLE_FEATURE},
+      {network::switches::kTestThirdPartyCookiePhaseout,
+       std::cref(net::features::kThirdPartyStoragePartitioning),
+=======
        std::cref(net::features::kSchemefulSameSite),
+>>>>>>> chromium
        base::FeatureList::OVERRIDE_ENABLE_FEATURE},
 
       // Overrides for --isolation-by-default.

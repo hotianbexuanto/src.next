@@ -80,8 +80,49 @@ void DocumentFragment::ParseHTML(const String& source,
 bool DocumentFragment::ParseXML(const String& source,
                                 Element* context_element,
                                 ParserContentPolicy parser_content_policy) {
+<<<<<<< HEAD
+  return XMLDocumentParser::ParseDocumentFragment(
+      source, this, context_element, parser_content_policy, exception_state);
+}
+
+void DocumentFragment::ForgetChildren() {
+  DCHECK(HoldsUnnotifiedChildren());
+
+  if (!hasChildren()) {
+    return;
+  }
+
+  Node* next_child = firstChild();
+  do {
+    Node* child = next_child;
+    child->SetParentOrShadowHostNode(nullptr);
+    child->SetPreviousSibling(nullptr);
+    next_child = child->nextSibling();
+    child->SetNextSibling(nullptr);
+  } while (next_child);
+
+  SetFirstChild(nullptr);
+  SetLastChild(nullptr);
+}
+
+void DocumentFragment::Trace(Visitor* visitor) const {
+  visitor->Trace(document_part_root_);
+  ContainerNode::Trace(visitor);
+}
+
+DocumentPartRoot& DocumentFragment::getPartRoot() {
+  CHECK(RuntimeEnabledFeatures::DOMPartsAPIEnabled());
+  if (!document_part_root_) {
+    document_part_root_ = MakeGarbageCollected<DocumentPartRoot>(*this);
+    // We use the existence of the Document's part root to signal the existence
+    // of Parts. So retrieve it here.
+    GetDocument().getPartRoot();
+  }
+  return *document_part_root_;
+=======
   return XMLDocumentParser::ParseDocumentFragment(source, this, context_element,
                                                   parser_content_policy);
+>>>>>>> chromium
 }
 
 }  // namespace blink

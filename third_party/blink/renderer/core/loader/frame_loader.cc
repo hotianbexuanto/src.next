@@ -40,6 +40,11 @@
 #include <utility>
 
 #include "base/auto_reset.h"
+<<<<<<< HEAD
+#include "base/notreached.h"
+#include "base/trace_event/typed_macros.h"
+=======
+>>>>>>> chromium
 #include "base/unguessable_token.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
@@ -66,6 +71,11 @@
 #include "third_party/blink/renderer/core/events/page_transition_event.h"
 #include "third_party/blink/renderer/core/exported/web_document_loader_impl.h"
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/fetch/fetch_later_util.h"
+#include "third_party/blink/renderer/core/fragment_directive/text_fragment_anchor.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/csp/csp_source.h"
 #include "third_party/blink/renderer/core/frame/frame_console.h"
@@ -87,6 +97,10 @@
 #include "third_party/blink/renderer/core/loader/form_submission.h"
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/frame_loader_types.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/loader/idleness_detector.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/loader/mixed_content_checker.h"
 #include "third_party/blink/renderer/core/loader/progress_tracker.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
@@ -640,8 +654,16 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
     document_loader_->CommitSameDocumentNavigation(
         url, frame_load_type, nullptr, request.ClientRedirect(),
         resource_request.HasUserGesture(), origin_window->GetSecurityOrigin(),
+<<<<<<< HEAD
+        /*is_synchronously_committed=*/true, request.GetSourceElement(),
+        request.GetTriggeringEventInfo(), /*is_browser_initiated=*/false,
+        /*has_ua_visual_transition*/ false,
+        /*soft_navigation_heuristics_task_id=*/std::nullopt,
+        /*should_skip_screenshot=*/false);
+=======
         /*is_synchronously_committed=*/true, request.GetTriggeringEventInfo(),
         nullptr /* extra_data */);
+>>>>>>> chromium
     return;
   }
 
@@ -727,6 +749,17 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
     return;
   }
 
+  // https://whatpr.org/html/10903/d1c086a...0e0afb3/browsing-the-web.html#beginning-navigation
+  // If sourceDocument is navigable's container document, then reserve deferred
+  // fetch quota for navigable's container given url's origin.
+  if (IsFetchLaterUseDeferredFetchPolicyEnabled() && origin_window &&
+      origin_window->GetFrame() == frame_->Parent()) {
+    if (auto* owner = DynamicTo<HTMLFrameOwnerElement>(frame_->Owner());
+        owner) {
+      owner->UpdateDeferredFetchPolicy(url);
+    }
+  }
+
   if (frame_->IsMainFrame())
     LocalFrame::ConsumeTransientUserActivation(frame_);
 
@@ -764,6 +797,8 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
           ? CSPDisposition::DO_NOT_CHECK
           : CSPDisposition::CHECK;
 
+<<<<<<< HEAD
+=======
   // If this is a subframe load to a urn: URL, allow loading from a Web Bundle
   // attached to the parent document.
   if (url.Protocol() == "urn") {
@@ -775,6 +810,7 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
     }
   }
 
+>>>>>>> chromium
   Client()->BeginNavigation(
       resource_request, request.GetFrameType(), origin_window,
       nullptr /* document_loader */, navigation_type,
@@ -900,17 +936,15 @@ static void AssertCanNavigate(WebNavigationParams* params, LocalFrame* frame) {
   // If the server sends 204 or 205, this means the server does not want to
   // replace the page contents. However, PlzNavigate should have handled it
   // browser-side and never sent a commit request to the renderer.
-  if (status_code == 204 || status_code == 205)
-    CHECK(false);
+  CHECK_NE(status_code, 204);
+  CHECK_NE(status_code, 205);
 
   // If the server attached a Content-Disposition indicating that the resource
   // is an attachment, this is actually a download. However, PlzNavigate should
   // have handled it browser-side and never sent a commit request to the
   // renderer.
-  if (IsContentDispositionAttachment(
-          params->response.HttpHeaderField(http_names::kContentDisposition))) {
-    CHECK(false);
-  }
+  CHECK(!IsContentDispositionAttachment(
+      params->response.HttpHeaderField(http_names::kContentDisposition)));
 }
 
 void FrameLoader::CommitNavigation(

@@ -12,7 +12,12 @@
 #include <limits>
 
 #include "base/check_op.h"
+<<<<<<< HEAD
+#include "base/containers/span.h"
+#include "base/time/time.h"
+=======
 #include "base/strings/string_util.h"
+>>>>>>> chromium
 
 namespace base {
 
@@ -39,6 +44,36 @@ double RandDouble() {
   return BitsToOpenEndedUnitInterval(base::RandUint64());
 }
 
+<<<<<<< HEAD
+float RandFloat() {
+  return BitsToOpenEndedUnitIntervalF(base::RandUint64());
+}
+
+bool RandBool() {
+  uint8_t number;
+  RandBytes(span_from_ref(number));
+  return number & 1;
+}
+
+TimeDelta RandTimeDelta(TimeDelta start, TimeDelta limit) {
+  // We must have a finite, non-empty, non-reversed interval.
+  CHECK_LT(start, limit);
+  CHECK(!start.is_min());
+  CHECK(!limit.is_max());
+
+  const int64_t range = (limit - start).InMicroseconds();
+  // Because of the `CHECK_LT()` above, range > 0, so this cast is safe.
+  const uint64_t delta_us = base::RandGenerator(static_cast<uint64_t>(range));
+  // ...and because `range` fit in an `int64_t`, so will `delta_us`.
+  return start + Microseconds(static_cast<int64_t>(delta_us));
+}
+
+TimeDelta RandTimeDeltaUpTo(TimeDelta limit) {
+  return RandTimeDelta(TimeDelta(), limit);
+}
+
+=======
+>>>>>>> chromium
 double BitsToOpenEndedUnitInterval(uint64_t bits) {
   // We try to get maximum precision by masking out as many bits as will fit
   // in the target type's mantissa, and raising it to an appropriate power to
@@ -91,9 +126,13 @@ void InsecureRandomGenerator::SeedForTesting(uint64_t seed) {
   seeded_ = true;
 }
 
+<<<<<<< HEAD
+uint64_t InsecureRandomGenerator::RandUint64() const {
+=======
 uint64_t InsecureRandomGenerator::RandUint64() {
   DCHECK(seeded_);
 
+>>>>>>> chromium
   // Using XorShift128+, which is simple and widely used. See
   // https://en.wikipedia.org/wiki/Xorshift#xorshift+ for details.
   uint64_t t = a_;
@@ -108,7 +147,7 @@ uint64_t InsecureRandomGenerator::RandUint64() {
   return t + s;
 }
 
-uint32_t InsecureRandomGenerator::RandUint32() {
+uint32_t InsecureRandomGenerator::RandUint32() const {
   // The generator usually returns an uint64_t, truncate it.
   //
   // It is noted in this paper (https://arxiv.org/abs/1810.05313) that the
@@ -117,11 +156,52 @@ uint32_t InsecureRandomGenerator::RandUint32() {
   return this->RandUint64() >> 32;
 }
 
-double InsecureRandomGenerator::RandDouble() {
+double InsecureRandomGenerator::RandDouble() const {
   uint64_t x = RandUint64();
   // From https://vigna.di.unimi.it/xorshift/.
   // 53 bits of mantissa, hence the "hexadecimal exponent" 1p-53.
   return (x >> 11) * 0x1.0p-53;
 }
 
+<<<<<<< HEAD
+MetricsSubSampler::MetricsSubSampler() = default;
+bool MetricsSubSampler::ShouldSample(double probability) const {
+  if (g_subsampling_always_sample.load(std::memory_order_relaxed)) {
+    return true;
+  }
+  if (g_subsampling_never_sample.load(std::memory_order_relaxed)) {
+    return false;
+  }
+
+  return generator_.RandDouble() < probability;
+}
+
+MetricsSubSampler::ScopedAlwaysSampleForTesting::
+    ScopedAlwaysSampleForTesting() {
+  DCHECK(!g_subsampling_always_sample.load(std::memory_order_relaxed));
+  DCHECK(!g_subsampling_never_sample.load(std::memory_order_relaxed));
+  g_subsampling_always_sample.store(true, std::memory_order_relaxed);
+}
+
+MetricsSubSampler::ScopedAlwaysSampleForTesting::
+    ~ScopedAlwaysSampleForTesting() {
+  DCHECK(g_subsampling_always_sample.load(std::memory_order_relaxed));
+  DCHECK(!g_subsampling_never_sample.load(std::memory_order_relaxed));
+  g_subsampling_always_sample.store(false, std::memory_order_relaxed);
+}
+
+MetricsSubSampler::ScopedNeverSampleForTesting::ScopedNeverSampleForTesting() {
+  DCHECK(!g_subsampling_always_sample.load(std::memory_order_relaxed));
+  DCHECK(!g_subsampling_never_sample.load(std::memory_order_relaxed));
+  g_subsampling_never_sample.store(true, std::memory_order_relaxed);
+}
+
+MetricsSubSampler::ScopedNeverSampleForTesting::~ScopedNeverSampleForTesting() {
+  DCHECK(!g_subsampling_always_sample);
+  DCHECK(g_subsampling_never_sample);
+  g_subsampling_never_sample.store(false, std::memory_order_relaxed);
+}
+
+=======
+>>>>>>> chromium
 }  // namespace base

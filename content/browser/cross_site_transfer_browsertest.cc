@@ -296,8 +296,16 @@ IN_PROC_BROWSER_TEST_F(CrossSiteTransferTest, PostWithFileData) {
   run_loop.Run();
 
   // Remember the old process id for a sanity check below.
+<<<<<<< HEAD
+  int old_process_id = shell()
+                           ->web_contents()
+                           ->GetPrimaryMainFrame()
+                           ->GetProcess()
+                           ->GetDeprecatedID();
+=======
   int old_process_id =
       shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
+>>>>>>> chromium
 
   // Submit the form.
   TestNavigationObserver form_post_observer(shell()->web_contents(), 1);
@@ -310,8 +318,16 @@ IN_PROC_BROWSER_TEST_F(CrossSiteTransferTest, PostWithFileData) {
             shell()->web_contents()->GetLastCommittedURL());
 
   // Verify that the test really verifies access of a *new* renderer process.
+<<<<<<< HEAD
+  int new_process_id = shell()
+                           ->web_contents()
+                           ->GetPrimaryMainFrame()
+                           ->GetProcess()
+                           ->GetDeprecatedID();
+=======
   int new_process_id =
       shell()->web_contents()->GetMainFrame()->GetProcess()->GetID();
+>>>>>>> chromium
   ASSERT_NE(new_process_id, old_process_id);
 
   // MAIN VERIFICATION: Check if the new renderer process is able to read the
@@ -365,8 +381,14 @@ IN_PROC_BROWSER_TEST_F(CrossSiteTransferTest, MaliciousPostWithFileData) {
   // and |form_contents|.
   EXPECT_EQ(initial_target_url, target_contents->GetLastCommittedURL());
   EXPECT_EQ(form_url, form_contents->GetLastCommittedURL());
+<<<<<<< HEAD
+  EXPECT_NE(
+      target_contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID(),
+      form_contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID());
+=======
   EXPECT_NE(target_contents->GetMainFrame()->GetProcess()->GetID(),
             form_contents->GetMainFrame()->GetProcess()->GetID());
+>>>>>>> chromium
 
   // Prepare a file to upload.
   base::ScopedAllowBlockingForTesting allow_blocking;
@@ -389,16 +411,32 @@ IN_PROC_BROWSER_TEST_F(CrossSiteTransferTest, MaliciousPostWithFileData) {
   ChildProcessSecurityPolicyImpl* security_policy =
       ChildProcessSecurityPolicyImpl::GetInstance();
   EXPECT_TRUE(security_policy->CanReadFile(
+<<<<<<< HEAD
+      form_contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID(),
+      file_path));
+=======
       form_contents->GetMainFrame()->GetProcess()->GetID(), file_path));
+>>>>>>> chromium
 
   // Simulate a malicious situation, where the renderer doesn't really have
   // access to the file.
   security_policy->RevokeAllPermissionsForFile(
+<<<<<<< HEAD
+      form_contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID(),
+      file_path);
+  EXPECT_FALSE(security_policy->CanReadFile(
+      form_contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID(),
+      file_path));
+  EXPECT_FALSE(security_policy->CanReadFile(
+      target_contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID(),
+      file_path));
+=======
       form_contents->GetMainFrame()->GetProcess()->GetID(), file_path);
   EXPECT_FALSE(security_policy->CanReadFile(
       form_contents->GetMainFrame()->GetProcess()->GetID(), file_path));
   EXPECT_FALSE(security_policy->CanReadFile(
       target_contents->GetMainFrame()->GetProcess()->GetID(), file_path));
+>>>>>>> chromium
 
   // Submit the form and wait until the malicious renderer gets killed.
   RenderProcessHostBadIpcMessageWaiter kill_waiter(
@@ -416,9 +454,17 @@ IN_PROC_BROWSER_TEST_F(CrossSiteTransferTest, MaliciousPostWithFileData) {
 
   // Both processes still shouldn't have access.
   EXPECT_FALSE(security_policy->CanReadFile(
+<<<<<<< HEAD
+      form_contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID(),
+      file_path));
+  EXPECT_FALSE(security_policy->CanReadFile(
+      target_contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID(),
+      file_path));
+=======
       form_contents->GetMainFrame()->GetProcess()->GetID(), file_path));
   EXPECT_FALSE(security_policy->CanReadFile(
       target_contents->GetMainFrame()->GetProcess()->GetID(), file_path));
+>>>>>>> chromium
 }
 
 // Regression test for https://crbug.com/538784 -- ensures that one can't

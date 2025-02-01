@@ -45,9 +45,13 @@ class BASE_EXPORT Token {
 
   constexpr bool is_zero() const { return high_ == 0 && low_ == 0; }
 
+<<<<<<< HEAD
+  span<const uint8_t, 16> AsBytes() const { return as_byte_span(words_); }
+=======
   constexpr bool operator==(const Token& other) const {
     return high_ == other.high_ && low_ == other.low_;
   }
+>>>>>>> chromium
 
   constexpr bool operator!=(const Token& other) const {
     return !(*this == other);

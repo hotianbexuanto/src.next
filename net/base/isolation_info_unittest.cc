@@ -187,7 +187,8 @@ TEST_F(IsolationInfoTest, RequestTypeOtherWithEmptySiteForCookies) {
 }
 
 TEST_F(IsolationInfoTest, CreateTransient) {
-  IsolationInfo isolation_info = IsolationInfo::CreateTransient();
+  IsolationInfo isolation_info =
+      IsolationInfo::CreateTransient(/*nonce=*/std::nullopt);
   EXPECT_EQ(IsolationInfo::RequestType::kOther, isolation_info.request_type());
   EXPECT_TRUE(isolation_info.top_frame_origin()->opaque());
   EXPECT_TRUE(isolation_info.frame_origin()->opaque());
@@ -204,8 +205,13 @@ TEST_F(IsolationInfoTest, CreateTransient) {
   EXPECT_TRUE(isolation_info.IsEqualForTesting(redirected_isolation_info));
 }
 
+<<<<<<< HEAD
+TEST_F(IsolationInfoTest, CreateTransientWithNonce) {
+  IsolationInfo isolation_info = IsolationInfo::CreateTransient(kNonce1);
+=======
 TEST_F(IsolationInfoTest, CreateOpaqueAndNonTransient) {
   IsolationInfo isolation_info = IsolationInfo::CreateOpaqueAndNonTransient();
+>>>>>>> chromium
   EXPECT_EQ(IsolationInfo::RequestType::kOther, isolation_info.request_type());
   EXPECT_TRUE(isolation_info.top_frame_origin()->opaque());
   EXPECT_TRUE(isolation_info.frame_origin()->opaque());
@@ -223,6 +229,18 @@ TEST_F(IsolationInfoTest, CreateOpaqueAndNonTransient) {
   IsolationInfo redirected_isolation_info =
       isolation_info.CreateForRedirect(kOrigin3);
   EXPECT_TRUE(isolation_info.IsEqualForTesting(redirected_isolation_info));
+<<<<<<< HEAD
+
+  IsolationInfo new_info_same_nonce = IsolationInfo::CreateTransient(kNonce1);
+  ASSERT_TRUE(new_info_same_nonce.nonce().has_value());
+  EXPECT_EQ(new_info_same_nonce.nonce().value(), kNonce1);
+
+  // The new NIK is distinct from the first one because it uses a new opaque
+  // origin, even if the nonce is the same.
+  EXPECT_NE(isolation_info.network_isolation_key(),
+            new_info_same_nonce.network_isolation_key());
+=======
+>>>>>>> chromium
 }
 
 TEST_F(IsolationInfoTest, CreateForInternalRequest) {
@@ -473,6 +491,23 @@ TEST_F(IsolationInfoTest, CreateForRedirectPartyContext) {
         isolation_info.CreateForRedirect(kOrigin3);
     EXPECT_EQ(kPartyContextEmpty, redirected_isolation_info.party_context());
   }
+<<<<<<< HEAD
+
+  const IsolationInfo kNegativeTestCases[] = {
+      IsolationInfo::CreateTransient(/*nonce=*/std::nullopt),
+      // With nonce (i.e transient).
+      IsolationInfo::Create(IsolationInfo::RequestType::kSubFrame, kOrigin1,
+                            kOrigin2, SiteForCookies::FromOrigin(kOrigin1),
+                            kNonce1),
+      // With an opaque frame origin. The opaque frame site will cause it to be
+      // considered transient and fail to serialize.
+      IsolationInfo::Create(IsolationInfo::RequestType::kSubFrame, kOrigin1,
+                            url::Origin(),
+                            SiteForCookies::FromOrigin(kOrigin1)),
+  };
+  for (const auto& info : kNegativeTestCases) {
+    EXPECT_TRUE(info.Serialize().empty());
+=======
   // RequestTypeSubFrame, PartyContext is empty
   {
     IsolationInfo isolation_info = IsolationInfo::Create(
@@ -499,6 +534,7 @@ TEST_F(IsolationInfoTest, CreateForRedirectPartyContext) {
     IsolationInfo redirected_isolation_info =
         isolation_info.CreateForRedirect(kOrigin3);
     EXPECT_EQ(kPartyContext2, redirected_isolation_info.party_context());
+>>>>>>> chromium
   }
 }
 

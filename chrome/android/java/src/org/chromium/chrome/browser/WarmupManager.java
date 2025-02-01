@@ -48,7 +48,7 @@ import java.util.Set;
  * This class is a singleton that holds utilities for warming up Chrome and prerendering urls
  * without creating the Activity.
  *
- * This class is not thread-safe and must only be used on the UI thread.
+ * <p>This class is not thread-safe and must only be used on the UI thread.
  */
 public class WarmupManager {
     private static final String TAG = "WarmupManager";
@@ -102,7 +102,232 @@ public class WarmupManager {
     WebContents mSpareWebContents;
     private long mWebContentsCreationTimeMs;
     private RenderProcessGoneObserver mObserver;
+<<<<<<< HEAD
+    private boolean mIsCctPrewarmTabEnabled;
+
+    // Stores a prebuilt tab. To load a URL, this can be used if available instead of creating one
+    // from scratch.
+    @VisibleForTesting Tab mSpareTab;
+
+    /**
+     * Represents various states of spareTab.
+     *
+     * These values are persisted to logs. Entries should not be renumbered and
+     * numeric values should never be reused. See tools/metrics/histograms/enums.xml.
+     */
+    @IntDef({
+        SpareTabFinalStatus.TAB_CREATED_BUT_NOT_USED,
+        SpareTabFinalStatus.TAB_CREATION_IN_PROGRESS,
+        SpareTabFinalStatus.TAB_USED,
+        SpareTabFinalStatus.TAB_CRASHED,
+        SpareTabFinalStatus.TAB_DESTROYED,
+        SpareTabFinalStatus.NUM_ENTRIES
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface SpareTabFinalStatus {
+        int TAB_CREATED_BUT_NOT_USED = 0;
+        int TAB_CREATION_IN_PROGRESS = 1;
+        int TAB_USED = 2;
+        int TAB_CRASHED = 3;
+        int TAB_DESTROYED = 4;
+        int NUM_ENTRIES = 5;
+    }
+
+    @SpareTabFinalStatus int mSpareTabFinalStatus;
+
+    /**
+     * Records the spareTab final status.
+     * @param status Status to be recorded in the enumerated histogram.
+     */
+    private void recordSpareTabFinalStatusHistogram(@SpareTabFinalStatus int status) {
+        RecordHistogram.recordEnumeratedHistogram(
+                "Android.SpareTab.FinalStatus", status, SpareTabFinalStatus.NUM_ENTRIES);
+    }
+
+    /** Destroys the spare Tab if there is one and sets mSpareTab to null. */
+    public void destroySpareTab() {
+        try (TraceEvent e = TraceEvent.scoped("WarmupManager.destroySpareTab")) {
+            ThreadUtils.assertOnUiThread();
+
+            mSpareTabFinalStatus = SpareTabFinalStatus.TAB_DESTROYED;
+            destroySpareTabInternal(null);
+        }
+    }
+
+    private void destroySpareTabInternal(Tab tab) {
+        // Don't do anything if the spare tab doesn't exist.
+        if (mSpareTab == null) return;
+
+        if (tab != null && tab != mSpareTab) return;
+
+        // Record the SpareTabFinalStatus once its destroyed.
+        recordSpareTabFinalStatusHistogram(mSpareTabFinalStatus);
+
+        mSpareTab.destroy();
+        mSpareTab = null;
+    }
+
+    /**
+     * Creates and initializes a Regular (non-Incognito) spare Tab, to be used for a subsequent
+     * navigation.
+     *
+     * <p>This creates a WebContents and initializes renderer if SPARE_TAB_INITIALIZE_RENDERER is
+     * true. Can be called multiple times, and must be called from the UI thread.
+     *
+     * <p>The tab's launch type will be set when the tab is used.
+     */
+    public void createRegularSpareTab(Profile profile) {
+        createRegularSpareTab(profile, /* webContents= */ null);
+    }
+
+    /**
+     * Creates and initializes a Regular (non-Incognito) spare Tab, to be used for a subsequent
+     * navigation.
+     *
+     * <p>This creates a WebContents and initializes renderer if SPARE_TAB_INITIALIZE_RENDERER is
+     * true. Can be called multiple times, and must be called from the UI thread.
+     *
+     * <p>The tab's launch type will be set when the tab is used.
+     *
+     * <p>* @param webContents The {@link WebContents} to use in the tab. If null the default is
+     * used.
+     */
+    public void createRegularSpareTab(Profile profile, @Nullable WebContents webContents) {
+        ThreadUtils.assertOnUiThread();
+        assert !profile.isOffTheRecord();
+        try (TraceEvent e = TraceEvent.scoped("WarmupManager.createSpareTab")) {
+            mSpareTabFinalStatus = SpareTabFinalStatus.TAB_CREATION_IN_PROGRESS;
+
+            // Ensure native is initialized before creating spareTab.
+            assert LibraryLoader.getInstance().isInitialized();
+
+            if (mSpareTab != null) return;
+
+            // Build a spare detached tab.
+            Tab spareTab = buildDetachedSpareTab(profile, webContents);
+
+            mSpareTab = spareTab;
+            assert mSpareTab != null : "Building a spare detached tab shouldn't return null.";
+
+            mSpareTabFinalStatus = SpareTabFinalStatus.TAB_CREATED_BUT_NOT_USED;
+        }
+
+        if (mSpareTab != null) {
+            mSpareTab.addObserver(new HiddenTabObserver(mSpareTab.getWindowAndroid()));
+        }
+    }
+
+    /**
+     * Creates an instance of a {@link Tab} that is fully detached from any activity.
+     *
+     * <p>Also performs general tab initialization as well as detached specifics.
+     *
+     * @param webContents The {@link WebContents} to use in the tab. If null the default is used.
+     * @return The newly created and initialized spare tab.
+     *     <p>TODO(crbug.com/40255340): Adapt this method to create other tabs.
+     */
+    private Tab buildDetachedSpareTab(Profile profile, @Nullable WebContents webContents) {
+        Context context = ContextUtils.getApplicationContext();
+
+        // These are effectively unused as they will be set when finishing reparenting.
+        TabDelegateFactory delegateFactory = CustomTabDelegateFactory.createEmpty();
+        WindowAndroid window = new WindowAndroid(context, /* trackOcclusion= */ false);
+
+        // TODO(crbug.com/40174356): Set isIncognito flag here if spare tabs are allowed for
+        // incognito mode.
+        // Creates a tab with renderer initialized for spareTab. See https://crbug.com/1412572.
+        Tab tab =
+                TabBuilder.createLiveTab(profile, true)
+                        .setWindow(window)
+                        .setLaunchType(TabLaunchType.UNSET)
+                        .setDelegateFactory(delegateFactory)
+                        .setInitiallyHidden(true)
+                        .setInitializeRenderer(true)
+                        .setWebContents(webContents)
+                        .build();
+
+        // Resize the webContents to avoid expensive post load resize when attaching the tab.
+        Rect bounds = TabUtils.estimateContentSize(context);
+        int width = bounds.right - bounds.left;
+        int height = bounds.bottom - bounds.top;
+        tab.getWebContents().setSize(width, height);
+
+        // Reparent the tab to detach it from the current activity.
+        ReparentingTask.from(tab).detach();
+        return tab;
+    }
+
+    /**
+     * Returns the spare Tab. Must only be called when a spare tab is available for |profile|.
+     *
+     * @param profile the profile associated with the spare Tab.
+     * @param type TabLaunchType of the requested tab.
+     * @return the spare Tab.
+     */
+    public Tab takeSpareTab(Profile profile, boolean initiallyHidden, @TabLaunchType int type) {
+        ThreadUtils.assertOnUiThread();
+        try (TraceEvent e = TraceEvent.scoped("WarmupManager.takeSpareTab")) {
+            if (mSpareTab.getProfile() != profile) {
+                throw new RuntimeException("Attempted to take the tab from another profile.");
+            }
+
+            Tab spareTab = mSpareTab;
+            mSpareTab = null;
+
+            spareTab.setTabLaunchType(type);
+            mSpareTabFinalStatus = SpareTabFinalStatus.TAB_USED;
+
+            if (!initiallyHidden) {
+                spareTab.getWebContents().updateWebContentsVisibility(Visibility.VISIBLE);
+            }
+
+            // Record the SpareTabFinalStatus once its used.
+            recordSpareTabFinalStatusHistogram(mSpareTabFinalStatus);
+            return spareTab;
+        }
+    }
+
+    /**
+     * @param targetsNetwork whether the activity/tab associated with this WebContents targets a
+     *     network (supported only by multi-network CCT, see @{link
+     *     BrowserServicesIntentDataProvider#getTargetNetwork).
+     * @return Whether a spare tab is available for the given profile.
+     */
+    public boolean hasSpareTab(Profile profile, boolean targetsNetwork) {
+        // Spare Tabs are not supported for multi-network CCT. In this case it's better to
+        // always create Tabs from scratch, otherwise we might break the "WebContents
+        // associated with a CCT tab targeting a network will always have
+        // WebContents::GetTargetNetwork == that target network" invariant (see
+        // WebContentsImpl::CreateWithOpener for more info).
+        if (targetsNetwork) return false;
+        if (mSpareTab == null) return false;
+        return mSpareTab.getProfile() == profile;
+    }
+
+    /**
+     * @param tab Tab to compare with SpareTab with.
+     * @return Returns true if tab is same as spare tab.
+     */
+    public boolean isSpareTab(Tab tab) {
+        if (mSpareTab == null) return false;
+
+        assert mSpareTab.isHidden() : "Spare tab is not hidden";
+        return mSpareTab == tab;
+    }
+
+    public static void deInitForTesting() {
+        sWarmupManager = null;
+    }
+
+    /** Removes the singleton instance for the WarmupManager for testing. */
+    public static void setInstanceForTesting(WarmupManager instance) {
+        var oldValue = sWarmupManager;
+        sWarmupManager = instance;
+        ResettersForTesting.register(() -> sWarmupManager = oldValue);
+    }
+=======
     private boolean mWebContentsCreatedForCCT;
+>>>>>>> chromium
 
     /**
      * @return The singleton instance for the WarmupManager, creating one if necessary.
@@ -132,6 +357,39 @@ public class WarmupManager {
         mToolbarContainerId = toolbarContainerId;
     }
 
+<<<<<<< HEAD
+    @VisibleForTesting
+    static Context applyContextOverrides(Context baseContext) {
+        // Scale up the UI for the base Context on automotive
+        if (BuildInfo.getInstance().isAutomotive) {
+            Configuration config = new Configuration();
+            DisplayUtil.scaleUpConfigurationForAutomotive(baseContext, config);
+            return baseContext.createConfigurationContext(config);
+        }
+
+        return baseContext;
+    }
+
+    static void applyThemeOverlays(Context context) {
+        // TODO(twellington): Look at improving code sharing with ChromeBaseAppCompatActivity
+        // if the number of these overlays grows. The two below are experimental / are planned to be
+        // removed by mid 2025 or sooner.
+        // TODO(https://crbug.com/392634251): Explore setting elegantTextHeight to 'true' on older
+        // OS versions.
+        if (ChromeFeatureList.sAndroidElegantTextHeight.isEnabled()
+                && Build.VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
+            int elegantTextHeightOverlay = R.style.ThemeOverlay_BrowserUI_ElegantTextHeight;
+            context.getTheme().applyStyle(elegantTextHeightOverlay, true);
+        }
+
+        if (Build.VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
+            context.getTheme()
+                    .applyStyle(R.style.ThemeOverlay_BrowserUI_DefaultFontFamilyThemeOverlay, true);
+        }
+    }
+
+=======
+>>>>>>> chromium
     /**
      * Inflates and constructs the view hierarchy that the app will use.
      * Calls to this are not restricted to the UI thread.
@@ -313,6 +571,16 @@ public class WarmupManager {
         ThreadUtils.assertOnUiThread();
         if (!LibraryLoader.getInstance().isInitialized() || mSpareWebContents != null) return;
 
+<<<<<<< HEAD
+            mSpareWebContents =
+                    WebContentsFactory.createWebContentsWithWarmRenderer(
+                            profile,
+                            /* initiallyHidden= */ true,
+                            /* targetNetwork= */ NetId.INVALID);
+            mObserver = new RenderProcessGoneObserver();
+            mObserver.observe(mSpareWebContents);
+        }
+=======
         mWebContentsCreatedForCCT = forCCT;
         mSpareWebContents = new WebContentsFactory().createWebContentsWithWarmRenderer(
                 Profile.getLastUsedRegularProfile(), true /* initiallyHidden */);
@@ -320,6 +588,7 @@ public class WarmupManager {
         mSpareWebContents.addObserver(mObserver);
         mWebContentsCreationTimeMs = SystemClock.elapsedRealtime();
         recordWebContentsStatus(WebContentsStatus.CREATED);
+>>>>>>> chromium
     }
 
     /**
@@ -341,6 +610,26 @@ public class WarmupManager {
      * @return a WebContents, or null.
      */
     public WebContents takeSpareWebContents(
+<<<<<<< HEAD
+            boolean incognito, boolean initiallyHidden, boolean targetsNetwork) {
+        try (TraceEvent e = TraceEvent.scoped("WarmupManager.takeSpareWebContents")) {
+            ThreadUtils.assertOnUiThread();
+            if (incognito) return null;
+            // Spare WebContents are not supported for multi-network CCT. In this case it's better
+            // to always create WebContents from scratch, otherwise we might break the "WebContents
+            // associated with a CCT tab targeting a network will always have
+            // WebContents::GetTargetNetwork == that target network" invariant (see
+            // WebContentsImpl::CreateWithOpener for more info).
+            if (targetsNetwork) return null;
+            WebContents result = mSpareWebContents;
+            if (result == null) return null;
+            mSpareWebContents = null;
+            mObserver.observe(null);
+            mObserver = null;
+            if (!initiallyHidden) result.updateWebContentsVisibility(Visibility.VISIBLE);
+            return result;
+        }
+=======
             boolean incognito, boolean initiallyHidden, boolean forCCT) {
         ThreadUtils.assertOnUiThread();
         if (incognito) return null;
@@ -353,6 +642,7 @@ public class WarmupManager {
         recordWebContentsStatus(mWebContentsCreatedForCCT == forCCT ? WebContentsStatus.USED
                                                                     : WebContentsStatus.STOLEN);
         return result;
+>>>>>>> chromium
     }
 
     /**
@@ -363,7 +653,7 @@ public class WarmupManager {
     }
 
     private void destroySpareWebContentsInternal() {
-        mSpareWebContents.removeObserver(mObserver);
+        mObserver.observe(null);
         mSpareWebContents.destroy();
         mSpareWebContents = null;
         mObserver = null;

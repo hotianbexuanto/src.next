@@ -17,7 +17,15 @@ import("//tools/grit/repack.gni")
 assert(!is_ios, "Chromium/iOS shouldn't use anything in //chrome")
 
 group("resources") {
+<<<<<<< HEAD
+  public_deps = [
+    "data_sharing_internals:resources",
+    "saved_tab_groups_unsupported:resources",
+    "segmentation_internals:resources",
+  ]
+=======
   public_deps = []
+>>>>>>> chromium
 
   if (!is_android) {
     public_deps += [
@@ -33,9 +41,17 @@ group("resources") {
       "feedback_webui:resources",
       "gaia_auth_host:resources",
       "history:resources",
+<<<<<<< HEAD
+      "inspect:resources",
+      "key_value_pair_viewer_shared:resources",
+      "lens/overlay:resources",
+      "lens/shared:resources",
+=======
+>>>>>>> chromium
       "management:resources",
       "memories:resources",
       "new_tab_page:resources",
+      "new_tab_page/untrusted:resources",
       "new_tab_page_instant:resources",
       "new_tab_page_third_party:resources",
       "read_later:resources",
@@ -44,7 +60,11 @@ group("resources") {
       "whats_new:resources",
     ]
     if (is_chrome_branded) {
+<<<<<<< HEAD
+      public_deps += [ "media_router/cast_feedback:resources" ]
+=======
       public_deps += [ "media_router:cast_feedback_ui_resources" ]
+>>>>>>> chromium
     }
   }
 
@@ -68,22 +88,66 @@ group("resources") {
     ]
   }
 
-  if (is_win || is_mac || is_linux || is_chromeos_lacros) {
-    public_deps += [ "browser_switch:resources" ]
+<<<<<<< HEAD
+  if (enable_extensions) {
+    public_deps += [ "accessibility:reading_mode_gdocs_extension_resources" ]
   }
 
-  if (is_linux || is_chromeos) {
-    public_deps += [ "webui_js_error:resources" ]
+  if (is_mac) {
+    public_deps += [
+      "//chrome/browser/resources/media/mei_preload:component",
+      "//components/privacy_sandbox/privacy_sandbox_attestations/preload:component",
+    ]
+  }
+
+  if (is_win || is_mac || is_linux || is_chromeos_ash) {
+    public_deps += [ "connectors_internals:resources" ]
+  }
+
+  if (is_chromeos) {
+    public_deps += [ "chromeos/dlp_internals:resources" ]
+  }
+
+  if (is_win || is_mac || is_linux || is_chromeos) {
+    public_deps += [ "discards:resources" ]
+  }
+
+  if (is_win || is_mac || is_linux) {
+    public_deps += [
+      "app_home:resources",
+      "app_settings:resources",
+      "browser_switch:resources",
+      "on_device_translation_internals:resources",
+      "tts_engine:resources",
+    ]
+=======
+  if (is_win || is_mac || is_linux || is_chromeos_lacros) {
+    public_deps += [ "browser_switch:resources" ]
+>>>>>>> chromium
   }
 
   if (!is_android && !is_chromeos_ash) {
     public_deps += [
       "ntp4:apps_resources",
       "signin/profile_picker:resources",
-      "welcome:resources",
     ]
   }
 
+<<<<<<< HEAD
+  if (enable_dice_support) {
+    public_deps += [
+      "intro:resources",
+      "signin/batch_upload:resources",
+      "signin/signout_confirmation:resources",
+    ]
+  }
+
+  if (enable_webui_tab_strip) {
+    public_deps += [ "tab_strip:resources" ]
+  }
+
+=======
+>>>>>>> chromium
   if (enable_extensions) {
     public_deps += [
       "extensions:resources",
@@ -96,8 +160,27 @@ group("resources") {
   }
 
   if (enable_print_preview) {
-    public_deps += [ "print_preview:resources" ]
+    if (is_chromeos) {
+      public_deps += [ "ash/print_preview:resources" ]
+    } else {
+      public_deps += [ "print_preview:resources" ]
+    }
   }
+<<<<<<< HEAD
+
+  if (enable_webui_certificate_viewer) {
+    public_deps += [ "certificate_viewer:resources" ]
+  }
+
+  if (enable_compose) {
+    public_deps += [ "compose:resources" ]
+  }
+
+  if (enable_glic) {
+    public_deps += [ "glic:resources" ]
+  }
+=======
+>>>>>>> chromium
 }
 
 if (enable_js_type_check) {
@@ -201,6 +284,19 @@ if (!is_android) {
       defines += [ "enable_hangout_services_extension" ]
     }
 
+<<<<<<< HEAD
+    # Some resources within component_extension_resources.grd are generated at
+    # build time so we include them as explicit dependencies here
+    if (is_chromeos) {
+      deps = [
+        "chromeos/accessibility/braille_ime:ts_build",
+        "chromeos/contact_center_insights:generate_ccaas_deps",
+        "chromeos/desk_api:generate_desk_api_bundle",
+      ]
+    }
+
+=======
+>>>>>>> chromium
     outputs = [
       "grit/component_extension_resources.h",
       "grit/component_extension_resources_map.cc",
@@ -237,9 +333,47 @@ if (!is_android) {
   }
 }
 
+<<<<<<< HEAD
+group("dev_ui_resources") {
+  public_deps = [
+    "accessibility:resources",
+    "bluetooth_internals:resources",
+    "browsing_topics:resources",
+    "components:resources",
+    "device_log:resources",
+    "engagement:resources",
+    "family_link_user_internals:resources",
+    "location_internals:resources",
+    "media:resources",
+    "memory_internals:resources",
+    "net_internals:resources",
+    "omnibox:resources",
+    "predictors:resources",
+    "privacy_sandbox/internals:resources",
+    "usb_internals:resources",
+    "//components/commerce/core/internals/resources",
+    "//components/download/resources/download_internals:resources",
+    "//components/history_clusters/history_clusters_internals/resources",
+    "//components/metrics/debug:resources",
+    "//components/ntp_tiles/webui/resources:resources",
+    "//components/optimization_guide/optimization_guide_internals/resources",
+    "//components/policy/resources/webui:resources",
+    "//components/resources:dev_ui_components_resources",
+    "//components/signin/core/browser/resources",
+    "//components/sync/service/resources",
+    "//components/ukm/debug:resources",
+    "//content/browser/resources/gpu:resources",
+    "//content/browser/resources/media:resources",
+    "//content/browser/resources/net:resources",
+    "//content/browser/resources/process:resources",
+    "//content/browser/resources/service_worker:resources",
+    "//content/browser/webrtc/resources",
+  ]
+=======
 if (is_chromeos_ash) {
   grit("bluetooth_pairing_dialog_resources") {
     defines = chrome_grit_defines
+>>>>>>> chromium
 
     # These arguments are needed since the grd is generated at build time.
     enable_input_discovery_for_gn_analyze = false
@@ -248,12 +382,21 @@ if (is_chromeos_ash) {
     deps = [
       "//chrome/browser/resources/chromeos/bluetooth_pairing_dialog:build_grd",
     ]
+<<<<<<< HEAD
+  } else {
+    public_deps += [
+      "media_router/internals:resources",
+      "on_device_internals:resources",
+      "user_education_internals:resources",
+      "webui_js_error:resources",
+=======
 
     outputs = [
       "grit/bluetooth_pairing_dialog_resources.h",
       "grit/bluetooth_pairing_dialog_resources_map.cc",
       "grit/bluetooth_pairing_dialog_resources_map.h",
       "bluetooth_pairing_dialog_resources.pak",
+>>>>>>> chromium
     ]
     output_dir = "$root_gen_dir/chrome"
   }
@@ -306,18 +449,41 @@ repack("dev_ui_paks") {
 
   sources = [
     "$root_gen_dir/chrome/bluetooth_internals_resources.pak",
+<<<<<<< HEAD
+    "$root_gen_dir/chrome/browsing_topics_internals_resources.pak",
+    "$root_gen_dir/chrome/components_resources.pak",
+    "$root_gen_dir/chrome/device_log_resources.pak",
+    "$root_gen_dir/chrome/engagement_resources.pak",
+    "$root_gen_dir/chrome/family_link_user_internals_resources.pak",
+    "$root_gen_dir/chrome/location_internals_resources.pak",
+    "$root_gen_dir/chrome/media_resources.pak",
+    "$root_gen_dir/chrome/memory_internals_resources.pak",
+=======
     "$root_gen_dir/chrome/dev_ui_browser_resources.pak",
     "$root_gen_dir/chrome/download_internals_resources.pak",
     "$root_gen_dir/chrome/floc_internals_resources.pak",
     "$root_gen_dir/chrome/internals_resources.pak",
     "$root_gen_dir/chrome/invalidations_resources.pak",
+>>>>>>> chromium
     "$root_gen_dir/chrome/net_internals_resources.pak",
     "$root_gen_dir/chrome/omnibox_resources.pak",
     "$root_gen_dir/chrome/quota_internals_resources.pak",
     "$root_gen_dir/chrome/usb_internals_resources.pak",
     "$root_gen_dir/chrome/webrtc_logs_resources.pak",
     "$root_gen_dir/components/dev_ui_components_resources.pak",
+<<<<<<< HEAD
+    "$root_gen_dir/components/download_internals_resources.pak",
+    "$root_gen_dir/components/history_clusters_internals_resources.pak",
+    "$root_gen_dir/components/metrics_internals_resources.pak",
+    "$root_gen_dir/components/ntp_tiles_internals_resources.pak",
+    "$root_gen_dir/components/optimization_guide_internals_resources.pak",
+    "$root_gen_dir/components/policy_resources.pak",
+    "$root_gen_dir/components/signin_internals_resources.pak",
+    "$root_gen_dir/components/sync_service_sync_internals_resources.pak",
+    "$root_gen_dir/components/ukm_resources.pak",
+=======
     "$root_gen_dir/components/sync_driver_sync_internals_resources.pak",
+>>>>>>> chromium
     "$root_gen_dir/content/browser/resources/media/media_internals_resources.pak",
     "$root_gen_dir/content/browser/webrtc/resources/webrtc_internals_resources.pak",
     "$root_gen_dir/content/dev_ui_content_resources.pak",
@@ -342,6 +508,19 @@ repack("dev_ui_paks") {
   ]
 
   if (is_android) {
+<<<<<<< HEAD
+    sources += [
+      "$root_gen_dir/chrome/feed_internals_resources.pak",
+      "$root_gen_dir/chrome/webapks_resources.pak",
+    ]
+  } else {
+    sources += [
+      "$root_gen_dir/chrome/media_router_internals_resources.pak",
+      "$root_gen_dir/chrome/on_device_internals_resources.pak",
+      "$root_gen_dir/chrome/user_education_internals_resources.pak",
+      "$root_gen_dir/chrome/webui_js_error_resources.pak",
+    ]
+=======
     sources += [ "$root_gen_dir/chrome/webapks_resources.pak" ]
     deps += [ "//chrome/browser/resources/webapks:resources" ]
   }
@@ -374,5 +553,6 @@ if (!is_android && include_js_tests) {
   source_set("browser_tests_js") {
     testonly = true
     deps = [ ":resources_unitjs_tests" ]
+>>>>>>> chromium
   }
 }

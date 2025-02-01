@@ -318,10 +318,17 @@ void WebRemoteFrameImpl::InitializeFrameVisualProperties(
   visual_properties.screen_info = ancestor_widget->GetOriginalScreenInfo();
   visual_properties.visible_viewport_size =
       ancestor_widget->VisibleViewportSizeInDIPs();
+<<<<<<< HEAD
+  const std::vector<gfx::Rect>& viewport_segments =
+      ancestor_widget->ViewportSegments();
+  visual_properties.root_widget_viewport_segments.assign(
+      viewport_segments.begin(), viewport_segments.end());
+=======
   const WebVector<gfx::Rect>& window_segments =
       ancestor_widget->WindowSegments();
   visual_properties.root_widget_window_segments.assign(window_segments.begin(),
                                                        window_segments.end());
+>>>>>>> chromium
   GetFrame()->InitializeFrameVisualProperties(visual_properties);
 }
 
@@ -397,8 +404,13 @@ void WebRemoteFrameImpl::SetHadStickyUserActivationBeforeNavigation(
 
 v8::Local<v8::Object> WebRemoteFrameImpl::GlobalProxy() const {
   return GetFrame()
+<<<<<<< HEAD
+      ->GetWindowProxy(DOMWrapperWorld::MainWorld(isolate))
+      ->GetGlobalProxy();
+=======
       ->GetWindowProxy(DOMWrapperWorld::MainWorld())
       ->GlobalProxyIfNotDetached();
+>>>>>>> chromium
 }
 
 gfx::Rect WebRemoteFrameImpl::GetCompositingRect() {

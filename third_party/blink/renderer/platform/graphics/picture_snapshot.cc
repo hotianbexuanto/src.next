@@ -31,7 +31,12 @@
 #include "third_party/blink/renderer/platform/graphics/picture_snapshot.h"
 
 #include <memory>
+<<<<<<< HEAD
+
+#include "base/time/time.h"
+=======
 #include "third_party/blink/renderer/platform/geometry/int_size.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/graphics/logging_canvas.h"
 #include "third_party/blink/renderer/platform/graphics/profiling_canvas.h"
 #include "third_party/blink/renderer/platform/graphics/replaying_canvas.h"
@@ -44,6 +49,13 @@
 
 #include "third_party/skia/include/core/SkImage.h"
 #include "third_party/skia/include/core/SkPictureRecorder.h"
+<<<<<<< HEAD
+#include "third_party/skia/include/encode/SkPngEncoder.h"
+#include "ui/gfx/geometry/rect_f.h"
+#include "ui/gfx/geometry/size.h"
+#include "ui/gfx/geometry/skia_conversions.h"
+=======
+>>>>>>> chromium
 
 namespace blink {
 

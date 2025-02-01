@@ -9,6 +9,12 @@ import android.text.TextUtils;
 
 import androidx.annotation.VisibleForTesting;
 
+<<<<<<< HEAD
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
+
+=======
+>>>>>>> chromium
 import org.chromium.base.ContextUtils;
 import org.chromium.base.TimeUtils;
 import org.chromium.base.annotations.NativeMethods;
@@ -230,6 +236,7 @@ public final class StringUtils {
 
     @NativeMethods
     interface Natives {
+        @JniType("std::u16string")
         String getFailStateMessage(@FailState int failState);
     }
 }

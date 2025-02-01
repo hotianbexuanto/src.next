@@ -34,8 +34,13 @@ class BoxModelObjectPainter : public BoxPainterBase {
       const Color&,
       const FillLayer&,
       BackgroundBleedAvoidance,
+<<<<<<< HEAD
+      bool is_painting_background_in_contents_space,
+      PaintFlags paint_flags) const override;
+=======
       bool is_painting_scrolling_background) const override;
   bool IsPaintingScrollingBackground(const PaintInfo&) const override;
+>>>>>>> chromium
 
   void PaintTextClipMask(GraphicsContext&,
                          const IntRect& mask_rect,

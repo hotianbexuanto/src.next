@@ -5,7 +5,6 @@
 #include "base/files/file_util.h"
 #include "base/path_service.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "cc/test/pixel_comparator.h"
 #include "content/browser/form_controls_browsertest_mac.h"
 #include "content/public/browser/render_widget_host_view.h"
@@ -155,7 +154,21 @@ class FormControlsBrowserTest : public ContentBrowserTest {
   }
 };
 
+<<<<<<< HEAD
+// Checkbox renders differently on Android x86. crbug.com/1238283
+// Checkbox renders differently on Windows. See: crbug.com/377986468
+#if BUILDFLAG(IS_ANDROID) && defined(ARCH_CPU_X86)
+#define MAYBE_Checkbox DISABLED_Checkbox
+#elif BUILDFLAG(IS_WIN)
+#define MAYBE_Checkbox DISABLED_Checkbox
+#else
+#define MAYBE_Checkbox Checkbox
+#endif
+
+IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MAYBE_Checkbox) {
+=======
 IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Checkbox) {
+>>>>>>> chromium
   if (SkipTestForOldAndroidVersions())
     return;
 
@@ -236,7 +249,19 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Input) {
           /* screenshot_height */ 330);
 }
 
+<<<<<<< HEAD
+// Renders differently on Windows. See: crbug.com/377986468
+#if (BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS))
+#define MAYBE_Textarea DISABLED_Textarea
+#elif BUILDFLAG(IS_WIN)
+#define MAYBE_Textarea DISABLED_Textarea
+#else
+#define MAYBE_Textarea Textarea
+#endif
+IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MAYBE_Textarea) {
+=======
 IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Textarea) {
+>>>>>>> chromium
   if (SkipTestForOldAndroidVersions())
     return;
 
@@ -286,7 +311,14 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Button) {
 // TODO(crbug.com/1160104/#25) This test creates large average_error_rate on
 // Android FYI SkiaRenderer Vulkan. Disable it until a resolution for is
 // found.
+<<<<<<< HEAD
+// Also renders differently on Windows. See: crbug.com/377986468
+#if BUILDFLAG(IS_ANDROID)
+=======
 #if defined(OS_ANDROID)
+>>>>>>> chromium
+#define MAYBE_ColorInput DISABLED_ColorInput
+#elif BUILDFLAG(IS_WIN)
 #define MAYBE_ColorInput DISABLED_ColorInput
 #else
 #define MAYBE_ColorInput ColorInput
@@ -333,7 +365,13 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, Select) {
           /* screenshot_height */ 200);
 }
 
-IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MultiSelect) {
+// Renders differently on Windows. See: crbug.com/377986468
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_MultiSelect DISABLED_MultiSelect
+#else
+#define MAYBE_MultiSelect MultiSelect
+#endif
+IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MAYBE_MultiSelect) {
   if (SkipTestForOldAndroidVersions())
     return;
 

@@ -12,7 +12,7 @@ namespace blink {
 bool IsKnownSearchEngine(const AtomicString& url) {
   GURL gurl(url.GetString().Utf8());
 
-  return SearchEngineUtils::GetEngineType(gurl) > 0;
+  return search_engine_utils::GetEngineType(gurl) > 0;
 }
 
 }  // namespace blink

@@ -1397,9 +1397,16 @@ TEST_F(LayoutObjectTest, PerspectiveIsNotParent) {
 
   TransformationMatrix transform;
   child->GetTransformFromContainer(ancestor, PhysicalOffset(), transform);
+<<<<<<< HEAD
+  std::optional<gfx::DecomposedTransform> decomp = transform.Decompose();
+  ASSERT_TRUE(decomp);
+  // TODO(crbug.com/351564777): Resolve a buffer safety issue.
+  EXPECT_EQ(0, UNSAFE_TODO(decomp->perspective[2]));
+=======
   TransformationMatrix::DecomposedType decomposed;
   EXPECT_TRUE(transform.Decompose(decomposed));
   EXPECT_EQ(0, decomposed.perspective_z);
+>>>>>>> chromium
 }
 
 TEST_F(LayoutObjectTest, PerspectiveWithAnonymousTable) {
@@ -1419,6 +1426,12 @@ TEST_F(LayoutObjectTest, PerspectiveWithAnonymousTable) {
 
   TransformationMatrix transform;
   child->GetTransformFromContainer(ancestor, PhysicalOffset(), transform);
+<<<<<<< HEAD
+  std::optional<gfx::DecomposedTransform> decomp = transform.Decompose();
+  ASSERT_TRUE(decomp);
+  // TODO(crbug.com/351564777): Resolve a buffer safety issue.
+  EXPECT_EQ(-0.01, UNSAFE_TODO(decomp->perspective[2]));
+=======
   TransformationMatrix::DecomposedType decomposed;
   EXPECT_TRUE(transform.Decompose(decomposed));
   EXPECT_EQ(-0.01, decomposed.perspective_z);
@@ -1487,6 +1500,7 @@ TEST_F(LayoutObjectTest, LocalToAncestorRectFastPath) {
 
   EXPECT_EQ(PhysicalRect(75, 25, 10, 10),
             target2->LocalToAncestorRect(rect, nullptr));
+>>>>>>> chromium
 }
 
 TEST_F(LayoutObjectTest, LocalToAncestoRectIgnoreAncestorScroll) {

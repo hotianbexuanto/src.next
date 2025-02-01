@@ -49,7 +49,12 @@ include_rules = [
     "+base/threading/thread_restrictions.h",
     "+base/time",
     "+base/timer",
+<<<<<<< HEAD
+    "+base/tracing",
+    "+base/types",
+=======
     "+base/trace_event",
+>>>>>>> chromium
     "+base/unguessable_token.h",
     "+base/values.h",
     "+base/lazy_instance.h",

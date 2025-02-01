@@ -74,7 +74,17 @@ class IdentityTestEnvironmentProfileAdaptor {
   // factories supplied to it.
   // |profile| must outlive this object.
   explicit IdentityTestEnvironmentProfileAdaptor(Profile* profile);
+<<<<<<< HEAD
+
+  IdentityTestEnvironmentProfileAdaptor(
+      const IdentityTestEnvironmentProfileAdaptor&) = delete;
+  IdentityTestEnvironmentProfileAdaptor& operator=(
+      const IdentityTestEnvironmentProfileAdaptor&) = delete;
+
+  ~IdentityTestEnvironmentProfileAdaptor() = default;
+=======
   ~IdentityTestEnvironmentProfileAdaptor() {}
+>>>>>>> chromium
 
   // Returns the IdentityTestEnvironment associated with this object (and
   // implicitly with the Profile passed to this object's constructor).

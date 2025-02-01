@@ -11,7 +11,11 @@
 #include "base/callback_forward.h"
 #include "build/buildflag.h"
 #include "chrome/browser/signin/reauth_result.h"
+<<<<<<< HEAD
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+=======
 #include "chrome/browser/ui/signin_reauth_view_controller.h"
+>>>>>>> chromium
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/base/signin_metrics.h"
 
@@ -118,6 +122,14 @@ bool ShouldShowAnimatedIdentityOnOpeningWindow(
     const ProfileAttributesStorage& profile_attributes_storage,
     Profile* profile);
 
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+base::AutoReset<SigninUiDelegate*> SetSigninUiDelegateForTesting(
+    SigninUiDelegate* delegate);
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
+=======
+>>>>>>> chromium
 // Records that the animated identity was shown for the given profile. This is
 // used for metrics and to decide whether/when the animation can be shown again.
 void RecordAnimatedIdentityTriggered(Profile* profile);

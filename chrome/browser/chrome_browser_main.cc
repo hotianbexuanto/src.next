@@ -108,9 +108,15 @@
 #include "chrome/common/media/media_resource_provider.h"
 #include "chrome/common/net/net_resource_provider.h"
 #include "chrome/common/pref_names.h"
+<<<<<<< HEAD
+#include "chrome/common/profiler/core_unwinders.h"
+#include "chrome/common/profiler/thread_profiler_configuration.h"
+#include "chrome/grit/branded_strings.h"
+=======
 #include "chrome/common/profiler/thread_profiler.h"
 #include "chrome/common/profiler/thread_profiler_configuration.h"
 #include "chrome/grit/chromium_strings.h"
+>>>>>>> chromium
 #include "chrome/grit/generated_resources.h"
 #include "chrome/installer/util/google_update_settings.h"
 #include "components/device_event_log/device_event_log.h"
@@ -207,11 +213,22 @@
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+<<<<<<< HEAD
+#include "ash/constants/ash_features.h"
+=======
+>>>>>>> chromium
 #include "ash/constants/ash_switches.h"
 #include "chrome/browser/ash/settings/cros_settings.h"
 #include "chrome/browser/ash/settings/stats_reporting_controller.h"
+<<<<<<< HEAD
+#include "chromeos/ash/components/browser_context_helper/browser_context_types.h"
+#include "chromeos/ash/components/settings/cros_settings.h"
+#include "chromeos/ash/components/settings/cros_settings_names.h"
+#include "chromeos/ash/experiences/arc/metrics/stability_metrics_manager.h"
+=======
 #include "chromeos/settings/cros_settings_names.h"
 #include "components/arc/metrics/stability_metrics_manager.h"
+>>>>>>> chromium
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
@@ -234,6 +251,9 @@
 #include "chrome/browser/ui/ui_features.h"
 #endif  // defined(OS_MAC)
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_WIN)
+=======
 // TODO(port): several win-only methods have been pulled out of this, but
 // BrowserMain() as a whole needs to be broken apart so that it's usable by
 // other platforms. For now, it's just a stub. This is a serious work in
@@ -241,6 +261,7 @@
 
 #if defined(OS_WIN)
 #include "base/trace_event/trace_event_etw_export_win.h"
+>>>>>>> chromium
 #include "base/win/win_util.h"
 #include "chrome/browser/chrome_browser_main_win.h"
 #include "chrome/browser/first_run/upgrade_util_win.h"
@@ -1493,6 +1514,9 @@ int ChromeBrowserMainParts::PreMainMessageLoopRunImpl() {
   }
 #endif  // !defined(OS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_WIN)
+=======
 #if defined(OS_WIN)
   // Sets things up so that if we crash from this point on, a dialog will
   // popup asking the user to restart chrome. It is done this late to avoid
@@ -1500,6 +1524,7 @@ int ChromeBrowserMainParts::PreMainMessageLoopRunImpl() {
   ChromeBrowserMainPartsWin::PrepareRestartOnCrashEnviroment(
       parsed_command_line());
 
+>>>>>>> chromium
   // Registers Chrome with the Windows Restart Manager, which will restore the
   // Chrome session when the computer is restarted after a system update.
   // This could be run as late as WM_QUERYENDSESSION for system update reboots,

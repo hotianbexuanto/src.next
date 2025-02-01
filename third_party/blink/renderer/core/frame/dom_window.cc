@@ -64,11 +64,19 @@ v8::MaybeLocal<v8::Value> DOMWindow::Wrap(ScriptState* script_state) {
   if (!frame)
     return v8::Null(script_state->GetIsolate());
 
+<<<<<<< HEAD
+  auto& world = script_state->World();
+  v8::Local<v8::Object> proxy =
+      window_proxy_manager_->GetWindowProxy(world)->GetGlobalProxy();
+  CHECK(!proxy.IsEmpty());
+  return proxy;
+=======
   // TODO(yukishiino): Make this function always return the non-empty handle
   // even if the frame is detached because the global proxy must always exist
   // per spec.
   return frame->GetWindowProxy(script_state->World())
       ->GlobalProxyIfNotDetached();
+>>>>>>> chromium
 }
 
 v8::Local<v8::Object> DOMWindow::AssociateWithWrapper(
@@ -162,7 +170,11 @@ DOMWindow* DOMWindow::top() const {
 void DOMWindow::postMessage(v8::Isolate* isolate,
                             const ScriptValue& message,
                             const String& target_origin,
+<<<<<<< HEAD
+                            HeapVector<ScriptObject> transfer,
+=======
                             HeapVector<ScriptValue>& transfer,
+>>>>>>> chromium
                             ExceptionState& exception_state) {
   WindowPostMessageOptions* options = WindowPostMessageOptions::Create();
   options->setTargetOrigin(target_origin);
@@ -543,15 +555,74 @@ void DOMWindow::ReportCoopAccess(const char* property_name) {
   const LocalFrameToken accessing_main_frame_token =
       accessing_main_frame.GetLocalFrameToken();
 
+<<<<<<< HEAD
+  WTF::EraseIf(
+      coop_access_monitor_, [&](const Member<CoopAccessMonitor>& monitor) {
+        if (monitor->accessing_main_frame != accessing_main_frame_token) {
+          return false;
+        }
+
+        String property_name_as_string = property_name;
+        if (monitor->is_in_same_virtual_coop_related_group &&
+            (property_name_as_string == "postMessage" ||
+             property_name_as_string == "closed")) {
+          return false;
+        }
+=======
   auto* it = coop_access_monitor_.begin();
   while (it != coop_access_monitor_.end()) {
     if (it->accessing_main_frame != accessing_main_frame_token) {
       ++it;
       continue;
     }
+>>>>>>> chromium
 
-    // TODO(arthursonzogni): Send the blocked-window-url.
+        // TODO(arthursonzogni): Send the blocked-window-url.
 
+<<<<<<< HEAD
+        auto location = CaptureSourceLocation(
+            ExecutionContext::From(isolate->GetCurrentContext()));
+        // TODO(crbug.com/349583610): Update to use SourceLocation typemap.
+        auto source_location = network::mojom::blink::SourceLocation::New(
+            location->Url() ? location->Url() : "", location->LineNumber(),
+            location->ColumnNumber());
+
+        accessing_window->GetFrameConsole()->AddMessage(
+            MakeGarbageCollected<ConsoleMessage>(
+                mojom::blink::ConsoleMessageSource::kJavaScript,
+                mojom::blink::ConsoleMessageLevel::kError,
+                CoopReportOnlyErrorMessage(property_name), location->Clone()));
+
+        // If the reporting document hasn't specified any network report
+        // endpoint(s), then it is likely not interested in receiving
+        // ReportingObserver's reports.
+        //
+        // TODO(arthursonzogni): Reconsider this decision later, developers
+        // might be interested.
+        if (monitor->endpoint_defined) {
+          if (monitor->reporter.is_bound()) {
+            monitor->reporter->QueueAccessReport(
+                monitor->report_type, property_name, std::move(source_location),
+                std::move(monitor->reported_window_url));
+          }
+          // Send a coop-access-violation report.
+          if (network::IsAccessFromCoopPage(monitor->report_type)) {
+            ReportingContext::From(accessing_main_frame.DomWindow())
+                ->QueueReport(MakeGarbageCollected<Report>(
+                    ReportType::kCoopAccessViolation,
+                    accessing_main_frame.GetDocument()->Url().GetString(),
+                    MakeGarbageCollected<CoopAccessViolationReportBody>(
+                        std::move(location), monitor->report_type,
+                        String(property_name), monitor->reported_window_url)));
+          }
+        }
+
+        // CoopAccessMonitor are used once and destroyed. This avoids sending
+        // multiple reports for the same access.
+        monitor->reporter.reset();
+        return true;
+      });
+=======
     auto location = SourceLocation::Capture(
         ExecutionContext::From(isolate->GetCurrentContext()));
     // TODO(arthursonzogni): Once implemented, use the SourceLocation typemap
@@ -588,6 +659,7 @@ void DOMWindow::ReportCoopAccess(const char* property_name) {
     // multiple reports for the same access.
     it = coop_access_monitor_.erase(it);
   }
+>>>>>>> chromium
 }
 
 void DOMWindow::DoPostMessage(scoped_refptr<SerializedScriptValue> message,
@@ -732,6 +804,13 @@ void DOMWindow::Trace(Visitor* visitor) const {
 
 void DOMWindow::DisconnectCoopAccessMonitor(
     const LocalFrameToken& accessing_main_frame) {
+<<<<<<< HEAD
+  WTF::EraseIf(
+      coop_access_monitor_,
+      [&accessing_main_frame](const Member<CoopAccessMonitor>& monitor) {
+        return monitor->accessing_main_frame == accessing_main_frame;
+      });
+=======
   auto* it = coop_access_monitor_.begin();
   while (it != coop_access_monitor_.end()) {
     if (it->accessing_main_frame == accessing_main_frame) {
@@ -740,6 +819,7 @@ void DOMWindow::DisconnectCoopAccessMonitor(
       ++it;
     }
   }
+>>>>>>> chromium
 }
 
 }  // namespace blink

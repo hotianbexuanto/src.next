@@ -36,8 +36,18 @@ using extensions::Extension;
 
 class ExtensionInstallUIBrowserTest : public extensions::ExtensionBrowserTest {
  public:
+<<<<<<< HEAD
+  ExtensionInstallUIBrowserTest() = default;
+
+  ExtensionInstallUIBrowserTest(const ExtensionInstallUIBrowserTest&) = delete;
+  ExtensionInstallUIBrowserTest& operator=(
+      const ExtensionInstallUIBrowserTest&) = delete;
+
+  ~ExtensionInstallUIBrowserTest() override = default;
+=======
   ExtensionInstallUIBrowserTest() {}
   ~ExtensionInstallUIBrowserTest() override {}
+>>>>>>> chromium
 
   // Checks that a theme info bar is currently visible and issues an undo to
   // revert to the previous theme.

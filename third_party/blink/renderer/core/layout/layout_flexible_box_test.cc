@@ -587,6 +587,8 @@ TEST_P(LayoutFlexibleBoxTest, ResizedFlexChildRequiresVisualOverflowRecalc) {
             PhysicalRect(0, 0, 105, 960));
 }
 
+<<<<<<< HEAD
+=======
 TEST_P(LayoutFlexibleBoxTest, PercentDefiniteGapUseCounter) {
   SetBodyInnerHTML(CommonStyle() + R"HTML(
     <div id="flex-box" style="gap: 20%;"></div>
@@ -645,4 +647,5 @@ TEST_P(LayoutFlexibleBoxTest, NormalGapUseCounter) {
       GetDocument().IsUseCounted(WebFeature::kFlexRowGapPercentIndefinite));
 }
 
+>>>>>>> chromium
 }  // namespace blink

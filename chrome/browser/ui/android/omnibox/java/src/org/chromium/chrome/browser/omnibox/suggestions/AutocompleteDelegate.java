@@ -4,11 +4,22 @@
 
 package org.chromium.chrome.browser.omnibox.suggestions;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.tab.Tab.LoadUrlResult;
+import org.chromium.components.omnibox.AutocompleteMatch;
+import org.chromium.content_public.browser.LoadUrlParams;
+
+/** Provides the additional functionality to trigger and interact with autocomplete suggestions. */
+@NullMarked
+=======
 import org.chromium.ui.base.PageTransition;
 
 /**
  * Provides the additional functionality to trigger and interact with autocomplete suggestions.
  */
+>>>>>>> chromium
 public interface AutocompleteDelegate extends UrlBarDelegate {
     /**
      * Notified that the URL text has changed.
@@ -71,8 +82,19 @@ public interface AutocompleteDelegate extends UrlBarDelegate {
      */
     boolean isUrlBarFocused();
 
+<<<<<<< HEAD
+    /* Requests to show default browser promo when user pasting an URL. */
+    void maybeShowDefaultBrowserPromo();
+
+    /** Whether the toolbar hosting the omnibox could potentially be change positions at runtime. */
+    boolean isToolbarPositionCustomizationEnabled();
+
+    /** Whether the toolbar hosting the omnibox is currently bottom-anchored. */
+    boolean isToolbarBottomAnchored();
+=======
     /**
      * @return Whether the omnibox was focused because of tapping on query tiles.
      */
     boolean didFocusUrlFromQueryTiles();
+>>>>>>> chromium
 }

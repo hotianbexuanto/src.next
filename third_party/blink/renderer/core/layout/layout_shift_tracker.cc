@@ -781,14 +781,21 @@ void LayoutShiftTracker::SendLayoutShiftRectsToHud(
     if (!cc_layer->layer_tree_host()->GetDebugState().show_layout_shift_regions)
       return;
     if (cc_layer->layer_tree_host()->hud_layer()) {
+<<<<<<< HEAD
+      std::vector<gfx::Rect> rects;
+      cc::Region blink_region;
+      for (const gfx::Rect& rect : int_rects)
+        blink_region.Union(rect);
+      for (gfx::Rect rect : blink_region)
+=======
       WebVector<gfx::Rect> rects;
       Region blink_region;
       for (IntRect rect : int_rects)
         blink_region.Unite(Region(rect));
       for (const IntRect& rect : blink_region.Rects())
+>>>>>>> chromium
         rects.emplace_back(rect);
-      cc_layer->layer_tree_host()->hud_layer()->SetLayoutShiftRects(
-          rects.ReleaseVector());
+      cc_layer->layer_tree_host()->hud_layer()->SetLayoutShiftRects(rects);
       cc_layer->layer_tree_host()->hud_layer()->SetNeedsPushProperties();
     }
   }

@@ -25,7 +25,6 @@
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_process_host_observer.h"
 #include "extensions/browser/activity.h"
-#include "extensions/browser/event_page_tracker.h"
 #include "extensions/browser/extension_host_observer.h"
 #include "extensions/browser/extension_registry_observer.h"
 #include "extensions/browser/service_worker/worker_id.h"
@@ -54,7 +53,6 @@ class ProcessManagerObserver;
 // track of split-mode extensions only.
 class ProcessManager : public KeyedService,
                        public ExtensionRegistryObserver,
-                       public EventPageTracker,
                        public content::DevToolsAgentHostObserver,
                        public content::RenderProcessHostObserver,
                        public ExtensionHostObserver {
@@ -62,13 +60,30 @@ class ProcessManager : public KeyedService,
   using ExtensionHostSet = std::set<extensions::ExtensionHost*>;
 
   static ProcessManager* Get(content::BrowserContext* context);
+<<<<<<< HEAD
+
+  // Creates a new ProcessManager for the given `context`. This is independent
+  // from the constructor below as it may construct an incognito version of the
+  // ProcessManager.
+  // Note: Most callers should use `ProcessManager::Get()` instead to retrieve
+  // the ProcessManager for a given context.
+  static std::unique_ptr<ProcessManager> Create(
+      content::BrowserContext* context);
+
+  ProcessManager(content::BrowserContext* context,
+                 ExtensionRegistry* registry);
+
+  ProcessManager(const ProcessManager&) = delete;
+  ProcessManager& operator=(const ProcessManager&) = delete;
+
+=======
+>>>>>>> chromium
   ~ProcessManager() override;
 
   // KeyedService support:
   void Shutdown() override;
 
-  void RegisterRenderFrameHost(content::WebContents* web_contents,
-                               content::RenderFrameHost* render_frame_host,
+  void RegisterRenderFrameHost(content::RenderFrameHost* render_frame_host,
                                const Extension* extension);
   void UnregisterRenderFrameHost(content::RenderFrameHost* render_frame_host);
 
@@ -83,6 +98,7 @@ class ProcessManager : public KeyedService,
   // extension with non-cross-origin-isolated contexts).
   // TODO(aa): This only returns correct results for extensions and packaged
   // apps, not hosted apps.
+  // TODO(https://crbug.com/334991035): Remove this method.
   virtual scoped_refptr<content::SiteInstance> GetSiteInstanceForURL(
       const GURL& url);
 
@@ -193,10 +209,24 @@ class ProcessManager : public KeyedService,
   // Called on shutdown to close our extension hosts.
   void CloseBackgroundHosts();
 
+<<<<<<< HEAD
+  // Wakes an extension's event page from a suspended state and calls
+  // `callback` after it is reactivated.
+  //
+  // `callback` will be passed true if the extension was reactivated
+  // successfully, or false if an error occurred.
+  //
+  // Returns true if a wake operation was scheduled successfully,
+  // or false if the event page was already awake.
+  // Callback will be run asynchronously if true, and never run if false.
+  bool WakeEventPage(const ExtensionId& extension_id,
+                     base::OnceCallback<void(bool)> callback);
+=======
   // EventPageTracker implementation.
   bool IsEventPageSuspended(const std::string& extension_id) override;
   bool WakeEventPage(const std::string& extension_id,
                      base::OnceCallback<void(bool)> callback) override;
+>>>>>>> chromium
 
   // Sets the time in milliseconds that an extension event page can
   // be idle before it is shut down; must be > 0.
@@ -207,18 +237,6 @@ class ProcessManager : public KeyedService,
   // happening.
   static void SetEventPageSuspendingTimeForTesting(
       unsigned suspending_time_msec);
-
-  // Creates a non-incognito instance for tests. |registry| allows unit tests
-  // to inject an ExtensionRegistry that is not managed by the usual
-  // BrowserContextKeyedServiceFactory system.
-  static ProcessManager* CreateForTesting(content::BrowserContext* context,
-                                          ExtensionRegistry* registry);
-
-  // Creates an incognito-context instance for tests.
-  static ProcessManager* CreateIncognitoForTesting(
-      content::BrowserContext* incognito_context,
-      content::BrowserContext* original_context,
-      ExtensionRegistry* registry);
 
   content::BrowserContext* browser_context() const { return browser_context_; }
 
@@ -247,6 +265,8 @@ class ProcessManager : public KeyedService,
   std::vector<WorkerId> GetAllWorkersIdsForTesting();
 
  protected:
+<<<<<<< HEAD
+=======
   static ProcessManager* Create(content::BrowserContext* context);
 
   // |context| is incognito pass the original context as |original_context|.
@@ -256,13 +276,11 @@ class ProcessManager : public KeyedService,
                  content::BrowserContext* original_context,
                  ExtensionRegistry* registry);
 
+>>>>>>> chromium
   // Not owned. Also used by IncognitoProcessManager.
   ExtensionRegistry* extension_registry_;
 
  private:
-  friend class ProcessManagerFactory;
-  friend class ProcessManagerTest;
-
   // ExtensionRegistryObserver:
   void OnExtensionLoaded(content::BrowserContext* browser_context,
                          const Extension* extension) override;
@@ -347,10 +365,17 @@ class ProcessManager : public KeyedService,
   // A SiteInstance related to the SiteInstance for all extensions in
   // this profile.  We create it in such a way that a new
   // browsing instance is created.  This controls process grouping.
+  // TODO(https://crbug.com/334991035): Remove this member. The //content
+  // layer will properly isolate new extension processes.
   scoped_refptr<content::SiteInstance> site_instance_;
 
+<<<<<<< HEAD
+  // The browser context associated with the ProcessManager.
+  raw_ptr<content::BrowserContext> browser_context_;
+=======
   // The browser context associated with the |site_instance_|.
   content::BrowserContext* browser_context_;
+>>>>>>> chromium
 
   // Contains all active extension-related RenderFrameHost instances for all
   // extensions. We also keep a cache of the host's view type, because that

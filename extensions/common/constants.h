@@ -5,6 +5,14 @@
 #ifndef EXTENSIONS_COMMON_CONSTANTS_H_
 #define EXTENSIONS_COMMON_CONSTANTS_H_
 
+<<<<<<< HEAD
+#include <cstddef>
+#include <cstdint>
+#include <string_view>
+
+#include "base/containers/span.h"
+=======
+>>>>>>> chromium
 #include "base/files/file_path.h"
 #include "base/strings/string_piece_forward.h"
 #include "build/chromeos_buildflags.h"
@@ -113,8 +121,16 @@ extern const char kMimeTypePng[];
 extern const char kWebStoreAppId[];
 
 // The key used for signing some pieces of data from the webstore.
+<<<<<<< HEAD
+EXTENSIONS_EXPORT extern const base::span<const uint8_t>
+    kWebstoreSignaturesPublicKey;
+
+// A preference for storing the extension's update URL data.
+inline constexpr char kUpdateURLData[] = "update_url_data";
+=======
 extern const uint8_t kWebstoreSignaturesPublicKey[];
 extern const size_t kWebstoreSignaturesPublicKeySize;
+>>>>>>> chromium
 
 // Thread identifier for the main renderer thread (as opposed to a service
 // worker thread).

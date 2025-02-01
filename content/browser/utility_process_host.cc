@@ -32,6 +32,11 @@
 #include "content/public/common/content_switches.h"
 #include "content/public/common/process_type.h"
 #include "content/public/common/sandboxed_process_launcher_delegate.h"
+<<<<<<< HEAD
+#include "content/public/common/zygote/zygote_buildflags.h"
+#include "device/vr/buildflags/buildflags.h"
+=======
+>>>>>>> chromium
 #include "media/base/media_switches.h"
 #include "media/webrtc/webrtc_switches.h"
 #include "sandbox/policy/sandbox_type.h"
@@ -53,6 +58,20 @@
 #include "media/capture/capture_switches.h"
 #endif
 
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_GPU_CHANNEL_MEDIA_CAPTURE)
+#include "base/task/sequenced_task_runner.h"
+#include "components/viz/host/gpu_client.h"
+#include "media/capture/capture_switches.h"
+#include "services/video_capture/public/mojom/video_capture_service.mojom.h"
+#endif  // BUILDFLAG(ENABLE_GPU_CHANNEL_MEDIA_CAPTURE)
+
+#if BUILDFLAG(ENABLE_VR)
+#include "device/vr/public/cpp/switches.h"
+#endif
+
+=======
+>>>>>>> chromium
 namespace content {
 
 UtilityMainThreadFactoryFunction g_utility_main_thread_factory = nullptr;
@@ -285,6 +304,18 @@ bool UtilityProcessHost::StartProcess() {
 #if defined(USE_CRAS)
       switches::kUseCras,
 #endif
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_VR)
+        device::switches::kWebXrHandAnonymizationStrategy,
+#endif
+        network::switches::kIpAddressSpaceOverrides,
+#if BUILDFLAG(IS_CHROMEOS)
+        switches::kSchedulerBoostUrgent,
+#endif
+        switches::kFakeBackgroundBlurTogglePeriod,
+#if BUILDFLAG(USE_CHROMEOS_MEDIA_ACCELERATION)
+        switches::kHardwareVideoDecodeFrameRate,
+=======
 #if defined(OS_WIN)
       switches::kDisableHighResTimer,
       switches::kEnableExclusiveAudio,
@@ -299,6 +330,7 @@ bool UtilityProcessHost::StartProcess() {
       network::switches::kIpAddressSpaceOverrides,
 #if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
       switches::kSchedulerBoostUrgent,
+>>>>>>> chromium
 #endif
     };
     cmd_line->CopySwitchesFrom(browser_command_line, kSwitchNames,

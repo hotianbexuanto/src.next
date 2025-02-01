@@ -21,7 +21,13 @@
 #include "base/single_thread_task_runner.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+<<<<<<< HEAD
+#include "base/syslog_logging.h"
+#include "base/task/sequenced_task_runner.h"
+#include "base/task/single_thread_task_runner.h"
+=======
 #include "base/threading/thread_task_runner_handle.h"
+>>>>>>> chromium
 #include "base/time/time.h"
 #include "chrome/browser/extensions/extension_garbage_collector_factory.h"
 #include "chrome/browser/extensions/extension_service.h"
@@ -131,7 +137,7 @@ ExtensionGarbageCollector::ExtensionGarbageCollector(
   InstallTracker::Get(context_)->AddObserver(this);
 }
 
-ExtensionGarbageCollector::~ExtensionGarbageCollector() {}
+ExtensionGarbageCollector::~ExtensionGarbageCollector() = default;
 
 // static
 ExtensionGarbageCollector* ExtensionGarbageCollector::Get(
@@ -166,6 +172,10 @@ void ExtensionGarbageCollector::GarbageCollectExtensionsOnFileThread(
        extension_path = enumerator.Next()) {
     CheckExtensionDirectory(extension_path, extension_paths);
   }
+  // TODO(crbug.com/379867155) Remove this after chrome app kiosk crash recovery
+  // is independent of extensions garbage collection.
+  SYSLOG(INFO)
+      << "Garbage collection for extensions on file thread is complete.";
 }
 
 void ExtensionGarbageCollector::GarbageCollectExtensions() {

@@ -4,7 +4,16 @@
 
 #include <stddef.h>
 
+<<<<<<< HEAD
+#include <algorithm>
+
+#include "ash/webui/settings/public/constants/routes.mojom.h"
+#include "base/memory/raw_ptr.h"
+#include "base/run_loop.h"
+#include "base/test/test_future.h"
+=======
 #include "base/macros.h"
+>>>>>>> chromium
 #include "chrome/browser/apps/app_service/app_launch_params.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
@@ -37,11 +46,18 @@ namespace {
 // Return the number of windows that hosts OS Settings.
 size_t GetNumberOfSettingsWindows() {
   auto* browser_list = BrowserList::GetInstance();
+<<<<<<< HEAD
+  return std::ranges::count_if(*browser_list, [](Browser* browser) {
+    return ash::IsBrowserForSystemWebApp(browser,
+                                         ash::SystemWebAppType::SETTINGS);
+  });
+=======
   return std::count_if(browser_list->begin(), browser_list->end(),
                        [](Browser* browser) {
                          return web_app::IsBrowserForSystemWebApp(
                              browser, web_app::SystemAppType::SETTINGS);
                        });
+>>>>>>> chromium
 }
 
 }  // namespace
@@ -68,9 +84,15 @@ class SettingsWindowManagerTest : public InProcessBrowserTest {
 
   void CloseNonDefaultBrowsers() {
     std::list<Browser*> browsers_to_close;
+<<<<<<< HEAD
+    for (Browser* b : *BrowserList::GetInstance()) {
+      if (b != browser()) {
+=======
     for (auto* b : *BrowserList::GetInstance()) {
       if (b != browser())
+>>>>>>> chromium
         browsers_to_close.push_back(b);
+      }
     }
     for (std::list<Browser*>::iterator iter = browsers_to_close.begin();
          iter != browsers_to_close.end(); ++iter) {

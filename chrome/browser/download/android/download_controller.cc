@@ -337,6 +337,12 @@ void DownloadController::StartAndroidDownloadInternal(
                                 std::string(),  // referrer_charset
                                 std::string(),  // suggested_name
                                 info.original_mime_type, default_file_name_);
+<<<<<<< HEAD
+  ScopedJavaLocalRef<jobject> jurl =
+      url::GURLAndroid::FromNativeGURL(env, info.url);
+  ScopedJavaLocalRef<jobject> jreferer =
+      url::GURLAndroid::FromNativeGURL(env, info.referer);
+=======
   ScopedJavaLocalRef<jstring> jurl =
       ConvertUTF8ToJavaString(env, info.url.spec());
   ScopedJavaLocalRef<jstring> juser_agent =
@@ -349,8 +355,10 @@ void DownloadController::StartAndroidDownloadInternal(
       ConvertUTF8ToJavaString(env, info.referer);
   ScopedJavaLocalRef<jstring> jfile_name =
       base::android::ConvertUTF16ToJavaString(env, file_name);
+>>>>>>> chromium
   Java_DownloadController_enqueueAndroidDownloadManagerRequest(
-      env, jurl, juser_agent, jfile_name, jmime_type, jcookie, jreferer);
+      env, jurl, info.user_agent, file_name, info.original_mime_type,
+      info.cookie, jreferer);
 
   WebContents* web_contents = wc_getter.Run();
   CloseTabIfEmpty(web_contents, nullptr);
@@ -440,15 +448,71 @@ void DownloadController::OnDangerousDownload(DownloadItem* item) {
     return;
   }
 
+<<<<<<< HEAD
+  ui::ViewAndroid* view_android =
+      web_contents ? web_contents->GetNativeView() : nullptr;
+  ui::WindowAndroid* window_android =
+      view_android ? view_android->GetWindowAndroid() : nullptr;
+  if (!dangerous_download_bridge_) {
+    dangerous_download_bridge_ =
+        std::make_unique<DangerousDownloadDialogBridge>();
+  }
+  dangerous_download_bridge_->Show(item, window_android);
+}
+
+void DownloadController::EnableVerifyAppsDone(
+    download::DownloadItem* item,
+    safe_browsing::VerifyAppsEnabledResult result) {
+  base::UmaHistogramEnumeration(
+      "SBClientDownload.AndroidAppVerificationPromptResult2", result);
+
+  if (app_verification_prompt_download_ != nullptr) {
+    app_verification_prompt_download_ = nullptr;
+    OnDownloadComplete(item);
+  }
+}
+
+void DownloadController::OnDownloadComplete(download::DownloadItem* item) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> j_item =
+      DownloadManagerService::CreateJavaDownloadInfo(env, item);
+  // Multiple OnDownloadUpdated() notifications may be issued while the
+  // download is in the COMPLETE state. Only handle one.
+  item->RemoveObserver(this);
+  bool is_download_safe = true;
+  // Call onDownloadCompleted
+  TabAndroid* tab = nullptr;
+  // Primary page of the WebContents have changed when showing the native
+  // page, need to call GetOriginalWebContents() instead.
+  content::WebContents* web_contents =
+      content::DownloadItemUtils::GetOriginalWebContents(item);
+  if (web_contents) {
+    tab = TabAndroid::FromWebContents(web_contents);
+  }
+  if (tab) {
+    download::DownloadItem::InsecureDownloadStatus status =
+        GetInsecureDownloadStatusForDownload(
+            Profile::FromBrowserContext(
+                content::DownloadItemUtils::GetBrowserContext(item)),
+            item->GetTargetFilePath(), item);
+    is_download_safe =
+        (status == download::DownloadItem::InsecureDownloadStatus::SAFE ||
+         status == download::DownloadItem::InsecureDownloadStatus::VALIDATED);
+  }
+  Java_DownloadController_onDownloadCompleted(
+      env, tab ? tab->GetJavaObject() : nullptr, j_item, is_download_safe);
+=======
   DangerousDownloadInfoBarDelegate::Create(
       infobars::ContentInfoBarManager::FromWebContents(web_contents), item);
+>>>>>>> chromium
 }
 
 void DownloadController::StartContextMenuDownload(
     const ContextMenuParams& params,
     WebContents* web_contents,
     bool is_link) {
-  int process_id = web_contents->GetRenderViewHost()->GetProcess()->GetID();
+  int process_id =
+      web_contents->GetRenderViewHost()->GetProcess()->GetDeprecatedID();
   int routing_id = web_contents->GetRenderViewHost()->GetRoutingID();
 
   const content::WebContents::Getter& wc_getter(

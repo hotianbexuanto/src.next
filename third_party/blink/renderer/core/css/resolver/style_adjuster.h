@@ -40,9 +40,23 @@ class StyleAdjuster {
 
  public:
   CORE_EXPORT static void AdjustComputedStyle(StyleResolverState&, Element*);
+<<<<<<< HEAD
+  static void AdjustStyleForCombinedText(ComputedStyleBuilder&);
+  static void AdjustStyleForEditing(ComputedStyleBuilder&, Element*);
+  static void AdjustStyleForTextCombine(ComputedStyleBuilder&);
+  static void AdjustStyleForSvgElement(
+      const SVGElement& element,
+      ComputedStyleBuilder& builder,
+      const ComputedStyle& layout_parent_style);
+  static void AdjustStyleForDisplay(ComputedStyleBuilder&,
+                                    const ComputedStyle& layout_parent_style,
+                                    const Element*,
+                                    Document*);
+=======
   static void AdjustStyleForCombinedText(ComputedStyle&);
   static void AdjustStyleForEditing(ComputedStyle&);
   static void AdjustStyleForTextCombine(ComputedStyle&);
+>>>>>>> chromium
 
  private:
   static void AdjustOverflow(ComputedStyle& style, Element* element);

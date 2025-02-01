@@ -36,7 +36,11 @@
 namespace blink {
 
 LayoutHTMLCanvas::LayoutHTMLCanvas(HTMLCanvasElement* element)
+<<<<<<< HEAD
+    : LayoutReplaced(element), natural_size_(PhysicalSize(element->Size())) {
+=======
     : LayoutReplaced(element, LayoutSize(element->Size())) {
+>>>>>>> chromium
   View()->GetFrameView()->SetIsVisuallyNonEmpty();
 }
 
@@ -51,22 +55,39 @@ void LayoutHTMLCanvas::PaintReplaced(const PaintInfo& paint_info,
   HTMLCanvasPainter(*this).PaintReplaced(paint_info, paint_offset);
 }
 
+void LayoutHTMLCanvas::DidInvalidatePaintForPlacedElement(
+    Element* placedElement) {
+  DCHECK(RuntimeEnabledFeatures::CanvasPlaceElementEnabled());
+  auto* canvas = To<HTMLCanvasElement>(GetNode());
+  DCHECK(canvas->HasPlacedElements());
+  InvalidateDisplayItemClients(PaintInvalidationReason::kSubtree);
+  // TODO(issues.chromium.org/379143301): We should only invalidate the sub rect
+  // of whatever placed element was invalidated.
+  canvas->MarkPlacedElementDirty(placedElement);
+}
+
 void LayoutHTMLCanvas::CanvasSizeChanged() {
   NOT_DESTROYED();
   IntSize canvas_size = To<HTMLCanvasElement>(GetNode())->Size();
   LayoutSize zoomed_size(canvas_size.Width() * StyleRef().EffectiveZoom(),
                          canvas_size.Height() * StyleRef().EffectiveZoom());
 
-  if (zoomed_size == IntrinsicSize())
+  if (zoomed_size == natural_size_) {
     return;
+  }
 
-  SetIntrinsicSize(zoomed_size);
+  natural_size_ = zoomed_size;
 
   if (!Parent())
     return;
 
   SetIntrinsicLogicalWidthsDirty();
   SetNeedsLayout(layout_invalidation_reason::kSizeChanged);
+}
+
+PhysicalNaturalSizingInfo LayoutHTMLCanvas::GetNaturalDimensions() const {
+  NOT_DESTROYED();
+  return PhysicalNaturalSizingInfo::MakeFixed(natural_size_);
 }
 
 bool LayoutHTMLCanvas::DrawsBackgroundOntoContentLayer() const {

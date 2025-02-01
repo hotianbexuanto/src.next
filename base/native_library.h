@@ -15,9 +15,15 @@
 #include "base/strings/string_piece.h"
 #include "build/build_config.h"
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_WIN)
+#include "base/win/windows_types.h"
+#elif BUILDFLAG(IS_APPLE)
+=======
 #if defined(OS_WIN)
 #include <windows.h>
 #elif defined(OS_APPLE)
+>>>>>>> chromium
 #import <CoreFoundation/CoreFoundation.h>
 #endif  // OS_*
 
@@ -25,6 +31,10 @@ namespace base {
 
 #if defined(OS_WIN)
 using NativeLibrary = HMODULE;
+<<<<<<< HEAD
+#elif BUILDFLAG(IS_APPLE)
+enum NativeLibraryType { BUNDLE, DYNAMIC_LIB };
+=======
 #elif defined(OS_APPLE)
 enum NativeLibraryType {
   BUNDLE,
@@ -35,6 +45,7 @@ enum NativeLibraryObjCStatus {
   OBJC_PRESENT,
   OBJC_NOT_PRESENT,
 };
+>>>>>>> chromium
 struct NativeLibraryStruct {
   NativeLibraryType type;
   CFBundleRefNum bundle_resource_ref;
@@ -104,10 +115,10 @@ PinSystemLibrary(FilePath::StringPieceType name,
 // Loads a native library from disk.  Release it with UnloadNativeLibrary when
 // you're done.  Returns NULL on failure.
 // If |error| is not NULL, it may be filled in on load error.
-BASE_EXPORT NativeLibrary LoadNativeLibraryWithOptions(
-    const FilePath& library_path,
-    const NativeLibraryOptions& options,
-    NativeLibraryLoadError* error);
+BASE_EXPORT NativeLibrary
+LoadNativeLibraryWithOptions(const FilePath& library_path,
+                             const NativeLibraryOptions& options,
+                             NativeLibraryLoadError* error);
 
 // Unloads a native library.
 BASE_EXPORT void UnloadNativeLibrary(NativeLibrary library);

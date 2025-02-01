@@ -59,7 +59,7 @@ class ExtensionUninstallDialog
     }
 
    protected:
-    virtual ~Delegate() {}
+    virtual ~Delegate() = default;
   };
 
   // Creates a platform specific implementation of ExtensionUninstallDialog. The

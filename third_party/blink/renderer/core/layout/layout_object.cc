@@ -32,8 +32,13 @@
 #include <memory>
 #include <utility>
 
+<<<<<<< HEAD
+#include "base/auto_reset.h"
+#include "partition_alloc/partition_alloc.h"
+=======
 #include "base/allocator/partition_allocator/partition_alloc.h"
 #include "cc/base/features.h"
+>>>>>>> chromium
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink.h"
 #include "third_party/blink/renderer/core/accessibility/ax_object_cache.h"
 #include "third_party/blink/renderer/core/animation/element_animations.h"
@@ -326,11 +331,17 @@ LayoutObject* LayoutObject::CreateObject(Element* element,
       return LayoutObjectFactory::CreateTableCaption(*element, style, legacy);
     case EDisplay::kWebkitBox:
     case EDisplay::kWebkitInlineBox:
+<<<<<<< HEAD
+      UseCounter::Count(element->GetDocument(),
+                        WebFeature::kWebkitBoxWithoutWebkitLineClamp);
+      return MakeGarbageCollected<LayoutFlexibleBox>(element);
+=======
       if (style.IsDeprecatedWebkitBoxWithVerticalLineClamp()) {
         return LayoutObjectFactory::CreateBlockForLineClamp(*element, style,
                                                             legacy);
       }
       return LayoutObjectFactory::CreateFlexibleBox(*element, style, legacy);
+>>>>>>> chromium
     case EDisplay::kFlex:
     case EDisplay::kInlineFlex:
       UseCounter::Count(element->GetDocument(), WebFeature::kCSSFlexibleBox);
@@ -566,6 +577,17 @@ void LayoutObject::RemoveChild(LayoutObject* old_child) {
   children->RemoveChildNode(this, old_child);
 }
 
+bool LayoutObject::IsInTopOrViewTransitionLayer() const {
+  NOT_DESTROYED();
+  if (IsViewTransitionRoot()) {
+    return true;
+  }
+  if (Element* element = DynamicTo<Element>(GetNode())) {
+    return StyleRef().IsRenderedInTopLayer(*element);
+  }
+  return false;
+}
+
 void LayoutObject::NotifyPriorityScrollAnchorStatusChanged() {
   NOT_DESTROYED();
   if (!Parent())
@@ -705,6 +727,74 @@ bool LayoutObject::IsRenderedLegendInternal() const {
          LayoutFieldset::FindInFlowLegend(*parent_layout_block) == this;
 }
 
+<<<<<<< HEAD
+bool LayoutObject::IsScrollMarker() const {
+  NOT_DESTROYED();
+  return GetNode() && GetNode()->IsScrollMarkerPseudoElement();
+}
+
+bool LayoutObject::IsScrollMarkerGroup() const {
+  NOT_DESTROYED();
+  return GetNode() && GetNode()->IsScrollMarkerGroupPseudoElement();
+}
+
+bool LayoutObject::IsScrollMarkerGroupBefore() const {
+  NOT_DESTROYED();
+  return GetNode() && GetNode()->IsScrollMarkerGroupBeforePseudoElement();
+}
+
+LayoutObject* LayoutObject::GetScrollMarkerGroup() const {
+  NOT_DESTROYED();
+  if (Style()->ScrollMarkerGroup() == EScrollMarkerGroup::kNone) {
+    return nullptr;
+  }
+  if (IsFieldset()) {
+    const LayoutBlock* fieldset_content =
+        To<LayoutFieldset>(this)->FindAnonymousFieldsetContentBox();
+    if (!fieldset_content || !fieldset_content->IsScrollContainer()) {
+      return nullptr;
+    }
+  } else if (!IsScrollContainer()) {
+    return nullptr;
+  }
+  if (auto* element = DynamicTo<Element>(GetNode())) {
+    if (PseudoElement* pseudo =
+            element->GetPseudoElement(kPseudoIdScrollMarkerGroupBefore)) {
+      return pseudo->GetLayoutObject();
+    }
+    if (PseudoElement* pseudo =
+            element->GetPseudoElement(kPseudoIdScrollMarkerGroupAfter)) {
+      return pseudo->GetLayoutObject();
+    }
+  }
+  return nullptr;
+}
+
+LayoutBlock* LayoutObject::ScrollerFromScrollMarkerGroup() const {
+  NOT_DESTROYED();
+  DCHECK(IsScrollMarkerGroup());
+  auto* pseudo_element = DynamicTo<PseudoElement>(GetNode());
+  if (const Element* originating_element = pseudo_element->parentElement()) {
+    if (LayoutObject* object = originating_element->GetLayoutObject()) {
+      if (object->IsFieldset()) {
+        object = To<LayoutFieldset>(object)->FindAnonymousFieldsetContentBox();
+        if (!object) {
+          return nullptr;
+        }
+      }
+      if (!object->IsScrollContainer()) {
+        // TODO(crbug.com/381444307): This shouldn't happen. If there's a scroll
+        // marker group, the originating element should be a scroll container.
+        return nullptr;
+      }
+      return DynamicTo<LayoutBlock>(object);
+    }
+  }
+  return nullptr;
+}
+
+=======
+>>>>>>> chromium
 bool LayoutObject::IsListMarkerForSummary() const {
   if (!IsListMarkerIncludingAll())
     return false;
@@ -1342,7 +1432,7 @@ void LayoutObject::MarkParentForOutOfFlowPositionedChange() {
   const LayoutBlock* containing_block = ContainingBlock();
   while (object != containing_block) {
     object->SetChildNeedsLayout(kMarkOnlyThis);
-    object = object->Parent();
+    object = object->Container();
   }
   // Finally mark the parent block for layout. This will mark everything which
   // has an OOF-positioned object in a NGLayoutResult as needing layout.
@@ -1550,6 +1640,13 @@ LayoutObject* LayoutObject::NearestAncestorForElement() const {
   return ancestor;
 }
 
+<<<<<<< HEAD
+bool LayoutObject::ComputeIsFixedContainer(const ComputedStyle& style) const {
+  NOT_DESTROYED();
+  if (IsViewTransitionRoot()) {
+    return true;
+  }
+=======
 LayoutBlock* LayoutObject::FindNonAnonymousContainingBlock(
     LayoutObject* container,
     AncestorSkipInfo* skip_info) {
@@ -1577,15 +1674,18 @@ bool LayoutObject::ComputeIsFixedContainer(const ComputedStyle* style) const {
   NOT_DESTROYED();
   if (!style)
     return false;
+>>>>>>> chromium
   bool is_document_element = IsDocumentElement();
   // https://www.w3.org/TR/filter-effects-1/#FilterProperty
-  if (!is_document_element && style->HasNonInitialFilter())
+  if (!is_document_element && style.HasNonInitialFilter()) {
     return true;
+  }
   // Backdrop-filter creates a containing block for fixed and absolute
   // positioned elements:
   // https://drafts.fxtf.org/filter-effects-2/#backdrop-filter-operation
-  if (!is_document_element && style->HasNonInitialBackdropFilter())
+  if (!is_document_element && style.HasNonInitialBackdropFilter()) {
     return true;
+  }
   // The LayoutView is always a container of fixed positioned descendants. In
   // addition, SVG foreignObjects become such containers, so that descendants
   // of a foreignObject cannot escape it. Similarly, text controls let authors
@@ -1597,16 +1697,24 @@ bool LayoutObject::ComputeIsFixedContainer(const ComputedStyle* style) const {
     return true;
   // https://www.w3.org/TR/css-transforms-1/#containing-block-for-all-descendants
 
+<<<<<<< HEAD
+  // For transform-style specifically, we want to consider the computed
+  // value rather than the used value.
+  if (style.HasTransformRelatedProperty() ||
+      style.TransformStyle3D() == ETransformStyle3D::kPreserve3d) {
+=======
   if (style->HasTransformRelatedProperty()) {
+>>>>>>> chromium
     if (!IsInline() || IsAtomicInlineLevel())
       return true;
   }
   // https://www.w3.org/TR/css-contain-1/#containment-layout
   if (IsEligibleForPaintOrLayoutContainment() &&
-      (ShouldApplyPaintContainment(*style) ||
-       ShouldApplyLayoutContainment(*style) ||
-       style->WillChangeProperties().Contains(CSSPropertyID::kContain)))
+      (ShouldApplyPaintContainment(style) ||
+       ShouldApplyLayoutContainment(style) ||
+       style.WillChangeProperties().Contains(CSSPropertyID::kContain))) {
     return true;
+  }
 
   // We intend to change behavior to set containing block based on computed
   // rather than used style of transform-style. HasTransformRelatedProperty
@@ -1626,13 +1734,23 @@ bool LayoutObject::ComputeIsFixedContainer(const ComputedStyle* style) const {
   return false;
 }
 
-bool LayoutObject::ComputeIsAbsoluteContainer(
-    const ComputedStyle* style) const {
+bool LayoutObject::ComputeIsAbsoluteContainer(const ComputedStyle& style,
+                                              bool is_fixed_container) const {
   NOT_DESTROYED();
+<<<<<<< HEAD
+  return is_fixed_container ||
+         (style.GetPosition() != EPosition::kStatic ||
+          style.WillChangeProperties().Contains(CSSPropertyID::kPosition)) ||
+         // crbug.com/1153042: If <fieldset> is an absolute container, its
+         // anonymous content box should be an absolute container.
+         (IsAnonymous() && Parent() && Parent()->IsFieldset() &&
+          Parent()->CanContainAbsolutePositionObjects());
+=======
   if (!style)
     return false;
   return style->CanContainAbsolutePositionObjects() ||
          ComputeIsFixedContainer(style);
+>>>>>>> chromium
 }
 
 FloatRect LayoutObject::AbsoluteBoundingBoxFloatRect(
@@ -1685,6 +1803,36 @@ PhysicalRect LayoutObject::AbsoluteBoundingBoxRectForScrollIntoView() const {
           ? kIgnoreStickyOffset
           : 0;
 
+<<<<<<< HEAD
+  if (const auto* scroll_marker =
+          DynamicTo<ScrollMarkerPseudoElement>(GetNode())) {
+    // Scroll markers are reparented into a scroll marker group. We want the
+    // rectangle of the originating element (or column).
+    const Element* originating_element =
+        scroll_marker->UltimateOriginatingElement();
+    const auto* originating_object = originating_element->GetLayoutObject();
+    const auto* column_pseudo =
+        DynamicTo<ColumnPseudoElement>(scroll_marker->parentNode());
+    if (!column_pseudo) {
+      return originating_object->AbsoluteBoundingBoxRectForScrollIntoView();
+    }
+    // This is a ::column::scroll-marker
+    if (const auto* scroller =
+            originating_element->GetLayoutBoxForScrolling()) {
+      // The originating element (the multicol container) is also the scrollable
+      // container.
+      PhysicalRect bounds = column_pseudo->ColumnRect();
+      bounds.offset -= PhysicalOffset::FromVector2dFRound(
+          scroller->GetScrollableArea()->GetScrollOffset());
+      return scroller->LocalToAbsoluteRect(bounds, flag);
+    }
+    gfx::QuadF quad = originating_object->LocalRectToAbsoluteQuad(
+        column_pseudo->ColumnRect(), flag);
+    return PhysicalRect::EnclosingRect(quad.BoundingBox());
+  }
+
+  return AbsoluteBoundingBoxRectHandlingEmptyInline(flag);
+=======
   PhysicalRect rect = AbsoluteBoundingBoxRectHandlingEmptyInline(flag);
   const auto& style = StyleRef();
   rect.ExpandEdges(LayoutUnit(style.ScrollMarginTop()),
@@ -1692,6 +1840,7 @@ PhysicalRect LayoutObject::AbsoluteBoundingBoxRectForScrollIntoView() const {
                    LayoutUnit(style.ScrollMarginBottom()),
                    LayoutUnit(style.ScrollMarginLeft()));
   return rect;
+>>>>>>> chromium
 }
 
 void LayoutObject::AddAbsoluteRectForLayer(IntRect& result) {
@@ -2234,9 +2383,29 @@ const ComputedStyle& LayoutObject::SlowEffectiveStyle(
     case NGStyleVariant::kEllipsis:
       // The ellipsis is styled according to the line style.
       // https://www.w3.org/TR/css-overflow-3/#ellipsing-details
+<<<<<<< HEAD
+      // For the line-clamp ellipsis, we can end up with a FragmentItem whose
+      // LayoutObject is the containing LayoutBlockFlow, because there is no
+      // inline layout object that it belongs to. In that case, we must also use
+      // the line style, which is this LayoutObject's style.
+      DCHECK(
+          IsInline() ||
+          (RuntimeEnabledFeatures::CSSLineClampLineBreakingEllipsisEnabled() &&
+           IsLayoutBlockFlow() && ChildrenInline()));
+      if (!IsLayoutBlockFlow()) {
+        if (const LayoutObject* block = ContainingBlock()) {
+          return block->StyleRef();
+        }
+      }
+      return StyleRef();
+    case StyleVariant::kFirstLineEllipsis:
+      DCHECK(IsInline());
+      if (const LayoutObject* block = ContainingBlock()) {
+=======
       // Use first-line style if exists since most cases it is the first line.
       DCHECK(IsInline());
       if (LayoutObject* block = ContainingBlock())
+>>>>>>> chromium
         return block->FirstLineStyleRef();
       return FirstLineStyleRef();
   }
@@ -2344,10 +2513,29 @@ void LayoutObject::SetPseudoElementStyle(
     scoped_refptr<const ComputedStyle> pseudo_style,
     bool match_parent_size) {
   NOT_DESTROYED();
+<<<<<<< HEAD
+  const ComputedStyle* pseudo_style = owner.Style();
+  DCHECK(pseudo_style->StyleType() == kPseudoIdCheckMark ||
+         pseudo_style->StyleType() == kPseudoIdBefore ||
+         pseudo_style->StyleType() == kPseudoIdAfter ||
+         pseudo_style->StyleType() == kPseudoIdPickerIcon ||
+         pseudo_style->StyleType() == kPseudoIdMarker ||
+         pseudo_style->StyleType() == kPseudoIdFirstLetter ||
+         pseudo_style->StyleType() == kPseudoIdScrollMarkerGroup ||
+         pseudo_style->IsPageMarginBox() ||
+         pseudo_style->StyleType() == kPseudoIdScrollMarker ||
+         pseudo_style->StyleType() == kPseudoIdScrollButtonBlockStart ||
+         pseudo_style->StyleType() == kPseudoIdScrollButtonInlineStart ||
+         pseudo_style->StyleType() == kPseudoIdScrollButtonInlineEnd ||
+         pseudo_style->StyleType() == kPseudoIdScrollButtonBlockEnd);
+
+  InheritIsInDetachedNonDomTree(owner);
+=======
   DCHECK(pseudo_style->StyleType() == kPseudoIdBefore ||
          pseudo_style->StyleType() == kPseudoIdAfter ||
          pseudo_style->StyleType() == kPseudoIdMarker ||
          pseudo_style->StyleType() == kPseudoIdFirstLetter);
+>>>>>>> chromium
 
   // FIXME: We should consider just making all pseudo items use an inherited
   // style.
@@ -3551,6 +3739,8 @@ bool LayoutObject::OffsetForContainerDependsOnPoint(
           container->IsBox());
 }
 
+<<<<<<< HEAD
+=======
 PhysicalOffset LayoutObject::OffsetFromContainer(
     const LayoutObject* o,
     bool ignore_scroll_offset) const {
@@ -3558,24 +3748,42 @@ PhysicalOffset LayoutObject::OffsetFromContainer(
   return OffsetFromContainerInternal(o, ignore_scroll_offset);
 }
 
+>>>>>>> chromium
 PhysicalOffset LayoutObject::OffsetFromContainerInternal(
     const LayoutObject* o,
     bool ignore_scroll_offset) const {
   NOT_DESTROYED();
   DCHECK_EQ(o, Container());
+<<<<<<< HEAD
+  return o->IsScrollContainer() ? OffsetFromScrollableContainer(o, mode)
+                                : PhysicalOffset();
+=======
   return o->IsScrollContainer()
              ? OffsetFromScrollableContainer(o, ignore_scroll_offset)
              : PhysicalOffset();
+>>>>>>> chromium
 }
 
 PhysicalOffset LayoutObject::OffsetFromScrollableContainer(
     const LayoutObject* container,
-    bool ignore_scroll_offset) const {
+    MapCoordinatesFlags mode) const {
   NOT_DESTROYED();
   DCHECK(container->IsScrollContainer());
+<<<<<<< HEAD
+
+  if (IsFixedPositioned() && container->IsLayoutView())
+    return PhysicalOffset();
+
+  if (mode & kIgnoreScrollOriginAndOffset) {
+    return PhysicalOffset();
+  }
+
+=======
+>>>>>>> chromium
   const auto* box = To<LayoutBox>(container);
-  if (!ignore_scroll_offset)
+  if (!(mode & kIgnoreScrollOffset)) {
     return -box->ScrolledContentOffset();
+  }
 
   // ScrollOrigin accounts for other writing modes whose content's origin is not
   // at the top-left.
@@ -4088,6 +4296,7 @@ Node* LayoutObject::NodeForHitTest() const {
   // actually hit the generated content so walk up to the PseudoElement.
   if (const LayoutObject* parent = Parent()) {
     if (parent->IsBeforeOrAfterContent() || parent->IsMarkerContent() ||
+        parent->IsScrollButtonOrMarkerContent() ||
         parent->StyleRef().StyleType() == kPseudoIdFirstLetter) {
       for (; parent; parent = parent->Parent()) {
         if (Node* node = parent->GetNode())
@@ -4202,7 +4411,13 @@ const ComputedStyle* LayoutObject::GetCachedPseudoElementStyle(
     PseudoId pseudo) const {
   NOT_DESTROYED();
   DCHECK_NE(pseudo, kPseudoIdBefore);
+<<<<<<< HEAD
+  DCHECK_NE(pseudo, kPseudoIdCheckMark);
   DCHECK_NE(pseudo, kPseudoIdAfter);
+  DCHECK_NE(pseudo, kPseudoIdPickerIcon);
+=======
+  DCHECK_NE(pseudo, kPseudoIdAfter);
+>>>>>>> chromium
   if (!GetNode())
     return nullptr;
 
@@ -4217,7 +4432,13 @@ scoped_refptr<ComputedStyle> LayoutObject::GetUncachedPseudoElementStyle(
     const StyleRequest& request) const {
   NOT_DESTROYED();
   DCHECK_NE(request.pseudo_id, kPseudoIdBefore);
+<<<<<<< HEAD
+  DCHECK_NE(request.pseudo_id, kPseudoIdCheckMark);
   DCHECK_NE(request.pseudo_id, kPseudoIdAfter);
+  DCHECK_NE(request.pseudo_id, kPseudoIdPickerIcon);
+=======
+  DCHECK_NE(request.pseudo_id, kPseudoIdAfter);
+>>>>>>> chromium
   if (!GetNode())
     return nullptr;
 
@@ -4280,6 +4501,11 @@ bool LayoutObject::GetImageAnimationPolicy(
   return true;
 }
 
+<<<<<<< HEAD
+InterpolationQuality LayoutObject::GetSpeculativeDecodeQuality() const {
+  NOT_DESTROYED();
+  return StyleRef().GetInterpolationQuality();
+=======
 bool LayoutObject::IsInsideListMarker() const {
   NOT_DESTROYED();
   return (IsListMarkerForNormalContent() &&
@@ -4300,6 +4526,7 @@ bool LayoutObject::IsInert() const {
   while (!layout_object->GetNode())
     layout_object = layout_object->Parent();
   return layout_object->GetNode()->IsInert();
+>>>>>>> chromium
 }
 
 void LayoutObject::ImageChanged(ImageResourceContent* image,
@@ -4970,11 +5197,57 @@ bool IsMenuList(const LayoutObject* object) {
   return select && select->UsesMenuList();
 }
 
+<<<<<<< HEAD
+void LayoutObject::SetSVGSelfOrDescendantHasViewportDependency() {
+  NOT_DESTROYED();
+  DCHECK(!RuntimeEnabledFeatures::SvgViewportOptimizationEnabled());
+  auto* object = this;
+  do {
+    DCHECK(object->IsSVGChild());
+    if (object->SVGSelfOrDescendantHasViewportDependency()) {
+      break;
+    }
+    object->bitfields_.SetSVGSelfOrDescendantHasViewportDependency(true);
+    object = object->Parent();
+  } while (object && !object->IsSVGRoot());
+}
+
+void LayoutObject::InvalidateSubtreePositionTry(bool mark_style_dirty) {
+  NOT_DESTROYED();
+
+  bool invalidate = StyleRef().GetPositionTryFallbacks() != nullptr;
+  if (invalidate) {
+    // Invalidate layout as @position-fallback styles are applied during layout.
+    SetNeedsLayout(layout_invalidation_reason::kStyleChange);
+  }
+
+  if (mark_style_dirty) {
+    if (Node* node = GetNode()) {
+      if (node->GetStyleChangeType() == kSubtreeStyleChange) {
+        // No need to further mark for style recalc inside this subtree.
+        mark_style_dirty = false;
+      }
+      if (invalidate && mark_style_dirty) {
+        // Need to invalidate style to avoid using stale cached position
+        // fallback styles.
+        node->SetNeedsStyleRecalc(kLocalStyleChange,
+                                  StyleChangeReasonForTracing::Create(
+                                      style_change_reason::kPositionTryChange));
+      }
+    }
+  }
+
+  for (LayoutObject* child = SlowFirstChild(); child;
+       child = child->NextSibling()) {
+    child->InvalidateSubtreePositionTry(mark_style_dirty);
+  }
+=======
 bool IsListBox(const LayoutObject* object) {
   if (!object)
     return false;
   auto* select = DynamicTo<HTMLSelectElement>(object->GetNode());
   return select && !select->UsesMenuList();
+>>>>>>> chromium
 }
 
 }  // namespace blink

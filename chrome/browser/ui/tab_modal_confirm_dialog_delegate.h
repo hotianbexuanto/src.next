@@ -25,8 +25,19 @@ class Image;
 
 class TabModalConfirmDialogCloseDelegate {
  public:
+<<<<<<< HEAD
+  TabModalConfirmDialogCloseDelegate() = default;
+
+  TabModalConfirmDialogCloseDelegate(
+      const TabModalConfirmDialogCloseDelegate&) = delete;
+  TabModalConfirmDialogCloseDelegate& operator=(
+      const TabModalConfirmDialogCloseDelegate&) = delete;
+
+  virtual ~TabModalConfirmDialogCloseDelegate() = default;
+=======
   TabModalConfirmDialogCloseDelegate() {}
   virtual ~TabModalConfirmDialogCloseDelegate() {}
+>>>>>>> chromium
 
   virtual void CloseDialog() = 0;
 

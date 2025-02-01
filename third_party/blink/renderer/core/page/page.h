@@ -288,6 +288,26 @@ class CORE_EXPORT Page final : public GarbageCollected<Page>,
   }
   int SubframeCount() const;
 
+<<<<<<< HEAD
+  // Update the CSS safe-area-inset* environment variables in the main frame's
+  // document based on the stored |max_safe_area_insets| in the Page and the
+  // given |browser_controls|'s visible height.
+  //
+  // The new safe-area-inset* will not be applied to the CSS
+  // environment if a fullscreen element exists, unless |force_update|
+  // is true.
+  void UpdateSafeAreaInsetWithBrowserControls(
+      const BrowserControls& browser_controls,
+      bool force_update = false);
+
+  // Set the max safe-area-inset* from the browser and update the CSS
+  // environment variables for the main frame. If the setter is not a main
+  // frame, applies the same safe-area-inset* to the given |setter|'s document
+  // as well. The input |insets| is unscaled and in the size of dips.
+  void SetMaxSafeAreaInsets(LocalFrame* setter, gfx::Insets insets);
+
+=======
+>>>>>>> chromium
   void SetDefaultPageScaleLimits(float min_scale, float max_scale);
   void SetUserAgentPageScaleConstraints(
       const PageScaleConstraints& new_constraints);
@@ -333,7 +353,33 @@ class CORE_EXPORT Page final : public GarbageCollected<Page>,
   void SetIsPrerendering(bool is_prerendering) {
     is_prerendering_ = is_prerendering;
   }
+<<<<<<< HEAD
+  void SetPrerenderMetricSuffix(const String& suffix) {
+    prerender_metric_suffix_ = suffix;
+  }
+  void SetShouldWarmUpCompositorOnPrerender(
+      bool should_warm_up_compositor_on_prerender) {
+    should_warm_up_compositor_on_prerender_ =
+        should_warm_up_compositor_on_prerender;
+  }
+  void SetShouldPreparePaintTreeOnPrerender(
+      bool should_prepare_paint_tree_on_prerender) {
+    should_prepare_paint_tree_on_prerender_ =
+        should_prepare_paint_tree_on_prerender;
+  }
   bool IsPrerendering() const { return is_prerendering_; }
+  const String& PrerenderMetricSuffix() const {
+    return prerender_metric_suffix_;
+  }
+  bool ShouldWarmUpCompositorOnPrerender() const {
+    return should_warm_up_compositor_on_prerender_;
+  }
+  bool ShouldPreparePaintTreeOnPrerender() const {
+    return should_prepare_paint_tree_on_prerender_;
+  }
+=======
+  bool IsPrerendering() const { return is_prerendering_; }
+>>>>>>> chromium
 
   void SetTextAutosizerPageInfo(
       const mojom::blink::TextAutosizerPageInfo& page_info) {
@@ -474,6 +520,29 @@ class CORE_EXPORT Page final : public GarbageCollected<Page>,
 
   int subframe_count_;
 
+<<<<<<< HEAD
+  // |max_safe_area_insets_| is coming from the display cutout client.
+  // |scaled_max_safe_area_insets_| has been scaled to the size of physical
+  // pixles.
+  gfx::InsetsF scaled_max_safe_area_insets_;
+  gfx::InsetsF applied_safe_area_insets_;
+
+  // The light, dark and forced_colors mode ColorProviders corresponding to the
+  // top-level web container this Page is associated with.
+  std::unique_ptr<ui::ColorProvider> light_color_provider_;
+  std::unique_ptr<ui::ColorProvider> dark_color_provider_;
+  std::unique_ptr<ui::ColorProvider> forced_colors_color_provider_;
+
+  // Caching the color provider colors for easy creation of non ordinary pages
+  // who may depend on the main Page for colors.
+  ColorProviderColorMaps color_provider_colors_;
+
+  // This provider is used when forced color emulation is enabled via DevTools,
+  // overriding the light, dark or forced colors color providers.
+  std::unique_ptr<ui::ColorProvider> emulated_forced_colors_provider_;
+
+=======
+>>>>>>> chromium
   HeapHashSet<WeakMember<PluginsChangedObserver>> plugins_changed_observers_;
 
   // A circular, double-linked list of pages that are related to the current
@@ -505,6 +574,29 @@ class CORE_EXPORT Page final : public GarbageCollected<Page>,
   // this Page. Once initialized, it can only transition from true to false on
   // prerender activation; it does not go from false to true.
   bool is_prerendering_ = false;
+<<<<<<< HEAD
+  String prerender_metric_suffix_;
+
+  // If true, warms up compositor on a certain loading event if the page is
+  // under prerendering. Only valid when the cc feature `kWarmUpCompositor`
+  // (controls the independent cc internal feature) and blink feature
+  // `kPrerender2WarmUpCompositor` (manages the trigger point of that cc
+  // feature for prerender case) are enabled. Please see crbug.com/41496019 for
+  // more details.
+  bool should_warm_up_compositor_on_prerender_ = false;
+  // If true, prepares the paint tree if the page is under prerendering.
+  bool should_prepare_paint_tree_on_prerender_ = false;
+
+  // Whether the the Page's main document is a Fenced Frame document. This is
+  // only set for the MPArch implementation and is true when the corresponding
+  // browser side FrameTree has the FrameTree::Type of kFencedFrame.
+  bool is_fenced_frame_tree_ = false;
+
+  // This tracks the mode that the fenced frame is set to.
+  blink::FencedFrame::DeprecatedFencedFrameMode fenced_frame_mode_ =
+      blink::FencedFrame::DeprecatedFencedFrameMode::kDefault;
+=======
+>>>>>>> chromium
 
   mojom::blink::TextAutosizerPageInfo web_text_autosizer_page_info_;
 

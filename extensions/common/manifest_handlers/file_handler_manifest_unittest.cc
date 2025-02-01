@@ -20,7 +20,7 @@ namespace errors = manifest_errors;
 typedef ManifestTest FileHandlersManifestTest;
 
 TEST_F(FileHandlersManifestTest, InvalidFileHandlers) {
-  Testcase testcases[] = {
+  const Testcase testcases[] = {
       Testcase("file_handlers_invalid_handlers.json",
                errors::kInvalidFileHandlers),
       Testcase("file_handlers_invalid_type.json",
@@ -40,7 +40,11 @@ TEST_F(FileHandlersManifestTest, InvalidFileHandlers) {
       Testcase("file_handlers_invalid_verb.json",
                errors::kInvalidFileHandlerVerb),
   };
+<<<<<<< HEAD
+  RunTestcases(testcases, EXPECT_TYPE_ERROR);
+=======
   RunTestcases(testcases, base::size(testcases), EXPECT_TYPE_ERROR);
+>>>>>>> chromium
 }
 
 TEST_F(FileHandlersManifestTest, ValidFileHandlers) {

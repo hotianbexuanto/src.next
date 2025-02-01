@@ -4,6 +4,11 @@
 
 #include "chrome/browser/extensions/external_pref_loader.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+#include <set>
+=======
+>>>>>>> chromium
 #include <utility>
 
 #include "base/bind.h"
@@ -250,8 +255,7 @@ ExternalPrefLoader::ExternalPrefLoader(int base_path_id,
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 }
 
-ExternalPrefLoader::~ExternalPrefLoader() {
-}
+ExternalPrefLoader::~ExternalPrefLoader() = default;
 
 const base::FilePath ExternalPrefLoader::GetBaseCrxFilePath() {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -283,10 +287,15 @@ void ExternalPrefLoader::OnPrioritySyncReady(
     ExternalPrefLoader::PrioritySyncReadyWaiter* waiter) {
   // Delete |waiter| from |pending_waiter_list_|.
   pending_waiter_list_.erase(
+<<<<<<< HEAD
+      std::ranges::find(pending_waiter_list_, waiter,
+                        &std::unique_ptr<PrioritySyncReadyWaiter>::get));
+=======
       std::find_if(pending_waiter_list_.begin(), pending_waiter_list_.end(),
                    [waiter](const std::unique_ptr<PrioritySyncReadyWaiter>& w) {
                      return w.get() == waiter;
                    }));
+>>>>>>> chromium
   // Continue loading.
   GetExtensionFileTaskRunner()->PostTask(
       FROM_HERE, base::BindOnce(&ExternalPrefLoader::LoadOnFileThread, this));

@@ -4,13 +4,17 @@
 
 #include "components/history/core/browser/visit_annotations_database.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
 #include "base/logging.h"
+<<<<<<< HEAD
+=======
 #include "base/ranges/algorithm.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
+>>>>>>> chromium
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "components/history/core/browser/url_row.h"
@@ -456,6 +460,234 @@ void VisitAnnotationsDatabase::AddClusters(
       continue;
     }
     const int64_t cluster_id = GetDB().GetLastInsertRowId();
+<<<<<<< HEAD
+    DCHECK_GT(cluster_id, 0);
+
+    // Insert each visit into 'clusters_and_visits'.
+    std::ranges::for_each(cluster.visits, [&](const auto& cluster_visit) {
+      const auto visit_id = cluster_visit.annotated_visit.visit_row.visit_id;
+      DCHECK_GT(visit_id, 0);
+      clusters_and_visits_statement.Reset(true);
+      clusters_and_visits_statement.BindInt64(0, cluster_id);
+      clusters_and_visits_statement.BindInt64(1, visit_id);
+      clusters_and_visits_statement.BindDouble(2, cluster_visit.score);
+      clusters_and_visits_statement.BindDouble(3,
+                                               cluster_visit.engagement_score);
+      clusters_and_visits_statement.BindString(
+          4, cluster_visit.url_for_deduping.spec());
+      clusters_and_visits_statement.BindString(
+          5, cluster_visit.normalized_url.spec());
+      clusters_and_visits_statement.BindString16(6,
+                                                 cluster_visit.url_for_display);
+      clusters_and_visits_statement.BindInt(
+          7,
+          ClusterVisit::InteractionStateToInt(cluster_visit.interaction_state));
+      if (!clusters_and_visits_statement.Run()) {
+        DVLOG(0)
+            << "Failed to execute 'clusters_and_visits' insert statement:  "
+            << "cluster_id = " << cluster_id << ", visit_id = " << visit_id;
+      }
+
+      // Insert each `ClusterVisit`'s duplicate visits into
+      // 'cluster_visit_duplicates_statement'.
+      for (const auto& duplicate_visit : cluster_visit.duplicate_visits) {
+        DCHECK_GT(duplicate_visit.visit_id, 0);
+        cluster_visit_duplicates_statement.Reset(true);
+        cluster_visit_duplicates_statement.BindInt64(0, visit_id);
+        cluster_visit_duplicates_statement.BindInt64(1,
+                                                     duplicate_visit.visit_id);
+        if (!cluster_visit_duplicates_statement.Run()) {
+          DVLOG(0) << "Failed to execute 'cluster_visit_duplicates' insert "
+                      "statement:  "
+                   << "cluster_id = " << cluster_id
+                   << ", visit_id = " << visit_id
+                   << ", duplicate_visit_id = " << duplicate_visit.visit_id;
+        }
+      }
+    });
+
+    // Insert each keyword into 'cluster_keywords'.
+    for (const auto& [keyword, keyword_data] : cluster.keyword_to_data_map) {
+      cluster_keywords_statement.Reset(true);
+      cluster_keywords_statement.BindInt64(0, cluster_id);
+      cluster_keywords_statement.BindString16(1, keyword);
+      cluster_keywords_statement.BindInt(2, keyword_data.type);
+      cluster_keywords_statement.BindDouble(3, keyword_data.score);
+      cluster_keywords_statement.BindString(4, "");
+      if (!cluster_keywords_statement.Run()) {
+        DVLOG(0) << "Failed to execute 'cluster_keywords' insert statement:  "
+                 << "cluster_id = " << cluster_id << ", keyword = " << keyword;
+      }
+    }
+  }
+}
+
+int64_t VisitAnnotationsDatabase::ReserveNextClusterId(
+    const std::string& originator_cache_guid,
+    int64_t originator_cluster_id) {
+  sql::Statement clusters_statement(
+      GetDB().GetCachedStatement(SQL_FROM_HERE,
+                                 "INSERT INTO clusters"
+                                 "(should_show_on_prominent_ui_surfaces,label,"
+                                 "raw_label,triggerability_calculated,"
+                                 "originator_cache_guid,originator_cluster_id)"
+                                 "VALUES(?,?,?,?,?,?)"));
+  clusters_statement.BindBool(0, false);
+  clusters_statement.BindString16(1, u"");
+  clusters_statement.BindString16(2, u"");
+  clusters_statement.BindBool(3, false);
+  clusters_statement.BindString(4, originator_cache_guid);
+  clusters_statement.BindInt64(5, originator_cluster_id);
+  if (!clusters_statement.Run()) {
+    DVLOG(0) << "Failed to execute 'clusters' insert statement";
+  }
+  return GetDB().GetLastInsertRowId();
+}
+
+void VisitAnnotationsDatabase::AddVisitsToCluster(
+    int64_t cluster_id,
+    const std::vector<ClusterVisit>& visits) {
+  DCHECK_GT(cluster_id, 0);
+  sql::Statement clusters_and_visits_statement(
+      GetDB().GetCachedStatement(SQL_FROM_HERE,
+                                 "INSERT INTO clusters_and_visits"
+                                 "(" HISTORY_CLUSTER_VISIT_ROW_FIELDS ")"
+                                 "VALUES(?,?,?,?,?,?,?,?)"));
+
+  // Insert each visit into 'clusters_and_visits'.
+  std::ranges::for_each(visits, [&](const auto& visit) {
+    DCHECK_GT(visit.annotated_visit.visit_row.visit_id, 0);
+    clusters_and_visits_statement.Reset(true);
+    clusters_and_visits_statement.BindInt64(0, cluster_id);
+    clusters_and_visits_statement.BindInt64(
+        1, visit.annotated_visit.visit_row.visit_id);
+    // Tentatively score everything as 1.0.
+    clusters_and_visits_statement.BindDouble(2, 1.0);
+    clusters_and_visits_statement.BindDouble(3, visit.engagement_score);
+    clusters_and_visits_statement.BindString(4, visit.url_for_deduping.spec());
+    clusters_and_visits_statement.BindString(5, visit.normalized_url.spec());
+    clusters_and_visits_statement.BindString16(6, visit.url_for_display);
+    clusters_and_visits_statement.BindInt(
+        7, ClusterVisit::InteractionStateToInt(visit.interaction_state));
+    if (!clusters_and_visits_statement.Run()) {
+      DVLOG(0) << "Failed to execute 'clusters_and_visits' insert statement:  "
+               << "cluster_id = " << cluster_id
+               << ", visit_id = " << visit.annotated_visit.visit_row.visit_id;
+    }
+  });
+}
+
+void VisitAnnotationsDatabase::UpdateClusterTriggerability(
+    const std::vector<history::Cluster>& clusters) {
+  sql::Statement clusters_statement(GetDB().GetCachedStatement(
+      SQL_FROM_HERE,
+      "UPDATE clusters "
+      "SET "
+      "should_show_on_prominent_ui_surfaces=?,label=?,"
+      "raw_label=?,triggerability_calculated=? "
+      "WHERE cluster_id=?"));
+
+  sql::Statement delete_cluster_keywords_statement(GetDB().GetCachedStatement(
+      SQL_FROM_HERE, "DELETE FROM cluster_keywords WHERE cluster_id=?"));
+
+  sql::Statement cluster_keywords_statement(
+      GetDB().GetCachedStatement(SQL_FROM_HERE,
+                                 "INSERT INTO cluster_keywords"
+                                 "(cluster_id,keyword,type,score,collections)"
+                                 "VALUES(?,?,?,?,?)"));
+
+  sql::Statement update_cluster_visit_scores_statement(
+      GetDB().GetCachedStatement(SQL_FROM_HERE,
+                                 "UPDATE clusters_and_visits SET score=? WHERE "
+                                 "cluster_id=? AND visit_id=?"));
+
+  // INSERT OR IGNORE, because these rows are not keyed on `cluster_id`, so it's
+  // difficult to guarantee complete cleanup. https://crbug.com/1383274
+  sql::Statement cluster_visit_duplicates_statement(GetDB().GetCachedStatement(
+      SQL_FROM_HERE,
+      "INSERT OR IGNORE INTO cluster_visit_duplicates"
+      "(visit_id,duplicate_visit_id)"
+      "VALUES(?,?)"));
+
+  std::ranges::for_each(clusters, [&](const auto& cluster) {
+    DCHECK_GT(cluster.cluster_id, 0);
+
+    // Update cluster visibility.
+    clusters_statement.Reset(true);
+    clusters_statement.BindBool(0,
+                                cluster.should_show_on_prominent_ui_surfaces);
+    clusters_statement.BindString16(1, cluster.label.value_or(u""));
+    clusters_statement.BindString16(2, cluster.raw_label.value_or(u""));
+    clusters_statement.BindBool(3, cluster.triggerability_calculated);
+    clusters_statement.BindInt64(4, cluster.cluster_id);
+    if (!clusters_statement.Run()) {
+      DVLOG(0) << "Failed to execute clusters update statement:  "
+               << "cluster_id = " << cluster.cluster_id;
+    }
+
+    // Delete all previously persisted keywords.
+    delete_cluster_keywords_statement.Reset(true);
+    delete_cluster_keywords_statement.BindInt64(0, cluster.cluster_id);
+    if (!delete_cluster_keywords_statement.Run()) {
+      DVLOG(0) << "Failed to execute 'cluster_keywords' delete statement in "
+                  "`UpdateClusterTriggerability()`:  cluster_id = "
+               << cluster.cluster_id;
+    }
+
+    // Add each keyword into 'cluster_keywords'.
+    for (const auto& [keyword, keyword_data] : cluster.keyword_to_data_map) {
+      cluster_keywords_statement.Reset(true);
+      cluster_keywords_statement.BindInt64(0, cluster.cluster_id);
+      cluster_keywords_statement.BindString16(1, keyword);
+      cluster_keywords_statement.BindInt(2, keyword_data.type);
+      cluster_keywords_statement.BindDouble(3, keyword_data.score);
+      cluster_keywords_statement.BindString(4, "");
+      if (!cluster_keywords_statement.Run()) {
+        DVLOG(0) << "Failed to execute 'cluster_keywords' insert statement in "
+                    "`UpdateClusterTriggerability()`:  "
+                 << "cluster_id = " << cluster.cluster_id
+                 << ", keyword = " << keyword;
+      }
+    }
+
+    std::ranges::for_each(cluster.visits, [&](const auto& cluster_visit) {
+      const auto visit_id = cluster_visit.annotated_visit.visit_row.visit_id;
+      DCHECK_GT(visit_id, 0);
+      update_cluster_visit_scores_statement.Reset(true);
+      update_cluster_visit_scores_statement.BindDouble(0, cluster_visit.score);
+      update_cluster_visit_scores_statement.BindInt64(1, cluster.cluster_id);
+      update_cluster_visit_scores_statement.BindInt64(2, visit_id);
+      if (!update_cluster_visit_scores_statement.Run()) {
+        DVLOG(0) << "Failed to execute 'clusters_and_visits' update statement "
+                    "in `UpdateClusterTriggerability()`:  "
+                 << "cluster_id = " << cluster.cluster_id
+                 << ", visit_id = " << visit_id;
+      }
+
+      // Insert each `ClusterVisit`'s duplicate visits into
+      // 'cluster_visit_duplicates_statement'.
+      for (const auto& duplicate_visit : cluster_visit.duplicate_visits) {
+        DCHECK_GT(duplicate_visit.visit_id, 0);
+        cluster_visit_duplicates_statement.Reset(true);
+        cluster_visit_duplicates_statement.BindInt64(0, visit_id);
+        cluster_visit_duplicates_statement.BindInt64(1,
+                                                     duplicate_visit.visit_id);
+        if (!cluster_visit_duplicates_statement.Run()) {
+          DVLOG(0) << "Failed to execute 'cluster_visit_duplicates' insert in "
+                      "statement in `UpdateClusterTriggerability()`:  "
+                   << "cluster_id = " << cluster.cluster_id
+                   << ", visit_id = " << visit_id
+                   << ", duplicate_visit_id = " << duplicate_visit.visit_id;
+        }
+      }
+    });
+  });
+}
+
+void VisitAnnotationsDatabase::UpdateClusterVisit(
+    int64_t cluster_id,
+    const history::ClusterVisit& cluster_visit) {
+=======
     DCHECK(cluster_id);
     base::ranges::for_each(
         cluster.scored_annotated_visits,
@@ -477,6 +709,7 @@ void VisitAnnotationsDatabase::AddClusters(
 
 std::vector<ClusterRow> VisitAnnotationsDatabase::GetClusters(int max_results) {
   DCHECK_GT(max_results, 0);
+>>>>>>> chromium
   sql::Statement statement(
       GetDB().GetCachedStatement(SQL_FROM_HERE,
                                  "SELECT cluster_id,visit_id "

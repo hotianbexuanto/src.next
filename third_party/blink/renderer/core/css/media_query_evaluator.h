@@ -29,7 +29,14 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_MEDIA_QUERY_EVALUATOR_H_
 
 #include "third_party/blink/renderer/core/core_export.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/css/kleene_value.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/member.h"
+=======
 #include "third_party/blink/renderer/platform/heap/handle.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
@@ -42,8 +49,11 @@ class MediaQuerySet;
 class MediaQuerySetResult;
 class MediaValues;
 
+<<<<<<< HEAD
+=======
 using MediaQueryResultList = Vector<MediaQueryResult>;
 
+>>>>>>> chromium
 // Class that evaluates css media queries as defined in
 // CSS3 Module "Media Queries" (http://www.w3.org/TR/css3-mediaqueries/)
 // Special constructors are needed, if simple media queries are to be
@@ -105,6 +115,14 @@ class CORE_EXPORT MediaQueryEvaluator final
   void Trace(Visitor*) const;
 
  private:
+<<<<<<< HEAD
+  KleeneValue EvalFeature(const MediaQueryFeatureExpNode&,
+                          MediaQueryResultFlags*) const;
+  KleeneValue EvalStyleFeature(const MediaQueryFeatureExpNode&,
+                               MediaQueryResultFlags*) const;
+
+=======
+>>>>>>> chromium
   const String MediaType() const;
 
   String media_type_;

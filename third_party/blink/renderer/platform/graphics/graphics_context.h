@@ -65,7 +65,12 @@ class FloatRoundedRect;
 class KURL;
 class PaintController;
 class Path;
+<<<<<<< HEAD
+class StrokeData;
+class StyledStrokeData;
+=======
 struct TextRunPaintInfo;
+>>>>>>> chromium
 
 // Tiling parameters for the DrawImageTiled() method.
 struct ImageTilingInfo {
@@ -336,7 +341,7 @@ class PLATFORM_EXPORT GraphicsContext {
                 DOMNodeId);
 
   void DrawEmphasisMarks(const Font&,
-                         const TextRunPaintInfo&,
+                         const TextRun&,
                          const AtomicString& mark,
                          const FloatPoint&);
   void DrawEmphasisMarks(const Font&,
@@ -344,6 +349,20 @@ class PLATFORM_EXPORT GraphicsContext {
                          const AtomicString& mark,
                          const FloatPoint&);
 
+<<<<<<< HEAD
+  void DrawBidiText(const Font&,
+                    const TextRun&,
+                    const gfx::PointF&,
+                    const AutoDarkMode& auto_dark_mode);
+
+  // BeginLayer()/EndLayer() behave like Save()/Restore() for CTM and clip
+  // states. Apply opacity, blend mode, filter when the layer is composited on
+  // the backdrop (i.e. EndLayer()).
+  void BeginLayer(float opacity = 1.0f);
+  void BeginLayer(SkBlendMode);
+  void BeginLayer(sk_sp<cc::ColorFilter>, const SkBlendMode* = nullptr);
+  void BeginLayer(sk_sp<PaintFilter>, const gfx::RectF* bounds = nullptr);
+=======
   void DrawBidiText(
       const Font&,
       const TextRunPaintInfo&,
@@ -367,6 +386,7 @@ class PLATFORM_EXPORT GraphicsContext {
                   const FloatRect* = nullptr,
                   ColorFilter = kColorFilterNone,
                   sk_sp<PaintFilter> = nullptr);
+>>>>>>> chromium
   void EndLayer();
 
   // Instead of being dispatched to the active canvas, draw commands following
@@ -480,6 +500,9 @@ class PLATFORM_EXPORT GraphicsContext {
   template <typename DrawTextFunc>
   void DrawTextPasses(const DrawTextFunc&);
 
+<<<<<<< HEAD
+  void BeginLayer(const cc::PaintFlags&, const gfx::RectF* bounds = nullptr);
+=======
   void SaveLayer(const SkRect* bounds, const PaintFlags*);
   void RestoreLayer();
 
@@ -498,6 +521,7 @@ class PLATFORM_EXPORT GraphicsContext {
                              int offset,
                              float border_radius,
                              const Color&);
+>>>>>>> chromium
 
   // SkCanvas wrappers.
   void ClipRRect(const SkRRect&,

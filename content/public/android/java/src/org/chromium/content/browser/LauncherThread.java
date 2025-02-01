@@ -11,11 +11,16 @@ import android.os.Process;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.JavaHandlerThread;
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
+>>>>>>> chromium
 
 /** This is the process launcher thread. It is available before native library is loaded. */
 @JNINamespace("content::android")
+@NullMarked
 public final class LauncherThread {
     private static final JavaHandlerThread sThread =
             new JavaHandlerThread("Chrome_ProcessLauncherThread", Process.THREAD_PRIORITY_DEFAULT);

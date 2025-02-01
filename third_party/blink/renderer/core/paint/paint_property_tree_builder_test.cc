@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #include "third_party/blink/renderer/core/paint/paint_property_tree_builder_test.h"
 
 #include "cc/test/fake_layer_tree_host_client.h"
@@ -1334,6 +1339,113 @@ TEST_P(PaintPropertyTreeBuilderTest, SVGRootLocalToBorderBoxTransformNode) {
             rect_properties->Transform()->Parent());
 }
 
+<<<<<<< HEAD
+TEST_P(PaintPropertyTreeBuilderTest, SVGRootLocalToBorderBoxSnappingScale) {
+  ScopedSvgInlineRootPixelSnappingScaleAdjustmentForTest snapscale_enabled(
+      true);
+  SetBodyInnerHTML(R"HTML(
+    <style>
+      svg {
+        height: 99.99px;
+        position: absolute;
+        top: 0.5px;
+        width: 100px;
+      }
+    </style>
+    <div style="position: relative">
+      <svg id="svg">
+        <circle cx="50" cy="50" r="50"/>
+      </svg>
+    </div>
+  )HTML");
+
+  const LayoutObject& svg = *GetLayoutObjectByElementId("svg");
+  const ObjectPaintProperties* svg_properties =
+      svg.FirstFragment().PaintProperties();
+  EXPECT_EQ(gfx::Vector2dF(8, 9),
+            svg_properties->PaintOffsetTranslation()->Get2dTranslation());
+  const float snapped_height = 99;
+  const PhysicalSize unsnapped_size(LayoutUnit(100), LayoutUnit(99.99f));
+  EXPECT_EQ(To<LayoutSVGRoot>(svg).Size(), unsnapped_size);
+  const float unsnapped_height = unsnapped_size.height.ToFloat();
+  ASSERT_NE(svg_properties->ReplacedContentTransform(), nullptr);
+  EXPECT_TRANSFORM_EQ(MakeScaleMatrix(snapped_height / unsnapped_height),
+                      svg_properties->ReplacedContentTransform()->Matrix());
+}
+
+TEST_P(PaintPropertyTreeBuilderTest, SVGRootLocalToBorderBoxSnappingScaleWide) {
+  ScopedSvgInlineRootPixelSnappingScaleAdjustmentForTest snapscale_enabled(
+      true);
+  SetBodyInnerHTML(R"HTML(
+    <style>
+      svg {
+        position: absolute;
+        display: block;
+        width: 211.419px;
+        height: 2.20228px;
+        overflow: visible;
+      }
+    </style>
+    <div style="position: relative">
+      <svg id="svg">
+        <path d="M0,2L382,2" stroke-width="4" stroke="black"/>
+      </svg>
+    </div>
+  )HTML");
+
+  const LayoutObject& svg = *GetLayoutObjectByElementId("svg");
+  const ObjectPaintProperties* svg_properties =
+      svg.FirstFragment().PaintProperties();
+  EXPECT_EQ(gfx::Vector2dF(8, 8),
+            svg_properties->PaintOffsetTranslation()->Get2dTranslation());
+  const gfx::SizeF snapped_size(211, 2);
+  const PhysicalSize unsnapped_size(LayoutUnit(211.419f), LayoutUnit(2.20228f));
+  EXPECT_EQ(To<LayoutSVGRoot>(svg).Size(), unsnapped_size);
+  ASSERT_NE(svg_properties->ReplacedContentTransform(), nullptr);
+  EXPECT_TRANSFORM_EQ(
+      MakeScaleMatrix(snapped_size.width() / unsnapped_size.width.ToFloat(),
+                      snapped_size.height() / unsnapped_size.height.ToFloat()),
+      svg_properties->ReplacedContentTransform()->Matrix());
+}
+
+TEST_P(PaintPropertyTreeBuilderTest,
+       SVGRootLocalToBorderBoxSnappingScaleNarrow) {
+  ScopedSvgInlineRootPixelSnappingScaleAdjustmentForTest snapscale_enabled(
+      true);
+  SetBodyInnerHTML(R"HTML(
+    <style>
+      svg {
+        position: absolute;
+        display: block;
+        width: 2.20228px;
+        height: 211.419px;
+        overflow: visible;
+      }
+    </style>
+    <div style="position: relative">
+      <svg id="svg">
+        <path d="M2,0L2,382" stroke-width="4" stroke="black"/>
+      </svg>
+    </div>
+  )HTML");
+
+  const LayoutObject& svg = *GetLayoutObjectByElementId("svg");
+  const ObjectPaintProperties* svg_properties =
+      svg.FirstFragment().PaintProperties();
+  EXPECT_EQ(gfx::Vector2dF(8, 8),
+            svg_properties->PaintOffsetTranslation()->Get2dTranslation());
+  const gfx::SizeF snapped_size(2, 211);
+  const PhysicalSize unsnapped_size(LayoutUnit(2.20228f), LayoutUnit(211.419f));
+  EXPECT_EQ(To<LayoutSVGRoot>(svg).Size(), unsnapped_size);
+  ASSERT_NE(svg_properties->ReplacedContentTransform(), nullptr);
+  EXPECT_TRANSFORM_EQ(
+      MakeScaleMatrix(snapped_size.width() / unsnapped_size.width.ToFloat(),
+                      snapped_size.height() / unsnapped_size.height.ToFloat()),
+      svg_properties->ReplacedContentTransform()->Matrix());
+}
+
+=======
+>>>>>>> chromium
 TEST_P(PaintPropertyTreeBuilderTest, SVGNestedViewboxTransforms) {
   SetBodyInnerHTML(R"HTML(
     <style>body { margin: 0px; } </style>
@@ -3626,8 +3738,18 @@ TEST_P(PaintPropertyTreeBuilderTest, ContainPaintOrStyleLayoutTreeState) {
 
     // Verify that we created isolation nodes.
     EXPECT_TRUE(clip_properties->TransformIsolationNode());
+<<<<<<< HEAD
+    EXPECT_TRUE(clip_properties->HasNode<TransformPaintPropertyNodeOrAlias>());
+    EXPECT_TRUE(clip_properties->HasNode<TransformPaintPropertyNode>());
+    EXPECT_TRUE(clip_properties->EffectIsolationNode());
+    EXPECT_TRUE(clip_properties->HasNode<EffectPaintPropertyNodeOrAlias>());
+    EXPECT_FALSE(clip_properties->HasNode<EffectPaintPropertyNode>());
+    EXPECT_TRUE(clip_properties->ClipIsolationNode());
+    EXPECT_TRUE(clip_properties->HasNode<ClipPaintPropertyNodeOrAlias>());
+=======
     EXPECT_TRUE(clip_properties->EffectIsolationNode());
     EXPECT_TRUE(clip_properties->ClipIsolationNode());
+>>>>>>> chromium
 
     // Verify parenting:
 
@@ -3645,6 +3767,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ContainPaintOrStyleLayoutTreeState) {
       // If we contain paint, then clip isolation node is parented to the
       // overflow clip, which is in turn parented to the local border box
       // properties clip.
+      EXPECT_TRUE(clip_properties->HasNode<ClipPaintPropertyNode>());
       EXPECT_EQ(clip_properties->ClipIsolationNode()->Parent(),
                 clip_properties->OverflowClip());
       EXPECT_EQ(clip_properties->OverflowClip()->Parent(),
@@ -3652,6 +3775,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ContainPaintOrStyleLayoutTreeState) {
     } else {
       // Otherwise, the clip isolation node is parented to the local border box
       // properties clip directly.
+      EXPECT_FALSE(clip_properties->HasNode<ClipPaintPropertyNode>());
       EXPECT_EQ(clip_properties->ClipIsolationNode()->Parent(),
                 &clip_local_properties.Clip());
     }
@@ -6234,6 +6358,8 @@ TEST_P(PaintPropertyTreeBuilderTest, StickyConstraintChain) {
             outer_properties->StickyTranslation()
                 ->GetStickyConstraint()
                 ->nearest_element_shifting_containing_block);
+  EXPECT_FALSE(
+      outer_properties->StickyTranslation()->IsAffectedBySafeAreaBottom());
 
   const auto* middle_properties = PaintPropertiesForElement("middle");
   ASSERT_TRUE(middle_properties && middle_properties->StickyTranslation());
@@ -6265,7 +6391,33 @@ TEST_P(PaintPropertyTreeBuilderTest, StickyConstraintChain) {
                 ->nearest_element_shifting_containing_block);
 }
 
+<<<<<<< HEAD
+TEST_P(PaintPropertyTreeBuilderTest,
+       StickyConstraintChainWithSafeAreaInsectBottom) {
+  // This test verifies that the property tree builder sets up Direct
+  // Compositing reason kAffectedBySafeAreaBottom correctly for css style
+  // bottom:env(safe-area-inset-bottom) in case of sticky positioned elements.
+  SetBodyInnerHTML(R"HTML(
+    <div id="scroller" style="overflow:scroll; width:300px; height:200px;">
+      <div id="target" style="position:sticky; top:10px;
+                              bottom:env(safe-area-inset-bottom);">
+      </div>
+      <div style="height:1000px;"></div>
+    </div>
+  )HTML");
+  GetDocument().getElementById(AtomicString("scroller"))->setScrollTop(50);
+  UpdateAllLifecyclePhasesForTest();
+
+  const auto* target_properties = PaintPropertiesForElement("target");
+  ASSERT_TRUE(target_properties && target_properties->StickyTranslation());
+  EXPECT_TRUE(
+      target_properties->StickyTranslation()->IsAffectedBySafeAreaBottom());
+}
+
+TEST_P(PaintPropertyTreeBuilderTest, StickyUnderOverflowHidden) {
+=======
 TEST_P(PaintPropertyTreeBuilderTest, NonScrollableSticky) {
+>>>>>>> chromium
   // This test verifies the property tree builder applies sticky offset
   // correctly when the clipping container cannot be scrolled, and
   // does not emit sticky constraints.
@@ -6969,6 +7121,53 @@ TEST_P(PaintPropertyTreeBuilderTest, SVGTransformAnimationAndOrigin) {
   EXPECT_TRUE(transform_node->HasActiveTransformAnimation());
   EXPECT_EQ(TransformationMatrix(), transform_node->Matrix());
   EXPECT_EQ(FloatPoint3D(100, 100, 0), transform_node->Origin());
+}
+
+TEST_P(PaintPropertyTreeBuilderTest, PrintAnchorPositionInFrame) {
+  SetBodyInnerHTML("<iframe></iframe>");
+  SetChildFrameHTML(R"HTML(
+    <div style="overflow: scroll; width: 100px; height: 100px">
+      <div style="height: 80px"></div>
+      <div style="anchor-name: --a; width: 100px; height: 100px">A</div>
+    </div>
+    <div id="target"
+         style="position: absolute; position-anchor: --a;
+                width: 100px; height: 100px; bottom: anchor(--a top)">B</div>
+  )HTML");
+  UpdateAllLifecyclePhasesForTest();
+
+  // Should not crash when printing.
+  GetFrame().StartPrinting(WebPrintParams(gfx::SizeF(100, 100)));
+  GetDocument().View()->UpdateLifecyclePhasesForPrinting();
+  auto* properties = ChildDocument()
+                         .getElementById(AtomicString("target"))
+                         ->GetLayoutObject()
+                         ->FirstFragment()
+                         .PaintProperties();
+  ASSERT_TRUE(properties);
+  ASSERT_TRUE(properties->AnchorPositionScrollTranslation());
+  GetFrame().EndPrinting();
+}
+
+TEST_P(PaintPropertyTreeBuilderTest,
+       Preserve3DUnderBackfaceHiddenWithout3DTransforms) {
+  SetBodyInnerHTML(R"HTML(
+    <div id="parent" style="backface-visibility: hidden">
+      <div id="target" style="transform-style: preserve-3d"></div>
+    </div>
+  )HTML");
+
+  auto* parent_transform = PaintPropertiesForElement("parent")->Transform();
+  EXPECT_EQ(TransformPaintPropertyNode::BackfaceVisibility::kHidden,
+            parent_transform->GetBackfaceVisibilityForTesting());
+  EXPECT_EQ(0, parent_transform->RenderingContextId());
+
+  // Target should not inherit parent's backface-visibility because it creates
+  // a new rendering context.
+  auto* target_transform = PaintPropertiesForElement("target")->Transform();
+  EXPECT_EQ(TransformPaintPropertyNode::BackfaceVisibility::kVisible,
+            target_transform->GetBackfaceVisibilityForTesting());
+  EXPECT_NE(0, target_transform->RenderingContextId());
 }
 
 }  // namespace blink

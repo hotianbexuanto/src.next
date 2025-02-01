@@ -234,8 +234,14 @@ WebContents* ReplaceRestoredTab(
   int insertion_index = tab_strip->active_index();
   tab_strip->InsertWebContentsAt(
       insertion_index + 1, std::move(web_contents),
+<<<<<<< HEAD
+      AddTabTypes::ADD_ACTIVE | AddTabTypes::ADD_INHERIT_OPENER,
+      tab_strip->GetTabGroupForTab(insertion_index));
+  tab_strip->CloseWebContentsAt(insertion_index, TabCloseTypes::CLOSE_NONE);
+=======
       TabStripModel::ADD_ACTIVE | TabStripModel::ADD_INHERIT_OPENER);
   tab_strip->CloseWebContentsAt(insertion_index, TabStripModel::CLOSE_NONE);
+>>>>>>> chromium
 
   LoadRestoredTabIfVisible(browser, raw_web_contents);
 

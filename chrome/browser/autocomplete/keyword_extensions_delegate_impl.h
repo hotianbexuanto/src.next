@@ -48,10 +48,20 @@ class KeywordExtensionsDelegateImpl : public KeywordExtensionsDelegate,
   void EnterExtensionKeywordMode(const std::string& extension_id) override;
   void MaybeEndExtensionKeywordMode() override;
 
+<<<<<<< HEAD
+  // OmniboxInputWatcher::Observer:
+  void OnOmniboxInputEntered() override;
+  // OmniboxSuggestionsWatcher::Observer:
+  void OnOmniboxSuggestionsReady(
+      extensions::api::omnibox::SendSuggestions::Params* suggestions,
+      const std::string& extension_id) override;
+  void OnOmniboxDefaultSuggestionChanged() override;
+=======
   // content::NotificationObserver:
   void Observe(int type,
                const content::NotificationSource& source,
                const content::NotificationDetails& details) override;
+>>>>>>> chromium
 
   ACMatches* matches() { return &provider_->matches_; }
   void set_done(bool done) {

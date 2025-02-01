@@ -22,6 +22,7 @@
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/app_service/browser_app_launcher.h"
+#include "chrome/browser/extensions/api_test_util.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/unpacked_installer.h"
 #include "chrome/browser/profiles/profile.h"
@@ -178,6 +179,10 @@ bool ExtensionApiTest::OpenTestURL(const GURL& url, bool open_in_incognito) {
 
 // Test that exactly one extension is loaded, and return it.
 const Extension* ExtensionApiTest::GetSingleLoadedExtension() {
+<<<<<<< HEAD
+  return api_test_util::GetSingleLoadedExtension(browser()->profile(),
+                                                 message_);
+=======
   ExtensionRegistry* registry = ExtensionRegistry::Get(browser()->profile());
 
   const Extension* result = NULL;
@@ -204,6 +209,7 @@ const Extension* ExtensionApiTest::GetSingleLoadedExtension() {
     return NULL;
   }
   return result;
+>>>>>>> chromium
 }
 
 bool ExtensionApiTest::StartEmbeddedTestServer() {

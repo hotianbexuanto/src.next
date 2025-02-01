@@ -42,6 +42,12 @@
 
 namespace blink {
 
+<<<<<<< HEAD
+class CORE_EXPORT WindowOrWorkerGlobalScope {
+ public:
+  bool crossOriginIsolated();
+  String crossOriginEmbedderPolicy();
+=======
 class EventTarget;
 class ExceptionState;
 class ScriptState;
@@ -50,6 +56,7 @@ class V8Function;
 
 class CORE_EXPORT WindowOrWorkerGlobalScope {
   STATIC_ONLY(WindowOrWorkerGlobalScope);
+>>>>>>> chromium
 
  public:
   static String btoa(EventTarget&,

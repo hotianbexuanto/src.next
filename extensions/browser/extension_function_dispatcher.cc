@@ -4,6 +4,11 @@
 
 #include "extensions/browser/extension_function_dispatcher.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+#include <optional>
+=======
+>>>>>>> chromium
 #include <utility>
 
 #include "base/bind.h"
@@ -309,6 +314,18 @@ void ExtensionFunctionDispatcher::DispatchWithCallbackInternal(
     return;
   }
 
+<<<<<<< HEAD
+  const int render_process_id = render_process_host.GetDeprecatedID();
+
+  const GURL* render_frame_host_url = nullptr;
+  if (render_frame_host) {
+    render_frame_host_url = &render_frame_host->GetLastCommittedURL();
+    DCHECK_EQ(render_process_id,
+              render_frame_host->GetProcess()->GetDeprecatedID());
+  }
+
+=======
+>>>>>>> chromium
   ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context_);
   const Extension* extension =
       registry->enabled_extensions().GetByID(params.extension_id);
@@ -468,6 +485,16 @@ void ExtensionFunctionDispatcher::AddWorkerResponseTarget(
   worker_response_targets_.insert(func);
 }
 
+<<<<<<< HEAD
+void ExtensionFunctionDispatcher::ProcessResponseAck(
+    const base::Uuid& request_uuid) {
+  auto iter = std::ranges::find_if(
+      response_targets_, [request_uuid](ExtensionFunction* function) {
+        return function->request_uuid() == request_uuid;
+      });
+  if (iter == response_targets_.end()) {
+    return;
+=======
 void ExtensionFunctionDispatcher::ProcessServiceWorkerResponse(
     int request_id,
     int64_t service_worker_version_id) {
@@ -482,6 +509,7 @@ void ExtensionFunctionDispatcher::ProcessServiceWorkerResponse(
       worker_response_targets_.erase(it);
       break;
     }
+>>>>>>> chromium
   }
 }
 

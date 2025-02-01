@@ -128,9 +128,15 @@ class CORE_EXPORT LayoutCustomScrollbarPart final : public LayoutReplaced {
 
   void RecordPercentLengthStats() const;
 
+<<<<<<< HEAD
+  PhysicalNaturalSizingInfo GetNaturalDimensions() const override;
+
+  int ComputeSize(const Length& length, int container_size) const;
+=======
   int ComputeSize(SizeType size_type,
                   const Length& length,
                   int container_size) const;
+>>>>>>> chromium
   int ComputeWidth(int container_width) const;
   int ComputeHeight(int container_height) const;
 

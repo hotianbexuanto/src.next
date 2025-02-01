@@ -51,7 +51,7 @@ class ExtensionErrorUI {
   // synchronously.
   virtual void Close() = 0;
 
-  virtual ~ExtensionErrorUI() {}
+  virtual ~ExtensionErrorUI() = default;
 };
 
 }  // namespace extensions

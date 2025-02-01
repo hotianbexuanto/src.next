@@ -456,9 +456,16 @@ TEST_F(HttpServerPropertiesManagerTest, GetAlternativeServiceInfos) {
   InitializePrefs();
 
   url::SchemeHostPort spdy_server_mail("http", "mail.google.com", 80);
+<<<<<<< HEAD
+  EXPECT_FALSE(
+      HasAlternativeService(spdy_server_mail, NetworkAnonymizationKey()));
+  const AlternativeService alternative_service(NextProto::kProtoHTTP2,
+                                               "mail.google.com", 443);
+=======
   EXPECT_FALSE(HasAlternativeService(spdy_server_mail, NetworkIsolationKey()));
   const AlternativeService alternative_service(kProtoHTTP2, "mail.google.com",
                                                443);
+>>>>>>> chromium
   http_server_props_->SetHttp2AlternativeService(
       spdy_server_mail, NetworkIsolationKey(), alternative_service,
       one_day_from_now_);
@@ -487,13 +494,13 @@ TEST_F(HttpServerPropertiesManagerTest, SetAlternativeServices) {
   url::SchemeHostPort spdy_server_mail("http", "mail.google.com", 80);
   EXPECT_FALSE(HasAlternativeService(spdy_server_mail, NetworkIsolationKey()));
   AlternativeServiceInfoVector alternative_service_info_vector;
-  const AlternativeService alternative_service1(kProtoHTTP2, "mail.google.com",
-                                                443);
+  const AlternativeService alternative_service1(NextProto::kProtoHTTP2,
+                                                "mail.google.com", 443);
   alternative_service_info_vector.push_back(
       AlternativeServiceInfo::CreateHttp2AlternativeServiceInfo(
           alternative_service1, one_day_from_now_));
-  const AlternativeService alternative_service2(kProtoQUIC, "mail.google.com",
-                                                1234);
+  const AlternativeService alternative_service2(NextProto::kProtoQUIC,
+                                                "mail.google.com", 1234);
   alternative_service_info_vector.push_back(
       AlternativeServiceInfo::CreateQuicAlternativeServiceInfo(
           alternative_service2, one_day_from_now_, advertised_versions_));
@@ -522,11 +529,21 @@ TEST_F(HttpServerPropertiesManagerTest, SetAlternativeServicesEmpty) {
   InitializePrefs();
 
   url::SchemeHostPort spdy_server_mail("http", "mail.google.com", 80);
+<<<<<<< HEAD
+  EXPECT_FALSE(
+      HasAlternativeService(spdy_server_mail, NetworkAnonymizationKey()));
+  const AlternativeService alternative_service(NextProto::kProtoHTTP2,
+                                               "mail.google.com", 443);
+  http_server_props_->SetAlternativeServices(spdy_server_mail,
+                                             NetworkAnonymizationKey(),
+                                             AlternativeServiceInfoVector());
+=======
   EXPECT_FALSE(HasAlternativeService(spdy_server_mail, NetworkIsolationKey()));
   const AlternativeService alternative_service(kProtoHTTP2, "mail.google.com",
                                                443);
   http_server_props_->SetAlternativeServices(
       spdy_server_mail, NetworkIsolationKey(), AlternativeServiceInfoVector());
+>>>>>>> chromium
 
   EXPECT_EQ(0u, GetPendingMainThreadTaskCount());
   EXPECT_EQ(0, pref_delegate_->GetAndClearNumPrefUpdates());
@@ -541,8 +558,15 @@ TEST_F(HttpServerPropertiesManagerTest, ConfirmAlternativeService) {
   AlternativeService alternative_service;
 
   spdy_server_mail = url::SchemeHostPort("http", "mail.google.com", 80);
+<<<<<<< HEAD
+  EXPECT_FALSE(
+      HasAlternativeService(spdy_server_mail, NetworkAnonymizationKey()));
+  alternative_service =
+      AlternativeService(NextProto::kProtoHTTP2, "mail.google.com", 443);
+=======
   EXPECT_FALSE(HasAlternativeService(spdy_server_mail, NetworkIsolationKey()));
   alternative_service = AlternativeService(kProtoHTTP2, "mail.google.com", 443);
+>>>>>>> chromium
 
   http_server_props_->SetHttp2AlternativeService(
       spdy_server_mail, NetworkIsolationKey(), alternative_service,
@@ -589,9 +613,16 @@ TEST_F(HttpServerPropertiesManagerTest, ConfirmAlternativeService) {
 // info. Prefs should not be written until after the load happens.
 TEST_F(HttpServerPropertiesManagerTest, LateLoadAlternativeServiceInfo) {
   url::SchemeHostPort spdy_server_mail("http", "mail.google.com", 80);
+<<<<<<< HEAD
+  EXPECT_FALSE(
+      HasAlternativeService(spdy_server_mail, NetworkAnonymizationKey()));
+  const AlternativeService alternative_service(NextProto::kProtoHTTP2,
+                                               "mail.google.com", 443);
+=======
   EXPECT_FALSE(HasAlternativeService(spdy_server_mail, NetworkIsolationKey()));
   const AlternativeService alternative_service(kProtoHTTP2, "mail.google.com",
                                                443);
+>>>>>>> chromium
   http_server_props_->SetHttp2AlternativeService(
       spdy_server_mail, NetworkIsolationKey(), alternative_service,
       one_day_from_now_);
@@ -635,9 +666,16 @@ TEST_F(HttpServerPropertiesManagerTest, LateLoadAlternativeServiceInfo) {
 TEST_F(HttpServerPropertiesManagerTest,
        ClearPrefsBeforeLoadAlternativeServiceInfo) {
   url::SchemeHostPort spdy_server_mail("http", "mail.google.com", 80);
+<<<<<<< HEAD
+  EXPECT_FALSE(
+      HasAlternativeService(spdy_server_mail, NetworkAnonymizationKey()));
+  const AlternativeService alternative_service(NextProto::kProtoHTTP2,
+                                               "mail.google.com", 443);
+=======
   EXPECT_FALSE(HasAlternativeService(spdy_server_mail, NetworkIsolationKey()));
   const AlternativeService alternative_service(kProtoHTTP2, "mail.google.com",
                                                443);
+>>>>>>> chromium
   http_server_props_->SetHttp2AlternativeService(
       spdy_server_mail, NetworkIsolationKey(), alternative_service,
       one_day_from_now_);
@@ -693,8 +731,15 @@ TEST_F(HttpServerPropertiesManagerTest,
   AlternativeService alternative_service;
 
   spdy_server_mail = url::SchemeHostPort("http", "mail.google.com", 80);
+<<<<<<< HEAD
+  EXPECT_FALSE(
+      HasAlternativeService(spdy_server_mail, NetworkAnonymizationKey()));
+  alternative_service =
+      AlternativeService(NextProto::kProtoHTTP2, "mail.google.com", 443);
+=======
   EXPECT_FALSE(HasAlternativeService(spdy_server_mail, NetworkIsolationKey()));
   alternative_service = AlternativeService(kProtoHTTP2, "mail.google.com", 443);
+>>>>>>> chromium
 
   http_server_props_->SetHttp2AlternativeService(
       spdy_server_mail, NetworkIsolationKey(), alternative_service,
@@ -745,8 +790,15 @@ TEST_F(HttpServerPropertiesManagerTest,
   AlternativeService alternative_service;
 
   spdy_server_mail = url::SchemeHostPort("http", "mail.google.com", 80);
+<<<<<<< HEAD
+  EXPECT_FALSE(
+      HasAlternativeService(spdy_server_mail, NetworkAnonymizationKey()));
+  alternative_service =
+      AlternativeService(NextProto::kProtoHTTP2, "mail.google.com", 443);
+=======
   EXPECT_FALSE(HasAlternativeService(spdy_server_mail, NetworkIsolationKey()));
   alternative_service = AlternativeService(kProtoHTTP2, "mail.google.com", 443);
+>>>>>>> chromium
 
   http_server_props_->SetHttp2AlternativeService(
       spdy_server_mail, NetworkIsolationKey(), alternative_service,
@@ -795,8 +847,15 @@ TEST_F(HttpServerPropertiesManagerTest, OnDefaultNetworkChangedWithBrokenOnly) {
   AlternativeService alternative_service;
 
   spdy_server_mail = url::SchemeHostPort("http", "mail.google.com", 80);
+<<<<<<< HEAD
+  EXPECT_FALSE(
+      HasAlternativeService(spdy_server_mail, NetworkAnonymizationKey()));
+  alternative_service =
+      AlternativeService(NextProto::kProtoHTTP2, "mail.google.com", 443);
+=======
   EXPECT_FALSE(HasAlternativeService(spdy_server_mail, NetworkIsolationKey()));
   alternative_service = AlternativeService(kProtoHTTP2, "mail.google.com", 443);
+>>>>>>> chromium
 
   http_server_props_->SetHttp2AlternativeService(
       spdy_server_mail, NetworkIsolationKey(), alternative_service,
@@ -944,10 +1003,10 @@ TEST_F(HttpServerPropertiesManagerTest, Clear) {
   const IPAddress actual_address(127, 0, 0, 1);
   const quic::QuicServerId mail_quic_server_id("mail.google.com", 80, false);
   const std::string quic_server_info1("quic_server_info1");
-  const AlternativeService alternative_service(kProtoHTTP2, "mail.google.com",
-                                               1234);
+  const AlternativeService alternative_service(NextProto::kProtoHTTP2,
+                                               "mail.google.com", 1234);
   const AlternativeService broken_alternative_service(
-      kProtoHTTP2, "broken.google.com", 1234);
+      NextProto::kProtoHTTP2, "broken.google.com", 1234);
 
   AlternativeServiceInfoVector alt_svc_info_vector;
   alt_svc_info_vector.push_back(
@@ -1066,7 +1125,7 @@ TEST_F(HttpServerPropertiesManagerTest, BadLastLocalAddressWhenQuicWorked) {
                                                        NetworkIsolationKey());
     ASSERT_EQ(1u, alternative_service_info_vector.size());
     EXPECT_EQ(
-        kProtoQUIC,
+        NextProto::kProtoQUIC,
         alternative_service_info_vector[0].alternative_service().protocol);
     EXPECT_EQ(i, alternative_service_info_vector[0].alternative_service().port);
   }
@@ -1084,15 +1143,15 @@ TEST_F(HttpServerPropertiesManagerTest, UpdatePrefsWithCache) {
 
   // #1 & #2: Set alternate protocol.
   AlternativeServiceInfoVector alternative_service_info_vector;
-  AlternativeService www_alternative_service1(kProtoHTTP2, "", 443);
+  AlternativeService www_alternative_service1(NextProto::kProtoHTTP2, "", 443);
   base::Time expiration1;
   ASSERT_TRUE(base::Time::FromUTCString("2036-12-01 10:00:00", &expiration1));
   alternative_service_info_vector.push_back(
       AlternativeServiceInfo::CreateHttp2AlternativeServiceInfo(
           www_alternative_service1, expiration1));
 
-  AlternativeService www_alternative_service2(kProtoHTTP2, "www.google.com",
-                                              1234);
+  AlternativeService www_alternative_service2(NextProto::kProtoHTTP2,
+                                              "www.google.com", 1234);
   base::Time expiration2;
   ASSERT_TRUE(base::Time::FromUTCString("2036-12-31 10:00:00", &expiration2));
   alternative_service_info_vector.push_back(
@@ -1101,8 +1160,8 @@ TEST_F(HttpServerPropertiesManagerTest, UpdatePrefsWithCache) {
   http_server_props_->SetAlternativeServices(server_www, NetworkIsolationKey(),
                                              alternative_service_info_vector);
 
-  AlternativeService mail_alternative_service(kProtoHTTP2, "foo.google.com",
-                                              444);
+  AlternativeService mail_alternative_service(NextProto::kProtoHTTP2,
+                                              "foo.google.com", 444);
   base::Time expiration3 = base::Time::Max();
   http_server_props_->SetHttp2AlternativeService(
       server_mail, NetworkIsolationKey(), mail_alternative_service,
@@ -1247,7 +1306,7 @@ TEST_F(HttpServerPropertiesManagerTest, ParseAlternativeServiceInfo) {
       server_info.alternative_services.value();
   ASSERT_EQ(3u, alternative_service_info_vector.size());
 
-  EXPECT_EQ(kProtoHTTP2,
+  EXPECT_EQ(NextProto::kProtoHTTP2,
             alternative_service_info_vector[0].alternative_service().protocol);
   EXPECT_EQ("", alternative_service_info_vector[0].alternative_service().host);
   EXPECT_EQ(443, alternative_service_info_vector[0].alternative_service().port);
@@ -1257,14 +1316,14 @@ TEST_F(HttpServerPropertiesManagerTest, ParseAlternativeServiceInfo) {
   EXPECT_LE(now + base::TimeDelta::FromHours(23), expiration);
   EXPECT_GE(now + base::TimeDelta::FromDays(1), expiration);
 
-  EXPECT_EQ(kProtoQUIC,
+  EXPECT_EQ(NextProto::kProtoQUIC,
             alternative_service_info_vector[1].alternative_service().protocol);
   EXPECT_EQ("", alternative_service_info_vector[1].alternative_service().host);
   EXPECT_EQ(123, alternative_service_info_vector[1].alternative_service().port);
   // numeric_limits<int64_t>::max() represents base::Time::Max().
   EXPECT_EQ(base::Time::Max(), alternative_service_info_vector[1].expiration());
 
-  EXPECT_EQ(kProtoHTTP2,
+  EXPECT_EQ(NextProto::kProtoHTTP2,
             alternative_service_info_vector[2].alternative_service().protocol);
   EXPECT_EQ("example.org",
             alternative_service_info_vector[2].alternative_service().host);
@@ -1305,9 +1364,14 @@ TEST_F(HttpServerPropertiesManagerTest, DoNotPersistExpiredAlternativeService) {
   AlternativeServiceInfoVector alternative_service_info_vector;
 
   const AlternativeService broken_alternative_service(
+<<<<<<< HEAD
+      NextProto::kProtoHTTP2, "broken.example.com", 443);
+  const base::Time time_one_day_later = base::Time::Now() + base::Days(1);
+=======
       kProtoHTTP2, "broken.example.com", 443);
   const base::Time time_one_day_later =
       base::Time::Now() + base::TimeDelta::FromDays(1);
+>>>>>>> chromium
   alternative_service_info_vector.push_back(
       AlternativeServiceInfo::CreateHttp2AlternativeServiceInfo(
           broken_alternative_service, time_one_day_later));
@@ -1316,14 +1380,19 @@ TEST_F(HttpServerPropertiesManagerTest, DoNotPersistExpiredAlternativeService) {
                                                    NetworkIsolationKey());
 
   const AlternativeService expired_alternative_service(
+<<<<<<< HEAD
+      NextProto::kProtoHTTP2, "expired.example.com", 443);
+  const base::Time time_one_day_ago = base::Time::Now() - base::Days(1);
+=======
       kProtoHTTP2, "expired.example.com", 443);
   const base::Time time_one_day_ago =
       base::Time::Now() - base::TimeDelta::FromDays(1);
+>>>>>>> chromium
   alternative_service_info_vector.push_back(
       AlternativeServiceInfo::CreateHttp2AlternativeServiceInfo(
           expired_alternative_service, time_one_day_ago));
 
-  const AlternativeService valid_alternative_service(kProtoHTTP2,
+  const AlternativeService valid_alternative_service(NextProto::kProtoHTTP2,
                                                      "valid.example.com", 443);
   alternative_service_info_vector.push_back(
       AlternativeServiceInfo::CreateHttp2AlternativeServiceInfo(
@@ -1419,7 +1488,7 @@ TEST_F(HttpServerPropertiesManagerTest, DoNotLoadExpiredAlternativeService) {
       server_info.alternative_services.value();
   ASSERT_EQ(1u, alternative_service_info_vector.size());
 
-  EXPECT_EQ(kProtoHTTP2,
+  EXPECT_EQ(NextProto::kProtoHTTP2,
             alternative_service_info_vector[0].alternative_service().protocol);
   EXPECT_EQ("valid.example.com",
             alternative_service_info_vector[0].alternative_service().host);
@@ -1451,7 +1520,7 @@ TEST_F(HttpServerPropertiesManagerTest, PersistAdvertisedVersionsToPref) {
   // #1 & #2: Set alternate protocol.
   AlternativeServiceInfoVector alternative_service_info_vector;
   // Quic alternative service set with two advertised QUIC versions.
-  AlternativeService quic_alternative_service1(kProtoQUIC, "", 443);
+  AlternativeService quic_alternative_service1(NextProto::kProtoQUIC, "", 443);
   base::Time expiration1;
   ASSERT_TRUE(base::Time::FromUTCString("2036-12-01 10:00:00", &expiration1));
   quic::ParsedQuicVersionVector advertised_versions = {
@@ -1460,8 +1529,8 @@ TEST_F(HttpServerPropertiesManagerTest, PersistAdvertisedVersionsToPref) {
       AlternativeServiceInfo::CreateQuicAlternativeServiceInfo(
           quic_alternative_service1, expiration1, advertised_versions));
   // HTTP/2 alternative service should not set any advertised version.
-  AlternativeService h2_alternative_service(kProtoHTTP2, "www.google.com",
-                                            1234);
+  AlternativeService h2_alternative_service(NextProto::kProtoHTTP2,
+                                            "www.google.com", 1234);
   base::Time expiration2;
   ASSERT_TRUE(base::Time::FromUTCString("2036-12-31 10:00:00", &expiration2));
   alternative_service_info_vector.push_back(
@@ -1471,8 +1540,8 @@ TEST_F(HttpServerPropertiesManagerTest, PersistAdvertisedVersionsToPref) {
                                              alternative_service_info_vector);
 
   // Set another QUIC alternative service with a single advertised QUIC version.
-  AlternativeService mail_alternative_service(kProtoQUIC, "foo.google.com",
-                                              444);
+  AlternativeService mail_alternative_service(NextProto::kProtoQUIC,
+                                              "foo.google.com", 444);
   base::Time expiration3 = base::Time::Max();
   http_server_props_->SetQuicAlternativeService(
       server_mail, NetworkIsolationKey(), mail_alternative_service, expiration3,
@@ -1557,7 +1626,7 @@ TEST_F(HttpServerPropertiesManagerTest, ReadAdvertisedVersionsFromPref) {
   ASSERT_EQ(2u, alternative_service_info_vector.size());
 
   // Verify the first alternative service with no advertised version listed.
-  EXPECT_EQ(kProtoQUIC,
+  EXPECT_EQ(NextProto::kProtoQUIC,
             alternative_service_info_vector[0].alternative_service().protocol);
   EXPECT_EQ("", alternative_service_info_vector[0].alternative_service().host);
   EXPECT_EQ(443, alternative_service_info_vector[0].alternative_service().port);
@@ -1569,7 +1638,7 @@ TEST_F(HttpServerPropertiesManagerTest, ReadAdvertisedVersionsFromPref) {
   EXPECT_TRUE(alternative_service_info_vector[0].advertised_versions().empty());
 
   // Verify the second alterntaive service with two advertised versions.
-  EXPECT_EQ(kProtoQUIC,
+  EXPECT_EQ(NextProto::kProtoQUIC,
             alternative_service_info_vector[1].alternative_service().protocol);
   EXPECT_EQ("", alternative_service_info_vector[1].alternative_service().host);
   EXPECT_EQ(123, alternative_service_info_vector[1].alternative_service().port);
@@ -1595,7 +1664,7 @@ TEST_F(HttpServerPropertiesManagerTest,
   // #1: Set alternate protocol.
   AlternativeServiceInfoVector alternative_service_info_vector;
   // Quic alternative service set with a single QUIC version: Q046.
-  AlternativeService quic_alternative_service1(kProtoQUIC, "", 443);
+  AlternativeService quic_alternative_service1(NextProto::kProtoQUIC, "", 443);
   base::Time expiration1;
   ASSERT_TRUE(base::Time::FromUTCString("2036-12-01 10:00:00", &expiration1));
   alternative_service_info_vector.push_back(
@@ -1718,9 +1787,11 @@ TEST_F(HttpServerPropertiesManagerTest,
 }
 
 TEST_F(HttpServerPropertiesManagerTest, UpdateCacheWithPrefs) {
-  AlternativeService cached_broken_service(kProtoQUIC, "cached_broken", 443);
-  AlternativeService cached_broken_service2(kProtoQUIC, "cached_broken2", 443);
-  AlternativeService cached_recently_broken_service(kProtoQUIC,
+  AlternativeService cached_broken_service(NextProto::kProtoQUIC,
+                                           "cached_broken", 443);
+  AlternativeService cached_broken_service2(NextProto::kProtoQUIC,
+                                            "cached_broken2", 443);
+  AlternativeService cached_recently_broken_service(NextProto::kProtoQUIC,
                                                     "cached_rbroken", 443);
 
   http_server_props_->MarkAlternativeServiceBroken(cached_broken_service,
@@ -1811,7 +1882,7 @@ TEST_F(HttpServerPropertiesManagerTest, UpdateCacheWithPrefs) {
           NetworkIsolationKey());
   ASSERT_EQ(2u, alternative_service_info_vector.size());
 
-  EXPECT_EQ(kProtoHTTP2,
+  EXPECT_EQ(NextProto::kProtoHTTP2,
             alternative_service_info_vector[0].alternative_service().protocol);
   EXPECT_EQ("www.google.com",
             alternative_service_info_vector[0].alternative_service().host);
@@ -1821,7 +1892,7 @@ TEST_F(HttpServerPropertiesManagerTest, UpdateCacheWithPrefs) {
       base::NumberToString(
           alternative_service_info_vector[0].expiration().ToInternalValue()));
 
-  EXPECT_EQ(kProtoHTTP2,
+  EXPECT_EQ(NextProto::kProtoHTTP2,
             alternative_service_info_vector[1].alternative_service().protocol);
   EXPECT_EQ("www.google.com",
             alternative_service_info_vector[1].alternative_service().host);
@@ -1841,7 +1912,7 @@ TEST_F(HttpServerPropertiesManagerTest, UpdateCacheWithPrefs) {
           NetworkIsolationKey());
   ASSERT_EQ(1u, alternative_service_info_vector.size());
 
-  EXPECT_EQ(kProtoHTTP2,
+  EXPECT_EQ(NextProto::kProtoHTTP2,
             alternative_service_info_vector[0].alternative_service().protocol);
   EXPECT_EQ("foo.google.com",
             alternative_service_info_vector[0].alternative_service().host);
@@ -1854,7 +1925,8 @@ TEST_F(HttpServerPropertiesManagerTest, UpdateCacheWithPrefs) {
   //
   // Verify broken alternative services.
   //
-  AlternativeService prefs_broken_service(kProtoHTTP2, "www.google.com", 1234);
+  AlternativeService prefs_broken_service(NextProto::kProtoHTTP2,
+                                          "www.google.com", 1234);
   EXPECT_TRUE(http_server_props_->IsAlternativeServiceBroken(
       cached_broken_service, NetworkIsolationKey()));
   EXPECT_TRUE(http_server_props_->IsAlternativeServiceBroken(
@@ -2262,15 +2334,18 @@ TEST_F(HttpServerPropertiesManagerTest,
   base::Time expiration = base::Time::Now() + base::TimeDelta::FromDays(1);
   AlternativeServiceInfo alt_service1 =
       AlternativeServiceInfo::CreateQuicAlternativeServiceInfo(
-          AlternativeService(kProtoQUIC, "foopy.c.youtube.com", 1234),
+          AlternativeService(NextProto::kProtoQUIC, "foopy.c.youtube.com",
+                             1234),
           expiration, DefaultSupportedQuicVersions());
   AlternativeServiceInfo alt_service2 =
       AlternativeServiceInfo::CreateHttp2AlternativeServiceInfo(
-          AlternativeService(kProtoHTTP2, "foopy.c.youtube.com", 443),
+          AlternativeService(NextProto::kProtoHTTP2, "foopy.c.youtube.com",
+                             443),
           expiration);
   AlternativeServiceInfo alt_service3 =
       AlternativeServiceInfo::CreateHttp2AlternativeServiceInfo(
-          AlternativeService(kProtoHTTP2, "foopy2.c.youtube.com", 443),
+          AlternativeService(NextProto::kProtoHTTP2, "foopy2.c.youtube.com",
+                             443),
           expiration);
   AlternativeServiceInfoVector alt_service_vector1 = {alt_service1};
   AlternativeServiceInfoVector alt_service_vector2 = {alt_service1,
@@ -2415,9 +2490,9 @@ TEST_F(HttpServerPropertiesManagerTest,
   const SchemefulSite kSite1(GURL("https://foo1.test/"));
   const SchemefulSite kSite2(GURL("https://foo2.test/"));
 
-  const AlternativeService kAlternativeService1(kProtoHTTP2,
+  const AlternativeService kAlternativeService1(NextProto::kProtoHTTP2,
                                                 "alt.service1.test", 443);
-  const AlternativeService kAlternativeService2(kProtoHTTP2,
+  const AlternativeService kAlternativeService2(NextProto::kProtoHTTP2,
                                                 "alt.service2.test", 443);
 
   for (auto save_network_isolation_key_mode : kNetworkIsolationKeyModes) {
@@ -2623,9 +2698,16 @@ TEST_F(HttpServerPropertiesManagerTest,
 TEST_F(HttpServerPropertiesManagerTest,
        NetworkIsolationKeyBrokenAltServiceOpaqueOrigin) {
   const SchemefulSite kOpaqueSite(GURL("data:text/plain,Hello World"));
+<<<<<<< HEAD
+  const auto kNetworkAnonymizationKey =
+      NetworkAnonymizationKey::CreateSameSite(kOpaqueSite);
+  const AlternativeService kAlternativeService(NextProto::kProtoHTTP2,
+                                               "alt.service1.test", 443);
+=======
   const NetworkIsolationKey kNetworkIsolationKey(kOpaqueSite, kOpaqueSite);
   const AlternativeService kAlternativeService(kProtoHTTP2, "alt.service1.test",
                                                443);
+>>>>>>> chromium
 
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
@@ -2999,7 +3081,7 @@ TEST_F(HttpServerPropertiesManagerTest, AdvertisedVersionsRoundTrip) {
     // Create alternate version information.
     const url::SchemeHostPort server("https", "quic.example.org", 443);
     AlternativeServiceInfoVector alternative_service_info_vector_in;
-    AlternativeService quic_alternative_service(kProtoQUIC, "", 443);
+    AlternativeService quic_alternative_service(NextProto::kProtoQUIC, "", 443);
     base::Time expiration;
     ASSERT_TRUE(base::Time::FromUTCString("2036-12-01 10:00:00", &expiration));
     quic::ParsedQuicVersionVector advertised_versions = {version};
@@ -3040,7 +3122,7 @@ TEST_F(HttpServerPropertiesManagerTest, AdvertisedVersionsRoundTrip) {
         server_info.alternative_services.value();
     ASSERT_EQ(1u, alternative_service_info_vector_out.size());
     EXPECT_EQ(
-        kProtoQUIC,
+        NextProto::kProtoQUIC,
         alternative_service_info_vector_out[0].alternative_service().protocol);
     // Ensure we correctly parsed the version.
     EXPECT_EQ(advertised_versions,
@@ -3048,4 +3130,224 @@ TEST_F(HttpServerPropertiesManagerTest, AdvertisedVersionsRoundTrip) {
   }
 }
 
+<<<<<<< HEAD
+TEST_F(HttpServerPropertiesManagerTest, SameOrderAfterReload) {
+  const SchemefulSite kSite1(GURL("https://foo.test/"));
+  const SchemefulSite kSite2(GURL("https://bar.test/"));
+  const auto kNetworkAnonymizationKey1 =
+      NetworkAnonymizationKey::CreateSameSite(kSite1);
+  const auto kNetworkAnonymizationKey2 =
+      NetworkAnonymizationKey::CreateSameSite(kSite2);
+
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      features::kPartitionConnectionsByNetworkIsolationKey);
+
+  // Create and initialize an HttpServerProperties with no state.
+  std::unique_ptr<MockPrefDelegate> pref_delegate =
+      std::make_unique<MockPrefDelegate>();
+  MockPrefDelegate* unowned_pref_delegate = pref_delegate.get();
+  std::unique_ptr<HttpServerProperties> properties =
+      std::make_unique<HttpServerProperties>(std::move(pref_delegate),
+                                             /*net_log=*/nullptr,
+                                             GetMockTickClock());
+  unowned_pref_delegate->InitializePrefs(base::Value::Dict());
+
+  // Set alternative_service info.
+  base::Time expiration = base::Time::Now() + base::Days(1);
+  AlternativeServiceInfo alt_service1 =
+      AlternativeServiceInfo::CreateQuicAlternativeServiceInfo(
+          AlternativeService(NextProto::kProtoQUIC, "1.example", 1234),
+          expiration, DefaultSupportedQuicVersions());
+  AlternativeServiceInfo alt_service2 =
+      AlternativeServiceInfo::CreateHttp2AlternativeServiceInfo(
+          AlternativeService(NextProto::kProtoHTTP2, "2.example", 443),
+          expiration);
+  AlternativeServiceInfo alt_service3 =
+      AlternativeServiceInfo::CreateHttp2AlternativeServiceInfo(
+          AlternativeService(NextProto::kProtoHTTP2, "3.example", 443),
+          expiration);
+  const url::SchemeHostPort kServer1("https", "1.example", 443);
+  const url::SchemeHostPort kServer2("https", "2.example", 443);
+  const url::SchemeHostPort kServer3("https", "3.example", 443);
+  properties->SetAlternativeServices(kServer1, kNetworkAnonymizationKey1,
+                                     {alt_service1});
+  properties->SetAlternativeServices(kServer2, kNetworkAnonymizationKey1,
+                                     {alt_service2});
+  properties->SetAlternativeServices(kServer3, kNetworkAnonymizationKey2,
+                                     {alt_service3});
+
+  // Set quic_server_info.
+  quic::QuicServerId quic_server_id1("quic1.example", 80);
+  quic::QuicServerId quic_server_id2("quic2.example", 80);
+  quic::QuicServerId quic_server_id3("quic3.example", 80);
+  properties->SetQuicServerInfo(quic_server_id1, PRIVACY_MODE_DISABLED,
+                                kNetworkAnonymizationKey1, "quic_server_info1");
+  properties->SetQuicServerInfo(quic_server_id2, PRIVACY_MODE_DISABLED,
+                                kNetworkAnonymizationKey1, "quic_server_info2");
+  properties->SetQuicServerInfo(quic_server_id3, PRIVACY_MODE_DISABLED,
+                                kNetworkAnonymizationKey2, "quic_server_info3");
+
+  // Set broken_alternative_service info.
+  AlternativeService broken_service1(NextProto::kProtoQUIC, "broken1.example",
+                                     443);
+  AlternativeService broken_service2(NextProto::kProtoQUIC, "broken2.example",
+                                     443);
+  AlternativeService broken_service3(NextProto::kProtoQUIC, "broken3.example",
+                                     443);
+  properties->MarkAlternativeServiceBroken(broken_service1,
+                                           kNetworkAnonymizationKey1);
+  FastForwardBy(base::Milliseconds(1));
+  properties->MarkAlternativeServiceBroken(broken_service2,
+                                           kNetworkAnonymizationKey1);
+  FastForwardBy(base::Milliseconds(1));
+  properties->MarkAlternativeServiceBroken(broken_service3,
+                                           kNetworkAnonymizationKey2);
+
+  // The first item of `server_info_map` must be the latest item.
+  EXPECT_EQ(3u, properties->server_info_map_for_testing().size());
+  EXPECT_EQ(
+      properties->server_info_map_for_testing().begin()->first.server.host(),
+      "3.example");
+
+  // The first item of `recently_broken_alternative_services` must be the latest
+  // item.
+  EXPECT_EQ(3u, properties->broken_alternative_services_for_testing()
+                    .recently_broken_alternative_services()
+                    .size());
+  EXPECT_EQ("broken3.example",
+            properties->broken_alternative_services_for_testing()
+                .recently_broken_alternative_services()
+                .begin()
+                ->first.alternative_service.host);
+
+  // The first item of `quic_server_info_map` must be the latest item.
+  EXPECT_EQ(3u, properties->quic_server_info_map_for_testing().size());
+  EXPECT_EQ("quic3.example", properties->quic_server_info_map_for_testing()
+                                 .begin()
+                                 ->first.server_id.host());
+
+  // The first item of `broken_alternative_service_list` must be the oldest
+  // item.
+  EXPECT_EQ(3u, properties->broken_alternative_services_for_testing()
+                    .broken_alternative_service_list()
+                    .size());
+  EXPECT_EQ("broken1.example",
+            properties->broken_alternative_services_for_testing()
+                .broken_alternative_service_list()
+                .begin()
+                ->first.alternative_service.host);
+
+  // Wait until the data's been written to prefs, and then tear down the
+  // HttpServerProperties.
+  FastForwardBy(HttpServerProperties::GetUpdatePrefsDelayForTesting());
+  base::Value::Dict saved_value =
+      unowned_pref_delegate->GetServerProperties().Clone();
+
+  // Create a new HttpServerProperties using the value saved to prefs above.
+  pref_delegate = std::make_unique<MockPrefDelegate>();
+  unowned_pref_delegate = pref_delegate.get();
+  properties = std::make_unique<HttpServerProperties>(
+      std::move(pref_delegate), /*net_log=*/nullptr, GetMockTickClock());
+  unowned_pref_delegate->InitializePrefs(std::move(saved_value));
+
+  // The first item of `server_info_map` must be the latest item.
+  EXPECT_EQ(3u, properties->server_info_map_for_testing().size());
+  EXPECT_EQ(
+      properties->server_info_map_for_testing().begin()->first.server.host(),
+      "3.example");
+
+  // The first item of `recently_broken_alternative_services` must be the latest
+  // item.
+  EXPECT_EQ(3u, properties->broken_alternative_services_for_testing()
+                    .recently_broken_alternative_services()
+                    .size());
+  EXPECT_EQ("broken3.example",
+            properties->broken_alternative_services_for_testing()
+                .recently_broken_alternative_services()
+                .begin()
+                ->first.alternative_service.host);
+
+  // The first item of `quic_server_info_map` must be the latest item.
+  EXPECT_EQ(3u, properties->quic_server_info_map_for_testing().size());
+  EXPECT_EQ("quic3.example", properties->quic_server_info_map_for_testing()
+                                 .begin()
+                                 ->first.server_id.host());
+
+  // The first item of `broken_alternative_service_list` must be the oldest
+  // item.
+  EXPECT_EQ(3u, properties->broken_alternative_services_for_testing()
+                    .broken_alternative_service_list()
+                    .size());
+  EXPECT_EQ("broken1.example",
+            properties->broken_alternative_services_for_testing()
+                .broken_alternative_service_list()
+                .begin()
+                ->first.alternative_service.host);
+}
+
+// Test that different privacy modes have different QUIC server info.
+TEST_F(HttpServerPropertiesManagerTest, PrivacyMode) {
+  const quic::QuicServerId kQuicServerId("quic.example", 443);
+  constexpr char kQuicServerInfo[] = "info";
+
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      features::kPartitionConnectionsByNetworkIsolationKey);
+
+  // Create and initialize an HttpServerProperties with no state.
+  std::unique_ptr<MockPrefDelegate> pref_delegate =
+      std::make_unique<MockPrefDelegate>();
+  MockPrefDelegate* unowned_pref_delegate = pref_delegate.get();
+  std::unique_ptr<HttpServerProperties> properties =
+      std::make_unique<HttpServerProperties>(std::move(pref_delegate),
+                                             /*net_log=*/nullptr,
+                                             GetMockTickClock());
+  unowned_pref_delegate->InitializePrefs(base::Value::Dict());
+
+  properties->SetQuicServerInfo(kQuicServerId, PRIVACY_MODE_DISABLED,
+                                NetworkAnonymizationKey(), kQuicServerInfo);
+  properties->SetQuicServerInfo(kQuicServerId, PRIVACY_MODE_ENABLED,
+                                NetworkAnonymizationKey(), kQuicServerInfo);
+  properties->SetQuicServerInfo(kQuicServerId,
+                                PRIVACY_MODE_ENABLED_WITHOUT_CLIENT_CERTS,
+                                NetworkAnonymizationKey(), kQuicServerInfo);
+  properties->SetQuicServerInfo(kQuicServerId,
+                                PRIVACY_MODE_ENABLED_PARTITIONED_STATE_ALLOWED,
+                                NetworkAnonymizationKey(), kQuicServerInfo);
+  EXPECT_EQ(4u, properties->quic_server_info_map_for_testing().size());
+
+  // Wait until the data's been written to prefs, and then tear down the
+  // HttpServerProperties.
+  FastForwardBy(HttpServerProperties::GetUpdatePrefsDelayForTesting());
+  base::Value::Dict saved_value =
+      unowned_pref_delegate->GetServerProperties().Clone();
+  properties.reset();
+
+  // Create a new HttpServerProperties using the value saved to prefs above.
+  pref_delegate = std::make_unique<MockPrefDelegate>();
+  unowned_pref_delegate = pref_delegate.get();
+  properties = std::make_unique<HttpServerProperties>(
+      std::move(pref_delegate), /*net_log=*/nullptr, GetMockTickClock());
+  unowned_pref_delegate->InitializePrefs(std::move(saved_value));
+
+  // All values should have been saved and be retrievable.
+  EXPECT_EQ(kQuicServerInfo,
+            *properties->GetQuicServerInfo(kQuicServerId, PRIVACY_MODE_DISABLED,
+                                           NetworkAnonymizationKey()));
+  EXPECT_EQ(kQuicServerInfo,
+            *properties->GetQuicServerInfo(kQuicServerId, PRIVACY_MODE_ENABLED,
+                                           NetworkAnonymizationKey()));
+  EXPECT_EQ(kQuicServerInfo,
+            *properties->GetQuicServerInfo(
+                kQuicServerId, PRIVACY_MODE_ENABLED_WITHOUT_CLIENT_CERTS,
+                NetworkAnonymizationKey()));
+  EXPECT_EQ(kQuicServerInfo,
+            *properties->GetQuicServerInfo(
+                kQuicServerId, PRIVACY_MODE_ENABLED_PARTITIONED_STATE_ALLOWED,
+                NetworkAnonymizationKey()));
+}
+
+=======
+>>>>>>> chromium
 }  // namespace net

@@ -193,7 +193,13 @@ class ChromeContentRendererClient
   void DidSetUserAgent(const std::string& user_agent) override;
   void AppendContentSecurityPolicy(
       const blink::WebURL& url,
+<<<<<<< HEAD
+      std::vector<blink::WebContentSecurityPolicyHeader>* csp) override;
+  std::unique_ptr<blink::WebLinkPreviewTriggerer> CreateLinkPreviewTriggerer()
+      override;
+=======
       blink::WebVector<blink::WebContentSecurityPolicyHeader>* csp) override;
+>>>>>>> chromium
 
 #if BUILDFLAG(ENABLE_PLUGINS)
   static mojo::AssociatedRemote<chrome::mojom::PluginInfoHost>&

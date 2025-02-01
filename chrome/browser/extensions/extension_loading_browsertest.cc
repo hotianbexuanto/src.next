@@ -36,6 +36,13 @@
 namespace extensions {
 namespace {
 
+<<<<<<< HEAD
+constexpr char kChangeBackgroundScriptTypeExtensionId[] =
+    "ldnnhddmnhbkjipkidpdiheffobcpfmf";
+using ContextType = extensions::browser_test_util::ContextType;
+
+=======
+>>>>>>> chromium
 class ExtensionLoadingTest : public ExtensionBrowserTest {
 };
 

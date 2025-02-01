@@ -66,10 +66,15 @@ class LayoutCustomScrollbarPart;
 struct PaintInvalidatorContext;
 class PaintLayer;
 class ScrollingCoordinator;
+<<<<<<< HEAD
+class ScrollMarkerGroupPseudoElement;
+class SnappedQueryScrollSnapshot;
+=======
 class SubtreeLayoutScope;
 
 struct CORE_EXPORT PaintLayerScrollableAreaRareData {
   USING_FAST_MALLOC(PaintLayerScrollableAreaRareData);
+>>>>>>> chromium
 
  public:
   PaintLayerScrollableAreaRareData();
@@ -587,7 +592,13 @@ class CORE_EXPORT PaintLayerScrollableArea final
   bool NeedsResnap() const override;
   void SetNeedsResnap(bool) override;
 
+<<<<<<< HEAD
+  std::optional<cc::SnapPositionData> GetSnapPosition(
+      const cc::SnapSelectionStrategy& strategy) const override;
+  std::optional<gfx::PointF> GetSnapPositionAndSetTarget(
+=======
   absl::optional<FloatPoint> GetSnapPositionAndSetTarget(
+>>>>>>> chromium
       const cc::SnapSelectionStrategy& strategy) override;
 
   void DisposeImpl() override;
@@ -608,8 +619,58 @@ class CORE_EXPORT PaintLayerScrollableArea final
 
   void SetTickmarksOverride(Vector<IntRect> tickmarks);
 
+<<<<<<< HEAD
+  bool MayCompositeScrollbar(const Scrollbar&) const;
+
+  void EstablishScrollbarRoot(bool freeze_horizontal, bool freeze_vertical);
+  void ClearScrollbarRoot();
+  bool IsHorizontalScrollbarFrozen() const {
+    if (is_scrollbar_freeze_root_)
+      return is_horizontal_scrollbar_frozen_;
+    return FreezeScrollbarsScope::ScrollbarsAreFrozen();
+  }
+  bool IsVerticalScrollbarFrozen() const {
+    if (is_scrollbar_freeze_root_)
+      return is_vertical_scrollbar_frozen_;
+    return FreezeScrollbarsScope::ScrollbarsAreFrozen();
+  }
+
+  // Force scrollbars off for reconstruction.
+  void RemoveScrollbarsForReconstruction();
+
+  void DidUpdateCullRect() {
+    last_cull_rect_update_scroll_position_ = ScrollPosition();
+  }
+  gfx::PointF LastCullRectUpdateScrollPosition() const {
+    return last_cull_rect_update_scroll_position_;
+  }
+
+  CompositorElementId GetScrollCornerElementId() const;
+
+  void StopApplyingScrollStart() final;
+  bool IsApplyingScrollStart() const final;
+
+  gfx::Size PixelSnappedBorderBoxSize() const;
+
+  std::optional<cc::ElementId> GetTargetedSnapAreaId() override {
+    return RareData() ? RareData()->targeted_snap_area_id_ : std::nullopt;
+  }
+  void SetTargetedSnapAreaId(const std::optional<cc::ElementId>& id) override {
+    EnsureRareData().targeted_snap_area_id_ = id;
+  }
+
+  void DropCompositorScrollDeltaNextCommit() override;
+
+  SnappedQueryScrollSnapshot& EnsureSnappedQueryScrollSnapshot();
+  SnappedQueryScrollSnapshot* GetSnappedQueryScrollSnapshot();
+
+  // Return the Element, if any, that should currently match the
+  // @container (snapped:...) query for the given axis.
+  Element* GetSnappedQueryTargetAlongAxis(cc::SnapAxis) const;
+=======
   // For CompositeAfterPaint.
   bool ShouldDirectlyCompositeScrollbar(const Scrollbar&) const;
+>>>>>>> chromium
 
  private:
   // This also updates main thread scrolling reasons and the LayoutBox's
@@ -706,6 +767,10 @@ class CORE_EXPORT PaintLayerScrollableArea final
       bool& previously_was_overlay,
       bool& previously_was_directly_composited,
       IntRect& visual_rect);
+
+  ScrollOffset GetScrollOffsetForScrollMarkerUpdate();
+  void UpdateScrollMarkers() override;
+  ScrollMarkerGroupPseudoElement* GetScrollMarkerGroup() const override;
 
   // PaintLayer is destructed before PaintLayerScrollable area, during this
   // time before PaintLayerScrollableArea has been collected layer_ will

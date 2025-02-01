@@ -6,8 +6,13 @@
 #define CHROME_BROWSER_UI_BROWSER_COMMAND_CONTROLLER_H_
 
 #include "base/gtest_prod_util.h"
+<<<<<<< HEAD
+#include "base/memory/raw_ptr.h"
+#include "build/build_config.h"
+=======
 #include "base/macros.h"
 #include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "chrome/browser/command_updater.h"
 #include "chrome/browser/command_updater_delegate.h"
 #include "chrome/browser/command_updater_impl.h"
@@ -67,13 +72,12 @@ class BrowserCommandController : public CommandUpdater,
   // Overriden from CommandUpdater:
   bool SupportsCommand(int id) const override;
   bool IsCommandEnabled(int id) const override;
-  bool ExecuteCommand(
-      int id,
-      base::TimeTicks time_stamp = base::TimeTicks::Now()) override;
-  bool ExecuteCommandWithDisposition(
-      int id,
-      WindowOpenDisposition disposition,
-      base::TimeTicks time_stamp = base::TimeTicks::Now()) override;
+  using CommandUpdater::ExecuteCommand;
+  bool ExecuteCommand(int id, base::TimeTicks time_stamp) override;
+  using CommandUpdater::ExecuteCommandWithDisposition;
+  bool ExecuteCommandWithDisposition(int id,
+                                     WindowOpenDisposition disposition,
+                                     base::TimeTicks time_stamp) override;
   void AddCommandObserver(int id, CommandObserver* observer) override;
   void RemoveCommandObserver(int id, CommandObserver* observer) override;
   void RemoveCommandObserver(CommandObserver* observer) override;
@@ -92,8 +96,14 @@ class BrowserCommandController : public CommandUpdater,
       Profile* profile);
 
  private:
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+  friend class BrowserCommandControllerBrowserTestLockedFullscreen;
+#endif
+=======
   FRIEND_TEST_ALL_PREFIXES(BrowserCommandControllerBrowserTest,
                            LockedFullscreen);
+>>>>>>> chromium
 
   // Overridden from TabStripModelObserver:
   void OnTabStripModelChanged(

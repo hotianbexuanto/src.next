@@ -10,6 +10,12 @@
 #include <memory>
 #include <string>
 
+<<<<<<< HEAD
+#include "base/compiler_specific.h"
+#include "base/containers/heap_array.h"
+#include "base/containers/span.h"
+=======
+>>>>>>> chromium
 #include "base/memory/free_deleter.h"
 #include "base/memory/ref_counted.h"
 #include "base/pickle.h"
@@ -79,7 +85,21 @@ class NET_EXPORT IOBuffer : public base::RefCountedThreadSafe<IOBuffer> {
 
   explicit IOBuffer(size_t buffer_size);
 
+<<<<<<< HEAD
+  uint8_t* bytes() { return reinterpret_cast<uint8_t*>(data()); }
+  const uint8_t* bytes() const {
+    return reinterpret_cast<const uint8_t*>(data());
+  }
+
+  base::span<uint8_t> span() {
+    return UNSAFE_TODO(base::span(bytes(), static_cast<size_t>(size_)));
+  }
+  base::span<const uint8_t> span() const {
+    return UNSAFE_TODO(base::span(bytes(), static_cast<size_t>(size_)));
+  }
+=======
   char* data() const { return data_; }
+>>>>>>> chromium
 
  protected:
   friend class base::RefCountedThreadSafe<IOBuffer>;

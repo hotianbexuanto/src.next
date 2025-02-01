@@ -516,6 +516,12 @@ int HttpProxyConnectJob::DoSSLConnectComplete(int result) {
     return result;
   }
 
+<<<<<<< HEAD
+  // Establish a tunnel over the proxy by making a CONNECT request. HTTP/1.1 and
+  // HTTP/2 handle CONNECT differently.
+  if (next_proto == NextProto::kProtoHTTP2) {
+    DCHECK_EQ(ProxyServer::SCHEME_HTTPS, scheme);
+=======
   if (IsCertificateError(result)) {
     UMA_HISTOGRAM_MEDIUM_TIMES("Net.HttpProxy.ConnectLatency.Secure.Error",
                                base::TimeTicks::Now() - connect_start_time_);
@@ -546,6 +552,7 @@ int HttpProxyConnectJob::DoSSLConnectComplete(int result) {
   // to the else case. (HttpProxyClientSocket currently acts as
   // a "trusted" SPDY proxy).
   if (using_spdy_ && params_->tunnel()) {
+>>>>>>> chromium
     next_state_ = STATE_SPDY_PROXY_CREATE_STREAM;
   } else {
     next_state_ = STATE_HTTP_PROXY_CONNECT;
@@ -858,10 +865,78 @@ std::string HttpProxyConnectJob::GetUserAgent() const {
 
 SpdySessionKey HttpProxyConnectJob::CreateSpdySessionKey() const {
   return SpdySessionKey(
+<<<<<<< HEAD
+      params_->proxy_server().host_port_pair(), PRIVACY_MODE_DISABLED,
+      session_key_proxy_chain, SessionUsage::kProxy, socket_tag(),
+      params_->network_anonymization_key(), params_->secure_dns_policy(),
+      /*disable_cert_verification_network_fetches=*/true);
+}
+
+// static
+void HttpProxyConnectJob::EmitConnectLatency(NextProto http_version,
+                                             ProxyServer::Scheme scheme,
+                                             HttpConnectResult result,
+                                             base::TimeDelta latency) {
+  std::string_view http_version_piece;
+  switch (http_version) {
+    case NextProto::kProtoUnknown:
+    // fall through to assume Http1
+    case NextProto::kProtoHTTP11:
+      http_version_piece = "Http1";
+      break;
+    case NextProto::kProtoHTTP2:
+      http_version_piece = "Http2";
+      break;
+    case NextProto::kProtoQUIC:
+      http_version_piece = "Http3";
+      break;
+    default:
+      NOTREACHED();
+  }
+
+  std::string_view scheme_piece;
+  switch (scheme) {
+    case ProxyServer::SCHEME_HTTP:
+      scheme_piece = "Http";
+      break;
+    case ProxyServer::SCHEME_HTTPS:
+      scheme_piece = "Https";
+      break;
+    case ProxyServer::SCHEME_QUIC:
+      scheme_piece = "Quic";
+      break;
+    case ProxyServer::SCHEME_INVALID:
+    case ProxyServer::SCHEME_SOCKS4:
+    case ProxyServer::SCHEME_SOCKS5:
+    default:
+      NOTREACHED();
+  }
+
+  std::string_view result_piece;
+  switch (result) {
+    case HttpConnectResult::kSuccess:
+      result_piece = "Success";
+      break;
+    case HttpConnectResult::kError:
+      result_piece = "Error";
+      break;
+    case HttpConnectResult::kTimedOut:
+      result_piece = "TimedOut";
+      break;
+    default:
+      NOTREACHED();
+  }
+
+  std::string histogram =
+      base::StrCat({"Net.HttpProxy.ConnectLatency.", http_version_piece, ".",
+                    scheme_piece, ".", result_piece});
+  base::UmaHistogramMediumTimes(histogram, latency);
+=======
       GetDestination(), ProxyServer::Direct(), PRIVACY_MODE_DISABLED,
       SpdySessionKey::IsProxySession::kTrue, socket_tag(),
       params_->network_isolation_key(),
       params_->ssl_params()->GetDirectConnectionParams()->secure_dns_policy());
+>>>>>>> chromium
 }
 
 }  // namespace net

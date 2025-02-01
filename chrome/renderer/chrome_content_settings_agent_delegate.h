@@ -8,7 +8,15 @@
 #include "components/content_settings/renderer/content_settings_agent_impl.h"
 #include "extensions/buildflags/buildflags.h"
 
+<<<<<<< HEAD
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+namespace blink {
+class WebSecurityOrigin;
+}  // namespace blink
+
+=======
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+>>>>>>> chromium
 namespace extensions {
 class Dispatcher;
 class Extension;
@@ -25,7 +33,7 @@ class ChromeContentSettingsAgentDelegate
       content::RenderFrame* render_frame);
   ~ChromeContentSettingsAgentDelegate() override;
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   // Sets the extension dispatcher. Call this right after constructing this
   // class. This should only be called once.
   void SetExtensionDispatcher(extensions::Dispatcher* extension_dispatcher);
@@ -52,7 +60,14 @@ class ChromeContentSettingsAgentDelegate
   // Whether the observed RenderFrame is for a platform app.
   bool IsPlatformApp();
 
+<<<<<<< HEAD
+  // Whether the observed RenderFrame is an allow-listed System Web App.
+  bool IsAllowListedSystemWebApp();
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+=======
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+>>>>>>> chromium
   // If |origin| corresponds to an installed extension, returns that extension.
   // Otherwise returns null.
   const extensions::Extension* GetExtension(

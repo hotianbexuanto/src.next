@@ -131,9 +131,17 @@ class CORE_EXPORT DocumentInit final {
   const KURL& GetCookieUrl() const;
 
   DocumentInit& WithSrcdocDocument(bool is_srcdoc_document);
+<<<<<<< HEAD
+  DocumentInit& WithFallbackBaseURL(const KURL& fallback_base_url);
+  DocumentInit& WithJavascriptURL(bool is_for_javascript_url);
+
+  DocumentInit& ForDiscard(bool is_for_discard);
+  bool IsForDiscard() const;
+=======
 
   DocumentInit& WithWebBundleClaimedUrl(const KURL& web_bundle_claimed_url);
   const KURL& GetWebBundleClaimedUrl() const { return web_bundle_claimed_url_; }
+>>>>>>> chromium
 
   DocumentInit& WithUkmSourceId(ukm::SourceId ukm_source_id);
   ukm::SourceId UkmSourceId() const { return ukm_source_id_; }

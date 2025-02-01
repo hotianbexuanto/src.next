@@ -50,7 +50,14 @@ class TestExtensionPrefs::IncrementalClock : public base::Clock {
  public:
   IncrementalClock() : current_time_(base::Time::Now()) {}
 
+<<<<<<< HEAD
+  IncrementalClock(const IncrementalClock&) = delete;
+  IncrementalClock& operator=(const IncrementalClock&) = delete;
+
+  ~IncrementalClock() override = default;
+=======
   ~IncrementalClock() override {}
+>>>>>>> chromium
 
   base::Time Now() const override {
     current_time_ += base::TimeDelta::FromSeconds(10);
@@ -77,8 +84,7 @@ TestExtensionPrefs::TestExtensionPrefs(
   RecreateExtensionPrefs();
 }
 
-TestExtensionPrefs::~TestExtensionPrefs() {
-}
+TestExtensionPrefs::~TestExtensionPrefs() = default;
 
 ExtensionPrefs* TestExtensionPrefs::prefs() {
   return ExtensionPrefs::Get(&profile_);

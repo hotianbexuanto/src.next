@@ -5,9 +5,14 @@
 package org.chromium.content.browser;
 
 import org.chromium.base.Callback;
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
+>>>>>>> chromium
 import org.chromium.content_public.browser.RenderWidgetHostView;
 
 /**
@@ -16,11 +21,12 @@ import org.chromium.content_public.browser.RenderWidgetHostView;
  * names). This object allows the browser to access and control the renderer's top level View.
  */
 @JNINamespace("content")
+@NullMarked
 public class RenderWidgetHostViewImpl implements RenderWidgetHostView {
     private long mNativeRenderWidgetHostView;
 
     // Remember the stack for clearing native the native stack for debugging use after destroy.
-    private Throwable mNativeDestroyThrowable;
+    private @Nullable Throwable mNativeDestroyThrowable;
 
     @CalledByNative
     private static RenderWidgetHostViewImpl create(long renderWidgetHostViewLong) {

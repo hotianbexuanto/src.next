@@ -36,6 +36,11 @@
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/extensions/menu_manager.h"
+<<<<<<< HEAD
+#include "chrome/browser/extensions/pref_mapping.h"
+#include "chrome/browser/extensions/tab_helper.h"
+=======
+>>>>>>> chromium
 #include "chrome/browser/extensions/updater/chrome_update_client_config.h"
 #include "chrome/browser/external_protocol/external_protocol_handler.h"
 #include "chrome/browser/net/system_network_context_manager.h"
@@ -51,6 +56,11 @@
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "components/embedder_support/user_agent_utils.h"
+<<<<<<< HEAD
+#include "components/privacy_sandbox/privacy_sandbox_prefs.h"
+#include "components/proxy_config/proxy_config_pref_names.h"
+=======
+>>>>>>> chromium
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/update_client/update_client.h"
 #include "components/version_info/version_info.h"
@@ -112,7 +122,7 @@ ChromeExtensionsBrowserClient::ChromeExtensionsBrowserClient() {
       std::make_unique<ChromeComponentExtensionResourceManager>();
 }
 
-ChromeExtensionsBrowserClient::~ChromeExtensionsBrowserClient() {}
+ChromeExtensionsBrowserClient::~ChromeExtensionsBrowserClient() = default;
 
 bool ChromeExtensionsBrowserClient::IsShuttingDown() {
   return g_browser_process->IsShuttingDown();
@@ -164,7 +174,63 @@ content::BrowserContext* ChromeExtensionsBrowserClient::GetOriginalContext(
   return static_cast<Profile*>(context)->GetOriginalProfile();
 }
 
+<<<<<<< HEAD
+content::BrowserContext*
+ChromeExtensionsBrowserClient::GetContextRedirectedToOriginal(
+    content::BrowserContext* context) {
+  return ProfileSelections::Builder()
+      .WithRegular(ProfileSelection::kRedirectedToOriginal)
+      .WithGuest(ProfileSelection::kRedirectedToOriginal)
+      // TODO(crbug.com/41488885): Check if this service is needed for Ash
+      // Internals.
+      .WithAshInternals(ProfileSelection::kRedirectedToOriginal)
+      .Build()
+      .ApplyProfileSelection(Profile::FromBrowserContext(context));
+}
+
+content::BrowserContext* ChromeExtensionsBrowserClient::GetContextOwnInstance(
+    content::BrowserContext* context) {
+  return ProfileSelections::Builder()
+      .WithRegular(ProfileSelection::kOwnInstance)
+      .WithGuest(ProfileSelection::kOwnInstance)
+      // TODO(crbug.com/41488885): Check if this service is needed for Ash
+      // Internals.
+      .WithAshInternals(ProfileSelection::kOwnInstance)
+      .Build()
+      .ApplyProfileSelection(Profile::FromBrowserContext(context));
+}
+
+content::BrowserContext*
+ChromeExtensionsBrowserClient::GetContextForOriginalOnly(
+    content::BrowserContext* context) {
+  return ProfileSelections::Builder()
+      .WithGuest(ProfileSelection::kOriginalOnly)
+      // TODO(crbug.com/41488885): Check if this service is needed for Ash
+      // Internals.
+      .WithAshInternals(ProfileSelection::kOriginalOnly)
+      .Build()
+      .ApplyProfileSelection(Profile::FromBrowserContext(context));
+}
+
+bool ChromeExtensionsBrowserClient::AreExtensionsDisabledForContext(
+    content::BrowserContext* context) {
+  return ChromeContentBrowserClientExtensionsPart::
+      AreExtensionsDisabledForProfile(Profile::FromBrowserContext(context));
+}
+
+#if BUILDFLAG(IS_CHROMEOS)
+bool ChromeExtensionsBrowserClient::IsActiveContext(
+    content::BrowserContext* browser_context) const {
+  // Since we are creating one instance per profile / user, we should be fine
+  // comparing against the active user. That said - if we ever change that,
+  // this code will need to be changed.
+  return static_cast<Profile*>(browser_context)
+      ->IsSameOrParent(ProfileManager::GetActiveUserProfile());
+}
+
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
 std::string ChromeExtensionsBrowserClient::GetUserIdHashFromContext(
     content::BrowserContext* context) {
   return chromeos::ProfileHelper::GetUserIdHashFromProfile(
@@ -499,6 +565,8 @@ KioskDelegate* ChromeExtensionsBrowserClient::GetKioskDelegate() {
   return kiosk_delegate_.get();
 }
 
+<<<<<<< HEAD
+=======
 bool ChromeExtensionsBrowserClient::IsLockScreenContext(
     content::BrowserContext* context) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -509,6 +577,7 @@ bool ChromeExtensionsBrowserClient::IsLockScreenContext(
 #endif
 }
 
+>>>>>>> chromium
 std::string ChromeExtensionsBrowserClient::GetApplicationLocale() {
   return g_browser_process->GetApplicationLocale();
 }
@@ -586,15 +655,90 @@ bool ChromeExtensionsBrowserClient::IsScreenshotRestricted(
 
 bool ChromeExtensionsBrowserClient::IsValidTabId(
     content::BrowserContext* context,
-    int tab_id) const {
-  return ExtensionTabUtil::GetTabById(
-      tab_id, context, true /* include_incognito */, nullptr /* contents */);
+    int tab_id,
+    bool include_incognito,
+    content::WebContents** web_contents) const {
+  return ExtensionTabUtil::GetTabById(tab_id, context, include_incognito,
+                                      web_contents);
 }
 
+ScriptExecutor* ChromeExtensionsBrowserClient::GetScriptExecutorForTab(
+    content::WebContents& web_contents) {
+  TabHelper* tab_helper = TabHelper::FromWebContents(&web_contents);
+  return tab_helper ? tab_helper->script_executor() : nullptr;
+}
+
+<<<<<<< HEAD
+void ChromeExtensionsBrowserClient::NotifyExtensionApiTabExecuteScript(
+    content::BrowserContext* context,
+    const ExtensionId& extension_id,
+    const std::string& code) const {
+  auto* telemetry_service =
+      safe_browsing::ExtensionTelemetryServiceFactory::GetForProfile(
+          Profile::FromBrowserContext(context));
+  if (!telemetry_service || !telemetry_service->enabled()) {
+    return;
+  }
+
+  auto signal = std::make_unique<safe_browsing::TabsExecuteScriptSignal>(
+      extension_id, code);
+  telemetry_service->AddSignal(std::move(signal));
+}
+
+bool ChromeExtensionsBrowserClient::IsExtensionTelemetryServiceEnabled(
+    content::BrowserContext* context) const {
+  auto* telemetry_service =
+      safe_browsing::ExtensionTelemetryServiceFactory::GetForProfile(
+          Profile::FromBrowserContext(context));
+  return telemetry_service && telemetry_service->enabled();
+}
+
+void ChromeExtensionsBrowserClient::NotifyExtensionApiDeclarativeNetRequest(
+    content::BrowserContext* context,
+    const ExtensionId& extension_id,
+    const std::vector<api::declarative_net_request::Rule>& rules) const {
+  auto* telemetry_service =
+      safe_browsing::ExtensionTelemetryServiceFactory::GetForProfile(
+          Profile::FromBrowserContext(context));
+  if (!telemetry_service || !telemetry_service->enabled()) {
+    return;
+  }
+
+  // The telemetry service will consume and release the signal object inside the
+  // `AddSignal()` call.
+  auto signal = std::make_unique<safe_browsing::DeclarativeNetRequestSignal>(
+      extension_id, rules);
+  telemetry_service->AddSignal(std::move(signal));
+}
+
+void ChromeExtensionsBrowserClient::
+    NotifyExtensionDeclarativeNetRequestRedirectAction(
+        content::BrowserContext* context,
+        const ExtensionId& extension_id,
+        const GURL& request_url,
+        const GURL& redirect_url) const {
+  auto* telemetry_service =
+      safe_browsing::ExtensionTelemetryServiceFactory::GetForProfile(
+          Profile::FromBrowserContext(context));
+  if (!telemetry_service || !telemetry_service->enabled() ||
+      !base::FeatureList::IsEnabled(
+          safe_browsing::
+              kExtensionTelemetryDeclarativeNetRequestActionSignal)) {
+    return;
+  }
+
+  // The telemetry service will consume and release the signal object inside the
+  // `AddSignal()` call.
+  auto signal = safe_browsing::DeclarativeNetRequestActionSignal::
+      CreateDeclarativeNetRequestRedirectActionSignal(extension_id, request_url,
+                                                      redirect_url);
+  telemetry_service->AddSignal(std::move(signal));
+=======
 // static
 void ChromeExtensionsBrowserClient::SetMediaRouterAccessLoggerForTesting(
     MediaRouterExtensionAccessLogger* media_router_access_logger) {
   g_media_router_access_logger_for_testing = media_router_access_logger;
+>>>>>>> chromium
 }
 
 // static

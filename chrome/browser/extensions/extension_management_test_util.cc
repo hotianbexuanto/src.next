@@ -33,8 +33,8 @@ std::string make_path(const std::string& a, const std::string& b) {
 
 }  // namespace
 
-ExtensionManagementPrefUpdaterBase::ExtensionManagementPrefUpdaterBase() {
-}
+ExtensionManagementPrefUpdaterBase::ExtensionManagementPrefUpdaterBase() =
+    default;
 
 ExtensionManagementPrefUpdaterBase::~ExtensionManagementPrefUpdaterBase() {
   // Make asynchronous calls finished to deliver all preference changes to the

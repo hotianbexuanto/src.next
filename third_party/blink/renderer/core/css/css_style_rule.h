@@ -51,6 +51,35 @@ class CORE_EXPORT CSSStyleRule final : public CSSRule {
 
   StylePropertyMap* styleMap() const { return style_map_.Get(); }
 
+<<<<<<< HEAD
+  // [css-nesting-1]
+  CSSRuleList* cssRules() const override;
+  unsigned insertRule(const ExecutionContext* execution_context,
+                      const String& rule,
+                      unsigned index,
+                      ExceptionState&);
+  void deleteRule(unsigned index, ExceptionState&);
+
+  // Like insertRule/deleteRule, but does not cause any invalidation.
+  // Used by Inspector to temporarily insert non-existent rules for
+  // the purposes of rule matching (see InspectorGhostRules).
+  void QuietlyInsertRule(const ExecutionContext* execution_context,
+                         const String& rule,
+                         unsigned index);
+  void QuietlyDeleteRule(unsigned index);
+
+  // For CSSRuleList.
+  unsigned length() const;
+  CSSRule* Item(unsigned index, bool trigger_use_counters = true) const;
+
+  // Get an item, but signal that it's been requested internally from the
+  // engine, and not directly from a script.
+  CSSRule* ItemInternal(unsigned index) const {
+    return Item(index, /*trigger_use_counters=*/false);
+  }
+
+=======
+>>>>>>> chromium
   // FIXME: Not CSSOM. Remove.
   StyleRule* GetStyleRule() const { return style_rule_.Get(); }
 

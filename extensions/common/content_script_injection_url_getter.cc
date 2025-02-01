@@ -7,6 +7,11 @@
 #include "base/containers/contains.h"
 #include "base/containers/flat_set.h"
 #include "base/notreached.h"
+<<<<<<< HEAD
+#include "base/trace_event/typed_macros.h"
+#include "extensions/common/mojom/match_origin_as_fallback.mojom-shared.h"
+=======
+>>>>>>> chromium
 #include "url/scheme_host_port.h"
 
 namespace extensions {
@@ -17,10 +22,35 @@ ContentScriptInjectionUrlGetter::FrameAdapter::~FrameAdapter() = default;
 GURL ContentScriptInjectionUrlGetter::Get(
     const FrameAdapter& frame,
     const GURL& document_url,
-    MatchOriginAsFallbackBehavior match_origin_as_fallback,
+    mojom::MatchOriginAsFallbackBehavior match_origin_as_fallback,
     bool allow_inaccessible_parents) {
   auto should_consider_origin = [&document_url, match_origin_as_fallback]() {
     switch (match_origin_as_fallback) {
+<<<<<<< HEAD
+      case mojom::MatchOriginAsFallbackBehavior::kNever: {
+        TRACE_EVENT_INSTANT("extensions",
+                            "ContentScriptInjectionUrlGetter::Get/"
+                            "should_consider_origin: origin-never");
+        result = false;
+        break;
+      }
+      case mojom::MatchOriginAsFallbackBehavior::
+          kMatchForAboutSchemeAndClimbTree: {
+        TRACE_EVENT_INSTANT("extensions",
+                            "ContentScriptInjectionUrlGetter::Get/"
+                            "should_consider_origin: origin-climb");
+        result = document_url.SchemeIs(url::kAboutScheme);
+        break;
+      }
+      case mojom::MatchOriginAsFallbackBehavior::kAlways: {
+        TRACE_EVENT_INSTANT("extensions",
+                            "ContentScriptInjectionUrlGetter::Get/"
+                            "should_consider_origin: origin-always");
+        result = base::Contains(kAllowedSchemesToMatchOriginAsFallback,
+                                document_url.scheme());
+        break;
+      }
+=======
       case MatchOriginAsFallbackBehavior::kNever:
         return false;
       case MatchOriginAsFallbackBehavior::kMatchForAboutSchemeAndClimbTree:
@@ -29,6 +59,7 @@ GURL ContentScriptInjectionUrlGetter::Get(
         // TODO(devlin): Add more schemes here - blob, filesystem, etc.
         return document_url.SchemeIs(url::kAboutScheme) ||
                document_url.SchemeIs(url::kDataScheme);
+>>>>>>> chromium
     }
 
     NOTREACHED();
@@ -70,13 +101,15 @@ GURL ContentScriptInjectionUrlGetter::Get(
 
   // Looks like the initiator origin is an appropriate fallback!
 
-  if (match_origin_as_fallback == MatchOriginAsFallbackBehavior::kAlways) {
+  if (match_origin_as_fallback ==
+      mojom::MatchOriginAsFallbackBehavior::kAlways) {
     // The easy case! We use the origin directly. We're done.
     return origin_or_precursor_origin.GetURL();
   }
 
-  DCHECK_EQ(MatchOriginAsFallbackBehavior::kMatchForAboutSchemeAndClimbTree,
-            match_origin_as_fallback);
+  DCHECK_EQ(
+      mojom::MatchOriginAsFallbackBehavior::kMatchForAboutSchemeAndClimbTree,
+      match_origin_as_fallback);
 
   // Unfortunately, in this case, we have to climb the frame tree. This is for
   // match patterns that are associated with paths as well, not just origins.

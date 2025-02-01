@@ -32,9 +32,12 @@ namespace ct {
 enum class CTPolicyCompliance;
 }
 
+<<<<<<< HEAD
+=======
 class HostPortPair;
 class NetworkIsolationKey;
 class SSLInfo;
+>>>>>>> chromium
 class X509Certificate;
 
 void NET_EXPORT_PRIVATE SetTransportSecurityStateSourceForTesting(
@@ -369,11 +372,31 @@ class NET_EXPORT TransportSecurityState {
 
   ~TransportSecurityState();
 
+<<<<<<< HEAD
+  // As ShouldUpgradeToSSL(), but also returns whether the decision came from
+  // static or dynamic state, for metrics.
+  SSLUpgradeDecision GetSSLUpgradeDecision(
+      std::string_view host,
+      bool is_top_level_nav,
+      const NetLogWithSource& net_log = NetLogWithSource());
+
+=======
+>>>>>>> chromium
   // These functions search for static and dynamic STS and PKP states, and
   // invoke the functions of the same name on them. These functions are the
   // primary public interface; direct access to STS and PKP states is best
   // left to tests. The caller needs to handle the optional pinning override
   // when is_issued_by_known_root is false.
+<<<<<<< HEAD
+  bool ShouldSSLErrorsBeFatal(std::string_view host);
+  bool ShouldUpgradeToSSL(std::string_view host,
+                          bool is_top_level_nav,
+                          const NetLogWithSource& net_log = NetLogWithSource());
+  PKPStatus CheckPublicKeyPins(std::string_view host,
+                               bool is_issued_by_known_root,
+                               const HashValueVector& hashes);
+  bool HasPublicKeyPins(std::string_view host);
+=======
   bool ShouldSSLErrorsBeFatal(const std::string& host);
   bool ShouldUpgradeToSSL(const std::string& host);
   PKPStatus CheckPublicKeyPins(
@@ -386,6 +409,7 @@ class NET_EXPORT TransportSecurityState {
       const NetworkIsolationKey& network_isolation_key,
       std::string* failure_log);
   bool HasPublicKeyPins(const std::string& host);
+>>>>>>> chromium
 
   // Returns CT_REQUIREMENTS_NOT_MET if a connection violates CT policy
   // requirements: that is, if a connection to |host|, using the validated
@@ -402,7 +426,11 @@ class NET_EXPORT TransportSecurityState {
   // compliant and |report_status| is ENABLE_EXPECT_CT_REPORTS, then a report
   // will be sent.
   CTRequirementsStatus CheckCTRequirements(
+<<<<<<< HEAD
+      std::string_view host,
+=======
       const net::HostPortPair& host_port_pair,
+>>>>>>> chromium
       bool is_issued_by_known_root,
       const HashValueVector& public_key_hashes,
       const X509Certificate* validated_certificate_chain,
@@ -483,7 +511,7 @@ class NET_EXPORT TransportSecurityState {
   //
   // If an entry is deleted, the new state will be persisted through
   // the Delegate (if any).
-  bool DeleteDynamicDataForHost(const std::string& host);
+  bool DeleteDynamicDataForHost(std::string_view host);
 
   // Returns true and updates |*result| if |host| has dynamic or static
   // HSTS/HPKP (respectively) state. If multiple entries match |host|, dynamic
@@ -493,6 +521,16 @@ class NET_EXPORT TransportSecurityState {
   //
   // Note that these methods are not const because they opportunistically remove
   // entries that have expired.
+<<<<<<< HEAD
+  bool GetSTSState(std::string_view host, STSState* sts_result);
+  bool GetPKPState(std::string_view host, PKPState* pkp_result);
+
+  // Returns true and updates |*result| iff |host| has static HSTS/HPKP
+  // (respectively) state. If multiple entries match |host|, the most specific
+  // match determines the return value.
+  bool GetStaticSTSState(std::string_view host, STSState* sts_result) const;
+  bool GetStaticPKPState(std::string_view host, PKPState* pkp_result) const;
+=======
   bool GetSTSState(const std::string& host, STSState* result);
   bool GetPKPState(const std::string& host, PKPState* result);
 
@@ -502,6 +540,7 @@ class NET_EXPORT TransportSecurityState {
   bool GetStaticDomainState(const std::string& host,
                             STSState* sts_result,
                             PKPState* pkp_result) const;
+>>>>>>> chromium
 
   // Returns true and updates |*result| iff |host| has dynamic
   // HSTS/HPKP/Expect-CT (respectively) state. If multiple entries match |host|,
@@ -509,11 +548,16 @@ class NET_EXPORT TransportSecurityState {
   //
   // Note that these methods are not const because they opportunistically remove
   // entries that have expired.
+<<<<<<< HEAD
+  bool GetDynamicSTSState(std::string_view host, STSState* result);
+  bool GetDynamicPKPState(std::string_view host, PKPState* result);
+=======
   bool GetDynamicSTSState(const std::string& host, STSState* result);
   bool GetDynamicPKPState(const std::string& host, PKPState* result);
   bool GetDynamicExpectCTState(const std::string& host,
                                const NetworkIsolationKey& network_isolation_key,
                                ExpectCTState* result);
+>>>>>>> chromium
 
   // Processes an HSTS header value from the host, adding entries to
   // dynamic state if necessary.
@@ -595,6 +639,12 @@ class NET_EXPORT TransportSecurityState {
   FRIEND_TEST_ALL_PREFIXES(HttpSecurityHeadersTest, NoClobberPins);
   FRIEND_TEST_ALL_PREFIXES(URLRequestTestHTTP, PreloadExpectCTHeader);
 
+<<<<<<< HEAD
+  typedef std::map<HashedHost, STSState> STSStateMap;
+  typedef std::map<HashedHost, PKPState> PKPStateMap;
+
+  base::Value::Dict NetLogUpgradeToSSLParam(std::string_view host);
+=======
   typedef std::map<std::string, STSState> STSStateMap;
   typedef std::map<std::string, PKPState> PKPStateMap;
   typedef std::map<ExpectCTStateIndex, ExpectCTState> ExpectCTStateMap;
@@ -603,6 +653,7 @@ class NET_EXPORT TransportSecurityState {
                         base::TimeTicks,
                         std::less<base::TimeTicks>>
       ReportCache;
+>>>>>>> chromium
 
   // IsBuildTimely returns true if the current build is new enough ensure that
   // built in security information (i.e. HSTS preloading and pinning
@@ -610,6 +661,11 @@ class NET_EXPORT TransportSecurityState {
   static bool IsBuildTimely();
 
   // Helper method for actually checking pins.
+<<<<<<< HEAD
+  PKPStatus CheckPublicKeyPinsImpl(std::string_view host,
+                                   bool is_issued_by_known_root,
+                                   const HashValueVector& hashes);
+=======
   PKPStatus CheckPublicKeyPinsImpl(
       const HostPortPair& host_port_pair,
       bool is_issued_by_known_root,
@@ -619,6 +675,7 @@ class NET_EXPORT TransportSecurityState {
       const PublicKeyPinReportStatus report_status,
       const NetworkIsolationKey& network_isolation_key,
       std::string* failure_log);
+>>>>>>> chromium
 
   // If a Delegate is present, notify it that the internal state has
   // changed.
@@ -645,6 +702,13 @@ class NET_EXPORT TransportSecurityState {
                            const GURL& report_uri,
                            const NetworkIsolationKey& network_isolation_key);
 
+<<<<<<< HEAD
+  // Returns true if a request with the given SubjectPublicKeyInfo |hashes|
+  // satisfies the pins in |pkp_state|, and false otherwise.
+  PKPStatus CheckPins(bool is_issued_by_known_root,
+                      const TransportSecurityState::PKPState& pkp_state,
+                      const HashValueVector& hashes);
+=======
   // Returns true if a request to |host_port_pair| with the given
   // SubjectPublicKeyInfo |hashes| satisfies the pins in |pkp_state|,
   // and false otherwise. If a violation is found and reporting is
@@ -662,6 +726,7 @@ class NET_EXPORT TransportSecurityState {
       const TransportSecurityState::PublicKeyPinReportStatus report_status,
       const net::NetworkIsolationKey& network_isolation_key,
       std::string* failure_log);
+>>>>>>> chromium
 
   // Returns true and updates |*expect_ct_result| iff there is a static
   // (built-in) state for |host| with expect_ct=true.
@@ -738,7 +803,7 @@ class NET_EXPORT TransportSecurityState {
   // The earliest possible time for the next pruning of Expect-CT state.
   base::Time earliest_next_prune_expect_ct_time_;
 
-  std::set<std::string> hsts_host_bypass_list_;
+  std::set<std::string, std::less<>> hsts_host_bypass_list_;
 
   bool ct_emergency_disable_ = false;
 

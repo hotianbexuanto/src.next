@@ -7,9 +7,16 @@ package org.chromium.base;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+
+/** This class provides java side access to the native PathService. */
+@NullMarked
+=======
 /**
  * This class provides java side access to the native PathService.
  */
+>>>>>>> chromium
 @JNINamespace("base::android")
 public abstract class PathService {
 

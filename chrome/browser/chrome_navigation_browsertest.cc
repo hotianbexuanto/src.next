@@ -61,6 +61,7 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/download_test_observer.h"
+#include "content/public/test/fenced_frame_test_util.h"
 #include "content/public/test/navigation_handle_observer.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "content/public/test/url_loader_interceptor.h"
@@ -82,7 +83,16 @@ class ChromeNavigationBrowserTest : public InProcessBrowserTest {
   ChromeNavigationBrowserTest() {
     scoped_feature_list_.InitAndEnableFeature(ukm::kUkmFeature);
   }
+<<<<<<< HEAD
+
+  ChromeNavigationBrowserTest(const ChromeNavigationBrowserTest&) = delete;
+  ChromeNavigationBrowserTest& operator=(const ChromeNavigationBrowserTest&) =
+      delete;
+
+  ~ChromeNavigationBrowserTest() override = default;
+=======
   ~ChromeNavigationBrowserTest() override {}
+>>>>>>> chromium
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     // Backgrounded renderer processes run at a lower priority, causing the
@@ -531,7 +541,7 @@ IN_PROC_BROWSER_TEST_F(ChromeNavigationBrowserTest,
 
   // Navigate to a page that disallows scripts via CSP and has an iframe that
   // tries to load an invalid URL, which results in an error page.
-  GURL error_url("http://invalid.foo/");
+  GURL error_url("https://invalid.test/");
   content::NavigationHandleObserver observer(web_contents, error_url);
   ui_test_utils::NavigateToURL(browser(), url);
   EXPECT_TRUE(observer.has_committed());
@@ -813,30 +823,28 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_NE(url::kAboutBlankURL,
             popup->GetSiteInstance()->GetSiteURL().scheme());
   EXPECT_NE(url::kDataScheme, popup->GetSiteInstance()->GetSiteURL().scheme());
-  if (content::AreDefaultSiteInstancesEnabled()) {
-    EXPECT_EQ(opener->GetSiteInstance(), popup->GetSiteInstance());
-    EXPECT_EQ(old_popup_site_instance.get(), popup->GetSiteInstance());
-  } else {
+  if (content::AreAllSitesIsolatedForTesting()) {
     EXPECT_NE(opener->GetSiteInstance(), popup->GetSiteInstance());
     EXPECT_NE(old_popup_site_instance.get(), popup->GetSiteInstance());
 
     // Verify that full isolation results in a separate process for each
     // SiteInstance. Otherwise they share a process because none of the sites
     // require a dedicated process.
-    if (content::AreAllSitesIsolatedForTesting()) {
-      EXPECT_NE(opener->GetSiteInstance()->GetProcess(),
-                popup->GetSiteInstance()->GetProcess());
-      EXPECT_NE(old_popup_site_instance->GetProcess(),
-                popup->GetSiteInstance()->GetProcess());
-    } else {
-      EXPECT_FALSE(opener->GetSiteInstance()->RequiresDedicatedProcess());
-      EXPECT_FALSE(popup->GetSiteInstance()->RequiresDedicatedProcess());
-      EXPECT_FALSE(old_popup_site_instance->RequiresDedicatedProcess());
-      EXPECT_EQ(opener->GetSiteInstance()->GetProcess(),
-                popup->GetSiteInstance()->GetProcess());
-      EXPECT_EQ(old_popup_site_instance->GetProcess(),
-                popup->GetSiteInstance()->GetProcess());
-    }
+    EXPECT_NE(opener->GetSiteInstance()->GetProcess(),
+              popup->GetSiteInstance()->GetProcess());
+    EXPECT_NE(old_popup_site_instance->GetProcess(),
+              popup->GetSiteInstance()->GetProcess());
+  } else {
+    EXPECT_EQ(opener->GetSiteInstance(), popup->GetSiteInstance());
+    EXPECT_EQ(old_popup_site_instance.get(), popup->GetSiteInstance());
+
+    EXPECT_FALSE(opener->GetSiteInstance()->RequiresDedicatedProcess());
+    EXPECT_FALSE(popup->GetSiteInstance()->RequiresDedicatedProcess());
+    EXPECT_FALSE(old_popup_site_instance->RequiresDedicatedProcess());
+    EXPECT_EQ(opener->GetSiteInstance()->GetProcess(),
+              popup->GetSiteInstance()->GetProcess());
+    EXPECT_EQ(old_popup_site_instance->GetProcess(),
+              popup->GetSiteInstance()->GetProcess());
   }
 }
 
@@ -941,15 +949,10 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_EQ(kRedirectTargetUrl, popup->GetLastCommittedURL());
   EXPECT_TRUE(popup->GetMainFrame()->GetLastCommittedOrigin().opaque());
 
-  // 5. Verify that with strict SiteInstances the data: URL is hosted in a brand
+  // 5. Verify that with full site isolation the data: URL is hosted in a brand
   //    new, separate SiteInstance (separate from the opener and the previous
   //    popup SiteInstance).
-  if (content::AreDefaultSiteInstancesEnabled()) {
-    EXPECT_EQ(opener->GetSiteInstance(), popup->GetSiteInstance());
-    EXPECT_EQ(old_popup_site_instance.get(), popup->GetSiteInstance());
-    EXPECT_NE(url::kDataScheme,
-              popup->GetSiteInstance()->GetSiteURL().scheme());
-  } else {
+  if (content::AreAllSitesIsolatedForTesting()) {
     EXPECT_NE(opener->GetSiteInstance(), popup->GetSiteInstance());
     EXPECT_NE(old_popup_site_instance.get(), popup->GetSiteInstance());
     EXPECT_EQ(url::kDataScheme,
@@ -958,20 +961,23 @@ IN_PROC_BROWSER_TEST_F(
     // Verify that full isolation results in a separate process for each
     // SiteInstance. Otherwise they share a process because none of the sites
     // require a dedicated process.
-    if (content::AreAllSitesIsolatedForTesting()) {
-      EXPECT_NE(opener->GetSiteInstance()->GetProcess(),
-                popup->GetSiteInstance()->GetProcess());
-      EXPECT_NE(old_popup_site_instance->GetProcess(),
-                popup->GetSiteInstance()->GetProcess());
-    } else {
-      EXPECT_FALSE(opener->GetSiteInstance()->RequiresDedicatedProcess());
-      EXPECT_FALSE(popup->GetSiteInstance()->RequiresDedicatedProcess());
-      EXPECT_FALSE(old_popup_site_instance->RequiresDedicatedProcess());
-      EXPECT_EQ(opener->GetSiteInstance()->GetProcess(),
-                popup->GetSiteInstance()->GetProcess());
-      EXPECT_EQ(old_popup_site_instance->GetProcess(),
-                popup->GetSiteInstance()->GetProcess());
-    }
+    EXPECT_NE(opener->GetSiteInstance()->GetProcess(),
+              popup->GetSiteInstance()->GetProcess());
+    EXPECT_NE(old_popup_site_instance->GetOrCreateProcess(),
+              popup->GetSiteInstance()->GetProcess());
+  } else {
+    EXPECT_EQ(opener->GetSiteInstance(), popup->GetSiteInstance());
+    EXPECT_EQ(old_popup_site_instance.get(), popup->GetSiteInstance());
+    EXPECT_NE(url::kDataScheme,
+              popup->GetSiteInstance()->GetSiteURL().scheme());
+
+    EXPECT_FALSE(opener->GetSiteInstance()->RequiresDedicatedProcess());
+    EXPECT_FALSE(popup->GetSiteInstance()->RequiresDedicatedProcess());
+    EXPECT_FALSE(old_popup_site_instance->RequiresDedicatedProcess());
+    EXPECT_EQ(opener->GetSiteInstance()->GetProcess(),
+              popup->GetSiteInstance()->GetProcess());
+    EXPECT_EQ(old_popup_site_instance->GetOrCreateProcess(),
+              popup->GetSiteInstance()->GetProcess());
   }
 }
 
@@ -979,7 +985,16 @@ class SignInIsolationBrowserTest : public ChromeNavigationBrowserTest {
  public:
   SignInIsolationBrowserTest()
       : https_server_(net::EmbeddedTestServer::TYPE_HTTPS) {}
+<<<<<<< HEAD
+
+  SignInIsolationBrowserTest(const SignInIsolationBrowserTest&) = delete;
+  SignInIsolationBrowserTest& operator=(const SignInIsolationBrowserTest&) =
+      delete;
+
+  ~SignInIsolationBrowserTest() override = default;
+=======
   ~SignInIsolationBrowserTest() override {}
+>>>>>>> chromium
 
   void SetUp() override {
     https_server_.ServeFilesFromSourceDirectory("chrome/test/data");
@@ -1043,7 +1058,16 @@ class WebstoreIsolationBrowserTest : public ChromeNavigationBrowserTest {
  public:
   WebstoreIsolationBrowserTest()
       : https_server_(net::EmbeddedTestServer::TYPE_HTTPS) {}
+<<<<<<< HEAD
+
+  WebstoreIsolationBrowserTest(const WebstoreIsolationBrowserTest&) = delete;
+  WebstoreIsolationBrowserTest& operator=(const WebstoreIsolationBrowserTest&) =
+      delete;
+
+  ~WebstoreIsolationBrowserTest() override = default;
+=======
   ~WebstoreIsolationBrowserTest() override {}
+>>>>>>> chromium
 
   void SetUp() override {
     https_server_.ServeFilesFromSourceDirectory("chrome/test/data");
@@ -1075,7 +1099,117 @@ class WebstoreIsolationBrowserTest : public ChromeNavigationBrowserTest {
  private:
   net::EmbeddedTestServer https_server_;
 
+<<<<<<< HEAD
+// Tests that Chrome Web Store URL used by the hosted app in production
+// (chrome.google.com/webstore/) is isolated from the rest of google.com and
+// other chrome.google.com pages not in the /webstore/ path. See
+// https://crbug.com/939108.
+IN_PROC_BROWSER_TEST_F(WebstoreIsolationBrowserTest, WebstorePopupIsIsolated) {
+  const GURL first_url("https://google.com/title1.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), first_url));
+  content::WebContents* initial_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  scoped_refptr<content::SiteInstance> initial_instance(
+      initial_web_contents->GetPrimaryMainFrame()->GetSiteInstance());
+
+  // Open a popup for chrome.google.com and ensure that it's isolated in a
+  // different SiteInstance and process from the previous google.com page.
+  const GURL webstore_origin_url("https://chrome.google.com/title1.html");
+  OpenPopup(initial_web_contents, webstore_origin_url);
+  EXPECT_EQ(2, browser()->tab_strip_model()->count());
+  content::WebContents* popup =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  EXPECT_NE(popup, initial_web_contents);
+  EXPECT_EQ(webstore_origin_url, popup->GetLastCommittedURL());
+
+  scoped_refptr<content::SiteInstance> popup_instance(
+      popup->GetPrimaryMainFrame()->GetSiteInstance());
+  EXPECT_NE(initial_instance, popup_instance);
+  EXPECT_NE(initial_instance->GetProcess(), popup_instance->GetProcess());
+  // This URL still does *not* match the web store URL due to it not having the
+  // /webstore/ path, so there will not have been a full BrowsingInstance swap.
+  EXPECT_TRUE(initial_instance->IsRelatedSiteInstance(popup_instance.get()));
+
+  // Now navigate the popup to the full web store URL. This will again cause it
+  // to be isolated in a different SiteInstance and process from the previous
+  // pages, but also now cause a BrowsingInstance swap.
+  const GURL webstore_url("https://chrome.google.com/webstore/mock_store.html");
+  EXPECT_TRUE(content::NavigateToURLFromRenderer(popup, webstore_url));
+  scoped_refptr<content::SiteInstance> webstore_instance(
+      popup->GetPrimaryMainFrame()->GetSiteInstance());
+  EXPECT_NE(webstore_instance, popup_instance);
+  EXPECT_NE(webstore_instance, initial_instance);
+  EXPECT_NE(webstore_instance->GetProcess(), initial_instance->GetProcess());
+  EXPECT_NE(webstore_instance->GetProcess(),
+            popup_instance->GetOrCreateProcess());
+  EXPECT_FALSE(webstore_instance->IsRelatedSiteInstance(popup_instance.get()));
+  EXPECT_FALSE(
+      webstore_instance->IsRelatedSiteInstance(initial_instance.get()));
+
+  // Finally navigate the popup back away from the web store URL. This will lead
+  // to another new process and BrowsingInstance swap.
+  EXPECT_TRUE(content::NavigateToURLFromRenderer(popup, first_url));
+  scoped_refptr<content::SiteInstance> final_instance(
+      popup->GetPrimaryMainFrame()->GetSiteInstance());
+  EXPECT_NE(final_instance->GetProcess(), webstore_instance->GetProcess());
+  EXPECT_FALSE(final_instance->IsRelatedSiteInstance(webstore_instance.get()));
+}
+
+// Make sure that the new Chrome Web Store URL used in production
+// (chromewebstore.google.com) is isolated from the rest of the google.com
+// domain.
+IN_PROC_BROWSER_TEST_F(WebstoreIsolationBrowserTest,
+                       NewWebstorePopupIsIsolated) {
+  const GURL first_url("https://google.com/title1.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), first_url));
+  content::WebContents* initial_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  scoped_refptr<content::SiteInstance> initial_instance(
+      initial_web_contents->GetPrimaryMainFrame()->GetSiteInstance());
+
+  // Open a popup for chromewebstore.google.com and ensure that it's isolated in
+  // a different SiteInstance and process from the rest of google.com. Since the
+  // new Webstore encompasses the entire subdomain, there should have also been
+  // a BrowsingInstance swap at this point.
+  const GURL webstore_origin_url(
+      "https://chromewebstore.google.com/title1.html");
+  OpenPopup(initial_web_contents, webstore_origin_url);
+  EXPECT_EQ(2, browser()->tab_strip_model()->count());
+  content::WebContents* popup =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  EXPECT_NE(popup, initial_web_contents);
+  EXPECT_EQ(webstore_origin_url, popup->GetLastCommittedURL());
+
+  scoped_refptr<content::SiteInstance> popup_instance(
+      popup->GetPrimaryMainFrame()->GetSiteInstance());
+  EXPECT_NE(initial_instance, popup_instance);
+  EXPECT_NE(initial_instance->GetProcess(), popup_instance->GetProcess());
+  EXPECT_FALSE(initial_instance->IsRelatedSiteInstance(popup_instance.get()));
+
+  // Navigating the popup away from the webstore should cause another new
+  // process and BrowsingInstance swap.
+  EXPECT_TRUE(content::NavigateToURLFromRenderer(popup, first_url));
+  scoped_refptr<content::SiteInstance> final_instance(
+      popup->GetPrimaryMainFrame()->GetSiteInstance());
+  EXPECT_NE(final_instance->GetProcess(), popup_instance->GetProcess());
+  EXPECT_FALSE(final_instance->IsRelatedSiteInstance(popup_instance.get()));
+}
+
+class WebstoreOverrideIsolationBrowserTest
+    : public WebstoreIsolationBrowserTest {
+ public:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    // Override the webstore URL. Note: although this specifies a path, in
+    // reality we just look at the scheme, host and port when using the
+    // override.
+    command_line->AppendSwitchASCII(::switches::kAppsGalleryURL,
+                                    "https://chrome.foo.com/frame_tree");
+
+    WebstoreIsolationBrowserTest::SetUpCommandLine(command_line);
+  }
+=======
   DISALLOW_COPY_AND_ASSIGN(WebstoreIsolationBrowserTest);
+>>>>>>> chromium
 };
 
 // Make sure that Chrome Web Store origins are isolated from the rest of their
@@ -2644,4 +2778,86 @@ IN_PROC_BROWSER_TEST_F(SiteIsolationForCOOPBrowserTest,
   EXPECT_THAT(GetSavedIsolatedSites(browser()->profile()),
               UnorderedElementsAre("https://coop1.com", "https://coop3.com",
                                    "https://coop4.com"));
+}
+
+class FencedFrameNavigationBrowserTest : public ChromeNavigationBrowserTest {
+ public:
+  void SetUpOnMainThread() override {
+    ChromeNavigationBrowserTest::SetUpOnMainThread();
+
+    // Add content/test/data for cross_site_iframe_factory.html.
+    embedded_https_test_server().ServeFilesFromSourceDirectory(
+        "content/test/data");
+    embedded_https_test_server().SetSSLConfig(
+        net::EmbeddedTestServer::CERT_TEST_NAMES);
+  }
+
+  content::RenderFrameHost* primary_main_frame_host() {
+    return browser()
+        ->tab_strip_model()
+        ->GetActiveWebContents()
+        ->GetPrimaryMainFrame();
+  }
+
+  content::test::FencedFrameTestHelper& fenced_frame_test_helper() {
+    return fenced_frame_test_helper_;
+  }
+
+ private:
+  content::test::FencedFrameTestHelper fenced_frame_test_helper_;
+};
+
+IN_PROC_BROWSER_TEST_F(FencedFrameNavigationBrowserTest,
+                       FencedFrameMainFrameNavigationBlockedIfNetworkRevoked) {
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  // Navigate to a page that contains a fenced frame.
+  const GURL main_url = embedded_https_test_server().GetURL(
+      "a.test", "/cross_site_iframe_factory.html?a.test(a.test{fenced})");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), main_url));
+
+  // Get fenced frame render frame host.
+  std::vector<content::RenderFrameHost*> child_frames =
+      fenced_frame_test_helper().GetChildFencedFrameHosts(
+          primary_main_frame_host());
+  EXPECT_EQ(child_frames.size(), 1u);
+  content::RenderFrameHost* fenced_frame_rfh = child_frames[0];
+
+  GURL target_url = embedded_https_test_server().GetURL(
+      "a.test", "/fenced_frames/title0.html");
+
+  // Open the link in new tab.
+  content::OpenURLParams params(
+      target_url, content::Referrer(), fenced_frame_rfh->GetFrameTreeNodeId(),
+      WindowOpenDisposition::NEW_BACKGROUND_TAB, ui::PAGE_TRANSITION_LINK,
+      /*is_renderer_initiated=*/false);
+
+  params.source_render_process_id =
+      fenced_frame_rfh->GetProcess()->GetDeprecatedID();
+  params.source_render_frame_id = fenced_frame_rfh->GetRoutingID();
+  params.initiator_frame_token = fenced_frame_rfh->GetFrameToken();
+  params.initiator_process_id =
+      fenced_frame_rfh->GetProcess()->GetDeprecatedID();
+  params.initiator_origin = fenced_frame_rfh->GetLastCommittedOrigin();
+  params.source_site_instance = fenced_frame_rfh->GetSiteInstance();
+
+  // Disable fenced frame untrusted network.
+  EXPECT_TRUE(ExecJs(fenced_frame_rfh, R"(
+    (async () => {
+      return window.fence.disableUntrustedNetwork();
+    })();
+  )"));
+
+  ui_test_utils::TabAddedWaiter tab_add(browser());
+
+  // Initiate a main frame navigation with the fenced frame as the initiator.
+  browser()->OpenURL(params, /*navigation_handle_callback=*/{});
+
+  // Make sure the navigation did not take place.
+  tab_add.Wait();
+  int index_of_new_tab = browser()->tab_strip_model()->count() - 1;
+  content::WebContents* new_web_contents =
+      browser()->tab_strip_model()->GetWebContentsAt(index_of_new_tab);
+  EXPECT_TRUE(WaitForLoadStop(new_web_contents));
+  EXPECT_TRUE(new_web_contents->GetLastCommittedURL().is_empty());
 }

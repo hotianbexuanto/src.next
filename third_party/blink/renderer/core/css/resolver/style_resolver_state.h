@@ -120,7 +120,15 @@ class CORE_EXPORT StyleResolverState {
   void SetParentStyle(scoped_refptr<const ComputedStyle>);
   const ComputedStyle* ParentStyle() const { return parent_style_.get(); }
 
+<<<<<<< HEAD
+  void SetParentStyle(const ComputedStyle*);
+  void EnsureParentStyle();
+  const ComputedStyle* ParentStyle() const { return parent_style_; }
+
+  void SetLayoutParentStyle(const ComputedStyle*);
+=======
   void SetLayoutParentStyle(scoped_refptr<const ComputedStyle>);
+>>>>>>> chromium
   const ComputedStyle* LayoutParentStyle() const {
     return layout_parent_style_.get();
   }

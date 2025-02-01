@@ -682,8 +682,13 @@ public class FeedSurfaceCoordinator
         return mSectionHeaderModel;
     }
 
-    /** @return The {@link View} for this class. */
+    /**
+     * @return The {@link View} for this class.
+     */
+    // TODO(crbug.com/327387704): Remove after uno phase 2 follow-up launch.
+    @Deprecated
     View getSigninPromoView() {
+        assert !ChromeFeatureList.isEnabled(ChromeFeatureList.UNO_PHASE_2_FOLLOW_UP);
         if (mSigninPromoView == null) {
             LayoutInflater inflater = LayoutInflater.from(mRootView.getContext());
             mSigninPromoView = inflater.inflate(
@@ -693,12 +698,18 @@ public class FeedSurfaceCoordinator
         return mSigninPromoView;
     }
 
+<<<<<<< HEAD
+    /** Update header views in the Feed. */
+    void updateHeaderViews(@Nullable View signinPromoView) {
+        if (!mMediator.hasStreams()) return;
+=======
     /**
      * Update header views in the Feed.
      */
     void updateHeaderViews(
             boolean isSignInPromoVisible, @Nullable View enhancedProtectionPromoView) {
         if (mStream == null) return;
+>>>>>>> chromium
 
         List<View> headers = new ArrayList<>();
         if (mNtpHeader != null) {
@@ -715,8 +726,9 @@ public class FeedSurfaceCoordinator
             headers.add(mSectionHeaderView);
         }
 
-        if (isSignInPromoVisible) {
-            headers.add(getSigninPromoView());
+        if (signinPromoView != null) {
+            mSigninPromoView = signinPromoView;
+            headers.add(signinPromoView);
         }
         setHeaders(headers);
     }
@@ -740,12 +752,19 @@ public class FeedSurfaceCoordinator
         return mMediator;
     }
 
+<<<<<<< HEAD
+    public void setMediatorForTesting(FeedSurfaceMediator mediator) {
+        mMediator = mediator;
+    }
+
+=======
     @VisibleForTesting
     public View getSignInPromoViewForTesting() {
         return getSigninPromoView();
     }
 
     @VisibleForTesting
+>>>>>>> chromium
     public View getSectionHeaderViewForTesting() {
         return mSectionHeaderView;
     }
@@ -863,10 +882,73 @@ public class FeedSurfaceCoordinator
         return mSwipeRefreshLayout.canScrollVertically(-1);
     }
 
+<<<<<<< HEAD
+    @Override
+    public void addObserver(SurfaceCoordinator.Observer observer) {
+        mObservers.addObserver(observer);
+    }
+
+    @Override
+    public void removeObserver(SurfaceCoordinator.Observer observer) {
+        mObservers.removeObserver(observer);
+    }
+
+    @Override
+    public void onActivityPaused() {
+        if (mReliabilityLogger != null) {
+            mReliabilityLogger.onActivityPaused();
+        }
+    }
+
+    @Override
+    public void onActivityResumed() {
+        if (mReliabilityLogger != null) {
+            mReliabilityLogger.onActivityResumed();
+        }
+    }
+
+    public boolean isLoadingFeed() {
+        return mMediator.isLoadingFeed();
+    }
+
+    @Override
+    public ObservableSupplier<Integer> getRestoringStateSupplier() {
+        return mMediator.getRestoringStateSupplier();
+    }
+
+    private int getLateralPaddingsPx() {
+        return mActivity
+                .getResources()
+                .getDimensionPixelSize(R.dimen.ntp_header_lateral_paddings_v2);
+    }
+
+    @Override
+    public @ClosedReason int getClosedReason() {
+        return mMediator.getClosedReason();
+    }
+
+    public void setReliabilityLoggerForTesting(FeedReliabilityLogger logger) {
+        var oldValue = mReliabilityLogger;
+        mReliabilityLogger = logger;
+        ResettersForTesting.register(() -> mReliabilityLogger = oldValue);
+    }
+
+    public void clearScrollableContainerDelegateForTesting() {
+        mScrollableContainerDelegate = null;
+    }
+
+    public FeedActionDelegate getActionDelegateForTesting() {
+        return mActionDelegate;
+    }
+
+    FrameLayout getRootViewForTesting() {
+        return mRootView;
+=======
     private boolean isReliabilityLoggingEnabled() {
         return ChromeFeatureList.isEnabled(ChromeFeatureList.FEED_RELIABILITY_LOGGING)
                 && (mPrivacyPreferencesManager.isMetricsReportingEnabled()
                         || CommandLine.getInstance().hasSwitch(
                                 "force-enable-feed-reliability-logging"));
+>>>>>>> chromium
     }
 }

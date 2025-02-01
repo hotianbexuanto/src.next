@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/hung_plugin_tab_helper.h"
 
+#include <algorithm>
 #include <memory>
 
 #include "base/bind.h"
@@ -95,16 +96,23 @@ void HungPluginTabHelper::PluginCrashed(const base::FilePath& plugin_path,
                                         base::ProcessId plugin_pid) {
   // For now, just do a brute-force search to see if we have this plugin. Since
   // we'll normally have 0 or 1, this is fast.
+<<<<<<< HEAD
+  const auto i =
+      std::ranges::find(hung_plugins_, plugin_path,
+                        [](const auto& elem) { return elem.second->path; });
+=======
   const auto i = std::find_if(hung_plugins_.begin(), hung_plugins_.end(),
                               [plugin_path](const auto& elem) {
                                 return elem.second->path == plugin_path;
                               });
+>>>>>>> chromium
   if (i != hung_plugins_.end()) {
     if (i->second->infobar) {
       infobars::ContentInfoBarManager* infobar_manager =
           infobars::ContentInfoBarManager::FromWebContents(web_contents());
-      if (infobar_manager)
+      if (infobar_manager) {
         infobar_manager->RemoveInfoBar(i->second->infobar);
+      }
     }
     hung_plugins_.erase(i);
   }
@@ -121,17 +129,20 @@ void HungPluginTabHelper::PluginHungStatusChanged(
   if (found != hung_plugins_.end()) {
     if (!is_hung) {
       // Hung plugin became un-hung, close the infobar and delete our info.
-      if (found->second->infobar && infobar_manager)
+      if (found->second->infobar && infobar_manager) {
         infobar_manager->RemoveInfoBar(found->second->infobar);
+      }
       hung_plugins_.erase(found);
     }
     return;
   }
 
-  if (!infobar_manager)
+  if (!infobar_manager) {
     return;
-  if (!infobar_observations_.IsObservingSource(infobar_manager))
+  }
+  if (!infobar_observations_.IsObservingSource(infobar_manager)) {
     infobar_observations_.AddObservation(infobar_manager);
+  }
 
   std::u16string plugin_name =
       content::PluginService::GetInstance()->GetPluginDisplayNameByPath(
@@ -143,9 +154,15 @@ void HungPluginTabHelper::PluginHungStatusChanged(
 
 void HungPluginTabHelper::OnInfoBarRemoved(infobars::InfoBar* infobar,
                                            bool animate) {
+<<<<<<< HEAD
+  const auto i =
+      std::ranges::find(hung_plugins_, infobar,
+                        [](const auto& elem) { return elem.second->infobar; });
+=======
   const auto i = std::find_if(
       hung_plugins_.begin(), hung_plugins_.end(),
       [infobar](const auto& elem) { return elem.second->infobar == infobar; });
+>>>>>>> chromium
   if (i != hung_plugins_.end()) {
     PluginState* state = i->second.get();
     state->infobar = nullptr;
@@ -190,8 +207,9 @@ void HungPluginTabHelper::OnReshowTimer(int child_id) {
 void HungPluginTabHelper::ShowBar(int child_id, PluginState* state) {
   infobars::ContentInfoBarManager* infobar_manager =
       infobars::ContentInfoBarManager::FromWebContents(web_contents());
-  if (!infobar_manager)
+  if (!infobar_manager) {
     return;
+  }
 
   DCHECK(!state->infobar);
   state->infobar = HungPluginInfoBarDelegate::Create(infobar_manager, this,

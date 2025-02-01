@@ -2,12 +2,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+<<<<<<< HEAD
+import("//crypto/features.gni")
+import("//tools/grit/grit_rule.gni")
+=======
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/crypto.gni")
 import("//third_party/closure_compiler/compile_js.gni")
 import("//tools/typescript/ts_definitions.gni")
 import("//tools/typescript/ts_library.gni")
+>>>>>>> chromium
 import("//ui/webui/resources/tools/generate_grd.gni")
+import("//ui/webui/webui_features.gni")
 
 include_polymer = !is_android && !is_ios
 
@@ -44,18 +50,64 @@ generate_grd("build_grd") {
     ]
   }
 
+<<<<<<< HEAD
+  public_deps = [
+    "cr_components/commerce:build_grdp",
+    "cr_elements:build_grdp",
+    "css:build_grdp",
+    "images:build_grdp",
+    "js:build_grdp",
+    "mojo:build_grdp",
+    "//third_party/lit/v3_0:build_grdp",
+  ]
+  grdp_files = [
+    "$root_gen_dir/third_party/lit/v3_0/resources.grdp",
+    "$target_gen_dir/cr_components/commerce/resources.grdp",
+    "$target_gen_dir/cr_elements/resources.grdp",
+    "$target_gen_dir/css/resources.grdp",
+    "$target_gen_dir/images/resources.grdp",
+    "$target_gen_dir/js/resources.grdp",
+    "$target_gen_dir/mojo/resources.grdp",
+  ]
+
+  if (!is_android && !is_ios) {
+    public_deps += [
+      "cr_components/app_management:build_grdp",
+      "cr_components/cr_shortcut_input:build_grdp",
+      "cr_components/customize_color_scheme_mode:build_grdp",
+      "cr_components/help_bubble:build_grdp",
+      "cr_components/localized_link:build_grdp",
+      "cr_components/managed_dialog:build_grdp",
+      "cr_components/managed_footnote:build_grdp",
+      "cr_components/most_visited:build_grdp",
+      "cr_components/theme_color_picker:build_grdp",
+      "//third_party/d3:build_grdp",
+=======
   if (include_polymer) {
     deps += [
       "cr_components:build_grdp",
       "cr_components/customize_themes:build_grdp",
       "cr_elements:build_grdp",
+>>>>>>> chromium
       "//third_party/polymer/v3_0:build_grdp",
     ]
     grdp_files += [
       "$root_gen_dir/third_party/polymer/v3_0/polymer_3_0_resources.grdp",
+<<<<<<< HEAD
+      "$target_gen_dir/cr_components/app_management/resources.grdp",
+      "$target_gen_dir/cr_components/theme_color_picker/resources.grdp",
+      "$target_gen_dir/cr_components/cr_shortcut_input/resources.grdp",
+      "$target_gen_dir/cr_components/customize_color_scheme_mode/resources.grdp",
+      "$target_gen_dir/cr_components/help_bubble/resources.grdp",
+      "$target_gen_dir/cr_components/localized_link/resources.grdp",
+      "$target_gen_dir/cr_components/managed_dialog/resources.grdp",
+      "$target_gen_dir/cr_components/managed_footnote/resources.grdp",
+      "$target_gen_dir/cr_components/most_visited/resources.grdp",
+=======
       "$root_gen_dir/ui/webui/resources/cr_components/cr_components_resources.grdp",
       "$root_gen_dir/ui/webui/resources/cr_components/customize_themes/resources.grdp",
       "$root_gen_dir/ui/webui/resources/cr_elements/cr_elements_resources.grdp",
+>>>>>>> chromium
     ]
 
     if (use_nss_certs) {
@@ -127,6 +179,23 @@ group("modulize") {
   }
 }
 
+<<<<<<< HEAD
+grit("resources") {
+  enable_input_discovery_for_gn_analyze = false
+  source = "$target_gen_dir/webui_resources.grd"
+  deps = [ ":build_grd" ]
+
+  outputs = [
+    "grit/webui_resources.h",
+    "grit/webui_resources_map.cc",
+    "grit/webui_resources_map.h",
+    "webui_resources.pak",
+  ]
+
+  grit_flags = [
+    "-E",
+    "add_filepath_to_resource_map=${load_webui_from_disk}",
+=======
 # TypeScript targets
 
 preprocessed_folder = "$target_gen_dir/preprocessed"
@@ -332,5 +401,6 @@ ts_definitions("generate_definitions") {
     # these files, instead of accidentally auto-generating them.
     ":copy_checked_in_dts_files",
     ":preprocess",
+>>>>>>> chromium
   ]
 }

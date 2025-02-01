@@ -12,7 +12,10 @@
 #include <utility>
 
 #include "base/lazy_instance.h"
+<<<<<<< HEAD
+=======
 #include "base/macros.h"
+>>>>>>> chromium
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -151,9 +154,14 @@ bool SharedModuleHandler::Parse(Extension* extension, std::u16string* error) {
   if (has_export && manifest_keys.export_->allowlist) {
     auto begin = manifest_keys.export_->allowlist->begin();
     auto end = manifest_keys.export_->allowlist->end();
+<<<<<<< HEAD
+    auto it = std::ranges::find_if_not(*manifest_keys.export_->allowlist,
+                                       &crx_file::id_util::IdIsValid);
+=======
     auto it = std::find_if_not(begin, end, [](const std::string& id) {
       return crx_file::id_util::IdIsValid(id);
     });
+>>>>>>> chromium
     if (it != end) {
       *error = ErrorUtils::FormatErrorMessageUTF16(
           errors::kInvalidExportAllowlistString,

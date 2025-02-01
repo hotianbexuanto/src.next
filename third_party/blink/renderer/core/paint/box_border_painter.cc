@@ -353,6 +353,16 @@ struct OpacityGroup {
   unsigned alpha;
 };
 
+<<<<<<< HEAD
+void ClipPolygon(GraphicsContext& context,
+                 base::span<const gfx::PointF> vertices,
+                 bool antialiased) {
+  SkPath path;
+  path.moveTo(gfx::PointFToSkPoint(vertices[0]));
+  for (size_t i = 1; i < vertices.size(); ++i) {
+    path.lineTo(gfx::PointFToSkPoint(vertices[i]));
+  }
+=======
 void ClipQuad(GraphicsContext& context,
               const FloatPoint quad[],
               bool antialiased) {
@@ -361,6 +371,7 @@ void ClipQuad(GraphicsContext& context,
   path.lineTo(FloatPointToSkPoint(quad[1]));
   path.lineTo(FloatPointToSkPoint(quad[2]));
   path.lineTo(FloatPointToSkPoint(quad[3]));
+>>>>>>> chromium
 
   context.ClipPath(path.detach(), antialiased ? kAntiAliased : kNotAntiAliased);
 }

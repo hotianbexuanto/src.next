@@ -25,6 +25,14 @@ enum class CompositorElementIdNamespace {
   kEffectClipPath,
   kVerticalScrollbar,
   kHorizontalScrollbar,
+<<<<<<< HEAD
+  kScrollCorner,
+  kViewTransitionSubframeRoot,
+  kViewTransitionElement,
+  kElementCapture,
+  kPlaceElement,
+=======
+>>>>>>> chromium
   kDOMNodeId,
   // The following values are for internal usage only.
   kMax = kDOMNodeId,

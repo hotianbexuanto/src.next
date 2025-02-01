@@ -4,6 +4,11 @@
 
 #include "third_party/blink/renderer/core/frame/device_single_window_event_controller.h"
 
+<<<<<<< HEAD
+#include <algorithm>
+
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/page/page.h"
@@ -87,6 +92,15 @@ bool DeviceSingleWindowEventController::IsSameSecurityOriginAsMainFrame()
 }
 
 bool DeviceSingleWindowEventController::CheckPolicyFeatures(
+<<<<<<< HEAD
+    const Vector<network::mojom::PermissionsPolicyFeature>& features) const {
+  LocalDOMWindow& window = GetWindow();
+  return std::ranges::all_of(
+      features, [&window](network::mojom::PermissionsPolicyFeature feature) {
+        return window.IsFeatureEnabled(feature,
+                                       ReportOptions::kReportOnFailure);
+      });
+=======
     const Vector<mojom::blink::PermissionsPolicyFeature>& features) const {
   const LocalDOMWindow& window = GetWindow();
   return std::all_of(features.begin(), features.end(),
@@ -94,6 +108,7 @@ bool DeviceSingleWindowEventController::CheckPolicyFeatures(
                        return window.IsFeatureEnabled(
                            feature, ReportOptions::kReportOnFailure);
                      });
+>>>>>>> chromium
 }
 
 void DeviceSingleWindowEventController::Trace(Visitor* visitor) const {

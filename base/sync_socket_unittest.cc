@@ -49,9 +49,7 @@ class HangingReceiveThread : public DelegateSimpleThread::Delegate {
     done_event_.Signal();
   }
 
-  void Stop() {
-    thread_.Join();
-  }
+  void Stop() { thread_.Join(); }
 
   WaitableEvent* started_event() { return &started_event_; }
   WaitableEvent* done_event() { return &done_event_; }

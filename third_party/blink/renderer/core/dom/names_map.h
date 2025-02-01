@@ -7,6 +7,7 @@
 
 #include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
+#include "third_party/blink/renderer/core/dom/element_rare_data_field.h"
 #include "third_party/blink/renderer/core/dom/space_split_string.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
@@ -20,9 +21,14 @@ namespace blink {
 // http://drafts.csswg.org/css-shadow-parts/.
 // TODO(crbug/805271): Deduplicate identical maps as SpaceSplitString does so
 // that elements with identical exportparts attributes share instances.
+<<<<<<< HEAD
+class CORE_EXPORT NamesMap : public GarbageCollected<NamesMap>,
+                             public ElementRareDataField {
+=======
 class CORE_EXPORT NamesMap {
   USING_FAST_MALLOC(NamesMap);
 
+>>>>>>> chromium
  public:
   NamesMap() = default;
   NamesMap(const NamesMap&) = delete;
@@ -39,6 +45,14 @@ class CORE_EXPORT NamesMap {
 
   size_t size() const { return data_.size(); }
 
+<<<<<<< HEAD
+  void Trace(Visitor* visitor) const override {
+    visitor->Trace(data_);
+    ElementRareDataField::Trace(visitor);
+  }
+
+=======
+>>>>>>> chromium
  private:
   template <typename CharacterType>
   void Set(const AtomicString&, const CharacterType*);

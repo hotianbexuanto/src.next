@@ -346,7 +346,23 @@ class HttpStreamFactory::Job
   // connection attempt to be made to an H2 server at a time.
   bool ShouldThrottleConnectForSpdy() const;
 
+<<<<<<< HEAD
+  // True if Job actually uses HTTP/2. Note this describes both using HTTP/2
+  // with an HTTPS origin, and proxying a cleartext HTTP request over an HTTP/2
+  // proxy. This differs from `using_ssl_`, which only describes the origin.
+  bool using_spdy() const;
+
+  bool disable_cert_verification_network_fetches() const;
+
+  void RecordPreconnectHistograms(int result);
+
+  // Records histograms required at the end of the execution.
+  void RecordCompletionHistograms(int result);
+
+  const StreamRequestInfo request_info_;
+=======
   const HttpRequestInfo request_info_;
+>>>>>>> chromium
   RequestPriority priority_;
   const ProxyInfo proxy_info_;
   SSLConfig server_ssl_config_;
@@ -426,7 +442,11 @@ class HttpStreamFactory::Job
   bool was_alpn_negotiated_;
 
   // Protocol negotiated with the server.
+<<<<<<< HEAD
+  NextProto negotiated_protocol_ = NextProto::kProtoUnknown;
+=======
   NextProto negotiated_protocol_;
+>>>>>>> chromium
 
   // 0 if we're not preconnecting. Otherwise, the number of streams to
   // preconnect.

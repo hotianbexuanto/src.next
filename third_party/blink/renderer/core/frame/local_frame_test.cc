@@ -6,9 +6,13 @@
 
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/css/properties/longhands.h"
+=======
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/loader/empty_clients.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_parameters.h"
@@ -177,18 +181,36 @@ void TestGreenDiv(DummyPageHolder& page_holder) {
 TEST_F(LocalFrameTest, ForceSynchronousDocumentInstall_XHTMLStyleInBody) {
   auto page_holder = std::make_unique<DummyPageHolder>(IntSize(800, 600));
 
+<<<<<<< HEAD
+  SegmentedBuffer data;
+  data.Append(base::span_from_cstring(
+      "<html xmlns='http://www.w3.org/1999/xhtml'><body><style>div { color: "
+      "green }</style><div id='div'></div></body></html>"));
+  page_holder->GetFrame().ForceSynchronousDocumentInstall(
+      AtomicString("text/xml"), data);
+=======
   scoped_refptr<SharedBuffer> data = SharedBuffer::Create();
   data->Append(
       "<html xmlns='http://www.w3.org/1999/xhtml'><body><style>div { color: "
       "green }</style><div id='div'></div></body></html>",
       static_cast<size_t>(118));
   page_holder->GetFrame().ForceSynchronousDocumentInstall("text/xml", data);
+>>>>>>> chromium
   TestGreenDiv(*page_holder);
 }
 
 TEST_F(LocalFrameTest, ForceSynchronousDocumentInstall_XHTMLLinkInBody) {
   auto page_holder = std::make_unique<DummyPageHolder>(IntSize(800, 600));
 
+<<<<<<< HEAD
+  SegmentedBuffer data;
+  data.Append(base::span_from_cstring(
+      "<html xmlns='http://www.w3.org/1999/xhtml'><body><link rel='stylesheet' "
+      "href='data:text/css,div{color:green}' /><div "
+      "id='div'></div></body></html>"));
+  page_holder->GetFrame().ForceSynchronousDocumentInstall(
+      AtomicString("text/xml"), data);
+=======
   scoped_refptr<SharedBuffer> data = SharedBuffer::Create();
   data->Append(
       "<html xmlns='http://www.w3.org/1999/xhtml'><body><link rel='stylesheet' "
@@ -196,24 +218,43 @@ TEST_F(LocalFrameTest, ForceSynchronousDocumentInstall_XHTMLLinkInBody) {
       "id='div'></div></body></html>",
       static_cast<size_t>(146));
   page_holder->GetFrame().ForceSynchronousDocumentInstall("text/xml", data);
+>>>>>>> chromium
   TestGreenDiv(*page_holder);
 }
 
 TEST_F(LocalFrameTest, ForceSynchronousDocumentInstall_XHTMLStyleInHead) {
   auto page_holder = std::make_unique<DummyPageHolder>(IntSize(800, 600));
 
+<<<<<<< HEAD
+  SegmentedBuffer data;
+  data.Append(base::span_from_cstring(
+      "<html xmlns='http://www.w3.org/1999/xhtml'><head><style>div { color: "
+      "green }</style></head><body><div id='div'></div></body></html>"));
+  page_holder->GetFrame().ForceSynchronousDocumentInstall(
+      AtomicString("text/xml"), data);
+=======
   scoped_refptr<SharedBuffer> data = SharedBuffer::Create();
   data->Append(
       "<html xmlns='http://www.w3.org/1999/xhtml'><head><style>div { color: "
       "green }</style></head><body><div id='div'></div></body></html>",
       static_cast<size_t>(131));
   page_holder->GetFrame().ForceSynchronousDocumentInstall("text/xml", data);
+>>>>>>> chromium
   TestGreenDiv(*page_holder);
 }
 
 TEST_F(LocalFrameTest, ForceSynchronousDocumentInstall_XHTMLLinkInHead) {
   auto page_holder = std::make_unique<DummyPageHolder>(IntSize(800, 600));
 
+<<<<<<< HEAD
+  SegmentedBuffer data;
+  data.Append(base::span_from_cstring(
+      "<html xmlns='http://www.w3.org/1999/xhtml'><head><link rel='stylesheet' "
+      "href='data:text/css,div{color:green}' /></head><body><div "
+      "id='div'></div></body></html>"));
+  page_holder->GetFrame().ForceSynchronousDocumentInstall(
+      AtomicString("text/xml"), data);
+=======
   scoped_refptr<SharedBuffer> data = SharedBuffer::Create();
   data->Append(
       "<html xmlns='http://www.w3.org/1999/xhtml'><head><link rel='stylesheet' "
@@ -221,12 +262,23 @@ TEST_F(LocalFrameTest, ForceSynchronousDocumentInstall_XHTMLLinkInHead) {
       "id='div'></div></body></html>",
       static_cast<size_t>(159));
   page_holder->GetFrame().ForceSynchronousDocumentInstall("text/xml", data);
+>>>>>>> chromium
   TestGreenDiv(*page_holder);
 }
 
 TEST_F(LocalFrameTest, ForceSynchronousDocumentInstall_XMLStyleSheet) {
   auto page_holder = std::make_unique<DummyPageHolder>(IntSize(800, 600));
 
+<<<<<<< HEAD
+  SegmentedBuffer data;
+  data.Append(
+      base::span_from_cstring("<?xml-stylesheet type='text/css' "
+                              "href='data:text/css,div{color:green}'?><html "
+                              "xmlns='http://www.w3.org/1999/xhtml'><body><div "
+                              "id='div'></div></body></html>"));
+  page_holder->GetFrame().ForceSynchronousDocumentInstall(
+      AtomicString("text/xml"), data);
+=======
   scoped_refptr<SharedBuffer> data = SharedBuffer::Create();
   data->Append(
       "<?xml-stylesheet type='text/css' "
@@ -235,6 +287,7 @@ TEST_F(LocalFrameTest, ForceSynchronousDocumentInstall_XMLStyleSheet) {
       "id='div'></div></body></html>",
       static_cast<size_t>(155));
   page_holder->GetFrame().ForceSynchronousDocumentInstall("text/xml", data);
+>>>>>>> chromium
   TestGreenDiv(*page_holder);
 }
 

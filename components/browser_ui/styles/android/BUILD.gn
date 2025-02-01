@@ -21,14 +21,54 @@ android_library("java") {
 
 android_resources("java_resources") {
   sources = [
+<<<<<<< HEAD
+    "java/res/anim-v33/shared_x_axis_close_enter.xml",
+    "java/res/anim-v33/shared_x_axis_close_exit.xml",
+    "java/res/anim-v33/shared_x_axis_open_enter.xml",
+    "java/res/anim-v33/shared_x_axis_open_exit.xml",
+    "java/res/anim/shared_x_axis_close_enter.xml",
+    "java/res/anim/shared_x_axis_close_exit.xml",
+    "java/res/anim/shared_x_axis_open_enter.xml",
+    "java/res/anim/shared_x_axis_open_exit.xml",
+    "java/res/color/chip_text_color_secondary_list.xml",
+    "java/res/color/color_on_surface_with_alpha_10.xml",
+    "java/res/color/color_primary_with_alpha_10.xml",
+    "java/res/color/color_primary_with_alpha_15.xml",
+    "java/res/color/color_primary_with_alpha_20.xml",
+    "java/res/color/color_primary_with_alpha_5.xml",
+    "java/res/color/default_icon_color_accent1_tint_list.xml",
+    "java/res/color/default_icon_color_dark_tint_list.xml",
+    "java/res/color/default_icon_color_disabled.xml",
+=======
     "java/res/color/blue_mode_tint.xml",
     "java/res/color/checkbox_tint.xml",
+>>>>>>> chromium
     "java/res/color/default_icon_color_light_tint_list.xml",
     "java/res/color/default_icon_color_secondary_light_tint_list.xml",
     "java/res/color/default_icon_color_secondary_tint_list.xml",
     "java/res/color/default_icon_color_tint_list.xml",
+<<<<<<< HEAD
+    "java/res/color/default_icon_color_white_tint_list.xml",
+    "java/res/color/default_text_color_accent1_tint_list.xml",
+    "java/res/color/default_text_color_disabled_list.xml",
+    "java/res/color/default_text_color_hint_list.xml",
+    "java/res/color/default_text_color_link_tint_list.xml",
+    "java/res/color/default_text_color_list.xml",
+    "java/res/color/default_text_color_on_accent1_container_list.xml",
+    "java/res/color/default_text_color_on_accent1_list.xml",
+    "java/res/color/default_text_color_secondary_list.xml",
+    "java/res/color/filled_button_bg_dynamic_list.xml",
+    "java/res/color/icon_animated_faded_color_list.xml",
+    "java/res/color/progress_bar_bg_color_list.xml",
+    "java/res/color/selection_control_button_tint_list.xml",
+    "java/res/color/text_button_ripple_color_list.xml",
+    "java/res/color/text_highlight_color.xml",
+    "java/res/color/toolbar_button_highlight_color.xml",
+    "java/res/color/toolbar_icon_unfocused_activity_tint_list.xml",
+=======
     "java/res/color/switch_thumb_tint.xml",
     "java/res/color/switch_track_tint.xml",
+>>>>>>> chromium
     "java/res/drawable-hdpi/btn_star_filled.png",
     "java/res/drawable-hdpi/ic_chrome.png",
     "java/res/drawable-hdpi/ic_delete_white_24dp.png",
@@ -168,6 +208,11 @@ android_resources("java_resources") {
     "java/res/drawable/ic_vpn_key_grey.xml",
     "java/res/drawable/ic_warning_red_16dp.xml",
     "java/res/drawable/ic_warning_red_24dp.xml",
+<<<<<<< HEAD
+    "java/res/drawable/ic_warning_red_outline_32dp.xml",
+    "java/res/drawable/report_octagon.xml",
+=======
+>>>>>>> chromium
     "java/res/drawable/smartphone_black_24dp.xml",
     "java/res/drawable/toolbar_hairline.xml",
     "java/res/values-night/colors.xml",

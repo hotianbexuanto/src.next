@@ -17,8 +17,17 @@
 
 class StartupHelperBrowserTest : public InProcessBrowserTest {
  public:
+<<<<<<< HEAD
+  StartupHelperBrowserTest() = default;
+
+  StartupHelperBrowserTest(const StartupHelperBrowserTest&) = delete;
+  StartupHelperBrowserTest& operator=(const StartupHelperBrowserTest&) = delete;
+
+  ~StartupHelperBrowserTest() override = default;
+=======
   StartupHelperBrowserTest() {}
   ~StartupHelperBrowserTest() override {}
+>>>>>>> chromium
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     command_line->AppendSwitch(switches::kNoStartupWindow);

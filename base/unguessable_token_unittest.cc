@@ -142,4 +142,4 @@ TEST(UnguessableTokenTest, VerifyBasicUniqueness) {
   UnguessableToken token = UnguessableToken::Create();
   EXPECT_NE(token.GetHighForSerialization(), token.GetLowForSerialization());
 }
-}
+}  // namespace base

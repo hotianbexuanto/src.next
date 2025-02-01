@@ -21,6 +21,13 @@ import org.chromium.base.supplier.BooleanSupplier;
 import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.Supplier;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.back_press.BackPressManager;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
+import org.chromium.chrome.browser.browser_controls.BrowserStateBrowserControlsVisibilityDelegate;
+=======
+>>>>>>> chromium
 import org.chromium.chrome.browser.lens.LensController;
 import org.chromium.chrome.browser.lens.LensFeature;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
@@ -44,7 +51,13 @@ import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.tabmodel.TabWindowManager;
+<<<<<<< HEAD
+import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
+import org.chromium.components.omnibox.AutocompleteMatch;
+import org.chromium.components.omnibox.action.OmniboxActionDelegate;
+=======
 import org.chromium.chrome.browser.user_education.UserEducationHelper;
+>>>>>>> chromium
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.DeviceFormFactor;
@@ -78,6 +91,8 @@ public final class LocationBarCoordinator implements LocationBar, NativeInitObse
     @Nullable
     private SubCoordinator mSubCoordinator;
     private ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
+    @Nullable private final BrowserControlsStateProvider mBrowserControlsStateProvider;
+    private final boolean mIsToolbarPositionCustomizationEnabled;
     private UrlBarCoordinator mUrlCoordinator;
     private AutocompleteCoordinator mAutocompleteCoordinator;
     private StatusCoordinator mStatusCoordinator;
@@ -152,19 +167,69 @@ public final class LocationBarCoordinator implements LocationBar, NativeInitObse
             @NonNull SaveOfflineButtonState saveOfflineButtonState, @NonNull OmniboxUma omniboxUma,
             @NonNull Supplier<TabWindowManager> tabWindowManagerSupplier,
             @NonNull BookmarkState bookmarkState,
+<<<<<<< HEAD
+            @NonNull BooleanSupplier isToolbarMicEnabledSupplier,
+            @Nullable
+                    Supplier<MerchantTrustSignalsCoordinator>
+                            merchantTrustSignalsCoordinatorSupplier,
+            @NonNull OmniboxActionDelegate omniboxActionDelegate,
+            BrowserStateBrowserControlsVisibilityDelegate browserControlsVisibilityDelegate,
+            @Nullable BackPressManager backPressManager,
+            @Nullable
+                    OmniboxSuggestionsDropdownScrollListener
+                            omniboxSuggestionsDropdownScrollListener,
+            @Nullable ObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
+            LocationBarEmbedderUiOverrides uiOverrides,
+            @Nullable View baseChromeLayout,
+            Supplier<Integer> bottomWindowPaddingSupplier,
+            @Nullable OnLongClickListener onLongClickListener,
+            @Nullable BrowserControlsStateProvider browserControlsStateProvider,
+            boolean isToolbarPositionCustomizationEnabled) {
+=======
             @NonNull BooleanSupplier isToolbarMicEnabledSupplier, JankTracker jankTracker,
             @NonNull ExploreIconProvider exploreIconProvider,
             @Nullable UserEducationHelper userEducationHelper) {
+>>>>>>> chromium
         mLocationBarLayout = (LocationBarLayout) locationBarLayout;
         mWindowDelegate = windowDelegate;
         mWindowAndroid = windowAndroid;
         mActivityLifecycleDispatcher = activityLifecycleDispatcher;
+        mBrowserControlsStateProvider = browserControlsStateProvider;
+        mIsToolbarPositionCustomizationEnabled = isToolbarPositionCustomizationEnabled;
         mActivityLifecycleDispatcher.register(this);
         mAutocompleteAnchorView = autocompleteAnchorView;
 
         mUrlBar = mLocationBarLayout.findViewById(R.id.url_bar);
         // TODO(crbug.com/1151513): Inject LocaleManager instance to LocationBarCoordinator instead
         // of using the singleton.
+<<<<<<< HEAD
+        mLocationBarMediator =
+                new LocationBarMediator(
+                        context,
+                        mLocationBarLayout,
+                        locationBarDataProvider,
+                        uiOverrides,
+                        profileObservableSupplier,
+                        overrideUrlLoadingDelegate,
+                        LocaleManager.getInstance(),
+                        templateUrlServiceSupplier,
+                        backKeyBehavior,
+                        windowAndroid,
+                        isTabletWindow() && isTabletLayout(),
+                        LensController.getInstance(),
+                        saveOfflineButtonState,
+                        omniboxUma,
+                        isToolbarMicEnabledSupplier,
+                        mOmniboxDropdownEmbedderImpl,
+                        tabModelSelectorSupplier,
+                        browserControlsStateProvider);
+        if (backPressManager != null) {
+            backPressManager.addHandler(mLocationBarMediator, BackPressHandler.Type.LOCATION_BAR);
+        }
+        mActivityLifecycleDispatcher.register(mLocationBarMediator);
+        final boolean isIncognito =
+                incognitoStateProvider != null && incognitoStateProvider.isIncognitoSelected();
+=======
         mLocationBarMediator = new LocationBarMediator(mLocationBarLayout.getContext(),
                 mLocationBarLayout, locationBarDataProvider, profileObservableSupplier,
                 privacyPreferencesManager, overrideUrlLoadingDelegate, LocaleManager.getInstance(),
@@ -172,6 +237,7 @@ public final class LocationBarCoordinator implements LocationBar, NativeInitObse
                 isTablet() && isTabletLayout(), searchEngineLogoUtils, LensController.getInstance(),
                 launchAssistanceSettingsAction, saveOfflineButtonState, omniboxUma,
                 isToolbarMicEnabledSupplier);
+>>>>>>> chromium
         mUrlCoordinator =
                 new UrlBarCoordinator((UrlBar) mUrlBar, windowDelegate, actionModeCallback,
                         mCallbackController.makeCancelable(mLocationBarMediator::onUrlFocusChange),
@@ -213,9 +279,29 @@ public final class LocationBarCoordinator implements LocationBar, NativeInitObse
                     mAutocompleteCoordinator.updateSuggestionListLayoutDirection();
                 }));
 
+<<<<<<< HEAD
+        context.registerComponentCallbacks(mLocationBarMediator);
+        mLocationBarLayout.initialize(
+                mAutocompleteCoordinator,
+                mUrlCoordinator,
+                mStatusCoordinator,
+                locationBarDataProvider);
+
+        Callback<Profile> profileObserver =
+                new Callback<>() {
+                    @Override
+                    public void onResult(Profile profile) {
+                        templateUrlServiceSupplier.set(
+                                TemplateUrlServiceFactory.getForProfile(profile));
+                        profileObservableSupplier.removeObserver(this);
+                    }
+                };
+        profileObservableSupplier.addObserver(profileObserver);
+=======
         mLocationBarLayout.getContext().registerComponentCallbacks(mLocationBarMediator);
         mLocationBarLayout.initialize(mAutocompleteCoordinator, mUrlCoordinator, mStatusCoordinator,
                 locationBarDataProvider, searchEngineLogoUtils);
+>>>>>>> chromium
 
         if (isPhoneLayout()) {
             mSubCoordinator = new LocationBarCoordinatorPhone(
@@ -417,6 +503,17 @@ public final class LocationBarCoordinator implements LocationBar, NativeInitObse
     }
 
     @Override
+    public boolean isToolbarPositionCustomizationEnabled() {
+        return mIsToolbarPositionCustomizationEnabled;
+    }
+
+    @Override
+    public boolean isToolbarBottomAnchored() {
+        return mBrowserControlsStateProvider != null
+                && mBrowserControlsStateProvider.getControlsPosition() == ControlsPosition.BOTTOM;
+    }
+
+    @Override
     public void clearOmniboxFocus() {
         mLocationBarMediator.clearOmniboxFocus();
     }
@@ -522,6 +619,15 @@ public final class LocationBarCoordinator implements LocationBar, NativeInitObse
         if (shouldShowInOverviewMode) {
             mStatusCoordinator.onSecurityStateChanged();
         }
+    }
+
+    /**
+     * Whether the omnibox focus animation should be completed immediately. This is used to put it
+     * in a fully expanded state when focusing a bottom-anchored toolbar, avoiding a combination of
+     * horizontal and vertical movement in the animation.
+     */
+    public boolean shouldShortCircuitFocusAnimation(boolean gainingFocus) {
+        return gainingFocus && isToolbarBottomAnchored();
     }
 
     /**
@@ -632,7 +738,35 @@ public final class LocationBarCoordinator implements LocationBar, NativeInitObse
         return mLocationBarMediator;
     }
 
+<<<<<<< HEAD
+    /**
+     * @see LocationBarMediator#updateUrlBarHintTextColor(boolean)
+     */
+    public void updateUrlBarHintTextColor(boolean useDefaultUrlBarHintTextColor) {
+        mLocationBarMediator.updateUrlBarHintTextColor(useDefaultUrlBarHintTextColor);
+    }
+
+    /**
+     * @see LocationBarMediator#updateUrlActionContainerEndMargin(boolean)
+     */
+    public void updateUrlActionContainerEndMargin(boolean useDefaultUrlActionContainerEndMargin) {
+        mLocationBarMediator.updateUrlActionContainerEndMargin(
+                useDefaultUrlActionContainerEndMargin);
+    }
+
+    public int getUrlActionContainerEndMarginForTesting() {
+        return mLocationBarLayout.getUrlActionContainerEndMarginForTesting(); // IN-TEST
+    }
+
+    /**
+     * @return The location bar's {@link OmniboxSuggestionsVisualState}.
+     */
+    @Override
+    public @NonNull Optional<OmniboxSuggestionsVisualState> getOmniboxSuggestionsVisualState() {
+        return Optional.of(mAutocompleteCoordinator);
+=======
     /* package */ StatusCoordinator getStatusCoordinatorForTesting() {
         return mStatusCoordinator;
+>>>>>>> chromium
     }
 }

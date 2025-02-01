@@ -786,6 +786,13 @@
     // stretch
     // repeat
     "round",
+<<<<<<< HEAD
+    // TODO(crbug.com/1511354): "base-select" is a temporary name for customizable
+    // <select>. It should be renamed when a standardized name is chosen.
+    "base-select",
+    "-internal-auto-base",
+=======
+>>>>>>> chromium
 
     //
     // background-clip/background-origin
@@ -1078,6 +1085,29 @@
     "alpha",
     "luminance",
 
+<<<<<<< HEAD
+    // mask-mode
+    // alpha
+    // luminance
+    "match-source",
+
+    // masonry-auto-tracks
+    // min-content
+    // max-content
+    // auto
+
+    // masonry-direction
+    // row
+    // row-reverse
+    // column
+    // column-reverse
+
+    // masonry-fill
+    // normal
+    // reverse
+
+=======
+>>>>>>> chromium
     // color-interpolation / color-interpolation-filters
     // auto
     "srgb",
@@ -1208,6 +1238,27 @@
 
     // shapes
     "polygon",
+    "shape",
+    // "from",
+    // "to",
+    "by",
+    "line",
+    "close",
+    "hline",
+    "vline",
+    "arc",
+    // "rotate",
+    "cw",
+    "ccw",
+    // "large",
+    // "small",
+    // "of",
+    "curve",
+    // "smooth",
+    // "start",
+    // "end",
+    "origin",
+    "with",
 
     // @font-face src
     "format",
@@ -1437,6 +1488,235 @@
     "bullets",
     "numbers",
     "words",
+<<<<<<< HEAD
+
+    // ([video]-dynamic-range) media feature, and dynamic-range-limit property
+    "standard",
+    "high",
+    "constrained-high",
+    "dynamic-range-limit-mix",
+
+    // Layered @import rule
+    "layer",
+
+    // supports in import rule: @import supports()
+    "supports",
+    // @import scope()
+    "scope",
+
+    // color-contrast()
+    "color-contrast",
+    "vs",
+    "AA",
+    "AA-large",
+    "AAA",
+    "AAA-large",
+
+    // initial-letter
+    "drop",
+    "raise",
+
+    // basic-shape functions.
+    "xywh",
+
+    // anchor positioning
+    "anchor",
+    // top,
+    // left,
+    // right,
+    // bottom,
+    // start,
+    // end,
+    // self-start,
+    // self-end,
+    // center,
+    "anchor-size",
+    "width",
+    "height",
+    // block,
+    // inline,
+    "self-block",
+    "self-inline",
+
+    // position-anchor
+    // auto,
+    // none,
+
+    // animation-[end-]delay
+    // contain
+    // cover
+    "entry",
+    "exit",
+    "entry-crossing",
+    "exit-crossing",
+
+    // scroll()
+    "root",
+    "nearest",
+    "self",
+
+    // transition-behavior
+    "allow-discrete",
+
+    // (inverted-colors:) media feature
+    "inverted",
+    // none
+
+    // @view-transition navigation
+    // auto
+    // none
+
+    // view-transition-capture-mode
+    "layered",
+    // flat
+
+    // view-transition-name
+    "match-element",
+
+    // container-type
+    // inline-size,
+    // normal,
+    // size,
+    // scroll-state,
+
+    // (scripting:) media feature
+    "enabled",
+    "initial-only",
+    // none
+
+    // position-area
+    // none,
+    // left,
+    // center,
+    // right,
+    "span-left",
+    "span-right",
+    "x-start",
+    "x-end",
+    "span-x-start",
+    "span-x-end",
+    "x-self-start",
+    "x-self-end",
+    "span-x-self-start",
+    "span-x-self-end",
+    "span-all",
+    // top,
+    // bottom,
+    "span-top",
+    "span-bottom",
+    "y-start",
+    "y-end",
+    "span-y-start",
+    "span-y-end",
+    "y-self-start",
+    "y-self-end",
+    "span-y-self-start",
+    "span-y-self-end",
+    // block-start,
+    // block-end,
+    "span-block-start",
+    "span-block-end",
+    "self-block-start",
+    "self-block-end",
+    "span-self-block-start",
+    "span-self-block-end",
+    // inline-start,
+    // inline-end,
+    "span-inline-start",
+    "span-inline-end",
+    "self-inline-start",
+    "self-inline-end",
+    "span-self-inline-start",
+    "span-self-inline-end",
+    // start,
+    // end,
+    "span-start",
+    "span-end",
+    // self-start,
+    // self-end,
+    "span-self-start",
+    "span-self-end",
+    // inset-area() (deprecated)
+    "position-area",
+
+    // resize
+    // none
+    // both
+    // horizontal
+    // vertical
+    // block
+    // inline
+    // auto (legacy version of -internal-textarea-auto)
+    "-internal-textarea-auto",
+
+    // position-try-order
+    // normal
+    "most-width",
+    "most-height",
+    "most-block-size",
+    "most-inline-size",
+
+    // position-try-fallbacks
+    // none
+    "flip-block",
+    "flip-inline",
+    "flip-start",
+
+    // position-visibility
+    // always
+    // TODO(crbug.com/332933527): Support anchors-valid.
+    // "anchors-valid",
+    "anchors-visible",
+    "no-overflow",
+
+    // reading-flow
+    // normal
+    "flex-visual",
+    "flex-flow",
+    "grid-rows",
+    "grid-columns",
+    "grid-order",
+
+    // fill / stroke
+    "context-fill",
+    "context-stroke",
+
+    // media-progress()
+    "media-progress",
+
+    // container-progress()
+    "container-progress",
+    "of",
+
+    // @supports blink-feature(RuntimeEnabledFeatureName)
+    "blink-feature",
+
+    // interpolate-size
+    "numeric-only",
+    "allow-keywords",
+
+    // interactivity
+    // auto
+    "inert",
+
+    // Used as functions in calc()
+    "sibling-count",
+    "sibling-index",
+
+    // @function
+    "returns",
+
+    // animation-trigger-type
+    // repeat
+    // alternate
+    "once",
+    "state",
+
+    // inline conditional
+    "if",
+    "else",
+=======
     // spell-out,
+>>>>>>> chromium
   ],
 }

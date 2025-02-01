@@ -55,7 +55,8 @@
 
 // LazyInstance uses its own struct initializer-list style static
 // initialization, which does not require a constructor.
-#define LAZY_INSTANCE_INITIALIZER {}
+#define LAZY_INSTANCE_INITIALIZER \
+  {}
 
 namespace base {
 
@@ -116,8 +117,7 @@ struct LeakyLazyInstanceTraits {
     ANNOTATE_SCOPED_MEMORY_LEAK;
     return LazyInstanceTraitsBase<Type>::New(instance);
   }
-  static void Delete(Type* instance) {
-  }
+  static void Delete(Type* instance) {}
 };
 
 template <typename Type>
@@ -144,14 +144,18 @@ class LazyInstance {
   typedef LazyInstance<Type, internal::DestructorAtExitLazyInstanceTraits<Type>>
       DestructorAtExit;
 
-  Type& Get() {
-    return *Pointer();
-  }
+  Type& Get() { return *Pointer(); }
 
   Type* Pointer() {
 #if DCHECK_IS_ON()
+<<<<<<< HEAD
+    if (!Traits::kAllowedToAccessOnNonjoinableThread) {
+      internal::AssertSingletonAllowed();
+    }
+=======
     if (!Traits::kAllowedToAccessOnNonjoinableThread)
       ThreadRestrictions::AssertSingletonAllowed();
+>>>>>>> chromium
 #endif
 
     return subtle::GetOrCreateLazyPointer(

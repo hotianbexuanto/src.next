@@ -14,7 +14,19 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window.h"
+<<<<<<< HEAD
+#include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/page_action/page_action_icon_type.h"
+#include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
+#include "chrome/browser/web_applications/proto/web_app_install_state.pb.h"
+#include "chrome/browser/web_applications/web_app_provider.h"
+#include "chrome/browser/web_applications/web_app_utils.h"
+#include "components/password_manager/content/common/web_ui_constants.h"
+#include "components/services/app_service/public/cpp/app_types.h"
+#include "components/services/app_service/public/cpp/icon_types.h"
+=======
 #include "chrome/common/chrome_features.h"
+>>>>>>> chromium
 #include "content/public/browser/navigation_handle.h"
 #include "ui/base/models/image_model.h"
 #include "ui/gfx/favicon_size.h"
@@ -38,25 +50,174 @@ apps::mojom::AppType GetAppType(apps::PickerEntryType picker_entry_type) {
       app_type = apps::mojom::AppType::kMacOs;
       break;
   }
+<<<<<<< HEAD
+
+  Browser* browser = chrome::FindBrowserWithTab(web_contents);
+  if (browser && (browser->is_type_app() || browser->is_type_app_popup())) {
+    return false;
+  }
+  return true;
+}
+
+bool IsValidIntentPickerUrl(const GURL& url, bool is_error_page) {
+  if (url.SchemeIsHTTPOrHTTPS() && !is_error_page) {
+    return true;
+  }
+
+  // chrome://password-manager is a valid PWA, so it should be considered when
+  // evaluating whether to show the intent picker.
+  if (url.SchemeIs(content::kChromeUIScheme) &&
+      url.host() == password_manager::kChromeUIPasswordManagerHost) {
+    return true;
+  }
+
+  return false;
+}
+
+void ShowIntentPickerBubbleForApps(
+    content::WebContents* web_contents,
+    bool show_stay_in_chrome,
+    bool show_remember_selection,
+    IntentPickerResponse callback,
+    std::vector<apps::IntentPickerAppInfo> apps) {
+  if (apps.empty()) {
+    return;
+  }
+
+  Browser* browser = chrome::FindBrowserWithTab(web_contents);
+  if (!browser) {
+    return;
+  }
+
+  browser->window()->ShowIntentPickerBubble(
+      std::move(apps), show_stay_in_chrome, show_remember_selection,
+      apps::IntentPickerBubbleType::kLinkCapturing, std::nullopt,
+      std::move(callback));
+}
+
+bool IsShuttingDown(content::WebContents* web_contents) {
+  return !web_contents || web_contents->IsBeingDestroyed() ||
+         web_contents->GetBrowserContext()->ShutdownStarted();
+=======
   return app_type;
+>>>>>>> chromium
 }
 
 }  // namespace
 
 IntentPickerTabHelper::~IntentPickerTabHelper() = default;
 
+<<<<<<< HEAD
+void IntentPickerTabHelper::MaybeShowIntentPickerIcon() {
+  // Setting icon_resolved_ to false ensures testing callbacks can accurately
+  // wait for the entire async process to finish.
+  icon_resolved_ = false;
+  CHECK(web_contents());
+  if (!intent_picker_delegate_->ShouldShowIntentPickerWithApps() ||
+      !IsValidWebContentsForIntentPicker(web_contents())) {
+    MaybeShowIconForApps({});
+    return;
+  }
+
+  intent_picker_delegate_->FindAllAppsForUrl(
+      web_contents()->GetLastCommittedURL(), GetIntentPickerBubbleIconSize(),
+      base::BindOnce(&IntentPickerTabHelper::MaybeShowIconForApps,
+                     per_navigation_weak_factory_.GetWeakPtr()));
+}
+
+void IntentPickerTabHelper::ShowIntentPickerBubbleOrLaunchApp(const GURL& url) {
+  CHECK(web_contents());
+  if (!intent_picker_delegate_->ShouldShowIntentPickerWithApps() ||
+      !IsValidWebContentsForIntentPicker(web_contents())) {
+    return;
+  }
+
+  intent_picker_delegate_->FindAllAppsForUrl(
+      url, GetIntentPickerBubbleIconSize(),
+      base::BindOnce(&IntentPickerTabHelper::ShowIntentPickerOrLaunchAppImpl,
+                     per_navigation_weak_factory_.GetWeakPtr(), url));
+}
+
+=======
+>>>>>>> chromium
 // static
 void IntentPickerTabHelper::SetShouldShowIcon(
     content::WebContents* web_contents,
     bool should_show_icon) {
   IntentPickerTabHelper* tab_helper = FromWebContents(web_contents);
-  if (!tab_helper)
+  if (!tab_helper) {
     return;
+<<<<<<< HEAD
+  }
+
+  if (apps::features::ShouldShowLinkCapturingUX()) {
+    tab_helper->current_app_icon_ = ui::ImageModel();
+    tab_helper->show_expanded_chip_from_usage_ = false;
+    tab_helper->current_app_id_ = std::string();
+    tab_helper->current_app_is_preferred_ = false;
+    tab_helper->last_shown_origin_ = url::Origin();
+  }
+
+  tab_helper->ShowOrHideIconInternal(should_show_icon);
+}
+
+// static
+int IntentPickerTabHelper::GetIntentPickerBubbleIconSize() {
+  const int kIntentPickerUiUpdateIconSize = 40;
+  return apps::features::ShouldShowLinkCapturingUX()
+             ? kIntentPickerUiUpdateIconSize
+             : gfx::kFaviconSize;
+}
+
+void IntentPickerTabHelper::MaybeShowIconForApps(
+    std::vector<apps::IntentPickerAppInfo> apps) {
+  // We enter this block when we have apps available and there weren't any
+  // previously.
+  if (!should_show_icon_ && !apps.empty()) {
+    // This point doesn't exactly match when the icon is shown in the UI (e.g.
+    // if the tab is not active), but recording here corresponds more closely to
+    // navigations which cause the icon to appear.
+    intent_picker_delegate_->RecordIntentPickerIconEvent(
+        apps::IntentPickerIconEvent::kIconShown);
+
+#if BUILDFLAG(IS_CHROMEOS)
+    apps::IntentHandlingMetrics::RecordLinkCapturingEntryPointShown(apps);
+#endif  // BUILDFLAG(IS_CHROMEOS)
+  }
+
+  if (apps::features::ShouldShowLinkCapturingUX()) {
+    if (apps.size() == 1 && apps[0].launch_name != current_app_id_) {
+      current_app_id_ = apps[0].launch_name;
+
+      // If this app is the preferred app to handle this URL, the icon will
+      // always be shown as expanded, regardless of the usage-based decision
+      // calculated in UpdateExpandedState().
+      current_app_is_preferred_ =
+          intent_picker_delegate_->IsPreferredAppForSupportedLinks(
+              current_app_id_);
+
+      intent_picker_delegate_->LoadSingleAppIcon(
+          apps[0].type, current_app_id_,
+          GetLayoutConstant(LOCATION_BAR_ICON_SIZE),
+          base::BindOnce(&IntentPickerTabHelper::OnAppIconLoadedForChip,
+                         per_navigation_weak_factory_.GetWeakPtr(),
+                         current_app_id_));
+      return;
+    } else if (apps.size() != 1) {
+      current_app_icon_ = ui::ImageModel();
+      current_app_id_ = std::string();
+      current_app_is_preferred_ = false;
+    }
+  }
+
+  ShowIconForLinkIntent(!apps.empty());
+=======
   tab_helper->should_show_icon_ = should_show_icon;
   Browser* browser = chrome::FindBrowserWithWebContents(web_contents);
   if (!browser)
     return;
   browser->window()->UpdatePageActionIcon(PageActionIconType::kIntentPicker);
+>>>>>>> chromium
 }
 
 IntentPickerTabHelper::IntentPickerTabHelper(content::WebContents* web_contents)
@@ -83,10 +244,16 @@ void IntentPickerTabHelper::OnAppIconLoaded(
   apps[index].icon_model =
       ui::ImageModel::FromImage(gfx::Image(icon_value->uncompressed));
 
-  if (index == apps.size() - 1)
+  if (index == apps.size() - 1) {
     std::move(callback).Run(std::move(apps));
+<<<<<<< HEAD
+  } else {
+    LoadAppIcon(std::move(apps), index + 1, std::move(callback));
+  }
+=======
   else
     LoadAppIcon(std::move(apps), std::move(callback), index + 1);
+>>>>>>> chromium
 }
 
 void IntentPickerTabHelper::LoadAppIcon(
@@ -121,6 +288,44 @@ void IntentPickerTabHelper::DidFinishNavigation(
   // For a http/https scheme URL navigation, we will check if the
   // url can be handled by some apps, and show intent picker icon
   // or bubble if there are some apps available. We only want to check this if
+<<<<<<< HEAD
+  // the navigation happens in the primary main frame, and the navigation is not
+  // the same document with same URL.
+  if (!web_contents()) {
+    return;
+  }
+
+  if (IsNavigatingToNewSite(navigation_handle)) {
+    per_navigation_weak_factory_.InvalidateWeakPtrs();
+
+    if (IsValidIntentPickerUrl(navigation_handle->GetURL(),
+                               navigation_handle->IsErrorPage())) {
+      MaybeShowIntentPickerIcon();
+    } else {
+      ShowOrHideIcon(web_contents(), /*should_show_icon=*/false);
+    }
+  }
+}
+
+void IntentPickerTabHelper::OnWebAppWillBeUninstalled(
+    const webapps::AppId& app_id) {
+  // WebAppTabHelper has an app_id but it is reset during
+  // OnWebAppWillBeUninstalled so using FindAppWithUrlInScope.
+  std::optional<webapps::AppId> local_app_id =
+      registrar_->FindBestAppWithUrlInScope(
+          web_contents()->GetLastCommittedURL(),
+          web_app::WebAppFilter::InstalledInChrome());
+  if (app_id == local_app_id) {
+    ShowOrHideIcon(web_contents(), /*should_show_icon=*/false);
+  }
+}
+
+void IntentPickerTabHelper::OnWebAppInstallManagerDestroyed() {
+  install_manager_observation_.Reset();
+}
+
+WEB_CONTENTS_USER_DATA_KEY_IMPL(IntentPickerTabHelper);
+=======
   // the navigation happens in the main frame, and the navigation is not the
   // same document with same URL.
   // TODO(crbug.com/826982): Check is not error page here. Adding this check
@@ -140,3 +345,4 @@ void IntentPickerTabHelper::DidFinishNavigation(
 }
 
 WEB_CONTENTS_USER_DATA_KEY_IMPL(IntentPickerTabHelper)
+>>>>>>> chromium

@@ -34,8 +34,18 @@ std::unique_ptr<ExtensionViewHost> CreateViewHostForExtension(
   DCHECK(browser || view_type == mojom::ViewType::kExtensionDialog);
   scoped_refptr<content::SiteInstance> site_instance =
       ProcessManager::Get(profile)->GetSiteInstanceForURL(url);
+<<<<<<< HEAD
+  return view_type == mojom::ViewType::kExtensionSidePanel
+             ? std::make_unique<ExtensionSidePanelViewHost>(
+                   extension, site_instance.get(), url, profile, browser,
+                   web_contents)
+             : std::make_unique<ExtensionViewHost>(extension,
+                                                   site_instance.get(), profile,
+                                                   url, view_type, browser);
+=======
   return std::make_unique<ExtensionViewHost>(extension, site_instance.get(),
                                              url, view_type, browser);
+>>>>>>> chromium
 }
 
 // Creates a view host for an extension in an incognito window. Returns NULL

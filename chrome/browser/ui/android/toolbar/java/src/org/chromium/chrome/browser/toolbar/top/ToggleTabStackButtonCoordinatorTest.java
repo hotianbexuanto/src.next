@@ -30,7 +30,10 @@ import org.chromium.base.Callback;
 import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+<<<<<<< HEAD
+=======
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+>>>>>>> chromium
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.toolbar.ToolbarIntentMetadata;
@@ -52,6 +55,18 @@ public class ToggleTabStackButtonCoordinatorTest {
     private static final ToolbarIntentMetadata DEFAULT_INTENT_METADATA =
             new ToolbarIntentMetadata(/*isMainIntent*/ true, /*isIntentWithEffect*/ false);
 
+<<<<<<< HEAD
+    @Mock private Context mContext;
+    @Mock private LayoutStateProvider mLayoutStateProvider;
+    @Mock private ToggleTabStackButton mToggleTabStackButton;
+    @Mock private android.content.res.Resources mResources;
+    @Mock private UserEducationHelper mUserEducationHelper;
+    @Mock private OnClickListener mOnClickListener;
+    @Mock private OnLongClickListener mOnLongClickListener;
+    @Mock private TabModelSelector mTabModelSelector;
+    @Mock private TabModel mStandardTabModel;
+    @Mock private TabModel mIncognitoTabModel;
+=======
     @Implements(ChromeFeatureList.class)
     static class ShadowChromeFeatureList {
         static Map<String, String> sParamMap;
@@ -63,6 +78,7 @@ public class ToggleTabStackButtonCoordinatorTest {
             return "";
         }
     }
+>>>>>>> chromium
 
     @Mock
     private Context mContext;
@@ -80,12 +96,20 @@ public class ToggleTabStackButtonCoordinatorTest {
     @Captor
     private ArgumentCaptor<IPHCommand> mIPHCommandCaptor;
 
+<<<<<<< HEAD
+    private final ObservableSupplierImpl<Boolean> mNotificationDotSupplier =
+            new ObservableSupplierImpl<>(false);
+=======
     private boolean mIsIncognito;
     private boolean mOverviewOpen;
     private final OneshotSupplierImpl<ToolbarIntentMetadata> mIntentMetadataOneshotSupplier =
             new OneshotSupplierImpl<>();
+>>>>>>> chromium
     private final OneshotSupplierImpl<Boolean> mPromoShownOneshotSupplier =
             new OneshotSupplierImpl<>();
+
+    private boolean mIsIncognito;
+    private boolean mOverviewOpen;
     private Set<LayoutStateProvider.LayoutStateObserver> mLayoutStateObserverSet;
 
     private OneshotSupplierImpl<LayoutStateProvider> mLayoutSateProviderOneshotSupplier;
@@ -113,6 +137,16 @@ public class ToggleTabStackButtonCoordinatorTest {
 
         mLayoutStateObserverSet = new HashSet<>();
         mLayoutSateProviderOneshotSupplier = new OneshotSupplierImpl<>();
+<<<<<<< HEAD
+        mTabModelSelectorSupplier = new ObservableSupplierImpl<>();
+        mTabModelSelectorSupplier.set(mTabModelSelector);
+        when(mTabModelSelector.getCurrentModel()).thenReturn(mStandardTabModel);
+        when(mTabModelSelector.getModel(true)).thenReturn(mIncognitoTabModel);
+        when(mStandardTabModel.isIncognitoBranded()).thenReturn(false);
+        when(mIncognitoTabModel.isIncognitoBranded()).thenReturn(true);
+        when(mIncognitoTabModel.getCount()).thenReturn(0);
+=======
+>>>>>>> chromium
 
         // Defaults most test cases expect, can be overridden by each test though.
         when(mToggleTabStackButton.isShown()).thenReturn(true);
@@ -122,18 +156,44 @@ public class ToggleTabStackButtonCoordinatorTest {
 
     private ToggleTabStackButtonCoordinator newToggleTabStackButtonCoordinator(
             ToggleTabStackButton toggleTabStackButton) {
+<<<<<<< HEAD
+        ToggleTabStackButtonCoordinator coordinator =
+                new ToggleTabStackButtonCoordinator(
+                        mContext,
+                        toggleTabStackButton,
+                        mUserEducationHelper,
+                        () -> mIsIncognito,
+                        mPromoShownOneshotSupplier,
+                        mLayoutSateProviderOneshotSupplier,
+                        new ObservableSupplierImpl<>(),
+                        mTabModelSelectorSupplier);
+        coordinator.initializeWithNative(
+                mOnClickListener,
+                mOnLongClickListener,
+                mTabCountSupplier,
+                mArchivedTabCountSupplier,
+                mNotificationDotSupplier,
+                () -> {},
+                () -> {});
+        return coordinator;
+=======
         // clang-format off
         return new ToggleTabStackButtonCoordinator(mContext, toggleTabStackButton,
                 mUserEducationHelper, () -> mIsIncognito, mIntentMetadataOneshotSupplier,
                 mPromoShownOneshotSupplier, mLayoutSateProviderOneshotSupplier,
                 mSetNewTabButtonHighlightCallback, new ObservableSupplierImpl<>());
         // clang-format on
+>>>>>>> chromium
     }
 
     private void showOverviewMode() {
         mOverviewOpen = true;
         for (LayoutStateProvider.LayoutStateObserver observer : mLayoutStateObserverSet) {
+<<<<<<< HEAD
+            observer.onStartedShowing(/* layoutType= */ LayoutType.TAB_SWITCHER);
+=======
             observer.onStartedShowing(LayoutType.TAB_SWITCHER, /*showToolbar*/ false);
+>>>>>>> chromium
         }
         for (LayoutStateProvider.LayoutStateObserver observer : mLayoutStateObserverSet) {
             observer.onFinishedShowing(LayoutType.TAB_SWITCHER);
@@ -348,8 +408,69 @@ public class ToggleTabStackButtonCoordinatorTest {
         verifyIphNotShown();
 
         mIsIncognito = false;
+<<<<<<< HEAD
+        mCoordinator.handlePageLoadFinished();
+        IphCommand iphCommand = verifyIphShown();
+        assertEquals(
+                "IPH feature is not as expected.",
+                FeatureConstants.TAB_SWITCHER_BUTTON_FEATURE,
+                iphCommand.featureName);
+        assertEquals(
+                "IPH string is not as expected.",
+                R.string.iph_tab_switcher_text,
+                iphCommand.stringId);
+        assertEquals(
+                "IPH string is not as expected.",
+                R.string.iph_tab_switcher_accessibility_text,
+                iphCommand.accessibilityStringId);
+    }
+
+    @Test
+    public void testSwitchToIncognitoIphIsShown() {
+        ToggleTabStackButtonCoordinator toggleTabStackButtonCoordinator =
+                newToggleTabStackButtonCoordinator(
+                        /* toggleTabStackButton= */ mToggleTabStackButton);
+        mLayoutSateProviderOneshotSupplier.set(mLayoutStateProvider);
+        mPromoShownOneshotSupplier.set(false);
+
+        when(mIncognitoTabModel.getCount()).thenReturn(1);
+
+        // Standard model with incognito tabs - show switch into incognito IPH.
+        toggleTabStackButtonCoordinator.handlePageLoadFinished();
+        IphCommand iphCommand = verifyIphShown();
+        assertEquals(
+                "IPH feature is not as expected.",
+                FeatureConstants.TAB_SWITCHER_BUTTON_SWITCH_INCOGNITO,
+                iphCommand.featureName);
+        assertEquals(
+                "IPH string is not as expected.",
+                R.string.iph_tab_switcher_switch_into_incognito_text,
+                iphCommand.stringId);
+        assertEquals(
+                "IPH string is not as expected.",
+                R.string.iph_tab_switcher_switch_into_incognito_accessibility_text,
+                iphCommand.accessibilityStringId);
+
+        // Incognito model - show switch out of incognito IPH.
+        when(mTabModelSelector.getCurrentModel()).thenReturn(mIncognitoTabModel);
+        toggleTabStackButtonCoordinator.handlePageLoadFinished();
+        iphCommand = verifyIphShown();
+        assertEquals(
+                "IPH feature is not as expected.",
+                FeatureConstants.TAB_SWITCHER_BUTTON_SWITCH_INCOGNITO,
+                iphCommand.featureName);
+        assertEquals(
+                "IPH string is not as expected.",
+                R.string.iph_tab_switcher_switch_out_of_incognito_text,
+                iphCommand.stringId);
+        assertEquals(
+                "IPH string is not as expected.",
+                R.string.iph_tab_switcher_switch_out_of_incognito_accessibility_text,
+                iphCommand.accessibilityStringId);
+=======
         toggleTabStackButtonCoordinator.handlePageLoadFinished();
         verifyIphShown();
+>>>>>>> chromium
     }
 
     @Test

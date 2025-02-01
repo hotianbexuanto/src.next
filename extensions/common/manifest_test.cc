@@ -256,11 +256,19 @@ ManifestTest::Testcase::Testcase(const std::string& manifest_filename,
       location_(location),
       flags_(flags) {}
 
+<<<<<<< HEAD
+void ManifestTest::RunTestcases(base::span<const Testcase> testcases,
+                                ExpectType type) {
+  for (const auto& testcase : testcases) {
+    RunTestcase(testcase, type);
+  }
+=======
 void ManifestTest::RunTestcases(const Testcase* testcases,
                                          size_t num_testcases,
                                          ExpectType type) {
   for (size_t i = 0; i < num_testcases; ++i)
     RunTestcase(testcases[i], type);
+>>>>>>> chromium
 }
 
 void ManifestTest::RunTestcase(const Testcase& testcase,

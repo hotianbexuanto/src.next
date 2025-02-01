@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 
+#include <array>
 #include <memory>
 #include <utility>
 
@@ -52,7 +53,16 @@ class PermissionMessagesUnittest : public testing::Test {
  public:
   PermissionMessagesUnittest()
       : message_provider_(new ChromePermissionMessageProvider()) {}
+<<<<<<< HEAD
+
+  PermissionMessagesUnittest(const PermissionMessagesUnittest&) = delete;
+  PermissionMessagesUnittest& operator=(const PermissionMessagesUnittest&) =
+      delete;
+
+  ~PermissionMessagesUnittest() override = default;
+=======
   ~PermissionMessagesUnittest() override {}
+>>>>>>> chromium
 
  protected:
   void CreateAndInstallExtensionWithPermissions(
@@ -248,7 +258,7 @@ class USBDevicePermissionMessagesTest : public testing::Test {
  public:
   USBDevicePermissionMessagesTest()
       : message_provider_(new ChromePermissionMessageProvider()) {}
-  ~USBDevicePermissionMessagesTest() override {}
+  ~USBDevicePermissionMessagesTest() override = default;
 
   PermissionMessages GetMessages(const PermissionIDSet& permissions) {
     return message_provider_->GetPermissionMessages(permissions);
@@ -309,11 +319,11 @@ TEST_F(USBDevicePermissionMessagesTest, SingleDevice) {
 
 TEST_F(USBDevicePermissionMessagesTest, MultipleDevice) {
   const char16_t kMessage[] = u"Access any of these USB devices";
-  const char* kDetails[] = {
+  auto kDetails = std::to_array<const char*>({
       "PVR Mass Storage from HUMAX Co., Ltd.",
       "unknown devices from HUMAX Co., Ltd.",
-      "devices from an unknown vendor"
-  };
+      "devices from an unknown vendor",
+  });
 
   // Prepare data set
   std::unique_ptr<base::ListValue> permission_list(new base::ListValue());

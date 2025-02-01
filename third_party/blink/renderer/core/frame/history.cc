@@ -310,9 +310,17 @@ void History::StateObjectAdded(
     }
   }
 
+<<<<<<< HEAD
+  // Adding a history entry might require a screenshot.
+  constexpr bool should_skip_screenshot = false;
+  window->document()->Loader()->RunURLAndHistoryUpdateSteps(
+      full_url, nullptr, mojom::blink::SameDocumentNavigationType::kHistoryApi,
+      std::move(data), type, FirePopstate::kNo, should_skip_screenshot);
+=======
   DomWindow()->document()->Loader()->RunURLAndHistoryUpdateSteps(
       full_url, kSameDocumentNavigationHistoryApi, std::move(data), type,
       restoration_type);
+>>>>>>> chromium
 }
 
 }  // namespace blink

@@ -89,6 +89,12 @@ Andreas Papacharalampous <andreas@apap04.com>
 Andrei Borza <andrei.borza@gmail.com>
 Andrei Parvu <andrei.prv@gmail.com>
 Andrei Parvu <parvu@adobe.com>
+<<<<<<< HEAD
+Andrei Volykhin <andrei.volykhin@gmail.com>
+Andres Salomon <dilinger@queued.net>
+Andreu Botella <andreu@andreubotella.com>
+=======
+>>>>>>> chromium
 Andrew Boyarshin <andrew.boyarshin@gmail.com>
 Andrew Brampton <me@bramp.net>
 Andrew Brindamour <abrindamour@bluejeans.com>
@@ -239,6 +245,7 @@ Daniel Lockyer <thisisdaniellockyer@gmail.com>
 Daniel Nishi <dhnishi@gmail.com>
 Daniel Platz <daplatz@googlemail.com>
 Daniel Playfair Cal <daniel.playfair.cal@gmail.com>
+Daniel Richard G. <iskunk@gmail.com>
 Daniel Shaulov <dshaulov@ptc.com>
 Daniel Trebbien <dtrebbien@gmail.com>
 Daniel Waxweiler <daniel.waxweiler@gmail.com>
@@ -249,8 +256,14 @@ Darik Harter <darik.harter@gmail.com>
 Darshini KN <kn.darshini@samsung.com>
 Dave Vandyke <kzar@kzar.co.uk>
 David Benjamin <davidben@mit.edu>
+<<<<<<< HEAD
+David Brown <develop.david.brown@gmail.com>
+David Cernoch <dcernoch@uplandsoftware.com>
+=======
+>>>>>>> chromium
 David Davidovic <david@davidovic.io>
 David Erceg <erceg.david@gmail.com>
+David Faden <dfaden@gmail.com>
 David Fox <david@davidjfox.com>
 David Futcher <david.mike.futcher@gmail.com>
 David Jin <davidjin@amazon.com>
@@ -278,6 +291,7 @@ Di Wu <meetwudi@gmail.com>
 Diana Suvorova <diana.suvorova@gmail.com>
 Diego Ferreiro Val <elfogris@gmail.com>
 Dillon Sellars <dill.sellars@gmail.com>
+Dingming Liu <liudingming@bytedance.com>
 Divya Bansal <divya.bansal@samsung.com>
 Dmitry Shachnev <mitya57@gmail.com>
 Dmitry Sokolov <dimanne@gmail.com>
@@ -386,6 +400,11 @@ Halton Huo <halton.huo@intel.com>
 Hans Hillen <hans.hillen@gmail.com>
 Hao Li <hao.x.li@intel.com>
 Haojian Wu <hokein.wu@gmail.com>
+<<<<<<< HEAD
+Haoran Tang <haoran.tang.personal@gmail.com>
+Haoxuan Zhang <zhanghaoxuan.59@bytedance.com>
+=======
+>>>>>>> chromium
 Hari Singh <hari.singh1@samsung.com>
 Harpreet Singh Khurana <harpreet.sk@samsung.com>
 Harshikesh Kumar <harshikeshnobug@gmail.com>
@@ -469,8 +488,14 @@ Jared Sohn <jared.sohn@gmail.com>
 Jared Wein <weinjared@gmail.com>
 Jari Karppanen <jkarp@amazon.com>
 Jason Gronn <jasontopia03@gmail.com>
+<<<<<<< HEAD
+Javayhu <javayhu@gmail.com>
+Jay Kapadia <jaykapadia389@gmail.com>
+=======
+>>>>>>> chromium
 Jay Oster <jay@kodewerx.org>
 Jay Soffian <jaysoffian@gmail.com>
+Jay Yang <sjyang1126@gmail.com>
 Jeado Ko <haibane84@gmail.com>
 Jeffrey C <jeffreyca16@gmail.com>
 Jeffrey Yeung <jeffrey.yeung@poly.com>
@@ -549,6 +574,7 @@ Joseph Lolak <joseph.lolak@samsung.com>
 Josh Triplett <josh.triplett@intel.com>
 Josh Triplett <josh@joshtriplett.org>
 Joshua Lock <joshua.lock@intel.com>
+Joshua Olaoye <joshuaolaoye46@gmail.com>
 Joshua Roesslein <jroesslein@gmail.com>
 Josué Ratelle <jorat1346@gmail.com>
 Josyula Venkat Narasimham <venkat.nj@samsung.com>
@@ -585,6 +611,7 @@ Kangyuan Shu <kangyuan.shu@intel.com>
 Karan Thakkar <karanjthakkar@gmail.com>
 Karel Král <kralkareliv@gmail.com>
 Karl <karlpolicechromium@gmail.com>
+Karl Piper <karl4piper@gmail.com>
 Kartikey Bhatt <kartikey@amazon.com>
 Kaspar Brand <googlecontrib@velox.ch>
 Kaushalendra Mishra <k.mishra@samsung.com>
@@ -702,6 +729,11 @@ Martin Bednorz <m.s.bednorz@gmail.com>
 Martin Persson <mnpn03@gmail.com>
 Martin Rogalla <martin@martinrogalla.com>
 Martina Kollarova <martina.kollarova@intel.com>
+<<<<<<< HEAD
+Martino Fontana <tinozzo123@gmail.com>
+Marvin Giessing <marvin.giessing@gmail.com>
+=======
+>>>>>>> chromium
 Masahiro Yado <yado.masa@gmail.com>
 Masaru Nishida <msr.i386@gmail.com>
 Masayuki Wakizaka <mwakizaka0108@gmail.com>
@@ -711,6 +743,11 @@ Mathias Bynens <mathias@qiwi.be>
 Mathieu Meisser <mmeisser@logitech.com>
 Matt Arpidone <mma.public@gmail.com>
 Matt Fysh <mattfysh@gmail.com>
+<<<<<<< HEAD
+Matt Harding <majaharding@gmail.com>
+Matt Jolly <kangie@gentoo.org>
+=======
+>>>>>>> chromium
 Matt Strum <mstrum@amazon.com>
 Matt Zeunert <matt@mostlystatic.com>
 Matthew Bauer <mjbauer95@gmail.com>
@@ -730,8 +767,19 @@ Mayank Gupta <mayank.g1@samsung.com>
 Mayur Kankanwadi <mayurk.vk@samsung.com>
 Md Abdullah Al Alamin <a.alamin.cse@gmail.com>
 Md. Hasanur Rashid <hasanur.r@samsung.com>
+<<<<<<< HEAD
+Md Hasibul Hasan <hasibulhasan873@gmail.com>
+Md Hasibul Hasan <hasibul.h@samsung.com>
+=======
+>>>>>>> chromium
 Md Jobed Hossain <jobed.h@samsung.com>
 Md Sami Uddin <md.sami@samsung.com>
+<<<<<<< HEAD
+Mego Tan <tannal2409@gmail.com>
+Merajul Arefin <merajularefin@gmail.com>
+Micha Hanselmann <micha.hanselmann@gmail.com>
+=======
+>>>>>>> chromium
 Michael Cirone <mikecirone@gmail.com>
 Michael Constant <mconst@gmail.com>
 Michael Forney <mforney@mforney.org>
@@ -755,6 +803,11 @@ Milko Leporis <milko.leporis@imgtec.com>
 Milton Chiang <milton.chiang@mediatek.com>
 Milutin Smiljanic <msmiljanic.gm@gmail.com>
 Minchul Kang <tegongkang@gmail.com>
+<<<<<<< HEAD
+Ming Lei <minggeorgelei@gmail.com>
+Mingeun Park <mindal99546@gmail.com>
+=======
+>>>>>>> chromium
 Minggang Wang <minggang.wang@intel.com>
 Mingmin Xie <melvinxie@gmail.com>
 Minjeong Kim <deoxyribonucleicacid150@gmail.com>
@@ -1139,6 +1192,14 @@ Vivek Galatage <vivek.vg@samsung.com>
 Volker Sorge <volker.sorge@gmail.com>
 Waihung Fu <fufranci@amazon.com>
 Wojciech Bielawski <wojciech.bielawski@gmail.com>
+<<<<<<< HEAD
+Wang Chen <wangchen20@iscas.ac.cn>
+Wang Chen <unicornxw@gmail.com>
+Wang Weiwei <wangww@dingdao.com>
+Wang Zirui <kingzirvi@gmail.com>
+Wangyang Dai <jludwy@gmail.com>
+=======
+>>>>>>> chromium
 Wanming Lin <wanming.lin@intel.com>
 Wei Li <wei.c.li@intel.com>
 Wen Fan <fanwen1@huawei.com>
@@ -1218,6 +1279,11 @@ Zach Bjornson <zbbjornson@gmail.com>
 Zeno Albisser <zeno.albisser@digia.com>
 Zeqin Chen <talonchen@tencent.com>
 Zhang Hao <15686357310a@gmail.com>
+<<<<<<< HEAD
+Zhao Qin <qzmiss@gmail.com>
+Zhaoming Jiang <zhaoming.jiang@intel.com>
+=======
+>>>>>>> chromium
 Zhaoze Zhou <zhaoze.zhou@partner.samsung.com>
 Zheda Chen <zheda.chen@intel.com>
 Zheng Chuang <zhengchuangscu@gmail.com>
@@ -1233,6 +1299,13 @@ Zoltan Herczeg <zherczeg.u-szeged@partner.samsung.com>
 Zoltan Kuscsik <zoltan.kuscsik@linaro.org>
 Zsolt Borbely <zsborbely.u-szeged@partner.samsung.com>
 方觉 (Fang Jue) <fangjue23303@gmail.com>
+<<<<<<< HEAD
+迷渡 <justjavac@gmail.com>
+郑苏波 (Super Zheng) <superzheng@tencent.com>
+一丝 (Yisi) <yiorsi@gmail.com>
+林训杰 (XunJie Lin) <wick.linxunjie@gmail.com>
+=======
+>>>>>>> chromium
 # Please DO NOT APPEND here. See comments at the top of the file.
 # END individuals section.
 
@@ -1260,6 +1333,7 @@ Facebook, Inc. <*@fb.com>
 Facebook, Inc. <*@oculus.com>
 Google Inc. <*@google.com>
 Grammarly, Inc. <*@grammarly.com>
+Here Inc. <*@here.io>
 Hewlett-Packard Development Company, L.P. <*@hp.com>
 HyperConnect Inc. <*@hpcnt.com>
 IBM Inc. <*@*.ibm.com>

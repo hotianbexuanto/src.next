@@ -106,11 +106,24 @@ class ChromeContentBrowserClientExtensionsPart
                            IsolatedOriginsAndHostedAppWebExtents);
 
   // ChromeContentBrowserClientParts:
+<<<<<<< HEAD
+  void SiteInstanceGotProcessAndSite(
+      content::SiteInstance* site_instance) override;
+  void OverrideWebPreferences(
+      content::WebContents* web_contents,
+      content::SiteInstance& main_frame_site,
+      blink::web_pref::WebPreferences* web_prefs) override;
+  bool OverrideWebPreferencesAfterNavigation(
+      content::WebContents* web_contents,
+      content::SiteInstance& main_frame_site,
+      blink::web_pref::WebPreferences* web_prefs) override;
+=======
   void RenderProcessWillLaunch(content::RenderProcessHost* host) override;
   void SiteInstanceGotProcess(content::SiteInstance* site_instance) override;
   void SiteInstanceDeleting(content::SiteInstance* site_instance) override;
   void OverrideWebkitPrefs(content::WebContents* web_contents,
                            blink::web_pref::WebPreferences* web_prefs) override;
+>>>>>>> chromium
   void BrowserURLHandlerCreated(content::BrowserURLHandler* handler) override;
   void GetAdditionalAllowedSchemesForFileSystem(
       std::vector<std::string>* additional_allowed_schemes) override;

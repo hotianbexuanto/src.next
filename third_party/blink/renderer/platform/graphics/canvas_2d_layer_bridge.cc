@@ -25,6 +25,14 @@
 
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_layer_bridge.h"
 
+<<<<<<< HEAD
+namespace blink {
+
+Canvas2DLayerBridge::Canvas2DLayerBridge(CanvasResourceHost& resource_host)
+    : hibernation_handler_(resource_host) {}
+
+Canvas2DLayerBridge::~Canvas2DLayerBridge() = default;
+=======
 #include <memory>
 #include <utility>
 
@@ -700,5 +708,6 @@ void Canvas2DLayerBridge::Logger::ReportHibernationEvent(
     HibernationEvent event) {
   UMA_HISTOGRAM_ENUMERATION("Blink.Canvas.HibernationEvents", event);
 }
+>>>>>>> chromium
 
 }  // namespace blink

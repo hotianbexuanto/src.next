@@ -2,10 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<<<<<<< HEAD
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
+=======
+>>>>>>> chromium
 #include "extensions/common/url_pattern.h"
 
 #include <stddef.h>
 
+#include <array>
 #include <ostream>
 
 #include "base/cxx17_backports.h"
@@ -29,6 +38,29 @@ namespace {
 
 // TODO(aa): What about more obscure schemes like javascript: ?
 // Note: keep this array in sync with kValidSchemeMasks.
+<<<<<<< HEAD
+constexpr std::array kValidSchemes = {
+    url::kHttpScheme,          url::kHttpsScheme,
+    url::kFileScheme,          url::kFtpScheme,
+    content::kChromeUIScheme,  extensions::kExtensionScheme,
+    url::kFileSystemScheme,    url::kWsScheme,
+    url::kWssScheme,           url::kDataScheme,
+    url::kUuidInPackageScheme,
+};
+
+constexpr std::array kValidSchemeMasks = {
+    URLPattern::SCHEME_HTTP,
+    URLPattern::SCHEME_HTTPS,
+    URLPattern::SCHEME_FILE,
+    URLPattern::SCHEME_FTP,
+    URLPattern::SCHEME_CHROMEUI,
+    URLPattern::SCHEME_EXTENSION,
+    URLPattern::SCHEME_FILESYSTEM,
+    URLPattern::SCHEME_WS,
+    URLPattern::SCHEME_WSS,
+    URLPattern::SCHEME_DATA,
+    URLPattern::SCHEME_UUID_IN_PACKAGE,
+=======
 const char* const kValidSchemes[] = {
     url::kHttpScheme,         url::kHttpsScheme,
     url::kFileScheme,         url::kFtpScheme,
@@ -45,6 +77,7 @@ const int kValidSchemeMasks[] = {
     URLPattern::SCHEME_FILESYSTEM, URLPattern::SCHEME_WS,
     URLPattern::SCHEME_WSS,        URLPattern::SCHEME_DATA,
     URLPattern::SCHEME_URN,
+>>>>>>> chromium
 };
 
 static_assert(base::size(kValidSchemes) == base::size(kValidSchemeMasks),
@@ -61,16 +94,16 @@ const char kParseErrorInvalidPort[] = "Invalid port.";
 const char kParseErrorInvalidHost[] = "Invalid host.";
 
 // Message explaining each URLPattern::ParseResult.
-const char* const kParseResultMessages[] = {
-  kParseSuccess,
-  kParseErrorMissingSchemeSeparator,
-  kParseErrorInvalidScheme,
-  kParseErrorWrongSchemeType,
-  kParseErrorEmptyHost,
-  kParseErrorInvalidHostWildcard,
-  kParseErrorEmptyPath,
-  kParseErrorInvalidPort,
-  kParseErrorInvalidHost,
+constexpr std::array kParseResultMessages = {
+    kParseSuccess,
+    kParseErrorMissingSchemeSeparator,
+    kParseErrorInvalidScheme,
+    kParseErrorWrongSchemeType,
+    kParseErrorEmptyHost,
+    kParseErrorInvalidHostWildcard,
+    kParseErrorEmptyPath,
+    kParseErrorInvalidPort,
+    kParseErrorInvalidHost,
 };
 
 static_assert(static_cast<int>(URLPattern::ParseResult::kNumParseResults) ==
@@ -178,18 +211,6 @@ URLPattern::~URLPattern() {
 URLPattern& URLPattern::operator=(const URLPattern& other) = default;
 
 URLPattern& URLPattern::operator=(URLPattern&& other) = default;
-
-bool URLPattern::operator<(const URLPattern& other) const {
-  return GetAsString() < other.GetAsString();
-}
-
-bool URLPattern::operator>(const URLPattern& other) const {
-  return GetAsString() > other.GetAsString();
-}
-
-bool URLPattern::operator==(const URLPattern& other) const {
-  return GetAsString() == other.GetAsString();
-}
 
 std::ostream& operator<<(std::ostream& out, const URLPattern& url_pattern) {
   return out << '"' << url_pattern.GetAsString() << '"';

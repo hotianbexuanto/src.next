@@ -6,10 +6,16 @@
 
 #include <algorithm>
 
+<<<<<<< HEAD
+#include "base/functional/bind.h"
+#include "base/location.h"
+#include "base/no_destructor.h"
+=======
 #include "base/bind.h"
 #include "base/location.h"
 #include "base/no_destructor.h"
 #include "base/single_thread_task_runner.h"
+>>>>>>> chromium
 #include "base/strings/string_number_conversions.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "base/time/time.h"
@@ -33,8 +39,13 @@ void ExtensionHostQueue::Add(DeferredStartRenderHost* host) {
 }
 
 void ExtensionHostQueue::Remove(DeferredStartRenderHost* host) {
+<<<<<<< HEAD
+  auto it = std::ranges::find(queue_, host);
+  if (it != queue_.end()) {
+=======
   auto it = std::find(queue_.begin(), queue_.end(), host);
   if (it != queue_.end())
+>>>>>>> chromium
     queue_.erase(it);
 }
 

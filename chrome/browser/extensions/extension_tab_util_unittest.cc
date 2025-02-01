@@ -163,6 +163,13 @@ TEST(ExtensionTabUtilTest, PrepareURLForNavigation) {
         kKillURL, extension.get(), &url, &error));
     EXPECT_EQ(tabs_constants::kNoCrashBrowserError, error);
   }
+  // Regression test for crbug.com/348405962.
+  {
+    const std::string kTestPath("mailto:8080?cc=&bcc=&subject=&body=");
+    auto url = ExtensionTabUtil::PrepareURLForNavigation(
+        kTestPath, extension.get(), browser_context());
+    EXPECT_THAT(url, base::test::ValueIs(GURL(kTestPath)));
+  }
 }
 
 TEST(ExtensionTabUtilTest, PrepareURLForNavigationOnDevtools) {

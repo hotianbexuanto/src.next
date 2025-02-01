@@ -135,10 +135,7 @@ void RendererStartupHelper::InitializeProcess(
   // Extensions need to know the channel and the session type for API
   // restrictions. The values are sent to all renderers, as the non-extension
   // renderers may have content scripts.
-  bool is_lock_screen_context =
-      client->IsLockScreenContext(process->GetBrowserContext());
-  renderer->SetSessionInfo(GetCurrentChannel(), GetCurrentFeatureSessionType(),
-                           is_lock_screen_context);
+  renderer->SetSessionInfo(GetCurrentChannel(), GetCurrentFeatureSessionType());
 
   // Platform apps need to know the system font.
   // TODO(dbeam): this is not the system font in all cases.
@@ -151,8 +148,14 @@ void RendererStartupHelper::InitializeProcess(
 
   // If the new render process is a WebView guest process, propagate the WebView
   // partition ID to it.
+<<<<<<< HEAD
+  if (WebViewRendererState::GetInstance()->IsGuest(
+          process->GetDeprecatedID())) {
+    std::string webview_partition_id = WebViewGuest::GetPartitionID(process);
+=======
   std::string webview_partition_id = WebViewGuest::GetPartitionID(process);
   if (!webview_partition_id.empty()) {
+>>>>>>> chromium
     renderer->SetWebViewPartitionID(webview_partition_id);
   }
 
@@ -323,6 +326,59 @@ void RendererStartupHelper::OnExtensionUnloaded(const Extension& extension) {
   extension_process_map_.erase(extension.id());
 }
 
+<<<<<<< HEAD
+void RendererStartupHelper::OnDeveloperModeChanged(bool in_developer_mode) {
+  for (auto& process_entry : process_mojo_map_) {
+    content::RenderProcessHost* process = process_entry.first;
+    mojom::Renderer* renderer = GetRenderer(process);
+    if (renderer) {
+      renderer->SetDeveloperMode(in_developer_mode);
+    }
+  }
+}
+
+void RendererStartupHelper::SetUserScriptWorldProperties(
+    const Extension& extension,
+    mojom::UserScriptWorldInfoPtr world_info) {
+  for (auto& process_entry : process_mojo_map_) {
+    content::RenderProcessHost* process = process_entry.first;
+    mojom::Renderer* renderer = GetRenderer(process);
+    if (!renderer) {
+      continue;
+    }
+
+    if (!util::IsExtensionVisibleToContext(extension,
+                                           process->GetBrowserContext())) {
+      continue;
+    }
+
+    std::vector<mojom::UserScriptWorldInfoPtr> worlds_info;
+    worlds_info.push_back(world_info.Clone());
+    renderer->UpdateUserScriptWorlds(std::move(worlds_info));
+  }
+}
+
+void RendererStartupHelper::ClearUserScriptWorldProperties(
+    const Extension& extension,
+    const std::optional<std::string>& world_id) {
+  for (auto& process_entry : process_mojo_map_) {
+    content::RenderProcessHost* process = process_entry.first;
+    mojom::Renderer* renderer = GetRenderer(process);
+    if (!renderer) {
+      continue;
+    }
+
+    if (!util::IsExtensionVisibleToContext(extension,
+                                           process->GetBrowserContext())) {
+      continue;
+    }
+
+    renderer->ClearUserScriptWorldConfig(extension.id(), world_id);
+  }
+}
+
+=======
+>>>>>>> chromium
 mojo::PendingAssociatedRemote<mojom::Renderer>
 RendererStartupHelper::BindNewRendererRemote(
     content::RenderProcessHost* process) {

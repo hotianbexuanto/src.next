@@ -2,9 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/extensions/extension_apitest.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/api/system_cpu/cpu_info_provider.h"
+
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/extensions/extension_platform_apitest.h"
+#else
+#include "chrome/browser/extensions/extension_apitest.h"
+#endif
 
 namespace extensions {
 
@@ -42,8 +47,15 @@ class MockCpuInfoProviderImpl : public CpuInfoProvider {
   ~MockCpuInfoProviderImpl() override = default;
 };
 
-using ContextType = ExtensionBrowserTest::ContextType;
+#if BUILDFLAG(IS_ANDROID)
+using SystemCpuApiTest = ExtensionPlatformApiTest;
+#else
+using SystemCpuApiTest = ExtensionApiTest;
+#endif
 
+<<<<<<< HEAD
+IN_PROC_BROWSER_TEST_F(SystemCpuApiTest, Cpu) {
+=======
 class SystemCpuApiTest : public ExtensionApiTest,
                          public testing::WithParamInterface<ContextType> {
  public:
@@ -68,6 +80,7 @@ INSTANTIATE_TEST_SUITE_P(ServiceWorker,
                          ::testing::Values(ContextType::kServiceWorker));
 
 IN_PROC_BROWSER_TEST_P(SystemCpuApiTest, Cpu) {
+>>>>>>> chromium
   scoped_refptr<CpuInfoProvider> provider = new MockCpuInfoProviderImpl;
   // The provider is owned by the single CpuInfoProvider instance.
   CpuInfoProvider::InitializeForTesting(provider);

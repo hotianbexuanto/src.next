@@ -13,10 +13,14 @@
 #include "base/timer/timer.h"
 #include "cc/metrics/frame_sequence_tracker_collection.h"
 #include "cc/metrics/video_playback_roughness_reporter.h"
+<<<<<<< HEAD
+#include "components/viz/common/gpu/raster_context_provider.h"
+=======
 #include "components/power_scheduler/power_mode_voter.h"
 #include "components/viz/client/shared_bitmap_reporter.h"
 #include "components/viz/common/gpu/context_provider.h"
 #include "components/viz/common/resources/shared_bitmap.h"
+>>>>>>> chromium
 #include "components/viz/common/surfaces/child_local_surface_id_allocator.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -41,7 +45,11 @@ namespace blink {
 class PLATFORM_EXPORT VideoFrameSubmitter
     : public WebVideoFrameSubmitter,
       public viz::ContextLostObserver,
+<<<<<<< HEAD
+      public gpu::GpuChannelLostObserver,
+=======
       public viz::SharedBitmapReporter,
+>>>>>>> chromium
       public viz::mojom::blink::CompositorFrameSinkClient {
  public:
   VideoFrameSubmitter(WebContextProviderCallback,
@@ -80,11 +88,6 @@ class PLATFORM_EXPORT VideoFrameSubmitter
   void ReclaimResources(WTF::Vector<viz::ReturnedResource> resources) override;
   void OnCompositorFrameTransitionDirectiveProcessed(
       uint32_t sequence_id) override {}
-
-  // viz::SharedBitmapReporter implementation.
-  void DidAllocateSharedBitmap(base::ReadOnlySharedMemoryRegion,
-                               const viz::SharedBitmapId&) override;
-  void DidDeleteSharedBitmap(const viz::SharedBitmapId&) override;
 
  private:
   friend class VideoFrameSubmitterTest;
@@ -135,7 +138,29 @@ class PLATFORM_EXPORT VideoFrameSubmitter
       scoped_refptr<media::VideoFrame> video_frame,
       media::VideoTransformation transform);
 
+<<<<<<< HEAD
+  // Opacity state with respect to what we've told `surface_embedder_`.
+  enum class Opacity {
+    // We have not told the embedder anything yet.
+    kNotReported,
+
+    // We told the embedder that we have submitted an opaque frame.
+    kIsOpaque,
+
+    // We told the embedder that we have submitted a non-opaque frame.
+    kIsNotOpaque
+  };
+
+  // Notify `surface_embedder_` if the opacity of the most recent video frame
+  // has changed.
+  void NotifyOpacityIfNeeded(Opacity new_opacity);
+
+  void ClearFrameResources();
+
+  raw_ptr<cc::VideoFrameProvider> video_frame_provider_ = nullptr;
+=======
   cc::VideoFrameProvider* video_frame_provider_ = nullptr;
+>>>>>>> chromium
   bool is_media_stream_ = false;
   scoped_refptr<viz::RasterContextProvider> context_provider_;
   mojo::Remote<viz::mojom::blink::CompositorFrameSink> compositor_frame_sink_;

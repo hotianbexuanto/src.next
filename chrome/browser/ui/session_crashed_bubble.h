@@ -21,13 +21,17 @@ class SessionCrashedBubble {
   // session ended with a crash.
   static void ShowIfNotOffTheRecordProfile(Browser* browser);
 
-  virtual ~SessionCrashedBubble() {}
+  virtual ~SessionCrashedBubble() = default;
 
  protected:
+<<<<<<< HEAD
+  SessionCrashedBubble() = default;
+=======
   SessionCrashedBubble() {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SessionCrashedBubble);
+>>>>>>> chromium
 };
 
 #endif  // CHROME_BROWSER_UI_SESSION_CRASHED_BUBBLE_H_

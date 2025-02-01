@@ -58,6 +58,11 @@ void SetIsIncognitoEnabled(const std::string& extension_id,
                            content::BrowserContext* context,
                            bool enabled);
 
+<<<<<<< HEAD
+// TODO(crbug.com/356905053): Enable more extension util functions on
+// desktop android.
+#if !BUILDFLAG(IS_ANDROID)
+=======
 // Returns true if |extension| can be loaded in incognito.
 bool CanLoadInIncognito(const extensions::Extension* extension,
                         content::BrowserContext* context);
@@ -66,6 +71,7 @@ bool CanLoadInIncognito(const extensions::Extension* extension,
 bool AllowFileAccess(const std::string& extension_id,
                      content::BrowserContext* context);
 
+>>>>>>> chromium
 // Sets whether |extension_id| can inject scripts into pages with file URLs.
 // Reloads the extension if it's enabled since this permission is applied at
 // loading time only. Note than an ExtensionService must exist.
@@ -113,6 +119,22 @@ std::vector<content::BrowserContext*> GetAllRelatedProfiles(
     Profile* profile,
     const Extension& extension);
 
+<<<<<<< HEAD
+// Sets whether the given `profile` is in developer mode and notifies
+// relevant subsystems.
+void SetDeveloperModeForProfile(Profile* profile, bool in_developer_mode);
+
+// Returns the extension name to be used in UI surfaces. Name will be truncated
+// if its very long, preventing extension name to spoof or break UI surfaces
+// (see crbug.com/40063885).
+std::u16string GetFixupExtensionNameForUIDisplay(
+    const std::u16string& extension_name);
+std::u16string GetFixupExtensionNameForUIDisplay(
+    const std::string& extension_name);
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+=======
+>>>>>>> chromium
 }  // namespace util
 }  // namespace extensions
 

@@ -131,7 +131,32 @@ void CSSSelectorList::DeleteSelectors() {
   WTF::Partitions::FastFree(selector_array_);
 }
 
+<<<<<<< HEAD
+bool CSSSelectorList::Renest(const CSSSelector* selector_list,
+                             StyleRule* new_parent,
+                             HeapVector<CSSSelector>& result) {
+  bool renested_any = false;
+  for (const CSSSelector* current = selector_list; current;
+       current = current->IsLastInSelectorList() ? nullptr : ++current) {
+    std::optional<CSSSelector> renested = current->Renest(new_parent);
+    renested_any |= renested.has_value();
+    result.push_back(renested.value_or(*current));
+  }
+  return renested_any;
+}
+
+CSSSelectorList* CSSSelectorList::Renest(StyleRule* new_parent) {
+  HeapVector<CSSSelector> selectors;
+  if (IsValid() && Renest(First(), new_parent, selectors)) {
+    return AdoptSelectorVector(selectors);
+  }
+  return this;
+}
+
+String CSSSelectorList::SelectorsText(const CSSSelector* first) {
+=======
 String CSSSelectorList::SelectorsText() const {
+>>>>>>> chromium
   StringBuilder result;
 
   for (const CSSSelector* s = FirstForCSSOM(); s; s = Next(*s)) {
@@ -140,7 +165,34 @@ String CSSSelectorList::SelectorsText() const {
     result.Append(s->SelectorText());
   }
 
+<<<<<<< HEAD
+  return result.ReleaseString();
+}
+
+bool CSSSelectorList::IsAnyAllowedInParentPseudo(
+    const CSSSelector* selector_list) {
+  for (const CSSSelector* s = selector_list; s; s = Next(*s)) {
+    if (s->IsAllowedInParentPseudo()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void CSSSelectorList::Trace(Visitor* visitor) const {
+  if (!IsValid()) {
+    return;
+  }
+
+  for (int i = 0;; ++i) {
+    visitor->Trace(first_selector_[i]);
+    if (first_selector_[i].IsLastInSelectorList()) {
+      break;
+    }
+  }
+=======
   return result.ToString();
+>>>>>>> chromium
 }
 
 }  // namespace blink

@@ -50,8 +50,13 @@
       Restart
     </message>
   </if>
+<<<<<<< HEAD
+  <if expr="not chromeos_ash">
+    <message name="IDS_FLAGS_UI_RELAUNCH" desc="Label for button that relaunches chrome.">
+=======
   <if expr="not chromeos">
     <message name="IDS_FLAGS_UI_RELAUNCH" translateable="false" desc="Label for button that relaunches chrome.">
+>>>>>>> chromium
       Relaunch
     </message>
   </if>

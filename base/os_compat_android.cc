@@ -12,6 +12,12 @@
 #include <unistd.h>
 #include "base/strings/string_util.h"
 
+<<<<<<< HEAD
+#include <array>
+
+#include "base/containers/span.h"
+#include "base/numerics/safe_conversions.h"
+=======
 #if !defined(__LP64__)
 #include <time64.h>
 #endif
@@ -19,6 +25,7 @@
 #include "base/files/file.h"
 #include "base/rand_util.h"
 #include "base/strings/string_piece.h"
+>>>>>>> chromium
 
 extern "C" {
 // There is no futimes() avaiable in Bionic, so we provide our own
@@ -27,8 +34,15 @@ int futimes(int fd, const struct timeval tv[2]) {
   if (tv == NULL)
     return syscall(__NR_utimensat, fd, NULL, NULL, 0);
 
+<<<<<<< HEAD
+  // SAFETY: The caller is required to give an array of two elements.
+  auto tv = UNSAFE_BUFFERS(base::span(tv_ptr, 2u));
+  if (tv[0].tv_usec < 0 || tv[0].tv_usec >= 1000000 || tv[1].tv_usec < 0 ||
+      tv[1].tv_usec >= 1000000) {
+=======
   if (tv[0].tv_usec < 0 || tv[0].tv_usec >= 1000000 ||
       tv[1].tv_usec < 0 || tv[1].tv_usec >= 1000000) {
+>>>>>>> chromium
     errno = EINVAL;
     return -1;
   }

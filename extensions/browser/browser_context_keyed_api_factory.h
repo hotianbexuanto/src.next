@@ -131,10 +131,16 @@ class BrowserContextKeyedAPIFactory : public BrowserContextKeyedServiceFactory {
  private:
   friend struct BrowserContextFactoryDependencies<T>;
 
+<<<<<<< HEAD
+  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+      content::BrowserContext* context) const override {
+    return std::make_unique<T>(context);
+=======
   // BrowserContextKeyedServiceFactory implementation.
   KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override {
     return new T(context);
+>>>>>>> chromium
   }
 
   // BrowserContextKeyedServiceFactory implementation.

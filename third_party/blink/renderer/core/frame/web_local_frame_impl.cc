@@ -90,6 +90,7 @@
 #include <algorithm>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "build/build_config.h"
 #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
@@ -110,8 +111,11 @@
 #include "third_party/blink/public/platform/web_isolated_world_info.h"
 #include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/public/platform/web_url_error.h"
+<<<<<<< HEAD
+=======
 #include "third_party/blink/public/platform/web_url_loader_factory.h"
 #include "third_party/blink/public/platform/web_vector.h"
+>>>>>>> chromium
 #include "third_party/blink/public/web/blink.h"
 #include "third_party/blink/public/web/web_associated_url_loader_options.h"
 #include "third_party/blink/public/web/web_autofill_client.h"
@@ -177,6 +181,7 @@
 #include "third_party/blink/renderer/core/exported/web_document_loader_impl.h"
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
+#include "third_party/blink/renderer/core/frame/attribution_src_loader.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/deprecation.h"
 #include "third_party/blink/renderer/core/frame/find_in_page.h"
@@ -326,6 +331,12 @@ class ChromePrintContext : public PrintContext {
     return scale;
   }
 
+<<<<<<< HEAD
+  void SpoolPagesWithBoundariesForTesting(cc::PaintCanvas* canvas,
+                                          const gfx::Size& spool_size_in_pixels,
+                                          const std::vector<uint32_t>* pages) {
+    gfx::Rect all_pages_rect(spool_size_in_pixels);
+=======
   void SpoolAllPagesWithBoundariesForTesting(
       cc::PaintCanvas* canvas,
       const FloatSize& page_size_in_pixels,
@@ -344,6 +355,7 @@ class ChromePrintContext : public PrintContext {
 
     FloatRect all_pages_rect(0, 0, spool_size_in_pixels.Width(),
                              spool_size_in_pixels.Height());
+>>>>>>> chromium
 
     PaintRecordBuilder builder;
     GraphicsContext& context = builder.Context();
@@ -352,7 +364,19 @@ class ChromePrintContext : public PrintContext {
     context.BeginRecording(all_pages_rect);
 
     // Fill the whole background by white.
+<<<<<<< HEAD
+    context.FillRect(all_pages_rect, Color::kWhite, AutoDarkMode::Disabled());
+
+    std::vector<uint32_t> all_pages;
+    if (!pages) {
+      all_pages.reserve(PageCount());
+      all_pages.resize(PageCount());
+      std::iota(all_pages.begin(), all_pages.end(), 0);
+      pages = &all_pages;
+    }
+=======
     context.FillRect(all_pages_rect, Color::kWhite);
+>>>>>>> chromium
 
     wtf_size_t num_pages = PageRects().size();
     int current_height = 0;
@@ -1322,7 +1346,7 @@ void WebLocalFrameImpl::RemoveSpellingMarkers() {
 }
 
 void WebLocalFrameImpl::RemoveSpellingMarkersUnderWords(
-    const WebVector<WebString>& words) {
+    const std::vector<WebString>& words) {
   Vector<String> converted_words;
   converted_words.Append(words.Data(), SafeCast<wtf_size_t>(words.size()));
   GetFrame()->RemoveSpellingMarkersUnderWords(converted_words);
@@ -1521,7 +1545,7 @@ bool WebLocalFrameImpl::SetEditableSelectionOffsets(int start, int end) {
 }
 
 bool WebLocalFrameImpl::AddImeTextSpansToExistingText(
-    const WebVector<ui::ImeTextSpan>& ime_text_spans,
+    const std::vector<ui::ImeTextSpan>& ime_text_spans,
     unsigned text_start,
     unsigned text_end) {
   TRACE_EVENT0("blink", "WebLocalFrameImpl::AddImeTextSpansToExistingText");
@@ -1567,7 +1591,7 @@ bool WebLocalFrameImpl::ClearImeTextSpansByType(ui::ImeTextSpan::Type type,
 bool WebLocalFrameImpl::SetCompositionFromExistingText(
     int composition_start,
     int composition_end,
-    const WebVector<ui::ImeTextSpan>& ime_text_spans) {
+    const std::vector<ui::ImeTextSpan>& ime_text_spans) {
   TRACE_EVENT0("blink", "WebLocalFrameImpl::setCompositionFromExistingText");
   if (EditContext* edit_context =
           GetFrame()->GetInputMethodController().GetActiveEditContext()) {
@@ -1816,9 +1840,14 @@ void WebLocalFrameImpl::GetPageDescription(
 }
 
 gfx::Size WebLocalFrameImpl::SpoolSizeInPixelsForTesting(
+<<<<<<< HEAD
+    const std::vector<uint32_t>& pages) {
+  int spool_width = 0;
+=======
     const gfx::Size& page_size_in_pixels,
     uint32_t page_count) {
   int spool_width = page_size_in_pixels.width();
+>>>>>>> chromium
   int spool_height = 0;
   for (uint32_t page_index = 0; page_index < page_count; page_index++) {
     // Make room for the 1px tall page separator.
@@ -1837,10 +1866,23 @@ gfx::Size WebLocalFrameImpl::SpoolSizeInPixelsForTesting(
   return gfx::Size(spool_width, spool_height);
 }
 
+<<<<<<< HEAD
+gfx::Size WebLocalFrameImpl::SpoolSizeInPixelsForTesting(uint32_t page_count) {
+  std::vector<uint32_t> pages(page_count);
+  std::iota(pages.begin(), pages.end(), 0);
+  return SpoolSizeInPixelsForTesting(pages);
+}
+
+void WebLocalFrameImpl::PrintPagesForTesting(
+    cc::PaintCanvas* canvas,
+    const gfx::Size& spool_size_in_pixels,
+    const std::vector<uint32_t>* pages) {
+=======
 void WebLocalFrameImpl::PrintPagesForTesting(
     cc::PaintCanvas* canvas,
     const gfx::Size& page_size_in_pixels,
     const gfx::Size& spool_size_in_pixels) {
+>>>>>>> chromium
   DCHECK(print_context_);
 
   print_context_->SpoolAllPagesWithBoundariesForTesting(
@@ -2342,6 +2384,25 @@ void WebLocalFrameImpl::SendPings(const WebURL& destination_url) {
   }
 }
 
+void WebLocalFrameImpl::SendAttributionSrc(
+    const std::optional<Impression>& impression,
+    bool did_navigate) {
+  auto* frame = GetFrame();
+  DCHECK(frame);
+
+  if (AttributionSrcLoader* attribution_src_loader =
+          frame->GetAttributionSrcLoader()) {
+    HTMLAnchorElementBase* anchor = nullptr;
+    if (Node* node = ContextMenuNodeInner(); did_navigate && node) {
+      anchor = DynamicTo<HTMLAnchorElementBase>(
+          node->EnclosingLinkEventParentOrSelf());
+    }
+
+    attribution_src_loader->RegisterFromContextMenuNavigation(impression,
+                                                              anchor);
+  }
+}
+
 bool WebLocalFrameImpl::DispatchBeforeUnloadEvent(bool is_reload) {
   if (!GetFrame())
     return true;
@@ -2367,7 +2428,15 @@ blink::mojom::CommitResult WebLocalFrameImpl::CommitSameDocumentNavigation(
     bool is_client_redirect,
     bool has_transient_user_activation,
     const WebSecurityOrigin& initiator_origin,
+<<<<<<< HEAD
+    bool is_browser_initiated,
+    bool has_ua_visual_transition,
+    std::optional<scheduler::TaskAttributionId>
+        soft_navigation_heuristics_task_id,
+    bool should_skip_screenshot) {
+=======
     std::unique_ptr<WebDocumentLoader::ExtraData> extra_data) {
+>>>>>>> chromium
   DCHECK(GetFrame());
   DCHECK(!url.ProtocolIs("javascript"));
 
@@ -2377,8 +2446,15 @@ blink::mojom::CommitResult WebLocalFrameImpl::CommitSameDocumentNavigation(
       is_client_redirect ? ClientRedirectPolicy::kClientRedirect
                          : ClientRedirectPolicy::kNotClientRedirect,
       has_transient_user_activation, initiator_origin.Get(),
+<<<<<<< HEAD
+      /*is_synchronously_committed=*/false, /*source_element=*/nullptr,
+      mojom::blink::TriggeringEventInfo::kNotFromEvent, is_browser_initiated,
+      has_ua_visual_transition, soft_navigation_heuristics_task_id,
+      should_skip_screenshot);
+=======
       /*is_synchronously_committed=*/false,
       mojom::blink::TriggeringEventInfo::kNotFromEvent, std::move(extra_data));
+>>>>>>> chromium
 }
 
 bool WebLocalFrameImpl::IsLoading() const {
@@ -2428,6 +2504,22 @@ void WebLocalFrameImpl::DownloadURL(
                           std::move(blob_url_token));
 }
 
+<<<<<<< HEAD
+WebFrame* WebLocalFrameImpl::GetProvisionalOwnerFrame() {
+  return GetFrame()->IsProvisional()
+             ? WebFrame::FromCoreFrame(GetFrame()->GetProvisionalOwnerFrame())
+             : nullptr;
+}
+
+void WebLocalFrameImpl::MaybeStartOutermostMainFrameNavigation(
+    const std::vector<WebURL>& urls) const {
+  Vector<KURL> kurls;
+  std::move(urls.begin(), urls.end(), std::back_inserter(kurls));
+  GetFrame()->MaybeStartOutermostMainFrameNavigation(std::move(kurls));
+}
+
+=======
+>>>>>>> chromium
 bool WebLocalFrameImpl::WillStartNavigation(const WebNavigationInfo& info) {
   DCHECK(!info.url_request.IsNull());
   DCHECK(!info.url_request.Url().ProtocolIs("javascript"));
@@ -2766,6 +2858,12 @@ WebDevToolsAgentImpl* WebLocalFrameImpl::DevToolsAgentImpl() {
   return dev_tools_agent_;
 }
 
+void WebLocalFrameImpl::OnDevToolsSessionConnectionChanged(bool attached) {
+  if (frame_widget_) {
+    frame_widget_->OnDevToolsSessionConnectionChanged(attached);
+  }
+}
+
 void WebLocalFrameImpl::WasHidden() {
   if (frame_)
     frame_->WasHidden();
@@ -2787,8 +2885,173 @@ void WebLocalFrameImpl::SetAllowsCrossBrowsingInstanceFrameLookup() {
   window->GetMutableSecurityOrigin()->GrantCrossAgentClusterAccess();
 }
 
+<<<<<<< HEAD
+WebHistoryItem WebLocalFrameImpl::GetCurrentHistoryItem() const {
+  return WebHistoryItem(current_history_item_);
+}
+
+void WebLocalFrameImpl::SetLocalStorageArea(
+    CrossVariantMojoRemote<mojom::StorageAreaInterfaceBase>
+        local_storage_area) {
+  CoreInitializer::GetInstance().SetLocalStorageArea(
+      *GetFrame(), std::move(local_storage_area));
+}
+
+void WebLocalFrameImpl::SetSessionStorageArea(
+    CrossVariantMojoRemote<mojom::StorageAreaInterfaceBase>
+        session_storage_area) {
+  CoreInitializer::GetInstance().SetSessionStorageArea(
+      *GetFrame(), std::move(session_storage_area));
+}
+
+void WebLocalFrameImpl::SetNotRestoredReasons(
+    const mojom::BackForwardCacheNotRestoredReasonsPtr& not_restored_reasons) {
+  GetFrame()->SetNotRestoredReasons(
+      ConvertNotRestoredReasons(not_restored_reasons));
+}
+
+const mojom::blink::BackForwardCacheNotRestoredReasonsPtr&
+WebLocalFrameImpl::GetNotRestoredReasons() {
+  return GetFrame()->GetNotRestoredReasons();
+}
+
+mojom::blink::BackForwardCacheNotRestoredReasonsPtr
+WebLocalFrameImpl::ConvertNotRestoredReasons(
+    const mojom::BackForwardCacheNotRestoredReasonsPtr& reasons_to_copy) {
+  mojom::blink::BackForwardCacheNotRestoredReasonsPtr not_restored_reasons;
+  if (!reasons_to_copy.is_null()) {
+    not_restored_reasons =
+        mojom::blink::BackForwardCacheNotRestoredReasons::New();
+    if (reasons_to_copy->id) {
+      not_restored_reasons->id = reasons_to_copy->id.value().c_str();
+    }
+    if (reasons_to_copy->name) {
+      not_restored_reasons->name = reasons_to_copy->name.value().c_str();
+    }
+    if (reasons_to_copy->src) {
+      not_restored_reasons->src = reasons_to_copy->src.value().c_str();
+    }
+    for (const auto& reason_to_copy : reasons_to_copy->reasons) {
+      mojom::blink::BFCacheBlockingDetailedReasonPtr reason =
+          mojom::blink::BFCacheBlockingDetailedReason::New();
+      reason->name = WTF::String(reason_to_copy->name);
+      if (reason_to_copy->source) {
+        CHECK_GT(reason_to_copy->source->line_number, 0U);
+        CHECK_GT(reason_to_copy->source->column_number, 0U);
+        mojom::blink::ScriptSourceLocationPtr source_location =
+            mojom::blink::ScriptSourceLocation::New(
+                KURL(reason_to_copy->source->url),
+                WTF::String(reason_to_copy->source->function_name),
+                reason_to_copy->source->line_number,
+                reason_to_copy->source->column_number);
+        reason->source = std::move(source_location);
+      }
+      not_restored_reasons->reasons.push_back(std::move(reason));
+    }
+    if (reasons_to_copy->same_origin_details) {
+      auto details = mojom::blink::SameOriginBfcacheNotRestoredDetails::New();
+      details->url = KURL(reasons_to_copy->same_origin_details->url);
+      for (const auto& child : reasons_to_copy->same_origin_details->children) {
+        details->children.push_back(ConvertNotRestoredReasons(child));
+      }
+      not_restored_reasons->same_origin_details = std::move(details);
+    }
+  }
+  return not_restored_reasons;
+}
+
+void WebLocalFrameImpl::SetLCPPHint(
+    const mojom::LCPCriticalPathPredictorNavigationTimeHintPtr& hint) {
+  LocalFrame* frame = GetFrame();
+  if (!frame) {
+    return;
+  }
+
+  LCPCriticalPathPredictor* lcpp = frame->GetLCPP();
+  if (!lcpp) {
+    return;
+  }
+
+  lcpp->Reset();
+
+  if (!hint) {
+    return;
+  }
+
+  lcpp->set_lcp_element_locators(hint->lcp_element_locators);
+
+  HashSet<KURL> lcp_influencer_scripts;
+  for (auto& url : hint->lcp_influencer_scripts) {
+    lcp_influencer_scripts.insert(KURL(url));
+  }
+  lcpp->set_lcp_influencer_scripts(std::move(lcp_influencer_scripts));
+
+  Vector<KURL> fetched_fonts;
+  fetched_fonts.reserve(
+      base::checked_cast<wtf_size_t>(hint->fetched_fonts.size()));
+  for (const auto& url : hint->fetched_fonts) {
+    fetched_fonts.emplace_back(url);
+  }
+  lcpp->set_fetched_fonts(std::move(fetched_fonts));
+
+  Vector<url::Origin> preconnect_origins;
+  preconnect_origins.reserve(
+      base::checked_cast<wtf_size_t>(hint->preconnect_origins.size()));
+  for (const auto& origin_url : hint->preconnect_origins) {
+    preconnect_origins.emplace_back(url::Origin::Create(origin_url));
+  }
+  lcpp->set_preconnected_origins(preconnect_origins);
+
+  Vector<KURL> unused_preloads;
+  unused_preloads.reserve(
+      base::checked_cast<wtf_size_t>(hint->unused_preloads.size()));
+  for (const auto& url : hint->unused_preloads) {
+    unused_preloads.emplace_back(url);
+  }
+  lcpp->set_unused_preloads(std::move(unused_preloads));
+}
+
+bool WebLocalFrameImpl::IsFeatureEnabled(
+    const network::mojom::PermissionsPolicyFeature& feature) const {
+  return GetFrame()->DomWindow()->IsFeatureEnabled(feature);
+}
+
+void WebLocalFrameImpl::AddHitTestOnTouchStartCallback(
+    base::RepeatingCallback<void(const blink::WebHitTestResult&)> callback) {
+  TouchStartEventListener* touch_start_event_listener =
+      MakeGarbageCollected<TouchStartEventListener>(std::move(callback));
+  AddEventListenerOptionsResolved* options =
+      MakeGarbageCollected<AddEventListenerOptionsResolved>();
+  options->setPassive(true);
+  options->SetPassiveSpecified(true);
+  options->setCapture(true);
+  GetFrame()->DomWindow()->addEventListener(
+      event_type_names::kTouchstart, touch_start_event_listener, options);
+}
+
+void WebLocalFrameImpl::BlockParserForTesting() {
+  // Avoid blocking for MHTML tests since MHTML archives are loaded
+  // synchronously during commit. WebFrameTestProxy only has a chance to act at
+  // DidCommit after that's happened.
+  if (GetFrame()->Loader().GetDocumentLoader()->Archive()) {
+    return;
+  }
+  GetFrame()->Loader().GetDocumentLoader()->BlockParser();
+}
+
+void WebLocalFrameImpl::ResumeParserForTesting() {
+  if (GetFrame()->Loader().GetDocumentLoader()->Archive()) {
+    return;
+  }
+  GetFrame()->Loader().GetDocumentLoader()->ResumeParser();
+}
+
+void WebLocalFrameImpl::FlushInputForTesting(base::OnceClosure done_callback) {
+  frame_widget_->FlushInputForTesting(std::move(done_callback));
+=======
 const WebHistoryItem& WebLocalFrameImpl::GetCurrentHistoryItem() const {
   return current_history_item_;
+>>>>>>> chromium
 }
 
 void WebLocalFrameImpl::SetTargetToCurrentHistoryItem(const WebString& target) {

@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,6 +19,7 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/ref_counted.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/run_loop.h"
 #include "base/strings/string_piece.h"
 #include "base/test/task_environment.h"
@@ -1097,14 +1099,14 @@ TEST(HttpStreamParser, TruncatedHeaders) {
     MockRead(SYNCHRONOUS, 0, 2),  // EOF
   };
 
-  base::span<MockRead> reads[] = {
+  auto reads = std::to_array<base::span<MockRead>>({
       truncated_status_reads,
       truncated_after_status_reads,
       truncated_in_header_reads,
       truncated_after_header_reads,
       truncated_after_final_newline_reads,
       not_truncated_reads,
-  };
+  });
 
   MockWrite writes[] = {
     MockWrite(SYNCHRONOUS, 0, "GET / HTTP/1.1\r\n\r\n"),
@@ -1238,10 +1240,19 @@ class SimpleGetRunner {
 
   void AddInitialData(const std::string& data) {
     int offset = read_buffer_->offset();
+<<<<<<< HEAD
+    read_buffer_->SetCapacity(offset + data.size());
+    auto span = base::as_byte_span(data);
+    read_buffer_->everything()
+        .subspan(base::checked_cast<size_t>(offset), span.size())
+        .copy_from(span);
+    read_buffer_->set_offset(offset + span.size());
+=======
     int size = data.size();
     read_buffer_->SetCapacity(offset + size);
     memcpy(read_buffer_->StartOfBuffer() + offset, data.data(), size);
     read_buffer_->set_offset(offset + size);
+>>>>>>> chromium
   }
 
   // The data used to back |string_piece| must stay alive until all mock data

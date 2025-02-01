@@ -23,6 +23,9 @@
 #include "third_party/blink/renderer/core/paint/rounded_border_geometry.h"
 #include "third_party/blink/renderer/core/paint/scoped_paint_state.h"
 #include "third_party/blink/renderer/core/paint/scrollable_area_painter.h"
+<<<<<<< HEAD
+#include "ui/gfx/geometry/rect_conversions.h"
+=======
 #include "third_party/blink/renderer/core/paint/svg_foreign_object_painter.h"
 #include "third_party/blink/renderer/core/paint/theme_painter.h"
 #include "third_party/blink/renderer/platform/geometry/layout_point.h"
@@ -31,6 +34,7 @@
 #include "third_party/blink/renderer/platform/graphics/paint/display_item_cache_skipper.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/paint/scoped_paint_chunk_properties.h"
+>>>>>>> chromium
 
 namespace blink {
 
@@ -317,8 +321,41 @@ void BoxPainter::RecordScrollHitTestData(
     // instead of the contents properties so that the scroll hit test is not
     // clipped or scrolled.
     auto& paint_controller = paint_info.context.GetPaintController();
+<<<<<<< HEAD
+#if DCHECK_IS_ON()
+    // TODO(crbug.com/1256990): This should be
+    // DCHECK_EQ(fragment->LocalBorderBoxProperties(),
+    //           paint_controller.CurrentPaintChunkProperties());
+    // but we have problems about the effect node with CompositingReason::
+    // kTransform3DSceneLeaf on non-stacking-context elements.
+    auto border_box_properties = fragment->LocalBorderBoxProperties();
+    auto current_properties = paint_controller.CurrentPaintChunkProperties();
+    DCHECK_EQ(&border_box_properties.Transform(),
+              &current_properties.Transform())
+        << border_box_properties.Transform().ToTreeString().Utf8()
+        << current_properties.Transform().ToTreeString().Utf8();
+    DCHECK_EQ(&border_box_properties.Clip(), &current_properties.Clip())
+        << border_box_properties.Clip().ToTreeString().Utf8()
+        << current_properties.Clip().ToTreeString().Utf8();
+#endif
+    gfx::Rect cull_rect = fragment->GetContentsCullRect().Rect();
+    if (cull_rect.Contains(properties->Scroll()->ContentsRect())) {
+      cull_rect = CullRect::Infinite().Rect();
+    } else {
+      // Don't pass the cull rect if it doesn't cover the container rect
+      // because cc can't distinguish the case from paint checkerboarding.
+      gfx::Rect cull_rect_in_container_space = gfx::ToEnclosingRect(
+          gfx::RectF(cull_rect) +
+          properties->ScrollTranslation()->Get2dTranslation());
+      if (!cull_rect_in_container_space.Contains(
+              properties->Scroll()->ContainerRect())) {
+        cull_rect = CullRect::Infinite().Rect();
+      }
+    }
+=======
     DCHECK_EQ(fragment->LocalBorderBoxProperties(),
               paint_controller.CurrentPaintChunkProperties());
+>>>>>>> chromium
     paint_controller.RecordScrollHitTestData(
         background_client, DisplayItem::kScrollHitTest,
         properties->ScrollTranslation(), VisualRect(fragment->PaintOffset()));

@@ -5,6 +5,10 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_OBJECT_PAINTER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_OBJECT_PAINTER_H_
 
+<<<<<<< HEAD
+#include "cc/input/hit_test_opaqueness.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 

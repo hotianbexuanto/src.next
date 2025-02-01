@@ -26,7 +26,6 @@
 #include "base/threading/thread.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "content/browser/browser_main_loop.h"
 #include "content/browser/network_service_client.h"
 #include "content/browser/service_sandbox_type.h"
@@ -605,10 +604,17 @@ GetCertVerifierServiceFactory() {
   if (!factory_remote_storage.is_bound() ||
       !factory_remote_storage.is_connected()) {
     factory_remote_storage.reset();
+<<<<<<< HEAD
+#if BUILDFLAG(IS_CHROMEOS)
+    // In-process CertVerifierService should run on the IO thread because it
+    // interacts with IO-bound NSS and ChromeOS user slots. See for example
+    // InitializeNSSForChromeOSUser() or CertDbInitializerIOImpl.
+=======
 #if BUILDFLAG(IS_CHROMEOS_ASH)
     // ChromeOS's in-process CertVerifierService should run on the IO thread
     // because it interacts with IO-bound NSS and ChromeOS user slots.
     // See for example InitializeNSSForChromeOSUser().
+>>>>>>> chromium
     GetIOThreadTaskRunner({})->PostTask(
         FROM_HERE,
         base::BindOnce(&RunInProcessCertVerifierServiceFactory,

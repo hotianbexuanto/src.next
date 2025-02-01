@@ -6,8 +6,14 @@
 
 #include <utility>
 
+<<<<<<< HEAD
+#include "base/functional/callback.h"
+#include "base/strings/string_util.h"
+#include "extensions/common/mojom/event_dispatcher.mojom.h"
+=======
 #include "base/callback.h"
 #include "extensions/common/event_filtering_info.h"
+>>>>>>> chromium
 
 namespace {
 const char kUrlFiltersKey[] = "url";

@@ -7,6 +7,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <algorithm>
+#include <array>
 #include <memory>
 #include <string>
 
@@ -32,7 +34,6 @@
 #include "base/test/metrics/user_action_tester.h"
 #include "base/threading/thread_task_runner_handle.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/apps/app_service/app_launch_params.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
@@ -170,12 +171,19 @@ const base::FilePath::CharType* kTitle2File = FILE_PATH_LITERAL("title2.html");
 std::u16string WindowCaptionFromPageTitle(const std::u16string& page_title) {
 #if defined(OS_MAC)
   // On Mac, we don't want to suffix the page title with the application name.
+<<<<<<< HEAD
+  if (page_title.empty()) {
+    return l10n_util::GetStringUTF16(IDS_BROWSER_WINDOW_MAC_TAB_UNTITLED);
+  }
+=======
   if (page_title.empty())
     return l10n_util::GetStringUTF16(IDS_BROWSER_WINDOW_MAC_TAB_UNTITLED);
+>>>>>>> chromium
   return page_title;
 #else
-  if (page_title.empty())
+  if (page_title.empty()) {
     return l10n_util::GetStringUTF16(IDS_PRODUCT_NAME);
+  }
 
   return l10n_util::GetStringFUTF16(IDS_BROWSER_WINDOW_TITLE_FORMAT,
                                     page_title);
@@ -187,8 +195,9 @@ int CountRenderProcessHosts() {
   int result = 0;
   for (content::RenderProcessHost::iterator i(
            content::RenderProcessHost::AllHostsIterator());
-       !i.IsAtEnd(); i.Advance())
+       !i.IsAtEnd(); i.Advance()) {
     ++result;
+  }
   return result;
 }
 
@@ -202,13 +211,16 @@ class TabClosingObserver : public TabStripModelObserver {
       TabStripModel* tab_strip_model,
       const TabStripModelChange& change,
       const TabStripSelectionChange& selection) override {
-    if (change.type() != TabStripModelChange::kRemoved)
+    if (change.type() != TabStripModelChange::kRemoved) {
       return;
+    }
 
     auto* remove = change.GetRemove();
     for (const auto& contents : remove->contents) {
-      if (contents.remove_reason == TabStripModelChange::RemoveReason::kDeleted)
+      if (contents.remove_reason ==
+          TabStripModelChange::RemoveReason::kDeleted) {
         closing_count_ += 1;
+      }
     }
   }
 
@@ -276,8 +288,9 @@ class RenderViewSizeObserver : public content::WebContentsObserver {
   }
 
   void Resize() {
-    if (wcv_resize_insets_.IsEmpty())
+    if (wcv_resize_insets_.IsEmpty()) {
       return;
+    }
     // Resizing the main browser window by |wcv_resize_insets_| will
     // automatically resize the WebContentsView by the same amount.
     // Just resizing WebContentsView directly doesn't work on Linux, because the
@@ -359,8 +372,9 @@ class BrowserTest : public extensions::ExtensionBrowserTest {
         extensions::ExtensionRegistry::Get(browser()->profile());
     for (const scoped_refptr<const extensions::Extension>& extension :
          registry->enabled_extensions()) {
-      if (extension->name() == "App Test")
+      if (extension->name() == "App Test") {
         return extension.get();
+      }
     }
     NOTREACHED();
     return NULL;
@@ -1123,11 +1137,17 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, OtherRedirectsDontForkProcess) {
   // Process of the (cross-site) popup window depends on whether
   // site-per-process mode is enabled or not.
   content::RenderProcessHost* popup_process =
+<<<<<<< HEAD
+      newtab->GetPrimaryMainFrame()->GetProcess();
+  if (content::AreAllSitesIsolatedForTesting()) {
+=======
       newtab->GetMainFrame()->GetProcess();
   if (content::AreAllSitesIsolatedForTesting())
+>>>>>>> chromium
     EXPECT_NE(process, popup_process);
-  else
+  } else {
     EXPECT_EQ(process, popup_process);
+  }
 
   // Same thing if the current tab tries to navigate itself.
   std::string navigate_str = "document.location=\"";
@@ -1249,7 +1269,12 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, TabClosingWhenRemovingExtension) {
   ASSERT_EQ(1, browser()->tab_strip_model()->count());
 }
 
+<<<<<<< HEAD
+// Open with --app-id=<id>, and see that an application window opens by default.
+#if !BUILDFLAG(IS_CHROMEOS)
+=======
 // Open with --app-id=<id>, and see that an application tab opens by default.
+>>>>>>> chromium
 IN_PROC_BROWSER_TEST_F(BrowserTest, AppIdSwitch) {
   base::HistogramTester tester;
   ASSERT_TRUE(embedded_test_server()->Start());
@@ -1273,7 +1298,16 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, AppIdSwitch) {
     constexpr char kLaunchModesHistogram[] = "Launch.Modes";
     const base::HistogramBase::Sample LM_AS_WEBAPP_IN_TAB = 21;
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_WIN)
+  {  // From launch_mode_recorder.cc:
+    constexpr char kLaunchModesHistogram[] = "Launch.Mode2";
+    const base::HistogramBase::Sample32 kWebAppOther = 22;
+
+    tester.ExpectUniqueSample(kLaunchModesHistogram, kWebAppOther, 1);
+=======
     tester.ExpectUniqueSample(kLaunchModesHistogram, LM_AS_WEBAPP_IN_TAB, 1);
+>>>>>>> chromium
   }
 
   // Check that the number of browsers and tabs is correct.
@@ -1284,6 +1318,10 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, AppIdSwitch) {
   EXPECT_EQ(expected_browsers, chrome::GetBrowserCount(browser()->profile()));
   EXPECT_EQ(expected_tabs, browser()->tab_strip_model()->count());
 }
+<<<<<<< HEAD
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+=======
+>>>>>>> chromium
 
 // Overscroll is only enabled on Aura platforms currently, and even then only
 // when a specific feature (OverscrollHistoryNavigation) is enabled.
@@ -1445,9 +1483,14 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, RestorePinnedTabs) {
 
   // Find the new browser.
   BrowserList* browsers = BrowserList::GetInstance();
+<<<<<<< HEAD
+  auto new_browser_iter = std::ranges::find_if_not(
+      *browsers, [this](Browser* b) { return b == browser(); });
+=======
   auto new_browser_iter =
       std::find_if(browsers->begin(), browsers->end(),
                    [this](Browser* b) { return b != browser(); });
+>>>>>>> chromium
   ASSERT_NE(browsers->end(), new_browser_iter);
 
   Browser* new_browser = *new_browser_iter;
@@ -1464,6 +1507,8 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, RestorePinnedTabs) {
 }
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 
+<<<<<<< HEAD
+=======
 // TODO(1126339): fix the way how exo creates accelerated widgets. At the
 // moment, they are created only after the client attaches a buffer to a surface,
 // which is incorrect and results in the "[destroyed object]: error 1: popup
@@ -1473,11 +1518,13 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, RestorePinnedTabs) {
 #else
 #define MAYBE_CloseWithAppMenuOpen CloseWithAppMenuOpen
 #endif
+>>>>>>> chromium
 // This test verifies we don't crash when closing the last window and the app
 // menu is showing.
-IN_PROC_BROWSER_TEST_F(BrowserTest, MAYBE_CloseWithAppMenuOpen) {
-  if (browser_defaults::kBrowserAliveWithNoWindows)
+IN_PROC_BROWSER_TEST_F(BrowserTest, CloseWithAppMenuOpen) {
+  if (browser_defaults::kBrowserAliveWithNoWindows) {
     return;
+  }
 
   // We need a message loop running for menus on windows.
   base::ThreadTaskRunnerHandle::Get()->PostTask(
@@ -1515,10 +1562,17 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, OpenAppWindowLikeNtp) {
   ASSERT_EQ(2u, chrome::GetBrowserCount(browser()->profile()));
 
   // Find the new browser.
+<<<<<<< HEAD
+  Browser* new_browser = nullptr;
+  for (Browser* b : *BrowserList::GetInstance()) {
+    if (b != browser()) {
+=======
   Browser* new_browser = NULL;
   for (auto* b : *BrowserList::GetInstance()) {
     if (b != browser())
+>>>>>>> chromium
       new_browser = b;
+    }
   }
   ASSERT_TRUE(new_browser);
   ASSERT_TRUE(new_browser != browser());
@@ -1535,34 +1589,60 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, OpenAppWindowLikeNtp) {
 // Makes sure the browser doesn't crash when
 // set_show_state(ui::SHOW_STATE_MAXIMIZED) has been invoked.
 IN_PROC_BROWSER_TEST_F(BrowserTest, StartMaximized) {
-  Browser::CreateParams params[] = {
+  auto params = std::to_array<Browser::CreateParams>({
       Browser::CreateParams(Browser::TYPE_NORMAL, browser()->profile(), true),
       Browser::CreateParams(Browser::TYPE_POPUP, browser()->profile(), true),
       Browser::CreateParams::CreateForApp("app_name", true, gfx::Rect(),
                                           browser()->profile(), true),
       Browser::CreateParams::CreateForDevTools(browser()->profile()),
       Browser::CreateParams::CreateForAppPopup("app_name", true, gfx::Rect(),
+<<<<<<< HEAD
+                                               browser()->profile(), true),
+      Browser::CreateParams(Browser::TYPE_PICTURE_IN_PICTURE,
+                            browser()->profile(), true),
+  });
+  for (auto& param : params) {
+    param.initial_show_state = ui::mojom::WindowShowState::kMaximized;
+    AddBlankTabAndShow(Browser::Create(param));
+=======
                                                browser()->profile(), true)};
   for (size_t i = 0; i < base::size(params); ++i) {
     params[i].initial_show_state = ui::SHOW_STATE_MAXIMIZED;
     AddBlankTabAndShow(Browser::Create(params[i]));
+>>>>>>> chromium
   }
 }
 
 // Makes sure the browser doesn't crash when
+<<<<<<< HEAD
+// set_show_state(ui::mojom::WindowShowState::kMinimized) has been invoked.
+IN_PROC_BROWSER_TEST_F(BrowserTest, StartMinimized) {
+  auto params = std::to_array<Browser::CreateParams>({
+=======
 // set_show_state(ui::SHOW_STATE_MINIMIZED) has been invoked.
 IN_PROC_BROWSER_TEST_F(BrowserTest, StartMinimized) {
   Browser::CreateParams params[] = {
+>>>>>>> chromium
       Browser::CreateParams(Browser::TYPE_NORMAL, browser()->profile(), true),
       Browser::CreateParams(Browser::TYPE_POPUP, browser()->profile(), true),
       Browser::CreateParams::CreateForApp("app_name", true, gfx::Rect(),
                                           browser()->profile(), true),
       Browser::CreateParams::CreateForDevTools(browser()->profile()),
       Browser::CreateParams::CreateForAppPopup("app_name", true, gfx::Rect(),
+<<<<<<< HEAD
+                                               browser()->profile(), true),
+      Browser::CreateParams(Browser::TYPE_PICTURE_IN_PICTURE,
+                            browser()->profile(), true),
+  });
+  for (auto& param : params) {
+    param.initial_show_state = ui::mojom::WindowShowState::kMinimized;
+    AddBlankTabAndShow(Browser::Create(param));
+=======
                                                browser()->profile(), true)};
   for (size_t i = 0; i < base::size(params); ++i) {
     params[i].initial_show_state = ui::SHOW_STATE_MINIMIZED;
     AddBlankTabAndShow(Browser::Create(params[i]));
+>>>>>>> chromium
   }
 }
 
@@ -1639,7 +1719,7 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, DisableMenuItemsWhenIncognitoIsForced) {
   EXPECT_TRUE(new_command_updater->IsCommandEnabled(IDC_NEW_INCOGNITO_WINDOW));
 }
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
 IN_PROC_BROWSER_TEST_F(BrowserTest, ArcBrowserWindowFeaturesSetCorrectly) {
   Browser* new_browser = Browser::Create(
       Browser::CreateParams(Browser::TYPE_CUSTOM_TAB, browser()->profile(),
@@ -1984,16 +2064,24 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, DISABLED_WindowOpenClose3) {
 }
 
 // TODO(linux_aura) http://crbug.com/163931
+<<<<<<< HEAD
+#if !BUILDFLAG(IS_LINUX)
+=======
 // Mac disabled: http://crbug.com/169820
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
 #if !defined(OS_MAC) && !(defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS))
+>>>>>>> chromium
 IN_PROC_BROWSER_TEST_F(BrowserTest, FullscreenBookmarkBar) {
   chrome::ToggleBookmarkBar(browser());
   EXPECT_EQ(BookmarkBar::SHOW, browser()->bookmark_bar_state());
   chrome::ToggleFullscreenMode(browser());
   EXPECT_TRUE(browser()->window()->IsFullscreen());
+<<<<<<< HEAD
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
+=======
 #if defined(OS_MAC) || BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   // Mac and Chrome OS both have an "immersive style" fullscreen where the
   // bookmark bar is visible when the top views slide down.
   EXPECT_EQ(BookmarkBar::SHOW, browser()->bookmark_bar_state());
@@ -2025,9 +2113,13 @@ class KioskModeTest : public BrowserTest {
   }
 };
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+=======
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
 #if defined(OS_MAC) || (defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS))
+>>>>>>> chromium
 // Mac: http://crbug.com/103912
 // Linux: http://crbug.com/163931
 #define MAYBE_EnableKioskModeTest DISABLED_EnableKioskModeTest
@@ -2045,7 +2137,7 @@ IN_PROC_BROWSER_TEST_F(KioskModeTest, MAYBE_EnableKioskModeTest) {
 // which contains non ASCII characters.
 class LaunchBrowserWithNonAsciiUserDatadir : public BrowserTest {
  public:
-  LaunchBrowserWithNonAsciiUserDatadir() {}
+  LaunchBrowserWithNonAsciiUserDatadir() = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -2072,12 +2164,57 @@ IN_PROC_BROWSER_TEST_F(LaunchBrowserWithNonAsciiUserDatadir,
 }
 #endif  // defined(OS_WIN)
 
+<<<<<<< HEAD
+// This test verifies that Chrome can be launched with a user-data-dir path
+// which contains a reparse point. This is important because sandbox
+// policy validates that paths passed to policy rules do not contain
+// reparse points. New code in Chrome that adjusts the sandbox can
+// accidentally pass paths with reparse points to the sandbox and cause
+// Chrome not to start anymore.
+class LaunchBrowserWithReparsePointUserDatadir : public BrowserTest {
+ public:
+  LaunchBrowserWithReparsePointUserDatadir() = default;
+
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base::FilePath tmp_profile = temp_dir_.GetPath().AppendASCII("profile");
+    ASSERT_TRUE(base::CreateDirectory(tmp_profile));
+    base::FilePath reparse_profile =
+        temp_dir_.GetPath().AppendASCII("profile_reparse");
+    ASSERT_TRUE(base::CreateDirectory(reparse_profile));
+    auto reparse_point =
+        base::test::FilePathReparsePoint::Create(reparse_profile, tmp_profile);
+    ASSERT_TRUE(reparse_point.has_value());
+    reparse_point_.emplace(std::move(reparse_point.value()));
+    command_line->AppendSwitchPath(switches::kUserDataDir, reparse_profile);
+  }
+
+  base::ScopedTempDir temp_dir_;
+  std::optional<base::test::FilePathReparsePoint> reparse_point_;
+};
+
+IN_PROC_BROWSER_TEST_F(LaunchBrowserWithReparsePointUserDatadir,
+                       TestReparsePointUserDataDir) {
+  // Verify that the window is present.
+  ASSERT_TRUE(browser());
+  ASSERT_TRUE(browser()->profile());
+  // Verify that the profile has been added correctly to the
+  // ProfileAttributesStorage.
+  ASSERT_EQ(1u, g_browser_process->profile_manager()
+                    ->GetProfileAttributesStorage()
+                    .GetNumberOfProfiles());
+}
+#endif  // BUILDFLAG(IS_WIN)
+
+#if BUILDFLAG(IS_WIN)
+=======
 #if defined(OS_WIN)
+>>>>>>> chromium
 // This test verifies that Chrome can be launched with a user-data-dir path
 // which trailing slashes.
 class LaunchBrowserWithTrailingSlashDatadir : public BrowserTest {
  public:
-  LaunchBrowserWithTrailingSlashDatadir() {}
+  LaunchBrowserWithTrailingSlashDatadir() = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -2109,7 +2246,7 @@ IN_PROC_BROWSER_TEST_F(LaunchBrowserWithTrailingSlashDatadir,
 // the last window closes.
 class RunInBackgroundTest : public BrowserTest {
  public:
-  RunInBackgroundTest() {}
+  RunInBackgroundTest() = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     command_line->AppendSwitch(switches::kKeepAliveForTest);
@@ -2134,7 +2271,7 @@ IN_PROC_BROWSER_TEST_F(RunInBackgroundTest, RunInBackgroundBasicTest) {
 // the last window closes.
 class NoStartupWindowTest : public BrowserTest {
  public:
-  NoStartupWindowTest() {}
+  NoStartupWindowTest() = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     command_line->AppendSwitch(switches::kNoStartupWindow);
@@ -2162,7 +2299,7 @@ IN_PROC_BROWSER_TEST_F(NoStartupWindowTest, NoStartupWindowBasicTest) {
 
 // Chromeos needs to track app windows because it considers them to be part of
 // session state.
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
+#if !BUILDFLAG(IS_CHROMEOS)
 IN_PROC_BROWSER_TEST_F(NoStartupWindowTest, DontInitSessionServiceForApps) {
   Profile* profile = ProfileManager::GetActiveUserProfile();
 
@@ -2176,13 +2313,13 @@ IN_PROC_BROWSER_TEST_F(NoStartupWindowTest, DontInitSessionServiceForApps) {
 
   ASSERT_FALSE(ProcessedAnyCommands(command_storage_manager));
 }
-#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 
 // This test needs to be placed outside the anonymous namespace because we
 // need to access private type of Browser.
 class AppModeTest : public BrowserTest {
  public:
-  AppModeTest() {}
+  AppModeTest() = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     GURL url = ui_test_utils::GetTestUrl(
@@ -2807,8 +2944,9 @@ IN_PROC_BROWSER_TEST_F(
   embedded_test_server()->RegisterRequestHandler(base::BindLambdaForTesting(
       [&](const net::test_server::HttpRequest& request)
           -> std::unique_ptr<net::test_server::HttpResponse> {
-        if (request.relative_url != "/sometimes-slow")
+        if (request.relative_url != "/sometimes-slow") {
           return nullptr;
+        }
         DCHECK(got_slow_request)
             << "Set `got_slow_request` before each navigation request.";
         return std::make_unique<content::SlowHttpResponse>(
@@ -2883,8 +3021,9 @@ IN_PROC_BROWSER_TEST_F(
   embedded_test_server()->RegisterRequestHandler(base::BindLambdaForTesting(
       [&](const net::test_server::HttpRequest& request)
           -> std::unique_ptr<net::test_server::HttpResponse> {
-        if (request.relative_url != "/sometimes-slow")
+        if (request.relative_url != "/sometimes-slow") {
           return nullptr;
+        }
         DCHECK(got_slow_request)
             << "Set `got_slow_request` before each navigation request.";
         return std::make_unique<content::SlowHttpResponse>(
@@ -2946,3 +3085,67 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_TRUE(back_observer.has_committed());
   EXPECT_FALSE(back_observer.was_same_document());
 }
+<<<<<<< HEAD
+
+IN_PROC_BROWSER_TEST_F(BrowserTest, CreatePictureInPicture) {
+  Browser* popup_browser = Browser::Create(Browser::CreateParams(
+      Browser::TYPE_PICTURE_IN_PICTURE, browser()->profile(), true));
+  ASSERT_TRUE(popup_browser->is_type_picture_in_picture());
+}
+
+#if BUILDFLAG(IS_CHROMEOS)
+IN_PROC_BROWSER_TEST_F(BrowserTest, PreventCloseYieldsCancelledEvent) {
+  base::ScopedObservation<BrowserList, BrowserListObserver> observer(this);
+  observer.Observe(BrowserList::GetInstance());
+
+  base::test::TestFuture<void> policy_refresh_sync_future;
+  web_app::WebAppProvider::GetForWebApps(profile())
+      ->policy_manager()
+      .SetRefreshPolicySettingsCompletedCallbackForTesting(
+          policy_refresh_sync_future.GetCallback());
+
+  const absl::Cleanup policy_cleanup = [this]() {
+    // Clear policy values, otherwise we won't be able to gracefully close the
+    // browser test.
+    profile()->GetPrefs()->SetList(prefs::kWebAppSettings, base::Value::List());
+  };
+
+  // Set up policy values.
+  static constexpr char kCalculatorAppUrl[] = "https://calculator.apps.chrome/";
+  profile()->GetPrefs()->SetList(
+      prefs::kWebAppSettings,
+      base::Value::List().Append(
+          base::Value::Dict()
+              .Set(web_app::kManifestId, kCalculatorAppUrl)
+              .Set(web_app::kRunOnOsLogin, web_app::kRunWindowed)
+              .Set(web_app::kPreventClose, true)));
+  profile()->GetPrefs()->SetList(
+      prefs::kWebAppInstallForceList,
+      base::Value::List().Append(
+          base::Value::Dict()
+              .Set(web_app::kUrlKey, kCalculatorAppUrl)
+              .Set(web_app::kDefaultLaunchContainerKey,
+                   web_app::kDefaultLaunchContainerWindowValue)));
+  ASSERT_TRUE(policy_refresh_sync_future.Wait());
+
+  apps::AppUpdateWaiter waiter(
+      profile(), ash::kCalculatorAppId,
+      base::BindRepeating([](const apps::AppUpdate& update) {
+        return update.AllowClose().has_value() && !update.AllowClose().value();
+      }));
+  waiter.Await();
+
+  Browser* const browser =
+      web_app::LaunchWebAppBrowser(profile(), ash::kCalculatorAppId);
+  ASSERT_TRUE(browser);
+
+  EXPECT_EQ(BrowserClosingStatus::kDeniedByPolicy,
+            browser->HandleBeforeClose());
+  EXPECT_CALL(*this, OnBrowserCloseCancelled(
+                         browser, BrowserClosingStatus::kDeniedByPolicy))
+      .Times(1);
+  browser->OnWindowClosing();
+}
+#endif  // BUILDFLAG(IS_CHROMEOS)
+=======
+>>>>>>> chromium

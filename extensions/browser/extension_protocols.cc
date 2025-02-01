@@ -16,6 +16,7 @@
 #include "base/base64.h"
 #include "base/bind.h"
 #include "base/compiler_specific.h"
+#include "base/containers/span.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -399,6 +400,19 @@ void GetSecurityPolicyForURL(const network::ResourceRequest& request,
       (extension.creation_flags() & Extension::FOLLOW_SYMLINKS_ANYWHERE) != 0;
 }
 
+<<<<<<< HEAD
+bool IsPathEqualTo(const GURL& url, std::string_view test) {
+  std::string_view path_piece = url.path_piece();
+  return path_piece.size() > 1 && path_piece.substr(1) == test;
+}
+
+bool IsFaviconURL(const GURL& url) {
+  return IsPathEqualTo(url, kFaviconSourcePath) ||
+         IsPathEqualTo(url, base::StrCat({kFaviconSourcePath, "/"}));
+}
+
+=======
+>>>>>>> chromium
 bool IsBackgroundPageURL(const GURL& url) {
   base::StringPiece path_piece = url.path_piece();
   return path_piece.size() > 1 &&
@@ -506,8 +520,14 @@ class FileLoaderObserver : public content::FileURLLoaderObserver {
         // Note: We still pass the data to |verify_job_|, even if there was a
         // read error, because some errors are ignorable. See
         // ContentVerifyJob::BytesRead() for more details.
+<<<<<<< HEAD
+        verify_job_->BytesRead(
+            buffer.subspan(0u, static_cast<size_t>(result->bytes_read)),
+            result->result);
+=======
         verify_job_->Read(static_cast<const char*>(buffer.data()),
                           result->bytes_read, result->result);
+>>>>>>> chromium
       }
     }
   }
@@ -526,7 +546,373 @@ class FileLoaderObserver : public content::FileURLLoaderObserver {
   // To synchronize access to all members.
   base::Lock lock_;
 
+<<<<<<< HEAD
+class ExtensionURLLoaderFactory;
+
+class ExtensionURLLoader : public network::mojom::URLLoader {
+ public:
+  static void CreateAndStart(
+      mojo::PendingReceiver<network::mojom::URLLoader> loader,
+      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
+      const network::ResourceRequest& request,
+      bool is_web_view_request,
+      int render_process_id,
+      content::BrowserContext* browser_context) {
+    DCHECK(browser_context);
+    // A raw `new` is okay because `ExtensionURLLoader` is "self-owned". It
+    // will delete itself when needed (when the request is completed, or when
+    // the URLLoader or the URLLoaderClient connection gets dropped).
+    auto* url_loader = new ExtensionURLLoader(
+        std::move(loader), std::move(client), request, is_web_view_request,
+        render_process_id, browser_context);
+    url_loader->Start();
+  }
+
+  ExtensionURLLoader(const ExtensionURLLoader&) = delete;
+  ExtensionURLLoader& operator=(const ExtensionURLLoader&) = delete;
+
+  // network::mojom::URLLoader:
+  void FollowRedirect(
+      const std::vector<std::string>& removed_headers,
+      const net::HttpRequestHeaders& modified_headers,
+      const net::HttpRequestHeaders& modified_cors_exempt_headers,
+      const std::optional<GURL>& new_url) override {
+    // new_url isn't expected to have a value, but prefer it if it's populated.
+    if (new_url.has_value()) {
+      request_.url = new_url.value();
+    }
+
+    Start();
+  }
+  void SetPriority(net::RequestPriority priority,
+                   int32_t intra_priority_value) override {}
+
+ private:
+  ~ExtensionURLLoader() override = default;
+  ExtensionURLLoader(
+      mojo::PendingReceiver<network::mojom::URLLoader> loader,
+      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
+      const network::ResourceRequest& request,
+      bool is_web_view_request,
+      int render_process_id,
+      content::BrowserContext* browser_context)
+      : request_(request),
+        browser_context_(browser_context),
+        is_web_view_request_(is_web_view_request),
+        render_process_id_(render_process_id) {
+    client_.Bind(std::move(client));
+    loader_.Bind(std::move(loader));
+    loader_.set_disconnect_handler(base::BindOnce(
+        &ExtensionURLLoader::OnMojoDisconnect, weak_ptr_factory_.GetWeakPtr()));
+  }
+
+  // `this` instance should only be `delete`ed after completing handling of the
+  // `request_` (e.g. after sending the response back to the `client_` or after
+  // encountering an error and communicating the error to the the `client_`).
+  void DeleteThis() { delete this; }
+
+  void CompleteRequestAndDeleteThis(int status) {
+    client_->OnComplete(network::URLLoaderCompletionStatus(status));
+    DeleteThis();
+  }
+
+  void Start() {
+    // Owner of BrowserContext should ensure that all WebContents are closed
+    // before starting BrowserContext destruction, but this doesn't stop
+    // incoming URLLoaderFactory IPCs which may still be in-flight until (as
+    // part of BrowserContext destruction sequence) OnBrowserContextDestroyed
+    // below is called (which will prevent future IPCs by calling
+    // DisconnectReceiversAndDestroy).  Note that DisconnectReceiversAndDestroy
+    // will only stop future ExtensionURLLoaderFactory IPCs, but it won't stop
+    // future ExtensionURLLoader IPCs - this is okay, because the loader doesn't
+    // directly interact with the BrowserContext.
+    if (browser_context_->ShutdownStarted()) {
+      CompleteRequestAndDeleteThis(net::ERR_FAILED);
+      return;
+    }
+
+    const ExtensionId extension_id = request_.url.host();
+    ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context_);
+    scoped_refptr<const Extension> extension =
+        registry->GenerateInstalledExtensionsSet().GetByIDorGUID(extension_id);
+    const ExtensionSet& enabled_extensions = registry->enabled_extensions();
+    const ProcessMap* process_map = ProcessMap::Get(browser_context_);
+    bool incognito_enabled =
+        extensions::util::IsIncognitoEnabled(extension_id, browser_context_);
+
+    // Redirect guid to id.
+    if (base::FeatureList::IsEnabled(
+            extensions_features::kExtensionDynamicURLRedirection) &&
+        extension && request_.url.host() == extension->guid()) {
+      GURL::Replacements replace_host;
+      replace_host.SetHostStr(extension->id());
+      upstream_url_ = request_.url;
+      GURL new_url = request_.url.ReplaceComponents(replace_host);
+      request_.url = new_url;
+      net::RedirectInfo redirect_info;
+      redirect_info.new_method = request_.method,
+      redirect_info.new_url = request_.url;
+      redirect_info.status_code = net::HTTP_TEMPORARY_REDIRECT;
+      network::mojom::URLResponseHeadPtr response_head(
+          ::network::mojom::URLResponseHead::New());
+      client_->OnReceiveRedirect(redirect_info, std::move(response_head));
+      return;
+    }
+
+    if (!AllowExtensionResourceLoad(
+            request_, request_.destination,
+            static_cast<ui::PageTransition>(request_.transition_type),
+            render_process_id_, browser_context_->IsOffTheRecord(),
+            extension.get(), incognito_enabled, enabled_extensions,
+            *process_map, upstream_url_)) {
+      CompleteRequestAndDeleteThis(net::ERR_BLOCKED_BY_CLIENT);
+      return;
+    }
+
+    base::FilePath directory_path;
+    if (!GetDirectoryForExtensionURL(
+            request_.url, extension_id, extension.get(),
+            registry->disabled_extensions(), &directory_path)) {
+      CompleteRequestAndDeleteThis(net::ERR_FAILED);
+      return;
+    }
+
+    LoadExtension(extension, std::move(directory_path));
+  }
+
+  void OnFilePathAndLastModifiedTimeRead(
+      const extensions::ExtensionResource& resource,
+      scoped_refptr<net::HttpResponseHeaders> headers,
+      scoped_refptr<ContentVerifier> content_verifier,
+      std::pair<base::FilePath, base::Time> file_path_and_time) {
+    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+    const auto& read_file_path = file_path_and_time.first;
+    const auto& last_modified_time = file_path_and_time.second;
+    request_.url = net::FilePathToFileURL(read_file_path);
+
+    AddCacheHeaders(*headers, last_modified_time);
+
+    scoped_refptr<ContentVerifyJob> verify_job;
+    if (content_verifier) {
+      verify_job = ContentVerifier::CreateAndStartJobFor(
+          resource.extension_id(), resource.extension_root(),
+          resource.relative_path(), content_verifier);
+    }
+
+    content::CreateFileURLLoaderBypassingSecurityChecks(
+        std::move(request_), loader_.Unbind(), client_.Unbind(),
+        std::make_unique<FileLoaderObserver>(std::move(verify_job)),
+        /*allow_directory_listing=*/false, std::move(headers));
+
+    DeleteThis();
+  }
+
+  void OnFaviconRetrieved(mojo::StructPtr<network::mojom::URLResponseHead> head,
+                          scoped_refptr<base::RefCountedMemory> bitmap_data) {
+    if (bitmap_data) {
+      head->mime_type = "image/bmp";
+      WriteData(std::move(head), base::as_byte_span(*bitmap_data));
+    } else {
+      CompleteRequestAndDeleteThis(net::ERR_FAILED);
+    }
+  }
+
+  void WriteData(mojo::StructPtr<network::mojom::URLResponseHead> head,
+                 base::span<const uint8_t> contents) {
+    DCHECK(contents.data());
+    mojo::ScopedDataPipeProducerHandle producer_handle;
+    mojo::ScopedDataPipeConsumerHandle consumer_handle;
+    if (mojo::CreateDataPipe(contents.size(), producer_handle,
+                             consumer_handle) != MOJO_RESULT_OK) {
+      CompleteRequestAndDeleteThis(net::ERR_FAILED);
+      return;
+    }
+
+    size_t actually_written_bytes = 0;
+    MojoResult result = producer_handle->WriteData(
+        contents, MOJO_WRITE_DATA_FLAG_NONE, actually_written_bytes);
+    if (result != MOJO_RESULT_OK || actually_written_bytes < contents.size()) {
+      CompleteRequestAndDeleteThis(net::ERR_FAILED);
+      return;
+    }
+
+    client_->OnReceiveResponse(std::move(head), std::move(consumer_handle),
+                               std::nullopt);
+
+    CompleteRequestAndDeleteThis(net::OK);
+  }
+
+  void LoadExtension(scoped_refptr<const Extension> extension,
+                     base::FilePath directory_path) {
+    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+    std::string content_security_policy;
+    const std::string* cross_origin_embedder_policy = nullptr;
+    const std::string* cross_origin_opener_policy = nullptr;
+    const std::set<std::string>* origin_trial_tokens = nullptr;
+    bool send_cors_header = false;
+    bool follow_symlinks_anywhere = false;
+    bool include_allow_service_worker_header = false;
+
+    if (extension) {
+      // Log if loading an extension resource not listed as a web accessible
+      // resource from a sandboxed page.
+      if (request_.request_initiator.has_value() &&
+          request_.request_initiator->opaque() &&
+          request_.request_initiator->GetTupleOrPrecursorTupleIfOpaque()
+                  .scheme() == kExtensionScheme) {
+        // Surface opaque origin for web accessible resource verification.
+        const auto origin = url::Origin::Create(
+            request_.request_initiator->GetTupleOrPrecursorTupleIfOpaque()
+                .GetURL());
+        bool is_web_accessible_resource =
+            WebAccessibleResourcesInfo::IsResourceWebAccessibleRedirect(
+                extension.get(), request_.url, origin, upstream_url_);
+        base::UmaHistogramBoolean(
+            "Extensions.SandboxedPageLoad.IsWebAccessibleResource",
+            is_web_accessible_resource);
+      }
+
+      GetSecurityPolicyForURL(
+          request_, *extension, is_web_view_request_, &content_security_policy,
+          &cross_origin_embedder_policy, &cross_origin_opener_policy,
+          &send_cors_header, &follow_symlinks_anywhere);
+      if (IsBackgroundServiceWorker(*extension, request_)) {
+        // Manifest version 3-style background service workers need
+        // "Service-Worker-Allowed" and "Origin-Trial" headers.
+        include_allow_service_worker_header = true;
+        origin_trial_tokens = TrialTokens::GetTrialTokens(*extension);
+      } else if (IsExtensionDocument(*extension, request_)) {
+        // Any top-level or embedded document can receive the tokens.
+        origin_trial_tokens = TrialTokens::GetTrialTokens(*extension);
+      }
+    }
+
+    const bool is_background_page_url = IsBackgroundPageURL(request_.url);
+    const bool is_favicon_url = IsFaviconURL(request_.url);
+    if (is_background_page_url || is_favicon_url) {
+      // Handle background page requests immediately with a simple generated
+      // chunk of HTML.
+
+      // Leave cache headers out of generated background page jobs.
+      auto head = network::mojom::URLResponseHead::New();
+      head->headers = BuildHttpHeaders(
+          content_security_policy, cross_origin_embedder_policy,
+          cross_origin_opener_policy, origin_trial_tokens,
+          false /* send_cors_headers */, include_allow_service_worker_header);
+      if (is_background_page_url) {
+        std::string contents;
+        GenerateBackgroundPageContents(extension.get(), &head->mime_type,
+                                       &head->charset, &contents);
+        WriteData(std::move(head), base::as_byte_span(contents));
+      } else if (is_favicon_url) {
+        tracker_ = std::make_unique<base::CancelableTaskTracker>();
+        ExtensionsBrowserClient::Get()->GetFavicon(
+            browser_context_, extension.get(), request_.url, tracker_.get(),
+            base::BindOnce(&ExtensionURLLoader::OnFaviconRetrieved,
+                           weak_ptr_factory_.GetWeakPtr(), std::move(head)));
+      }
+      return;
+    }
+
+    auto headers =
+        BuildHttpHeaders(content_security_policy, cross_origin_embedder_policy,
+                         cross_origin_opener_policy, origin_trial_tokens,
+                         send_cors_header, include_allow_service_worker_header);
+    // Component extension resources may be part of the embedder's resource
+    // files, for example component_extension_resources.pak in Chrome.
+    int resource_id = 0;
+    const base::FilePath bundle_resource_path =
+        ExtensionsBrowserClient::Get()->GetBundleResourcePath(
+            request_, directory_path, &resource_id);
+    if (!bundle_resource_path.empty()) {
+      ExtensionsBrowserClient::Get()->LoadResourceFromResourceBundle(
+          request_, loader_.Unbind(), bundle_resource_path, resource_id,
+          std::move(headers), client_.Unbind());
+      DeleteThis();
+      return;
+    }
+
+    base::FilePath relative_path =
+        file_util::ExtensionURLToRelativeFilePath(request_.url);
+
+    // Do not allow requests for resources in the _metadata folder, since any
+    // files there are internal implementation details that should not be
+    // considered part of the extension.
+    if (base::FilePath(kMetadataFolder).IsParent(relative_path)) {
+      CompleteRequestAndDeleteThis(net::ERR_FILE_NOT_FOUND);
+      return;
+    }
+
+    // Handle shared resources (extension A loading resources out of extension
+    // B).
+    ExtensionId extension_id = extension->id();
+    std::string path = request_.url.path();
+    if (SharedModuleInfo::IsImportedPath(path)) {
+      std::string new_extension_id;
+      std::string new_relative_path;
+      SharedModuleInfo::ParseImportedPath(path, &new_extension_id,
+                                          &new_relative_path);
+      ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context_);
+      const Extension* new_extension =
+          registry->enabled_extensions().GetByID(new_extension_id);
+      if (SharedModuleInfo::ImportsExtensionById(extension.get(),
+                                                 new_extension_id) &&
+          new_extension) {
+        directory_path = new_extension->path();
+        extension_id = new_extension_id;
+        relative_path = base::FilePath::FromUTF8Unsafe(new_relative_path);
+      } else {
+        CompleteRequestAndDeleteThis(net::ERR_BLOCKED_BY_CLIENT);
+        return;
+      }
+    }
+
+    if (g_test_handler) {
+      g_test_handler->Run(&directory_path, &relative_path);
+    }
+
+    extensions::ExtensionResource resource(extension_id, directory_path,
+                                           relative_path);
+    if (follow_symlinks_anywhere) {
+      resource.set_follow_symlinks_anywhere();
+    }
+
+    scoped_refptr<ContentVerifier> content_verifier =
+        extensions::ExtensionSystem::Get(browser_context_)->content_verifier();
+
+    base::ThreadPool::PostTaskAndReplyWithResult(
+        FROM_HERE, {base::MayBlock()},
+        base::BindOnce(&ReadResourceFilePathAndLastModifiedTime, resource,
+                       directory_path),
+        base::BindOnce(&ExtensionURLLoader::OnFilePathAndLastModifiedTimeRead,
+                       weak_ptr_factory_.GetWeakPtr(), resource,
+                       std::move(headers), std::move(content_verifier)));
+  }
+
+  void OnMojoDisconnect() { DeleteThis(); }
+
+  mojo::Receiver<network::mojom::URLLoader> loader_{this};
+  mojo::Remote<network::mojom::URLLoaderClient> client_;
+  network::ResourceRequest request_;
+  const raw_ptr<content::BrowserContext, AcrossTasksDanglingUntriaged>
+      browser_context_;
+  const bool is_web_view_request_;
+
+  // We store the ID and get RenderProcessHost each time it's needed. This is to
+  // avoid holding on to stale pointers if we get requests past the lifetime of
+  // the objects.
+  const int render_process_id_;
+
+  // Tracker for favicon callback.
+  std::unique_ptr<base::CancelableTaskTracker> tracker_;
+
+  // Used for determining if `target_url` is allowed to be requested.
+  GURL upstream_url_;
+
+  base::WeakPtrFactory<ExtensionURLLoader> weak_ptr_factory_{this};
+=======
   DISALLOW_COPY_AND_ASSIGN(FileLoaderObserver);
+>>>>>>> chromium
 };
 
 class ExtensionURLLoaderFactory : public network::SelfDeletingURLLoaderFactory {

@@ -4,6 +4,12 @@
 
 package org.chromium.content.browser;
 
+<<<<<<< HEAD
+import static org.chromium.build.NullUtil.assumeNonNull;
+import static org.chromium.cc.mojom.RootScrollOffsetUpdateFrequency.NONE;
+
+=======
+>>>>>>> chromium
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 
@@ -17,6 +23,12 @@ import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.blink.mojom.EventType;
+<<<<<<< HEAD
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.cc.mojom.RootScrollOffsetUpdateFrequency;
+=======
+>>>>>>> chromium
 import org.chromium.content.browser.input.ImeAdapterImpl;
 import org.chromium.content.browser.selection.SelectionPopupControllerImpl;
 import org.chromium.content.browser.webcontents.WebContentsImpl;
@@ -36,6 +48,7 @@ import org.chromium.ui.base.ViewAndroidDelegate;
  * Instantiated object is held inside {@link UserDataHost} that is managed by {@link WebContents}.
  */
 @JNINamespace("content")
+@NullMarked
 public class GestureListenerManagerImpl
         implements GestureListenerManager, WindowEventObserver, UserData {
     private static final class UserDataFactoryLazyHolder {
@@ -43,11 +56,25 @@ public class GestureListenerManagerImpl
                 GestureListenerManagerImpl::new;
     }
 
+<<<<<<< HEAD
+    private static @Nullable GestureListenerManagerImpl sInstanceForTesting;
+
+    private final WebContentsImpl mWebContents;
+    private final ObserverList<GestureStateListener> mListeners;
+    private final RewindableIterator<GestureStateListener> mIterator;
+    private final HashMap<GestureStateListener, Integer> mListenerFrequency;
+    private @Nullable SelectionPopupControllerImpl mSelectionPopupController;
+    private ViewAndroidDelegate mViewDelegate;
+    private @Nullable InternalAccessDelegate mScrollDelegate;
+    private final boolean mHidePastePopupOnGSB;
+    private final boolean mResetGestureDetectionOnLosingFocus;
+=======
     private final WebContentsImpl mWebContents;
     private final ObserverList<GestureStateListener> mListeners;
     private final RewindableIterator<GestureStateListener> mIterator;
     private ViewAndroidDelegate mViewDelegate;
     private InternalAccessDelegate mScrollDelegate;
+>>>>>>> chromium
 
     private long mNativeGestureListenerManager;
 
@@ -65,12 +92,23 @@ public class GestureListenerManagerImpl
      */
     private boolean mHasActiveFlingScroll;
 
+<<<<<<< HEAD
+    private @RootScrollOffsetUpdateFrequency.EnumType @Nullable Integer
+            mRootScrollOffsetUpdateFrequency;
+
+=======
+>>>>>>> chromium
     /**
      * @param webContents {@link WebContents} object.
      * @return {@link GestureListenerManager} object used for the give WebContents.
      *         Creates one if not present.
      */
+<<<<<<< HEAD
+    public static @Nullable GestureListenerManagerImpl fromWebContents(WebContents webContents) {
+        if (sInstanceForTesting != null) return sInstanceForTesting;
+=======
     public static GestureListenerManagerImpl fromWebContents(WebContents webContents) {
+>>>>>>> chromium
         return ((WebContentsImpl) webContents)
                 .getOrSetUserData(
                         GestureListenerManagerImpl.class, UserDataFactoryLazyHolder.INSTANCE);
@@ -80,7 +118,13 @@ public class GestureListenerManagerImpl
         mWebContents = (WebContentsImpl) webContents;
         mListeners = new ObserverList<GestureStateListener>();
         mIterator = mListeners.rewindableIterator();
+<<<<<<< HEAD
+        mListenerFrequency = new HashMap<>();
+        mViewDelegate = assumeNonNull(mWebContents.getViewAndroidDelegate());
+        mViewDelegate.addVerticalScrollDirectionChangeListener(this);
+=======
         mViewDelegate = mWebContents.getViewAndroidDelegate();
+>>>>>>> chromium
         WindowEventObserverManager.from(mWebContents).addObserver(this);
         mNativeGestureListenerManager = GestureListenerManagerImplJni.get().init(
                 GestureListenerManagerImpl.this, mWebContents);
@@ -369,6 +413,7 @@ public class GestureListenerManagerImpl
     }
 
     private void notifyDelegateOfScrollChange(float scrollOffsetX, float scrollOffsetY) {
+        assumeNonNull(mScrollDelegate);
         RenderCoordinatesImpl rc = mWebContents.getRenderCoordinates();
         mScrollDelegate.onScrollChanged((int) rc.fromLocalCssToPix(scrollOffsetX),
                 (int) rc.fromLocalCssToPix(scrollOffsetY), (int) rc.getScrollXPix(),
@@ -384,6 +429,13 @@ public class GestureListenerManagerImpl
     private void setGestureScrollInProgress(boolean gestureScrollInProgress) {
         mIsGestureScrollInProgress = gestureScrollInProgress;
 
+<<<<<<< HEAD
+        if (mSelectionPopupController == null) {
+            mSelectionPopupController = SelectionPopupControllerImpl.fromWebContents(mWebContents);
+            assumeNonNull(mSelectionPopupController);
+        }
+=======
+>>>>>>> chromium
         // Use the active scroll signal for hiding. The animation movement by
         // fling will naturally hide the ActionMode by invalidating its content
         // rect.

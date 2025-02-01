@@ -48,6 +48,11 @@
 #include "third_party/blink/public/mojom/permissions/permission.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/permissions_policy/document_policy_feature.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/scroll/scrollbar_mode.mojom-blink-forward.h"
+<<<<<<< HEAD
+#include "third_party/blink/public/web/web_form_related_change_type.h"
+#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
+=======
+>>>>>>> chromium
 #include "third_party/blink/renderer/bindings/core/v8/v8_typedefs.h"
 #include "third_party/blink/renderer/core/accessibility/axid.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -59,7 +64,6 @@
 #include "third_party/blink/renderer/core/dom/document_timing.h"
 #include "third_party/blink/renderer/core/dom/live_node_list_registry.h"
 #include "third_party/blink/renderer/core/dom/qualified_name.h"
-#include "third_party/blink/renderer/core/dom/synchronous_mutation_observer.h"
 #include "third_party/blink/renderer/core/dom/text_link_colors.h"
 #include "third_party/blink/renderer/core/dom/tree_scope.h"
 #include "third_party/blink/renderer/core/dom/user_action_element_set.h"
@@ -104,6 +108,11 @@ class BeforeUnloadEventListener;
 class CDATASection;
 class CSSStyleSheet;
 class CanvasFontCache;
+<<<<<<< HEAD
+class CharacterData;
+class CheckPseudoHasCacheScope;
+=======
+>>>>>>> chromium
 class ChromeClient;
 class Comment;
 class CompositorAnimationTimeline;
@@ -884,7 +893,26 @@ class CORE_EXPORT Document : public ContainerNode,
     return user_action_elements_;
   }
 
+<<<<<<< HEAD
+  ExplicitlySetAttrElementsMap* GetExplicitlySetAttrElementsMap(const Element*);
+  void MoveElementExplicitlySetAttrElementsMapToNewDocument(
+      const Element*,
+      Document& new_document);
+  inline bool HasExplicitlySetAttrElements() const {
+    return !element_explicitly_set_attr_elements_map_.empty();
+  }
+  bool HasExplicitlySetAttrElements(const Element* element) const;
+
+  CachedAttrAssociatedElementsMap* GetCachedAttrAssociatedElementsMap(Element*);
+  void MoveElementCachedAttrAssociatedElementsMapToNewDocument(
+      Element*,
+      Document& new_document);
+  inline bool HasCachedAttrAssociatedElements() const {
+    return !element_cached_attr_associated_elements_map_.empty();
+  }
+=======
   ExplicitlySetAttrElementsMap* GetExplicitlySetAttrElementsMap(Element*);
+>>>>>>> chromium
 
   // Returns false if the function fails.  e.g. |pseudo| is not supported.
   bool SetPseudoStateForTesting(Element& element,
@@ -1402,11 +1430,44 @@ class CORE_EXPORT Document : public ContainerNode,
   HeapVector<Member<HTMLPopupElement>>& PopupElementStack() {
     return popup_element_stack_;
   }
+<<<<<<< HEAD
+  HTMLElement* TopmostPopoverOrHint() const;
+  HeapHashSet<Member<HTMLElement>>& PopoversWaitingToHide() {
+    return popovers_waiting_to_hide_;
+  }
+  const HTMLElement* PopoverPointerdownTarget() const {
+    return popover_pointerdown_target_.Get();
+  }
+  void SetPopoverPointerdownTarget(const HTMLElement*);
+  std::optional<gfx::PointF> CustomizableSelectMousedownLocation() const {
+    return customizable_select_mousedown_location_;
+  }
+  void SetCustomizableSelectMousedownLocation(std::optional<gfx::PointF>);
+  const HTMLDialogElement* DialogPointerdownTarget() const;
+  void SetDialogPointerdownTarget(const HTMLDialogElement*);
+
+  HeapLinkedHashSet<Member<HTMLDialogElement>>& AllOpenDialogs() {
+    return all_open_dialogs_;
+  }
+
+  void SetKeyboardInterestTargetElement(Element*);
+  Member<Element> KeyboardInterestTargetElement() const {
+    return keyboard_interest_target_element_;
+  }
+
+  // https://crbug.com/1453291
+  // The DOM Parts API:
+  // https://github.com/WICG/webcomponents/blob/gh-pages/proposals/DOM-Parts.md.
+  DocumentPartRoot& getPartRoot();
+  DocumentPartRoot& EnsureDocumentPartRoot();
+  bool DOMPartsInUse() const { return document_part_root_ != nullptr; }
+=======
   bool PopupShowing() const;
   void HideTopmostPopupElement() const;
   // This hides all visible popups up to, but not including,
   // |endpoint|. If |endpoint| is nullptr, all popups are hidden.
   void HideAllPopupsUntil(const HTMLPopupElement* endpoint);
+>>>>>>> chromium
 
   // A non-null template_document_host_ implies that |this| was created by
   // EnsureTemplateDocument().
@@ -1491,7 +1552,13 @@ class CORE_EXPORT Document : public ContainerNode,
   }
   PropertyRegistry& EnsurePropertyRegistry();
 
+<<<<<<< HEAD
+  // May return nullptr when PerformanceManager instrumentation is disabled,
+  // when the Document is inactive or when the document was installed for
+  // discarding.
+=======
   // May return nullptr when PerformanceManager instrumentation is disabled.
+>>>>>>> chromium
   DocumentResourceCoordinator* GetResourceCoordinator();
 
   const AtomicString& bgColor() const;
@@ -1553,6 +1620,26 @@ class CORE_EXPORT Document : public ContainerNode,
     return slot_assignment_recalc_depth_ == 1;
   }
 
+<<<<<<< HEAD
+  bool ShouldSuppressMutationEvents() const {
+    return suppress_mutation_events_;
+  }
+  // To be called from MutationEventSuppressionScope.
+  void SetSuppressMutationEvents(bool suppress) {
+    suppress_mutation_events_ = suppress;
+  }
+
+  // IsInCreateFragmentForInnerOuterHTML returns true while
+  // CreateFragmentForInnerOuterHTML is running.
+  bool IsInCreateFragmentForInnerOuterHTMLFastPath() const {
+    return is_in_create_fragment_for_inner_outer_html_fast_path_;
+  }
+  void SetIsInCreateFragmentForInnerOuterHTMLFastPath(bool value) {
+    is_in_create_fragment_for_inner_outer_html_fast_path_ = value;
+  }
+
+=======
+>>>>>>> chromium
   bool IsVerticalScrollEnforced() const { return is_vertical_scroll_enforced_; }
   bool IsFocusAllowed() const;
 
@@ -1620,6 +1707,7 @@ class CORE_EXPORT Document : public ContainerNode,
   // NOTE: only for use in testing.
   bool IsAnimatedPropertyCounted(CSSPropertyID property) const;
   void ClearUseCounterForTesting(mojom::WebFeature);
+  void ClearWebDXFeatureCounterForTesting(mojom::blink::WebDXFeature);
 
   void UpdateForcedColors();
   bool InForcedColorsMode() const;
@@ -1656,11 +1744,14 @@ class CORE_EXPORT Document : public ContainerNode,
 
   void CancelPendingJavaScriptUrls();
 
+<<<<<<< HEAD
+=======
   HeapObserverSet<SynchronousMutationObserver>&
   SynchronousMutationObserverSet() {
     return synchronous_mutation_observer_set_;
   }
 
+>>>>>>> chromium
   void NotifyUpdateCharacterData(CharacterData* character_data,
                                  unsigned offset,
                                  unsigned old_length,
@@ -1707,8 +1798,145 @@ class CORE_EXPORT Document : public ContainerNode,
     Document& document_;
   };
 
+<<<<<<< HEAD
+  // Does an element in this document have an HTML dir attribute (or its
+  // implicit equivalent)?
+  bool HasDirAttribute() const { return has_dir_attribute_; }
+  void SetHasDirAttribute() { has_dir_attribute_ = true; }
+
+  ResizeObserver& EnsureResizeObserver();
+
+  void ObserveForIntrinsicSize(Element* element);
+  void UnobserveForIntrinsicSize(Element* element);
+
+  void ObserveForLazyLoadedAutoSizedImg(HTMLImageElement* img);
+  void UnobserveForLazyLoadedAutoSizedImg(HTMLImageElement* img);
+
+  // Returns true if motion should be forcibly reduced in animations on this
+  // document. This returns true if all of the following conditions are true:
+  // 1. The user prefers reduced motion.
+  // 2. The document does not contain a meta tag indicating it supports and uses
+  //    prefers-reduced-motion media queries.
+  // 3. The ForceReduceMotion feature is enabled.
+  // For more details and explanation, see
+  // https://github.com/flackr/reduce-motion/blob/main/explainer.md
+  bool ShouldForceReduceMotion() const;
+
+  void AddPendingLinkHeaderPreload(const PendingLinkPreload&);
+
+  // Has no effect if the preload is not initiated by link header.
+  void RemovePendingLinkHeaderPreloadIfNeeded(const PendingLinkPreload&);
+
+  void WriteIntoTrace(perfetto::TracedValue ctx) const;
+
+  void IncrementIgnoreDestructiveWriteModuleScriptCount() {
+    ignore_destructive_write_module_script_count_++;
+  }
+  unsigned GetIgnoreDestructiveWriteModuleScriptCount() {
+    return ignore_destructive_write_module_script_count_;
+  }
+
+  void IncrementDataListCount() { ++data_list_count_; }
+  void DecrementDataListCount() {
+    DCHECK_GT(data_list_count_, 0u);
+    --data_list_count_;
+  }
+  // Returns true if the Document has at least one data-list associated with
+  // it.
+  bool HasAtLeastOneDataList() const { return data_list_count_; }
+
+  void IncrementDisabledFieldsetCount() { ++disabled_fieldset_count_; }
+  void DecrementDisabledFieldsetCount() {
+    DCHECK_GT(disabled_fieldset_count_, 0u);
+    --disabled_fieldset_count_;
+  }
+  bool HasAtLeastOneDisabledFieldset() const {
+    return disabled_fieldset_count_;
+  }
+
+  // Updates application title based to the latest application title meta tag
+  // value.
+  void UpdateApplicationTitle();
+
+  void ResetAgent(Agent& agent);
+
+  bool SupportsLegacyDOMMutations();
+
+  void EnqueuePageRevealEvent();
+
+  // https://github.com/whatwg/html/pull/9538
+  static Document* parseHTMLUnsafe(ExecutionContext* context,
+                                   const String& html,
+                                   ExceptionState& exception_state);
+
+  // https://wicg.github.io/sanitizer-api/#framework
+  //
+  // parseHTMLUnsafe uses an overload, so that we can separately enable/disable
+  // the |options| parameter. Long-term, the two parseHTMLUnsage methods
+  // should be merged.
+  static Document* parseHTMLUnsafe(ExecutionContext* context,
+                                   const String& html,
+                                   SetHTMLOptions* options,
+                                   ExceptionState& exception_state);
+  static Document* parseHTML(ExecutionContext* context,
+                             const String& html,
+                             SetHTMLOptions* options,
+                             ExceptionState& exception_state);
+
+  // Delays execution of pending async scripts until a milestone is reached.
+  // Used in conjunction with kDelayAsyncScriptExecution experiment.
+  void DelayAsyncScriptExecution();
+  void ResumeAsyncScriptExecution();
+
+  // This method should only be called when the document is top-level and it is
+  // rendering static media like video or images.
+  void SetOverrideSiteForCookiesForCSPMedia(bool value);
+
+  // Flags to determine if LCPP ElementLocator matched during
+  // HTML preload scanning.
+  void SetLcpElementFoundInHtml(bool found);
+  bool IsLcpElementFoundInHtml();
+
+  // Adds/removes an element to the set of elements that need shadow tree
+  // creation on the next layout.
+  void ScheduleShadowTreeCreation(HTMLInputElement& element);
+  void UnscheduleShadowTreeCreation(HTMLInputElement& element);
+
+  void ScheduleSelectionchangeEvent();
+
+  // Reset to false after the event gets callbacked
+  void ResetEventQueueStatus(const AtomicString& event_type) override {
+    if (event_type == event_type_names::kSelectionchange)
+      has_scheduled_selectionchange_event_on_document_ = false;
+  }
+
+  // To partition :visited links, we use a triple-key containing <link_url,
+  // top_level_site, frame_origin>. In practice, this means we are frequently
+  // querying TopFrameOrigin() and constructing a net::SchemefulSite from it.
+  // This is a relatively expensive operation, and since a Document may have
+  // many HTMLAnchorElements, it is much more efficient to calculate the
+  // SchemefulSite once and store that value here for easy access. Since usage
+  // of GetCachedTopFrameSite() is scoped only to VisitedLink use cases, we can
+  // reasonably cache top-level site without fear of stale results, as it is
+  // safe to assume that the top-level site will not change during the
+  // Document's lifetime.
+  class VisitedLinkPassKey {
+   private:
+    friend class HTMLAnchorElementBase;
+    VisitedLinkPassKey() = default;
+    ~VisitedLinkPassKey() = default;
+  };
+  net::SchemefulSite GetCachedTopFrameSite(VisitedLinkPassKey);
+
+#if BUILDFLAG(IS_ANDROID)
+  // This method is invoked when a payment link element is encountered. It
+  // passes the payment link back to browser process through the mojo pipe.
+  void HandlePaymentLink(const KURL& href);
+#endif
+=======
   bool IsDirAttributeDirty() { return dir_attribute_dirty_; }
   void SetDirAttributeDirty() { dir_attribute_dirty_ = true; }
+>>>>>>> chromium
 
  protected:
   void ClearXMLVersion() { xml_version_ = String(); }
@@ -1737,7 +1965,60 @@ class CORE_EXPORT Document : public ContainerNode,
                            BeforeMatchExpandedHiddenMatchableUkm);
   FRIEND_TEST_ALL_PREFIXES(TextFinderSimTest,
                            BeforeMatchExpandedHiddenMatchableUkmNoHandler);
+<<<<<<< HEAD
+  FRIEND_TEST_ALL_PREFIXES(DictionaryLoadFromHeaderTest,
+                           LoadDictionaryFromHeader);
+  FRIEND_TEST_ALL_PREFIXES(
+      RangeTest,
+      ContainerNodeRemovalWithSequentialFocusNavigationStartingPoint);
+  FRIEND_TEST_ALL_PREFIXES(HTMLLinkElementTest,
+                           PaymentLinkHandledWhenRelAndHrefSetBeforeAppend);
+  FRIEND_TEST_ALL_PREFIXES(HTMLLinkElementTest,
+                           PaymentLinkHandledWhenHrefAndRelSetBeforeAppend);
+  FRIEND_TEST_ALL_PREFIXES(HTMLLinkElementTest,
+                           PaymentLinkHandledWhenRelAndHrefSetAfterAppend);
+  FRIEND_TEST_ALL_PREFIXES(HTMLLinkElementTest,
+                           PaymentLinkHandledWhenHrefAndRelSetAfterAppend);
+  FRIEND_TEST_ALL_PREFIXES(HTMLLinkElementTest,
+                           PaymentLinkNotHandledWhenRelNotSet);
+  FRIEND_TEST_ALL_PREFIXES(HTMLLinkElementTest,
+                           PaymentLinkNotHandledWhenHrefNotSet);
+  FRIEND_TEST_ALL_PREFIXES(HTMLLinkElementTest,
+                           PaymentLinkNotHandledWhenNotAppended);
+  FRIEND_TEST_ALL_PREFIXES(HTMLLinkElementSimTest,
+                           PaymentLinkNotHandledWhenNotInTheMainFrame);
+
+  // Listed elements that are not associated to a <form> element.
+  class UnassociatedListedElementsList {
+    DISALLOW_NEW();
+
+   public:
+    void MarkDirty();
+    const ListedElement::List& Get(const Document& owner);
+    void Trace(Visitor*) const;
+
+   private:
+    ListedElement::List list_;
+    // Set this flag if the stored unassociated listed elements were changed.
+    bool dirty_ = false;
+  };
+
+  // Helper class to cache the top level <form> elements of a document.
+  class TopLevelFormsList {
+    DISALLOW_NEW();
+
+   public:
+    void MarkDirty();
+    const HeapVector<Member<HTMLFormElement>>& Get(Document& owner);
+    void Trace(Visitor*) const;
+
+   private:
+    HeapVector<Member<HTMLFormElement>> list_;
+    bool dirty_ = false;
+  };
+=======
   class NetworkStateObserver;
+>>>>>>> chromium
 
   friend class AXContext;
   void AddAXContext(AXContext*);
@@ -1884,6 +2165,12 @@ class CORE_EXPORT Document : public ContainerNode,
   // TODO(bokan): This should eventually be based on the document loading-mode:
   // https://github.com/jeremyroman/alternate-loading-modes/blob/main/prerendering-state.md#documentprerendering
   bool is_prerendering_;
+
+  // Tracks whether the current document was installed as the result of a
+  // discard operation.
+  // TODO(crbug.com/391949533): Explore combining this with
+  // `is_initial_empty_document_`.
+  const bool is_for_discard_;
 
   // Callbacks to execute upon activation of a prerendered page, just before the
   // prerenderingchange event is dispatched.
@@ -2074,7 +2361,7 @@ class CORE_EXPORT Document : public ContainerNode,
   bool has_annotated_regions_;
   bool annotated_regions_dirty_;
 
-  std::unique_ptr<SelectorQueryCache> selector_query_cache_;
+  Member<SelectorQueryCache> selector_query_cache_;
 
   // It is safe to keep a raw, untraced pointer to this stack-allocated
   // cache object: it is set upon the cache object being allocated on
@@ -2109,7 +2396,47 @@ class CORE_EXPORT Document : public ContainerNode,
   // go from earliest (bottom-most) to latest (top-most).
   HeapVector<Member<HTMLPopupElement>> popup_element_stack_;
 
+<<<<<<< HEAD
+  // The stack of currently-displayed popover elements that descend from a root
+  // `popover=auto` element. Elements in the stack go from earliest
+  // (bottom-most) to latest (top-most). Note that `popover=hint` elements can
+  // exist in this stack, but there will never be a `popover=auto` that comes
+  // after that in the stack.
+  HeapVector<Member<HTMLElement>> popover_auto_stack_;
+  // The stack of currently-displayed `popover=hint` elements. Ordering in the
+  // stack is the same as for `popover_auto_stack_`. This stack will only ever
+  // contain `popover=hint` elements, and nothing else.
+  HeapVector<Member<HTMLElement>> popover_hint_stack_;
+  // The popover (if any) that received the most recent pointerdown event.
+  Member<const HTMLElement> popover_pointerdown_target_;
+  // The mouse location for the mousedown that opened the select, if any.
+  std::optional<gfx::PointF> customizable_select_mousedown_location_;
+  // The dialog (if any) that received the most recent pointerdown event. This
+  // is distinct from popover_pointerdown_target_ because the same pointer
+  // action could trigger light dismiss on a containing popover and not a
+  // containing dialog, or vice versa. This will be nullptr for a click on
+  // the ::backdrop pseudo element for a dialog.
+  Member<const HTMLDialogElement> dialog_pointerdown_target_;
+  // A set of popovers for which hidePopover() has been called, but animations
+  // are still running.
+  HeapHashSet<Member<HTMLElement>> popovers_waiting_to_hide_;
+  // A set of all open popovers, of all types.
+  HeapHashSet<Member<HTMLElement>> all_open_popovers_;
+
+  // The ordered list of currently-open dialogs, in order they were opened.
+  HeapLinkedHashSet<Member<HTMLDialogElement>> all_open_dialogs_;
+
+  // If there was a keyboard-activated element with the `interesttarget`
+  // attribute, it will be stored here, so that when other elements are shown
+  // interest, this element can first "lose interest".
+  Member<Element> keyboard_interest_target_element_;
+
+  Member<DocumentPartRoot> document_part_root_;
+
+  int load_event_delay_count_ = 0;
+=======
   int load_event_delay_count_;
+>>>>>>> chromium
 
   // Objects and embeds depend on "being rendered" for delaying the load event.
   // This is a document-wide flag saying that we have incremented the
@@ -2183,6 +2510,11 @@ class CORE_EXPORT Document : public ContainerNode,
 #endif
   unsigned slot_assignment_recalc_depth_ = 0;
   unsigned flat_tree_traversal_forbidden_recursion_depth_ = 0;
+<<<<<<< HEAD
+  bool suppress_mutation_events_ = false;
+  bool is_in_create_fragment_for_inner_outer_html_fast_path_ = false;
+=======
+>>>>>>> chromium
 
   Member<DOMFeaturePolicy> policy_;
 
@@ -2260,12 +2592,15 @@ class CORE_EXPORT Document : public ContainerNode,
 
   bool use_count_fragment_directive_ = false;
 
+<<<<<<< HEAD
+=======
   HeapHashMap<WeakMember<Element>, Member<ExplicitlySetAttrElementsMap>>
       element_explicitly_set_attr_elements_map_;
 
   HeapObserverSet<SynchronousMutationObserver>
       synchronous_mutation_observer_set_;
 
+>>>>>>> chromium
   Member<DisplayLockDocumentState> display_lock_document_state_;
 
   bool in_forced_colors_mode_;

@@ -16,24 +16,41 @@ import android.util.Log;
 
 import androidx.annotation.VisibleForTesting;
 
+<<<<<<< HEAD
+import org.chromium.build.BuildConfig;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.MainDex;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.metrics.RecordHistogram;
+>>>>>>> chromium
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+<<<<<<< HEAD
+/** Exposes system related information about the current device. */
+@NullMarked
+=======
 /**
  * Exposes system related information about the current device.
  */
+>>>>>>> chromium
 @JNINamespace("base::android")
 @MainDex
 public class SysUtils {
     // A device reporting strictly more total memory in megabytes cannot be considered 'low-end'.
+<<<<<<< HEAD
+    // Keep in sync with LOW_MEMORY_DEVICE_THRESHOLD_MB in C++.
+    // LINT.IfChange
+    private static final int LOW_MEMORY_DEVICE_THRESHOLD_MB = 1024;
+    // LINT.ThenChange(//base/features.cc)
+=======
     private static final int ANDROID_LOW_MEMORY_DEVICE_THRESHOLD_MB = 512;
     private static final int ANDROID_O_LOW_MEMORY_DEVICE_THRESHOLD_MB = 1024;
     private static final int BYTES_PER_GIGABYTE = 1024 * 1024 * 1024;
@@ -41,10 +58,11 @@ public class SysUtils {
     // A device reporting more disk capacity in gigabytes than this is considered high end.
     private static final long HIGH_END_DEVICE_DISK_CAPACITY_GB = 24;
 
+>>>>>>> chromium
     private static final String TAG = "SysUtils";
 
-    private static Boolean sLowEndDevice;
-    private static Integer sAmountOfPhysicalMemoryKB;
+    private static @Nullable Boolean sLowEndDevice;
+    private static @Nullable Integer sAmountOfPhysicalMemoryKB;
 
     private static Boolean sHighEndDiskDevice;
 
@@ -114,7 +132,6 @@ public class SysUtils {
     /**
      * @return Whether or not this device should be considered a low end device.
      */
-    @CalledByNative
     public static boolean isLowEndDevice() {
         if (sLowEndDevice == null) {
             sLowEndDevice = detectLowEndDevice();
@@ -125,7 +142,6 @@ public class SysUtils {
     /**
      * @return amount of physical ram detected in KB, or 0 if detection failed.
      */
-    @CalledByNative
     public static int amountOfPhysicalMemoryKB() {
         if (sAmountOfPhysicalMemoryKB == null) {
             sAmountOfPhysicalMemoryKB = detectAmountOfPhysicalMemoryKB();
@@ -163,6 +179,8 @@ public class SysUtils {
 
     @TargetApi(Build.VERSION_CODES.KITKAT)
     private static boolean detectLowEndDevice() {
+        // Keep in sync with the native implementation of this function.
+        // LINT.IfChange
         assert CommandLine.isInitialized();
         if (CommandLine.getInstance().hasSwitch(BaseSwitches.ENABLE_LOW_END_DEVICE_MODE)) {
             return true;
@@ -194,6 +212,7 @@ public class SysUtils {
                 "Android.SysUtilsLowEndMatches", isLowEnd == isLowRam);
 
         return isLowEnd;
+        // LINT.ThenChange(//base/system/sys_info.cc)
     }
 
     /**

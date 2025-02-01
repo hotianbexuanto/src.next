@@ -7,6 +7,8 @@ package org.chromium.content.browser;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.blink.mojom.AndroidFontLookup;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.content.browser.androidoverlay.AndroidOverlayProviderImpl;
 import org.chromium.content.browser.font.AndroidFontLookupImpl;
 import org.chromium.content.mojom.LocalTrustTokenFulfiller;
@@ -19,6 +21,7 @@ import org.chromium.mojo.system.impl.CoreImpl;
 import org.chromium.services.service_manager.InterfaceRegistry;
 
 @JNINamespace("content")
+@NullMarked
 class InterfaceRegistrarImpl {
     private static boolean sHasRegisteredRegistrars;
 
@@ -58,7 +61,7 @@ class InterfaceRegistrarImpl {
 
     private static class SingletonInterfaceRegistrar implements InterfaceRegistrar<Void> {
         @Override
-        public void registerInterfaces(InterfaceRegistry registry, Void v) {
+        public void registerInterfaces(InterfaceRegistry registry, @Nullable Void v) {
             registry.addInterface(
                     AndroidOverlayProvider.MANAGER, new AndroidOverlayProviderImpl.Factory());
             // TODO(avayvod): Register the PresentationService implementation here.

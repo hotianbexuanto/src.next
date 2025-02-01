@@ -12,7 +12,7 @@
 
 #include "base/callback.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
+#include "chrome/browser/task_manager/task_manager_metrics_recorder.h"
 #include "chrome/browser/ui/bookmarks/bookmark_editor.h"
 #include "chrome/browser/web_applications/components/web_app_callback_app_identity.h"
 #include "chrome/browser/web_applications/components/web_app_id.h"
@@ -88,7 +88,9 @@ namespace chrome {
 // Shows or hides the Task Manager. |browser| can be NULL when called from Ash.
 // Returns a pointer to the underlying TableModel, which can be ignored, or used
 // for testing.
-task_manager::TaskManagerTableModel* ShowTaskManager(Browser* browser);
+task_manager::TaskManagerTableModel* ShowTaskManager(
+    Browser* browser,
+    task_manager::StartAction start_action = task_manager::StartAction::kOther);
 void HideTaskManager();
 
 // Creates and shows an HTML dialog with the given delegate and context.
@@ -245,7 +247,9 @@ void ShowPrintJobConfirmationDialog(gfx::NativeWindow parent,
 #if defined(OS_MAC)
 
 // Bridging methods that show/hide the toolkit-views based Task Manager on Mac.
-task_manager::TaskManagerTableModel* ShowTaskManagerViews(Browser* browser);
+task_manager::TaskManagerTableModel* ShowTaskManagerViews(
+    Browser* browser,
+    task_manager::StartAction start_action = task_manager::StartAction::kOther);
 void HideTaskManagerViews();
 
 #endif  // OS_MAC

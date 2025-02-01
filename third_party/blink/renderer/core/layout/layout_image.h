@@ -29,6 +29,7 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/layout/layout_image_resource.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
+#include "third_party/blink/renderer/core/layout/natural_sizing_info.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_client.h"
 
 namespace blink {
@@ -109,7 +110,11 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
  protected:
   bool NeedsPreferredWidthsRecalculation() const final;
   SVGImage* EmbeddedSVGImage() const;
+<<<<<<< HEAD
+  PhysicalNaturalSizingInfo GetNaturalDimensions() const override;
+=======
   void ComputeIntrinsicSizingInfo(IntrinsicSizingInfo&) const override;
+>>>>>>> chromium
 
   void ImageChanged(WrappedImagePtr, CanDeferInvalidation) override;
 
@@ -156,6 +161,13 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
                    HitTestAction) final;
 
   void InvalidatePaintAndMarkForLayoutIfNeeded(CanDeferInvalidation);
+<<<<<<< HEAD
+  bool UpdateNaturalSizeIfNeeded();
+  bool NeedsLayoutOnNaturalSizeChange() const;
+
+  // The natural dimensions for the image.
+  PhysicalNaturalSizingInfo natural_dimensions_;
+=======
   void UpdateIntrinsicSizeIfNeeded(const LayoutSize&);
   bool NeedsLayoutOnIntrinsicSizeChange() const;
   // Override intrinsic sizing info to default if "unsized-media"
@@ -163,6 +175,7 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
   bool OverrideIntrinsicSizingInfo(IntrinsicSizingInfo&) const;
   bool HasOverriddenIntrinsicSize() const;
   FloatSize ImageSizeOverriddenByIntrinsicSize(float multiplier) const;
+>>>>>>> chromium
 
   // This member wraps the associated decoded image.
   //

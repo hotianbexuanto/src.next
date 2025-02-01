@@ -1175,4 +1175,142 @@ IN_PROC_BROWSER_TEST_F(NetworkServiceRestartBrowserTest,
                                 final_resource_url)));
 }
 
+<<<<<<< HEAD
+// Nonces whose network access is revoked should be restored in `NetworkContext`
+// in case of a `NetworkService` crash, which destroys the `NetworkContext`
+// owned by `NetworkService` and the set of network revocation nonces in
+// `NetworkContext`.
+IN_PROC_BROWSER_TEST_F(NetworkServiceRestartBrowserTest,
+                       RestoreNetworkRevocationNonces) {
+  if (IsInProcessNetworkService()) {
+    return;
+  }
+  StoragePartitionImpl* partition = static_cast<StoragePartitionImpl*>(
+      browser_context()->GetDefaultStoragePartition());
+
+  network::mojom::NetworkContext* old_network_context =
+      partition->GetNetworkContext();
+
+  // Revoke network access for the generated nonce.
+  base::UnguessableToken nonce = base::UnguessableToken::Create();
+  partition->RevokeNetworkForNoncesInNetworkContext({nonce}, base::DoNothing());
+
+  // Make a get request, which should be blocked.
+  network::mojom::URLLoaderFactoryParamsPtr params =
+      network::mojom::URLLoaderFactoryParams::New();
+  params->process_id = network::mojom::kBrowserProcessId;
+  params->is_orb_enabled = false;
+  params->isolation_info = net::IsolationInfo::CreateTransient(nonce);
+
+  network::ResourceRequest request;
+  request.url = GetTestURL();
+  std::unique_ptr<network::TestURLLoaderClient> old_client =
+      FetchRequest(request, old_network_context, std::move(params));
+
+  old_client->RunUntilComplete();
+  EXPECT_EQ(net::ERR_NETWORK_ACCESS_REVOKED,
+            old_client->completion_status().error_code);
+
+  // Crash the NetworkService process. Existing interfaces should receive error
+  // notifications at some point.
+  SimulateNetworkServiceCrash();
+  // Flush the interface to make sure the error notification was received.
+  partition->FlushNetworkInterfaceForTesting();
+
+  // |partition->GetNetworkContext()| should return a valid new pointer after
+  // crash. The revoked nonces should be restored in the new NetworkContext.
+  network::mojom::NetworkContext* new_network_context =
+      partition->GetNetworkContext();
+  EXPECT_NE(old_network_context, new_network_context);
+
+  // Make another get request, which should still be blocked.
+  network::mojom::URLLoaderFactoryParamsPtr new_params =
+      network::mojom::URLLoaderFactoryParams::New();
+  new_params->process_id = network::mojom::kBrowserProcessId;
+  new_params->is_orb_enabled = false;
+  new_params->isolation_info = net::IsolationInfo::CreateTransient(nonce);
+
+  std::unique_ptr<network::TestURLLoaderClient> new_client =
+      FetchRequest(request, new_network_context, std::move(new_params));
+
+  new_client->RunUntilComplete();
+  EXPECT_EQ(net::ERR_NETWORK_ACCESS_REVOKED,
+            new_client->completion_status().error_code);
+}
+
+class NetworkServiceRestartWithFirstPartySetBrowserTest
+    : public NetworkServiceRestartBrowserTest {
+ public:
+  NetworkServiceRestartWithFirstPartySetBrowserTest()
+      : https_server_(net::EmbeddedTestServer::TYPE_HTTPS) {
+    scoped_feature_list_.InitWithFeatures(
+        {net::features::kWaitForFirstPartySetsInit}, {});
+  }
+
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    NetworkServiceRestartBrowserTest::SetUpCommandLine(command_line);
+    command_line->AppendSwitchASCII(
+        network::switches::kUseRelatedWebsiteSet,
+        R"({"primary": "https://a.test",)"
+        R"("associatedSites": ["https://b.test","https://c.test"]})");
+  }
+
+  void SetUpOnMainThread() override {
+    NetworkServiceRestartBrowserTest::SetUpOnMainThread();
+    host_resolver()->AddRule("*", "127.0.0.1");
+    https_server()->SetSSLConfig(net::EmbeddedTestServer::CERT_TEST_NAMES);
+    https_server()->AddDefaultHandlers(GetTestDataFilePath());
+    ASSERT_TRUE(https_server()->Start());
+  }
+
+  GURL EchoCookiesUrl(const std::string& host) {
+    return https_server_.GetURL(host, "/echoheader?Cookie");
+  }
+
+  void SetCookie(const std::string& host) {
+    ASSERT_TRUE(content::SetCookie(web_contents()->GetBrowserContext(),
+                                   https_server()->GetURL(host, "/"),
+                                   base::StrCat({kCookieName, "=1; secure"})));
+  }
+
+  net::EmbeddedTestServer* https_server() { return &https_server_; }
+
+  WebContents* web_contents() { return shell()->web_contents(); }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+  net::test_server::EmbeddedTestServer https_server_;
+};
+
+IN_PROC_BROWSER_TEST_F(NetworkServiceRestartWithFirstPartySetBrowserTest,
+                       GetsUseFirstPartySetSwitch) {
+  // Network service is not running out of process, so cannot be crashed.
+  if (!content::IsOutOfProcessNetworkService()) {
+    return;
+  }
+
+  SetCookie(kHostA);
+
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), EchoCookiesUrl(kHostA)));
+  EXPECT_THAT(content::EvalJs(web_contents(), "document.body.textContent")
+                  .ExtractString(),
+              net::CookieStringIs(
+                  testing::UnorderedElementsAre(testing::Key(kCookieName))));
+
+  SimulateNetworkServiceCrash();
+
+  // content_shell uses an in-memory cookie store, so cookies are not persisted,
+  // but that's ok. What matters is that the FPS data is re-plumbed to the
+  // network service upon restart, so network requests don't deadlock.
+  SetCookie(kHostA);
+
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), EchoCookiesUrl(kHostA)));
+  EXPECT_THAT(content::EvalJs(web_contents(), "document.body.textContent")
+                  .ExtractString(),
+              net::CookieStringIs(
+                  testing::UnorderedElementsAre(testing::Key(kCookieName))));
+}
+
+=======
+>>>>>>> chromium
 }  // namespace content

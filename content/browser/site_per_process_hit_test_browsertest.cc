@@ -103,7 +103,8 @@ class TestInputEventObserver : public RenderWidgetHost::InputEventObserver {
 
   const blink::WebInputEvent& event() const { return *event_; }
 
-  void OnInputEvent(const blink::WebInputEvent& event) override {
+  void OnInputEvent(const RenderWidgetHost& widget,
+                    const blink::WebInputEvent& event) override {
     events_received_.push_back(event.GetType());
     event_ = event.Clone();
   }
@@ -112,7 +113,8 @@ class TestInputEventObserver : public RenderWidgetHost::InputEventObserver {
     return events_acked_;
   }
 
-  void OnInputEventAck(blink::mojom::InputEventResultSource source,
+  void OnInputEventAck(const RenderWidgetHost& widget,
+                       blink::mojom::InputEventResultSource source,
                        blink::mojom::InputEventResultState state,
                        const blink::WebInputEvent&) override {
     events_acked_.push_back(source);
@@ -871,27 +873,6 @@ class SitePerProcessNonIntegerScaleFactorHitTestBrowserTest
   }
 };
 
-//
-// SitePerProcessUserActivationHitTestBrowserTest
-//
-
-class SitePerProcessUserActivationHitTestBrowserTest
-    : public SitePerProcessHitTestBrowserTest {
- public:
-  SitePerProcessUserActivationHitTestBrowserTest() {}
-
- protected:
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    SitePerProcessBrowserTestBase::SetUpCommandLine(command_line);
-    ui::PlatformEventSource::SetIgnoreNativePlatformEvents(true);
-    feature_list_.InitAndEnableFeature(
-        features::kBrowserVerifiedUserActivationMouse);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
 // Restrict to Aura to we can use routable MouseWheel event via
 // RenderWidgetHostViewAura::OnScrollEvent().
 #if defined(USE_AURA)
@@ -921,7 +902,12 @@ INSTANTIATE_TEST_SUITE_P(All,
                          testing::Combine(testing::ValuesIn(kMultiScale)));
 
 // Flaky on MSAN. https://crbug.com/959924
+<<<<<<< HEAD
+// Flaky on Linux Wayland. https://crbug.com/1158437
+#if defined(MEMORY_SANITIZER) || BUILDFLAG(IS_LINUX)
+=======
 #if defined(MEMORY_SANITIZER)
+>>>>>>> chromium
 #define MAYBE_ScrollNestedLocalNonFastScrollableDiv \
   DISABLED_ScrollNestedLocalNonFastScrollableDiv
 #else
@@ -1827,7 +1813,8 @@ class OutgoingEventWaiter : public RenderWidgetHost::InputEventObserver {
       rwh_->RemoveInputEventObserver(this);
   }
 
-  void OnInputEvent(const blink::WebInputEvent& event) override {
+  void OnInputEvent(const RenderWidgetHost& widget,
+                    const blink::WebInputEvent& event) override {
     if (event.GetType() == type_) {
       seen_event_ = true;
       if (quit_closure_)
@@ -1865,7 +1852,8 @@ class BadInputEventObserver : public RenderWidgetHost::InputEventObserver {
       rwh_->RemoveInputEventObserver(this);
   }
 
-  void OnInputEvent(const blink::WebInputEvent& event) override {
+  void OnInputEvent(const RenderWidgetHost& widget,
+                    const blink::WebInputEvent& event) override {
     EXPECT_NE(type_, event.GetType())
         << "Unexpected " << blink::WebInputEvent::GetName(event.GetType());
   }
@@ -5225,7 +5213,15 @@ void SendTouchpadPinchSequenceWithExpectedTarget(
   EXPECT_EQ(expected_target, router_touchpad_gesture_target);
   target_monitor.ResetEventsReceived();
 
+<<<<<<< HEAD
+  InputEventAckWaiter pinch_update_waiter(
+      expected_target->GetRenderWidgetHost(),
+      blink::WebInputEvent::Type::kGesturePinchUpdate);
+  ui::GestureEventDetails pinch_update_details(
+      ui::EventType::kGesturePinchUpdate);
+=======
   ui::GestureEventDetails pinch_update_details(ui::ET_GESTURE_PINCH_UPDATE);
+>>>>>>> chromium
   pinch_update_details.set_device_type(ui::GestureDeviceType::DEVICE_TOUCHPAD);
   pinch_update_details.set_scale(1.23);
   ui::GestureEvent pinch_update(gesture_point.x(), gesture_point.y(), 0,
@@ -5237,6 +5233,7 @@ void SendTouchpadPinchSequenceWithExpectedTarget(
   EXPECT_EQ(target_monitor.EventType(),
             blink::WebInputEvent::Type::kGesturePinchUpdate);
   target_monitor.ResetEventsReceived();
+  pinch_update_waiter.Wait();
 
   ui::GestureEventDetails pinch_end_details(ui::ET_GESTURE_PINCH_END);
   pinch_end_details.set_device_type(ui::GestureDeviceType::DEVICE_TOUCHPAD);
@@ -5245,8 +5242,8 @@ void SendTouchpadPinchSequenceWithExpectedTarget(
   UpdateEventRootLocation(&pinch_end, root_view_aura);
   root_view_aura->OnGestureEvent(&pinch_end);
   EXPECT_TRUE(target_monitor.EventWasReceived());
-  EXPECT_EQ(target_monitor.EventType(),
-            blink::WebInputEvent::Type::kGesturePinchEnd);
+  EXPECT_TRUE(base::Contains(target_monitor.events_received(),
+                             blink::WebInputEvent::Type::kGesturePinchEnd));
   EXPECT_EQ(nullptr, router_touchpad_gesture_target);
 }
 
@@ -5492,6 +5489,26 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessHitTestBrowserTest,
   RenderWidgetHostInputEventRouter* router = contents->GetInputEventRouter();
   EXPECT_EQ(nullptr, router->touchpad_gesture_target_);
 
+<<<<<<< HEAD
+  // TODO(crbug.com/40578618): If we send multiple touchpad pinch sequences to
+  // separate views and the timing of the acks are such that the begin ack of
+  // the second sequence arrives in the root before the end ack of the first
+  // sequence, we would produce an invalid gesture event sequence. For now, we
+  // wait for the root to receive the end ack before sending a pinch sequence to
+  // a different view. The root view should preserve validity of input event
+  // sequences when processing acks from multiple views, so that waiting here is
+  // not necessary.
+  InputEventAckWaiter pinch_end_waiter(
+      rwhv_parent->GetRenderWidgetHost(),
+      base::BindRepeating([](blink::mojom::InputEventResultSource,
+                             blink::mojom::InputEventResultState,
+                             const blink::WebInputEvent& event) {
+        return event.GetType() ==
+                   blink::WebGestureEvent::Type::kGesturePinchEnd &&
+               !static_cast<const blink::WebGestureEvent&>(event)
+                    .NeedsWheelEvent();
+      }));
+=======
   // TODO(848050): If we send multiple touchpad pinch sequences to separate
   // views and the timing of the acks are such that the begin ack of the second
   // sequence arrives in the root before the end ack of the first sequence, we
@@ -5514,6 +5531,7 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessHitTestBrowserTest,
         pinch_end_observer.Wait();
       },
       rwhv_parent->GetRenderWidgetHost());
+>>>>>>> chromium
 
   gfx::Point main_frame_point(25, 25);
   gfx::Point child_center(150, 150);
@@ -5523,13 +5541,15 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessHitTestBrowserTest,
                                               router->touchpad_gesture_target_,
                                               rwhv_parent);
 
-  wait_for_pinch_sequence_end.Run();
+  pinch_end_waiter.Wait();
+  pinch_end_waiter.Reset();
 
   // Send touchpad pinch sequence to child.
   SendTouchpadPinchSequenceWithExpectedTarget(
       rwhv_parent, child_center, router->touchpad_gesture_target_, rwhv_child);
 
-  wait_for_pinch_sequence_end.Run();
+  pinch_end_waiter.Wait();
+  pinch_end_waiter.Reset();
 
   // Send another touchpad pinch sequence to main frame.
   SendTouchpadPinchSequenceWithExpectedTarget(rwhv_parent, main_frame_point,
@@ -5959,11 +5979,18 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessHitTestBrowserTest, MAYBE_PopupMenuTest) {
   // Android use native widgets. Windows does not support this as UI
   // convention (it requires separate clicks to open the menu and select an
   // option). See https://crbug.com/703191.
+<<<<<<< HEAD
+  int process_id =
+      child_node->current_frame_host()->GetProcess()->GetDeprecatedID();
+  popup_waiter.emplace(web_contents(), child_node->current_frame_host());
+  input::RenderWidgetHostInputEventRouter* router =
+=======
   int process_id = child_node->current_frame_host()->GetProcess()->GetID();
   popup_waiter->Stop();
   popup_waiter = std::make_unique<ShowPopupWidgetWaiter>(
       web_contents(), child_node->current_frame_host());
   RenderWidgetHostInputEventRouter* router =
+>>>>>>> chromium
       static_cast<WebContentsImpl*>(shell()->web_contents())
           ->GetInputEventRouter();
   // Re-open the select element.
@@ -6611,7 +6638,13 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessNonIntegerScaleFactorHitTestBrowserTest,
 }
 
 // MacOSX does not have fractional device scales.
+<<<<<<< HEAD
+// Linux started failing after Wayland window configuration fixes have
+// landed. TODO(crbug.com/40832051): Re-enable once the test issue is addressed.
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+=======
 #if defined(OS_MAC)
+>>>>>>> chromium
 #define MAYBE_NestedSurfaceHitTestTest DISABLED_NestedSurfaceHitTestTest
 #else
 #define MAYBE_NestedSurfaceHitTestTest NestedSurfaceHitTestTest
@@ -6827,6 +6860,8 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessHitTestBrowserTest,
   }
 }
 
+<<<<<<< HEAD
+=======
 IN_PROC_BROWSER_TEST_F(SitePerProcessUserActivationHitTestBrowserTest,
                        RenderWidgetUserActivationStateTest) {
   GURL main_url(embedded_test_server()->GetURL(
@@ -6915,6 +6950,7 @@ IN_PROC_BROWSER_TEST_F(SitePerProcessUserActivationHitTestBrowserTest,
                    ->RemovePendingUserActivationIfAvailable());
 }
 
+>>>>>>> chromium
 class SitePerProcessHitTestDataGenerationBrowserTest
     : public SitePerProcessHitTestBrowserTest {
  public:
@@ -7345,6 +7381,19 @@ class SitePerProcessDelegatedInkBrowserTest
 // Test confirms that a point hitting an OOPIF that is requesting delegated ink
 // trails results in the metadata being correctly sent to the child's
 // RenderWidgetHost and is usable for sending delegated ink points.
+<<<<<<< HEAD
+// TODO(crbug.com/40835227): Fix and enable the test on Fuchsia.
+// TODO(crbug.com/40935254): flaky on ChromeOS
+// TODO(http://b/331190208): Test failing on Linux
+#if BUILDFLAG(IS_FUCHSIA) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_WIN)
+#define MAYBE_MetadataAndPointGoThroughOOPIF \
+  DISABLED_MetadataAndPointGoThroughOOPIF
+#else
+#define MAYBE_MetadataAndPointGoThroughOOPIF MetadataAndPointGoThroughOOPIF
+#endif
+=======
+>>>>>>> chromium
 IN_PROC_BROWSER_TEST_F(SitePerProcessDelegatedInkBrowserTest,
                        MetadataAndPointGoThroughOOPIF) {
   // Delegated ink is only supported on Skia Renderer for now.

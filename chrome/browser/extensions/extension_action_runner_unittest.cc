@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chrome/browser/extensions/extension_action_runner.h"
+
 #include <stddef.h>
 
 #include <map>
@@ -11,9 +13,15 @@
 #include "base/values.h"
 #include "chrome/browser/extensions/active_tab_permission_granter.h"
 #include "chrome/browser/extensions/api/extension_action/extension_action_api.h"
+<<<<<<< HEAD
+#include "chrome/browser/extensions/permissions/active_tab_permission_granter.h"
+#include "chrome/browser/extensions/permissions/permissions_updater.h"
+#include "chrome/browser/extensions/permissions/scripting_permissions_modifier.h"
+=======
 #include "chrome/browser/extensions/extension_action_runner.h"
 #include "chrome/browser/extensions/permissions_updater.h"
 #include "chrome/browser/extensions/scripting_permissions_modifier.h"
+>>>>>>> chromium
 #include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
@@ -80,8 +88,14 @@ class ExtensionActionRunnerUnitTest : public ChromeRenderViewHostTestHarness {
 
   void SetUp() override;
 
+  void TearDown() override;
+
   // The associated ExtensionActionRunner.
+<<<<<<< HEAD
+  raw_ptr<ExtensionActionRunner> extension_action_runner_ = nullptr;
+=======
   ExtensionActionRunner* extension_action_runner_ = nullptr;
+>>>>>>> chromium
 
   // The map of observed executions, keyed by extension id.
   std::map<std::string, int> extension_executions_;
@@ -183,6 +197,40 @@ void ExtensionActionRunnerUnitTest::SetUp() {
   DCHECK(extension_action_runner_);
 }
 
+<<<<<<< HEAD
+void ExtensionActionRunnerUnitTest::TearDown() {
+  extension_action_runner_ = nullptr;
+  ChromeRenderViewHostTestHarness::TearDown();
+}
+
+// TODO(crbug.com/40883928): Split the test by need for refresh or not to
+// confirm the blocked actions are running as expected. Tests that when an
+// extension is granted permissions (independent of page reload) the extension
+// is allowed to run.
+TEST_F(ExtensionActionRunnerUnitTest, GrantTabPermissions) {
+  ActiveTabPermissionGranter* active_tab_permission_granter =
+      TabHelper::FromWebContents(web_contents())
+          ->active_tab_permission_granter();
+  ASSERT_TRUE(active_tab_permission_granter);
+
+  const Extension* extension = AddExtension();
+  EXPECT_EQ(0u, GetExecutionCountForExtension(extension->id()));
+  NavigateAndCommit(GURL("https://www.google.com"));
+  RequestInjection(extension);
+  EXPECT_TRUE(RequiresUserConsent(extension));
+  EXPECT_TRUE(runner()->WantsToRun(extension));
+
+  runner()->GrantTabPermissions({extension});
+  EXPECT_TRUE(content::WaitForLoadStop(web_contents()));
+  task_environment()->RunUntilIdle();
+
+  EXPECT_EQ(1u, GetExecutionCountForExtension(extension->id()));
+  EXPECT_FALSE(RequiresUserConsent(extension));
+  EXPECT_FALSE(runner()->WantsToRun(extension));
+}
+
+=======
+>>>>>>> chromium
 // Test that extensions with all_hosts require permission to execute, and, once
 // that permission is granted, do execute.
 TEST_F(ExtensionActionRunnerUnitTest, RequestPermissionAndExecute) {

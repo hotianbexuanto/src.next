@@ -90,8 +90,13 @@ class ContextTestBase : public content::ContentBrowserTest {
 
 // Include the shared tests.
 #define CONTEXT_TEST_F IN_PROC_BROWSER_TEST_F
+<<<<<<< HEAD
+#include "base/functional/bind.h"
+#include "base/task/single_thread_task_runner.h"
+=======
 #include "base/bind.h"
 #include "build/chromeos_buildflags.h"
+>>>>>>> chromium
 #include "content/public/browser/browser_thread.h"
 #include "gpu/ipc/client/gpu_context_tests.h"
 
@@ -146,9 +151,13 @@ class BrowserGpuChannelHostFactoryTest : public ContentBrowserTest {
 
 // Test fails on Chromeos + Mac, flaky on Windows because UI Compositor
 // establishes a GPU channel.
+<<<<<<< HEAD
+#if BUILDFLAG(IS_LINUX)
+=======
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
 #if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+>>>>>>> chromium
 #define MAYBE_Basic Basic
 #else
 #define MAYBE_Basic DISABLED_Basic
@@ -162,9 +171,13 @@ IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest, MAYBE_Basic) {
 #if !defined(OS_ANDROID)
 // Test fails on Chromeos + Mac, flaky on Windows because UI Compositor
 // establishes a GPU channel.
+<<<<<<< HEAD
+#if BUILDFLAG(IS_LINUX)
+=======
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
 #if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+>>>>>>> chromium
 #define MAYBE_AlreadyEstablished AlreadyEstablished
 #else
 #define MAYBE_AlreadyEstablished DISABLED_AlreadyEstablished
@@ -242,9 +255,13 @@ IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
 
 // Test fails on Chromeos + Mac, flaky on Windows because UI Compositor
 // establishes a GPU channel.
+<<<<<<< HEAD
+#if BUILDFLAG(IS_LINUX)
+=======
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
 #if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+>>>>>>> chromium
 #define MAYBE_CrashAndRecover CrashAndRecover
 #else
 #define MAYBE_CrashAndRecover DISABLED_CrashAndRecover
@@ -272,10 +289,15 @@ IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
 }
 
 // Disabled outside linux like other tests here sadface.
+<<<<<<< HEAD
+// crbug.com/1224892: the test if flaky on linux.
+#if BUILDFLAG(IS_LINUX)
+=======
 // crbug.com/1224892: the test if flaky on linux and lacros.
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
 #if defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+>>>>>>> chromium
 IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
                        DISABLED_CreateTransferBuffer) {
   DCHECK(!IsChannelEstablished());
@@ -292,12 +314,20 @@ IN_PROC_BROWSER_TEST_F(BrowserGpuChannelHostFactoryTest,
   attributes.bind_generates_resource = false;
 
   auto impl = std::make_unique<gpu::CommandBufferProxyImpl>(
+<<<<<<< HEAD
+      GetGpuChannel(), content::kGpuStreamIdDefault,
+      base::SingleThreadTaskRunner::GetCurrentDefault());
+  ASSERT_EQ(impl->Initialize(nullptr, content::kGpuStreamPriorityDefault,
+                             attributes, GURL()),
+            gpu::ContextResult::kSuccess);
+=======
       GetGpuChannel(), GetFactory()->GetGpuMemoryBufferManager(),
       content::kGpuStreamIdDefault, base::ThreadTaskRunnerHandle::Get());
   ASSERT_EQ(
       impl->Initialize(gpu::kNullSurfaceHandle, nullptr,
                        content::kGpuStreamPriorityDefault, attributes, GURL()),
       gpu::ContextResult::kSuccess);
+>>>>>>> chromium
 
   // Creating a transfer buffer works normally.
   int32_t id = -1;

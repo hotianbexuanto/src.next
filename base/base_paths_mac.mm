@@ -5,14 +5,25 @@
 // Defines base::PathProviderMac which replaces base::PathProviderPosix for Mac
 // in base/path_service.cc.
 
+<<<<<<< HEAD
+#include "base/base_paths.h"
+
+=======
 #include <dlfcn.h>
+>>>>>>> chromium
 #import <Foundation/Foundation.h>
 #include <mach-o/dyld.h>
 #include <stdint.h>
 
+<<<<<<< HEAD
+#include "base/apple/bundle_locations.h"
+#include "base/apple/foundation_util.h"
+#include "base/base_paths_apple.h"
+=======
 #include "base/base_paths.h"
 #include "base/check_op.h"
 #include "base/compiler_specific.h"
+>>>>>>> chromium
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/mac/bundle_locations.h"

@@ -23,8 +23,7 @@ CommandUpdaterImpl::CommandUpdaterImpl(CommandUpdaterDelegate* delegate)
     : delegate_(delegate) {
 }
 
-CommandUpdaterImpl::~CommandUpdaterImpl() {
-}
+CommandUpdaterImpl::~CommandUpdaterImpl() = default;
 
 bool CommandUpdaterImpl::SupportsCommand(int id) const {
   return commands_.find(id) != commands_.end();

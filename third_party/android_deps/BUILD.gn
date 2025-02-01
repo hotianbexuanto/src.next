@@ -197,7 +197,11 @@ java_prebuilt("com_google_code_findbugs_jsr305_java") {
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
 java_prebuilt("com_google_code_gson_gson_java") {
+<<<<<<< HEAD
+  jar_path = "cipd/libs/com_google_code_gson_gson/gson-2.8.0.jar"
+=======
   jar_path = "libs/com_google_code_gson_gson/gson-2.8.0.jar"
+>>>>>>> chromium
   output_name = "com_google_code_gson_gson"
   enable_bytecode_checks = false
 }
@@ -312,14 +316,21 @@ java_prebuilt("com_google_guava_failureaccess_java") {
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
 java_prebuilt("com_google_guava_guava_java") {
+<<<<<<< HEAD
+  jar_path = "cipd/libs/com_google_guava_guava/guava-33.3.1-jre.jar"
+=======
   jar_path = "libs/com_google_guava_guava/guava-30.1-jre.jar"
+>>>>>>> chromium
   output_name = "com_google_guava_guava"
   enable_bytecode_checks = false
   deps = [
     ":com_google_code_findbugs_jsr305_java",
     ":com_google_errorprone_error_prone_annotations_java",
+<<<<<<< HEAD
+=======
     ":com_google_guava_failureaccess_java",
     ":com_google_guava_listenablefuture_java",
+>>>>>>> chromium
     ":com_google_j2objc_j2objc_annotations_java",
     ":org_checkerframework_checker_qual_java",
   ]
@@ -342,8 +353,12 @@ java_prebuilt("com_google_guava_listenablefuture_java") {
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
 java_prebuilt("com_google_j2objc_j2objc_annotations_java") {
+<<<<<<< HEAD
+  jar_path = "cipd/libs/com_google_j2objc_j2objc_annotations/j2objc-annotations-3.0.0.jar"
+=======
   jar_path =
       "libs/com_google_j2objc_j2objc_annotations/j2objc-annotations-1.3.jar"
+>>>>>>> chromium
   output_name = "com_google_j2objc_j2objc_annotations"
   supports_android = true
 
@@ -359,9 +374,16 @@ java_prebuilt("com_squareup_javapoet_java") {
 }
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+<<<<<<< HEAD
+java_prebuilt("org_checkerframework_checker_qual_java") {
+  jar_path =
+      "cipd/libs/org_checkerframework_checker_qual/checker-qual-3.43.0.jar"
+  output_name = "org_checkerframework_checker_qual"
+=======
 java_prebuilt("javax_annotation_jsr250_api_java") {
   jar_path = "libs/javax_annotation_jsr250_api/jsr250-api-1.0.jar"
   output_name = "javax_annotation_jsr250_api"
+>>>>>>> chromium
   supports_android = true
 }
 
@@ -392,14 +414,22 @@ java_prebuilt("org_jetbrains_kotlin_kotlin_stdlib_java") {
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
 java_prebuilt("org_ow2_asm_asm_java") {
+<<<<<<< HEAD
+  jar_path = "cipd/libs/org_ow2_asm_asm/asm-9.7.1.jar"
+=======
   jar_path = "libs/org_ow2_asm_asm/asm-7.0.jar"
+>>>>>>> chromium
   output_name = "org_ow2_asm_asm"
   enable_bytecode_checks = false
 }
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
 java_prebuilt("org_ow2_asm_asm_commons_java") {
+<<<<<<< HEAD
+  jar_path = "cipd/libs/org_ow2_asm_asm_commons/asm-commons-9.7.1.jar"
+=======
   jar_path = "libs/org_ow2_asm_asm_commons/asm-commons-7.0.jar"
+>>>>>>> chromium
   output_name = "org_ow2_asm_asm_commons"
   enable_bytecode_checks = false
   deps = [
@@ -411,7 +441,11 @@ java_prebuilt("org_ow2_asm_asm_commons_java") {
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
 java_prebuilt("org_ow2_asm_asm_tree_java") {
+<<<<<<< HEAD
+  jar_path = "cipd/libs/org_ow2_asm_asm_tree/asm-tree-9.7.1.jar"
+=======
   jar_path = "libs/org_ow2_asm_asm_tree/asm-tree-7.0.jar"
+>>>>>>> chromium
   output_name = "org_ow2_asm_asm_tree"
   enable_bytecode_checks = false
   deps = [ ":org_ow2_asm_asm_java" ]
@@ -419,7 +453,11 @@ java_prebuilt("org_ow2_asm_asm_tree_java") {
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
 java_prebuilt("org_ow2_asm_asm_util_java") {
+<<<<<<< HEAD
+  jar_path = "cipd/libs/org_ow2_asm_asm_util/asm-util-9.7.1.jar"
+=======
   jar_path = "libs/org_ow2_asm_asm_util/asm-util-7.0.jar"
+>>>>>>> chromium
   output_name = "org_ow2_asm_asm_util"
   enable_bytecode_checks = false
   deps = [
@@ -430,9 +468,16 @@ java_prebuilt("org_ow2_asm_asm_util_java") {
 }
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+<<<<<<< HEAD
+java_prebuilt("com_google_guava_failureaccess_java") {
+  jar_path = "cipd/libs/com_google_guava_failureaccess/failureaccess-1.0.2.jar"
+  output_name = "com_google_guava_failureaccess"
+  supports_android = true
+=======
 java_prebuilt("com_github_ben_manes_caffeine_caffeine_java") {
   jar_path = "libs/com_github_ben_manes_caffeine_caffeine/caffeine-2.8.8.jar"
   output_name = "com_github_ben_manes_caffeine_caffeine"
+>>>>>>> chromium
   enable_bytecode_checks = false
 
   # To remove visibility constraint, add this dependency to
@@ -728,7 +773,11 @@ java_prebuilt("org_jetbrains_kotlinx_kotlinx_metadata_jvm_java") {
 
 # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
 java_prebuilt("org_ow2_asm_asm_analysis_java") {
+<<<<<<< HEAD
+  jar_path = "cipd/libs/org_ow2_asm_asm_analysis/asm-analysis-9.7.1.jar"
+=======
   jar_path = "libs/org_ow2_asm_asm_analysis/asm-analysis-7.0.jar"
+>>>>>>> chromium
   output_name = "org_ow2_asm_asm_analysis"
   enable_bytecode_checks = false
 
@@ -910,10 +959,19 @@ if (!limit_android_deps) {
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+<<<<<<< HEAD
+  android_aar_prebuilt(
+      "com_google_android_apps_common_testing_accessibility_framework_accessibility_test_framework_java") {
+    aar_path = "cipd/libs/com_google_android_apps_common_testing_accessibility_framework_accessibility_test_framework/accessibility-test-framework-4.1.1.aar"
+    info_path = "libs/com_google_android_apps_common_testing_accessibility_framework_accessibility_test_framework/com_google_android_accessibility_test_framework.info"
+    enable_bytecode_checks = false
+    testonly = true
+=======
   android_aar_prebuilt("com_android_support_support_compat_java") {
     aar_path =
         "libs/com_android_support_support_compat/support-compat-28.0.0.aar"
     info_path = "libs/com_android_support_support_compat/com_android_support_support_compat.info"
+>>>>>>> chromium
     deps = [
       ":android_arch_lifecycle_runtime_java",
       ":com_android_support_collections_java",
@@ -1074,6 +1132,302 @@ if (!limit_android_deps) {
       ":google_play_services_tasks_java",
       "//third_party/androidx:androidx_collection_collection_java",
       "//third_party/androidx:androidx_core_core_java",
+<<<<<<< HEAD
+      "//third_party/androidx:androidx_test_espresso_espresso_core_java",
+      "//third_party/androidx:androidx_test_rules_java",
+      "//third_party/androidx:androidx_test_runner_java",
+      "//third_party/androidx:androidx_test_services_storage_java",
+      "//third_party/hamcrest:hamcrest_core_java",
+      "//third_party/hamcrest:hamcrest_library_java",
+    ]
+    proguard_configs =
+        [ "local_modifications/accessibility_test_framework.pcfg" ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_auth_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_auth/play-services-auth-21.1.1.aar"
+      info_path = "libs/com_google_android_gms_play_services_auth/com_google_android_gms_play_services_auth.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_auth_api_phone_java",
+        "$google_play_services_package:google_play_services_auth_base_java",
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_fido_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/androidx:androidx_fragment_fragment_java",
+        "//third_party/androidx:androidx_loader_loader_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_auth_api_phone_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_auth_api_phone/play-services-auth-api-phone-18.0.2.aar"
+      info_path = "libs/com_google_android_gms_play_services_auth_api_phone/com_google_android_gms_play_services_auth_api_phone.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_auth_base_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_auth_base/play-services-auth-base-18.0.10.aar"
+      info_path = "libs/com_google_android_gms_play_services_auth_base/com_google_android_gms_play_services_auth_base.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/androidx:androidx_collection_collection_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_auth_blockstore_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_auth_blockstore/play-services-auth-blockstore-16.4.0.aar"
+      info_path = "libs/com_google_android_gms_play_services_auth_blockstore/com_google_android_gms_play_services_auth_blockstore.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/kotlin_stdlib:kotlin_stdlib_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_base_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_base/play-services-base-18.5.0.aar"
+      info_path = "libs/com_google_android_gms_play_services_base/com_google_android_gms_play_services_base.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/androidx:androidx_collection_collection_java",
+        "//third_party/androidx:androidx_core_core_java",
+        "//third_party/androidx:androidx_fragment_fragment_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_basement_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_basement/play-services-basement-18.5.0.aar"
+      info_path = "libs/com_google_android_gms_play_services_basement/com_google_android_gms_play_services_basement.info"
+      enable_bytecode_checks = false
+      deps = [
+        "//third_party/androidx:androidx_collection_collection_jvm_java",
+        "//third_party/androidx:androidx_fragment_fragment_java",
+      ]
+
+      jar_excluded_patterns = []
+      if (!enable_java_asserts) {
+        # Omit the file since we use our own copy.
+        jar_excluded_patterns +=
+            [ "com/google/android/gms/common/internal/Preconditions.class" ]
+        deps += [ "//third_party/android_deps/local_modifications/preconditions:gms_stub_preconditions_java" ]
+      }
+
+      # https://crbug.com/989505
+      jar_excluded_patterns += [ "META-INF/proguard/*" ]
+      input_jars_paths = [ "$android_sdk/optional/org.apache.http.legacy.jar" ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_cast_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_cast/play-services-cast-17.0.0.aar"
+      info_path = "libs/com_google_android_gms_play_services_cast/com_google_android_gms_play_services_cast.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_flags_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/androidx:androidx_core_core_java",
+        "//third_party/androidx:androidx_mediarouter_mediarouter_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_cast_framework_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_cast_framework/play-services-cast-framework-17.0.0.aar"
+      info_path = "libs/com_google_android_gms_play_services_cast_framework/com_google_android_gms_play_services_cast_framework.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_cast_java",
+        "//third_party/androidx:androidx_appcompat_appcompat_java",
+        "//third_party/androidx:androidx_collection_collection_java",
+        "//third_party/androidx:androidx_core_core_java",
+        "//third_party/androidx:androidx_fragment_fragment_java",
+        "//third_party/androidx:androidx_media_media_java",
+        "//third_party/androidx:androidx_mediarouter_mediarouter_java",
+        "//third_party/androidx:androidx_recyclerview_recyclerview_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_fido_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_fido/play-services-fido-21.1.0.aar"
+      info_path = "libs/com_google_android_gms_play_services_fido/com_google_android_gms_play_services_fido.info"
+      enable_bytecode_checks = false
+      deps = [
+        ":org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm_java",
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/kotlin_stdlib:kotlin_stdlib_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_gcm_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_gcm/play-services-gcm-17.0.0.aar"
+      info_path = "libs/com_google_android_gms_play_services_gcm/com_google_android_gms_play_services_gcm.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_iid_java",
+        "$google_play_services_package:google_play_services_stats_java",
+        "//third_party/androidx:androidx_collection_collection_java",
+        "//third_party/androidx:androidx_core_core_java",
+        "//third_party/androidx:androidx_legacy_legacy_support_core_utils_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_identity_credentials_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_identity_credentials/play-services-identity-credentials-16.0.0-alpha04.aar"
+      info_path = "libs/com_google_android_gms_play_services_identity_credentials/com_google_android_gms_play_services_identity_credentials.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/kotlin_stdlib:kotlin_stdlib_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_iid_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_iid/play-services-iid-17.0.0.aar"
+      info_path = "libs/com_google_android_gms_play_services_iid/com_google_android_gms_play_services_iid.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_stats_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/androidx:androidx_collection_collection_java",
+        "//third_party/androidx:androidx_core_core_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_instantapps_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_instantapps/play-services-instantapps-18.0.1.aar"
+      info_path = "libs/com_google_android_gms_play_services_instantapps/com_google_android_gms_play_services_instantapps.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_location_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_location/play-services-location-21.0.1.aar"
+      info_path = "libs/com_google_android_gms_play_services_location/com_google_android_gms_play_services_location.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_tasks_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_tasks/play-services-tasks-18.2.0.aar"
+      info_path = "libs/com_google_android_gms_play_services_tasks/com_google_android_gms_play_services_tasks.info"
+      enable_bytecode_checks = false
+      deps =
+          [ "$google_play_services_package:google_play_services_basement_java" ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_vision_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_vision/play-services-vision-20.1.3.aar"
+      info_path = "libs/com_google_android_gms_play_services_vision/com_google_android_gms_play_services_vision.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_vision_common_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_play_services_vision_common_java") {
+      aar_path = "cipd/libs/com_google_android_gms_play_services_vision_common/play-services-vision-common-19.1.3.aar"
+      info_path = "libs/com_google_android_gms_play_services_vision_common/com_google_android_gms_play_services_vision_common.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_play_services_base_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_clearcut_java",
+        "$google_play_services_package:google_play_services_flags_java",
+        "$google_play_services_package:google_play_services_phenotype_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  android_aar_prebuilt(
+      "com_google_android_libraries_identity_googleid_googleid_java") {
+    aar_path = "cipd/libs/com_google_android_libraries_identity_googleid_googleid/googleid-1.1.1.aar"
+    info_path = "libs/com_google_android_libraries_identity_googleid_googleid/com_google_android_libraries_identity_googleid_googleid.info"
+    enable_bytecode_checks = false
+=======
       "//third_party/androidx:androidx_fragment_fragment_java",
     ]
     bytecode_rewriter_target =
@@ -1084,6 +1438,7 @@ if (!limit_android_deps) {
   android_aar_prebuilt("google_play_services_basement_java") {
     aar_path = "libs/com_google_android_gms_play_services_basement/play-services-basement-17.5.0.aar"
     info_path = "libs/com_google_android_gms_play_services_basement/com_google_android_gms_play_services_basement.info"
+>>>>>>> chromium
     deps = [
       "//third_party/androidx:androidx_collection_collection_java",
       "//third_party/androidx:androidx_core_core_java",
@@ -1164,6 +1519,118 @@ if (!limit_android_deps) {
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+<<<<<<< HEAD
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_firebase_firebase_iid_java") {
+      aar_path =
+          "cipd/libs/com_google_firebase_firebase_iid/firebase-iid-21.0.1.aar"
+      info_path = "libs/com_google_firebase_firebase_iid/com_google_firebase_firebase_iid.info"
+      enable_bytecode_checks = false
+      deps = [
+        "$google_play_services_package:google_firebase_firebase_common_java",
+        "$google_play_services_package:google_firebase_firebase_components_java",
+        "$google_play_services_package:google_firebase_firebase_iid_interop_java",
+        "$google_play_services_package:google_firebase_firebase_installations_interop_java",
+        "$google_play_services_package:google_firebase_firebase_installations_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_cloud_messaging_java",
+        "$google_play_services_package:google_play_services_stats_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/androidx:androidx_collection_collection_java",
+        "//third_party/androidx:androidx_core_core_java",
+        "//third_party/androidx:androidx_legacy_legacy_support_core_utils_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_firebase_firebase_messaging_java") {
+      aar_path = "cipd/libs/com_google_firebase_firebase_messaging/firebase-messaging-21.0.1.aar"
+      info_path = "libs/com_google_firebase_firebase_messaging/com_google_firebase_firebase_messaging.info"
+      enable_bytecode_checks = false
+      deps = [
+        ":google_android_datatransport_transport_api_java",
+        "$google_play_services_package:google_firebase_firebase_common_java",
+        "$google_play_services_package:google_firebase_firebase_components_java",
+        "$google_play_services_package:google_firebase_firebase_encoders_java",
+        "$google_play_services_package:google_firebase_firebase_encoders_json_java",
+        "$google_play_services_package:google_firebase_firebase_iid_java",
+        "$google_play_services_package:google_firebase_firebase_installations_interop_java",
+        "$google_play_services_package:google_firebase_firebase_installations_java",
+        "$google_play_services_package:google_firebase_firebase_measurement_connector_java",
+        "$google_play_services_package:google_play_services_basement_java",
+        "$google_play_services_package:google_play_services_cloud_messaging_java",
+        "$google_play_services_package:google_play_services_stats_java",
+        "$google_play_services_package:google_play_services_tasks_java",
+        "//third_party/androidx:androidx_collection_collection_java",
+        "//third_party/androidx:androidx_core_core_java",
+      ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (!defined(guava_android_target)) {
+    java_prebuilt("com_google_guava_guava_android_java") {
+      jar_path =
+          "cipd/libs/com_google_guava_guava_android/guava-33.3.1-android.jar"
+      output_name = "com_google_guava_guava_android"
+      supports_android = true
+      enable_bytecode_checks = false
+
+      # Target is swapped out when internal code is enabled.
+      # Please depend on //third_party/android_deps:guava_android_java instead.
+      visibility = [ "//third_party/android_deps:*" ]
+      deps = [
+        ":com_google_code_findbugs_jsr305_java",
+        ":com_google_errorprone_error_prone_annotations_java",
+        ":com_google_j2objc_j2objc_annotations_java",
+        ":org_checkerframework_checker_qual_java",
+      ]
+
+      jar_excluded_patterns = []
+      if (!enable_java_asserts) {
+        # Omit the file since we use our own copy.
+        jar_excluded_patterns +=
+            [ "com/google/common/base/Preconditions.class" ]
+        deps += [ "//third_party/android_deps/local_modifications/preconditions:guava_stub_preconditions_java" ]
+      }
+
+      # https://crbug.com/1412551
+      requires_android = true
+
+      # Dep needed to fix:
+      #   warning: unknown enum constant ReflectionSupport$Level.FULL
+      deps += [ ":com_google_j2objc_j2objc_annotations_java" ]
+
+      # Always bundle this part of guava in with the main target.
+      public_deps = [ ":com_google_guava_failureaccess_java" ]
+    }
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  if (!defined(android_proto_runtime)) {
+    java_prebuilt("com_google_protobuf_protobuf_javalite_java") {
+      jar_path = "cipd/libs/com_google_protobuf_protobuf_javalite/protobuf-javalite-4.28.0.jar"
+      output_name = "com_google_protobuf_protobuf_javalite"
+      supports_android = true
+      enable_bytecode_checks = false
+
+      # Target is swapped out when internal code is enabled.
+      # Please depend on //third_party/android_deps:protobuf_lite_runtime_java instead.
+      visibility = [ "//third_party/android_deps:*" ]
+
+      # Prebuilt protos in the runtime library.
+      # If you want to use these protos, you should create a proto_java_library
+      # target for them. See crbug.com/1103399 for discussion.
+      jar_excluded_patterns = [
+        "com/google/protobuf/Any*",
+        "com/google/protobuf/Duration*",
+        "com/google/protobuf/FieldMask*",
+        "com/google/protobuf/Timestamp*",
+      ]
+    }
+=======
   android_aar_prebuilt("google_play_services_iid_java") {
     aar_path = "libs/com_google_android_gms_play_services_iid/play-services-iid-17.0.0.aar"
     info_path = "libs/com_google_android_gms_play_services_iid/com_google_android_gms_play_services_iid.info"
@@ -1379,6 +1846,7 @@ if (!limit_android_deps) {
       "com/google/protobuf/Type*",
       "com/google/protobuf/Wrappers*",
     ]
+>>>>>>> chromium
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
@@ -1387,10 +1855,44 @@ if (!limit_android_deps) {
         "libs/com_googlecode_java_diff_utils_diffutils/diffutils-1.3.0.jar"
     output_name = "com_googlecode_java_diff_utils_diffutils"
     supports_android = true
+<<<<<<< HEAD
+    enable_bytecode_checks = false
+  }
+=======
     testonly = true
+>>>>>>> chromium
 
     # Needed to break dependency cycle for errorprone_plugin_java.
     enable_bytecode_checks = false
+<<<<<<< HEAD
+    testonly = true
+    deps = [
+      ":com_squareup_moshi_moshi_java",
+      "//third_party/kotlin_stdlib:kotlin_stdlib_java",
+    ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("com_squareup_okio_okio_jvm_java") {
+    jar_path = "cipd/libs/com_squareup_okio_okio_jvm/okio-jvm-3.9.1.jar"
+    output_name = "com_squareup_okio_okio_jvm"
+    supports_android = true
+    enable_bytecode_checks = false
+    deps = [ "//third_party/kotlin_stdlib:kotlin_stdlib_java" ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("com_squareup_wire_wire_runtime_jvm_java") {
+    jar_path = "cipd/libs/com_squareup_wire_wire_runtime_jvm/wire-runtime-jvm-5.0.0.jar"
+    output_name = "com_squareup_wire_wire_runtime_jvm"
+    supports_android = true
+    enable_bytecode_checks = false
+    deps = [
+      ":com_squareup_okio_okio_jvm_java",
+      "//third_party/kotlin_stdlib:kotlin_stdlib_java",
+    ]
+=======
+>>>>>>> chromium
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
@@ -1398,6 +1900,37 @@ if (!limit_android_deps) {
     jar_path = "libs/javax_annotation_javax_annotation_api/javax.annotation-api-1.3.2.jar"
     output_name = "javax_annotation_javax_annotation_api"
     supports_android = true
+<<<<<<< HEAD
+    enable_bytecode_checks = false
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("javax_annotation_jsr250_api_java") {
+    jar_path = "cipd/libs/javax_annotation_jsr250_api/jsr250-api-1.0.jar"
+    output_name = "javax_annotation_jsr250_api"
+    supports_android = true
+    enable_bytecode_checks = false
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("javax_inject_javax_inject_java") {
+    jar_path = "cipd/libs/javax_inject_javax_inject/javax.inject-1.jar"
+    output_name = "javax_inject_javax_inject"
+    supports_android = true
+    enable_bytecode_checks = false
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("net_bytebuddy_byte_buddy_java") {
+    jar_path = "cipd/libs/net_bytebuddy_byte_buddy/byte-buddy-1.14.12.jar"
+    output_name = "net_bytebuddy_byte_buddy"
+    supports_android = true
+    enable_bytecode_checks = false
+
+    # Please depend on //third_party/byte_buddy:byte_buddy_android_java instead.
+    visibility = [ "//third_party/byte_buddy:*" ]
+=======
+>>>>>>> chromium
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
@@ -1405,12 +1938,20 @@ if (!limit_android_deps) {
     jar_path = "libs/org_ccil_cowan_tagsoup_tagsoup/tagsoup-1.2.1.jar"
     output_name = "org_ccil_cowan_tagsoup_tagsoup"
     supports_android = true
+<<<<<<< HEAD
+    enable_bytecode_checks = false
+=======
     testonly = true
+>>>>>>> chromium
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_codehaus_mojo_animal_sniffer_annotations_java") {
+<<<<<<< HEAD
+    jar_path = "cipd/libs/org_codehaus_mojo_animal_sniffer_annotations/animal-sniffer-annotations-1.17.jar"
+=======
     jar_path = "libs/org_codehaus_mojo_animal_sniffer_annotations/animal-sniffer-annotations-1.17.jar"
+>>>>>>> chromium
     output_name = "org_codehaus_mojo_animal_sniffer_annotations"
     supports_android = true
 
@@ -1431,12 +1972,117 @@ if (!limit_android_deps) {
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+<<<<<<< HEAD
+  java_prebuilt("org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm_java") {
+    jar_path = "cipd/libs/org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm/kotlinx-coroutines-core-jvm-1.8.1.jar"
+    output_name = "org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm"
+    supports_android = true
+    enable_bytecode_checks = false
+    deps = [ "//third_party/kotlin_stdlib:kotlin_stdlib_java" ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_jetbrains_kotlinx_kotlinx_coroutines_guava_java") {
+    jar_path = "cipd/libs/org_jetbrains_kotlinx_kotlinx_coroutines_guava/kotlinx-coroutines-guava-1.8.1.jar"
+    output_name = "org_jetbrains_kotlinx_kotlinx_coroutines_guava"
+    supports_android = true
+    enable_bytecode_checks = false
+    deps = [
+      ":org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm_java",
+      "//third_party/kotlin_stdlib:kotlin_stdlib_java",
+    ]
+    requires_android = true
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_jetbrains_kotlinx_kotlinx_serialization_core_jvm_java") {
+    jar_path = "cipd/libs/org_jetbrains_kotlinx_kotlinx_serialization_core_jvm/kotlinx-serialization-core-jvm-1.7.2.jar"
+    output_name = "org_jetbrains_kotlinx_kotlinx_serialization_core_jvm"
+    supports_android = true
+    enable_bytecode_checks = false
+    deps = [ "//third_party/kotlin_stdlib:kotlin_stdlib_java" ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_jsoup_jsoup_java") {
+    jar_path = "cipd/libs/org_jsoup_jsoup/jsoup-1.15.1.jar"
+    output_name = "org_jsoup_jsoup"
+    supports_android = true
+    enable_bytecode_checks = false
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_jspecify_jspecify_java") {
+    jar_path = "cipd/libs/org_jspecify_jspecify/jspecify-1.0.0.jar"
+    output_name = "org_jspecify_jspecify"
+    supports_android = true
+    enable_bytecode_checks = false
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_mockito_mockito_android_java") {
+    jar_path =
+        "cipd/libs/org_mockito_mockito_android/mockito-android-5.11.0.jar"
+    output_name = "org_mockito_mockito_android"
+    supports_android = true
+    enable_bytecode_checks = false
+    testonly = true
+    deps = [
+      ":org_mockito_mockito_core_java",
+      "//third_party/byte_buddy:byte_buddy_android_java",
+    ]
+
+    # Depends on third_party/byte_buddy:byte_buddy_android_java
+    requires_android = true
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_mockito_mockito_core_java") {
+    jar_path = "cipd/libs/org_mockito_mockito_core/mockito-core-5.11.0.jar"
+    output_name = "org_mockito_mockito_core"
+    supports_android = true
+    enable_bytecode_checks = false
+    testonly = true
+    deps = [
+      ":net_bytebuddy_byte_buddy_agent_java",
+      ":org_objenesis_objenesis_java",
+      "//third_party/byte_buddy:byte_buddy_android_java",
+    ]
+
+    # Uses java.time which does not exist until API 26.
+    # Modifications are added in third_party/mockito.
+    jar_excluded_patterns = [
+      "org/mockito/internal/junit/ExceptionFactory*",
+      "org/mockito/internal/stubbing/defaultanswers/ReturnsEmptyValues*",
+    ]
+
+    # Because of dep on byte_buddy_android_java.
+    bypass_platform_checks = true
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_mockito_mockito_subclass_java") {
+    jar_path =
+        "cipd/libs/org_mockito_mockito_subclass/mockito-subclass-5.11.0.jar"
+    output_name = "org_mockito_mockito_subclass"
+    supports_android = true
+    enable_bytecode_checks = false
+    testonly = true
+    deps = [ ":org_mockito_mockito_core_java" ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_robolectric_robolectric_java") {
+    jar_path = "cipd/libs/org_robolectric_robolectric/robolectric-4.14.1.jar"
+=======
   java_prebuilt("org_robolectric_robolectric_java") {
     jar_path = "libs/org_robolectric_robolectric/robolectric-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_robolectric"
     enable_bytecode_checks = false
     testonly = true
     deps = [
+      ":com_google_testparameterinjector_test_parameter_injector_java",
       ":javax_annotation_javax_annotation_api_java",
       ":javax_inject_javax_inject_java",
       ":org_robolectric_annotations_java",
@@ -1448,6 +2094,11 @@ if (!limit_android_deps) {
       ":org_robolectric_shadows_framework_java",
       ":org_robolectric_utils_java",
       ":org_robolectric_utils_reflector_java",
+<<<<<<< HEAD
+      ":org_yaml_snakeyaml_java",
+      "//third_party/androidx:androidx_test_espresso_espresso_idling_resource_java",
+=======
+>>>>>>> chromium
       "//third_party/androidx:androidx_test_monitor_java",
       "//third_party/bouncycastle:bouncycastle_java",
     ]
@@ -1455,6 +2106,13 @@ if (!limit_android_deps) {
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+<<<<<<< HEAD
+  if (google_play_services_package == "//third_party/android_deps") {
+    android_aar_prebuilt("google_android_datatransport_transport_api_java") {
+      aar_path = "cipd/libs/com_google_android_datatransport_transport_api/transport-api-2.2.1.aar"
+      info_path = "libs/com_google_android_datatransport_transport_api/com_google_android_datatransport_transport_api.info"
+      enable_bytecode_checks = false
+=======
   java_prebuilt("org_robolectric_shadows_playservices_java") {
     jar_path = "libs/org_robolectric_shadows_playservices/shadows-playservices-4.3.1.jar"
     output_name = "org_robolectric_shadows_playservices"
@@ -1503,6 +2161,7 @@ if (!limit_android_deps) {
   android_aar_prebuilt("android_arch_core_runtime_java") {
     aar_path = "libs/android_arch_core_runtime/runtime-1.1.1.aar"
     info_path = "libs/android_arch_core_runtime/android_arch_core_runtime.info"
+>>>>>>> chromium
 
     # To remove visibility constraint, add this dependency to
     # //third_party/android_deps/build.gradle.
@@ -1554,9 +2213,15 @@ if (!limit_android_deps) {
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+<<<<<<< HEAD
+  java_prebuilt("com_google_auto_value_auto_value_annotations_java") {
+    jar_path = "cipd/libs/com_google_auto_value_auto_value_annotations/auto-value-annotations-1.11.0.jar"
+    output_name = "com_google_auto_value_auto_value_annotations"
+=======
   java_prebuilt("backport_util_concurrent_backport_util_concurrent_java") {
     jar_path = "libs/backport_util_concurrent_backport_util_concurrent/backport-util-concurrent-3.1.jar"
     output_name = "backport_util_concurrent_backport_util_concurrent"
+>>>>>>> chromium
     enable_bytecode_checks = false
 
     # To remove visibility constraint, add this dependency to
@@ -1565,7 +2230,6 @@ if (!limit_android_deps) {
       ":*",
       "//third_party/androidx:*",
     ]
-    testonly = true
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
@@ -2110,6 +2774,21 @@ if (!limit_android_deps) {
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt(
+      "com_google_testparameterinjector_test_parameter_injector_java") {
+    jar_path = "cipd/libs/com_google_testparameterinjector_test_parameter_injector/test-parameter-injector-1.18.jar"
+    output_name = "com_google_testparameterinjector_test_parameter_injector"
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("com_squareup_javawriter_java") {
     jar_path = "libs/com_squareup_javawriter/javawriter-2.1.1.jar"
     output_name = "com_squareup_javawriter"
@@ -2136,7 +2815,6 @@ if (!limit_android_deps) {
       ":*",
       "//third_party/androidx:*",
     ]
-    testonly = true
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
@@ -2215,7 +2893,6 @@ if (!limit_android_deps) {
       ":*",
       "//third_party/androidx:*",
     ]
-    testonly = true
     deps = [
       ":classworlds_classworlds_java",
       ":org_apache_ant_ant_java",
@@ -2235,9 +2912,16 @@ if (!limit_android_deps) {
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+<<<<<<< HEAD
+  java_prebuilt("jakarta_inject_jakarta_inject_api_java") {
+    jar_path = "cipd/libs/jakarta_inject_jakarta_inject_api/jakarta.inject-api-2.0.1.jar"
+    output_name = "jakarta_inject_jakarta_inject_api"
+    supports_android = true
+=======
   java_prebuilt("org_apache_maven_maven_artifact_java") {
     jar_path = "libs/org_apache_maven_maven_artifact/maven-artifact-2.2.1.jar"
     output_name = "org_apache_maven_maven_artifact"
+>>>>>>> chromium
     enable_bytecode_checks = false
 
     # To remove visibility constraint, add this dependency to
@@ -2245,6 +2929,8 @@ if (!limit_android_deps) {
     visibility = [
       ":*",
       "//third_party/androidx:*",
+<<<<<<< HEAD
+=======
     ]
     testonly = true
     deps = [ ":org_codehaus_plexus_plexus_utils_java" ]
@@ -2577,12 +3263,128 @@ if (!limit_android_deps) {
     deps = [
       ":org_jetbrains_kotlin_kotlin_stdlib_common_java",
       ":org_jetbrains_kotlin_kotlin_stdlib_jdk8_java",
+>>>>>>> chromium
+    ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+<<<<<<< HEAD
+  java_prebuilt("net_bytebuddy_byte_buddy_agent_java") {
+    jar_path =
+        "cipd/libs/net_bytebuddy_byte_buddy_agent/byte-buddy-agent-1.14.12.jar"
+    output_name = "net_bytebuddy_byte_buddy_agent"
+    supports_android = true
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_bouncycastle_bcprov_jdk18on_java") {
+    jar_path =
+        "cipd/libs/org_bouncycastle_bcprov_jdk18on/bcprov-jdk18on-1.78.1.jar"
+    output_name = "org_bouncycastle_bcprov_jdk18on"
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_conscrypt_conscrypt_openjdk_uber_java") {
+    jar_path = "cipd/libs/org_conscrypt_conscrypt_openjdk_uber/conscrypt-openjdk-uber-2.5.2.jar"
+    output_name = "org_conscrypt_conscrypt_openjdk_uber"
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_hamcrest_hamcrest_java") {
+    jar_path = "cipd/libs/org_hamcrest_hamcrest/hamcrest-2.2.jar"
+    output_name = "org_hamcrest_hamcrest"
+    supports_android = true
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_jetbrains_kotlin_kotlin_android_extensions_runtime_java") {
+    jar_path = "cipd/libs/org_jetbrains_kotlin_kotlin_android_extensions_runtime/kotlin-android-extensions-runtime-1.9.22.jar"
+    output_name = "org_jetbrains_kotlin_kotlin_android_extensions_runtime"
+    supports_android = true
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+    deps = [ "//third_party/kotlin_stdlib:kotlin_stdlib_java" ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_jetbrains_kotlinx_kotlinx_coroutines_test_jvm_java") {
+    jar_path = "cipd/libs/org_jetbrains_kotlinx_kotlinx_coroutines_test_jvm/kotlinx-coroutines-test-jvm-1.7.3.jar"
+    output_name = "org_jetbrains_kotlinx_kotlinx_coroutines_test_jvm"
+    supports_android = true
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+    deps = [
+      ":org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm_java",
+      "//third_party/kotlin_stdlib:kotlin_stdlib_java",
+    ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_objenesis_objenesis_java") {
+    jar_path = "cipd/libs/org_objenesis_objenesis/objenesis-3.3.jar"
+    output_name = "org_objenesis_objenesis"
+    supports_android = true
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
     ]
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_robolectric_annotations_java") {
+    jar_path = "cipd/libs/org_robolectric_annotations/annotations-4.14.1.jar"
+=======
+  java_prebuilt("org_robolectric_annotations_java") {
     jar_path = "libs/org_robolectric_annotations/annotations-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_annotations"
     enable_bytecode_checks = false
 
@@ -2592,13 +3394,21 @@ if (!limit_android_deps) {
       ":*",
       "//third_party/androidx:*",
     ]
+<<<<<<< HEAD
+    is_robolectric = true
+=======
     testonly = true
     bypass_platform_checks = true
+>>>>>>> chromium
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_robolectric_junit_java") {
+<<<<<<< HEAD
+    jar_path = "cipd/libs/org_robolectric_junit/junit-4.14.1.jar"
+=======
     jar_path = "libs/org_robolectric_junit/junit-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_junit"
     enable_bytecode_checks = false
 
@@ -2616,12 +3426,59 @@ if (!limit_android_deps) {
       ":org_robolectric_shadowapi_java",
       ":org_robolectric_utils_reflector_java",
     ]
+<<<<<<< HEAD
+    is_robolectric = true
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_robolectric_nativeruntime_java") {
+    jar_path =
+        "cipd/libs/org_robolectric_nativeruntime/nativeruntime-4.14.1.jar"
+    output_name = "org_robolectric_nativeruntime"
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+    testonly = true
+    deps = [
+      ":org_robolectric_nativeruntime_dist_compat_java",
+      ":org_robolectric_shadowapi_java",
+      ":org_robolectric_utils_java",
+      ":org_robolectric_utils_reflector_java",
+      "//third_party/android_deps:guava_android_java",
+    ]
+    is_robolectric = true
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_robolectric_nativeruntime_dist_compat_java") {
+    jar_path = "cipd/libs/org_robolectric_nativeruntime_dist_compat/nativeruntime-dist-compat-1.0.16.jar"
+    output_name = "org_robolectric_nativeruntime_dist_compat"
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+    is_robolectric = true
+=======
     bypass_platform_checks = true
+>>>>>>> chromium
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_robolectric_pluginapi_java") {
+<<<<<<< HEAD
+    jar_path = "cipd/libs/org_robolectric_pluginapi/pluginapi-4.14.1.jar"
+=======
     jar_path = "libs/org_robolectric_pluginapi/pluginapi-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_pluginapi"
     enable_bytecode_checks = false
 
@@ -2642,7 +3499,11 @@ if (!limit_android_deps) {
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_robolectric_plugins_maven_dependency_resolver_java") {
+<<<<<<< HEAD
+    jar_path = "cipd/libs/org_robolectric_plugins_maven_dependency_resolver/plugins-maven-dependency-resolver-4.14.1.jar"
+=======
     jar_path = "libs/org_robolectric_plugins_maven_dependency_resolver/plugins-maven-dependency-resolver-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_plugins_maven_dependency_resolver"
     enable_bytecode_checks = false
 
@@ -2664,7 +3525,11 @@ if (!limit_android_deps) {
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_robolectric_resources_java") {
+<<<<<<< HEAD
+    jar_path = "cipd/libs/org_robolectric_resources/resources-4.14.1.jar"
+=======
     jar_path = "libs/org_robolectric_resources/resources-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_resources"
     enable_bytecode_checks = false
 
@@ -2686,7 +3551,11 @@ if (!limit_android_deps) {
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_robolectric_sandbox_java") {
+<<<<<<< HEAD
+    jar_path = "cipd/libs/org_robolectric_sandbox/sandbox-4.14.1.jar"
+=======
     jar_path = "libs/org_robolectric_sandbox/sandbox-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_sandbox"
     enable_bytecode_checks = false
 
@@ -2713,7 +3582,11 @@ if (!limit_android_deps) {
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_robolectric_shadowapi_java") {
+<<<<<<< HEAD
+    jar_path = "cipd/libs/org_robolectric_shadowapi/shadowapi-4.14.1.jar"
+=======
     jar_path = "libs/org_robolectric_shadowapi/shadowapi-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_shadowapi"
     enable_bytecode_checks = false
 
@@ -2730,8 +3603,12 @@ if (!limit_android_deps) {
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_robolectric_shadows_framework_java") {
+<<<<<<< HEAD
+    jar_path = "cipd/libs/org_robolectric_shadows_framework/shadows-framework-4.14.1.jar"
+=======
     jar_path =
         "libs/org_robolectric_shadows_framework/shadows-framework-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_shadows_framework"
     enable_bytecode_checks = false
 
@@ -2755,12 +3632,43 @@ if (!limit_android_deps) {
       "//third_party/icu4j:icu4j_java",
       "//third_party/sqlite4java:sqlite4java_java",
     ]
+<<<<<<< HEAD
+    is_robolectric = true
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_robolectric_utils_java") {
+    jar_path = "cipd/libs/org_robolectric_utils/utils-4.14.1.jar"
+    output_name = "org_robolectric_utils"
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
+    testonly = true
+    deps = [
+      ":javax_annotation_javax_annotation_api_java",
+      ":javax_inject_javax_inject_java",
+      ":org_robolectric_annotations_java",
+      ":org_robolectric_pluginapi_java",
+    ]
+    is_robolectric = true
+=======
     bypass_platform_checks = true
+>>>>>>> chromium
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   java_prebuilt("org_robolectric_utils_reflector_java") {
+<<<<<<< HEAD
+    jar_path =
+        "cipd/libs/org_robolectric_utils_reflector/utils-reflector-4.14.1.jar"
+=======
     jar_path = "libs/org_robolectric_utils_reflector/utils-reflector-4.3.1.jar"
+>>>>>>> chromium
     output_name = "org_robolectric_utils_reflector"
     enable_bytecode_checks = false
 
@@ -2777,6 +3685,20 @@ if (!limit_android_deps) {
       ":org_ow2_asm_asm_util_java",
     ]
     bypass_platform_checks = true
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  java_prebuilt("org_yaml_snakeyaml_java") {
+    jar_path = "cipd/libs/org_yaml_snakeyaml/snakeyaml-2.3.jar"
+    output_name = "org_yaml_snakeyaml"
+    enable_bytecode_checks = false
+
+    # To remove visibility constraint, add this dependency to
+    # //third_party/android_deps/build.gradle.
+    visibility = [
+      ":*",
+      "//third_party/androidx:*",
+    ]
   }
 }
 # === Generated Code End ===

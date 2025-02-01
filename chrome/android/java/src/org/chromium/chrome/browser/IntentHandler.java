@@ -27,8 +27,14 @@ import android.util.Pair;
 import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import androidx.browser.customtabs.CustomTabsSessionToken;
 
+<<<<<<< HEAD
+import org.jni_zero.JNINamespace;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
+
+=======
+>>>>>>> chromium
 import org.chromium.base.ContextUtils;
 import org.chromium.base.FileUtils;
 import org.chromium.base.IntentUtils;
@@ -36,9 +42,15 @@ import org.chromium.base.Log;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.metrics.RecordHistogram;
+<<<<<<< HEAD
+import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
+import org.chromium.chrome.browser.browserservices.SessionDataHolder;
+import org.chromium.chrome.browser.browserservices.intents.SessionHolder;
+=======
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.chrome.browser.attribution_reporting.AttributionIntentHandlerFactory;
 import org.chromium.chrome.browser.attribution_reporting.AttributionParameters;
+>>>>>>> chromium
 import org.chromium.chrome.browser.browserservices.intents.WebappConstants;
 import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
 import org.chromium.chrome.browser.document.ChromeLauncherActivity;
@@ -224,6 +236,8 @@ public class IntentHandler {
     private static final String PACKAGE_WHATSAPP = "com.whatsapp";
     private static final String PACKAGE_YAHOO_MAIL = "com.yahoo.mobile.client.android.mail";
     private static final String PACKAGE_VIBER = "com.viber.voip";
+    private static final String PACKAGE_PIXEL_LAUNCHER = "com.google.android.apps.nexuslauncher";
+    private static final String THIRD_PARTY_LAUNCHER_SUFFIX = "launcher";
     private static final String FACEBOOK_REFERRER_URL = "android-app://m.facebook.com";
     private static final String FACEBOOK_INTERNAL_BROWSER_REFERRER = "http://m.facebook.com";
     private static final String TWITTER_LINK_PREFIX = "http://t.co/";
@@ -239,11 +253,36 @@ public class IntentHandler {
      * Values should be enumerated from 0 and can't have gaps. When removing items,
      * comment them out and keep existing numeric values stable.
      */
+<<<<<<< HEAD
+    @IntDef({
+        ExternalAppId.OTHER,
+        ExternalAppId.GMAIL,
+        ExternalAppId.FACEBOOK,
+        ExternalAppId.PLUS,
+        ExternalAppId.TWITTER,
+        ExternalAppId.CHROME,
+        ExternalAppId.HANGOUTS,
+        ExternalAppId.MESSENGER,
+        ExternalAppId.NEWS,
+        ExternalAppId.LINE,
+        ExternalAppId.WHATSAPP,
+        ExternalAppId.GSA,
+        ExternalAppId.WEBAPK,
+        ExternalAppId.YAHOO_MAIL,
+        ExternalAppId.VIBER,
+        ExternalAppId.YOUTUBE,
+        ExternalAppId.CAMERA,
+        ExternalAppId.PIXEL_LAUNCHER,
+        ExternalAppId.THIRD_PARTY_LAUNCHER,
+        ExternalAppId.NUM_ENTRIES
+    })
+=======
     @IntDef({ExternalAppId.OTHER, ExternalAppId.GMAIL, ExternalAppId.FACEBOOK, ExternalAppId.PLUS,
             ExternalAppId.TWITTER, ExternalAppId.CHROME, ExternalAppId.HANGOUTS,
             ExternalAppId.MESSENGER, ExternalAppId.NEWS, ExternalAppId.LINE, ExternalAppId.WHATSAPP,
             ExternalAppId.GSA, ExternalAppId.WEBAPK, ExternalAppId.YAHOO_MAIL, ExternalAppId.VIBER,
             ExternalAppId.YOUTUBE})
+>>>>>>> chromium
     @Retention(RetentionPolicy.SOURCE)
     public @interface ExternalAppId {
         int OTHER = 0;
@@ -262,8 +301,16 @@ public class IntentHandler {
         int YAHOO_MAIL = 13;
         int VIBER = 14;
         int YOUTUBE = 15;
+<<<<<<< HEAD
+        int CAMERA = 16;
+        int PIXEL_LAUNCHER = 17;
+        int THIRD_PARTY_LAUNCHER = 18;
+        // Update ClientAppId in enums.xml when adding new items.
+        int NUM_ENTRIES = 19;
+=======
         // Update ClientAppId in enums.xml when adding new items.
         int NUM_ENTRIES = 16;
+>>>>>>> chromium
     }
 
     /**
@@ -424,6 +471,24 @@ public class IntentHandler {
         } else {
             externalId = mapPackageToExternalAppId(appId);
         }
+<<<<<<< HEAD
+
+        if (externalId == ExternalAppId.OTHER && activity != null) {
+            String activityReferrer = getActivityReferrer(intent, activity);
+            if (activityReferrer != null) {
+                String referrer = activityReferrer.toLowerCase(Locale.getDefault());
+                if (referrer.endsWith("camera")) {
+                    return ExternalAppId.CAMERA;
+                } else if (referrer.endsWith(PACKAGE_PIXEL_LAUNCHER)) {
+                    return ExternalAppId.PIXEL_LAUNCHER;
+                } else if (referrer.endsWith(THIRD_PARTY_LAUNCHER_SUFFIX)) {
+                    return ExternalAppId.THIRD_PARTY_LAUNCHER;
+                }
+            }
+        }
+
+=======
+>>>>>>> chromium
         return externalId;
     }
 
@@ -556,16 +621,24 @@ public class IntentHandler {
     /**
      * Extracts referrer URL string. The extra is used if we received it from a first party app or
      * if the referrer_extra is specified as android-app://package style URL.
+     *
      * @param intent The intent from which to extract the URL.
      * @return The URL string or null if none should be used.
      */
     private static String getReferrerUrl(Intent intent) {
         Uri referrerExtra = getReferrer(intent);
+<<<<<<< HEAD
+        SessionHolder<?> session = SessionHolder.getSessionHolderFromIntent(intent);
+        if (referrerExtra == null && session != null) {
+            Referrer referrer =
+                    CustomTabsConnection.getInstance().getDefaultReferrerForSession(session);
+=======
         CustomTabsSessionToken customTabsSession =
                 CustomTabsSessionToken.getSessionTokenFromIntent(intent);
         if (referrerExtra == null && customTabsSession != null) {
             Referrer referrer = CustomTabsConnection.getInstance().getDefaultReferrerForSession(
                     customTabsSession);
+>>>>>>> chromium
             if (referrer != null) {
                 referrerExtra = Uri.parse(referrer.getUrl());
             }
@@ -575,9 +648,14 @@ public class IntentHandler {
         if (isValidReferrerHeader(referrerExtra)) {
             return referrerExtra.toString();
         } else if (IntentHandler.notSecureIsIntentChromeOrFirstParty(intent)
+<<<<<<< HEAD
+                || SessionDataHolder.getInstance()
+                        .canActiveHandlerUseReferrer(session, referrerExtra)) {
+=======
                 || ChromeApplicationImpl.getComponent()
                            .resolveSessionDataHolder()
                            .canActiveHandlerUseReferrer(customTabsSession, referrerExtra)) {
+>>>>>>> chromium
             return referrerExtra.toString();
         }
         return null;
@@ -1582,6 +1660,7 @@ public class IntentHandler {
 
     @NativeMethods
     interface Natives {
-        boolean isCorsSafelistedHeader(String name, String value);
+        boolean isCorsSafelistedHeader(
+                @JniType("std::string") String name, @JniType("std::string") String value);
     }
 }

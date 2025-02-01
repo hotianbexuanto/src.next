@@ -27,6 +27,7 @@ void CSSGlobalRuleSet::InitWatchedSelectorsRuleSet(Document& document) {
     watched_selectors_rule_set_->AddStyleRule(watched_selectors[i],
                                               kRuleHasNoSpecialState);
   }
+  document_rules_selectors_rule_set_->CompactRulesIfNeeded();
 }
 
 void CSSGlobalRuleSet::Update(Document& document) {

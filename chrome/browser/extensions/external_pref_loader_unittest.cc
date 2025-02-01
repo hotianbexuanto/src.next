@@ -37,8 +37,17 @@ namespace {
 
 class TestSyncService : public syncer::TestSyncService {
  public:
+<<<<<<< HEAD
+  TestSyncService() = default;
+
+  TestSyncService(const TestSyncService&) = delete;
+  TestSyncService& operator=(const TestSyncService&) = delete;
+
+  ~TestSyncService() override = default;
+=======
   TestSyncService() {}
   ~TestSyncService() override {}
+>>>>>>> chromium
 
   // syncer::SyncService:
   void AddObserver(syncer::SyncServiceObserver* observer) override {
@@ -85,7 +94,7 @@ class TestExternalPrefLoader : public ExternalPrefLoader {
   }
 
  private:
-  ~TestExternalPrefLoader() override {}
+  ~TestExternalPrefLoader() override = default;
   base::OnceClosure load_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(TestExternalPrefLoader);

@@ -19,8 +19,17 @@ import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.MainDex;
 import org.chromium.base.annotations.NativeMethods;
 
+<<<<<<< HEAD
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+
+import java.util.ArrayList;
+=======
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicBoolean;
+>>>>>>> chromium
 
 /**
  * Java mirror of Chrome trace event API. See base/trace_event/trace_event.h.
@@ -38,6 +47,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * It is OK to use tracing before the native library has loaded, in a slightly restricted fashion.
  * @see EarlyTraceEvent for details.
  */
+@NullMarked
 @JNINamespace("base::android")
 @MainDex
 public class TraceEvent implements AutoCloseable {
@@ -380,7 +390,7 @@ public class TraceEvent implements AutoCloseable {
     private static class BasicLooperMonitor implements Printer {
         private static final String LOOPER_TASK_PREFIX = "Looper.dispatch: ";
         private static final int SHORTEST_LOG_PREFIX_LENGTH = "<<<<< Finished to ".length();
-        private String mCurrentTarget;
+        private @Nullable String mCurrentTarget;
 
         @Override
         public void println(final String line) {
@@ -576,10 +586,15 @@ public class TraceEvent implements AutoCloseable {
 
     private final String mName;
 
+<<<<<<< HEAD
+    /** Constructor used to support the "try with resource" construct. */
+    private TraceEvent(String name, @Nullable String arg) {
+=======
     /**
      * Constructor used to support the "try with resource" construct.
      */
     private TraceEvent(String name, String arg) {
+>>>>>>> chromium
         mName = name;
         begin(name, arg);
     }
@@ -598,7 +613,7 @@ public class TraceEvent implements AutoCloseable {
      * @param arg The arguments of the event.
      * @return a TraceEvent, or null if tracing is not enabled.
      */
-    public static TraceEvent scoped(String name, String arg) {
+    public static @Nullable TraceEvent scoped(String name, @Nullable String arg) {
         if (!(EarlyTraceEvent.enabled() || enabled())) return null;
         return new TraceEvent(name, arg);
     }
@@ -606,7 +621,17 @@ public class TraceEvent implements AutoCloseable {
     /**
      * Similar to {@link #scoped(String, String arg)}, but uses null for |arg|.
      */
+<<<<<<< HEAD
+    public static @Nullable TraceEvent scoped(String name, int arg) {
+        if (!(EarlyTraceEvent.enabled() || enabled())) return null;
+        return new TraceEvent(name, arg);
+    }
+
+    /** Similar to {@link #scoped(String, String arg)}, but uses null for |arg|. */
+    public static @Nullable TraceEvent scoped(String name) {
+=======
     public static TraceEvent scoped(String name) {
+>>>>>>> chromium
         return scoped(name, null);
     }
 
@@ -742,8 +767,13 @@ public class TraceEvent implements AutoCloseable {
      * @param name The name of the event.
      * @param arg  The arguments of the event.
      */
+<<<<<<< HEAD
+    public static void begin(String name, @Nullable String arg) {
+        EarlyTraceEvent.begin(name, /* isToplevel= */ false);
+=======
     public static void begin(String name, String arg) {
         EarlyTraceEvent.begin(name, false /*isToplevel*/);
+>>>>>>> chromium
         if (sEnabled) {
             TraceEventJni.get().begin(name, arg);
         } else if (sATrace != null) {
@@ -764,8 +794,23 @@ public class TraceEvent implements AutoCloseable {
      * @param name The name of the event.
      * @param arg  The arguments of the event.
      */
+<<<<<<< HEAD
+    public static void end(String name, @Nullable String arg) {
+        end(name, arg, 0);
+    }
+
+    /**
+     * Triggers the 'end' native trace event.
+     * @param name The name of the event.
+     * @param arg  The arguments of the event.
+     * @param flow The flow ID to associate with this event (0 is treated as invalid).
+     */
+    public static void end(String name, @Nullable String arg, long flow) {
+        EarlyTraceEvent.end(name, /* isToplevel= */ false);
+=======
     public static void end(String name, String arg) {
         EarlyTraceEvent.end(name, false /*isToplevel*/);
+>>>>>>> chromium
         if (sEnabled) {
             TraceEventJni.get().end(name, arg);
         } else if (sATrace != null) {
@@ -776,15 +821,231 @@ public class TraceEvent implements AutoCloseable {
     @NativeMethods
     interface Natives {
         void registerEnabledObserver();
+<<<<<<< HEAD
+
+        void instant(String name, @Nullable String arg);
+
+        void begin(String name, @Nullable String arg);
+
+        void beginWithIntArg(String name, int arg);
+
+        void end(@Nullable String arg, long flow);
+
+=======
         void startATrace(String categoryFilter);
         void stopATrace();
         void setupATraceStartupTrace(String categoryFilter);
         void instant(String name, String arg);
         void begin(String name, String arg);
         void end(String name, String arg);
+>>>>>>> chromium
         void beginToplevel(String target);
         void endToplevel(String target);
         void startAsync(String name, long id);
+<<<<<<< HEAD
+
+        void finishAsync(long id);
+
+        boolean viewHierarchyDumpEnabled();
+
+        void initViewHierarchyDump(long id, Object list);
+
+        long startActivityDump(String name, long dumpProtoPtr);
+
+        void addViewDump(
+                int id,
+                int parentId,
+                boolean isShown,
+                boolean isDirty,
+                String className,
+                String resourceName,
+                long activityProtoPtr);
+
+        void instantAndroidIPC(String name, long durMs);
+
+        void instantAndroidToolbar(int blockReason, int allowReason, int snapshotDiff);
+
+        void webViewStartupTotalFactoryInit(long startTimeMs, long durationMs);
+
+        void webViewStartupStage1(long startTimeMs, long durationMs);
+
+        void webViewStartupStage2(long startTimeMs, long durationMs, boolean isColdStartup);
+
+        void webViewStartupStartChromiumLocked(
+                long startTimeMs, long durationMs, int callSite, boolean fromUIThread);
+
+        void startupActivityStart(long activityId, long startTimeMs);
+
+        void startupLaunchCause(long activityId, long startTimeMs, int launchCause);
+
+        void startupTimeToFirstVisibleContent2(long activityId, long startTimeMs, long durationMs);
+    }
+
+    /**
+     * A method to be called by native code that uses the ViewHierarchyDumper class to emit a trace
+     * event with views of all running activities of the app.
+     */
+    @CalledByNative
+    public static void dumpViewHierarchy(long dumpProtoPtr, Object list) {
+        if (!ApplicationStatus.isInitialized()) {
+            return;
+        }
+
+        // Convert the Object back into the ArrayList of ActivityInfo, lifetime of this object is
+        // maintained by the Runnable that we are running in currently.
+        ArrayList<ActivityInfo> activities = (ArrayList<ActivityInfo>) list;
+
+        for (ActivityInfo activity : activities) {
+            long activityProtoPtr =
+                    TraceEventJni.get().startActivityDump(activity.mActivityName, dumpProtoPtr);
+            for (ViewInfo view : activity.mViews) {
+                // We need to resolve the resource, take care as NotFoundException can be common and
+                // java exceptions aren't he fastest thing ever.
+                String resource;
+                try {
+                    resource =
+                            view.mRes != null
+                                    ? (view.mId == 0 || view.mId == -1
+                                            ? "__no_id__"
+                                            : view.mRes.getResourceName(view.mId))
+                                    : "__no_resources__";
+                } catch (NotFoundException e) {
+                    resource = "__name_not_found__";
+                }
+                TraceEventJni.get()
+                        .addViewDump(
+                                view.mId,
+                                view.mParentId,
+                                view.mIsShown,
+                                view.mIsDirty,
+                                view.mClassName,
+                                resource,
+                                activityProtoPtr);
+            }
+        }
+    }
+
+    /**
+     * This class contains the minimum information to represent a view that the {@link
+     * #ViewHierarchyDumper} needs, so that in {@link #snapshotViewHierarchy} we can output a trace
+     * event off the main thread.
+     */
+    public static class ViewInfo {
+        public ViewInfo(
+                int id,
+                int parentId,
+                boolean isShown,
+                boolean isDirty,
+                String className,
+                android.content.res.Resources res) {
+            mId = id;
+            mParentId = parentId;
+            mIsShown = isShown;
+            mIsDirty = isDirty;
+            mClassName = className;
+            mRes = res;
+        }
+
+        private int mId;
+        private int mParentId;
+        private boolean mIsShown;
+        private boolean mIsDirty;
+        private String mClassName;
+        // One can use mRes to resolve mId to a resource name.
+        private android.content.res.Resources mRes;
+    }
+
+    /**
+     * This class contains the minimum information to represent an Activity that the {@link
+     * #ViewHierarchyDumper} needs, so that in {@link #snapshotViewHierarchy} we can output a trace
+     * event off the main thread.
+     */
+    public static class ActivityInfo {
+        public ActivityInfo(String activityName) {
+            mActivityName = activityName;
+            // Local testing found about 115ish views in the ChromeTabbedActivity.
+            mViews = new ArrayList<ViewInfo>(125);
+        }
+
+        public String mActivityName;
+        public ArrayList<ViewInfo> mViews;
+    }
+
+    /**
+     * A class that periodically dumps the view hierarchy of all running activities of the app to
+     * the trace. Enabled/disabled via the disabled-by-default-android_view_hierarchy trace
+     * category.
+     *
+     * <pre>
+     * The class registers itself as an idle handler, so that it can run when there are no other
+     * tasks in the queue (but not more often than once a second). When the queue is idle,
+     * it calls the initViewHierarchyDump() native function which in turn calls the
+     * TraceEvent.dumpViewHierarchy() with a pointer to the proto buffer to fill in. The
+     * TraceEvent.dumpViewHierarchy() traverses all activities and dumps view hierarchy for every
+     * activity. Altogether, the call sequence is as follows:
+     *   ViewHierarchyDumper.queueIdle()
+     *    -> JNI#initViewHierarchyDump()
+     *        -> TraceEvent.dumpViewHierarchy()
+     *            -> JNI#startActivityDump()
+     *            -> ViewHierarchyDumper.dumpView()
+     *                -> JNI#addViewDump()
+     * </pre>
+     */
+    private static final class ViewHierarchyDumper implements MessageQueue.IdleHandler {
+        private static final long MIN_VIEW_DUMP_INTERVAL_MILLIS = 1000L;
+        private static @Nullable ViewHierarchyDumper sInstance;
+        private long mLastDumpTs;
+
+        @Override
+        public final boolean queueIdle() {
+            final long now = TimeUtils.elapsedRealtimeMillis();
+            if (mLastDumpTs == 0 || (now - mLastDumpTs) > MIN_VIEW_DUMP_INTERVAL_MILLIS) {
+                mLastDumpTs = now;
+                snapshotViewHierarchy();
+            }
+
+            // Returning true to keep IdleHandler alive.
+            return true;
+        }
+
+        public static void updateEnabledState() {
+            PostTask.runOrPostTask(
+                    TaskTraits.UI_DEFAULT,
+                    () -> setEnabled(TraceEventJni.get().viewHierarchyDumpEnabled()));
+        }
+
+        private static void dumpView(ActivityInfo collection, int parentId, View v) {
+            ThreadUtils.assertOnUiThread();
+            int id = v.getId();
+            collection.mViews.add(
+                    new ViewInfo(
+                            id,
+                            parentId,
+                            v.isShown(),
+                            v.isDirty(),
+                            v.getClass().getSimpleName(),
+                            v.getResources()));
+
+            if (v instanceof ViewGroup) {
+                ViewGroup vg = (ViewGroup) v;
+                for (int i = 0; i < vg.getChildCount(); i++) {
+                    dumpView(collection, id, vg.getChildAt(i));
+                }
+            }
+        }
+
+        private static void setEnabled(boolean value) {
+            ThreadUtils.assertOnUiThread();
+            if (sInstance == null && value) {
+                sInstance = new ViewHierarchyDumper();
+                Looper.myQueue().addIdleHandler(sInstance);
+            } else if (sInstance != null && !value) {
+                Looper.myQueue().removeIdleHandler(sInstance);
+                sInstance = null;
+            }
+        }
+=======
         void finishAsync(String name, long id);
+>>>>>>> chromium
     }
 }

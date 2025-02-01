@@ -32,8 +32,14 @@
 
 #include "third_party/blink/renderer/core/css/container_query_evaluator.h"
 #include "third_party/blink/renderer/core/css/css_resolution_units.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/dom/element.h"
+#include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
+#include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
+=======
 #include "third_party/blink/renderer/core/dom/layout_tree_builder_traversal.h"
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 
@@ -61,10 +67,25 @@ absl::optional<double> FindSizeForContainerAxis(PhysicalAxes physical_axes,
          logical_axes == LogicalAxes(kLogicalAxisInline) ||
          logical_axes == LogicalAxes(kLogicalAxisBlock));
 
+<<<<<<< HEAD
+  for (Element* container = ContainerQueryEvaluator::FindContainer(
+           context_element, selector, tree_scope);
+       container; container = ContainerQueryEvaluator::FindContainer(
+                      FlatTreeTraversal::ParentElement(*container), selector,
+                      tree_scope)) {
+    ContainerQueryEvaluator& evaluator =
+        container->EnsureContainerQueryEvaluator();
+    evaluator.SetReferencedByUnit();
+    std::optional<double> size = requested_axis == kPhysicalAxesHorizontal
+                                     ? evaluator.Width()
+                                     : evaluator.Height();
+    if (!size.has_value()) {
+=======
   for (Element* element = nearest_container; element;
        element = LayoutTreeBuilderTraversal::ParentElement(*element)) {
     auto* evaluator = element->GetContainerQueryEvaluator();
     if (!evaluator)
+>>>>>>> chromium
       continue;
     const ComputedStyle* style = element->GetComputedStyle();
     if (!style)
@@ -184,12 +205,28 @@ CSSToLengthConversionData::CSSToLengthConversionData(
     const FontSizes& font_sizes,
     const ViewportSize& viewport_size,
     const ContainerSizes& container_sizes,
+<<<<<<< HEAD
+    const AnchorData& anchor_data,
+    float zoom,
+    Flags& flags,
+    const Element* element)
+    : CSSLengthResolver(
+          ClampTo<float>(zoom, std::numeric_limits<float>::denorm_min())),
+      writing_mode_(writing_mode),
+=======
     float zoom)
     : style_(style),
+>>>>>>> chromium
       font_sizes_(font_sizes),
       viewport_size_(viewport_size),
       container_sizes_(container_sizes),
+<<<<<<< HEAD
+      anchor_data_(anchor_data),
+      flags_(&flags),
+      element_(element) {}
+=======
       zoom_(clampTo<float>(zoom, std::numeric_limits<float>::denorm_min())) {}
+>>>>>>> chromium
 
 CSSToLengthConversionData::CSSToLengthConversionData(
     const ComputedStyle* style,
@@ -307,6 +344,37 @@ double CSSToLengthConversionData::ZoomedComputedPixels(
     case CSSPrimitiveValue::UnitType::kUserUnits:
       return value * Zoom();
 
+<<<<<<< HEAD
+double CSSToLengthConversionData::ViewportWidth() const {
+  SetFlag(Flag::kViewport);
+  return viewport_size_.LargeWidth();
+}
+
+double CSSToLengthConversionData::ViewportHeight() const {
+  SetFlag(Flag::kViewport);
+  return viewport_size_.LargeHeight();
+}
+
+double CSSToLengthConversionData::SmallViewportWidth() const {
+  SetFlag(Flag::kSmallLargeViewport);
+  return viewport_size_.SmallWidth();
+}
+
+double CSSToLengthConversionData::SmallViewportHeight() const {
+  SetFlag(Flag::kSmallLargeViewport);
+  return viewport_size_.SmallHeight();
+}
+
+double CSSToLengthConversionData::LargeViewportWidth() const {
+  SetFlag(Flag::kSmallLargeViewport);
+  return viewport_size_.LargeWidth();
+}
+
+double CSSToLengthConversionData::LargeViewportHeight() const {
+  SetFlag(Flag::kSmallLargeViewport);
+  return viewport_size_.LargeHeight();
+}
+=======
     case CSSPrimitiveValue::UnitType::kCentimeters:
       return value * kCssPixelsPerCentimeter * Zoom();
 
@@ -324,6 +392,7 @@ double CSSToLengthConversionData::ZoomedComputedPixels(
 
     case CSSPrimitiveValue::UnitType::kPicas:
       return value * kCssPixelsPerPica * Zoom();
+>>>>>>> chromium
 
     case CSSPrimitiveValue::UnitType::kViewportWidth:
       return value * ViewportWidthPercent() * Zoom();
@@ -376,6 +445,10 @@ double CSSToLengthConversionData::ZoomedComputedPixels(
       NOTREACHED();
       return 0;
   }
+}
+
+void CSSToLengthConversionData::ReferenceSibling() const {
+  SetFlag(Flag::kSiblingRelative);
 }
 
 }  // namespace blink

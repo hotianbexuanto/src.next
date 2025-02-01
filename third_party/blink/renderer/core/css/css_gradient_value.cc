@@ -30,7 +30,12 @@
 #include <tuple>
 #include <utility>
 
+<<<<<<< HEAD
+#include "base/memory/values_equivalent.h"
+#include "base/notreached.h"
+=======
 #include "base/cxx17_backports.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/css/css_color.h"
 #include "third_party/blink/renderer/core/css/css_identifier_value.h"
 #include "third_party/blink/renderer/core/css/css_math_expression_node.h"
@@ -40,7 +45,6 @@
 #include "third_party/blink/renderer/core/css/css_value_pair.h"
 #include "third_party/blink/renderer/core/css/properties/computed_style_utils.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/text_link_colors.h"
 #include "third_party/blink/renderer/platform/geometry/int_size.h"
 #include "third_party/blink/renderer/platform/graphics/color_blend.h"
@@ -134,8 +138,15 @@ scoped_refptr<Image> CSSGradientValue::GetImage(
       document.documentElement()->GetComputedStyle();
   // TOOD(crbug.com/1223030): Handle container relative units.
   CSSToLengthConversionData conversion_data(
+<<<<<<< HEAD
+      style, &style, root_style,
+      CSSToLengthConversionData::ViewportSize(document.GetLayoutView()),
+      container_sizes, CSSToLengthConversionData::AnchorData(),
+      style.EffectiveZoom(), ignored_flags, /*element=*/nullptr);
+=======
       &style, root_style, document.GetLayoutView(),
       /* nearest_container */ nullptr, style.EffectiveZoom());
+>>>>>>> chromium
 
   scoped_refptr<Gradient> gradient;
   switch (GetClassType()) {
@@ -328,6 +339,32 @@ void CSSGradientValue::AddDeprecatedStops(GradientDesc& desc,
   }
 }
 
+<<<<<<< HEAD
+// NOTE: The difference between this and ResolveStopColor() is that
+// ResolveStopColor() returns a Color, whereas this returns a CSSValue.
+static const CSSValue* GetComputedStopColor(const CSSValue& color,
+                                            const ComputedStyle& style,
+                                            bool allow_visited_style,
+                                            CSSValuePhase value_phase) {
+  // TODO(crbug.com/40779801): Need to pass an appropriate color provider here.
+  // TODO(crbug.com/40229450): Need to pass an appropriate boolean to say if it
+  // is within webapp scope.
+  const mojom::blink::ColorScheme color_scheme = style.UsedColorScheme();
+  // TODO(40946458): Don't use default length resolver here!
+  const ResolveColorValueContext context{
+      .length_resolver = CSSToLengthConversionData(/*element=*/nullptr),
+      .text_link_colors = TextLinkColors(),
+      .used_color_scheme = color_scheme};
+  const StyleColor style_stop_color = ResolveColorValue(color, context);
+  const Color current_color =
+      style.VisitedDependentColor(GetCSSPropertyColor());
+  return ComputedStyleUtils::ValueForColor(
+      style_stop_color, style, allow_visited_style ? &current_color : nullptr,
+      value_phase);
+}
+
+=======
+>>>>>>> chromium
 void CSSGradientValue::AddComputedStops(
     const ComputedStyle& style,
     bool allow_visited_style,
@@ -550,7 +587,7 @@ void CSSGradientValue::AddStops(
       if (stop.offset_->IsPercentage()) {
         stops[i].offset = stop.offset_->GetFloatValue() / 100;
       } else if (stop.offset_->IsLength() ||
-                 stop.offset_->IsCalculatedPercentageWithLength()) {
+                 !stop.offset_->IsResolvableBeforeLayout()) {
         float length;
         if (stop.offset_->IsLength()) {
           length = stop.offset_->ComputeLength<float>(conversion_data);
@@ -731,7 +768,11 @@ static float PositionFromValue(const CSSValue* value,
     return origin +
            sign * primitive_value->GetFloatValue() / 100.f * edge_distance;
 
+<<<<<<< HEAD
+  if (!primitive_value->IsResolvableBeforeLayout()) {
+=======
   if (primitive_value->IsCalculatedPercentageWithLength())
+>>>>>>> chromium
     return origin + sign * To<CSSMathFunctionValue>(primitive_value)
                                ->ToCalcValue(conversion_data)
                                ->Evaluate(edge_distance);
@@ -759,8 +800,16 @@ static FloatPoint ComputeEndPoint(
 bool CSSGradientValue::KnownToBeOpaque(const Document& document,
                                        const ComputedStyle& style) const {
   for (auto& stop : stops_) {
+<<<<<<< HEAD
+    // TODO(40946458): Don't use default length resolver here!
+    if (!stop.IsHint() &&
+        !ResolveStopColor(CSSToLengthConversionData(/*element=*/nullptr),
+                          *stop.color_, document, style)
+             .IsOpaque()) {
+=======
     if (!stop.IsHint() &&
         ResolveStopColor(*stop.color_, document, style).HasAlpha())
+>>>>>>> chromium
       return false;
   }
   return true;
@@ -790,8 +839,17 @@ Vector<Color> CSSGradientValue::GetStopColors(
     const ComputedStyle& style) const {
   Vector<Color> stop_colors;
   for (const auto& stop : stops_) {
+<<<<<<< HEAD
+    if (!stop.IsHint()) {
+      // TODO(40946458): Don't use default length resolver here!
+      stop_colors.push_back(
+          ResolveStopColor(CSSToLengthConversionData(/*element=*/nullptr),
+                           *stop.color_, document, style));
+    }
+=======
     if (!stop.IsHint())
       stop_colors.push_back(ResolveStopColor(*stop.color_, document, style));
+>>>>>>> chromium
   }
   return stop_colors;
 }
@@ -801,6 +859,39 @@ void CSSGradientValue::TraceAfterDispatch(blink::Visitor* visitor) const {
   CSSImageGeneratorValue::TraceAfterDispatch(visitor);
 }
 
+<<<<<<< HEAD
+bool CSSGradientValue::ShouldSerializeColorSpace() const {
+  if (color_interpolation_space_ == Color::ColorSpace::kNone) {
+    return false;
+  }
+
+  bool has_only_legacy_colors =
+      std::ranges::all_of(stops_, [](const CSSGradientColorStop& stop) {
+        const auto* color_value =
+            DynamicTo<cssvalue::CSSColor>(stop.color_.Get());
+        return !color_value ||
+               Color::IsLegacyColorSpace(color_value->Value().GetColorSpace());
+      });
+
+  // OKLab is the default and should not be serialized unless all colors are
+  // legacy colors.
+  if (!has_only_legacy_colors &&
+      color_interpolation_space_ == Color::ColorSpace::kOklab) {
+    return false;
+  }
+
+  // sRGB is the default if all colors are legacy colors and should not be
+  // serialized.
+  if (has_only_legacy_colors &&
+      color_interpolation_space_ == Color::ColorSpace::kSRGB) {
+    return false;
+  }
+
+  return true;
+}
+
+=======
+>>>>>>> chromium
 String CSSLinearGradientValue::CustomCSSText() const {
   StringBuilder result;
   if (gradient_type_ == kCSSDeprecatedLinearGradient) {
@@ -1105,11 +1196,19 @@ void CSSGradientValue::AppendCSSTextForDeprecatedColorStops(
   for (unsigned i = 0; i < stops_.size(); i++) {
     const CSSGradientColorStop& stop = stops_[i];
     result.Append(", ");
+<<<<<<< HEAD
+    if (stop.offset_->GetValueIfKnown() == 0.0) {
+      result.Append("from(");
+      result.Append(stop.color_->CssText());
+      result.Append(')');
+    } else if (stop.offset_->GetValueIfKnown() == 1.0) {
+=======
     if (stop.offset_->GetDoubleValue() == 0) {
       result.Append("from(");
       result.Append(stop.color_->CssText());
       result.Append(')');
     } else if (stop.offset_->GetDoubleValue() == 1) {
+>>>>>>> chromium
       result.Append("to(");
       result.Append(stop.color_->CssText());
       result.Append(')');
@@ -1556,5 +1655,61 @@ void CSSConicGradientValue::TraceAfterDispatch(blink::Visitor* visitor) const {
   CSSGradientValue::TraceAfterDispatch(visitor);
 }
 
+<<<<<<< HEAD
+bool CSSConstantGradientValue::Equals(
+    const CSSConstantGradientValue& other) const {
+  return base::ValuesEquivalent(color_, other.color_);
+}
+
+void CSSConstantGradientValue::TraceAfterDispatch(
+    blink::Visitor* visitor) const {
+  visitor->Trace(color_);
+  CSSGradientValue::TraceAfterDispatch(visitor);
+}
+
+bool CSSConstantGradientValue::KnownToBeOpaque(
+    const Document& document,
+    const ComputedStyle& style) const {
+  // TODO(40946458): Don't use default length resolver here!
+  return ResolveStopColor(CSSToLengthConversionData(/*element=*/nullptr),
+                          *color_, document, style)
+      .IsOpaque();
+}
+
+scoped_refptr<Gradient> CSSConstantGradientValue::CreateGradient(
+    const CSSToLengthConversionData& conversion_data,
+    const gfx::SizeF& size,
+    const Document& document,
+    const ComputedStyle& style) const {
+  DCHECK(!size.IsEmpty());
+
+  GradientDesc desc({0.0f, 0.0f}, {1.0f, 1.0f}, kSpreadMethodPad);
+  const Color color =
+      ResolveStopColor(conversion_data, *color_, document, style);
+  desc.stops.emplace_back(0.0f, color);
+  desc.stops.emplace_back(1.0f, color);
+
+  scoped_refptr<Gradient> gradient =
+      Gradient::CreateLinear(desc.p0, desc.p1, desc.spread_method,
+                             Gradient::ColorInterpolation::kPremultiplied);
+
+  gradient->SetColorInterpolationSpace(color_interpolation_space_,
+                                       hue_interpolation_method_);
+  gradient->AddColorStops(desc.stops);
+
+  return gradient;
+}
+
+CSSConstantGradientValue* CSSConstantGradientValue::ComputedCSSValue(
+    const ComputedStyle& style,
+    bool allow_visited_style,
+    CSSValuePhase value_phase) const {
+  return MakeGarbageCollected<CSSConstantGradientValue>(
+      GetComputedStopColor(*color_, style, allow_visited_style, value_phase));
+}
+
+}  // namespace blink::cssvalue
+=======
 }  // namespace cssvalue
 }  // namespace blink
+>>>>>>> chromium

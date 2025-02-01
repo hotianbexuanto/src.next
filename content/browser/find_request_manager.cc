@@ -10,6 +10,13 @@
 #include "base/bind.h"
 #include "base/containers/contains.h"
 #include "base/containers/queue.h"
+<<<<<<< HEAD
+#include "base/functional/bind.h"
+#include "base/memory/raw_ptr.h"
+#include "base/task/single_thread_task_runner.h"
+#include "build/build_config.h"
+=======
+>>>>>>> chromium
 #include "content/browser/find_in_page_client.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/web_contents/web_contents_impl.h"
@@ -102,8 +109,13 @@ FrameTreeNode* GetPreviousSibling(FrameTreeNode* node) {
   // The previous sibling may be in another WebContents.
   if (FrameTreeNode* parent = GetParent(node)) {
     auto children = GetChildren(parent);
+<<<<<<< HEAD
+    auto it = std::ranges::find(children, rfh);
+    // It is odd that this rfh may not be a child of its parent, but this is
+=======
     auto it = std::find(children.begin(), children.end(), node);
     // It is odd that this node may not be a child of its parent, but this is
+>>>>>>> chromium
     // actually possible during teardown, hence the need for the check for
     // "it != children.end()".
     if (it != children.end() && it != children.begin())
@@ -122,10 +134,17 @@ FrameTreeNode* GetNextSibling(FrameTreeNode* node) {
   // The next sibling may be in another WebContents.
   if (FrameTreeNode* parent = GetParent(node)) {
     auto children = GetChildren(parent);
+<<<<<<< HEAD
+    auto it = std::ranges::find(children, rfh);
+    // It is odd that this RenderFrameHost may not be a child of its parent, but
+    // this is actually possible during teardown, hence the need for the check
+    // for "it != children.end()".
+=======
     auto it = std::find(children.begin(), children.end(), node);
     // It is odd that this node may not be a child of its parent, but this is
     // actually possible during teardown, hence the need for the check for
     // "it != children.end()".
+>>>>>>> chromium
     if (it != children.end() && ++it != children.end())
       return *it;
   }
@@ -282,6 +301,23 @@ void FindRequestManager::Find(int request_id,
   find_request_queue_.emplace(request_id, search_text, std::move(options));
   if (find_request_queue_.size() == 1)
     FindInternal(find_request_queue_.front());
+<<<<<<< HEAD
+  if (request_id == current_session_id_)
+    find_request_queue_.pop();
+}
+
+void FindRequestManager::ForEachAddedFindInPageRenderFrameHost(
+    base::FunctionRef<void(RenderFrameHostImpl*)> func_ref) {
+  contents_->GetPrimaryMainFrame()->ForEachRenderFrameHostImpl(
+      [this, func_ref](RenderFrameHostImpl* rfh) {
+        if (!CheckFrame(rfh))
+          return;
+        DCHECK(rfh->IsRenderFrameLive());
+        DCHECK(rfh->IsActive());
+        func_ref(rfh);
+      });
+=======
+>>>>>>> chromium
 }
 
 void FindRequestManager::StopFinding(StopFindAction action) {
@@ -606,6 +642,24 @@ void FindRequestManager::FindInternal(const FindRequest& request) {
 
   // This is an initial find operation.
   Reset(request);
+<<<<<<< HEAD
+
+  // Add and observe eligible RFHs in the WebContents. And, use
+  // ForEachRenderFrameHostImpl instead of ForEachAddedFindInPageRenderFrameHost
+  // because that calls CheckFrame() which will only be true if we've called
+  // AddFrame() for the frame.
+  contents_->GetPrimaryMainFrame()->ForEachRenderFrameHostImpl(
+      [this](RenderFrameHostImpl* rfh) {
+        auto* wc = WebContents::FromRenderFrameHost(rfh);
+        // Make sure each WebContents is only added once.
+        if (rfh->IsInPrimaryMainFrame()) {
+          frame_observers_.push_back(std::make_unique<FrameObserver>(wc, this));
+        }
+        if (IsFindInPageDisabled(rfh))
+          return;
+        AddFrame(rfh, false /* force */);
+      });
+=======
   for (WebContentsImpl* contents : contents_->GetWebContentsAndAllInner()) {
     // Portals can't receive keyboard events or be focused, so we don't return
     // find results inside a portal.
@@ -617,6 +671,7 @@ void FindRequestManager::FindInternal(const FindRequest& request) {
       }
     }
   }
+>>>>>>> chromium
 }
 
 void FindRequestManager::AdvanceQueue(int request_id) {

@@ -119,7 +119,7 @@ AccountConsistencyModeManager::AccountConsistencyModeManager(Profile* profile)
   account_consistency_initialized_ = true;
 }
 
-AccountConsistencyModeManager::~AccountConsistencyModeManager() {}
+AccountConsistencyModeManager::~AccountConsistencyModeManager() = default;
 
 // static
 void AccountConsistencyModeManager::RegisterProfilePrefs(
@@ -152,6 +152,20 @@ void AccountConsistencyModeManager::SetDiceMigrationCompleted() {
 }
 
 // static
+<<<<<<< HEAD
+bool AccountConsistencyModeManager::IsDiceSignInAllowed(
+    ProfileAttributesEntry* entry) {
+  // Sign in should only be allowed for OIDC profiles with 3P identities that
+  // are sync-ed to Google. Otherwise, we won't have a valid GAIA ID to sign in
+  // to.
+  bool is_oidc_sign_in_disallowed =
+      entry && !entry->GetProfileManagementOidcTokens().id_token.empty() &&
+      entry->IsDasherlessManagement();
+  return CanEnableDiceForBuild() && IsBrowserSigninAllowedByCommandLine() &&
+         !is_oidc_sign_in_disallowed &&
+         (!entry || entry->GetProfileManagementEnrollmentToken().empty());
+  ;
+=======
 bool AccountConsistencyModeManager::IsDiceMigrationCompleted(Profile* profile) {
   return profile->GetPrefs()->GetBoolean(kDiceMigrationCompletePref);
 }
@@ -159,6 +173,7 @@ bool AccountConsistencyModeManager::IsDiceMigrationCompleted(Profile* profile) {
 // static
 bool AccountConsistencyModeManager::IsDiceSignInAllowed() {
   return CanEnableDiceForBuild() && IsBrowserSigninAllowedByCommandLine();
+>>>>>>> chromium
 }
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 

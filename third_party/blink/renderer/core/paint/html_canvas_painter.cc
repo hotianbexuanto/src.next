@@ -63,6 +63,7 @@ void HTMLCanvasPainter::PaintReplaced(const PaintInfo& paint_info,
       layer->SetBounds(gfx::Size(pixel_snapped_rect.Size()));
       layer->SetIsDrawable(true);
       layer->SetHitTestable(true);
+      canvas->PaintPlacedElements();
       RecordForeignLayer(context, layout_html_canvas_,
                          DisplayItem::kForeignLayerCanvas, layer,
                          pixel_snapped_rect.Location());
@@ -71,8 +72,9 @@ void HTMLCanvasPainter::PaintReplaced(const PaintInfo& paint_info,
   }
 
   if (DrawingRecorder::UseCachedDrawingIfPossible(context, layout_html_canvas_,
-                                                  paint_info.phase))
+                                                  paint_info.phase)) {
     return;
+  }
 
   BoxDrawingRecorder recorder(context, layout_html_canvas_, paint_info.phase,
                               paint_offset);

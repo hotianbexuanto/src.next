@@ -4,13 +4,18 @@
 
 package org.chromium.base;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import org.chromium.build.annotations.EnsuresNonNull;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.build.annotations.RequiresNonNull;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+<<<<<<< HEAD
+=======
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+>>>>>>> chromium
 
 import javax.annotation.concurrent.GuardedBy;
 
@@ -75,6 +80,11 @@ import javax.annotation.concurrent.GuardedBy;
  *    mCallbackController = new CallbackController();  // Allows to start handing out new callbacks.
  * }
  */
+<<<<<<< HEAD
+@NullMarked
+@SuppressWarnings({"NoSynchronizedThisCheck", "NoSynchronizedMethodCheck"})
+=======
+>>>>>>> chromium
 public final class CallbackController {
     /** Interface for cancelable objects tracked by this class. */
     private interface Cancelable {
@@ -84,10 +94,15 @@ public final class CallbackController {
 
     /** Class wrapping a {@link Callback} interface with a {@link Cancelable} interface. */
     private class CancelableCallback<T> implements Cancelable, Callback<T> {
+<<<<<<< HEAD
+        @GuardedBy("CallbackController.this")
+        private @Nullable Callback<T> mCallback;
+=======
         @GuardedBy("mReentrantLock")
         private Callback<T> mCallback;
+>>>>>>> chromium
 
-        private CancelableCallback(@NonNull Callback<T> callback) {
+        private CancelableCallback(Callback<T> callback) {
             mCallback = callback;
         }
 
@@ -109,10 +124,15 @@ public final class CallbackController {
 
     /** Class wrapping {@link Runnable} interface with a {@link Cancelable} interface. */
     private class CancelableRunnable implements Cancelable, Runnable {
+<<<<<<< HEAD
+        @GuardedBy("CallbackController.this")
+        private @Nullable Runnable mRunnable;
+=======
         @GuardedBy("mReentrantLock")
         private Runnable mRunnable;
+>>>>>>> chromium
 
-        private CancelableRunnable(@NonNull Runnable runnable) {
+        private CancelableRunnable(Runnable runnable) {
             mRunnable = runnable;
         }
 
@@ -156,9 +176,14 @@ public final class CallbackController {
     }
 
     /** A list of cancelables created and cancelable by this object. */
+<<<<<<< HEAD
+    @GuardedBy("this")
+    private @Nullable ArrayList<WeakReference<Cancelable>> mCancelables = new ArrayList<>();
+=======
     @Nullable
     @GuardedBy("mReentrantLock")
     private ArrayList<WeakReference<Cancelable>> mCancelables = new ArrayList<>();
+>>>>>>> chromium
 
     /** Ensures thread safety of creating cancelables and canceling them. */
     private final ReentrantLock mReentrantLock = new ReentrantLock(/*fair=*/true);
@@ -173,6 +198,13 @@ public final class CallbackController {
      * @param callback A callback that will be made cancelable.
      * @return A cancelable instance of the callback.
      */
+<<<<<<< HEAD
+    public synchronized <T> Callback<T> makeCancelable(Callback<T> callback) {
+        checkNotCanceled();
+        CancelableCallback<T> cancelable = new CancelableCallback<>(callback);
+        addInternal(cancelable);
+        return cancelable;
+=======
     public <T> Callback<T> makeCancelable(@NonNull Callback<T> callback) {
         try (AutoCloseableLock acl = AutoCloseableLock.lock(mReentrantLock)) {
             checkNotCanceled();
@@ -180,6 +212,7 @@ public final class CallbackController {
             mCancelables.add(new WeakReference<>(cancelable));
             return cancelable;
         }
+>>>>>>> chromium
     }
 
     /**
@@ -191,12 +224,32 @@ public final class CallbackController {
      * @param runnable A runnable that will be made cancelable.
      * @return A cancelable instance of the runnable.
      */
+<<<<<<< HEAD
+    public synchronized Runnable makeCancelable(Runnable runnable) {
+        checkNotCanceled();
+        CancelableRunnable cancelable = new CancelableRunnable(runnable);
+        addInternal(cancelable);
+        return cancelable;
+    }
+
+    @GuardedBy("this")
+    @RequiresNonNull("mCancelables")
+    private void addInternal(Cancelable cancelable) {
+        var cancelables = mCancelables;
+        cancelables.add(new WeakReference<>(cancelable));
+        // Flush null entries.
+        if ((cancelables.size() % 1024) == 0) {
+            // This removes null entries as a side-effect.
+            // Cloning the list is inefficient, but this should rarely be hit.
+            CollectionUtil.strengthen(cancelables);
+=======
     public Runnable makeCancelable(@NonNull Runnable runnable) {
         try (AutoCloseableLock acl = AutoCloseableLock.lock(mReentrantLock)) {
             checkNotCanceled();
             CancelableRunnable cancelable = new CancelableRunnable(runnable);
             mCancelables.add(new WeakReference<>(cancelable));
             return cancelable;
+>>>>>>> chromium
         }
     }
 
@@ -224,10 +277,17 @@ public final class CallbackController {
     }
 
     /** If the cancelation already happened, throws an {@link IllegalStateException}. */
+<<<<<<< HEAD
+    @GuardedBy("this")
+    @EnsuresNonNull("mCancelables")
+    private void checkNotCanceled() {
+        assert mCancelables != null;
+=======
     @GuardedBy("mReentrantLock")
     private void checkNotCanceled() {
         if (mCancelables == null) {
             throw new IllegalStateException("This CallbackController has already been destroyed.");
         }
+>>>>>>> chromium
     }
 }

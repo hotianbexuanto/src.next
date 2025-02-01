@@ -250,6 +250,15 @@ bool ThemePainterDefault::PaintTextField(const Element& element,
   if (style.HasBorderRadius() || style.HasBackgroundImage())
     return true;
 
+<<<<<<< HEAD
+  AppearanceValue appearance = style.EffectiveAppearance();
+
+  WebThemeEngine::TextFieldExtraParams text_field;
+  text_field.is_text_area = appearance == AppearanceValue::kTextArea;
+  text_field.is_listbox = appearance == AppearanceValue::kListbox;
+  text_field.has_border = true;
+  text_field.zoom = style.EffectiveZoom();
+=======
   // Don't use the theme painter if dark mode is enabled. It has a separate
   // graphics pipeline that doesn't go through GraphicsContext and so does not
   // currently know how to handle Dark Mode, causing elements to be rendered
@@ -268,6 +277,7 @@ bool ThemePainterDefault::PaintTextField(const Element& element,
   extra_params.text_field.zoom = style.EffectiveZoom();
 
   cc::PaintCanvas* canvas = paint_info.context.Canvas();
+>>>>>>> chromium
 
   Color background_color =
       style.VisitedDependentColor(GetCSSPropertyBackgroundColor());
@@ -369,11 +379,23 @@ bool ThemePainterDefault::PaintSliderTrack(const Element& element,
                                            const PaintInfo& i,
                                            const IntRect& rect,
                                            const ComputedStyle& style) {
+<<<<<<< HEAD
+  WebThemeEngine::SliderExtraParams slider;
+  bool is_slider_vertical =
+      RuntimeEnabledFeatures::
+          NonStandardAppearanceValueSliderVerticalEnabled() &&
+      style.EffectiveAppearance() == AppearanceValue::kSliderVertical;
+  const WritingMode writing_mode = style.GetWritingMode();
+  bool is_writing_mode_vertical = !IsHorizontalWritingMode(writing_mode);
+  slider.vertical = is_writing_mode_vertical || is_slider_vertical;
+  slider.in_drag = false;
+=======
   WebThemeEngine::ExtraParams extra_params;
   cc::PaintCanvas* canvas = i.context.Canvas();
   extra_params.slider.vertical =
       o.StyleRef().EffectiveAppearance() == kSliderVerticalPart;
   extra_params.slider.in_drag = false;
+>>>>>>> chromium
 
   PaintSliderTicks(o, i, rect);
 
@@ -414,12 +436,24 @@ bool ThemePainterDefault::PaintSliderTrack(const Element& element,
 bool ThemePainterDefault::PaintSliderThumb(const Element& element,
                                            const ComputedStyle& style,
                                            const PaintInfo& paint_info,
+<<<<<<< HEAD
+                                           const gfx::Rect& rect) {
+  WebThemeEngine::SliderExtraParams slider;
+  slider.vertical =
+      !style.IsHorizontalWritingMode() ||
+      (RuntimeEnabledFeatures::
+           NonStandardAppearanceValueSliderVerticalEnabled() &&
+       style.EffectiveAppearance() == AppearanceValue::kSliderThumbVertical);
+  slider.in_drag = element.IsActive();
+  slider.zoom = style.EffectiveZoom();
+=======
                                            const IntRect& rect) {
   WebThemeEngine::ExtraParams extra_params;
   cc::PaintCanvas* canvas = paint_info.context.Canvas();
   extra_params.slider.vertical =
       style.EffectiveAppearance() == kSliderThumbVerticalPart;
   extra_params.slider.in_drag = element.IsActive();
+>>>>>>> chromium
 
   float zoom_level = style.EffectiveZoom();
   extra_params.slider.zoom = zoom_level;

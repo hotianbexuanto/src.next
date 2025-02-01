@@ -71,12 +71,29 @@ class CORE_EXPORT CSSSelectorList {
     o.selector_array_ = nullptr;
   }
 
+<<<<<<< HEAD
+  static CSSSelectorList* AdoptSelectorVector(
+      base::span<CSSSelector> selector_vector);
+  static void AdoptSelectorVector(base::span<CSSSelector> selector_vector,
+                                  CSSSelector* selector_array);
+
+  CSSSelectorList* Copy() const;
+  static HeapVector<CSSSelector> Copy(const CSSSelector* selector_list);
+
+  static bool IsValid(const CSSSelector& first) {
+    return first.Match() != CSSSelector::kInvalidList;
+  }
+  bool IsValid() const { return IsValid(*first_selector_); }
+  const CSSSelector* First() const {
+    return IsValid() ? first_selector_ : nullptr;
+=======
   CSSSelectorList& operator=(CSSSelectorList&& o) {
     DCHECK(this != &o);
     DeleteSelectorsIfNeeded();
     selector_array_ = o.selector_array_;
     o.selector_array_ = nullptr;
     return *this;
+>>>>>>> chromium
   }
 
   ~CSSSelectorList() { DeleteSelectorsIfNeeded(); }
@@ -91,9 +108,19 @@ class CORE_EXPORT CSSSelectorList {
   static const CSSSelector* Next(const CSSSelector&);
   static const CSSSelector* NextInFullList(const CSSSelector&);
 
+<<<<<<< HEAD
+  // Returns true when there is exactly one complex selector in the list,
+  // and false otherwise.
+  static bool IsSingleComplexSelector(const CSSSelector& first) {
+    return IsValid(first) && !Next(first);
+  }
+  bool IsSingleComplexSelector() const {
+    return IsSingleComplexSelector(*first_selector_);
+=======
   // The CSS selector represents a single sequence of simple selectors.
   bool HasOneSelector() const {
     return selector_array_ && !Next(*selector_array_);
+>>>>>>> chromium
   }
   const CSSSelector& SelectorAt(wtf_size_t index) const {
     return selector_array_[index];
@@ -117,12 +144,35 @@ class CORE_EXPORT CSSSelectorList {
   // avoided when possible. Instead iterate from first() and using next().
   unsigned ComputeLength() const;
 
+<<<<<<< HEAD
+  // Return the specificity of the selector with the highest specificity.
+  unsigned MaximumSpecificity() const;
+
+  // Re-nest each simple selector in `selector_list` into `result`,
+  // falling back to the original simple selector when CSSSelector::Renest
+  // returns no value, and returning 'true' if at least one simple selector
+  // needed re-nesting.
+  //
+  // See also CSSSelector::Renest.
+  static bool Renest(const CSSSelector* selector_list,
+                     StyleRule* new_parent,
+                     HeapVector<CSSSelector>& result);
+
+  // Returns a re-nested selector list (see CSSSelector::Renest),
+  // or `this` if no re-nested was required.
+  CSSSelectorList* Renest(StyleRule* new_parent);
+
+  // True if at least one (complex) selector in the list
+  // is allowed inside '&' (see CSSSelector::IsAllowedInParentPseudo).
+  static bool IsAnyAllowedInParentPseudo(const CSSSelector* selector_list);
+=======
  private:
   void DeleteSelectorsIfNeeded() {
     if (selector_array_)
       DeleteSelectors();
   }
   void DeleteSelectors();
+>>>>>>> chromium
 
   CSSSelectorList(const CSSSelectorList&) = delete;
   CSSSelectorList& operator=(const CSSSelectorList&) = delete;

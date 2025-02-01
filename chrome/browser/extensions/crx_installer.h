@@ -190,10 +190,11 @@ class CrxInstaller : public SandboxedUnpackerClient {
     return (creation_flags_ & Extension::FROM_WEBSTORE) > 0;
   }
   void set_is_gallery_install(bool val) {
-    if (val)
+    if (val) {
       creation_flags_ |= Extension::FROM_WEBSTORE;
-    else
+    } else {
       creation_flags_ &= ~Extension::FROM_WEBSTORE;
+    }
   }
 
   // If |apps_require_extension_mime_type_| is set to true, be sure to set
@@ -252,7 +253,7 @@ class CrxInstaller : public SandboxedUnpackerClient {
 
   Profile* profile() { return profile_; }
 
-  const Extension* extension() { return extension_.get(); }
+  const Extension* extension() const { return extension_.get(); }
 
   // The currently installed version of the extension, for updates. Will be
   // invalid if this isn't an update.
@@ -362,10 +363,11 @@ class CrxInstaller : public SandboxedUnpackerClient {
       declarative_net_request::RulesetInstallPrefs ruleset_install_prefs);
 
   void set_install_flag(int flag, bool val) {
-    if (val)
+    if (val) {
       install_flags_ |= flag;
-    else
+    } else {
       install_flags_ &= ~flag;
+    }
   }
 
   // Returns |unpacker_task_runner_|. Initializes it if it's still nullptr.
@@ -483,7 +485,7 @@ class CrxInstaller : public SandboxedUnpackerClient {
   bool grant_permissions_;
 
   // The value of the content type header sent with the CRX.
-  // Ignorred unless |require_extension_mime_type_| is true.
+  // Ignored unless |require_extension_mime_type_| is true.
   std::string original_mime_type_;
 
   // What caused this install?  Used only for histograms that report

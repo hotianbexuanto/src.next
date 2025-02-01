@@ -41,7 +41,7 @@ struct ShortcutTestObject {
 
 class ShellIntegrationWinMigrateShortcutTest : public testing::Test {
  protected:
-  ShellIntegrationWinMigrateShortcutTest() {}
+  ShellIntegrationWinMigrateShortcutTest() = default;
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());

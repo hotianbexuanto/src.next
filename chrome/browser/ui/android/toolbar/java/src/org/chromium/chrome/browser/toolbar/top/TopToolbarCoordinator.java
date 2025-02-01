@@ -213,6 +213,18 @@ public class TopToolbarCoordinator implements Toolbar {
      *                                     controls offsets.
      * @param topUiThemeColorProvider {@link ThemeColorProvider} for top UI.
      */
+<<<<<<< HEAD
+    public void initializeWithNative(
+            Profile profile,
+            Runnable layoutUpdater,
+            OnClickListener bookmarkClickHandler,
+            OnClickListener customTabsBackClickHandler,
+            LayoutManager layoutManager,
+            ObservableSupplier<Tab> tabSupplier,
+            BrowserControlsVisibilityManager browserControlsVisibilityManager,
+            TopUiThemeColorProvider topUiThemeColorProvider,
+            ObservableSupplier<Integer> bottomToolbarControlsOffsetSupplier) {
+=======
     public void initializeWithNative(Runnable layoutUpdater,
             OnClickListener tabSwitcherClickHandler,
             OnLongClickListener tabSwitcherLongClickHandler, OnClickListener newTabClickHandler,
@@ -220,6 +232,7 @@ public class TopToolbarCoordinator implements Toolbar {
             LayoutManager layoutManager, ObservableSupplier<Tab> tabSupplier,
             BrowserControlsStateProvider browserControlsStateProvider,
             TopUiThemeColorProvider topUiThemeColorProvider) {
+>>>>>>> chromium
         assert mTabModelSelectorSupplier.get() != null;
         if (mTabSwitcherModeCoordinatorPhone != null) {
             mTabSwitcherModeCoordinatorPhone.setOnTabSwitcherClickHandler(tabSwitcherClickHandler);
@@ -510,11 +523,6 @@ public class TopToolbarCoordinator implements Toolbar {
     @Override
     public boolean isReadyForTextureCapture() {
         return mToolbarLayout.isReadyForTextureCapture();
-    }
-
-    @Override
-    public boolean setForceTextureCapture(boolean forceTextureCapture) {
-        return mToolbarLayout.setForceTextureCapture(forceTextureCapture);
     }
 
     /**

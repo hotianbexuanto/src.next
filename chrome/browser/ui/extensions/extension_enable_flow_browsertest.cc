@@ -25,7 +25,15 @@ class TestManagementProvider : public extensions::ManagementPolicy::Provider {
  public:
   explicit TestManagementProvider(const extensions::ExtensionId& extension_id)
       : extension_id_(extension_id) {}
+<<<<<<< HEAD
+
+  TestManagementProvider(const TestManagementProvider&) = delete;
+  TestManagementProvider& operator=(const TestManagementProvider&) = delete;
+
+  ~TestManagementProvider() override = default;
+=======
   ~TestManagementProvider() override {}
+>>>>>>> chromium
 
   // MananagementPolicy::Provider:
   std::string GetDebugPolicyProviderName() const override { return "test"; }

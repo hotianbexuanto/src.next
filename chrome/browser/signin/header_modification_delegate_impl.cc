@@ -4,6 +4,7 @@
 
 #include "chrome/browser/signin/header_modification_delegate_impl.h"
 
+#include "base/notreached.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/content_settings/cookie_settings_factory.h"
@@ -67,6 +68,20 @@ void HeaderModificationDelegateImpl::ProcessRequest(
     ChromeRequestAdapter* request_adapter,
     const GURL& redirect_url) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+<<<<<<< HEAD
+  if (profile_->IsOffTheRecord()) {
+    // We expect seeing traffic from OTR profiles only if the feature is
+    // enabled.
+#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
+    CHECK(switches::IsBoundSessionCredentialsEnabled(profile_->GetPrefs()));
+    return;
+#else
+    NOTREACHED();
+#endif
+  }
+
+=======
+>>>>>>> chromium
   const PrefService* prefs = profile_->GetPrefs();
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   syncer::SyncService* sync_service =
@@ -121,6 +136,47 @@ void HeaderModificationDelegateImpl::ProcessResponse(
     ResponseAdapter* response_adapter,
     const GURL& redirect_url) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+<<<<<<< HEAD
+
+#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
+  if (gaia::HasGaiaSchemeHostPort(response_adapter->GetUrl()) &&
+      IsFirstPartyRequest(response_adapter) &&
+      switches::IsBoundSessionCredentialsEnabled(profile_->GetPrefs())) {
+    BoundSessionCookieRefreshService* bound_session_cookie_refresh_service =
+        BoundSessionCookieRefreshServiceFactory::GetForProfile(profile_);
+    if (bound_session_cookie_refresh_service) {
+      // Terminate the session if session termination header is set.
+      bound_session_cookie_refresh_service->MaybeTerminateSession(
+          response_adapter->GetUrl(), response_adapter->GetHeaders());
+      auto params = BoundSessionRegistrationFetcherParam::CreateFromHeaders(
+          response_adapter->GetUrl(), response_adapter->GetHeaders());
+      for (auto&& param : std::move(params)) {
+        // `bound_session_cookie_refresh_service` currently can handle only one
+        // registration request. The service has logic to choose which request
+        // it should prioritize, so we're sending it multiple params to choose
+        // from.
+        // TODO(b/274774185): modify `CreateRegistrationRequest()` to accept a
+        // vector of params.
+        bound_session_cookie_refresh_service->CreateRegistrationRequest(
+            std::move(param));
+      }
+    }
+  }
+#endif
+
+  if (profile_->IsOffTheRecord()) {
+    // We expect seeing traffic from OTR profiles only if the feature is
+    // enabled.
+#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
+    CHECK(switches::IsBoundSessionCredentialsEnabled(profile_->GetPrefs()));
+    return;
+#else
+    NOTREACHED();
+#endif
+  }
+
+=======
+>>>>>>> chromium
   ProcessAccountConsistencyResponseHeaders(response_adapter, redirect_url,
                                            profile_->IsOffTheRecord());
 }
@@ -133,6 +189,9 @@ bool HeaderModificationDelegateImpl::ShouldIgnoreGuestWebViewRequest(
     return true;
 
   if (extensions::WebViewRendererState::GetInstance()->IsGuest(
+<<<<<<< HEAD
+          contents->GetPrimaryMainFrame()->GetProcess()->GetDeprecatedID())) {
+=======
           contents->GetMainFrame()->GetProcess()->GetID())) {
     GURL identity_api_site =
         extensions::WebViewGuest::GetSiteForGuestPartitionConfig(
@@ -144,6 +203,7 @@ bool HeaderModificationDelegateImpl::ShouldIgnoreGuestWebViewRequest(
 
     // If the site URL matches, but |contents| is not using a guest
     // SiteInstance, then there is likely a serious bug.
+>>>>>>> chromium
     CHECK(contents->GetSiteInstance()->IsGuest());
   }
   return false;

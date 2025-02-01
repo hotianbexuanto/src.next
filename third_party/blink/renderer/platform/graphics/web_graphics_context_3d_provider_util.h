@@ -28,6 +28,27 @@ CreateContextProviderOnWorkerThread(
     Platform::GraphicsInfo* gl_info,
     const KURL& url);
 
+<<<<<<< HEAD
+// Synchronously creates a WebGPUGraphicsContext3DProvider on any thread.
+// Note if this method is not called on the main thread it will block waiting
+// for the main thread to allocated an offscreen context provider.
+PLATFORM_EXPORT std::unique_ptr<WebGraphicsContext3DProvider>
+CreateWebGPUGraphicsContext3DProvider(const KURL& url);
+
+// Asynchronously creates a WebGPUGraphicsContext3DProvider on any thread.
+PLATFORM_EXPORT void CreateWebGPUGraphicsContext3DProviderAsync(
+    const KURL& url,
+    scoped_refptr<base::SingleThreadTaskRunner> current_thread_task_runner,
+    WTF::CrossThreadOnceFunction<
+        void(std::unique_ptr<WebGraphicsContext3DProvider>)> callback);
+
+// If the shared GPU context exists, sets whether it aggressively frees
+// resources to `value`.
+PLATFORM_EXPORT void SetAggressivelyFreeSharedGpuContextResourcesIfPossible(
+    bool value);
+
+=======
+>>>>>>> chromium
 }  // namespace blink
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_WEB_GRAPHICS_CONTEXT_3D_PROVIDER_UTIL_H_

@@ -7,14 +7,23 @@ package org.chromium.chrome.browser.omnibox.suggestions;
 import android.content.Context;
 import android.util.Pair;
 
+<<<<<<< HEAD
+=======
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.Px;
+>>>>>>> chromium
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
 import org.chromium.base.supplier.Supplier;
+<<<<<<< HEAD
+import org.chromium.build.annotations.Initializer;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+=======
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+>>>>>>> chromium
 import org.chromium.chrome.browser.omnibox.UrlBarEditingTextStateProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.answer.AnswerSuggestionProcessor;
 import org.chromium.chrome.browser.omnibox.suggestions.basic.BasicSuggestionProcessor;
@@ -46,7 +55,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Builds DropdownItemViewInfo list from AutocompleteResult for the Suggestions list. */
+@NullMarked
 class DropdownItemViewInfoListBuilder {
+<<<<<<< HEAD
+    private final List<SuggestionProcessor> mPriorityOrderedSuggestionProcessors;
+    private final Supplier<Tab> mActivityTabSupplier;
+
+    private GroupSeparatorProcessor mGroupSeparatorProcessor;
+    private HeaderProcessor mHeaderProcessor;
+    private @Nullable Supplier<ShareDelegate> mShareDelegateSupplier;
+    private Optional<OmniboxImageSupplier> mImageSupplier;
+    private BookmarkState mBookmarkState;
+
+    DropdownItemViewInfoListBuilder(Supplier<Tab> tabSupplier, BookmarkState bookmarkState) {
+=======
     private static final int MAX_IMAGE_CACHE_SIZE = 500 * ConversionUtils.BYTES_PER_KILOBYTE;
     @Px
     private static final int DROPDOWN_HEIGHT_UNKNOWN = -1;
@@ -68,6 +90,7 @@ class DropdownItemViewInfoListBuilder {
 
     DropdownItemViewInfoListBuilder(@NonNull Supplier<Tab> tabSupplier, BookmarkState bookmarkState,
             @NonNull ExploreIconProvider exploreIconProvider) {
+>>>>>>> chromium
         mPriorityOrderedSuggestionProcessors = new ArrayList<>();
         mDropdownHeight = DROPDOWN_HEIGHT_UNKNOWN;
         mActivityTabSupplier = tabSupplier;
@@ -84,9 +107,15 @@ class DropdownItemViewInfoListBuilder {
      * @param textProvider Provider of querying/editing the Omnibox.
      * @param queryTileSuggestionCallback Callback responding to QueryTile events.
      */
+<<<<<<< HEAD
+    @Initializer
+    void initDefaultProcessors(
+            Context context, SuggestionHost host, UrlBarEditingTextStateProvider textProvider) {
+=======
     void initDefaultProcessors(Context context, SuggestionHost host, AutocompleteDelegate delegate,
             UrlBarEditingTextStateProvider textProvider,
             Callback<List<QueryTile>> queryTileSuggestionCallback) {
+>>>>>>> chromium
         assert mPriorityOrderedSuggestionProcessors.size() == 0 : "Processors already initialized.";
 
         final Supplier<ImageFetcher> imageFetcherSupplier = () -> mImageFetcher;
@@ -171,7 +200,7 @@ class DropdownItemViewInfoListBuilder {
      *
      * @param shareDelegateSupplier Share facility supplier.
      */
-    void setShareDelegateSupplier(Supplier<ShareDelegate> shareDelegateSupplier) {
+    void setShareDelegateSupplier(@Nullable Supplier<ShareDelegate> shareDelegateSupplier) {
         mShareDelegateSupplier = shareDelegateSupplier;
     }
 
@@ -228,14 +257,136 @@ class DropdownItemViewInfoListBuilder {
     }
 
     /**
+<<<<<<< HEAD
+     * Create a vertical suggestions group ("section").
+     *
+     * <p>The logic creates a vertically stacked set of suggestions that belong to the same
+     * Suggestions Group ("section"). If the GroupConfig describing the group has a header text, it
+     * will be applied. Each suggestion is permitted to be handled by a distinct, separate
+     * Processor.
+     *
+     * @param input The input for which produced the suggestions.
+     * @param groupDetails The details describing this (vertical) suggestions group
+     * @param groupMatches The matches that belong to this suggestions group
+     * @param firstVerticalPosition The index of the first AutocompleteMatch in the target list
+     */
+    @VisibleForTesting
+    List<DropdownItemViewInfo> buildVerticalSuggestionsGroup(
+            AutocompleteInput input,
+            GroupConfig groupDetails,
+            @Nullable GroupConfig previousDetails,
+            List<AutocompleteMatch> groupMatches,
+            int firstVerticalPosition) {
+        assert groupDetails != null;
+        assert groupMatches != null;
+
+        int numGroupMatches = groupMatches.size();
+        assert numGroupMatches > 0;
+        var result = new ArrayList<DropdownItemViewInfo>(numGroupMatches);
+
+        // Only add the Header Group when both ID and details are specified.
+        // Note that despite GroupsDetails map not holding <null> values,
+        // a group definition for specific ID may be unavailable, or the group
+        // header text may be empty.
+        // TODO(http://crbug/1518967): move this to the calling function and instantiate the
+        // HeaderView undonditionally when passing from one suggestion group to another.
+        // TODO(http://crbug/1518967): collapse Header and DivierLine to a single component.
+        if (!TextUtils.isEmpty(groupDetails.getHeaderText())) {
+            final PropertyModel model = mHeaderProcessor.createModel();
+            mHeaderProcessor.populateModel(model, groupDetails.getHeaderText());
+            result.add(new DropdownItemViewInfo(mHeaderProcessor, model, groupDetails));
+        } else if (previousDetails != null
+                && previousDetails.getRenderType() == GroupConfig.RenderType.DEFAULT_VERTICAL) {
+            final PropertyModel model = mGroupSeparatorProcessor.createModel();
+            result.add(new DropdownItemViewInfo(mGroupSeparatorProcessor, model, groupDetails));
+        }
+
+        for (int indexInList = 0; indexInList < numGroupMatches; indexInList++) {
+            var indexOnList = firstVerticalPosition + indexInList;
+            AutocompleteMatch match = groupMatches.get(indexInList);
+            var processor = getProcessorForSuggestion(match, indexOnList);
+            var model = processor.createModel();
+
+            model.set(DropdownCommonProperties.BG_TOP_CORNER_ROUNDED, indexInList == 0);
+            model.set(
+                    DropdownCommonProperties.BG_BOTTOM_CORNER_ROUNDED,
+                    indexInList == numGroupMatches - 1);
+            model.set(DropdownCommonProperties.SHOW_DIVIDER, indexInList < numGroupMatches - 1);
+
+            processor.populateModel(input, match, model, indexOnList);
+            result.add(new DropdownItemViewInfo(processor, model, groupDetails));
+        }
+
+        return result;
+    }
+
+    /**
+     * Create a horizontal suggestions group ("section").
+     *
+     * <p>The logic creates a horizontally arranged set of suggestions that belong to the same
+     * Suggestions Group ("section"). If the GroupConfig describing the group has a header text, it
+     * will be applied. Each suggestion presently must be handled by the same processor.
+     *
+     * <p>Once built, all the matches reported by this call are appended to the target list of
+     * DropdownItemViewInfo objects, encompassing all suggestion groups.
+     *
+     * @param input The input for which produced the suggestions.
+     * @param groupDetails The details describing this (vertical) suggestions group
+     * @param groupMatches The matches that belong to this suggestions group
+     * @param position The index on the target list
+     */
+    @VisibleForTesting
+    List<DropdownItemViewInfo> buildHorizontalSuggestionsGroup(
+            AutocompleteInput input,
+            GroupConfig groupDetails,
+            List<AutocompleteMatch> groupMatches,
+            int position) {
+        assert groupDetails != null;
+        assert groupMatches != null;
+        assert groupMatches.size() > 0;
+
+        var result = new ArrayList<DropdownItemViewInfo>();
+
+        // Only add the Header Group when both ID and details are specified.
+        // Note that despite GroupsDetails map not holding <null> values,
+        // a group definition for specific ID may be unavailable, or the group
+        // header text may be empty.
+        if (!TextUtils.isEmpty(groupDetails.getHeaderText())) {
+            final PropertyModel model = mHeaderProcessor.createModel();
+            mHeaderProcessor.populateModel(model, groupDetails.getHeaderText());
+            result.add(new DropdownItemViewInfo(mHeaderProcessor, model, groupDetails));
+        }
+
+        int numGroupMatches = groupMatches.size();
+        var processor = getProcessorForSuggestion(groupMatches.get(0), position);
+        var model = processor.createModel();
+
+        for (int index = 0; index < numGroupMatches; index++) {
+            AutocompleteMatch match = groupMatches.get(index);
+            assert processor.doesProcessSuggestion(match, position);
+            processor.populateModel(input, match, model, position);
+        }
+
+        result.add(new DropdownItemViewInfo(processor, model, groupDetails));
+        return result;
+    }
+
+    /**
+=======
+>>>>>>> chromium
      * Build ListModel for new set of Omnibox suggestions.
      *
      * @param autocompleteResult New set of suggestions.
      * @return List of DropdownItemViewInfo representing the corresponding content of the
      *          suggestions list.
      */
+<<<<<<< HEAD
+    List<DropdownItemViewInfo> buildDropdownViewInfoList(
+            AutocompleteInput input, AutocompleteResult autocompleteResult) {
+=======
     @NonNull
     List<DropdownItemViewInfo> buildDropdownViewInfoList(AutocompleteResult autocompleteResult) {
+>>>>>>> chromium
         mHeaderProcessor.onSuggestionsReceived();
         for (int index = 0; index < mPriorityOrderedSuggestionProcessors.size(); index++) {
             mPriorityOrderedSuggestionProcessors.get(index).onSuggestionsReceived();
@@ -360,7 +511,14 @@ class DropdownItemViewInfoListBuilder {
             SuggestionProcessor processor = mPriorityOrderedSuggestionProcessors.get(index);
             if (processor.doesProcessSuggestion(suggestion, position)) return processor;
         }
+<<<<<<< HEAD
+
+        // Crash intentionally. This should never happen. The final suggestion processor is the
+        // catch-all.
+        throw new RuntimeException("No default handler for suggestions");
+=======
         assert false : "No default handler for suggestions";
         return null;
+>>>>>>> chromium
     }
 }

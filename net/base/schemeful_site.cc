@@ -149,6 +149,10 @@ const url::Origin& SchemefulSite::GetInternalOriginForTesting() const {
   return site_as_origin_;
 }
 
+<<<<<<< HEAD
+size_t SchemefulSite::EstimateMemoryUsage() const {
+  return base::trace_event::EstimateMemoryUsage(site_as_origin_);
+=======
 bool SchemefulSite::operator==(const SchemefulSite& other) const {
   return site_as_origin_ == other.site_as_origin_;
 }
@@ -161,6 +165,7 @@ bool SchemefulSite::operator!=(const SchemefulSite& other) const {
 // std::set or std::map).
 bool SchemefulSite::operator<(const SchemefulSite& other) const {
   return site_as_origin_ < other.site_as_origin_;
+>>>>>>> chromium
 }
 
 // static

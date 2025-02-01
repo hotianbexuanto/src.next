@@ -69,7 +69,12 @@ TEST(ExtensionProcessMapTest, Test) {
 
   // Test behavior when empty.
   EXPECT_FALSE(map.Contains("a", 1));
+<<<<<<< HEAD
+  EXPECT_FALSE(map.Remove(1));
+  EXPECT_FALSE(map.ExtensionHasProcess("a"));
+=======
   EXPECT_FALSE(map.Remove("a", 1, 1));
+>>>>>>> chromium
   EXPECT_EQ(0u, map.size());
 
   // Test insertion and behavior with one item.
@@ -77,6 +82,8 @@ TEST(ExtensionProcessMapTest, Test) {
   EXPECT_TRUE(map.Contains("a", 1));
   EXPECT_FALSE(map.Contains("a", 2));
   EXPECT_FALSE(map.Contains("b", 1));
+  EXPECT_TRUE(map.ExtensionHasProcess("a"));
+  EXPECT_FALSE(map.ExtensionHasProcess("b"));
   EXPECT_EQ(1u, map.size());
 
   // Test inserting a duplicate item.
@@ -96,6 +103,14 @@ TEST(ExtensionProcessMapTest, Test) {
   EXPECT_TRUE(map.Contains("b", 2));
   EXPECT_FALSE(map.Contains("a", 3));
 
+<<<<<<< HEAD
+  EXPECT_TRUE(map.ExtensionHasProcess("a"));
+  EXPECT_TRUE(map.ExtensionHasProcess("b"));
+
+  // At this point we have {a,1}, {a,2}, {b,3}, and {b,4} in the map. Test
+  // removal of these processes.
+  EXPECT_EQ(1, map.Remove(1));
+=======
   // Note that this only differs from an existing item because of the site
   // instance id.
   EXPECT_TRUE(map.Insert("a", 1, 5));
@@ -111,6 +126,7 @@ TEST(ExtensionProcessMapTest, Test) {
   EXPECT_TRUE(map.Contains("a", 1));
 
   EXPECT_TRUE(map.Remove("a", 1, 5));
+>>>>>>> chromium
   EXPECT_EQ(3u, map.size());
   EXPECT_FALSE(map.Contains("a", 1));
 
@@ -154,6 +170,22 @@ TEST(ExtensionProcessMapTest, GetMostLikelyContextType) {
   EXPECT_EQ(extensions::Feature::BLESSED_EXTENSION_CONTEXT,
             map.GetMostLikelyContextType(extension.get(), 4, &extension_url));
 
+<<<<<<< HEAD
+  map.Insert("d", 5);
+  extension =
+      CreateExtensionWithFlags(extensions::TypeToCreate::kHostedApp, "d");
+  EXPECT_EQ(extensions::mojom::ContextType::kPrivilegedWebPage,
+            map.GetMostLikelyContextType(extension.get(), 5, &web_url));
+
+  map.Insert("e", 6);
+  EXPECT_EQ(extensions::mojom::ContextType::kUntrustedWebUi,
+            map.GetMostLikelyContextType(/*extension=*/nullptr, 6,
+                                         &untrusted_webui_url));
+
+  map.Insert("f", 7);
+  EXPECT_EQ(extensions::mojom::ContextType::kWebPage,
+            map.GetMostLikelyContextType(/*extension=*/nullptr, 7, &web_url));
+=======
   map.set_is_lock_screen_context(true);
 
   map.Insert("d", 5, 3);
@@ -182,4 +214,5 @@ TEST(ExtensionProcessMapTest, GetMostLikelyContextType) {
   map.Insert("h", 9, 7);
   EXPECT_EQ(extensions::Feature::WEB_PAGE_CONTEXT,
             map.GetMostLikelyContextType(/*extension=*/nullptr, 9, &web_url));
+>>>>>>> chromium
 }

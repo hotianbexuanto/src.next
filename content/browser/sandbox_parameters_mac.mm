@@ -14,6 +14,7 @@
 #include "base/mac/foundation_util.h"
 #include "base/mac/mac_util.h"
 #include "base/no_destructor.h"
+#include "base/notreached.h"
 #include "base/numerics/checked_math.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
@@ -24,17 +25,24 @@
 #include "content/public/common/content_client.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
+<<<<<<< HEAD
+#include "sandbox/mac/sandbox_compiler.h"
+=======
 #include "ppapi/buildflags/buildflags.h"
 #include "sandbox/mac/seatbelt_exec.h"
+>>>>>>> chromium
 #include "sandbox/policy/mac/params.h"
 #include "sandbox/policy/mac/sandbox_mac.h"
 #include "sandbox/policy/sandbox_type.h"
 #include "sandbox/policy/switches.h"
+<<<<<<< HEAD
+=======
 #include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(ENABLE_PLUGINS)
 #include "content/public/common/pepper_plugin_info.h"
 #endif
+>>>>>>> chromium
 
 namespace content {
 
@@ -207,6 +215,27 @@ void SetupSandboxParameters(sandbox::policy::SandboxType sandbox_type,
                             const base::CommandLine& command_line,
                             sandbox::SeatbeltExecClient* client) {
   switch (sandbox_type) {
+<<<<<<< HEAD
+    case sandbox::mojom::Sandbox::kAudio:
+    case sandbox::mojom::Sandbox::kCdm:
+    case sandbox::mojom::Sandbox::kMirroring:
+    case sandbox::mojom::Sandbox::kPrintBackend:
+    case sandbox::mojom::Sandbox::kPrintCompositor:
+    case sandbox::mojom::Sandbox::kRenderer:
+    case sandbox::mojom::Sandbox::kService:
+    case sandbox::mojom::Sandbox::kServiceWithJit:
+    case sandbox::mojom::Sandbox::kUtility:
+      SetupCommonSandboxParameters(compiler, command_line);
+      break;
+    case sandbox::mojom::Sandbox::kOnDeviceModelExecution:
+    case sandbox::mojom::Sandbox::kGpu:
+      return SetupGpuSandboxParameters(compiler, command_line);
+    case sandbox::mojom::Sandbox::kNetwork:
+      SetupNetworkSandboxParameters(compiler, command_line);
+      break;
+    case sandbox::mojom::Sandbox::kNoSandbox:
+      NOTREACHED() << "Unhandled parameters for sandbox_type "
+=======
     case sandbox::policy::SandboxType::kAudio:
     case sandbox::policy::SandboxType::kCdm:
     case sandbox::policy::SandboxType::kMirroring:
@@ -232,11 +261,18 @@ void SetupSandboxParameters(sandbox::policy::SandboxType sandbox_type,
     case sandbox::policy::SandboxType::kNoSandbox:
     case sandbox::policy::SandboxType::kVideoCapture:
       CHECK(false) << "Unhandled parameters for sandbox_type "
+>>>>>>> chromium
                    << static_cast<int>(sandbox_type);
-      break;
     // Setup parameters for sandbox types handled by embedders below.
+<<<<<<< HEAD
+    case sandbox::mojom::Sandbox::kScreenAI:
+    case sandbox::mojom::Sandbox::kSpeechRecognition:
+    case sandbox::mojom::Sandbox::kOnDeviceTranslation:
+      SetupCommonSandboxParameters(compiler, command_line);
+=======
     case sandbox::policy::SandboxType::kSpeechRecognition:
       SetupCommonSandboxParameters(client);
+>>>>>>> chromium
       CHECK(GetContentClient()->browser()->SetupEmbedderSandboxParameters(
           sandbox_type, client));
   }

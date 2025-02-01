@@ -93,11 +93,28 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
   void AddResourceTiming(const ResourceTimingInfo&) override;
   bool AllowImage(bool images_enabled, const KURL&) const override;
 
+<<<<<<< HEAD
+  void PopulateResourceRequestBeforeCacheAccess(
+      const ResourceLoaderOptions& options,
+      ResourceRequest& request) override;
+
+  void WillSendRequest(ResourceRequest& resource_request) override;
+
+  void UpgradeResourceRequestForLoader(
+      ResourceType,
+      const std::optional<float> resource_width,
+      ResourceRequest&,
+      const ResourceLoaderOptions&) override;
+
+  bool StartSpeculativeImageDecode(Resource* resource,
+                                   base::OnceClosure callback) override;
+=======
   void PopulateResourceRequest(ResourceType,
                                const ClientHintsPreferences&,
                                const FetchParameters::ResourceWidth&,
                                ResourceRequest&,
                                const ResourceLoaderOptions&) override;
+>>>>>>> chromium
 
   bool IsPrerendering() const override;
 
@@ -184,6 +201,10 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
   String GetUserAgent() const;
   absl::optional<UserAgentMetadata> GetUserAgentMetadata() const;
   const PermissionsPolicy* GetPermissionsPolicy() const override;
+  HashSet<HashAlgorithm> CSPHashesToReport() const override;
+  void AddCSPHashReport(
+      const String& url,
+      const HashMap<HashAlgorithm, String>& integrity_hashes) override;
   const ClientHintsPreferences GetClientHintsPreferences() const;
   float GetDevicePixelRatio() const;
 

@@ -21,9 +21,16 @@ import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroidManager;
 
+<<<<<<< HEAD
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
+/** Collection of utility methods that operates on Tab. */
+=======
 /**
  * Collection of utility methods that operates on Tab.
  */
+>>>>>>> chromium
 public class TabUtils {
     private static final String REQUEST_DESKTOP_SCREEN_WIDTH_PARAM = "screen_width_dp";
 
@@ -113,6 +120,184 @@ public class TabUtils {
                 REQUEST_DESKTOP_SCREEN_WIDTH_PARAM,
                 /* Set a very large size as default to serve as a disabled screen width. */ 4096);
 
+<<<<<<< HEAD
+    /**
+     * Check if Request Desktop Site global setting is enabled.
+     * @param profile The profile of the tab.
+     *        Content settings have separate storage for incognito profiles.
+     *        For site-specific exceptions the actual profile is needed.
+     * @return Whether the desktop site should be requested.
+     */
+    public static boolean isDesktopSiteGlobalEnabled(Profile profile) {
+        return WebsitePreferenceBridge.isCategoryEnabled(
+                profile, ContentSettingsType.REQUEST_DESKTOP_SITE);
+    }
+
+    /**
+     * Check if Request Desktop Site global setting is enabled.
+     * @param profile The profile of the tab.
+     *        Content settings have separate storage for incognito profiles.
+     *        For site-specific exceptions the actual profile is needed.
+     * @param url The URL for the current web content.
+     * @return Whether the desktop site should be requested.
+     */
+    public static boolean isDesktopSiteEnabled(Profile profile, GURL url) {
+        return WebsitePreferenceBridge.getContentSetting(
+                        profile, ContentSettingsType.REQUEST_DESKTOP_SITE, url, url)
+                == ContentSettingValues.ALLOW;
+    }
+
+    /**
+     * Return aspect ratio for grid tab card based on form factor and orientation.
+     * @param context - Context of the application.
+     * @param browserControlsStateProvider - For getting browser controls height.
+     * @return Aspect ratio for the grid tab card.
+     */
+    public static float getTabThumbnailAspectRatio(
+            Context context, BrowserControlsStateProvider browserControlsStateProvider) {
+        if (context.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE) {
+            assert browserControlsStateProvider != null;
+            int browserControlsHeightDp =
+                    (browserControlsStateProvider == null)
+                            ? 0
+                            : Math.round(
+                                    (float) browserControlsStateProvider.getTopControlsHeight()
+                                            / context.getResources().getDisplayMetrics().density);
+            int horizontalAutomotiveToolbarHeightDp =
+                    AutomotiveUtils.getHorizontalAutomotiveToolbarHeightDp(context);
+            int verticalAutomotiveToolbarWidthDp =
+                    AutomotiveUtils.getVerticalAutomotiveToolbarWidthDp(context);
+            DimensionCompat dimensionCompat = getDimensionCompat(context);
+            float windowWidthDp = getWindowWidthDp(dimensionCompat, context);
+            float windowHeightDp = getWindowHeightExcludingSystemBarsDp(dimensionCompat, context);
+            // This should match the aspect ratio of a Tab's content area.
+            return (windowWidthDp - verticalAutomotiveToolbarWidthDp)
+                    / (windowHeightDp
+                            - browserControlsHeightDp
+                            - horizontalAutomotiveToolbarHeightDp);
+        }
+        // This is an experimentally determined value.
+        return PORTRAIT_THUMBNAIL_ASPECT_RATIO;
+    }
+
+    private static float getWindowWidthDp(DimensionCompat compat, Context context) {
+        return compat.getWindowWidth() / context.getResources().getDisplayMetrics().density;
+    }
+
+    private static float getWindowHeightExcludingSystemBarsDp(
+            DimensionCompat compat, Context context) {
+        return (compat.getWindowHeight() - compat.getNavbarHeight() - compat.getStatusBarHeight())
+                / context.getResources().getDisplayMetrics().density;
+    }
+
+    private static DimensionCompat getDimensionCompat(Context context) {
+        // (TODO: crbug.com/351854698) Pass activity context instead.
+        Activity activity = ContextUtils.activityFromContext(context);
+        assert activity != null : "Activity from context should not be null for this class.";
+        return DimensionCompat.create(activity, null);
+    }
+
+    /**
+     * Derive grid card height based on width, expected thumbnail aspect ratio and margins.
+     *
+     * @param cardWidthPx width of the card
+     * @param context to derive view margins
+     * @param browserControlsStateProvider - For getting browser controls height.
+     * @return computed card height.
+     */
+    public static int deriveGridCardHeight(
+            int cardWidthPx,
+            Context context,
+            BrowserControlsStateProvider browserControlsStateProvider) {
+        int tabThumbnailHeight =
+                (int)
+                        ((cardWidthPx - getThumbnailWidthDiff(context))
+                                / getTabThumbnailAspectRatio(
+                                        context, browserControlsStateProvider));
+        int cardHeightPx = tabThumbnailHeight + getThumbnailHeightDiff(context);
+        return cardHeightPx;
+    }
+
+    /**
+     * Derive thumbnail size based on parent card size.
+     * @param gridCardSize size of parent card.
+     * @param context to derive view margins.
+     * @return computed width and height of thumbnail.
+     */
+    public static Size deriveThumbnailSize(@NonNull Size gridCardSize, @NonNull Context context) {
+        int thumbnailWidth = gridCardSize.getWidth() - getThumbnailWidthDiff(context);
+        int thumbnailHeight = gridCardSize.getHeight() - getThumbnailHeightDiff(context);
+        return new Size(thumbnailWidth, thumbnailHeight);
+    }
+
+    /**
+     * Update the {@link Bitmap} and @{@link Matrix} of ImageView. The drawable is scaled by a
+     * matrix to be scaled to larger of the two dimensions of {@code destinationSize}, then
+     * top-center aligned.
+     *
+     * @param view The {@link ImageView} to update.
+     * @param drawable The {@link Drawable} to set in the view and scale.
+     * @param destinationSize The desired {@link Size} of the drawable.
+     */
+    public static void setDrawableAndUpdateImageMatrix(
+            ImageView view, Drawable drawable, Size destinationSize) {
+        if (BuildInfo.getInstance().isAutomotive) {
+            if (drawable instanceof BitmapDrawable bitmapDrawable) {
+                Bitmap bitmap = bitmapDrawable.getBitmap();
+                assert bitmap != null;
+                bitmap.setDensity(
+                        DisplayUtil.getUiDensityForAutomotive(
+                                view.getContext(), bitmap.getDensity()));
+            }
+        }
+        view.setImageDrawable(drawable);
+        int newWidth = destinationSize == null ? 0 : destinationSize.getWidth();
+        int newHeight = destinationSize == null ? 0 : destinationSize.getHeight();
+        if (newWidth <= 0
+                || newHeight <= 0
+                || (newWidth == drawable.getIntrinsicWidth()
+                        && newHeight == drawable.getIntrinsicHeight())) {
+            view.setScaleType(ScaleType.FIT_CENTER);
+            return;
+        }
+
+        final Matrix m = new Matrix();
+        final float scale =
+                Math.max(
+                        (float) newWidth / drawable.getIntrinsicWidth(),
+                        (float) newHeight / drawable.getIntrinsicHeight());
+        m.setScale(scale, scale);
+
+        /*
+         * Bitmap is top-left aligned by default. We want to translate the image to be horizontally
+         * center-aligned. |destination width - scaled width| is the width that is out of view
+         * bounds. We need to translate the drawable (to left) by half of this distance.
+         */
+        final int xOffset = (int) ((newWidth - (drawable.getIntrinsicWidth() * scale)) / 2);
+        m.postTranslate(xOffset, 0);
+
+        view.setScaleType(ScaleType.MATRIX);
+        view.setImageMatrix(m);
+    }
+
+    private static int getThumbnailHeightDiff(Context context) {
+        final int tabGridCardMargin = (int) TabUiThemeProvider.getTabGridCardMargin(context);
+        final int thumbnailMargin =
+                (int) context.getResources().getDimension(R.dimen.tab_grid_card_thumbnail_margin);
+        int heightMargins = (2 * tabGridCardMargin) + thumbnailMargin;
+        final int titleHeight =
+                (int) context.getResources().getDimension(R.dimen.tab_grid_card_header_height);
+        return titleHeight + heightMargins;
+    }
+
+    private static int getThumbnailWidthDiff(Context context) {
+        final int tabGridCardMargin = (int) TabUiThemeProvider.getTabGridCardMargin(context);
+        final int thumbnailMargin =
+                (int) context.getResources().getDimension(R.dimen.tab_grid_card_thumbnail_margin);
+        return 2 * (tabGridCardMargin + thumbnailMargin);
+=======
         return minWidthForDesktopSite <= windowWidth;
+>>>>>>> chromium
     }
 }

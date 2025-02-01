@@ -81,8 +81,13 @@ class MouseEventsTest : public InProcessBrowserTest {
   DISALLOW_COPY_AND_ASSIGN(MouseEventsTest);
 };
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+// Flaky; http://crbug.com/133361.
+=======
 #if defined(OS_MAC)
 // OS_MAC: Missing automation provider support: http://crbug.com/45892.
+>>>>>>> chromium
 #define MAYBE_MouseOver DISABLED_MouseOver
 #else
 #define MAYBE_MouseOver MouseOver

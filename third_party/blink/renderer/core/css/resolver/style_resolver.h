@@ -69,6 +69,17 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
       const StyleRecalcContext&,
       const StyleRequest& = StyleRequest());
 
+  // Resolve base style for an element passing in the base styles for the parent
+  // and the layout parent. Normally, base styles are computed as part of
+  // ResolveStyle, inheriting from the parent's stored ComputedStyle, but for
+  // after-change computations, the after-change style inherits from the
+  // parent's after-change style, which is basically the parent's base style.
+  const ComputedStyle& ResolveBaseStyle(
+      Element&,
+      const ComputedStyle* parent_base_style,
+      const ComputedStyle* layout_parent_base_style,
+      const StyleRecalcContext&);
+
   // Return a reference to the initial style singleton.
   const ComputedStyle& InitialStyle() const;
 
@@ -217,6 +228,11 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   void MatchRuleSet(ElementRuleCollector&, RuleSet*);
   void MatchUARules(const Element&, ElementRuleCollector&);
   void MatchUserRules(ElementRuleCollector&);
+<<<<<<< HEAD
+  void MatchPresentationalHints(StyleResolverState&, ElementRuleCollector&);
+  void MatchPositionTryRules(ElementRuleCollector&);
+  void MatchAuthorRules(const Element&, ElementRuleCollector&);
+=======
   // This matches `::part` selectors. It looks in ancestor scopes as far as
   // part mapping requires.
   void MatchPseudoPartRules(const Element&,
@@ -226,6 +242,7 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   void MatchAuthorRules(const Element&,
                         ScopedStyleResolver*,
                         ElementRuleCollector&);
+>>>>>>> chromium
   void MatchAllRules(StyleResolverState&,
                      ElementRuleCollector&,
                      bool include_smil_properties);
@@ -273,20 +290,58 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   void CascadeAndApplyMatchedProperties(StyleResolverState&,
                                         StyleCascade& cascade);
 
+<<<<<<< HEAD
+  bool ApplyAnimatedStyle(StyleResolverState&,
+                          StyleCascade&,
+                          const StyleRecalcContext&);
+  void ApplyAnchorData(StyleResolverState&);
+=======
   bool ApplyAnimatedStyle(StyleResolverState&, StyleCascade&);
+>>>>>>> chromium
 
   void ApplyCallbackSelectors(StyleResolverState&);
 
   Document& GetDocument() const { return *document_; }
 
   bool IsForcedColorsModeEnabled() const;
+<<<<<<< HEAD
+
+  enum UASheetCacheKeyIndex {
+    kHTMLUASheet,
+    kSVGUASheet,
+    kMathMLUASheet,
+    kFullscreenUASheet,
+    kPrintUASheet,
+    kQuirksUASheet,
+    kViewSourceUASheet,
+    kForcedColorsUASheet,
+    kJSONUASheet,
+    kViewTransitionUASheet,
+    kPseudoElementUASheet,
+  };
+
+  template <typename Functor>
+  void ForEachUARulesForElement(const Element& element,
+                                ElementRuleCollector* collector,
+                                Functor& func) const;
+=======
   bool IsForcedColorsModeEnabled(const StyleResolverState&) const;
+>>>>>>> chromium
 
   MatchedPropertiesCache matched_properties_cache_;
   Member<Document> document_;
   scoped_refptr<const ComputedStyle> initial_style_;
   SelectorFilter selector_filter_;
 
+<<<<<<< HEAD
+  // Micro 1-element cache.
+  Member<RuleSet> media_controls_cache_key_;
+  RuleSetGroup media_controls_cached_rule_set_group_{
+      /*rule_set_group_index=*/0u};
+
+  Member<Document> document_;
+=======
+>>>>>>> chromium
   Member<StyleRuleUsageTracker> tracker_;
 
   bool print_media_type_ = false;

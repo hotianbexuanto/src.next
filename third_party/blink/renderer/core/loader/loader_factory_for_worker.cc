@@ -31,8 +31,22 @@ std::unique_ptr<WebURLLoader> LoaderFactoryForWorker::CreateURLLoader(
     const ResourceLoaderOptions& options,
     scoped_refptr<base::SingleThreadTaskRunner> freezable_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner,
+<<<<<<< HEAD
+    BackForwardCacheLoaderHelper* back_forward_cache_loader_helper,
+    const std::optional<base::UnguessableToken>&
+        service_worker_race_network_request_token,
+    bool is_from_origin_dirty_style_sheet) {
+  Vector<std::unique_ptr<URLLoaderThrottle>> throttles;
+  std::vector<std::unique_ptr<URLLoaderThrottle>> web_throttles =
+      web_context_->CreateThrottles(network_request);
+  throttles.reserve(base::checked_cast<wtf_size_t>(web_throttles.size()));
+  for (auto& throttle : web_throttles) {
+    throttles.push_back(std::move(throttle));
+  }
+=======
     WebBackForwardCacheLoaderHelper back_forward_cache_loader_helper) {
   WrappedResourceRequest wrapped(request);
+>>>>>>> chromium
 
   mojo::PendingRemote<network::mojom::blink::URLLoaderFactory>
       url_loader_factory;

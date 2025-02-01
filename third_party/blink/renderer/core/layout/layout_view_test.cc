@@ -6,7 +6,11 @@
 
 #include "build/build_config.h"
 #include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
+<<<<<<< HEAD
+#include "third_party/blink/renderer/core/dom/text.h"
+=======
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
+>>>>>>> chromium
 #include "third_party/blink/renderer/core/editing/position_with_affinity.h"
 #include "third_party/blink/renderer/core/editing/text_affinity.h"
 #include "third_party/blink/renderer/core/html/html_iframe_element.h"
@@ -210,6 +214,62 @@ TEST_P(LayoutViewHitTestTest, EmptySpan) {
   EXPECT_EQ(after_ab, HitTest(55, 5));
 }
 
+<<<<<<< HEAD
+// http://crbug.com/1233862
+TEST_P(LayoutViewHitTestTest, FlexBlockChildren) {
+  LoadAhem();
+  InsertStyleElement(
+      "body { margin: 0px; font: 10px/10px Ahem; }"
+      "#t { display: flex; }");
+  SetBodyInnerHTML("<div id=t><div id=ab>ab</div><div id=xy>XY</div></div>");
+
+  const auto& ab = *To<Text>(GetElementById("ab")->firstChild());
+  const auto& xy = *To<Text>(GetElementById("xy")->firstChild());
+
+  EXPECT_EQ(PositionWithAffinity(Position(ab, 0)), HitTest(0, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(ab, 0)), HitTest(5, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(ab, 1), TextAffinity::kDownstream),
+            HitTest(10, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(ab, 1), TextAffinity::kDownstream),
+            HitTest(15, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(xy, 0)), HitTest(20, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(xy, 0)), HitTest(25, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(xy, 1), TextAffinity::kDownstream),
+            HitTest(30, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(xy, 1), TextAffinity::kDownstream),
+            HitTest(35, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(xy, 2), TextAffinity::kUpstream),
+            HitTest(40, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(xy, 2), TextAffinity::kUpstream),
+            HitTest(45, 5));
+}
+
+// https://issues.chromium.org/issues/40889098
+TEST_P(LayoutViewHitTestTest, FlexBlockEditableChildren) {
+  LoadAhem();
+  InsertStyleElement(
+      "body { margin: 0px; font: 10px/10px Ahem; }"
+      "#outer { display: flex; flex: auto; }");
+  SetBodyInnerHTML(
+      "<div id=outer><div contenteditable id=inner>ab</div></div>");
+  auto* outer = GetElementById("outer");
+  const auto& text = *To<Text>(GetElementById("inner")->firstChild());
+  EXPECT_EQ(PositionWithAffinity(Position(text, 0)), HitTest(0, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(text, 0)), HitTest(5, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(text, 1), TextAffinity::kDownstream),
+            HitTest(10, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(text, 1), TextAffinity::kDownstream),
+            HitTest(15, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(outer, 1), TextAffinity::kDownstream),
+            HitTest(20, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(outer, 1), TextAffinity::kDownstream),
+            HitTest(25, 5));
+  EXPECT_EQ(PositionWithAffinity(Position(outer, 1), TextAffinity::kDownstream),
+            HitTest(25, 25));
+}
+
+=======
+>>>>>>> chromium
 // http://crbug.com/1171070
 // See also, FloatLeft*, DOM order of "float" should not affect hit testing.
 TEST_P(LayoutViewHitTestTest, FloatLeftLeft) {

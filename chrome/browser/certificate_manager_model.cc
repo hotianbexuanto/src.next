@@ -32,6 +32,14 @@
 #include "ui/base/l10n/l10n_util.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+<<<<<<< HEAD
+#include "chrome/browser/ash/kcer/kcer_factory_ash.h"
+#include "chrome/browser/policy/networking/user_network_configuration_updater_ash.h"
+#include "chromeos/ash/components/kcer/kcer.h"
+#include "chromeos/ash/components/kcer/kcer_histograms.h"
+#include "chromeos/components/onc/certificate_scope.h"
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+=======
 #include "chrome/browser/ash/certificate_provider/certificate_provider.h"
 #include "chrome/browser/ash/certificate_provider/certificate_provider_service.h"
 #include "chrome/browser/ash/certificate_provider/certificate_provider_service_factory.h"
@@ -40,6 +48,7 @@
 #include "chromeos/network/onc/certificate_scope.h"
 #include "chromeos/network/policy_certificate_provider.h"
 #endif
+>>>>>>> chromium
 
 using content::BrowserThread;
 
@@ -472,7 +481,7 @@ CertificateManagerModel::CertInfo::CertInfo(net::ScopedCERTCertificate cert,
       hardware_backed_(hardware_backed),
       device_wide_(device_wide) {}
 
-CertificateManagerModel::CertInfo::~CertInfo() {}
+CertificateManagerModel::CertInfo::~CertInfo() = default;
 
 // static
 std::unique_ptr<CertificateManagerModel::CertInfo>
@@ -570,7 +579,7 @@ CertificateManagerModel::CertificateManagerModel(
 #endif
 }
 
-CertificateManagerModel::~CertificateManagerModel() {}
+CertificateManagerModel::~CertificateManagerModel() = default;
 
 void CertificateManagerModel::OnCertsSourceUpdated() {
   if (hold_back_updates_)

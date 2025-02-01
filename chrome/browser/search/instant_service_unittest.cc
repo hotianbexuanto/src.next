@@ -442,8 +442,17 @@ TEST_F(InstantServiceTest, TestResetToDefault) {
 
 class InstantServiceThemeTest : public InstantServiceTest {
  public:
+<<<<<<< HEAD
+  InstantServiceThemeTest() = default;
+
+  InstantServiceThemeTest(const InstantServiceThemeTest&) = delete;
+  InstantServiceThemeTest& operator=(const InstantServiceThemeTest&) = delete;
+
+  ~InstantServiceThemeTest() override = default;
+=======
   InstantServiceThemeTest() {}
   ~InstantServiceThemeTest() override {}
+>>>>>>> chromium
 
   ui::TestNativeTheme* theme() { return &theme_; }
 

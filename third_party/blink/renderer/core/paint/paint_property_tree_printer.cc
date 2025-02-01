@@ -74,6 +74,11 @@ class PropertyTreePrinterTraits<TransformPaintPropertyNodeOrAlias> {
     printer.AddNode(visual_viewport.GetPageScaleNode());
     printer.AddNode(visual_viewport.GetScrollTranslationNode());
   }
+<<<<<<< HEAD
+  void AddObjectPaintProperties(const ObjectPaintProperties& properties,
+                                PropertyTreePrinter& printer) const override {
+    properties.AddNodesToPrinter<TransformPaintPropertyNodeOrAlias>(printer);
+=======
   static void AddObjectPaintProperties(
       const ObjectPaintProperties& properties,
       PropertyTreePrinter<TransformPaintPropertyNodeOrAlias>& printer) {
@@ -84,13 +89,39 @@ class PropertyTreePrinterTraits<TransformPaintPropertyNodeOrAlias> {
     printer.AddNode(properties.ReplacedContentTransform());
     printer.AddNode(properties.ScrollTranslation());
     printer.AddNode(properties.TransformIsolationNode());
+>>>>>>> chromium
   }
 };
 
 template <>
 class PropertyTreePrinterTraits<ClipPaintPropertyNodeOrAlias> {
  public:
+<<<<<<< HEAD
+  void AddObjectPaintProperties(const ObjectPaintProperties& properties,
+                                PropertyTreePrinter& printer) const override {
+    properties.AddNodesToPrinter<ClipPaintPropertyNodeOrAlias>(printer);
+  }
+};
+
+class EffectNodeCollector : public NodeCollector {
+ public:
+  void AddObjectPaintProperties(const ObjectPaintProperties& properties,
+                                PropertyTreePrinter& printer) const override {
+    properties.AddNodesToPrinter<EffectPaintPropertyNodeOrAlias>(printer);
+  }
+
+  void AddOtherProperties(const LocalFrameView& frame_view,
+                          PropertyTreePrinter& printer) const override {
+    printer.AddNode(&frame_view.GetFrame().Selection().CaretEffectNode());
+  }
+};
+
+class ScrollNodeCollector : public NodeCollector {
+ public:
+  void AddVisualViewportProperties(
+=======
   static void AddVisualViewportProperties(
+>>>>>>> chromium
       const VisualViewport& visual_viewport,
       PropertyTreePrinter<ClipPaintPropertyNodeOrAlias>& printer) {}
   static void AddObjectPaintProperties(
@@ -139,10 +170,16 @@ class PropertyTreePrinterTraits<ScrollPaintPropertyNode> {
     printer.AddNode(visual_viewport.GetScrollNode());
   }
 
+<<<<<<< HEAD
+  void AddObjectPaintProperties(const ObjectPaintProperties& properties,
+                                PropertyTreePrinter& printer) const override {
+    properties.AddNodesToPrinter<ScrollPaintPropertyNode>(printer);
+=======
   static void AddObjectPaintProperties(
       const ObjectPaintProperties& properties,
       PropertyTreePrinter<ScrollPaintPropertyNode>& printer) {
     printer.AddNode(properties.Scroll());
+>>>>>>> chromium
   }
 };
 

@@ -10,10 +10,21 @@ import android.os.SystemClock;
 
 import androidx.annotation.VisibleForTesting;
 
+<<<<<<< HEAD
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JNINamespace;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
+=======
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
 import org.chromium.base.annotations.MainDex;
 import org.chromium.base.annotations.NativeMethods;
+>>>>>>> chromium
+
+import org.chromium.build.annotations.EnsuresNonNullIf;
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -24,21 +35,25 @@ import javax.annotation.concurrent.GuardedBy;
 /**
  * Support for early tracing, before the native library is loaded.
  *
- * Note that arguments are not currently supported for early events, but could
- * be added in the future.
+ * <p>Note that arguments are not currently supported for early events, but could be added in the
+ * future.
  *
- * Events recorded here are buffered in Java until the native library is available, at which point
- * they are flushed to the native side and regular java tracing (TraceEvent) takes over.
+ * <p>Events recorded here are buffered in Java until the native library is available, at which
+ * point they are flushed to the native side and regular java tracing (TraceEvent) takes over.
  *
- * Locking: This class is threadsafe. It is enabled when general tracing is, and then disabled when
- *          tracing is enabled from the native side. At this point, buffered events are flushed to
- *          the native side and then early tracing is permanently disabled after dumping the events.
+ * <p>Locking: This class is threadsafe. It is enabled when general tracing is, and then disabled
+ * when tracing is enabled from the native side. At this point, buffered events are flushed to the
+ * native side and then early tracing is permanently disabled after dumping the events.
  *
- * Like the TraceEvent, the event name of the trace events must be a string literal or a |static
+ * <p>Like the TraceEvent, the event name of the trace events must be a string literal or a |static
  * final String| class member. Otherwise NoDynamicStringsInTraceEventCheck error will be thrown.
  */
 @JNINamespace("base::android")
+<<<<<<< HEAD
+@NullMarked
+=======
 @MainDex
+>>>>>>> chromium
 public class EarlyTraceEvent {
     /** Single trace event. */
     @VisibleForTesting
@@ -115,10 +130,15 @@ public class EarlyTraceEvent {
     // Not final because in many configurations these objects are not used.
     @GuardedBy("sLock")
     @VisibleForTesting
+<<<<<<< HEAD
+    static @Nullable List<Event> sEvents;
+
+=======
     static List<Event> sEvents;
+>>>>>>> chromium
     @GuardedBy("sLock")
     @VisibleForTesting
-    static List<AsyncEvent> sAsyncEvents;
+    static @Nullable List<AsyncEvent> sAsyncEvents;
 
     /** @see TraceEvent#maybeEnableEarlyTracing(long, boolean) */
     static void maybeEnableInBrowserProcess() {
@@ -232,6 +252,8 @@ public class EarlyTraceEvent {
         }
     }
 
+    @EnsuresNonNullIf({"sEvents", "sAsyncEvents"})
+    @SuppressWarnings("NullAway")
     static boolean enabled() {
         return sState == STATE_ENABLED;
     }
@@ -304,6 +326,7 @@ public class EarlyTraceEvent {
     static List<Event> getMatchingCompletedEventsForTesting(String eventName) {
         synchronized (sLock) {
             List<Event> matchingEvents = new ArrayList<Event>();
+            if (!enabled()) return matchingEvents;
             for (Event evt : EarlyTraceEvent.sEvents) {
                 if (evt.mName.equals(eventName)) {
                     matchingEvents.add(evt);
@@ -356,6 +379,36 @@ public class EarlyTraceEvent {
 
     @NativeMethods
     interface Natives {
+<<<<<<< HEAD
+        void recordEarlyBeginEvent(
+                @JniType("std::string") String name,
+                long timeNanos,
+                int threadId,
+                long threadMillis);
+
+        void recordEarlyEndEvent(
+                @JniType("std::string") String name,
+                long timeNanos,
+                int threadId,
+                long threadMillis);
+
+        void recordEarlyToplevelBeginEvent(
+                @JniType("std::string") String name,
+                long timeNanos,
+                int threadId,
+                long threadMillis);
+
+        void recordEarlyToplevelEndEvent(
+                @JniType("std::string") String name,
+                long timeNanos,
+                int threadId,
+                long threadMillis);
+
+        void recordEarlyAsyncBeginEvent(
+                @JniType("std::string") String name, long id, long timeNanos);
+
+        void recordEarlyAsyncEndEvent(long id, long timeNanos);
+=======
         void recordEarlyBeginEvent(String name, long timeNanos, int threadId, long threadMillis);
         void recordEarlyEndEvent(String name, long timeNanos, int threadId, long threadMillis);
         void recordEarlyToplevelBeginEvent(
@@ -364,5 +417,6 @@ public class EarlyTraceEvent {
                 String name, long timeNanos, int threadId, long threadMillis);
         void recordEarlyAsyncBeginEvent(String name, long id, long timestamp);
         void recordEarlyAsyncEndEvent(String name, long id, long timestamp);
+>>>>>>> chromium
     }
 }

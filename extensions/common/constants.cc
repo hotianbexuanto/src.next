@@ -9,8 +9,11 @@
 #include "build/chromecast_buildflags.h"
 #include "build/chromeos_buildflags.h"
 
-namespace extensions {
+namespace {
 
+<<<<<<< HEAD
+constexpr uint8_t kWebstoreSignaturesPublicKeyData[] = {
+=======
 const char kExtensionScheme[] = "chrome-extension";
 
 const base::FilePath::CharType kManifestFilename[] =
@@ -63,6 +66,7 @@ const char kRulesStoreName[] = "Extension Rules";
 const char kWebStoreAppId[] = "ahfgeienlihckogmohjhadlkjgocpleb";
 
 const uint8_t kWebstoreSignaturesPublicKey[] = {
+>>>>>>> chromium
     0x30, 0x82, 0x01, 0x22, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
     0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00, 0x03, 0x82, 0x01, 0x0f, 0x00,
     0x30, 0x82, 0x01, 0x0a, 0x02, 0x82, 0x01, 0x01, 0x00, 0x8f, 0xfb, 0xbf,
@@ -89,6 +93,15 @@ const uint8_t kWebstoreSignaturesPublicKey[] = {
     0x58, 0x34, 0xc8, 0x22, 0x2d, 0x2a, 0x65, 0x75, 0xa7, 0xd9, 0x08, 0x62,
     0xcd, 0x02, 0x03, 0x01, 0x00, 0x01};
 
+<<<<<<< HEAD
+}
+
+namespace extensions {
+
+const base::span<const uint8_t> kWebstoreSignaturesPublicKey(
+    kWebstoreSignaturesPublicKeyData,
+    std::size(kWebstoreSignaturesPublicKeyData));
+=======
 const size_t kWebstoreSignaturesPublicKeySize =
     base::size(kWebstoreSignaturesPublicKey);
 
@@ -96,6 +109,7 @@ const int kMainThreadId = 0;
 
 const char kMimeTypeJpeg[] = "image/jpeg";
 const char kMimeTypePng[] = "image/png";
+>>>>>>> chromium
 
 }  // namespace extensions
 

@@ -19,6 +19,12 @@ import org.chromium.base.Log;
 import org.chromium.base.ObserverList;
 import org.chromium.base.ObserverList.RewindableIterator;
 import org.chromium.base.metrics.RecordHistogram;
+<<<<<<< HEAD
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
+import org.chromium.blink.mojom.ViewportFit;
+=======
+>>>>>>> chromium
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.AppHooks;
 import org.chromium.chrome.browser.SwipeRefreshHandler;
@@ -79,8 +85,12 @@ public class TabWebContentsObserver extends TabWebContentsUserData {
 
     private final TabImpl mTab;
     private final ObserverList<Callback<WebContents>> mInitObservers = new ObserverList<>();
+<<<<<<< HEAD
+    private Observer mObserver;
+=======
     private final Handler mHandler = new Handler();
     private WebContentsObserver mObserver;
+>>>>>>> chromium
     private GURL mLastUrl;
 
     public static TabWebContentsObserver from(Tab tab) {
@@ -141,7 +151,8 @@ public class TabWebContentsObserver extends TabWebContentsUserData {
     @Override
     public void cleanupWebContents(WebContents webContents) {
         if (mObserver != null) {
-            mObserver.destroy();
+            mObserver.updateNotificationsForTab();
+            mObserver.observe(null);
             mObserver = null;
         }
     }
@@ -380,13 +391,56 @@ public class TabWebContentsObserver extends TabWebContentsUserData {
         @Override
         public void viewportFitChanged(@WebContentsObserver.ViewportFitType int value) {
             DisplayCutoutTabHelper.from(mTab).setViewportFit(value);
+            if (ChromeFeatureList.sEdgeToEdgeSafeAreaConstraint.isEnabled()) {
+                DisplayCutoutTabHelper.from(mTab)
+                        .setSafeAreaConstraint(value == ViewportFit.CONTAIN);
+            }
         }
 
         @Override
+        public void safeAreaConstraintChanged(boolean hasConstraint) {
+            if (ChromeFeatureList.sEdgeToEdgeSafeAreaConstraint.isEnabled()) {
+                DisplayCutoutTabHelper.from(mTab).setSafeAreaConstraint(hasConstraint);
+            }
+        }
+
+        @Override
+<<<<<<< HEAD
+        public void virtualKeyboardModeChanged(@VirtualKeyboardMode.EnumType int mode) {
+            RewindableIterator<TabObserver> observers = mTab.getTabObservers();
+            while (observers.hasNext()) {
+                observers.next().onVirtualKeyboardModeChanged(mTab, mode);
+            }
+        }
+
+        @Override
+        public void webContentsDestroyed() {
+            updateNotificationsForTab();
+        }
+
+        void updateNotificationsForTab() {
+            MediaCaptureNotificationServiceImpl.updateMediaNotificationForTab(
+                    ContextUtils.getApplicationContext(), mTab.getId(), null, mLastUrl);
+            BluetoothNotificationManager.updateBluetoothNotificationForTab(
+                    ContextUtils.getApplicationContext(),
+                    BluetoothNotificationService.class,
+                    mTab.getId(),
+                    null,
+                    mLastUrl,
+                    mTab.isIncognito());
+            UsbNotificationManager.updateUsbNotificationForTab(
+                    ContextUtils.getApplicationContext(),
+                    UsbNotificationService.class,
+                    mTab.getId(),
+                    null,
+                    mLastUrl,
+                    mTab.isIncognito());
+=======
         public void destroy() {
             MediaCaptureNotificationServiceImpl.updateMediaNotificationForTab(
                     ContextUtils.getApplicationContext(), mTab.getId(), null, mLastUrl);
             super.destroy();
+>>>>>>> chromium
         }
     }
 }

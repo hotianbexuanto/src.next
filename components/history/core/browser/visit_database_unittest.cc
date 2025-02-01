@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "components/history/core/browser/visit_database.h"
+
 #include <stddef.h>
 
 #include <set>
@@ -10,8 +12,13 @@
 #include "base/strings/string_util.h"
 #include "base/time/time.h"
 #include "components/history/core/browser/url_database.h"
+<<<<<<< HEAD
+#include "components/history/core/browser/visited_link_database.h"
+=======
 #include "components/history/core/browser/visit_database.h"
+>>>>>>> chromium
 #include "sql/database.h"
+#include "sql/test/test_helpers.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/platform_test.h"
@@ -39,10 +46,15 @@ bool IsVisitInfoEqual(const VisitRow& a, const VisitRow& b) {
 
 class VisitDatabaseTest : public PlatformTest,
                           public URLDatabase,
+<<<<<<< HEAD
+                          public VisitDatabase,
+                          public VisitedLinkDatabase {
+=======
                           public VisitDatabase {
  public:
   VisitDatabaseTest() {}
 
+>>>>>>> chromium
  private:
   // Test setup.
   void SetUp() override {
@@ -63,7 +75,7 @@ class VisitDatabaseTest : public PlatformTest,
   // Provided for URL/VisitDatabase.
   sql::Database& GetDB() override { return db_; }
 
-  sql::Database db_;
+  sql::Database db_{sql::test::kTestTag};
 };
 
 TEST_F(VisitDatabaseTest, Add) {

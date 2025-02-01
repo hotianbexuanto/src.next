@@ -44,8 +44,12 @@
     "libs/com_android_tools_desugar_jdk_libs_configuration",
     "libs/com_android_tools_layoutlib_layoutlib_api",
     "libs/com_android_tools_sdk_common",
+<<<<<<< HEAD
+    "libs/com_google_android_apps_common_testing_accessibility_framework_accessibility_test_framework",
+=======
     "libs/com_github_ben_manes_caffeine_caffeine",
     "libs/com_github_kevinstern_software_and_algorithms",
+>>>>>>> chromium
     "libs/com_google_android_datatransport_transport_api",
     "libs/com_google_android_gms_play_services_auth",
     "libs/com_google_android_gms_play_services_auth_api_phone",
@@ -78,10 +82,13 @@
     "libs/com_google_code_findbugs_jsr305",
     "libs/com_google_code_gson_gson",
     "libs/com_google_dagger_dagger",
+<<<<<<< HEAD
+=======
     "libs/com_google_dagger_dagger_compiler",
     "libs/com_google_dagger_dagger_producers",
     "libs/com_google_dagger_dagger_spi",
     "libs/com_google_errorprone_error_prone_annotation",
+>>>>>>> chromium
     "libs/com_google_errorprone_error_prone_annotations",
     "libs/com_google_errorprone_error_prone_check_api",
     "libs/com_google_errorprone_error_prone_core",
@@ -107,10 +114,19 @@
     "libs/com_google_j2objc_j2objc_annotations",
     "libs/com_google_protobuf_protobuf_java",
     "libs/com_google_protobuf_protobuf_javalite",
+    "libs/com_google_testparameterinjector_test_parameter_injector",
     "libs/com_googlecode_java_diff_utils_diffutils",
     "libs/com_squareup_javapoet",
     "libs/com_squareup_javawriter",
+<<<<<<< HEAD
+    "libs/com_squareup_moshi_moshi",
+    "libs/com_squareup_moshi_moshi_adapters",
+    "libs/com_squareup_okio_okio_jvm",
+    "libs/com_squareup_wire_wire_runtime_jvm",
+    "libs/jakarta_inject_jakarta_inject_api",
+=======
     "libs/io_github_java_diff_utils_java_diff_utils",
+>>>>>>> chromium
     "libs/javax_annotation_javax_annotation_api",
     "libs/javax_annotation_jsr250_api",
     "libs/javax_inject_javax_inject",
@@ -150,7 +166,19 @@
     "libs/org_jetbrains_kotlin_kotlin_stdlib_jdk8",
     "libs/org_jetbrains_kotlinx_kotlinx_coroutines_android",
     "libs/org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm",
+<<<<<<< HEAD
+    "libs/org_jetbrains_kotlinx_kotlinx_coroutines_guava",
+    "libs/org_jetbrains_kotlinx_kotlinx_coroutines_test_jvm",
+    "libs/org_jetbrains_kotlinx_kotlinx_serialization_core_jvm",
+    "libs/org_jsoup_jsoup",
+    "libs/org_jspecify_jspecify",
+    "libs/org_mockito_mockito_android",
+    "libs/org_mockito_mockito_core",
+    "libs/org_mockito_mockito_subclass",
+    "libs/org_objenesis_objenesis",
+=======
     "libs/org_jetbrains_kotlinx_kotlinx_metadata_jvm",
+>>>>>>> chromium
     "libs/org_ow2_asm_asm",
     "libs/org_ow2_asm_asm_analysis",
     "libs/org_ow2_asm_asm_commons",
@@ -166,7 +194,11 @@
     "libs/org_robolectric_sandbox",
     "libs/org_robolectric_shadowapi",
     "libs/org_robolectric_shadows_framework",
+<<<<<<< HEAD
+=======
     "libs/org_robolectric_shadows_playservices",
+>>>>>>> chromium
     "libs/org_robolectric_utils",
-    "libs/org_robolectric_utils_reflector"
+    "libs/org_robolectric_utils_reflector",
+    "libs/org_yaml_snakeyaml"
 ]

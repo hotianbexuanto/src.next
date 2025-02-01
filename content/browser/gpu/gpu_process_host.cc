@@ -32,7 +32,6 @@
 #include "base/threading/thread_task_runner_handle.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "components/discardable_memory/service/discardable_shared_memory_manager.h"
 #include "components/tracing/common/tracing_switches.h"
 #include "components/viz/common/features.h"
@@ -75,6 +74,12 @@
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "sandbox/policy/sandbox_type.h"
 #include "sandbox/policy/switches.h"
+<<<<<<< HEAD
+#include "services/webnn/buildflags.h"
+#include "services/webnn/webnn_switches.h"
+#include "third_party/blink/public/common/tokens/tokens.h"
+=======
+>>>>>>> chromium
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/display/display_switches.h"
@@ -276,10 +281,15 @@ static const char* const kSwitchNames[] = {
     switches::kVModule,
     switches::kUseAdapterLuid,
     switches::kWebViewDrawFunctorUsesVulkan,
+<<<<<<< HEAD
+    switches::kSuppressPerformanceLogs,
+#if BUILDFLAG(IS_MAC)
+=======
 #if BUILDFLAG(ENABLE_PLATFORM_HEVC)
     switches::kEnableClearHevcForTesting,
 #endif
 #if defined(OS_MAC)
+>>>>>>> chromium
     sandbox::policy::switches::kEnableSandboxLogging,
     sandbox::policy::switches::kDisableMetalShaderCache,
     switches::kDisableAVFoundationOverlays,
@@ -312,6 +322,23 @@ static const char* const kSwitchNames[] = {
     switches::kPlatformDisallowsChromeOSDirectVideoDecoder,
     switches::kSchedulerBoostUrgent,
 #endif
+<<<<<<< HEAD
+#if BUILDFLAG(USE_CHROMEOS_MEDIA_ACCELERATION)
+    switches::kHardwareVideoDecodeFrameRate,
+#endif
+#if BUILDFLAG(WEBNN_USE_TFLITE)
+    switches::kWebNNTfliteDumpModel,
+#endif
+};
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class GPUFallbackEventCauseType {
+  kFailureToInit = 0,
+  kCrashLimit = 1,
+  kMaxValue = kCrashLimit,
+=======
+>>>>>>> chromium
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -355,18 +382,27 @@ class GpuSandboxedProcessLauncherDelegate
  public:
   explicit GpuSandboxedProcessLauncherDelegate(
       const base::CommandLine& cmd_line)
+<<<<<<< HEAD
+      : cmd_line_(cmd_line) {}
+=======
       :
 #if defined(OS_WIN)
         enable_appcontainer_(true),
 #endif
         cmd_line_(cmd_line) {
   }
+>>>>>>> chromium
 
   ~GpuSandboxedProcessLauncherDelegate() override = default;
 
 #if defined(OS_WIN)
   bool DisableDefaultPolicy() override { return true; }
 
+<<<<<<< HEAD
+  std::string GetSandboxTag() override {
+    return sandbox::policy::SandboxWin::GetSandboxTagForDelegate(
+        "gpu", GetSandboxType());
+=======
   enum GPUAppContainerEnableState{
       AC_ENABLED = 0,
       AC_DISABLED_GL = 1,
@@ -391,6 +427,7 @@ class GpuSandboxedProcessLauncherDelegate
     base::UmaHistogramEnumeration("GPU.AppContainer.EnableState", AC_ENABLED,
                                   MAX_ENABLE_STATE);
     return true;
+>>>>>>> chromium
   }
 
   // For the GPU process we gotten as far as USER_LIMITED. The next level
@@ -450,10 +487,14 @@ class GpuSandboxedProcessLauncherDelegate
 
     return true;
   }
+<<<<<<< HEAD
+#endif  // BUILDFLAG(IS_WIN)
+=======
 
   // TODO: Remove this once AppContainer sandbox is enabled by default.
   void DisableAppContainer() { enable_appcontainer_ = false; }
 #endif  // OS_WIN
+>>>>>>> chromium
 
 #if BUILDFLAG(USE_ZYGOTE_HANDLE)
   ZygoteHandle GetZygote() override {
@@ -487,8 +528,6 @@ class GpuSandboxedProcessLauncherDelegate
 
     return base::win::IsRunningUnderDesktopName(L"winlogon");
   }
-
-  bool enable_appcontainer_;
 #endif
 
   base::CommandLine cmd_line_;
@@ -715,10 +754,15 @@ GpuProcessHost::GpuProcessHost(int host_id, GpuProcessKind kind)
           switches::kInProcessGPU)) {
     in_process_ = true;
   }
+<<<<<<< HEAD
+#if !BUILDFLAG(IS_ANDROID)
+  if (!in_process_ && kind != GPU_PROCESS_KIND_INFO_COLLECTION) {
+=======
 #if !defined(OS_ANDROID)
   if (!in_process_ && kind != GPU_PROCESS_KIND_INFO_COLLECTION &&
       base::FeatureList::IsEnabled(
           features::kForwardMemoryPressureEventsToGpuProcess)) {
+>>>>>>> chromium
     memory_pressure_listener_ = std::make_unique<base::MemoryPressureListener>(
         FROM_HERE, base::BindRepeating(&GpuProcessHost::OnMemoryPressure,
                                        base::Unretained(this)));
@@ -903,6 +947,7 @@ bool GpuProcessHost::Init() {
   params.main_thread_task_runner = GetUIThreadTaskRunner({});
   params.info_collection_gpu_process =
       kind_ == GPU_PROCESS_KIND_INFO_COLLECTION;
+  params.gpu_service_running_in_process = in_process_;
   gpu_host_ = std::make_unique<viz::GpuHostImpl>(
       this, std::move(viz_main_pending_remote), std::move(params));
 
@@ -1049,9 +1094,125 @@ void GpuProcessHost::DidUpdateHDRStatus(bool hdr_enabled) {
 }
 #endif
 
+<<<<<<< HEAD
+std::string GpuProcessHost::GetIsolationKey(
+    int32_t process_id,
+    const blink::WebGPUExecutionContextToken& token) {
+  if (token.Is<blink::DocumentToken>()) {
+    // Return an empty isolation key if the frame host is gone. This could
+    // happen if the frame is destroyed (or being destroyed) in between when we
+    // are trying to get the isolation key.
+    RenderFrameHostImpl* frame_host = RenderFrameHostImpl::FromDocumentToken(
+        process_id, token.GetAs<blink::DocumentToken>());
+    if (!frame_host) {
+      return "";
+    }
+
+    auto isolation_key =
+        frame_host->GetNetworkIsolationKey().ToCacheKeyString();
+    return isolation_key ? *isolation_key : "";
+  } else if (token.Is<blink::DedicatedWorkerToken>()) {
+    // Return an empty isolation key if the process host or the worker host is
+    // gone. This may happen if the worker is destroyed (or being destroyed) in
+    // between when we are trying to get the isolation key.
+    RenderProcessHost* render_process_host =
+        RenderProcessHost::FromID(process_id);
+    if (!render_process_host ||
+        !render_process_host->IsInitializedAndNotDead()) {
+      return "";
+    }
+    DedicatedWorkerHost* dedicated_worker_host =
+        static_cast<StoragePartitionImpl*>(
+            render_process_host->GetStoragePartition())
+            ->GetDedicatedWorkerService()
+            ->GetDedicatedWorkerHostFromToken(
+                token.GetAs<blink::DedicatedWorkerToken>());
+    if (!dedicated_worker_host) {
+      return "";
+    }
+
+    auto isolation_key =
+        dedicated_worker_host->GetNetworkIsolationKey().ToCacheKeyString();
+    return isolation_key ? *isolation_key : "";
+  } else if (token.Is<blink::SharedWorkerToken>()) {
+    // Return an empty isolation key if the process host or the worker host is
+    // gone. This may happen if the worker is destroyed (or being destroyed) in
+    // between when we are trying to get the isolation key.
+    RenderProcessHost* render_process_host =
+        RenderProcessHost::FromID(process_id);
+    if (!render_process_host ||
+        !render_process_host->IsInitializedAndNotDead()) {
+      return "";
+    }
+    auto* storage_partition = static_cast<StoragePartitionImpl*>(
+        render_process_host->GetStoragePartition());
+    auto* worker_service = static_cast<SharedWorkerServiceImpl*>(
+        storage_partition->GetSharedWorkerService());
+    SharedWorkerHost* shared_worker_host =
+        worker_service->GetSharedWorkerHostFromToken(
+            token.GetAs<blink::SharedWorkerToken>());
+    if (!shared_worker_host) {
+      return "";
+    }
+
+    auto isolation_key =
+        shared_worker_host->GetNetworkIsolationKey().ToCacheKeyString();
+    return isolation_key ? *isolation_key : "";
+  } else if (token.Is<blink::ServiceWorkerToken>()) {
+    // Return an empty isolation key if the process host or the worker host is
+    // gone. This may happen if the worker is destroyed (or being destroyed) in
+    // between when we are trying to get the isolation key.
+    RenderProcessHost* render_process_host =
+        RenderProcessHost::FromID(process_id);
+    if (!render_process_host ||
+        !render_process_host->IsInitializedAndNotDead()) {
+      return "";
+    }
+    ServiceWorkerContextWrapper* service_worker_context =
+        static_cast<StoragePartitionImpl*>(
+            render_process_host->GetStoragePartition())
+            ->GetServiceWorkerContext();
+    if (!service_worker_context) {
+      return "";
+    }
+    for (const auto& kv :
+         service_worker_context->GetRunningServiceWorkerInfos()) {
+      int64_t version_id = kv.first;
+      ServiceWorkerVersion* version =
+          service_worker_context->GetLiveVersion(version_id);
+      if (!version) {
+        continue;
+      }
+      ServiceWorkerHost* service_worker_host = version->worker_host();
+      if (!service_worker_host) {
+        continue;
+      }
+      if (service_worker_host->token() !=
+          token.GetAs<blink::ServiceWorkerToken>()) {
+        continue;
+      }
+      auto isolation_key =
+          service_worker_host->GetNetworkIsolationKey().ToCacheKeyString();
+      return isolation_key ? *isolation_key : "";
+    }
+    // Return an empty isolation key if there's no workers matching the token.
+    // This may happen if a user has a service worker started locally for a web
+    // app but now uses same origin for another web app bar which doesn't have a
+    // service worker.
+    return "";
+  }
+
+  NOTREACHED();
+}
+
+void GpuProcessHost::BlockDomainsFrom3DAPIs(const std::set<GURL>& urls,
+                                            gpu::DomainGuilt guilt) {
+  GpuDataManagerImpl::GetInstance()->BlockDomainsFrom3DAPIs(urls, guilt);
+=======
 void GpuProcessHost::BlockDomainFrom3DAPIs(const GURL& url,
                                            gpu::DomainGuilt guilt) {
   GpuDataManagerImpl::GetInstance()->BlockDomainFrom3DAPIs(url, guilt);
+>>>>>>> chromium
 }
 
 bool GpuProcessHost::GpuAccessAllowed() const {
@@ -1059,7 +1220,11 @@ bool GpuProcessHost::GpuAccessAllowed() const {
 }
 
 void GpuProcessHost::DisableGpuCompositing() {
+<<<<<<< HEAD
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
+=======
 #if defined(OS_ANDROID) || BUILDFLAG(IS_CHROMEOS_ASH)
+>>>>>>> chromium
   DLOG(ERROR) << "Can't disable GPU compositing";
 #else
   // TODO(crbug.com/819474): The switch from GPU to software compositing should
@@ -1154,12 +1319,24 @@ bool GpuProcessHost::LaunchGpuProcess() {
 
   cmd_line->AppendSwitchASCII(switches::kProcessType, switches::kGpuProcess);
 
+<<<<<<< HEAD
+#if BUILDFLAG(IS_WIN)
+  if (kind_ == GPU_PROCESS_KIND_INFO_COLLECTION) {
+    cmd_line->AppendArgNative(app_launch_prefetch::GetPrefetchSwitch(
+        app_launch_prefetch::SubprocessType::kGPUInfo));
+  } else {
+    cmd_line->AppendArgNative(app_launch_prefetch::GetPrefetchSwitch(
+        app_launch_prefetch::SubprocessType::kGPU));
+  }
+#endif  // BUILDFLAG(IS_WIN)
+=======
   BrowserChildProcessHostImpl::CopyFeatureAndFieldTrialFlags(cmd_line.get());
   BrowserChildProcessHostImpl::CopyTraceStartupFlags(cmd_line.get());
 
 #if defined(OS_WIN)
   cmd_line->AppendArg(switches::kPrefetchArgumentGpu);
 #endif  // defined(OS_WIN)
+>>>>>>> chromium
 
   if (kind_ == GPU_PROCESS_KIND_INFO_COLLECTION) {
     cmd_line->AppendSwitch(sandbox::policy::switches::kDisableGpuSandbox);
@@ -1223,10 +1400,13 @@ bool GpuProcessHost::LaunchGpuProcess() {
 
   std::unique_ptr<GpuSandboxedProcessLauncherDelegate> delegate =
       std::make_unique<GpuSandboxedProcessLauncherDelegate>(*cmd_line);
+<<<<<<< HEAD
+=======
 #if defined(OS_WIN)
   if (crashed_before_)
     delegate->DisableAppContainer();
 #endif  // defined(OS_WIN)
+>>>>>>> chromium
 
   // Do not call process_->Launch() here.
   // AppendExtraCommandLineSwitches will be called again in process_->Launch(),

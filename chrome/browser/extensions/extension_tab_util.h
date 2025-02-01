@@ -9,10 +9,26 @@
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+#include "base/functional/callback.h"
+#include "chrome/browser/extensions/window_controller.h"
+
+#if !BUILDFLAG(IS_ANDROID)
+// gn check doesn't understand this conditional, hence the nogncheck directives
+// below.
+#include "base/types/expected.h"
+#include "base/values.h"
+#include "chrome/common/extensions/api/tab_groups.h"
+#include "chrome/common/extensions/api/tabs.h"
+#include "components/tab_groups/tab_group_color.h"  // nogncheck
+#include "components/tab_groups/tab_group_id.h"     // nogncheck
+=======
 #include "base/callback.h"
 #include "chrome/common/extensions/api/tabs.h"
+>>>>>>> chromium
 #include "extensions/common/features/feature.h"
 #include "ui/base/window_open_disposition.h"
+#endif
 
 class Browser;
 class ChromeExtensionFunctionDetails;
@@ -41,10 +57,45 @@ class WindowController;
 // Provides various utility functions that help manipulate tabs.
 class ExtensionTabUtil {
  public:
+<<<<<<< HEAD
+#if !BUILDFLAG(IS_ANDROID)
+  // This file is slowly being ported to Android. For now, most of it is
+  // ifdef'd out.
+  static constexpr char kNoCrashBrowserError[] =
+      "I'm sorry. I'm afraid I can't do that.";
+  static constexpr char kCanOnlyMoveTabsWithinNormalWindowsError[] =
+      "Tabs can only be moved to and from normal windows.";
+  static constexpr char kCanOnlyMoveTabsWithinSameProfileError[] =
+      "Tabs can only be moved between windows in the same profile.";
+  static constexpr char kNoCurrentWindowError[] = "No current window";
+  static constexpr char kWindowNotFoundError[] = "No window with id: *.";
+  static constexpr char kTabNotFoundError[] = "No tab with id: *.";
+  static constexpr char kTabStripNotEditableError[] =
+      "Tabs cannot be edited right now (user may be dragging a tab).";
+  static constexpr char kTabStripDoesNotSupportTabGroupsError[] =
+      "Grouping is not supported by tabs in this window.";
+  static constexpr char kJavaScriptUrlsNotAllowedInExtensionNavigations[] =
+      "JavaScript URLs are not allowed in API based extension navigations. Use "
+      "chrome.scripting.executeScript instead.";
+  static constexpr char kBrowserWindowNotAllowed[] =
+      "Browser windows not allowed.";
+  static constexpr char kCannotNavigateToDevtools[] =
+      "Cannot navigate to a devtools:// page without either the devtools or "
+      "debugger permission.";
+  static constexpr char kLockedFullscreenModeNewTabError[] =
+      "You cannot create new tabs while in locked fullscreen mode.";
+  static constexpr char kCannotNavigateToChromeUntrusted[] =
+      "Cannot navigate to a chrome-untrusted:// page.";
+  static constexpr char kFileUrlsNotAllowedInExtensionNavigations[] =
+      "Cannot navigate to a file URL without local file access.";
+
+  static constexpr char kTabsKey[] = "tabs";
+=======
   enum PopulateTabBehavior {
     kPopulateTabs,
     kDontPopulateTabs,
   };
+>>>>>>> chromium
 
   enum ScrubTabBehaviorType {
     kScrubTabFully,
@@ -89,8 +140,15 @@ class ExtensionTabUtil {
 
   static int GetWindowId(const Browser* browser);
   static int GetWindowIdOfTabStripModel(const TabStripModel* tab_strip_model);
+#endif  // !BUILDFLAG(IS_ANDROID)
+
   static int GetTabId(const content::WebContents* web_contents);
+<<<<<<< HEAD
+
+#if !BUILDFLAG(IS_ANDROID)
+=======
   static std::string GetTabStatusText(content::WebContents* web_contents);
+>>>>>>> chromium
   static int GetWindowIdOfTab(const content::WebContents* web_contents);
   static std::unique_ptr<base::ListValue> CreateTabList(
       const Browser* browser,
@@ -171,11 +229,24 @@ class ExtensionTabUtil {
   static bool GetTabStripModel(const content::WebContents* web_contents,
                                TabStripModel** tab_strip_model,
                                int* tab_index);
+<<<<<<< HEAD
+
+  // Returns the active tab's WebContents if there is an active tab. Returns
+  // null if there is no active tab.
+  static content::WebContents* GetActiveTab(Browser* browser);
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+  // Any out parameter (`window`, `contents`, & `tab_index`) may be null.
+  //
+  // The output `*window` value may be null if the tab is a prerender tab that
+  // has no corresponding browser window.
+=======
   static bool GetDefaultTab(Browser* browser,
                             content::WebContents** contents,
                             int* tab_id);
   // Any out parameter (|browser|, |tab_strip|, |contents|, & |tab_index|) may
   // be NULL and will not be set within the function.
+>>>>>>> chromium
   static bool GetTabById(int tab_id,
                          content::BrowserContext* browser_context,
                          bool include_incognito,
@@ -187,6 +258,45 @@ class ExtensionTabUtil {
                          content::BrowserContext* browser_context,
                          bool include_incognito,
                          content::WebContents** contents);
+<<<<<<< HEAD
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Gets the extensions-specific Group ID.
+  static int GetGroupId(const tab_groups::TabGroupId& id);
+
+  // Gets the window ID that the group belongs to.
+  static int GetWindowIdOfGroup(const tab_groups::TabGroupId& id);
+
+  // Gets the metadata for the group with ID `group_id`. Sets the `error` if not
+  // found. `window`, `id`, or `visual_data` may be nullptr and will not be set
+  // within the function if so.
+  static bool GetGroupById(int group_id,
+                           content::BrowserContext* browser_context,
+                           bool include_incognito,
+                           WindowController** window,
+                           tab_groups::TabGroupId* id,
+                           const tab_groups::TabGroupVisualData** visual_data,
+                           std::string* error);
+
+  // Creates a TabGroup object
+  // (see chrome/common/extensions/api/tab_groups.json) with information about
+  // the state of a tab group for the given group `id`. Most group metadata is
+  // derived from the `visual_data`, which specifies group color, title, etc.
+  static api::tab_groups::TabGroup CreateTabGroupObject(
+      const tab_groups::TabGroupId& id,
+      const tab_groups::TabGroupVisualData& visual_data);
+  static std::optional<api::tab_groups::TabGroup> CreateTabGroupObject(
+      const tab_groups::TabGroupId& id);
+
+  // Conversions between the api::tab_groups::Color enum and the TabGroupColorId
+  // enum.
+  static api::tab_groups::Color ColorIdToColor(
+      const tab_groups::TabGroupColorId& color_id);
+  static tab_groups::TabGroupColorId ColorToColorId(
+      api::tab_groups::Color color);
+
+=======
+>>>>>>> chromium
   // Returns all active web contents for the given |browser_context|.
   static std::vector<content::WebContents*> GetAllActiveWebContentsForContext(
       content::BrowserContext* browser_context,
@@ -225,11 +335,13 @@ class ExtensionTabUtil {
                         WindowOpenDisposition disposition,
                         const gfx::Rect& initial_rect,
                         bool user_gesture);
+#endif  // !BUILDFLAG(IS_ANDROID)
 
   // Executes the specified callback for all tabs in all browser windows.
   static void ForEachTab(
       base::RepeatingCallback<void(content::WebContents*)> callback);
 
+#if !BUILDFLAG(IS_ANDROID)
   static WindowController* GetWindowControllerOfTab(
       const content::WebContents* web_contents);
 
@@ -265,6 +377,13 @@ class ExtensionTabUtil {
 
   // Retrieve a TabStripModel only if every browser is editable.
   static TabStripModel* GetEditableTabStripModel(Browser* browser);
+<<<<<<< HEAD
+
+  static bool TabIsInSavedTabGroup(content::WebContents* contents,
+                                   TabStripModel* tab_strip_model);
+#endif  // !BUILDFLAG(IS_ANDROID)
+=======
+>>>>>>> chromium
 };
 
 }  // namespace extensions

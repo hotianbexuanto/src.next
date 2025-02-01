@@ -25,12 +25,12 @@
 namespace extensions {
 
 namespace computed_hashes {
-const char kBlockHashesKey[] = "block_hashes";
-const char kBlockSizeKey[] = "block_size";
-const char kFileHashesKey[] = "file_hashes";
-const char kPathKey[] = "path";
-const char kVersionKey[] = "version";
-const int kVersion = 2;
+constexpr char kBlockHashesKey[] = "block_hashes";
+constexpr char kBlockSizeKey[] = "block_size";
+constexpr char kFileHashesKey[] = "file_hashes";
+constexpr char kPathKey[] = "path";
+constexpr char kVersionKey[] = "version";
+constexpr int kVersion = 2;
 }  // namespace computed_hashes
 
 namespace {
@@ -300,7 +300,7 @@ std::vector<std::string> ComputedHashes::GetHashesForContent(
   // Even when the contents is empty, we want to output at least one hash
   // block (the hash of the empty string).
   do {
-    const char* block_start = contents.data() + offset;
+    const char* block_start = &contents[offset];
     DCHECK(offset <= contents.size());
     size_t bytes_to_read = std::min(contents.size() - offset, block_size);
     std::unique_ptr<crypto::SecureHash> hash(
