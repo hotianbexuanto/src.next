@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,9 +14,8 @@ String CSSQuadValue::CustomCSSText() const {
   String bottom = bottom_->CssText();
   String left = left_->CssText();
 
-  if (serialization_type_ == TypeForSerialization::kSerializeAsRect) {
+  if (serialization_type_ == TypeForSerialization::kSerializeAsRect)
     return "rect(" + top + ", " + right + ", " + bottom + ", " + left + ')';
-  }
 
   StringBuilder result;
   // reserve space for the four strings, plus three space separator characters.
@@ -35,7 +34,7 @@ String CSSQuadValue::CustomCSSText() const {
       }
     }
   }
-  return result.ReleaseString();
+  return result.ToString();
 }
 
 void CSSQuadValue::TraceAfterDispatch(blink::Visitor* visitor) const {

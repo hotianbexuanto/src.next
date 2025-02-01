@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,9 +22,8 @@ ScopedActiveInstall::ScopedActiveInstall(InstallTracker* tracker,
 }
 
 ScopedActiveInstall::~ScopedActiveInstall() {
-  if (tracker_) {
+  if (tracker_)
     tracker_->RemoveActiveInstall(extension_id_);
-  }
 }
 
 void ScopedActiveInstall::CancelDeregister() {
@@ -35,7 +34,7 @@ void ScopedActiveInstall::CancelDeregister() {
 void ScopedActiveInstall::Init() {
   DCHECK(!extension_id_.empty());
   DCHECK(tracker_);
-  tracker_observation_.Observe(tracker_.get());
+  tracker_observation_.Observe(tracker_);
 }
 
 void ScopedActiveInstall::OnShutdown() {

@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,12 +7,13 @@
 
 #include <memory>
 
+#include "base/macros.h"
 #include "chrome/browser/download/download_history.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "extensions/buildflags/buildflags.h"
 
 class ChromeDownloadManagerDelegate;
-class DownloadUIController;
+class ExtensionDownloadsEventRouter;
 
 namespace content {
 class DownloadManager;
@@ -26,24 +27,11 @@ class ExtensionDownloadsEventRouter;
 // DownloadCoreServiceImpl for implementation.
 class DownloadCoreService : public KeyedService {
  public:
-  // This enum represents when `CancelDownloads` is called.
-  enum class CancelDownloadsTrigger {
-    kShutdown = 0,
-    kProfileDeletion = 1,
-  };
-
   DownloadCoreService();
-
-  DownloadCoreService(const DownloadCoreService&) = delete;
-  DownloadCoreService& operator=(const DownloadCoreService&) = delete;
-
   ~DownloadCoreService() override;
 
   // Get the download manager delegate, creating it if it doesn't already exist.
   virtual ChromeDownloadManagerDelegate* GetDownloadManagerDelegate() = 0;
-
-  // Get the download UI controller, return nullptr if it doesn't already exist.
-  virtual DownloadUIController* GetDownloadUIController() = 0;
 
   // Get the interface to the history system. Returns NULL if profile is
   // incognito or if the DownloadManager hasn't been created yet or if there is
@@ -58,18 +46,18 @@ class DownloadCoreService : public KeyedService {
   // Has a download manager been created?
   virtual bool HasCreatedDownloadManager() = 0;
 
-  // Number of downloads blocking shutdown associated with this instance of the
+  // Number of non-malicious downloads associated with this instance of the
   // service.
-  virtual int BlockingShutdownCount() const = 0;
+  virtual int NonMaliciousDownloadCount() const = 0;
 
   // Cancels all in-progress downloads for this profile.
-  virtual void CancelDownloads(CancelDownloadsTrigger trigger) = 0;
+  virtual void CancelDownloads() = 0;
 
-  // Number of downloads blocking shutdown associated with all profiles.
-  static int BlockingShutdownCountAllProfiles();
+  // Number of non-malicious downloads associated with all profiles.
+  static int NonMaliciousDownloadCountAllProfiles();
 
   // Cancels all in-progress downloads for all profiles.
-  static void CancelAllDownloads(CancelDownloadsTrigger trigger);
+  static void CancelAllDownloads();
 
   // Sets the DownloadManagerDelegate associated with this object and
   // its DownloadManager.  Takes ownership of |delegate|, and destroys
@@ -83,9 +71,12 @@ class DownloadCoreService : public KeyedService {
   virtual void SetDownloadHistoryForTesting(
       std::unique_ptr<DownloadHistory> download_history) {}
 
-  // Returns false if at least one extension has disabled the UI, true
+  // Returns false if at least one extension has disabled the shelf, true
   // otherwise.
-  virtual bool IsDownloadUiEnabled() = 0;
+  virtual bool IsShelfEnabled() = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(DownloadCoreService);
 };
 
 #endif  // CHROME_BROWSER_DOWNLOAD_DOWNLOAD_CORE_SERVICE_H_

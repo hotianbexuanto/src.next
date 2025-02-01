@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,9 +12,9 @@
 #include <string>
 #include <vector>
 
-#include "base/functional/callback.h"
+#include "base/callback.h"
 #include "base/gtest_prod_util.h"
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
@@ -95,10 +95,6 @@ class DownloadRequestLimiter
     // download status.
     TabDownloadState(DownloadRequestLimiter* host,
                      content::WebContents* web_contents);
-
-    TabDownloadState(const TabDownloadState&) = delete;
-    TabDownloadState& operator=(const TabDownloadState&) = delete;
-
     ~TabDownloadState() override;
 
     // Sets the current limiter state and the underlying automatic downloads
@@ -164,7 +160,7 @@ class DownloadRequestLimiter
     void OnContentSettingChanged(
         const ContentSettingsPattern& primary_pattern,
         const ContentSettingsPattern& secondary_pattern,
-        ContentSettingsTypeSet content_type_set) override;
+        ContentSettingsType content_type) override;
 
     // Remember to either block or allow automatic downloads from
     // |request_origin|.
@@ -186,9 +182,12 @@ class DownloadRequestLimiter
     // state.
     bool shouldClearDownloadState(content::NavigationHandle* navigation_handle);
 
-    raw_ptr<content::WebContents> web_contents_;
+    content::WebContents* web_contents_;
 
-    raw_ptr<DownloadRequestLimiter> host_;
+    DownloadRequestLimiter* host_;
+
+    // Host of the first page the download started on. This may be empty.
+    std::string initial_page_host_;
 
     // Current tab status and UI status. Renderer initiated navigations will
     // not change these values if the current tab state is restricted.
@@ -222,12 +221,11 @@ class DownloadRequestLimiter
     // becomes moot.
     base::WeakPtrFactory<DownloadRequestLimiter::TabDownloadState> factory_{
         this};
+
+    DISALLOW_COPY_AND_ASSIGN(TabDownloadState);
   };
 
   DownloadRequestLimiter();
-
-  DownloadRequestLimiter(const DownloadRequestLimiter&) = delete;
-  DownloadRequestLimiter& operator=(const DownloadRequestLimiter&) = delete;
 
   // Returns the download status for a page. This does not change the state in
   // anyway.
@@ -245,7 +243,7 @@ class DownloadRequestLimiter
   void CanDownload(const content::WebContents::Getter& web_contents_getter,
                    const GURL& url,
                    const std::string& request_method,
-                   std::optional<url::Origin> request_initiator,
+                   absl::optional<url::Origin> request_initiator,
                    bool from_download_cross_origin_redirect,
                    Callback callback);
 
@@ -262,10 +260,6 @@ class DownloadRequestLimiter
   FRIEND_TEST_ALL_PREFIXES(ContentSettingBubbleControllerTest, Init);
   FRIEND_TEST_ALL_PREFIXES(ContentSettingImageModelBrowserTest,
                            CreateBubbleModel);
-  FRIEND_TEST_ALL_PREFIXES(PrerenderDownloadTest,
-                           DownloadRequestLimiterIsUnaffectedByPrerendering);
-  FRIEND_TEST_ALL_PREFIXES(FencedFrameDownloadTest,
-                           DownloadRequestLimiterIsUnaffectedByFencedFrame);
   friend class base::RefCountedThreadSafe<DownloadRequestLimiter>;
   friend class BackgroundFetchBrowserTest;
   friend class ContentSettingBubbleDialogTest;
@@ -286,19 +280,17 @@ class DownloadRequestLimiter
 
   // Does the work of updating the download status on the UI thread and
   // potentially prompting the user.
-  void CanDownloadImpl(const GURL& url,
-                       content::WebContents* originating_contents,
+  void CanDownloadImpl(content::WebContents* originating_contents,
                        const std::string& request_method,
-                       std::optional<url::Origin> request_initiator,
+                       absl::optional<url::Origin> request_initiator,
                        bool from_download_cross_origin_redirect,
                        Callback callback);
 
   // Invoked when decision to download has been made.
   void OnCanDownloadDecided(
-      const GURL& url,
       const content::WebContents::Getter& web_contents_getter,
       const std::string& request_method,
-      std::optional<url::Origin> request_initiator,
+      absl::optional<url::Origin> request_initiator,
       bool from_download_cross_origin_redirect,
       Callback orig_callback,
       bool allow);
@@ -327,9 +319,7 @@ class DownloadRequestLimiter
   // if the state is other than ALLOW_ONE_DOWNLOAD. Similarly once the state
   // transitions from anything but ALLOW_ONE_DOWNLOAD back to ALLOW_ONE_DOWNLOAD
   // the TabDownloadState is removed and deleted (by way of Remove).
-  typedef std::map<content::WebContents*,
-                   raw_ptr<TabDownloadState, CtnExperimental>>
-      StateMap;
+  typedef std::map<content::WebContents*, TabDownloadState*> StateMap;
   StateMap state_map_;
 
   CanDownloadDecidedCallback on_can_download_decided_callback_;
@@ -337,6 +327,8 @@ class DownloadRequestLimiter
   // Weak ptr factory used when |CanDownload| asks the delegate asynchronously
   // about the download.
   base::WeakPtrFactory<DownloadRequestLimiter> factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(DownloadRequestLimiter);
 };
 
 #endif  // CHROME_BROWSER_DOWNLOAD_DOWNLOAD_REQUEST_LIMITER_H_

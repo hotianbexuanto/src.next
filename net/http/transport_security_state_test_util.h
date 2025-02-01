@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/macros.h"
 #include "net/http/transport_security_state_source.h"
 
 namespace net {
@@ -23,11 +24,6 @@ class ScopedTransportSecurityStateSource {
   // port number of |reporting_port|.
   explicit ScopedTransportSecurityStateSource(uint16_t reporting_port);
 
-  ScopedTransportSecurityStateSource(
-      const ScopedTransportSecurityStateSource&) = delete;
-  ScopedTransportSecurityStateSource& operator=(
-      const ScopedTransportSecurityStateSource&) = delete;
-
   ~ScopedTransportSecurityStateSource();
 
  private:
@@ -37,6 +33,10 @@ class ScopedTransportSecurityStateSource {
   // use a different reporting port number.
   std::string pkp_report_uri_;
   std::vector<TransportSecurityStateSource::Pinset> pinsets_;
+  std::vector<std::string> expect_ct_report_uri_strings_;
+  std::vector<const char*> expect_ct_report_uris_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedTransportSecurityStateSource);
 };
 
 }  // namespace net

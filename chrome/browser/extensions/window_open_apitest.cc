@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,16 +8,18 @@
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "chrome/browser/extensions/browsertest_util.h"
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
@@ -30,7 +32,6 @@
 #include "extensions/browser/process_manager.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/manifest_constants.h"
 #include "extensions/test/extension_test_message_listener.h"
 #include "extensions/test/result_catcher.h"
 #include "net/dns/mock_host_resolver.h"
@@ -38,13 +39,13 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/base_window.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "ash/wm/window_pin_util.h"
+#if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/extensions/window_controller.h"
 #include "chrome/browser/extensions/window_controller_list.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chromeos/ui/base/window_pin_type.h"
+#include "chromeos/ui/base/window_properties.h"
 #include "ui/aura/window.h"
 #endif
 
@@ -76,29 +77,24 @@ bool WaitForTabsPopupsApps(Browser* browser,
   ++num_tabs;
   size_t num_browsers = static_cast<size_t>(num_popups + num_app_popups) + 1;
 
-  const base::TimeDelta kWaitTime = base::Seconds(10);
+  const base::TimeDelta kWaitTime = base::TimeDelta::FromSeconds(10);
   base::TimeTicks end_time = base::TimeTicks::Now() + kWaitTime;
   while (base::TimeTicks::Now() < end_time) {
-    if (extensions::browsertest_util::GetWindowControllerCountInProfile(
-            browser->profile()) == num_browsers &&
-        browser->tab_strip_model()->count() == num_tabs) {
+    if (chrome::GetBrowserCount(browser->profile()) == num_browsers &&
+        browser->tab_strip_model()->count() == num_tabs)
       break;
-    }
 
     content::RunAllTasksUntilIdle();
   }
 
-  EXPECT_EQ(num_browsers,
-            extensions::browsertest_util::GetWindowControllerCountInProfile(
-                browser->profile()));
+  EXPECT_EQ(num_browsers, chrome::GetBrowserCount(browser->profile()));
   EXPECT_EQ(num_tabs, browser->tab_strip_model()->count());
 
   int num_popups_seen = 0;
   int num_app_popups_seen = 0;
-  for (Browser* b : *BrowserList::GetInstance()) {
-    if (b == browser) {
+  for (auto* b : *BrowserList::GetInstance()) {
+    if (b == browser)
       continue;
-    }
 
     EXPECT_TRUE(b->is_type_popup() || b->is_type_app_popup());
     if (b->is_type_popup())
@@ -109,9 +105,7 @@ bool WaitForTabsPopupsApps(Browser* browser,
   EXPECT_EQ(num_popups, num_popups_seen);
   EXPECT_EQ(num_app_popups, num_app_popups_seen);
 
-  return ((num_browsers ==
-           extensions::browsertest_util::GetWindowControllerCountInProfile(
-               browser->profile())) &&
+  return ((num_browsers == chrome::GetBrowserCount(browser->profile())) &&
           (num_tabs == browser->tab_strip_model()->count()) &&
           (num_popups == num_popups_seen) &&
           (num_app_popups == num_app_popups_seen));
@@ -124,7 +118,7 @@ IN_PROC_BROWSER_TEST_F(WindowOpenApiTest, BrowserIsApp) {
 
   EXPECT_TRUE(WaitForTabsPopupsApps(browser(), 0, 0, 2));
 
-  for (Browser* b : *BrowserList::GetInstance()) {
+  for (auto* b : *BrowserList::GetInstance()) {
     if (b == browser())
       ASSERT_FALSE(b->is_type_app_popup());
     else
@@ -205,12 +199,10 @@ IN_PROC_BROWSER_TEST_F(WindowOpenApiTest, PopupBlockingHostedApp) {
 
   browser()->OpenURL(OpenURLParams(open_tab, Referrer(),
                                    WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                                   ui::PAGE_TRANSITION_TYPED, false),
-                     /*navigation_handle_callback=*/{});
+                                   ui::PAGE_TRANSITION_TYPED, false));
   browser()->OpenURL(OpenURLParams(open_popup, Referrer(),
                                    WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                                   ui::PAGE_TRANSITION_TYPED, false),
-                     /*navigation_handle_callback=*/{});
+                                   ui::PAGE_TRANSITION_TYPED, false));
 
   EXPECT_TRUE(WaitForTabsPopupsApps(browser(), 3, 1, 0));
 }
@@ -239,13 +231,16 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, WindowOpenExtension) {
   GURL start_url(std::string(extensions::kExtensionScheme) +
                      url::kStandardSchemeSeparator +
                      last_loaded_extension_id() + "/test.html");
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), start_url));
-  WebContents* newtab = nullptr;
+  ui_test_utils::NavigateToURL(browser(), start_url);
+  WebContents* newtab = NULL;
   ASSERT_NO_FATAL_FAILURE(
       OpenWindow(browser()->tab_strip_model()->GetActiveWebContents(),
                  start_url.Resolve("newtab.html"), true, true, &newtab));
 
-  EXPECT_EQ(true, content::EvalJs(newtab, "testExtensionApi()"));
+  bool result = false;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractBool(newtab, "testExtensionApi()",
+                                                   &result));
+  EXPECT_TRUE(result);
 }
 
 // Tests that if an extension page calls window.open to an invalid extension
@@ -256,7 +251,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, WindowOpenInvalidExtension) {
   ASSERT_TRUE(extension);
 
   GURL start_url = extension->GetResourceURL("/test.html");
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), start_url));
+  ui_test_utils::NavigateToURL(browser(), start_url);
   WebContents* newtab = nullptr;
   bool new_page_in_same_process = false;
   bool expect_success = false;
@@ -267,7 +262,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, WindowOpenInvalidExtension) {
       broken_extension_url, new_page_in_same_process, expect_success, &newtab));
 
   EXPECT_EQ(broken_extension_url,
-            newtab->GetPrimaryMainFrame()->GetLastCommittedURL());
+            newtab->GetMainFrame()->GetLastCommittedURL());
   EXPECT_EQ(content::PAGE_TYPE_ERROR,
             newtab->GetController().GetLastCommittedEntry()->GetPageType());
 }
@@ -280,8 +275,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, WindowOpenNoPrivileges) {
   ASSERT_TRUE(LoadExtension(
       test_data_dir_.AppendASCII("uitest").AppendASCII("window_open")));
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
-  WebContents* newtab = nullptr;
+  ui_test_utils::NavigateToURL(browser(), GURL("about:blank"));
+  WebContents* newtab = NULL;
   ASSERT_NO_FATAL_FAILURE(
       OpenWindow(browser()->tab_strip_model()->GetActiveWebContents(),
                  GURL(std::string(extensions::kExtensionScheme) +
@@ -290,7 +285,10 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, WindowOpenNoPrivileges) {
                  false, true, &newtab));
 
   // Extension API should succeed.
-  EXPECT_EQ(true, content::EvalJs(newtab, "testExtensionApi()"));
+  bool result = false;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractBool(newtab, "testExtensionApi()",
+                                                   &result));
+  EXPECT_TRUE(result);
 }
 
 // Tests that calling window.open for an extension URL from a non-HTTP or HTTPS
@@ -301,25 +299,28 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest,
       test_data_dir_.AppendASCII("uitest").AppendASCII("window_open"));
   ASSERT_TRUE(extension);
 
-  ASSERT_TRUE(
-      ui_test_utils::NavigateToURL(browser(), GURL("data:text/html,foo")));
+  ui_test_utils::NavigateToURL(browser(), GURL("data:text/html,foo"));
 
   // test.html is not web-accessible and should not be loaded.
   GURL extension_url(extension->GetResourceURL("test.html"));
-  content::CreateAndLoadWebContentsObserver windowed_observer;
-  ASSERT_TRUE(
-      content::ExecJs(browser()->tab_strip_model()->GetActiveWebContents(),
-                      "window.open('" + extension_url.spec() + "');"));
-  content::WebContents* newtab = windowed_observer.Wait();
+  content::WindowedNotificationObserver windowed_observer(
+      content::NOTIFICATION_LOAD_STOP,
+      content::NotificationService::AllSources());
+  ASSERT_TRUE(content::ExecuteScript(
+      browser()->tab_strip_model()->GetActiveWebContents(),
+      "window.open('" + extension_url.spec() + "');"));
+  windowed_observer.Wait();
+  content::NavigationController* controller =
+      content::Source<content::NavigationController>(windowed_observer.source())
+          .ptr();
+  content::WebContents* newtab = controller->DeprecatedGetWebContents();
   ASSERT_TRUE(newtab);
 
   EXPECT_EQ(content::PAGE_TYPE_ERROR,
             newtab->GetController().GetLastCommittedEntry()->GetPageType());
-  EXPECT_EQ(extension_url,
-            newtab->GetPrimaryMainFrame()->GetLastCommittedURL());
-  EXPECT_FALSE(
-      newtab->GetPrimaryMainFrame()->GetSiteInstance()->GetSiteURL().SchemeIs(
-          extensions::kExtensionScheme));
+  EXPECT_EQ(extension_url, newtab->GetMainFrame()->GetLastCommittedURL());
+  EXPECT_FALSE(newtab->GetMainFrame()->GetSiteInstance()->GetSiteURL().SchemeIs(
+      extensions::kExtensionScheme));
 }
 
 // Test that navigating to an extension URL is allowed on chrome://.
@@ -339,48 +340,45 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest,
   // chrome-search:// pages.  Verify that the page loads correctly.
   GURL history_url(chrome::kChromeUIHistoryURL);
   ASSERT_TRUE(history_url.SchemeIs(content::kChromeUIScheme));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), history_url));
-  EXPECT_EQ(history_url, tab->GetPrimaryMainFrame()->GetLastCommittedURL());
+  ui_test_utils::NavigateToURL(browser(), history_url);
+  EXPECT_EQ(history_url, tab->GetMainFrame()->GetLastCommittedURL());
 
   content::TestNavigationObserver observer(tab);
-  ASSERT_TRUE(
-      content::ExecJs(tab, "location.href = '" + extension_url.spec() + "';"));
+  ASSERT_TRUE(content::ExecuteScript(
+      tab, "location.href = '" + extension_url.spec() + "';"));
   observer.Wait();
-  EXPECT_EQ(extension_url, tab->GetPrimaryMainFrame()->GetLastCommittedURL());
-  EXPECT_EQ("HOWDIE!!!", content::EvalJs(tab, "document.body.innerText"));
+  EXPECT_EQ(extension_url, tab->GetMainFrame()->GetLastCommittedURL());
+  std::string result;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractString(
+      tab, "domAutomationController.send(document.body.innerText)", &result));
+  EXPECT_EQ("HOWDIE!!!", result);
 }
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
 
 namespace {
 
 aura::Window* GetCurrentWindow() {
   extensions::WindowController* controller = nullptr;
-  for (extensions::WindowController* window :
-       *extensions::WindowControllerList::GetInstance()) {
-    if (window->window()->IsActive()) {
-      controller = window;
+  for (auto* iter :
+       extensions::WindowControllerList::GetInstance()->windows()) {
+    if (iter->window()->IsActive()) {
+      controller = iter;
       break;
     }
   }
-
   EXPECT_TRUE(controller);
-
   return controller->window()->GetNativeWindow();
 }
 
 chromeos::WindowPinType GetCurrentWindowPinType() {
-  chromeos::WindowPinType type = GetWindowPinType(GetCurrentWindow());
-
+  chromeos::WindowPinType type =
+      GetCurrentWindow()->GetProperty(chromeos::kWindowPinTypeKey);
   return type;
 }
 
 void SetCurrentWindowPinType(chromeos::WindowPinType type) {
-  if (type == chromeos::WindowPinType::kNone) {
-    UnpinWindow(GetCurrentWindow());
-  } else {
-    PinWindow(GetCurrentWindow(), /*trusted=*/true);
-  }
+  GetCurrentWindow()->SetProperty(chromeos::kWindowPinTypeKey, type);
 }
 
 }  // namespace
@@ -452,7 +450,8 @@ IN_PROC_BROWSER_TEST_F(WindowOpenApiTest,
   // Make sure no new windows get created (so only the one created by default
   // exists) since the call to chrome.windows.create fails on the javascript
   // side.
-  EXPECT_EQ(1u, extensions::WindowControllerList::GetInstance()->size());
+  EXPECT_EQ(1u,
+            extensions::WindowControllerList::GetInstance()->windows().size());
 }
 
 IN_PROC_BROWSER_TEST_F(WindowOpenApiTest,
@@ -480,9 +479,9 @@ IN_PROC_BROWSER_TEST_F(WindowOpenApiTest,
   // The current window is still locked-fullscreen.
   EXPECT_EQ(chromeos::WindowPinType::kTrustedPinned, GetCurrentWindowPinType());
 }
-#endif  // BUILDFLAG(IS_CHROMEOS)
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
-#if !BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
 // Loading an extension requiring the 'lockWindowFullscreenPrivate' permission
 // on non Chrome OS platforms should always fail since the API is available only
 // on Chrome OS.
@@ -492,14 +491,10 @@ IN_PROC_BROWSER_TEST_F(WindowOpenApiTest,
       test_data_dir_.AppendASCII("locked_fullscreen/with_permission"),
       {.ignore_manifest_warnings = true});
   ASSERT_TRUE(extension);
-  EXPECT_EQ(2u, extension->install_warnings().size());
-  // TODO(crbug.com/40804030): Remove the check for the deprecated
-  // manifest version when the test extension is updated to MV3.
-  EXPECT_EQ(manifest_errors::kManifestV2IsDeprecatedWarning,
-            extension->install_warnings()[0].message);
+  EXPECT_EQ(1u, extension->install_warnings().size());
   EXPECT_EQ(std::string("'lockWindowFullscreenPrivate' "
                         "is not allowed for specified platform."),
-            extension->install_warnings()[1].message);
+            extension->install_warnings().front().message);
 }
 #endif
 

@@ -1,12 +1,10 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/download/download_manager_utils.h"
 
-#include <utility>
-
-#include "base/functional/bind.h"
+#include "base/bind.h"
 #include "base/no_destructor.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
@@ -26,7 +24,7 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "services/device/public/mojom/wake_lock_provider.mojom.h"
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
 #include "base/android/path_utils.h"
 #include "chrome/browser/download/android/download_controller.h"
 #include "chrome/browser/download/android/download_manager_service.h"
@@ -78,19 +76,19 @@ void BindWakeLockProvider(
 }  // namespace
 
 // static
-std::unique_ptr<download::InProgressDownloadManager>
+download::InProgressDownloadManager*
 DownloadManagerUtils::RetrieveInProgressDownloadManager(Profile* profile) {
   ProfileKey* key = profile->GetProfileKey();
   GetInProgressDownloadManager(key);
   auto& map = GetInProgressManagerMap();
   if (GetRetrieveInProgressDownloadManagerCallback())
     GetRetrieveInProgressDownloadManagerCallback().Run(map[key].get());
-  return std::move(map[key]);
+  return map[key].release();
 }
 
 // static
 void DownloadManagerUtils::InitializeSimpleDownloadManager(ProfileKey* key) {
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
   if (!g_browser_process) {
     GetInProgressDownloadManager(key);
     return;
@@ -127,7 +125,7 @@ DownloadManagerUtils::GetInProgressDownloadManager(ProfileKey* key) {
     scoped_refptr<network::SharedURLLoaderFactory> factory =
         SystemNetworkContextManager::GetInstance()->GetSharedURLLoaderFactory();
     in_progress_manager->set_url_loader_factory(std::move(factory));
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
     in_progress_manager->set_download_start_observer(
         DownloadControllerBase::Get());
     in_progress_manager->set_intermediate_path_cb(
@@ -135,7 +133,7 @@ DownloadManagerUtils::GetInProgressDownloadManager(ProfileKey* key) {
     base::FilePath download_dir;
     base::android::GetDownloadsDirectory(&download_dir);
     in_progress_manager->set_default_download_dir(download_dir);
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // defined(OS_ANDROID)
     auto* download_provider =
         DownloadOfflineContentProviderFactory::GetForKey(key);
     download_provider->SetSimpleDownloadManagerCoordinator(coordinator);

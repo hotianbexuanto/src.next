@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "base/files/file_util.h"
+#include "base/macros.h"
 #include "base/run_loop.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_service_test_base.h"
@@ -23,10 +24,8 @@ namespace {
 const char kOldId[] = "oooooooooooooooooooooooooooooooo";
 const char kNewId[] = "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn";
 
-scoped_refptr<const Extension> CreateExtension(
-    const std::string& id,
-    mojom::ManifestLocation location) {
-  return ExtensionBuilder("test").SetID(id).SetLocation(location).Build();
+scoped_refptr<const Extension> CreateExtension(const std::string& id) {
+  return ExtensionBuilder("test").SetID(id).Build();
 }
 
 }  // namespace
@@ -34,19 +33,17 @@ scoped_refptr<const Extension> CreateExtension(
 class ExtensionMigratorTest : public ExtensionServiceTestBase {
  public:
   ExtensionMigratorTest() {}
-
-  ExtensionMigratorTest(const ExtensionMigratorTest&) = delete;
-  ExtensionMigratorTest& operator=(const ExtensionMigratorTest&) = delete;
-
   ~ExtensionMigratorTest() override {}
 
  protected:
   void InitWithExistingProfile() {
-    ExtensionServiceInitParams params;
-    // Create prefs file to make the profile not new.
-    params.prefs_content = "{}";
+    ExtensionServiceInitParams params = CreateDefaultInitParams();
     params.is_first_run = false;
-    InitializeExtensionService(std::move(params));
+    // Create prefs file to make the profile not new.
+    const char prefs[] = "{}";
+    EXPECT_EQ(int(sizeof(prefs)),
+              base::WriteFile(params.pref_file, prefs, sizeof(prefs)));
+    InitializeExtensionService(params);
     service()->Init();
     AddMigratorProvider();
   }
@@ -59,18 +56,18 @@ class ExtensionMigratorTest : public ExtensionServiceTestBase {
         Extension::FROM_WEBSTORE | Extension::WAS_INSTALLED_BY_DEFAULT));
   }
 
-  scoped_refptr<const Extension> AddExtension(
-      const std::string& id,
-      mojom::ManifestLocation location) {
-    scoped_refptr<const Extension> fake_app = CreateExtension(id, location);
+  void AddExtension(const std::string& id) {
+    scoped_refptr<const Extension> fake_app = CreateExtension(id);
     service()->AddExtension(fake_app.get());
-    return fake_app;
   }
 
   bool HasNewExtension() {
     return service()->pending_extension_manager()->IsIdPending(kNewId) ||
            registry()->GetInstalledExtension(kNewId);
   }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ExtensionMigratorTest);
 };
 
 TEST_F(ExtensionMigratorTest, NoExistingOld) {
@@ -82,7 +79,7 @@ TEST_F(ExtensionMigratorTest, NoExistingOld) {
 
 TEST_F(ExtensionMigratorTest, HasExistingOld) {
   InitWithExistingProfile();
-  AddExtension(kOldId, mojom::ManifestLocation::kExternalPrefDownload);
+  AddExtension(kOldId);
   service()->CheckForExternalUpdates();
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(HasNewExtension());
@@ -91,7 +88,7 @@ TEST_F(ExtensionMigratorTest, HasExistingOld) {
 
 TEST_F(ExtensionMigratorTest, KeepExistingNew) {
   InitWithExistingProfile();
-  AddExtension(kNewId, mojom::ManifestLocation::kExternalPrefDownload);
+  AddExtension(kNewId);
   service()->CheckForExternalUpdates();
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(registry()->GetInstalledExtension(kNewId));
@@ -99,26 +96,12 @@ TEST_F(ExtensionMigratorTest, KeepExistingNew) {
 
 TEST_F(ExtensionMigratorTest, HasBothOldAndNew) {
   InitWithExistingProfile();
-  AddExtension(kOldId, mojom::ManifestLocation::kExternalPrefDownload);
-  AddExtension(kNewId, mojom::ManifestLocation::kExternalPrefDownload);
+  AddExtension(kOldId);
+  AddExtension(kNewId);
   service()->CheckForExternalUpdates();
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(registry()->GetInstalledExtension(kOldId));
   EXPECT_TRUE(registry()->GetInstalledExtension(kNewId));
-}
-
-// Tests that a previously-force-installed extension can be uninstalled.
-// crbug.com/1416682
-TEST_F(ExtensionMigratorTest, HasPreviouslyForceInstalledNew) {
-  InitWithExistingProfile();
-  scoped_refptr<const Extension> extension =
-      AddExtension(kNewId, mojom::ManifestLocation::kExternalPolicyDownload);
-  service()->OnExtensionInstalled(extension.get(), syncer::StringOrdinal());
-  service()->CheckForExternalUpdates();
-  base::RunLoop().RunUntilIdle();
-  // A previously-force-installed-extension should not be persisted by the
-  // ExtensionMigrator.
-  EXPECT_FALSE(registry()->GetInstalledExtension(kNewId));
 }
 
 }  // namespace extensions

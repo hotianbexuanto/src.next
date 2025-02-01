@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright (c) 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,15 +29,14 @@ bool DownloadAutoOpenPolicyHandler::CheckPolicySettings(
       !policy_value->is_list())
     return false;
 
-  const base::Value::List& policy_list = policy_value->GetList();
+  base::Value::ConstListView policy_list = policy_value->GetList();
   for (size_t i = 0; i < policy_list.size(); ++i) {
     const std::string extension = policy_list[i].GetString();
     // If it's empty or malformed, then mark it as an error.
     if (extension.empty() ||
         *extension.begin() == base::FilePath::kExtensionSeparator) {
-      errors->AddError(policy::key::kAutoOpenFileTypes,
-                       IDS_POLICY_INVALID_FILE_EXTENSION_ERROR,
-                       policy::PolicyErrorPath{i});
+      errors->AddError(policy::key::kAutoOpenFileTypes, i,
+                       IDS_POLICY_VALUE_FORMAT_ERROR);
     }
   }
 
@@ -54,7 +53,7 @@ void DownloadAutoOpenPolicyHandler::ApplyPolicySettings(
     return;
   DCHECK(policy_value->is_list());
 
-  base::Value::List pref_values;
+  base::ListValue pref_values;
   for (const auto& entry : policy_value->GetList()) {
     const std::string extension = entry.GetString();
     // If it's empty or malformed, then skip the entry.
@@ -65,5 +64,5 @@ void DownloadAutoOpenPolicyHandler::ApplyPolicySettings(
     pref_values.Append(extension);
   }
   prefs_value_map->SetValue(prefs::kDownloadExtensionsToOpenByPolicy,
-                            base::Value(std::move(pref_values)));
+                            std::move(pref_values));
 }

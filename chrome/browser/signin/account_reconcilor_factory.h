@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,18 +7,24 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
-#include "chrome/browser/profiles/profile_keyed_service_factory.h"
+#include "base/memory/singleton.h"
+#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
+
+namespace signin {
+class IdentityManager;
+}
 
 namespace signin {
 class AccountReconcilorDelegate;
 }
 
 class AccountReconcilor;
+class Profile;
+class SigninClient;
 
 // Singleton that owns all AccountReconcilors and associates them with
 // Profiles. Listens for the Profile's destruction notification and cleans up.
-class AccountReconcilorFactory : public ProfileKeyedServiceFactory {
+class AccountReconcilorFactory : public BrowserContextKeyedServiceFactory {
  public:
   // Returns the instance of AccountReconcilor associated with this profile
   // (creating one if none exists). Returns NULL if this profile cannot have an
@@ -33,7 +39,7 @@ class AccountReconcilorFactory : public ProfileKeyedServiceFactory {
       user_prefs::PrefRegistrySyncable* registry) override;
 
  private:
-  friend base::NoDestructor<AccountReconcilorFactory>;
+  friend struct base::DefaultSingletonTraits<AccountReconcilorFactory>;
   friend class DummyAccountReconcilorWithDelegate;  // For testing.
 
   AccountReconcilorFactory();
@@ -44,7 +50,7 @@ class AccountReconcilorFactory : public ProfileKeyedServiceFactory {
   CreateAccountReconcilorDelegate(Profile* profile);
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

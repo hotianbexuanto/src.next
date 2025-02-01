@@ -1,41 +1,25 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/http/http_request_headers.h"
 
-#include <string_view>
 #include <utility>
 
 #include "base/logging.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
-#include "base/strings/escape.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/values.h"
-#include "net/base/url_util.h"
+#include "net/base/escape.h"
 #include "net/http/http_log_util.h"
 #include "net/http/http_util.h"
 #include "net/log/net_log_capture_mode.h"
 #include "net/log/net_log_values.h"
 
 namespace net {
-
-namespace {
-
-bool SupportsStreamType(
-    const std::optional<base::flat_set<SourceStream::SourceType>>&
-        accepted_stream_types,
-    SourceStream::SourceType type) {
-  if (!accepted_stream_types)
-    return true;
-  return accepted_stream_types->contains(type);
-}
-
-}  // namespace
 
 const char HttpRequestHeaders::kConnectMethod[] = "CONNECT";
 const char HttpRequestHeaders::kDeleteMethod[] = "DELETE";
@@ -65,7 +49,6 @@ const char HttpRequestHeaders::kIfRange[] = "If-Range";
 const char HttpRequestHeaders::kIfUnmodifiedSince[] = "If-Unmodified-Since";
 const char HttpRequestHeaders::kOrigin[] = "Origin";
 const char HttpRequestHeaders::kPragma[] = "Pragma";
-const char HttpRequestHeaders::kPriority[] = "Priority";
 const char HttpRequestHeaders::kProxyAuthorization[] = "Proxy-Authorization";
 const char HttpRequestHeaders::kProxyConnection[] = "Proxy-Connection";
 const char HttpRequestHeaders::kRange[] = "Range";
@@ -76,16 +59,14 @@ const char HttpRequestHeaders::kUserAgent[] = "User-Agent";
 HttpRequestHeaders::HeaderKeyValuePair::HeaderKeyValuePair() = default;
 
 HttpRequestHeaders::HeaderKeyValuePair::HeaderKeyValuePair(
-    std::string_view key,
-    std::string_view value)
-    : HeaderKeyValuePair(key, std::string(value)) {}
-
-HttpRequestHeaders::HeaderKeyValuePair::HeaderKeyValuePair(std::string_view key,
-                                                           std::string&& value)
-    : key(key), value(std::move(value)) {}
+    const base::StringPiece& key,
+    const base::StringPiece& value)
+    : key(key.data(), key.size()), value(value.data(), value.size()) {}
 
 HttpRequestHeaders::Iterator::Iterator(const HttpRequestHeaders& headers)
-    : curr_(headers.headers_.begin()), end_(headers.headers_.end()) {}
+    : started_(false),
+      curr_(headers.headers_.begin()),
+      end_(headers.headers_.end()) {}
 
 HttpRequestHeaders::Iterator::~Iterator() = default;
 
@@ -113,40 +94,30 @@ HttpRequestHeaders& HttpRequestHeaders::operator=(
 HttpRequestHeaders& HttpRequestHeaders::operator=(HttpRequestHeaders&& other) =
     default;
 
-std::optional<std::string> HttpRequestHeaders::GetHeader(
-    std::string_view key) const {
+bool HttpRequestHeaders::GetHeader(const base::StringPiece& key,
+                                   std::string* out) const {
   auto it = FindHeader(key);
   if (it == headers_.end())
-    return std::nullopt;
-  return it->value;
+    return false;
+  out->assign(it->value);
+  return true;
 }
 
 void HttpRequestHeaders::Clear() {
   headers_.clear();
 }
 
-void HttpRequestHeaders::SetHeader(std::string_view key,
-                                   std::string_view value) {
-  SetHeader(key, std::string(value));
-}
-
-void HttpRequestHeaders::SetHeader(std::string_view key, std::string&& value) {
+void HttpRequestHeaders::SetHeader(const base::StringPiece& key,
+                                   const base::StringPiece& value) {
   // Invalid header names or values could mean clients can attach
   // browser-internal headers.
   CHECK(HttpUtil::IsValidHeaderName(key)) << key;
-  CHECK(HttpUtil::IsValidHeaderValue(value)) << key << " has invalid value.";
-
-  SetHeaderInternal(key, std::move(value));
+  CHECK(HttpUtil::IsValidHeaderValue(value)) << key << ":" << value;
+  SetHeaderInternal(key, value);
 }
 
-void HttpRequestHeaders::SetHeaderWithoutCheckForTesting(
-    std::string_view key,
-    std::string_view value) {
-  SetHeaderInternal(key, std::string(value));
-}
-
-void HttpRequestHeaders::SetHeaderIfMissing(std::string_view key,
-                                            std::string_view value) {
+void HttpRequestHeaders::SetHeaderIfMissing(const base::StringPiece& key,
+                                            const base::StringPiece& value) {
   // Invalid header names or values could mean clients can attach
   // browser-internal headers.
   CHECK(HttpUtil::IsValidHeaderName(key));
@@ -156,13 +127,14 @@ void HttpRequestHeaders::SetHeaderIfMissing(std::string_view key,
     headers_.push_back(HeaderKeyValuePair(key, value));
 }
 
-void HttpRequestHeaders::RemoveHeader(std::string_view key) {
+void HttpRequestHeaders::RemoveHeader(const base::StringPiece& key) {
   auto it = FindHeader(key);
   if (it != headers_.end())
     headers_.erase(it);
 }
 
-void HttpRequestHeaders::AddHeaderFromString(std::string_view header_line) {
+void HttpRequestHeaders::AddHeaderFromString(
+    const base::StringPiece& header_line) {
   DCHECK_EQ(std::string::npos, header_line.find("\r\n"))
       << "\"" << header_line << "\" contains CRLF.";
 
@@ -177,7 +149,7 @@ void HttpRequestHeaders::AddHeaderFromString(std::string_view header_line) {
     return;
   }
 
-  const std::string_view header_key = header_line.substr(0, key_end_index);
+  const base::StringPiece header_key(header_line.data(), key_end_index);
   if (!HttpUtil::IsValidHeaderName(header_key)) {
     LOG(DFATAL) << "\"" << header_line << "\" has invalid header key.";
     return;
@@ -186,7 +158,8 @@ void HttpRequestHeaders::AddHeaderFromString(std::string_view header_line) {
   const std::string::size_type value_index = key_end_index + 1;
 
   if (value_index < header_line.size()) {
-    std::string_view header_value = header_line.substr(value_index);
+    base::StringPiece header_value(header_line.data() + value_index,
+                                   header_line.size() - value_index);
     header_value = HttpUtil::TrimLWS(header_value);
     if (!HttpUtil::IsValidHeaderValue(header_value)) {
       LOG(DFATAL) << "\"" << header_line << "\" has invalid header value.";
@@ -200,102 +173,48 @@ void HttpRequestHeaders::AddHeaderFromString(std::string_view header_line) {
   }
 }
 
-void HttpRequestHeaders::AddHeadersFromString(std::string_view headers) {
-  for (std::string_view header : base::SplitStringPieceUsingSubstr(
+void HttpRequestHeaders::AddHeadersFromString(
+    const base::StringPiece& headers) {
+  for (const base::StringPiece& header : base::SplitStringPieceUsingSubstr(
            headers, "\r\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
     AddHeaderFromString(header);
   }
 }
 
 void HttpRequestHeaders::MergeFrom(const HttpRequestHeaders& other) {
-  for (const auto& header : other.headers_) {
-    SetHeader(header.key, header.value);
+  for (auto it = other.headers_.begin(); it != other.headers_.end(); ++it) {
+    SetHeader(it->key, it->value);
   }
 }
 
 std::string HttpRequestHeaders::ToString() const {
   std::string output;
-  for (const auto& header : headers_) {
-    base::StringAppendF(&output, "%s: %s\r\n", header.key.c_str(),
-                        header.value.c_str());
+  for (auto it = headers_.begin(); it != headers_.end(); ++it) {
+    base::StringAppendF(&output, "%s: %s\r\n", it->key.c_str(),
+                        it->value.c_str());
   }
   output.append("\r\n");
   return output;
 }
 
-base::Value::Dict HttpRequestHeaders::NetLogParams(
+base::Value HttpRequestHeaders::NetLogParams(
     const std::string& request_line,
     NetLogCaptureMode capture_mode) const {
-  base::Value::Dict dict;
-  dict.Set("line", NetLogStringValue(request_line));
-  base::Value::List headers;
+  base::Value dict(base::Value::Type::DICTIONARY);
+  dict.SetKey("line", NetLogStringValue(request_line));
+  base::Value headers(base::Value::Type::LIST);
   for (const auto& header : headers_) {
     std::string log_value =
         ElideHeaderValueForNetLog(capture_mode, header.key, header.value);
     headers.Append(
         NetLogStringValue(base::StrCat({header.key, ": ", log_value})));
   }
-  dict.Set("headers", std::move(headers));
+  dict.SetKey("headers", std::move(headers));
   return dict;
 }
 
-void HttpRequestHeaders::SetAcceptEncodingIfMissing(
-    const GURL& url,
-    const std::optional<base::flat_set<SourceStream::SourceType>>&
-        accepted_stream_types,
-    bool enable_brotli,
-    bool enable_zstd) {
-  if (HasHeader(kAcceptEncoding))
-    return;
-
-  // If a range is specifically requested, set the "Accepted Encoding" header to
-  // "identity".
-  if (HasHeader(kRange)) {
-    SetHeader(kAcceptEncoding, "identity");
-    return;
-  }
-
-  // Supply Accept-Encoding headers first so that it is more likely that they
-  // will be in the first transmitted packet. This can sometimes make it easier
-  // to filter and analyze the streams to assure that a proxy has not damaged
-  // these headers. Some proxies deliberately corrupt Accept-Encoding headers.
-  std::vector<std::string> advertised_encoding_names;
-  if (SupportsStreamType(accepted_stream_types,
-                         SourceStream::SourceType::TYPE_GZIP)) {
-    advertised_encoding_names.push_back("gzip");
-  }
-  if (SupportsStreamType(accepted_stream_types,
-                         SourceStream::SourceType::TYPE_DEFLATE)) {
-    advertised_encoding_names.push_back("deflate");
-  }
-
-  const bool can_use_advanced_encodings =
-      (url.SchemeIsCryptographic() || IsLocalhost(url));
-
-  // Advertise "br" encoding only if transferred data is opaque to proxy.
-  if (enable_brotli &&
-      SupportsStreamType(accepted_stream_types,
-                         SourceStream::SourceType::TYPE_BROTLI) &&
-      can_use_advanced_encodings) {
-    advertised_encoding_names.push_back("br");
-  }
-  // Advertise "zstd" encoding only if transferred data is opaque to proxy.
-  if (enable_zstd &&
-      SupportsStreamType(accepted_stream_types,
-                         SourceStream::SourceType::TYPE_ZSTD) &&
-      can_use_advanced_encodings) {
-    advertised_encoding_names.push_back("zstd");
-  }
-  if (!advertised_encoding_names.empty()) {
-    // Tell the server what compression formats are supported.
-    SetHeader(
-        kAcceptEncoding,
-        base::JoinString(base::make_span(advertised_encoding_names), ", "));
-  }
-}
-
 HttpRequestHeaders::HeaderVector::iterator HttpRequestHeaders::FindHeader(
-    std::string_view key) {
+    const base::StringPiece& key) {
   for (auto it = headers_.begin(); it != headers_.end(); ++it) {
     if (base::EqualsCaseInsensitiveASCII(key, it->key))
       return it;
@@ -305,7 +224,7 @@ HttpRequestHeaders::HeaderVector::iterator HttpRequestHeaders::FindHeader(
 }
 
 HttpRequestHeaders::HeaderVector::const_iterator HttpRequestHeaders::FindHeader(
-    std::string_view key) const {
+    const base::StringPiece& key) const {
   for (auto it = headers_.begin(); it != headers_.end(); ++it) {
     if (base::EqualsCaseInsensitiveASCII(key, it->key))
       return it;
@@ -314,13 +233,13 @@ HttpRequestHeaders::HeaderVector::const_iterator HttpRequestHeaders::FindHeader(
   return headers_.end();
 }
 
-void HttpRequestHeaders::SetHeaderInternal(std::string_view key,
-                                           std::string&& value) {
+void HttpRequestHeaders::SetHeaderInternal(const base::StringPiece& key,
+                                           const base::StringPiece& value) {
   auto it = FindHeader(key);
   if (it != headers_.end())
-    it->value = std::move(value);
+    it->value.assign(value.data(), value.size());
   else
-    headers_.emplace_back(key, std::move(value));
+    headers_.push_back(HeaderKeyValuePair(key, value));
 }
 
 }  // namespace net

@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,7 +38,7 @@ struct StackFrame {
   std::u16string function;  // optional
 };
 
-using StackTrace = std::vector<StackFrame>;
+typedef std::vector<StackFrame> StackTrace;
 
 }  // namespace extensions
 

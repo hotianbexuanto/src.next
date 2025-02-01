@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,7 +9,6 @@
 #include <memory>
 #include <string>
 
-#include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "extensions/browser/extension_registry.h"
@@ -44,15 +43,13 @@ class ExtensionActionManager : public KeyedService,
   // the manifest key.
   ExtensionAction* GetExtensionAction(const Extension& extension) const;
 
-  static void EnsureFactoryBuilt();
-
  private:
   // Implement ExtensionRegistryObserver.
   void OnExtensionUnloaded(content::BrowserContext* browser_context,
                            const Extension* extension,
                            UnloadedExtensionReason reason) override;
 
-  raw_ptr<content::BrowserContext> browser_context_;
+  content::BrowserContext* browser_context_;
 
   // Listen to extension unloaded notifications.
   base::ScopedObservation<ExtensionRegistry, ExtensionRegistryObserver>

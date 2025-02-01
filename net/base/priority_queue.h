@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,10 +12,9 @@
 #include <utility>
 #include <vector>
 
+#include "base/bind.h"
+#include "base/callback.h"
 #include "base/check_op.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
-#include "base/not_fatal_until.h"
 #include "base/threading/thread_checker.h"
 
 #if !defined(NDEBUG)
@@ -133,7 +132,8 @@ class PriorityQueue {
   };
 
   // Creates a new queue for |num_priorities|.
-  explicit PriorityQueue(Priority num_priorities) : lists_(num_priorities) {
+  explicit PriorityQueue(Priority num_priorities)
+      : lists_(num_priorities), size_(0) {
 #if !defined(NDEBUG)
     next_id_ = 0;
 #endif
@@ -154,7 +154,7 @@ class PriorityQueue {
     unsigned id = next_id_;
     valid_ids_.insert(id);
     ++next_id_;
-    list.emplace_back(id, std::move(value));
+    list.emplace_back(std::make_pair(id, std::move(value)));
 #else
     list.emplace_back(std::move(value));
 #endif
@@ -172,7 +172,7 @@ class PriorityQueue {
     unsigned id = next_id_;
     valid_ids_.insert(id);
     ++next_id_;
-    list.emplace_front(std::pair(id, std::move(value)));
+    list.emplace_front(std::make_pair(id, std::move(value)));
 #else
     list.emplace_front(std::move(value));
 #endif
@@ -265,7 +265,7 @@ class PriorityQueue {
 
     typename Pointer::ListIterator it = pointer.iterator_;
     Priority priority = pointer.priority_;
-    CHECK(it != lists_[priority].end(), base::NotFatalUntil::M130);
+    DCHECK(it != lists_[priority].end());
     ++it;
     while (it == lists_[priority].end()) {
       if (priority == 0u) {
@@ -290,7 +290,7 @@ class PriorityQueue {
 
     typename Pointer::ListIterator it = pointer.iterator_;
     Priority priority = pointer.priority_;
-    CHECK(it != lists_[priority].end(), base::NotFatalUntil::M130);
+    DCHECK(it != lists_[priority].end());
     while (it == lists_[priority].begin()) {
       if (priority == num_priorities() - 1) {
         DCHECK(pointer.Equals(FirstMax()));
@@ -373,7 +373,7 @@ class PriorityQueue {
 #endif
 
   ListVector lists_;
-  size_t size_ = 0;
+  size_t size_;
 
   THREAD_CHECKER(thread_checker_);
 };

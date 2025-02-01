@@ -1,16 +1,15 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/global_shortcut_listener_win.h"
 
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
-#include "base/not_fatal_until.h"
+#include "base/bind.h"
+#include "base/callback_helpers.h"
 #include "base/win/win_util.h"
+#include "chrome/common/extensions/command.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/media_keys_listener_manager.h"
-#include "extensions/common/command.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/keycodes/keyboard_code_conversion_win.h"
@@ -35,9 +34,8 @@ GlobalShortcutListenerWin::GlobalShortcutListenerWin()
 }
 
 GlobalShortcutListenerWin::~GlobalShortcutListenerWin() {
-  if (is_listening_) {
+  if (is_listening_)
     StopListening();
-  }
 }
 
 void GlobalShortcutListenerWin::StartListening() {
@@ -74,7 +72,7 @@ bool GlobalShortcutListenerWin::RegisterAcceleratorImpl(
     const ui::Accelerator& accelerator) {
   DCHECK(hotkeys_.find(accelerator) == hotkeys_.end());
 
-  // TODO(crbug.com/40622191): We should be using
+  // TODO(https://crbug.com/950704): We should be using
   // |media_keys_listener_manager->StartWatchingMediaKey(...)| here, but that
   // currently breaks the GlobalCommandsApiTest.GlobalDuplicatedMediaKey test.
   // Instead, we'll just disable the MediaKeysListenerManager handling here, and
@@ -114,9 +112,9 @@ bool GlobalShortcutListenerWin::RegisterAcceleratorImpl(
 void GlobalShortcutListenerWin::UnregisterAcceleratorImpl(
     const ui::Accelerator& accelerator) {
   HotKeyMap::iterator it = hotkeys_.find(accelerator);
-  CHECK(it != hotkeys_.end(), base::NotFatalUntil::M130);
+  DCHECK(it != hotkeys_.end());
 
-  // TODO(crbug.com/40622191): We should be using
+  // TODO(https://crbug.com/950704): We should be using
   // |media_keys_listener_manager->StopWatchingMediaKey(...)| here.
   if (content::MediaKeysListenerManager::IsMediaKeysListenerManagerEnabled() &&
       Command::IsMediaKey(accelerator)) {

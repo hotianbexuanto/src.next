@@ -27,6 +27,7 @@
 #include "third_party/blink/renderer/core/dom/node_traversal.h"
 
 #include "third_party/blink/renderer/core/dom/container_node.h"
+#include "third_party/blink/renderer/core/dom/range.h"
 
 namespace blink {
 
@@ -68,25 +69,23 @@ Node* NodeTraversal::NextIncludingPseudoSkippingChildren(
 }
 
 Node* NodeTraversal::NextAncestorSibling(const Node& current) {
-  DCHECK(!current.HasNextSibling());
+  DCHECK(!current.nextSibling());
   for (Node& parent : AncestorsOf(current)) {
-    if (parent.HasNextSibling()) {
+    if (parent.nextSibling())
       return parent.nextSibling();
-    }
   }
   return nullptr;
 }
 
 Node* NodeTraversal::NextAncestorSibling(const Node& current,
                                          const Node* stay_within) {
-  DCHECK(!current.HasNextSibling());
+  DCHECK(!current.nextSibling());
   DCHECK_NE(current, stay_within);
   for (Node& parent : AncestorsOf(current)) {
     if (parent == stay_within)
       return nullptr;
-    if (parent.HasNextSibling()) {
+    if (parent.nextSibling())
       return parent.nextSibling();
-    }
   }
   return nullptr;
 }
@@ -108,7 +107,7 @@ Node& NodeTraversal::LastWithinOrSelf(Node& current) {
 Node* NodeTraversal::Previous(const Node& current, const Node* stay_within) {
   if (current == stay_within)
     return nullptr;
-  if (current.HasPreviousSibling()) {
+  if (current.previousSibling()) {
     Node* previous = current.previousSibling();
     while (Node* child = previous->lastChild())
       previous = child;
@@ -134,9 +133,8 @@ Node* NodeTraversal::PreviousAbsoluteSibling(const Node& current,
   for (Node& node : InclusiveAncestorsOf(current)) {
     if (node == stay_within)
       return nullptr;
-    if (node.HasPreviousSibling()) {
-      return node.previousSibling();
-    }
+    if (Node* prev = node.previousSibling())
+      return prev;
   }
   return nullptr;
 }
@@ -145,9 +143,8 @@ Node* NodeTraversal::NextPostOrder(const Node& current,
                                    const Node* stay_within) {
   if (current == stay_within)
     return nullptr;
-  if (!current.HasNextSibling()) {
+  if (!current.nextSibling())
     return current.parentNode();
-  }
   Node* next = current.nextSibling();
   while (Node* child = next->firstChild())
     next = child;
@@ -156,13 +153,12 @@ Node* NodeTraversal::NextPostOrder(const Node& current,
 
 Node* NodeTraversal::PreviousAncestorSiblingPostOrder(const Node& current,
                                                       const Node* stay_within) {
-  DCHECK(!current.HasPreviousSibling());
+  DCHECK(!current.previousSibling());
   for (Node& parent : NodeTraversal::AncestorsOf(current)) {
     if (parent == stay_within)
       return nullptr;
-    if (parent.HasPreviousSibling()) {
+    if (parent.previousSibling())
       return parent.previousSibling();
-    }
   }
   return nullptr;
 }
@@ -173,14 +169,13 @@ Node* NodeTraversal::PreviousPostOrder(const Node& current,
     return last_child;
   if (current == stay_within)
     return nullptr;
-  if (current.HasPreviousSibling()) {
+  if (current.previousSibling())
     return current.previousSibling();
-  }
   return PreviousAncestorSiblingPostOrder(current, stay_within);
 }
 
 Node* NodeTraversal::CommonAncestor(const Node& node_a, const Node& node_b) {
-  return node_a.CommonAncestor(node_b, NodeTraversal::Parent);
+  return Range::commonAncestorContainer(&node_a, &node_b);
 }
 
 }  // namespace blink

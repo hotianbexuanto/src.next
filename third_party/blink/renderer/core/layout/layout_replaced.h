@@ -22,13 +22,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_REPLACED_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_REPLACED_H_
 
-#include <optional>
-
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/layout/geometry/physical_rect.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
-#include "third_party/blink/renderer/core/layout/layout_object.h"
-#include "ui/gfx/geometry/size_f.h"
 
 namespace blink {
 
@@ -56,15 +51,17 @@ struct IntrinsicSizingInfo;
 class CORE_EXPORT LayoutReplaced : public LayoutBox {
  public:
   LayoutReplaced(Element*);
-  LayoutReplaced(Element*, const PhysicalSize& intrinsic_size);
+  LayoutReplaced(Element*, const LayoutSize& intrinsic_size);
   ~LayoutReplaced() override;
 
-  // This function returns the local rect of the replaced content. The rectangle
-  // is in the coordinate space of the element's physical border-box and assumes
-  // no clipping.
-  PhysicalRect ReplacedContentRect() const;
-  virtual PhysicalRect ReplacedContentRectFrom(
-      const PhysicalRect& base_content_rect) const;
+  LayoutUnit ComputeReplacedLogicalWidth(
+      ShouldComputePreferred = kComputeActual) const override;
+  LayoutUnit ComputeReplacedLogicalHeight(
+      LayoutUnit estimated_used_width = LayoutUnit()) const override;
+
+  bool HasReplacedLogicalHeight() const;
+  // This function returns the local rect of the replaced content.
+  virtual PhysicalRect ReplacedContentRect() const;
 
   // This is used by a few special elements, e.g. <video>, <iframe> to ensure
   // a persistent sizing under different subpixel offset, because these
@@ -72,7 +69,8 @@ class CORE_EXPORT LayoutReplaced : public LayoutBox {
   // or underflow the final content box by 1px.
   static PhysicalRect PreSnappedRectForPersistentSizing(const PhysicalRect&);
 
-  void AddVisualEffectOverflow();
+  bool NeedsPreferredWidthsRecalculation() const override;
+
   void RecalcVisualOverflow() override;
 
   // These values are specified to be 300 and 150 pixels in the CSS 2.1 spec.
@@ -83,10 +81,7 @@ class CORE_EXPORT LayoutReplaced : public LayoutBox {
     NOT_DESTROYED();
     return false;
   }
-  virtual bool DrawsBackgroundOntoContentLayer() const {
-    NOT_DESTROYED();
-    return false;
-  }
+  virtual bool DrawsBackgroundOntoContentLayer() const { return false; }
   virtual void PaintReplaced(const PaintInfo&,
                              const PhysicalOffset& paint_offset) const {
     NOT_DESTROYED();
@@ -114,75 +109,79 @@ class CORE_EXPORT LayoutReplaced : public LayoutBox {
   // CSS properties like 'zoom' or 'image-orientation'.
   virtual void IntrinsicSizeChanged();
 
-  bool RespectsCSSOverflow() const override;
-
-  // Returns true if the content is guarenteed to be clipped to the element's
-  // content box.
-  bool ClipsToContentBox() const;
-
  protected:
-  virtual bool CanApplyObjectViewBox() const {
-    NOT_DESTROYED();
-    return true;
-  }
-
-  bool IsInSelfHitTestingPhase(HitTestPhase phase) const override {
-    NOT_DESTROYED();
-    if (LayoutBox::IsInSelfHitTestingPhase(phase))
-      return true;
-
-    auto* element = DynamicTo<Element>(GetNode());
-    return element && element->IsReplacedElementRespectingCSSOverflow() &&
-           phase == HitTestPhase::kSelfBlockBackground;
-  }
-
   void WillBeDestroyed() override;
 
-  PhysicalSize IntrinsicSize() const {
+  void UpdateLayout() override;
+
+  LayoutSize IntrinsicSize() const final {
     NOT_DESTROYED();
-    return intrinsic_size_;
+    return LayoutSize(IntrinsicWidth(), IntrinsicHeight());
   }
-  void SetIntrinsicSize(const PhysicalSize& intrinsic_size) {
+
+  LayoutUnit IntrinsicWidth() const {
+    NOT_DESTROYED();
+    if (HasOverrideIntrinsicContentWidth())
+      return OverrideIntrinsicContentWidth();
+    else if (ShouldApplySizeContainment())
+      return LayoutUnit();
+    return intrinsic_size_.Width();
+  }
+  LayoutUnit IntrinsicHeight() const {
+    NOT_DESTROYED();
+    if (HasOverrideIntrinsicContentHeight())
+      return OverrideIntrinsicContentHeight();
+    else if (ShouldApplySizeContainment())
+      return LayoutUnit();
+    return intrinsic_size_.Height();
+  }
+
+  void ComputePositionedLogicalWidth(
+      LogicalExtentComputedValues&) const override;
+  void ComputePositionedLogicalHeight(
+      LogicalExtentComputedValues&) const override;
+
+  MinMaxSizes ComputeIntrinsicLogicalWidths() const final;
+
+  // This function calculates the placement of the replaced contents. It takes
+  // intrinsic size of the replaced contents, stretch to fit CSS content box
+  // according to object-fit.
+  PhysicalRect ComputeObjectFit(
+      const LayoutSize* overridden_intrinsic_size = nullptr) const;
+
+  LayoutUnit IntrinsicContentLogicalHeight() const override {
+    NOT_DESTROYED();
+    return IntrinsicLogicalHeight();
+  }
+
+  virtual LayoutUnit MinimumReplacedHeight() const {
+    NOT_DESTROYED();
+    return LayoutUnit();
+  }
+
+  void StyleDidChange(StyleDifference, const ComputedStyle* old_style) override;
+
+  void SetIntrinsicSize(const LayoutSize& intrinsic_size) {
     NOT_DESTROYED();
     intrinsic_size_ = intrinsic_size;
   }
 
-  // This function calculates the placement of the replaced contents. It takes
-  // intrinsic size of the replaced contents, stretch to fit CSS content box
-  // according to object-fit, object-position and object-view-box.
-  PhysicalRect ComputeReplacedContentRect(
-      const PhysicalRect& base_content_rect,
-      const PhysicalSize* overridden_intrinsic_size = nullptr) const;
-
-  void StyleDidChange(StyleDifference, const ComputedStyle* old_style) override;
-
   PositionWithAffinity PositionForPoint(const PhysicalOffset&) const override;
 
-  bool IsLayoutReplaced() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectReplaced || LayoutBox::IsOfType(type);
   }
-
-  // ReplacedPainter doesn't support CompositeBackgroundAttachmentFixed yet.
-  bool ComputeCanCompositeBackgroundAttachmentFixed() const override {
-    NOT_DESTROYED();
-    return false;
-  }
-
-  // Computes a rect, relative to the element's content's natural size, that
-  // should be used as the content source when rendering this element. This
-  // value is used as the input for object-fit/object-position during painting.
-  std::optional<PhysicalRect> ComputeObjectViewBoxRect(
-      const PhysicalSize* overridden_intrinsic_size = nullptr) const;
 
  private:
-  PhysicalRect ComputeObjectFitAndPositionRect(
-      const PhysicalRect& base_content_rect,
-      const PhysicalSize* overridden_intrinsic_size) const;
+  MinMaxSizes PreferredLogicalWidths() const final;
 
-  // The natural/intrinsic size for this replaced element based on the natural
-  // size for the element's contents.
-  PhysicalSize intrinsic_size_;
+  void ComputeIntrinsicSizingInfoForReplacedContent(IntrinsicSizingInfo&) const;
+  FloatSize ConstrainIntrinsicSizeToMinMax(const IntrinsicSizingInfo&) const;
+
+  LayoutUnit ComputeConstrainedLogicalWidth(ShouldComputePreferred) const;
+
+  mutable LayoutSize intrinsic_size_;
 };
 
 template <>

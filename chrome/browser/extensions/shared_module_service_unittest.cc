@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,6 +21,7 @@
 #include "extensions/browser/uninstall_reason.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/features/feature_channel.h"
+#include "extensions/common/value_builder.h"
 
 namespace extensions {
 
@@ -32,18 +33,18 @@ scoped_refptr<const Extension> CreateExtensionImportingModules(
     const std::vector<std::string>& import_ids,
     const std::string& id,
     const std::string& version) {
-  auto builder = base::Value::Dict()
-                     .Set("name", "Has Dependent Modules")
-                     .Set("version", version)
-                     .Set("manifest_version", 2);
+  DictionaryBuilder builder;
+  builder.Set("name", "Has Dependent Modules")
+         .Set("version", version)
+         .Set("manifest_version", 2);
   if (!import_ids.empty()) {
-    base::Value::List import_list;
-    for (const std::string& import_id : import_ids)
-      import_list.Append(base::Value::Dict().Set("id", import_id));
-    builder.Set("import", std::move(import_list));
+    ListBuilder import_list;
+    for (const std::string& id : import_ids)
+      import_list.Append(DictionaryBuilder().Set("id", id).Build());
+    builder.Set("import", import_list.Build());
   }
   return ExtensionBuilder()
-      .SetManifest(std::move(builder))
+      .SetManifest(builder.Build())
       .AddFlags(Extension::FROM_WEBSTORE)
       .SetID(id)
       .Build();
@@ -51,14 +52,16 @@ scoped_refptr<const Extension> CreateExtensionImportingModules(
 
 scoped_refptr<const Extension> CreateSharedModule(
     const std::string& module_id) {
-  base::Value::Dict manifest =
-      base::Value::Dict()
+  std::unique_ptr<base::DictionaryValue> manifest =
+      DictionaryBuilder()
           .Set("name", "Shared Module")
           .Set("version", "1.0")
           .Set("manifest_version", 2)
           .Set("export",
-               base::Value::Dict().Set("resources",
-                                       base::Value::List().Append("foo.js")));
+               DictionaryBuilder()
+                   .Set("resources", ListBuilder().Append("foo.js").Build())
+                   .Build())
+          .Build();
 
   return ExtensionBuilder()
       .SetManifest(std::move(manifest))
@@ -113,7 +116,8 @@ testing::AssertionResult SharedModuleServiceUnitTest::InstallExtension(
       extension, syncer::StringOrdinal(), kInstallFlagInstallImmediately);
 
   // Verify that the extension is now installed.
-  if (!registry()->enabled_extensions().Contains(extension->id())) {
+  if (!registry()->GetExtensionById(extension->id(),
+                                    ExtensionRegistry::ENABLED)) {
     return testing::AssertionFailure() << "Could not install extension.";
   }
 
@@ -157,7 +161,8 @@ TEST_F(SharedModuleServiceUnitTest, PruneSharedModulesOnUninstall) {
   // Uninstall the extension that imports our module.
   std::u16string error;
   service()->UninstallExtension(importing_extension->id(),
-                                UNINSTALL_REASON_FOR_TESTING, &error);
+                                extensions::UNINSTALL_REASON_FOR_TESTING,
+                                &error);
   EXPECT_TRUE(error.empty());
 
   // Since the module was only referenced by that single extension, it should
@@ -173,14 +178,16 @@ TEST_F(SharedModuleServiceUnitTest, PruneSharedModulesOnUpdate) {
       CreateSharedModule("shared_module_1");
   EXPECT_TRUE(InstallExtension(shared_module_1.get(), false));
 
-  base::Value::Dict manifest_2 =
-      base::Value::Dict()
+  std::unique_ptr<base::DictionaryValue> manifest_2 =
+      DictionaryBuilder()
           .Set("name", "Shared Module 2")
           .Set("version", "1.0")
           .Set("manifest_version", 2)
           .Set("export",
-               base::Value::Dict().Set("resources",
-                                       base::Value::List().Append("foo.js")));
+               DictionaryBuilder()
+                   .Set("resources", ListBuilder().Append("foo.js").Build())
+                   .Build())
+          .Build();
   scoped_refptr<const Extension> shared_module_2 =
       CreateSharedModule("shared_module_2");
   EXPECT_TRUE(InstallExtension(shared_module_2.get(), false));
@@ -230,15 +237,18 @@ TEST_F(SharedModuleServiceUnitTest, AllowlistedImports) {
   std::string nonallowlisted_id =
       crx_file::id_util::GenerateId("nonallowlisted");
   // Create a module which exports to a restricted allowlist.
-  base::Value::Dict manifest =
-      base::Value::Dict()
+  std::unique_ptr<base::DictionaryValue> manifest =
+      DictionaryBuilder()
           .Set("name", "Shared Module")
           .Set("version", "1.0")
           .Set("manifest_version", 2)
           .Set("export",
-               base::Value::Dict()
-                   .Set("allowlist", base::Value::List().Append(allowlisted_id))
-                   .Set("resources", base::Value::List().Append("*")));
+               DictionaryBuilder()
+                   .Set("allowlist",
+                        ListBuilder().Append(allowlisted_id).Build())
+                   .Set("resources", ListBuilder().Append("*").Build())
+                   .Build())
+          .Build();
   scoped_refptr<const Extension> shared_module =
       ExtensionBuilder()
           .SetManifest(std::move(manifest))
@@ -288,7 +298,8 @@ TEST_F(SharedModuleServiceUnitTest, PruneMultipleSharedModules) {
   // Uninstall the extension that imports our modules.
   std::u16string error;
   service()->UninstallExtension(importing_extension->id(),
-                                UNINSTALL_REASON_FOR_TESTING, &error);
+                                extensions::UNINSTALL_REASON_FOR_TESTING,
+                                &error);
   EXPECT_TRUE(error.empty());
 
   // Since the modules were only referenced by that single extension, they

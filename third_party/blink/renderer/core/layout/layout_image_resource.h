@@ -27,7 +27,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_IMAGE_RESOURCE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_IMAGE_RESOURCE_H_
 
-#include "base/gtest_prod_util.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
 #include "third_party/blink/renderer/core/style/style_image.h"
@@ -35,7 +34,6 @@
 namespace blink {
 
 class LayoutObject;
-struct IntrinsicSizingInfo;
 
 class CORE_EXPORT LayoutImageResource
     : public GarbageCollected<LayoutImageResource> {
@@ -44,21 +42,19 @@ class CORE_EXPORT LayoutImageResource
   LayoutImageResource(const LayoutImageResource&) = delete;
   LayoutImageResource& operator=(const LayoutImageResource&) = delete;
   virtual ~LayoutImageResource();
-  virtual void Trace(Visitor* visitor) const;
 
   virtual void Initialize(LayoutObject*);
   virtual void Shutdown();
 
   void SetImageResource(ImageResourceContent*);
   ImageResourceContent* CachedImage() const { return cached_image_.Get(); }
-  virtual bool HasImage() const { return cached_image_ != nullptr; }
-  ResourcePriority ComputeResourcePriority() const;
+  virtual bool HasImage() const { return cached_image_; }
 
   void ResetAnimation();
   bool MaybeAnimated() const;
 
-  virtual scoped_refptr<Image> GetImage(const gfx::SizeF&) const;
-  scoped_refptr<Image> GetImage(const gfx::Size&) const;
+  virtual scoped_refptr<Image> GetImage(const FloatSize&) const;
+  scoped_refptr<Image> GetImage(const IntSize&) const;
   virtual bool ErrorOccurred() const {
     return cached_image_ && cached_image_->ErrorOccurred();
   }
@@ -69,22 +65,22 @@ class CORE_EXPORT LayoutImageResource
 
   virtual bool HasIntrinsicSize() const;
 
-  virtual gfx::SizeF ImageSize(float multiplier) const;
-  virtual gfx::SizeF ConcreteObjectSize(
-      float multiplier,
-      const gfx::SizeF& default_object_size) const;
-  virtual IntrinsicSizingInfo GetNaturalDimensions(float multiplier) const;
+  virtual FloatSize ImageSize(float multiplier) const;
+  // Default size is effective when this is LayoutImageResourceStyleImage.
+  virtual FloatSize ImageSizeWithDefaultSize(float multiplier,
+                                             const FloatSize&) const;
   virtual RespectImageOrientationEnum ImageOrientation() const;
   virtual WrappedImagePtr ImagePtr() const { return cached_image_.Get(); }
 
+  virtual void Trace(Visitor* visitor) const { visitor->Trace(cached_image_); }
+
  protected:
+  // Device scale factor for the associated LayoutObject.
+  float DeviceScaleFactor() const;
   // Returns an image based on the passed device scale factor.
-  static Image* BrokenImage(double device_pixel_ratio);
-  double DevicePixelRatio() const;
+  static Image* BrokenImage(float device_scale_factor);
 
-  FRIEND_TEST_ALL_PREFIXES(LayoutImageResourceTest, BrokenImageHighRes);
-
-  Member<LayoutObject> layout_object_;
+  LayoutObject* layout_object_;
   Member<ImageResourceContent> cached_image_;
 };
 

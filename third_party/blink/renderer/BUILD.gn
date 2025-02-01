@@ -1,8 +1,7 @@
-# Copyright 2014 The Chromium Authors
+# Copyright 2014 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//build/buildflag_header.gni")
 import("//build/config/chromeos/ui_mode.gni")
 import("config.gni")
 if (is_clang) {
@@ -21,6 +20,11 @@ declare_args() {
   # Set to true to have the clang Blink GC plugin emit class graph (in JSON)
   # with typed pointer edges; for debugging or other (internal) uses.
   blink_gc_plugin_option_do_dump_graph = false
+
+  # Set to true to have the clang Blink GC plugin additionally check if
+  # a class has an empty destructor which would be unnecessarily invoked
+  # when finalized.
+  blink_gc_plugin_option_warn_unneeded_finalizer = false
 }
 
 # features ---------------------------------------------------------------------
@@ -45,6 +49,11 @@ config("inside_blink") {
       "-Wno-implicit-float-conversion",
       "-Wno-implicit-int-conversion",
     ]
+
+    if (!is_chromeos_ash ||
+        default_toolchain != "//build/toolchain/cros:target") {
+      cflags += [ "-Wno-enum-float-conversion" ]
+    }
   }
 }
 
@@ -91,6 +100,7 @@ config("config") {
       "/wd4324",  # Struct padded due to declspec(align).
       "/wd4714",  # Function marked forceinline not inlined.
       "/wd4800",  # Value forced to bool.
+      "/wd4996",  # Deprecated function call.
     ]
   }
 
@@ -98,15 +108,6 @@ config("config") {
     if (is_component_build) {
       defines += [ "USING_V8_SHARED" ]
     }
-  }
-
-  if (is_clang && clang_use_chrome_plugins) {
-    cflags += [
-      "-Xclang",
-      "-plugin-arg-find-bad-constructs",
-      "-Xclang",
-      "check-blink-data-member-type",
-    ]
   }
 
   if (is_clang && blink_gc_plugin && clang_use_chrome_plugins) {
@@ -134,8 +135,9 @@ config("config") {
 # The follow configs apply to all targets except for unit tests, which rely on
 # static initializers.
 config("non_test_config") {
-  configs = [
-    "//build/config/compiler:wexit_time_destructors",
-    "//build/config/compiler:wglobal_constructors",
-  ]
+  cflags = []
+
+  if (is_clang) {
+    cflags += [ "-Wglobal-constructors" ]
+  }
 }

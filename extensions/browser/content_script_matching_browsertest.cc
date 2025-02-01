@@ -1,10 +1,10 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/memory/raw_ptr.h"
-#include "extensions/browser/script_injection_tracker.h"
+#include "extensions/browser/content_script_tracker.h"
 
+#include "base/macros.h"
 #include "base/strings/stringprintf.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
@@ -12,6 +12,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/test/browser_test_utils.h"
+#include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
 #include "extensions/shell/browser/shell_extension_loader.h"
 #include "extensions/shell/test/shell_apitest.h"
@@ -25,23 +26,15 @@
 namespace extensions {
 
 // Test suite covering
-// `extensions::ScriptInjectionTracker::DoStaticContentScriptsMatchForTesting`
-// from //extensions/browser/script_injection_tracker.h.
+// `extensions::ContentScriptTracker::DoContentScriptsMatchForTesting` from
+// //extensions/browser/content_script_tracker.h.
 //
-// See also ScriptInjectionTrackerBrowserTest in
-// //chrome/browser/extensions/script_injection_tracker_browsertest.cc.
-// TODO(crbug.com/40061759): Add test coverage for dynamic content and user
-// scripts matching.
+// See also ContentScriptTrackerBrowserTest in
+// //chrome/browser/extensions/content_script_tracker_browsertest.cc.
 class ContentScriptMatchingBrowserTest : public ShellApiTest,
                                          public content::WebContentsDelegate {
  public:
   ContentScriptMatchingBrowserTest() = default;
-
-  ContentScriptMatchingBrowserTest(const ContentScriptMatchingBrowserTest&) =
-      delete;
-  ContentScriptMatchingBrowserTest& operator=(
-      const ContentScriptMatchingBrowserTest&) = delete;
-
   ~ContentScriptMatchingBrowserTest() override = default;
 
   void SetUpOnMainThread() override {
@@ -79,7 +72,7 @@ class ContentScriptMatchingBrowserTest : public ShellApiTest,
     return extension_;
   }
 
-  // Returns whether the class-under-test (ScriptInjectionTracker) thinks that
+  // Returns whether the class-under-test (ContentScriptTracker) thinks that
   // the test extension (installed by individual test cases via
   // InstallContentScriptsExtension) may inject content scripts into the
   // foo_frame frame in tab1 (see SetUpFrameTree for a list of available test
@@ -178,23 +171,21 @@ class ContentScriptMatchingBrowserTest : public ShellApiTest,
 
  private:
   // WebContentsDelegate overrides:
-  content::WebContents* AddNewContents(
-      content::WebContents* source,
-      std::unique_ptr<content::WebContents> new_contents,
-      const GURL& target_url,
-      WindowOpenDisposition disposition,
-      const blink::mojom::WindowFeatures& window_features,
-      bool user_gesture,
-      bool* was_blocked) override {
+  void AddNewContents(content::WebContents* source,
+                      std::unique_ptr<content::WebContents> new_contents,
+                      const GURL& target_url,
+                      WindowOpenDisposition disposition,
+                      const gfx::Rect& initial_rect,
+                      bool user_gesture,
+                      bool* was_blocked) override {
     DCHECK_EQ(tab1_.get(), source);
     DCHECK(new_contents);
     tab2_ = std::move(new_contents);
-    return nullptr;
   }
 
   bool DoContentScriptsMatch(content::RenderFrameHost* navigating_frame,
                              const GURL& navigation_target) {
-    return ScriptInjectionTracker::DoStaticContentScriptsMatchForTesting(
+    return ContentScriptTracker::DoContentScriptsMatchForTesting(
         *extension_, navigating_frame, navigation_target);
   }
 
@@ -210,41 +201,37 @@ class ContentScriptMatchingBrowserTest : public ShellApiTest,
   }
 
   content::RenderFrameHost* tab1_fooFrame() {
-    EXPECT_TRUE(tab1_);
-    return tab1_->GetPrimaryMainFrame();
+    DCHECK(tab1_);
+    return tab1_->GetMainFrame();
   }
 
   content::RenderFrameHost* tab1_fooBlankFrame() {
-    EXPECT_TRUE(tab1_);
-    content::RenderFrameHost* child = ChildFrameAt(tab1_fooFrame(), 0);
-    EXPECT_TRUE(child);
-    return child;
+    DCHECK(tab1_);
+    DCHECK_LT(1u, tab1_->GetAllFrames().size());
+    return tab1_->GetAllFrames()[1];
   }
 
   content::RenderFrameHost* tab1_barFrame() {
-    EXPECT_TRUE(tab1_);
-    content::RenderFrameHost* child = ChildFrameAt(tab1_fooFrame(), 1);
-    EXPECT_TRUE(child);
-    return child;
+    DCHECK(tab1_);
+    DCHECK_LT(2u, tab1_->GetAllFrames().size());
+    return tab1_->GetAllFrames()[2];
   }
 
   content::RenderFrameHost* tab1_barBlankFrame() {
-    EXPECT_TRUE(tab1_);
-    content::RenderFrameHost* child = ChildFrameAt(tab1_barFrame(), 0);
-    EXPECT_TRUE(child);
-    return child;
+    DCHECK(tab1_);
+    DCHECK_LT(3u, tab1_->GetAllFrames().size());
+    return tab1_->GetAllFrames()[3];
   }
 
   content::RenderFrameHost* tab2_barBlankFrame1() {
-    EXPECT_TRUE(tab2_);
-    return tab2_->GetPrimaryMainFrame();
+    DCHECK(tab2_);
+    return tab2_->GetMainFrame();
   }
 
   content::RenderFrameHost* tab2_barBlankFrame2() {
-    EXPECT_TRUE(tab2_);
-    content::RenderFrameHost* child = ChildFrameAt(tab2_barBlankFrame1(), 0);
-    EXPECT_TRUE(child);
-    return child;
+    DCHECK(tab2_);
+    DCHECK_LT(1u, tab1_->GetAllFrames().size());
+    return tab2_->GetAllFrames()[1];
   }
 
   // Populated by SetUpFrameTree (during test setup / in SetUpOnMainThread).
@@ -253,7 +240,9 @@ class ContentScriptMatchingBrowserTest : public ShellApiTest,
 
   // Populated by InstallContentScriptsExtension (called by individual tests).
   TestExtensionDir dir_;
-  raw_ptr<const Extension, DanglingUntriaged> extension_ = nullptr;
+  const Extension* extension_ = nullptr;
+
+  DISALLOW_COPY_AND_ASSIGN(ContentScriptMatchingBrowserTest);
 };
 
 IN_PROC_BROWSER_TEST_F(ContentScriptMatchingBrowserTest,
@@ -327,7 +316,7 @@ IN_PROC_BROWSER_TEST_F(ContentScriptMatchingBrowserTest,
 }
 
 // Flaky on MacOS since r622662. See https://crbug.com/921883
-#if BUILDFLAG(IS_MAC)
+#if defined(OS_MAC)
 #define MAYBE_ContentScriptMatching_NotAllFrames \
   DISABLED_ContentScriptMatching_NotAllFrames
 #else
@@ -353,7 +342,7 @@ IN_PROC_BROWSER_TEST_F(ContentScriptMatchingBrowserTest,
 
   // Based on the `all_frames` from the manifest the subframe should not be
   // matched (even though the patterns in the manifest do match bar.com).  OTOH,
-  // the URL Pattern matching in ScriptInjectionTracker ignroes `all_frames` and
+  // the URL Pattern matching in ContentScriptTracker ignroes `all_frames` and
   // accepts additional false positives to solve extra corner cases.
   EXPECT_TRUE(DoContentScriptsMatch_Tab1_BarFrame());
 }

@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,8 @@
 
 #include <memory>
 
-#include "base/functional/callback_forward.h"
+#include "base/callback_forward.h"
+#include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "build/build_config.h"
 #include "components/javascript_dialogs/tab_modal_dialog_manager_delegate.h"
@@ -15,6 +16,7 @@
 #include "content/public/browser/javascript_dialog_manager.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_contents_user_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace javascript_dialogs {
 
@@ -86,14 +88,8 @@ class TabModalDialogManager
     // user on a non-Mac platform.
     kDialogClosed = 9,
 
-    // Another modal dialog is showing, so this dialog could not be shown.
-    kSuppressedByOtherDialog = 10,
-
-    kMaxValue = kSuppressedByOtherDialog,
+    kMaxValue = kDialogClosed,
   };
-
-  TabModalDialogManager(const TabModalDialogManager&) = delete;
-  TabModalDialogManager& operator=(const TabModalDialogManager&) = delete;
 
   ~TabModalDialogManager() override;
 
@@ -197,6 +193,8 @@ class TabModalDialogManager
   std::unique_ptr<TabModalDialogManagerDelegate> delegate_;
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
+
+  DISALLOW_COPY_AND_ASSIGN(TabModalDialogManager);
 };
 
 }  // namespace javascript_dialogs

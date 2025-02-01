@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,7 @@
 
 namespace blink {
 
+class LayoutObject;
 class LayoutTableCell;
 struct PaintInvalidatorContext;
 
@@ -24,6 +25,10 @@ class TableCellPaintInvalidator {
   void InvalidatePaint();
 
  private:
+  void InvalidateContainerForCellGeometryChange(
+      const LayoutObject& container,
+      const PaintInvalidatorContext& container_context);
+
   const LayoutTableCell& cell_;
   const PaintInvalidatorContext& context_;
 };

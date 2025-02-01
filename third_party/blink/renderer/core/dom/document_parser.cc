@@ -50,6 +50,10 @@ void DocumentParser::SetDecoder(std::unique_ptr<TextResourceDecoder>) {
   NOTREACHED();
 }
 
+TextResourceDecoder* DocumentParser::Decoder() {
+  return nullptr;
+}
+
 void DocumentParser::PrepareToStopParsing() {
   DCHECK_EQ(state_, kParsingState);
   state_ = kStoppingState;
@@ -59,7 +63,8 @@ void DocumentParser::StopParsing() {
   state_ = kStoppedState;
 
   // Clients may be removed while in the loop. Make a snapshot for iteration.
-  HeapVector<Member<DocumentParserClient>> clients_snapshot(clients_);
+  HeapVector<Member<DocumentParserClient>> clients_snapshot;
+  CopyToVector(clients_, clients_snapshot);
 
   for (DocumentParserClient* client : clients_snapshot) {
     if (!clients_.Contains(client))

@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,6 +12,8 @@
 #include <map>
 #include <memory>
 
+#include "base/mac/scoped_nsobject.h"
+#include "base/macros.h"
 #include "ui/base/accelerators/media_keys_listener.h"
 
 namespace extensions {
@@ -29,18 +31,13 @@ class GlobalShortcutListenerMac : public GlobalShortcutListener,
                                   public ui::MediaKeysListener::Delegate {
  public:
   GlobalShortcutListenerMac();
-
-  GlobalShortcutListenerMac(const GlobalShortcutListenerMac&) = delete;
-  GlobalShortcutListenerMac& operator=(const GlobalShortcutListenerMac&) =
-      delete;
-
   ~GlobalShortcutListenerMac() override;
 
  private:
-  using KeyId = int;
-  using AcceleratorIdMap = std::map<ui::Accelerator, KeyId>;
-  using IdAcceleratorMap = std::map<KeyId, ui::Accelerator>;
-  using IdHotKeyRefMap = std::map<KeyId, EventHotKeyRef>;
+  typedef int KeyId;
+  typedef std::map<ui::Accelerator, KeyId> AcceleratorIdMap;
+  typedef std::map<KeyId, ui::Accelerator> IdAcceleratorMap;
+  typedef std::map<KeyId, EventHotKeyRef> IdHotKeyRefMap;
 
   // Keyboard event callbacks.
   void OnHotKeyEvent(EventHotKeyID hot_key_id);
@@ -70,10 +67,10 @@ class GlobalShortcutListenerMac : public GlobalShortcutListener,
       EventHandlerCallRef next_handler, EventRef event, void* user_data);
 
   // Whether this object is listening for global shortcuts.
-  bool is_listening_ = false;
+  bool is_listening_;
 
   // The hotkey identifier for the next global shortcut that is added.
-  KeyId hot_key_id_ = 0;
+  KeyId hot_key_id_;
 
   // A map of all hotkeys (media keys and shortcuts) mapping to their
   // corresponding hotkey IDs. For quickly finding if an accelerator is
@@ -87,10 +84,12 @@ class GlobalShortcutListenerMac : public GlobalShortcutListener,
   IdHotKeyRefMap id_hot_key_refs_;
 
   // Event handler for keyboard shortcut hot keys.
-  EventHandlerRef event_handler_ = nullptr;
+  EventHandlerRef event_handler_;
 
   // Media keys listener.
   std::unique_ptr<ui::MediaKeysListener> media_keys_listener_;
+
+  DISALLOW_COPY_AND_ASSIGN(GlobalShortcutListenerMac);
 };
 
 }  // namespace extensions

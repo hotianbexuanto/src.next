@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,7 +24,6 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
-import org.robolectric.annotation.LooperMode;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -34,13 +33,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
-@LooperMode(LooperMode.Mode.LEGACY)
 public class KeyboardHideHelperUnitTest {
-    @Mock private Runnable mKeyboardHiddenCallback;
-    @Mock private View mRootView;
-    @Mock private WindowDelegate mWindowDelegate;
+    @Mock
+    private Runnable mKeyboardHiddenCallback;
+    @Mock
+    private View mRootView;
+    @Mock
+    private WindowDelegate mWindowDelegate;
 
-    @Spy private View mView;
+    @Spy
+    private View mView;
 
     private KeyboardHideHelper mKeyboardHideHelper;
 
@@ -70,14 +72,13 @@ public class KeyboardHideHelperUnitTest {
     public void testHideNotifiedOnSizeDecrease_WithWindowDelegate() {
         mKeyboardHideHelper.setWindowDelegate(mWindowDelegate);
         final AtomicInteger height = new AtomicInteger(300);
-        Answer<Void> windowVisibleDisplayFrameAnswer =
-                new Answer<Void>() {
-                    @Override
-                    public Void answer(InvocationOnMock invocation) {
-                        ((Rect) invocation.getArgument(0)).set(0, 0, 100, height.get());
-                        return null;
-                    }
-                };
+        Answer<Void> windowVisibleDisplayFrameAnswer = new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                ((Rect) invocation.getArgument(0)).set(0, 0, 100, height.get());
+                return null;
+            }
+        };
         Mockito.doAnswer(windowVisibleDisplayFrameAnswer)
                 .when(mWindowDelegate)
                 .getWindowVisibleDisplayFrame(Mockito.any(Rect.class));

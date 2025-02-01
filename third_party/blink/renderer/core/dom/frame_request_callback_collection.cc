@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,30 +25,30 @@ FrameRequestCallbackCollection::RegisterFrameCallback(FrameCallback* callback) {
   DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT("RequestAnimationFrame",
                                         inspector_animation_frame_event::Data,
                                         context_, id);
-  callback->async_task_context()->Schedule(context_, "requestAnimationFrame");
-  probe::BreakableLocation(context_, "requestAnimationFrame");
+  probe::AsyncTaskScheduledBreakable(context_, "requestAnimationFrame",
+                                     callback->async_task_id());
   return id;
 }
 
 void FrameRequestCallbackCollection::CancelFrameCallback(CallbackId id) {
   for (wtf_size_t i = 0; i < frame_callbacks_.size(); ++i) {
     if (frame_callbacks_[i]->Id() == id) {
-      frame_callbacks_[i]->async_task_context()->Cancel();
-      probe::BreakableLocation(context_, "cancelAnimationFrame");
+      probe::AsyncTaskCanceledBreakable(context_, "cancelAnimationFrame",
+                                        frame_callbacks_[i]->async_task_id());
       frame_callbacks_.EraseAt(i);
       DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT(
           "CancelAnimationFrame", inspector_animation_frame_event::Data,
-          context_.Get(), id);
+          context_, id);
       return;
     }
   }
   for (const auto& callback : callbacks_to_invoke_) {
     if (callback->Id() == id) {
-      callback->async_task_context()->Cancel();
-      probe::BreakableLocation(context_, "cancelAnimationFrame");
+      probe::AsyncTaskCanceledBreakable(context_, "cancelAnimationFrame",
+                                        callback->async_task_id());
       DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT(
           "CancelAnimationFrame", inspector_animation_frame_event::Data,
-          context_.Get(), id);
+          context_, id);
       callback->SetIsCancelled(true);
       // will be removed at the end of ExecuteCallbacks()
       return;
@@ -66,7 +66,7 @@ void FrameRequestCallbackCollection::ExecuteFrameCallbacks(
 
   // First, generate a list of callbacks to consider.  Callbacks registered from
   // this point on are considered only for the "next" frame, not this one.
-  DCHECK(callbacks_to_invoke_.empty());
+  DCHECK(callbacks_to_invoke_.IsEmpty());
   swap(callbacks_to_invoke_, frame_callbacks_);
 
   for (const auto& callback : callbacks_to_invoke_) {
@@ -86,7 +86,7 @@ void FrameRequestCallbackCollection::ExecuteFrameCallbacks(
     DEVTOOLS_TIMELINE_TRACE_EVENT("FireAnimationFrame",
                                   inspector_animation_frame_event::Data,
                                   context_, callback->Id());
-    probe::AsyncTask async_task(context_, callback->async_task_context());
+    probe::AsyncTask async_task(context_, callback->async_task_id());
     probe::UserCallback probe(context_, "requestAnimationFrame", AtomicString(),
                               true);
     if (callback->GetUseLegacyTimeBase())

@@ -29,23 +29,19 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_SCOPED_STYLE_RESOLVER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_SCOPED_STYLE_RESOLVER_H_
 
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/active_style_sheets.h"
-#include "third_party/blink/renderer/core/css/cascade_layer.h"
 #include "third_party/blink/renderer/core/css/element_rule_collector.h"
 #include "third_party/blink/renderer/core/css/rule_set.h"
 #include "third_party/blink/renderer/core/dom/tree_scope.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
+#include "third_party/blink/renderer/platform/wtf/hash_map.h"
+#include "third_party/blink/renderer/platform/wtf/hash_set.h"
 
 namespace blink {
 
 class CounterStyleMap;
 class PageRuleCollector;
 class PartNames;
-class CascadeLayerMap;
 class StyleSheetContents;
-class FontFeatureValuesStorage;
 
 // ScopedStyleResolver collects the style sheets that occur within a TreeScope
 // and provides methods to collect the rules that apply to a given element,
@@ -64,32 +60,15 @@ class CORE_EXPORT ScopedStyleResolver final
   StyleRuleKeyframes* KeyframeStylesForAnimation(
       const AtomicString& animation_name);
 
-  CounterStyleMap* GetCounterStyleMap() { return counter_style_map_.Get(); }
+  CounterStyleMap* GetCounterStyleMap() { return counter_style_map_; }
   static void CounterStyleRulesChanged(TreeScope& scope);
 
-  StyleRulePositionTry* PositionTryForName(const AtomicString& try_name);
-
-  StyleRuleFunction* FunctionForName(StringView name);
-
-  const FontFeatureValuesStorage* FontFeatureValuesForFamily(
-      AtomicString font_family);
-
-  void RebuildCascadeLayerMap(const ActiveStyleSheetVector& sheets);
-  bool HasCascadeLayerMap() const { return cascade_layer_map_.Get(); }
-  const CascadeLayerMap* GetCascadeLayerMap() const {
-    return cascade_layer_map_.Get();
-  }
-  const ActiveStyleSheetVector& GetActiveStyleSheets() const {
-    return active_style_sheets_;
-  }
-
   void AppendActiveStyleSheets(unsigned index, const ActiveStyleSheetVector&);
-  void CollectMatchingElementScopeRules(ElementRuleCollector&,
-                                        PartNames* part_names);
+  void CollectMatchingElementScopeRules(ElementRuleCollector&);
   void CollectMatchingShadowHostRules(ElementRuleCollector&);
   void CollectMatchingSlottedRules(ElementRuleCollector&);
   void CollectMatchingPartPseudoRules(ElementRuleCollector&,
-                                      PartNames* part_names,
+                                      PartNames& part_names,
                                       bool for_shadow_pseudo);
   void MatchPageRules(PageRuleCollector&);
   void CollectFeaturesTo(RuleFeatureSet&,
@@ -107,53 +86,40 @@ class CORE_EXPORT ScopedStyleResolver final
   void Trace(Visitor*) const;
 
  private:
-  template <class Func>
-  void ForAllStylesheets(ElementRuleCollector&, const Func& func);
-
+  void AddSlottedRules(const RuleSet&, CSSStyleSheet*, unsigned sheet_index);
   void AddFontFaceRules(const RuleSet&);
   void AddCounterStyleRules(const RuleSet&);
   void AddKeyframeRules(const RuleSet&);
   void AddKeyframeStyle(StyleRuleKeyframes*);
-  void AddFontFeatureValuesRules(const RuleSet&);
-  bool KeyframeStyleShouldOverride(
-      const StyleRuleKeyframes* new_rule,
-      const StyleRuleKeyframes* existing_rule) const;
-  void AddPositionTryRules(const RuleSet&);
-  void AddFunctionRules(const RuleSet&);
 
   CounterStyleMap& EnsureCounterStyleMap();
 
-  void AddImplicitScopeTriggers(CSSStyleSheet&, const RuleSet&);
-  void AddImplicitScopeTrigger(Element&, const StyleScope&);
-  void RemoveImplicitScopeTriggers();
-  void RemoveImplicitScopeTriggers(CSSStyleSheet&, const RuleSet&);
-  void RemoveImplicitScopeTrigger(Element&, const StyleScope&);
-
   Member<TreeScope> scope_;
 
-  ActiveStyleSheetVector active_style_sheets_;
-  MediaQueryResultFlags media_query_result_flags_;
+  HeapVector<Member<CSSStyleSheet>> style_sheets_;
+  MediaQueryResultList viewport_dependent_media_query_results_;
+  MediaQueryResultList device_dependent_media_query_results_;
 
   using KeyframesRuleMap =
       HeapHashMap<AtomicString, Member<StyleRuleKeyframes>>;
   KeyframesRuleMap keyframes_rule_map_;
 
-  using PositionTryRuleMap =
-      HeapHashMap<AtomicString, Member<StyleRulePositionTry>>;
-  PositionTryRuleMap position_try_rule_map_;
-
-  using FunctionRuleMap = HeapHashMap<String, Member<StyleRuleFunction>>;
-  FunctionRuleMap function_rule_map_;
-
-  // Multiple entries are created pointing to the same
-  // StyleRuleFontFeatureValues for each mentioned family name in the
-  // comma-separated list of font families in the @font-feature-values at-rule
-  // prelude.
-  using FontFeatureValuesRuleMap = HashMap<String, FontFeatureValuesStorage>;
-  FontFeatureValuesRuleMap font_feature_values_storage_map_;
-
   Member<CounterStyleMap> counter_style_map_;
-  Member<CascadeLayerMap> cascade_layer_map_;
+
+  class RuleSubSet final : public GarbageCollected<RuleSubSet> {
+   public:
+    RuleSubSet(CSSStyleSheet* sheet, unsigned index, RuleSet* rules)
+        : parent_style_sheet_(sheet), parent_index_(index), rule_set_(rules) {}
+
+    Member<CSSStyleSheet> parent_style_sheet_;
+    unsigned parent_index_;
+    Member<RuleSet> rule_set_;
+
+    void Trace(Visitor*) const;
+  };
+  using CSSStyleSheetRuleSubSet = HeapVector<Member<RuleSubSet>>;
+
+  Member<CSSStyleSheetRuleSubSet> slotted_rule_set_;
 
   bool has_unresolved_keyframes_rule_ = false;
   bool needs_append_all_sheets_ = false;

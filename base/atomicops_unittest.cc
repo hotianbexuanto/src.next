@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,6 @@
 
 #include <stdint.h>
 #include <string.h>
-#include <type_traits>
 
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -177,12 +176,10 @@ static void TestStore() {
 
   AtomicType value;
 
-  if constexpr (std::is_same_v<AtomicType, base::subtle::Atomic32>) {
-    base::subtle::NoBarrier_Store(&value, kVal1);
-    EXPECT_EQ(kVal1, value);
-    base::subtle::NoBarrier_Store(&value, kVal2);
-    EXPECT_EQ(kVal2, value);
-  }
+  base::subtle::NoBarrier_Store(&value, kVal1);
+  EXPECT_EQ(kVal1, value);
+  base::subtle::NoBarrier_Store(&value, kVal2);
+  EXPECT_EQ(kVal2, value);
 
   base::subtle::Release_Store(&value, kVal1);
   EXPECT_EQ(kVal1, value);

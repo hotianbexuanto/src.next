@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,12 +10,15 @@
 #include "base/containers/contains.h"
 #include "base/metrics/histogram_macros.h"
 #include "chrome/app/chrome_command_ids.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/extensions/extension_management.h"
 #include "chrome/browser/extensions/external_install_error.h"
+#include "chrome/browser/profiles/profile.h"
 #include "components/version_info/version_info.h"
+#include "content/public/browser/notification_details.h"
+#include "content/public/browser/notification_source.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/feature_switch.h"
 #include "extensions/common/features/feature_channel.h"
 #include "extensions/common/manifest.h"
@@ -38,6 +41,23 @@ enum ExternalExtensionEvent {
 // Prompt the user this many times before considering an extension acknowledged.
 const int kMaxExtensionAcknowledgePromptCount = 3;
 
+void LogExternalExtensionEvent(const Extension* extension,
+                               ExternalExtensionEvent event,
+                               bool from_webstore) {
+  UMA_HISTOGRAM_ENUMERATION("Extensions.ExternalExtensionEvent",
+                            event,
+                            EXTERNAL_EXTENSION_BUCKET_BOUNDARY);
+  if (from_webstore) {
+    UMA_HISTOGRAM_ENUMERATION("Extensions.ExternalExtensionEventWebstore",
+                              event,
+                              EXTERNAL_EXTENSION_BUCKET_BOUNDARY);
+  } else {
+    UMA_HISTOGRAM_ENUMERATION("Extensions.ExternalExtensionEventNonWebstore",
+                              event,
+                              EXTERNAL_EXTENSION_BUCKET_BOUNDARY);
+  }
+}
+
 }  // namespace
 
 ExternalInstallManager::ExternalInstallManager(
@@ -50,6 +70,9 @@ ExternalInstallManager::ExternalInstallManager(
   DCHECK(browser_context_);
   extension_registry_observation_.Observe(
       ExtensionRegistry::Get(browser_context_));
+  Profile* profile = Profile::FromBrowserContext(browser_context_);
+  registrar_.Add(this, extensions::NOTIFICATION_EXTENSION_REMOVED,
+                 content::Source<Profile>(profile));
   // Populate the set of unacknowledged external extensions now. We can't just
   // rely on IsUnacknowledgedExternalExtension() for cases like
   // OnExtensionLoaded(), since we need to examine the disable reasons, which
@@ -103,7 +126,7 @@ void ExternalInstallManager::RemoveExternalInstallError(
     // The |extension_id| may be owned by the ExternalInstallError, which is
     // deleted subsequently. To avoid any UAFs, make a safe copy of
     // |extension_id| now.
-    ExtensionId extension_id_copy = extension_id;
+    std::string extension_id_copy = extension_id;
 
     if (iter->second.get() == currently_visible_install_alert_)
       currently_visible_install_alert_ = nullptr;
@@ -118,6 +141,9 @@ void ExternalInstallManager::UpdateExternalExtensionAlert() {
   // If the feature is not enabled do nothing.
   if (!IsPromptingEnabled())
     return;
+
+  ExtensionManagement* settings =
+      ExtensionManagementFactory::GetForBrowserContext(browser_context_);
 
   // Look for any extensions that were disabled because of being unacknowledged
   // external extensions.
@@ -145,6 +171,8 @@ void ExternalInstallManager::UpdateExternalExtensionAlert() {
         kMaxExtensionAcknowledgePromptCount) {
       // Stop prompting for this extension and record metrics.
       extension_prefs_->AcknowledgeExternalExtension(id);
+      LogExternalExtensionEvent(extension, EXTERNAL_EXTENSION_IGNORED,
+                                settings->UpdatesFromWebstore(*extension));
       unacknowledged_ids_.erase(id);
       continue;
     }
@@ -195,9 +223,14 @@ void ExternalInstallManager::OnExtensionLoaded(
   if (!unacknowledged_ids_.count(extension->id()))
     return;
 
+  ExtensionManagement* settings =
+      ExtensionManagementFactory::GetForBrowserContext(browser_context_);
+
   // We treat loading as acknowledgement (since the user consciously chose to
   // re-enable the extension).
   AcknowledgeExternalExtension(extension->id());
+  LogExternalExtensionEvent(extension, EXTERNAL_EXTENSION_REENABLED,
+                            settings->UpdatesFromWebstore(*extension));
 
   // If we had an error for this extension, remove it.
   RemoveExternalInstallError(extension->id());
@@ -225,6 +258,8 @@ void ExternalInstallManager::OnExtensionInstalled(
     return;
 
   unacknowledged_ids_.insert(extension->id());
+  LogExternalExtensionEvent(extension, EXTERNAL_EXTENSION_INSTALLED,
+                            settings->UpdatesFromWebstore(*extension));
   UpdateExternalExtensionAlert();
 }
 
@@ -232,9 +267,12 @@ void ExternalInstallManager::OnExtensionUninstalled(
     content::BrowserContext* browser_context,
     const Extension* extension,
     extensions::UninstallReason reason) {
-  if (base::Contains(errors_, extension->id()))
-    RemoveExternalInstallError(extension->id());
-  unacknowledged_ids_.erase(extension->id());
+  ExtensionManagement* settings =
+      ExtensionManagementFactory::GetForBrowserContext(browser_context_);
+  if (unacknowledged_ids_.erase(extension->id())) {
+    LogExternalExtensionEvent(extension, EXTERNAL_EXTENSION_UNINSTALLED,
+                              settings->UpdatesFromWebstore(*extension));
+  }
 }
 
 bool ExternalInstallManager::IsUnacknowledgedExternalExtension(
@@ -253,6 +291,21 @@ bool ExternalInstallManager::IsUnacknowledgedExternalExtension(
   return is_disabled_external && !is_from_sideload_wipeout &&
          Manifest::IsExternalLocation(extension.location()) &&
          !extension_prefs_->IsExternalExtensionAcknowledged(extension.id());
+}
+
+void ExternalInstallManager::Observe(
+    int type,
+    const content::NotificationSource& source,
+    const content::NotificationDetails& details) {
+  DCHECK_EQ(type, extensions::NOTIFICATION_EXTENSION_REMOVED);
+  // The error is invalidated if the extension has been loaded or removed.
+  // It's a shame we have to use the notification system (instead of the
+  // registry observer) for this, but the ExtensionUnloaded notification is
+  // not sent out if the extension is disabled (which it is here).
+  const std::string& extension_id =
+      content::Details<const Extension>(details).ptr()->id();
+  if (base::Contains(errors_, extension_id))
+    RemoveExternalInstallError(extension_id);
 }
 
 }  // namespace extensions

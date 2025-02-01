@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,11 +11,9 @@
 #include <vector>
 
 #include "base/containers/contains.h"
-#include "base/containers/map_util.h"
-#include "base/values.h"
+#include "base/macros.h"
 #include "extensions/common/api/extension_action/action_info.h"
 #include "extensions/common/constants.h"
-#include "extensions/common/extension_id.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/image/image.h"
 
@@ -36,10 +34,9 @@ class IconImage;
 class ExtensionAction {
  public:
   // The action that the UI should take after the ExtensionAction is clicked.
-  enum class ShowAction {
-    kNone,
-    kShowPopup,
-    kToggleSidePanel,
+  enum ShowAction {
+    ACTION_NONE,
+    ACTION_SHOW_POPUP,
     // We don't need a SHOW_CONTEXT_MENU because that's handled separately in
     // the UI.
   };
@@ -61,14 +58,10 @@ class ExtensionAction {
   static const int kDefaultTabId;
 
   ExtensionAction(const Extension& extension, const ActionInfo& manifest_data);
-
-  ExtensionAction(const ExtensionAction&) = delete;
-  ExtensionAction& operator=(const ExtensionAction&) = delete;
-
   ~ExtensionAction();
 
   // extension id
-  const ExtensionId& extension_id() const { return extension_id_; }
+  const std::string& extension_id() const { return extension_id_; }
 
   // What kind of action is this?
   ActionInfo::Type action_type() const { return action_type_; }
@@ -92,7 +85,7 @@ class ExtensionAction {
 
   // If tab |tab_id| has a set title, return it.  Otherwise, return
   // the default title.
-  std::string GetTitle(int tab_id) const { return GetValue(title_, tab_id); }
+  std::string GetTitle(int tab_id) const { return GetValue(&title_, tab_id); }
 
   // Icons are a bit different because the default value can be set to either a
   // bitmap or a path. However, conceptually, there is only one default icon.
@@ -106,7 +99,7 @@ class ExtensionAction {
   // Tries to parse |*icon| from a dictionary {"19": imageData19, "38":
   // imageData38}, and returns the result of the parsing attempt.
   static IconParseResult ParseIconFromCanvasDictionary(
-      const base::Value::Dict& dict,
+      const base::DictionaryValue& dict,
       gfx::ImageSkia* icon);
 
   // Gets the icon that has been set using |SetIcon| for the tab.
@@ -131,7 +124,7 @@ class ExtensionAction {
   // Get the badge text that has been set using SetBadgeText for a tab, or the
   // default if no badge text was set.
   std::string GetExplicitlySetBadgeText(int tab_id) const {
-    return GetValue(badge_text_, tab_id);
+    return GetValue(&badge_text_, tab_id);
   }
 
   // Set this action's badge text color on a specific tab.
@@ -141,7 +134,7 @@ class ExtensionAction {
   // Get the text color for a tab, or the default color if no text color
   // was set.
   SkColor GetBadgeTextColor(int tab_id) const {
-    return GetValue(badge_text_color_, tab_id);
+    return GetValue(&badge_text_color_, tab_id);
   }
 
   // Set this action's badge background color on a specific tab.
@@ -151,7 +144,7 @@ class ExtensionAction {
   // Get the badge background color for a tab, or the default if no color
   // was set.
   SkColor GetBadgeBackgroundColor(int tab_id) const {
-    return GetValue(badge_background_color_, tab_id);
+    return GetValue(&badge_background_color_, tab_id);
   }
 
   // Set this ExtensionAction's DNR matched action count on a specific tab.
@@ -161,7 +154,7 @@ class ExtensionAction {
   // Get this ExtensionAction's DNR matched action count on a specific tab.
   // Returns -1 if no entry is found.
   int GetDNRActionCount(int tab_id) const {
-    return GetValue(dnr_action_count_, tab_id);
+    return GetValue(&dnr_action_count_, tab_id);
   }
   // Clear this ExtensionAction's DNR matched action count for all tabs.
   void ClearDNRActionCountForAllTabs() { dnr_action_count_.clear(); }
@@ -191,11 +184,17 @@ class ExtensionAction {
   // leak information about hosts the extension doesn't have permission to
   // access.
   bool GetIsVisible(int tab_id) const {
-    return GetIsVisibleInternal(tab_id, /*include_declarative=*/true);
-  }
+    if (const bool* tab_is_visible = FindOrNull(&is_visible_, tab_id))
+      return *tab_is_visible;
 
-  bool GetIsVisibleIgnoringDeclarative(int tab_id) const {
-    return GetIsVisibleInternal(tab_id, /*include_declarative=*/false);
+    if (base::Contains(declarative_show_count_, tab_id))
+      return true;
+
+    if (const bool* default_is_visible =
+            FindOrNull(&is_visible_, kDefaultTabId))
+      return *default_is_visible;
+
+    return false;
   }
 
   // Remove all tab-specific state.
@@ -236,13 +235,6 @@ class ExtensionAction {
   // We should probably move this there too.
   int GetIconWidth(int tab_id) const;
 
-  // Returns whether the icon is visible on the given `tab`.
-  // `include_declarative` indicates whether this method should take into
-  // account declaratively-shown icons; this should only be true when the result
-  // of this function is not delivered (directly or indirectly) to the
-  // extension, since it can leak data about the page in the tab.
-  bool GetIsVisibleInternal(int tab_id, bool include_declarative) const;
-
   template <class T>
   struct ValueTraits {
     static T CreateEmpty() { return T(); }
@@ -253,11 +245,21 @@ class ExtensionAction {
     (*map)[tab_id] = val;
   }
 
+  template <class Map>
+  static const typename Map::mapped_type* FindOrNull(
+      const Map* map,
+      const typename Map::key_type& key) {
+    typename Map::const_iterator iter = map->find(key);
+    if (iter == map->end())
+      return NULL;
+    return &iter->second;
+  }
+
   template <class T>
-  T GetValue(const std::map<int, T>& map, int tab_id) const {
-    if (const T* tab_value = base::FindOrNull(map, tab_id)) {
+  T GetValue(const std::map<int, T>* map, int tab_id) const {
+    if (const T* tab_value = FindOrNull(map, tab_id)) {
       return *tab_value;
-    } else if (const T* default_value = base::FindOrNull(map, kDefaultTabId)) {
+    } else if (const T* default_value = FindOrNull(map, kDefaultTabId)) {
       return *default_value;
     } else {
       return ValueTraits<T>::CreateEmpty();
@@ -266,7 +268,7 @@ class ExtensionAction {
 
   // The id for the extension this action belongs to (as defined in the
   // extension manifest).
-  const ExtensionId extension_id_;
+  const std::string extension_id_;
 
   // The name of the extension.
   const std::string extension_name_;
@@ -323,6 +325,8 @@ class ExtensionAction {
   // The id for the ExtensionAction, for example: "RssPageAction". This is
   // needed for compat with an older version of the page actions API.
   std::string id_;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionAction);
 };
 
 template <>

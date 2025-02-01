@@ -1,12 +1,11 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/traits_bag.h"
 
-#include <optional>
-
 #include "testing/gmock/include/gmock/gmock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 namespace trait_helpers {
@@ -28,8 +27,9 @@ struct TestTraits {
     ValidTrait(EnumTraitB);
   };
 
-  template <class... ArgTypes>
-    requires trait_helpers::AreValidTraits<ValidTrait, ArgTypes...>
+  template <class... ArgTypes,
+            class CheckArgumentsAreValid = std::enable_if_t<
+                trait_helpers::AreValidTraits<ValidTrait, ArgTypes...>::value>>
   constexpr TestTraits(ArgTypes... args)
       : has_example_trait(trait_helpers::HasTrait<ExampleTrait, ArgTypes...>()),
         enum_trait_a(
@@ -44,8 +44,9 @@ struct TestTraits {
 
 // Like TestTraits, except ExampleTrait is filtered away.
 struct FilteredTestTraits : public TestTraits {
-  template <class... ArgTypes>
-    requires trait_helpers::AreValidTraits<ValidTrait, ArgTypes...>
+  template <class... ArgTypes,
+            class CheckArgumentsAreValid = std::enable_if_t<
+                trait_helpers::AreValidTraits<ValidTrait, ArgTypes...>::value>>
   constexpr FilteredTestTraits(ArgTypes... args)
       : TestTraits(Exclude<ExampleTrait>::Filter(args)...) {}
 };
@@ -57,8 +58,9 @@ struct RequiredEnumTestTraits {
   };
 
   // We require EnumTraitA to be specified.
-  template <class... ArgTypes>
-    requires trait_helpers::AreValidTraits<ValidTrait, ArgTypes...>
+  template <class... ArgTypes,
+            class CheckArgumentsAreValid = std::enable_if_t<
+                trait_helpers::AreValidTraits<ValidTrait, ArgTypes...>::value>>
   constexpr RequiredEnumTestTraits(ArgTypes... args)
       : enum_trait_a(trait_helpers::GetEnum<EnumTraitA>(args...)) {}
 
@@ -72,12 +74,13 @@ struct OptionalEnumTestTraits {
   };
 
   // EnumTraitA can optionally be specified.
-  template <class... ArgTypes>
-    requires trait_helpers::AreValidTraits<ValidTrait, ArgTypes...>
+  template <class... ArgTypes,
+            class CheckArgumentsAreValid = std::enable_if_t<
+                trait_helpers::AreValidTraits<ValidTrait, ArgTypes...>::value>>
   constexpr OptionalEnumTestTraits(ArgTypes... args)
       : enum_trait_a(trait_helpers::GetOptionalEnum<EnumTraitA>(args...)) {}
 
-  const std::optional<EnumTraitA> enum_trait_a;
+  const absl::optional<EnumTraitA> enum_trait_a;
 };
 
 }  // namespace
@@ -171,31 +174,34 @@ TEST(TraitsBagTest, ValidTraitInheritance) {
     ValidTraitsB(EnumTraitB);
   };
 
-  static_assert(AreValidTraits<ValidTraitsA, EnumTraitA>, "");
-  static_assert(AreValidTraits<ValidTraitsB, EnumTraitA, EnumTraitB>, "");
+  static_assert(AreValidTraits<ValidTraitsA, EnumTraitA>(), "");
+  static_assert(AreValidTraits<ValidTraitsB, EnumTraitA, EnumTraitB>(), "");
 }
 
 TEST(TraitsBagTest, Filtering) {
   using Predicate = Exclude<ExampleTrait, EnumTraitA>;
-  static_assert(std::is_same_v<ExampleTrait2,
-                               decltype(Predicate::Filter(ExampleTrait2{}))>,
-                "ExampleTrait2 should not be filtered");
+  static_assert(
+      std::is_same<ExampleTrait2,
+                   decltype(Predicate::Filter(ExampleTrait2{}))>::value,
+      "ExampleTrait2 should not be filtered");
 
   static_assert(
-      std::is_same_v<EmptyTrait, decltype(Predicate::Filter(ExampleTrait{}))>,
+      std::is_same<EmptyTrait,
+                   decltype(Predicate::Filter(ExampleTrait{}))>::value,
       "ExampleTrait should be filtered");
 
-  static_assert(
-      std::is_same_v<EmptyTrait, decltype(Predicate::Filter(EnumTraitA::A))>,
-      "EnumTraitA should be filtered");
+  static_assert(std::is_same<EmptyTrait,
+                             decltype(Predicate::Filter(EnumTraitA::A))>::value,
+                "EnumTraitA should be filtered");
 
   static_assert(
-      std::is_same_v<EnumTraitB, decltype(Predicate::Filter(EnumTraitB::TWO))>,
+      std::is_same<EnumTraitB,
+                   decltype(Predicate::Filter(EnumTraitB::TWO))>::value,
       "EnumTraitB should not be filtered");
 
-  static_assert(
-      std::is_same_v<EmptyTrait, decltype(Predicate::Filter(EmptyTrait{}))>,
-      "EmptyTrait should not be filtered");
+  static_assert(std::is_same<EmptyTrait,
+                             decltype(Predicate::Filter(EmptyTrait{}))>::value,
+                "EmptyTrait should not be filtered");
 }
 
 TEST(TraitsBagTest, FilteredTestTraits) {
@@ -210,7 +216,7 @@ TEST(TraitsBagTest, FilteredTestTraits) {
 }
 
 TEST(TraitsBagTest, EmptyTraitIsValid) {
-  static_assert(IsValidTrait<TestTraits::ValidTrait, EmptyTrait>, "");
+  static_assert(IsValidTrait<TestTraits::ValidTrait, EmptyTrait>(), "");
 }
 
 }  // namespace trait_helpers

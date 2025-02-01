@@ -1,12 +1,10 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/base/data_url.h"
 
 #include "base/memory/ref_counted.h"
-#include "base/test/scoped_feature_list.h"
-#include "net/base/features.h"
 #include "net/base/net_errors.h"
 #include "net/http/http_response_headers.h"
 #include "net/http/http_version.h"
@@ -27,38 +25,7 @@ struct ParseTestData {
 
 }  // namespace
 
-class DataURLTest
-    : public testing::Test,
-      public ::testing::WithParamInterface<std::tuple<bool, bool>> {
- public:
-  DataURLTest() {
-    using FeatureList = std::vector<base::test::FeatureRef>;
-    FeatureList enabled_features;
-    FeatureList disabled_features;
-    const auto feature_set = [&](bool flag_on) -> FeatureList& {
-      return flag_on ? enabled_features : disabled_features;
-    };
-    feature_set(OptimizedParsing())
-        .push_back(features::kOptimizeParsingDataUrls);
-    feature_set(KeepWhitespace())
-        .push_back(features::kKeepWhitespaceForDataUrls);
-    feature_list_.InitWithFeatures(enabled_features, disabled_features);
-  }
-
-  bool OptimizedParsing() const { return std::get<0>(GetParam()); }
-  bool KeepWhitespace() const { return std::get<1>(GetParam()); }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-INSTANTIATE_TEST_SUITE_P(DataURLTest,
-                         DataURLTest,
-                         testing::Combine(
-                             /*optimize_parsing=*/testing::Bool(),
-                             /*keep_whitespace=*/testing::Bool()));
-
-TEST_P(DataURLTest, Parse) {
+TEST(DataURLTest, Parse) {
   const ParseTestData tests[] = {
       {"data:", false, "", "", ""},
 
@@ -103,9 +70,10 @@ TEST_P(DataURLTest, Parse) {
       // invalid base64 content
       {"data:;base64,aGVs_-_-", false, "", "", ""},
 
-      // Spaces should NOT be removed from non-base64 encoded data URLs.
+      // Spaces should be removed from non-text data URLs (we already tested
+      // spaces above).
       {"data:image/fractal,a b c d e f g", true, "image/fractal", "",
-       KeepWhitespace() ? "a b c d e f g" : "abcdefg"},
+       "abcdefg"},
 
       // Spaces should also be removed from anything base-64 encoded
       {"data:;base64,aGVs bG8gd2  9ybGQ=", true, "text/plain", "US-ASCII",
@@ -122,9 +90,9 @@ TEST_P(DataURLTest, Parse) {
        "%20",
        true, "text/javascript", "", "d4 = 'four';"},
 
-      // All whitespace should be preserved on non-base64 encoded content.
-      {"data:img/png,A  B  %20  %0A  C", true, "img/png", "",
-       KeepWhitespace() ? "A  B     \n  C" : "AB \nC"},
+      // Only unescaped whitespace should be stripped in non-base64.
+      // http://b/1157796
+      {"data:img/png,A  B  %20  %0A  C", true, "img/png", "", "AB \nC"},
 
       {"data:text/plain;charset=utf-8;base64,SGVsbMO2", true, "text/plain",
        "utf-8", "Hell\xC3\xB6"},
@@ -135,14 +103,6 @@ TEST_P(DataURLTest, Parse) {
 
       // Not sufficiently padded.
       {"data:;base64,aGVsbG8gd29ybGQ", true, "text/plain", "US-ASCII",
-       "hello world"},
-
-      // Not sufficiently padded with whitespace.
-      {"data:;base64,aGV sbG8g d29ybGQ", true, "text/plain", "US-ASCII",
-       "hello world"},
-
-      // Not sufficiently padded with escaped whitespace.
-      {"data:;base64,aGV%20sbG8g%20d29ybGQ", true, "text/plain", "US-ASCII",
        "hello world"},
 
       // Bad encoding (truncated).
@@ -202,7 +162,7 @@ TEST_P(DataURLTest, Parse) {
   }
 }
 
-TEST_P(DataURLTest, BuildResponseSimple) {
+TEST(DataURLTest, BuildResponseSimple) {
   std::string mime_type;
   std::string charset;
   std::string data;
@@ -220,11 +180,13 @@ TEST_P(DataURLTest, BuildResponseSimple) {
   EXPECT_EQ(1, version.major_value());
   EXPECT_EQ(1, version.minor_value());
   EXPECT_EQ("OK", headers->GetStatusText());
-  EXPECT_EQ(headers->GetNormalizedHeader("Content-Type"),
-            "text/plain;charset=US-ASCII");
+  std::string value;
+  EXPECT_TRUE(headers->GetNormalizedHeader("Content-Type", &value));
+  EXPECT_EQ(value, "text/plain;charset=US-ASCII");
+  value.clear();
 }
 
-TEST_P(DataURLTest, BuildResponseHead) {
+TEST(DataURLTest, BuildResponseHead) {
   for (const char* method : {"HEAD", "head", "hEaD"}) {
     SCOPED_TRACE(method);
 
@@ -245,12 +207,13 @@ TEST_P(DataURLTest, BuildResponseHead) {
     EXPECT_EQ(1, version.major_value());
     EXPECT_EQ(1, version.minor_value());
     EXPECT_EQ("OK", headers->GetStatusText());
-    EXPECT_EQ(headers->GetNormalizedHeader("Content-Type"),
-              "text/plain;charset=US-ASCII");
+    std::string content_type;
+    EXPECT_TRUE(headers->GetNormalizedHeader("Content-Type", &content_type));
+    EXPECT_EQ(content_type, "text/plain;charset=US-ASCII");
   }
 }
 
-TEST_P(DataURLTest, BuildResponseInput) {
+TEST(DataURLTest, BuildResponseInput) {
   std::string mime_type;
   std::string charset;
   std::string data;
@@ -265,7 +228,7 @@ TEST_P(DataURLTest, BuildResponseInput) {
   EXPECT_TRUE(data.empty());
 }
 
-TEST_P(DataURLTest, BuildResponseInvalidMimeType) {
+TEST(DataURLTest, BuildResponseInvalidMimeType) {
   std::string mime_type;
   std::string charset;
   std::string data;
@@ -277,11 +240,12 @@ TEST_P(DataURLTest, BuildResponseInvalidMimeType) {
                                        &mime_type, &charset, &data, &headers));
 
   ASSERT_TRUE(headers);
-  EXPECT_EQ(headers->GetNormalizedHeader("Content-Type"),
-            "text/plain;charset=US-ASCII");
+  std::string value;
+  EXPECT_TRUE(headers->GetNormalizedHeader("Content-Type", &value));
+  EXPECT_EQ(value, "text/plain;charset=US-ASCII");
 }
 
-TEST_P(DataURLTest, InvalidCharset) {
+TEST(DataURLTest, InvalidCharset) {
   std::string mime_type;
   std::string charset;
   std::string data;
@@ -298,7 +262,7 @@ TEST_P(DataURLTest, InvalidCharset) {
 }
 
 // Test a slightly larger data URL.
-TEST_P(DataURLTest, Image) {
+TEST(DataURLTest, Image) {
   // Use our nice little Chrome logo.
   GURL image_url(
       "data:image/png;base64,"
@@ -337,32 +301,8 @@ TEST_P(DataURLTest, Image) {
   ASSERT_TRUE(headers);
   std::string value;
   EXPECT_EQ(headers->GetStatusLine(), "HTTP/1.1 200 OK");
-  EXPECT_EQ(headers->GetNormalizedHeader("Content-Type"), "image/png");
-}
-
-// Tests the application of the kRemoveWhitespaceForDataURLs command line
-// switch.
-TEST(DataURLRemoveWhitespaceTest, Parse) {
-  base::CommandLine::ForCurrentProcess()->AppendSwitch(
-      kRemoveWhitespaceForDataURLs);
-  const ParseTestData tests[] = {
-      {"data:image/fractal,a b c d e f g", true, "image/fractal", "",
-       "abcdefg"},
-      {"data:img/png,A  B  %20  %0A  C", true, "img/png", "", "AB \nC"},
-  };
-
-  for (const auto& test : tests) {
-    SCOPED_TRACE(test.url);
-
-    std::string mime_type;
-    std::string charset;
-    std::string data;
-    bool ok = DataURL::Parse(GURL(test.url), &mime_type, &charset, &data);
-    EXPECT_EQ(ok, test.is_valid);
-    EXPECT_EQ(test.mime_type, mime_type);
-    EXPECT_EQ(test.charset, charset);
-    EXPECT_EQ(test.data, data);
-  }
+  EXPECT_TRUE(headers->GetNormalizedHeader("Content-Type", &value));
+  EXPECT_EQ(value, "image/png");
 }
 
 }  // namespace net

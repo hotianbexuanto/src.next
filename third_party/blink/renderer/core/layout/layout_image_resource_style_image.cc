@@ -28,9 +28,8 @@
 
 #include "third_party/blink/renderer/core/layout/layout_image_resource_style_image.h"
 
-#include "third_party/blink/renderer/core/layout/intrinsic_sizing_info.h"
+#include "third_party/blink/renderer/core/layout/layout_list_marker_image.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
-#include "third_party/blink/renderer/core/layout/list/layout_list_marker_image.h"
 #include "third_party/blink/renderer/core/style/style_fetched_image.h"
 
 namespace blink {
@@ -61,7 +60,7 @@ void LayoutImageResourceStyleImage::Shutdown() {
 }
 
 scoped_refptr<Image> LayoutImageResourceStyleImage::GetImage(
-    const gfx::SizeF& size) const {
+    const FloatSize& size) const {
   // Generated content may trigger calls to image() while we're still pending,
   // don't assert but gracefully exit.
   if (style_image_->IsPendingImage())
@@ -70,28 +69,22 @@ scoped_refptr<Image> LayoutImageResourceStyleImage::GetImage(
                                 layout_object_->StyleRef(), size);
 }
 
-gfx::SizeF LayoutImageResourceStyleImage::ImageSize(float multiplier) const {
+FloatSize LayoutImageResourceStyleImage::ImageSize(float multiplier) const {
   // TODO(davve): Find out the correct default object size in this context.
-  auto* list_marker = DynamicTo<LayoutListMarkerImage>(layout_object_.Get());
-  gfx::SizeF default_size = list_marker
-                                ? list_marker->DefaultSize()
-                                : gfx::SizeF(LayoutReplaced::kDefaultWidth,
-                                             LayoutReplaced::kDefaultHeight);
-  return ConcreteObjectSize(multiplier, default_size);
+  FloatSize default_size =
+      layout_object_->IsListMarkerImage()
+          ? FloatSize(To<LayoutListMarkerImage>(layout_object_)->DefaultSize())
+          : FloatSize(LayoutReplaced::kDefaultWidth,
+                      LayoutReplaced::kDefaultHeight);
+  return ImageSizeWithDefaultSize(multiplier, default_size);
 }
 
-gfx::SizeF LayoutImageResourceStyleImage::ConcreteObjectSize(
+FloatSize LayoutImageResourceStyleImage::ImageSizeWithDefaultSize(
     float multiplier,
-    const gfx::SizeF& default_object_size) const {
-  return style_image_->ImageSize(multiplier, default_object_size,
-                                 ImageOrientation());
-}
-
-IntrinsicSizingInfo LayoutImageResourceStyleImage::GetNaturalDimensions(
-    float multiplier) const {
-  // Always respect the orientation of opaque origin images to avoid leaking
-  // image data. Otherwise pull orientation from the layout object's style.
-  return style_image_->GetNaturalSizingInfo(multiplier, ImageOrientation());
+    const FloatSize& default_size) const {
+  return style_image_->ImageSize(
+      multiplier, default_size,
+      LayoutObject::ShouldRespectImageOrientation(layout_object_));
 }
 
 RespectImageOrientationEnum LayoutImageResourceStyleImage::ImageOrientation()
@@ -99,7 +92,7 @@ RespectImageOrientationEnum LayoutImageResourceStyleImage::ImageOrientation()
   // Always respect the orientation of opaque origin images to avoid leaking
   // image data. Otherwise pull orientation from the layout object's style.
   RespectImageOrientationEnum respect_orientation =
-      layout_object_->StyleRef().ImageOrientation();
+      LayoutObject::ShouldRespectImageOrientation(layout_object_);
   return style_image_->ForceOrientationIfNecessary(respect_orientation);
 }
 

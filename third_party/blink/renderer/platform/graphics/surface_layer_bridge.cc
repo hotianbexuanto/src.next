@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,8 +13,11 @@
 #include "components/viz/common/surfaces/surface_id.h"
 #include "components/viz/common/surfaces/surface_info.h"
 #include "media/base/media_switches.h"
+#include "mojo/public/cpp/bindings/remote.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
+#include "third_party/blink/public/mojom/frame_sinks/embedded_frame_sink.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
+#include "third_party/blink/renderer/platform/mojo/mojo_helper.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "ui/gfx/geometry/size.h"
 
@@ -31,14 +34,14 @@ SurfaceLayerBridge::SurfaceLayerBridge(
       frame_sink_id_(Platform::Current()->GenerateFrameSinkId()),
       contains_video_(contains_video),
       parent_frame_sink_id_(parent_frame_sink_id) {
+  mojo::Remote<mojom::blink::EmbeddedFrameSinkProvider> provider;
   Platform::Current()->GetBrowserInterfaceBroker()->GetInterface(
-      embedded_frame_sink_provider_.BindNewPipeAndPassReceiver());
+      provider.BindNewPipeAndPassReceiver());
   // TODO(xlai): Ensure OffscreenCanvas commit() is still functional when a
   // frame-less HTML canvas's document is reparenting under another frame.
   // See crbug.com/683172.
-  embedded_frame_sink_provider_->RegisterEmbeddedFrameSink(
-      parent_frame_sink_id_, frame_sink_id_,
-      receiver_.BindNewPipeAndPassRemote());
+  provider->RegisterEmbeddedFrameSink(parent_frame_sink_id_, frame_sink_id_,
+                                      receiver_.BindNewPipeAndPassRemote());
 }
 
 SurfaceLayerBridge::~SurfaceLayerBridge() = default;
@@ -47,7 +50,7 @@ void SurfaceLayerBridge::CreateSolidColorLayer() {
   // TODO(lethalantidote): Remove this logic. It should be covered by setting
   // the layer's opacity to false.
   solid_color_layer_ = cc::SolidColorLayer::Create();
-  solid_color_layer_->SetBackgroundColor(SkColors::kTransparent);
+  solid_color_layer_->SetBackgroundColor(SK_ColorTRANSPARENT);
   if (observer_)
     observer_->RegisterContentsLayer(solid_color_layer_.get());
 }
@@ -58,6 +61,7 @@ void SurfaceLayerBridge::SetLocalSurfaceId(
 }
 
 void SurfaceLayerBridge::EmbedSurface(const viz::SurfaceId& surface_id) {
+  surface_activated_ = true;
   if (solid_color_layer_) {
     if (observer_)
       observer_->UnregisterContentsLayer(solid_color_layer_.get());
@@ -82,16 +86,11 @@ void SurfaceLayerBridge::EmbedSurface(const viz::SurfaceId& surface_id) {
     observer_->OnSurfaceIdUpdated(surface_id);
   }
 
-  UpdateSurfaceLayerOpacity();
+  surface_layer_->SetContentsOpaque(opaque_);
 }
 
 void SurfaceLayerBridge::BindSurfaceEmbedder(
     mojo::PendingReceiver<mojom::blink::SurfaceEmbedder> receiver) {
-  if (surface_embedder_receiver_.is_bound()) {
-    // After recovering from a GPU context loss we have to re-bind to a new
-    // surface embedder.
-    std::ignore = surface_embedder_receiver_.Unbind();
-  }
   surface_embedder_receiver_.Bind(std::move(receiver));
 }
 
@@ -111,8 +110,11 @@ void SurfaceLayerBridge::ClearObserver() {
 }
 
 void SurfaceLayerBridge::SetContentsOpaque(bool opaque) {
-  embedder_expects_opaque_ = opaque;
-  UpdateSurfaceLayerOpacity();
+  // If the surface isn't activated, we have nothing to show, do not change
+  // opacity (defaults to false on surface_layer creation).
+  if (surface_layer_ && surface_activated_)
+    surface_layer_->SetContentsOpaque(opaque);
+  opaque_ = opaque;
 }
 
 void SurfaceLayerBridge::CreateSurfaceLayer() {
@@ -137,38 +139,9 @@ void SurfaceLayerBridge::CreateSurfaceLayer() {
   if (observer_) {
     observer_->RegisterContentsLayer(surface_layer_.get());
   }
-  // We ignore our opacity until we are sure that we have something to show that
-  // is opaque.  If the embeddee has not pushed any frames yet, then we
-  // definitely do not want to claim to be opaque, else viz will fall back to
-  // the quad's default (transparent!) color.
+  // We ignore our opacity until we are sure that we have something to show,
+  // as indicated by getting an OnFirstSurfaceActivation call.
   surface_layer_->SetContentsOpaque(false);
-}
-
-void SurfaceLayerBridge::RegisterFrameSinkHierarchy() {
-  embedded_frame_sink_provider_->RegisterFrameSinkHierarchy(frame_sink_id_);
-}
-
-void SurfaceLayerBridge::UnregisterFrameSinkHierarchy() {
-  embedded_frame_sink_provider_->UnregisterFrameSinkHierarchy(frame_sink_id_);
-}
-
-void SurfaceLayerBridge::OnOpacityChanged(bool is_opaque) {
-  frames_are_opaque_ = is_opaque;
-  UpdateSurfaceLayerOpacity();
-}
-
-void SurfaceLayerBridge::UpdateSurfaceLayerOpacity() {
-  if (!surface_layer_) {
-    return;
-  }
-
-  // "Is not opaque" is safe, since cc will emit quads under the surface layer.
-  // If the surface layer turns out not to draw every pixel, this is fine.  If
-  // we are sure that the submitted frames are opaque, and the embedder
-  // (pipeline) expects this to continue, then allow the optimization of setting
-  // `surface_layer_` to opaque to elide emitted quads under it.
-  surface_layer_->SetContentsOpaque(embedder_expects_opaque_ &&
-                                    frames_are_opaque_);
 }
 
 }  // namespace blink

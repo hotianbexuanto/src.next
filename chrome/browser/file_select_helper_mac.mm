@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,13 +7,11 @@
 #include <Cocoa/Cocoa.h>
 #include <sys/stat.h>
 
-#include <string_view>
-
-#include "base/apple/foundation_util.h"
+#include "base/bind.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include "base/functional/bind.h"
+#include "base/mac/foundation_util.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "third_party/zlib/google/zip.h"
@@ -21,9 +19,9 @@
 
 namespace {
 
-std::string_view AsStringPiece(NSString* str) {
+base::StringPiece AsStringPiece(NSString* str) {
   const char* data = [str fileSystemRepresentation];
-  return data ? std::string_view(data) : std::string_view();
+  return data ? base::StringPiece(data) : base::StringPiece();
 }
 
 // Given the |path| of a package, returns the destination that the package
@@ -108,7 +106,7 @@ void FileSelectHelper::ProcessSelectedFilesMac(
   std::vector<base::FilePath> temporary_files;
 
   for (auto& file_info : files_out) {
-    NSString* filename = base::apple::FilePathToNSString(file_info.local_path);
+    NSString* filename = base::mac::FilePathToNSString(file_info.local_path);
     BOOL isPackage =
         [[NSWorkspace sharedWorkspace] isFilePackageAtPath:filename];
     if (isPackage && base::DirectoryExists(file_info.local_path)) {

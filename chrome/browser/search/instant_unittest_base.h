@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include "base/memory/raw_ptr.h"
 #include "base/test/simple_test_clock.h"
 #include "build/build_config.h"
 #include "chrome/browser/search/instant_service.h"
@@ -35,13 +34,13 @@ class InstantUnitTestBase : public BrowserWithTestWindowTest {
   // search_terms_replacement_key.
   void SetUserSelectedDefaultSearchProvider(const std::string& base_url);
 
-  raw_ptr<InstantService, DanglingUntriaged> instant_service_;
-  raw_ptr<TemplateURLService, DanglingUntriaged> template_url_service_;
-  raw_ptr<base::SimpleTestClock, DanglingUntriaged> clock_;
+  InstantService* instant_service_;
+  TemplateURLService* template_url_service_;
+  base::SimpleTestClock* clock_;
 
  private:
   // BrowserWithTestWindowTest override:
-  TestingProfile* CreateProfile(const std::string& profile_name) override;
+  TestingProfile* CreateProfile() override;
 };
 
 #endif  // CHROME_BROWSER_SEARCH_INSTANT_UNITTEST_BASE_H_

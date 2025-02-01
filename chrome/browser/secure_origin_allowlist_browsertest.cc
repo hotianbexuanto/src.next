@@ -1,10 +1,11 @@
-// Copyright 2017 The Chromium Authors
+// Copyright (c) 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
+#include "chrome/browser/ssl/security_state_tab_helper.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_switches.h"
@@ -13,7 +14,7 @@
 #include "components/policy/core/browser/browser_policy_connector.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/policy_constants.h"
-#include "components/security_state/content/security_state_tab_helper.h"
+#include "components/security_state/core/features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "net/dns/mock_host_resolver.h"
@@ -73,12 +74,11 @@ class SecureOriginAllowlistBrowsertest
     // to the renderer via a command-line. Setting the policy in the test
     // itself or in SetUpOnMainThread works for update-able policies, but
     // is too late for this one.
-    provider_.SetDefaultReturns(
-        /*is_initialization_complete_return=*/true,
-        /*is_first_policy_load_complete_return=*/true);
+    EXPECT_CALL(provider_, IsInitializationComplete(testing::_))
+        .WillRepeatedly(testing::Return(true));
     policy::BrowserPolicyConnector::SetPolicyProviderForTesting(&provider_);
 
-    base::Value::List urls;
+    base::Value urls(base::Value::Type::LIST);
     if (variant == TestVariant::kPolicy || variant == TestVariant::kPolicyOld ||
         variant == TestVariant::kPolicyOldAndNew) {
       urls.Append(BaseURL());
@@ -91,28 +91,19 @@ class SecureOriginAllowlistBrowsertest
     }
 
     policy::PolicyMap values;
-#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
     values.Set((variant == TestVariant::kPolicyOld ||
                 variant == TestVariant::kPolicyOldAndNew)
                    ? policy::key::kUnsafelyTreatInsecureOriginAsSecure
                    : policy::key::kOverrideSecurityRestrictionsOnInsecureOrigin,
                policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
-               policy::POLICY_SOURCE_CLOUD, base::Value(std::move(urls)),
-               nullptr);
+               policy::POLICY_SOURCE_CLOUD, std::move(urls), nullptr);
     if (variant == TestVariant::kPolicyOldAndNew) {
-      base::Value::List other_urls;
-      other_urls.Append(OtherURL());
+      base::Value other_urls(base::Value::Type::LIST);
+      other_urls.Append(base::Value(OtherURL()));
       values.Set(policy::key::kOverrideSecurityRestrictionsOnInsecureOrigin,
                  policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
-                 policy::POLICY_SOURCE_CLOUD,
-                 base::Value(std::move(other_urls)), nullptr);
+                 policy::POLICY_SOURCE_CLOUD, std::move(other_urls), nullptr);
     }
-#else
-    values.Set(policy::key::kOverrideSecurityRestrictionsOnInsecureOrigin,
-               policy::POLICY_LEVEL_MANDATORY, policy::POLICY_SCOPE_USER,
-               policy::POLICY_SOURCE_CLOUD, base::Value(std::move(urls)),
-               nullptr);
-#endif  // !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
 
     provider_.UpdateChromePolicy(values);
   }
@@ -128,7 +119,7 @@ class SecureOriginAllowlistBrowsertest
   }
 
  private:
-  testing::NiceMock<policy::MockConfigurationPolicyProvider> provider_;
+  policy::MockConfigurationPolicyProvider provider_;
 };
 
 INSTANTIATE_TEST_SUITE_P(SecureOriginAllowlistBrowsertest,
@@ -137,7 +128,7 @@ INSTANTIATE_TEST_SUITE_P(SecureOriginAllowlistBrowsertest,
                                          TestVariant::kCommandline,
 // The legacy policy isn't defined on ChromeOS or Android, so skip tests that
 // use it on those platforms.
-#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
+#if !defined(OS_CHROMEOS) && !defined(OS_ANDROID)
                                          TestVariant::kPolicyOld,
                                          TestVariant::kPolicyOldAndNew,
 #endif
@@ -148,7 +139,7 @@ INSTANTIATE_TEST_SUITE_P(SecureOriginAllowlistBrowsertest,
 IN_PROC_BROWSER_TEST_P(SecureOriginAllowlistBrowsertest, Simple) {
   GURL url = embedded_test_server()->GetURL(
       "example.com", "/secure_origin_allowlist_browsertest.html");
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  ui_test_utils::NavigateToURL(browser(), url);
 
   std::u16string secure(u"secure context");
   std::u16string insecure(u"insecure context");
@@ -164,10 +155,10 @@ IN_PROC_BROWSER_TEST_P(SecureOriginAllowlistBrowsertest, Simple) {
     content::TitleWatcher next_title_watcher(
         browser()->tab_strip_model()->GetActiveWebContents(), secure);
     next_title_watcher.AlsoWaitForTitle(insecure);
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(
+    ui_test_utils::NavigateToURL(
         browser(),
         embedded_test_server()->GetURL(
-            "otherexample.com", "/secure_origin_allowlist_browsertest.html")));
+            "otherexample.com", "/secure_origin_allowlist_browsertest.html"));
     EXPECT_EQ(next_title_watcher.WaitAndGetTitle(), secure);
   } else {
     EXPECT_EQ(title_watcher.WaitAndGetTitle(),
@@ -176,10 +167,10 @@ IN_PROC_BROWSER_TEST_P(SecureOriginAllowlistBrowsertest, Simple) {
 }
 
 IN_PROC_BROWSER_TEST_P(SecureOriginAllowlistBrowsertest, SecurityIndicators) {
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+  ui_test_utils::NavigateToURL(
       browser(),
       embedded_test_server()->GetURL(
-          "example.com", "/secure_origin_allowlist_browsertest.html")));
+          "example.com", "/secure_origin_allowlist_browsertest.html"));
   auto* helper = SecurityStateTabHelper::FromWebContents(
       browser()->tab_strip_model()->GetActiveWebContents());
   ASSERT_TRUE(helper);
@@ -187,10 +178,10 @@ IN_PROC_BROWSER_TEST_P(SecureOriginAllowlistBrowsertest, SecurityIndicators) {
   if (GetParam() == TestVariant::kPolicyOldAndNew) {
     // When both policies are set, the new policy overrides the old policy.
     EXPECT_EQ(security_state::WARNING, helper->GetSecurityLevel());
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(
+    ui_test_utils::NavigateToURL(
         browser(),
         embedded_test_server()->GetURL(
-            "otherexample.com", "/secure_origin_allowlist_browsertest.html")));
+            "otherexample.com", "/secure_origin_allowlist_browsertest.html"));
     EXPECT_EQ(security_state::NONE, helper->GetSecurityLevel());
   } else {
     EXPECT_EQ(

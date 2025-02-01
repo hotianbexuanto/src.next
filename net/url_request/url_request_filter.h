@@ -1,4 +1,4 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef NET_URL_REQUEST_URL_REQUEST_FILTER_H_
@@ -9,6 +9,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "base/macros.h"
+#include "net/base/net_export.h"
 #include "net/url_request/url_request_interceptor.h"
 
 class GURL;
@@ -36,13 +38,10 @@ class URLRequestInterceptor;
 // If the URLRequestFilter::MaybeInterceptRequest can't find a handler for a
 // request, it returns NULL and lets the configured ProtocolHandler handle the
 // request.
-class URLRequestFilter : public URLRequestInterceptor {
+class NET_EXPORT URLRequestFilter : public URLRequestInterceptor {
  public:
   // Singleton instance for use.
   static URLRequestFilter* GetInstance();
-
-  URLRequestFilter(const URLRequestFilter&) = delete;
-  URLRequestFilter& operator=(const URLRequestFilter&) = delete;
 
   void AddHostnameInterceptor(
       const std::string& scheme,
@@ -58,7 +57,8 @@ class URLRequestFilter : public URLRequestInterceptor {
 
   void RemoveUrlHandler(const GURL& url);
 
-  // Clear all the existing URL and hostname handlers.  Resets the hit count.
+  // Clear all the existing URL handlers and unregister with the
+  // ProtocolFactory.  Resets the hit count.
   void ClearHandlers();
 
   // Returns the number of times a handler was used to service a request.
@@ -86,7 +86,12 @@ class URLRequestFilter : public URLRequestInterceptor {
   // Maps URLs to interceptors.
   URLInterceptorMap url_interceptor_map_;
 
-  mutable int hit_count_ = 0;
+  mutable int hit_count_;
+
+  // Singleton instance.
+  static URLRequestFilter* shared_instance_;
+
+  DISALLOW_COPY_AND_ASSIGN(URLRequestFilter);
 };
 
 }  // namespace net

@@ -29,6 +29,7 @@
 // https://html.spec.whatwg.org/C/#the-location-interface
 
 [
+    CheckSecurity=Receiver,
     Exposed=Window
 ] interface Location {
     [CallWith=Isolate, RaisesException, LegacyUnforgeable] void assign(USVString url);
@@ -45,7 +46,7 @@
     // TODO(foolip): |ancestorOrigins| should have [LegacyUnforgeable, SameObject].
     [LegacyUnforgeable] readonly attribute DOMStringList ancestorOrigins;
 
-    [SetterCallWith=Isolate, CrossOrigin=Setter, RaisesException=Setter, LegacyUnforgeable] attribute USVString href;
+    [Affects=Nothing, SetterCallWith=Isolate, CrossOrigin=Setter, RaisesException=Setter, LegacyUnforgeable] attribute USVString href;
     // TODO(yukishiino): Use [LegacyUnforgeable] stringifier instead of toString.
     [LegacyUnforgeable] DOMString toString();
     [MeasureAs=LocationOrigin, LegacyUnforgeable] readonly attribute USVString origin;

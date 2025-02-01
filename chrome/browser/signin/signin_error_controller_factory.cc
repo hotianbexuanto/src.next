@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,20 +9,16 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "components/keyed_service/content/browser_context_dependency_manager.h"
 
 SigninErrorControllerFactory::SigninErrorControllerFactory()
-    : ProfileKeyedServiceFactory(
+    : BrowserContextKeyedServiceFactory(
           "SigninErrorController",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOriginalOnly)
-              // TODO(crbug.com/40257657): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOriginalOnly)
-              .Build()) {
+          BrowserContextDependencyManager::GetInstance()) {
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
-SigninErrorControllerFactory::~SigninErrorControllerFactory() = default;
+SigninErrorControllerFactory::~SigninErrorControllerFactory() {}
 
 // static
 SigninErrorController* SigninErrorControllerFactory::GetForProfile(
@@ -33,12 +29,10 @@ SigninErrorController* SigninErrorControllerFactory::GetForProfile(
 
 // static
 SigninErrorControllerFactory* SigninErrorControllerFactory::GetInstance() {
-  static base::NoDestructor<SigninErrorControllerFactory> instance;
-  return instance.get();
+  return base::Singleton<SigninErrorControllerFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-SigninErrorControllerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SigninErrorControllerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   SigninErrorController::AccountMode account_mode =
@@ -49,6 +43,6 @@ SigninErrorControllerFactory::BuildServiceInstanceForBrowserContext(
           ? SigninErrorController::AccountMode::ANY_ACCOUNT
           : SigninErrorController::AccountMode::PRIMARY_ACCOUNT;
 #endif
-  return std::make_unique<SigninErrorController>(
+  return new SigninErrorController(
       account_mode, IdentityManagerFactory::GetForProfile(profile));
 }

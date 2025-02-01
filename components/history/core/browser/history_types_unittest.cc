@@ -1,11 +1,6 @@
-// Copyright 2011 The Chromium Authors
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
 
 #include <stddef.h>
 
@@ -128,8 +123,8 @@ TEST(HistoryTypes, DeletionTimeRange) {
   EXPECT_FALSE(invalid.IsValid());
   EXPECT_FALSE(invalid.IsAllTime());
 
-  auto some_hours =
-      DeletionTimeRange(base::Time::Now() - base::Hours(1), base::Time::Now());
+  auto some_hours = DeletionTimeRange(
+      base::Time::Now() - base::TimeDelta::FromHours(1), base::Time::Now());
   EXPECT_TRUE(some_hours.IsValid());
   EXPECT_FALSE(some_hours.IsAllTime());
 

@@ -28,10 +28,7 @@
 #include "third_party/blink/renderer/core/loader/empty_clients.h"
 
 #include <memory>
-
-#include "base/task/single_thread_task_runner.h"
 #include "cc/layers/layer.h"
-#include "cc/trees/layer_tree_host.h"
 #include "components/viz/common/surfaces/local_surface_id.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
@@ -39,11 +36,13 @@
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_provider_client.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_media_player.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/html/forms/color_chooser.h"
 #include "third_party/blink/renderer/core/html/forms/date_time_chooser.h"
 #include "third_party/blink/renderer/core/html/forms/file_chooser.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
+#include "third_party/blink/renderer/core/loader/document_loader.h"
 
 namespace blink {
 
@@ -55,7 +54,7 @@ ChromeClient& GetStaticEmptyChromeClientInstance() {
 
 class EmptyPopupMenu : public PopupMenu {
  public:
-  void Show(ShowEventType) override {}
+  void Show() override {}
   void Hide() override {}
   void UpdateFromElement(UpdateReason) override {}
   void DisconnectClient() override {}
@@ -78,16 +77,6 @@ DateTimeChooser* EmptyChromeClient::OpenDateTimeChooser(
   return nullptr;
 }
 
-std::unique_ptr<cc::ScopedPauseRendering> EmptyChromeClient::PauseRendering(
-    LocalFrame&) {
-  return nullptr;
-}
-
-std::optional<int> EmptyChromeClient::GetMaxRenderBufferBounds(
-    LocalFrame& frame) const {
-  return std::nullopt;
-}
-
 void EmptyChromeClient::OpenTextDataListChooser(HTMLInputElement&) {}
 
 void EmptyChromeClient::OpenFileChooser(LocalFrame*,
@@ -108,16 +97,12 @@ bool EmptyChromeClient::StartDeferringCommits(LocalFrame& main_frame,
 
 void EmptyLocalFrameClient::BeginNavigation(
     const ResourceRequest&,
-    const KURL& requestor_base_url,
     mojom::RequestContextFrameType,
     LocalDOMWindow*,
     DocumentLoader*,
     WebNavigationType,
     NavigationPolicy,
     WebFrameLoadType,
-    mojom::blink::ForceHistoryPush,
-    bool,
-    // TODO(crbug.com/1315802): Refactor _unfencedTop handling.
     bool,
     mojom::blink::TriggeringEventInfo,
     HTMLFormElement*,
@@ -125,23 +110,43 @@ void EmptyLocalFrameClient::BeginNavigation(
     mojo::PendingRemote<mojom::blink::BlobURLToken>,
     base::TimeTicks,
     const String&,
-    const std::optional<Impression>&,
+    const absl::optional<WebImpression>&,
+    network::mojom::IPAddressSpace,
     const LocalFrameToken* initiator_frame_token,
     std::unique_ptr<SourceLocation>,
-    mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle>,
-    bool is_container_initiated,
-    bool has_rel_opener) {}
+    mojo::PendingRemote<mojom::blink::PolicyContainerHostKeepAliveHandle>) {}
 
 void EmptyLocalFrameClient::DispatchWillSendSubmitEvent(HTMLFormElement*) {}
+
+DocumentLoader* EmptyLocalFrameClient::CreateDocumentLoader(
+    LocalFrame* frame,
+    WebNavigationType navigation_type,
+    std::unique_ptr<WebNavigationParams> navigation_params,
+    std::unique_ptr<PolicyContainer> policy_container,
+    std::unique_ptr<WebDocumentLoader::ExtraData> extra_data) {
+  DCHECK(frame);
+  return MakeGarbageCollected<DocumentLoader>(frame, navigation_type,
+                                              std::move(navigation_params),
+                                              std::move(policy_container));
+}
 
 LocalFrame* EmptyLocalFrameClient::CreateFrame(const AtomicString&,
                                                HTMLFrameOwnerElement*) {
   return nullptr;
 }
 
-RemoteFrame* EmptyLocalFrameClient::CreateFencedFrame(
-    HTMLFencedFrameElement*,
-    mojo::PendingAssociatedReceiver<mojom::blink::FencedFrameOwnerHost>) {
+std::pair<RemoteFrame*, PortalToken> EmptyLocalFrameClient::CreatePortal(
+    HTMLPortalElement*,
+    mojo::PendingAssociatedReceiver<mojom::blink::Portal>,
+    mojo::PendingAssociatedRemote<mojom::blink::PortalClient>) {
+  return std::pair<RemoteFrame*, PortalToken>(nullptr, PortalToken());
+}
+
+RemoteFrame* EmptyLocalFrameClient::AdoptPortal(HTMLPortalElement*) {
+  return nullptr;
+}
+
+RemoteFrame* EmptyLocalFrameClient::CreateFencedFrame(HTMLFencedFrameElement*) {
   return nullptr;
 }
 
@@ -162,7 +167,7 @@ std::unique_ptr<WebMediaPlayer> EmptyLocalFrameClient::CreateWebMediaPlayer(
   return nullptr;
 }
 
-RemotePlaybackClient* EmptyLocalFrameClient::CreateRemotePlaybackClient(
+WebRemotePlaybackClient* EmptyLocalFrameClient::CreateWebRemotePlaybackClient(
     HTMLMediaElement&) {
   return nullptr;
 }
@@ -182,12 +187,7 @@ Frame* EmptyLocalFrameClient::FindFrame(const AtomicString& name) const {
 
 AssociatedInterfaceProvider*
 EmptyLocalFrameClient::GetRemoteNavigationAssociatedInterfaces() {
-  if (!associated_interface_provider_) {
-    associated_interface_provider_ =
-        std::make_unique<AssociatedInterfaceProvider>(
-            base::SingleThreadTaskRunner::GetCurrentDefault());
-  }
-  return associated_interface_provider_.get();
+  return AssociatedInterfaceProvider::GetEmptyAssociatedInterfaceProvider();
 }
 
 std::unique_ptr<WebServiceWorkerProvider>

@@ -1,18 +1,13 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_GRID_INTEGER_REPEAT_VALUE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_GRID_INTEGER_REPEAT_VALUE_H_
 
-#include "base/check_op.h"
 #include "third_party/blink/renderer/core/css/css_value_list.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
-
-namespace WTF {
-class String;
-}  // namespace WTF
 
 namespace blink {
 namespace cssvalue {
@@ -27,23 +22,23 @@ namespace cssvalue {
 //                          [ <line-names>? <fixed-size> ]+ <line-names>? )
 class CSSGridIntegerRepeatValue : public CSSValueList {
  public:
-  CSSGridIntegerRepeatValue(wtf_size_t repetitions)
+  CSSGridIntegerRepeatValue(size_t repetitions)
       : CSSValueList(kGridIntegerRepeatClass, kSpaceSeparator),
         repetitions_(repetitions) {
     DCHECK_GT(repetitions, 0UL);
   }
 
-  WTF::String CustomCSSText() const;
+  String CustomCSSText() const;
   bool Equals(const CSSGridIntegerRepeatValue&) const;
 
-  wtf_size_t Repetitions() const { return repetitions_; }
+  size_t Repetitions() const { return repetitions_; }
 
   void TraceAfterDispatch(blink::Visitor* visitor) const {
     CSSValueList::TraceAfterDispatch(visitor);
   }
 
  private:
-  const wtf_size_t repetitions_;
+  const size_t repetitions_;
 };
 
 }  // namespace cssvalue

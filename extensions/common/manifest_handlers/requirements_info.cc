@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -49,7 +49,7 @@ bool RequirementsHandler::AlwaysParseForType(Manifest::Type type) const {
 bool RequirementsHandler::Parse(Extension* extension, std::u16string* error) {
   ManifestKeys manifest_keys;
   if (!ManifestKeys::ParseFromDictionary(
-          extension->manifest()->available_values(), manifest_keys, *error)) {
+          extension->manifest()->available_values(), &manifest_keys, error)) {
     return false;
   }
 
@@ -68,7 +68,7 @@ bool RequirementsHandler::Parse(Extension* extension, std::u16string* error) {
     extension->AddInstallWarning(
         InstallWarning(errors::kPluginsRequirementDeprecated));
     if (requirements.plugins->npapi && *requirements.plugins->npapi) {
-      *error = errors::kNPAPIPluginsNotSupported;
+      *error = base::ASCIIToUTF16(errors::kNPAPIPluginsNotSupported);
       return false;
     }
   }
@@ -77,8 +77,11 @@ bool RequirementsHandler::Parse(Extension* extension, std::u16string* error) {
     // css3d is always available, so no check is needed, but no error is
     // generated.
     requirements_info->webgl = base::Contains(
-        requirements._3d->features, api::requirements::_3DFeature::kWebgl);
+        requirements._3d->features, api::requirements::_3D_FEATURE_WEBGL);
   }
+
+  if (requirements.window && requirements.window->shape)
+    requirements_info->window_shape = *requirements.window->shape;
 
   extension->SetManifestData(ManifestKeys::kRequirements,
                              std::move(requirements_info));

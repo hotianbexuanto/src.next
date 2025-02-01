@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,8 +21,6 @@
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 
 namespace blink {
-
-using mojom::blink::FormControlType;
 
 namespace {
 
@@ -84,7 +82,7 @@ bool MatchAttributes(const Element& element, const Vector<String>& words) {
 bool IsGoodForScoring(const WebDistillabilityFeatures& features,
                       const Element& element) {
   DEFINE_STATIC_LOCAL(Vector<String>, unlikely_candidates, ());
-  if (unlikely_candidates.empty()) {
+  if (unlikely_candidates.IsEmpty()) {
     auto words = {
         "banner",  "combx",      "comment", "community",  "disqus",  "extra",
         "foot",    "header",     "menu",    "related",    "remark",  "rss",
@@ -95,7 +93,7 @@ bool IsGoodForScoring(const WebDistillabilityFeatures& features,
     }
   }
   DEFINE_STATIC_LOCAL(Vector<String>, highly_likely_candidates, ());
-  if (highly_likely_candidates.empty()) {
+  if (highly_likely_candidates.IsEmpty()) {
     auto words = {"and", "article", "body", "column", "main", "shadow"};
     for (auto* word : words) {
       highly_likely_candidates.push_back(word);
@@ -127,9 +125,9 @@ void CollectFeatures(Element& root,
       features.form_count++;
     } else if (element.HasTagName(html_names::kInputTag)) {
       const auto& input = To<HTMLInputElement>(element);
-      if (input.FormControlType() == FormControlType::kInputText) {
+      if (input.type() == input_type_names::kText) {
         features.text_input_count++;
-      } else if (input.FormControlType() == FormControlType::kInputPassword) {
+      } else if (input.type() == input_type_names::kPassword) {
         features.password_input_count++;
       }
     } else if (element.HasTagName(html_names::kPTag) ||
@@ -194,7 +192,7 @@ WebDistillabilityFeatures DocumentStatisticsCollector::CollectStatistics(
 
   WebDistillabilityFeatures features = WebDistillabilityFeatures();
 
-  if (!document.GetFrame() || !document.GetFrame()->IsOutermostMainFrame())
+  if (!document.GetFrame() || !document.GetFrame()->IsMainFrame())
     return features;
 
   DCHECK(document.HasFinishedParsing());

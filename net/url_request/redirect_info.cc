@@ -1,13 +1,9 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/url_request/redirect_info.h"
 
-#include <string_view>
-
-#include "base/containers/adapters.h"
-#include "base/containers/fixed_flat_map.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -41,18 +37,77 @@ std::string ComputeMethodForRedirect(const std::string& method,
 // policy that should be used for the request.
 ReferrerPolicy ProcessReferrerPolicyHeaderOnRedirect(
     ReferrerPolicy original_referrer_policy,
-    const std::optional<std::string>& referrer_policy_header) {
+    const absl::optional<std::string>& referrer_policy_header) {
+  ReferrerPolicy new_policy = original_referrer_policy;
+  std::vector<base::StringPiece> policy_tokens;
   if (referrer_policy_header) {
-    return ReferrerPolicyFromHeader(referrer_policy_header.value())
-        .value_or(original_referrer_policy);
+    policy_tokens = base::SplitStringPiece(*referrer_policy_header, ",",
+                                           base::TRIM_WHITESPACE,
+                                           base::SPLIT_WANT_NONEMPTY);
   }
 
-  return original_referrer_policy;
+  UMA_HISTOGRAM_BOOLEAN("Net.URLRequest.ReferrerPolicyHeaderPresentOnRedirect",
+                        !policy_tokens.empty());
+
+  // Per https://w3c.github.io/webappsec-referrer-policy/#unknown-policy-values,
+  // use the last recognized policy value, and ignore unknown policies.
+  for (const auto& token : policy_tokens) {
+    if (base::CompareCaseInsensitiveASCII(token, "no-referrer") == 0) {
+      new_policy = ReferrerPolicy::NO_REFERRER;
+      continue;
+    }
+
+    if (base::CompareCaseInsensitiveASCII(token,
+                                          "no-referrer-when-downgrade") == 0) {
+      new_policy = ReferrerPolicy::CLEAR_ON_TRANSITION_FROM_SECURE_TO_INSECURE;
+      continue;
+    }
+
+    if (base::CompareCaseInsensitiveASCII(token, "origin") == 0) {
+      new_policy = ReferrerPolicy::ORIGIN;
+      continue;
+    }
+
+    if (base::CompareCaseInsensitiveASCII(token, "origin-when-cross-origin") ==
+        0) {
+      new_policy = ReferrerPolicy::ORIGIN_ONLY_ON_TRANSITION_CROSS_ORIGIN;
+      continue;
+    }
+
+    if (base::CompareCaseInsensitiveASCII(token, "unsafe-url") == 0) {
+      new_policy = ReferrerPolicy::NEVER_CLEAR;
+      continue;
+    }
+
+    if (base::CompareCaseInsensitiveASCII(token, "same-origin") == 0) {
+      new_policy = ReferrerPolicy::CLEAR_ON_TRANSITION_CROSS_ORIGIN;
+      continue;
+    }
+
+    if (base::CompareCaseInsensitiveASCII(token, "strict-origin") == 0) {
+      new_policy =
+          ReferrerPolicy::ORIGIN_CLEAR_ON_TRANSITION_FROM_SECURE_TO_INSECURE;
+      continue;
+    }
+
+    if (base::CompareCaseInsensitiveASCII(
+            token, "strict-origin-when-cross-origin") == 0) {
+      new_policy =
+          ReferrerPolicy::REDUCE_GRANULARITY_ON_TRANSITION_CROSS_ORIGIN;
+      continue;
+    }
+  }
+  return new_policy;
 }
 
 }  // namespace
 
-RedirectInfo::RedirectInfo() = default;
+RedirectInfo::RedirectInfo()
+    : status_code(-1),
+      insecure_scheme_was_upgraded(false),
+      is_signed_exchange_fallback_redirect(false),
+      new_referrer_policy(
+          ReferrerPolicy::CLEAR_ON_TRANSITION_FROM_SECURE_TO_INSECURE) {}
 
 RedirectInfo::RedirectInfo(const RedirectInfo& other) = default;
 
@@ -67,7 +122,7 @@ RedirectInfo RedirectInfo::ComputeRedirectInfo(
     const std::string& original_referrer,
     int http_status_code,
     const GURL& new_location,
-    const std::optional<std::string>& referrer_policy_header,
+    const absl::optional<std::string>& referrer_policy_header,
     bool insecure_scheme_was_upgraded,
     bool copy_fragment,
     bool is_signed_exchange_fallback_redirect) {
@@ -86,7 +141,8 @@ RedirectInfo RedirectInfo::ComputeRedirectInfo(
     GURL::Replacements replacements;
     // Reference the |ref| directly out of the original URL to avoid a
     // malloc.
-    replacements.SetRefStr(original_url.ref_piece());
+    replacements.SetRef(original_url.spec().data(),
+                        original_url.parsed_for_possibly_invalid_spec().ref);
     redirect_info.new_url = new_location.ReplaceComponents(replacements);
   } else {
     redirect_info.new_url = new_location;

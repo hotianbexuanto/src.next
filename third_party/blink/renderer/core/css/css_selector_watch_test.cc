@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -57,16 +57,16 @@ TEST_F(CSSSelectorWatchTest, RecalcOnDocumentChange) {
 
   UpdateAllLifecyclePhasesForTest();
 
-  Element* x = GetDocument().getElementById(AtomicString("x"));
-  Element* y = GetDocument().getElementById(AtomicString("y"));
-  Element* z = GetDocument().getElementById(AtomicString("z"));
+  Element* x = GetDocument().getElementById("x");
+  Element* y = GetDocument().getElementById("y");
+  Element* z = GetDocument().getElementById("z");
   ASSERT_TRUE(x);
   ASSERT_TRUE(y);
   ASSERT_TRUE(z);
 
   x->removeAttribute(html_names::kClassAttr);
   y->removeAttribute(html_names::kClassAttr);
-  z->setAttribute(html_names::kClassAttr, AtomicString("c"));
+  z->setAttribute(html_names::kClassAttr, "c");
 
   ClearAddedRemoved(watch);
 
@@ -83,9 +83,10 @@ TEST_F(CSSSelectorWatchTest, RecalcOnDocumentChange) {
   EXPECT_TRUE(RemovedSelectors(watch).Contains(".b"));
 }
 
-class CSSSelectorWatchCQTest : public CSSSelectorWatchTest {
+class CSSSelectorWatchCQTest : public CSSSelectorWatchTest,
+                               private ScopedCSSContainerQueriesForTest {
  protected:
-  CSSSelectorWatchCQTest() = default;
+  CSSSelectorWatchCQTest() : ScopedCSSContainerQueriesForTest(true) {}
 };
 
 TEST_F(CSSSelectorWatchCQTest, ContainerQueryDisplayNone) {
@@ -120,7 +121,7 @@ TEST_F(CSSSelectorWatchCQTest, ContainerQueryDisplayNone) {
   // #container a container 'c1' which is flipping the span back to
   // display:inline.
   ClearAddedRemoved(watch);
-  GetDocument().body()->setAttribute(html_names::kClassAttr, AtomicString("c"));
+  GetDocument().body()->setAttribute(html_names::kClassAttr, "c");
   UpdateAllLifecyclePhasesForTest();
 
   // Element::UpdateCallbackSelectors() will both remove and add #inner in the

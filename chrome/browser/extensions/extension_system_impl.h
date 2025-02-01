@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "base/one_shot_event.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -16,23 +16,21 @@
 
 class Profile;
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
 namespace chromeos {
 class DeviceLocalAccountManagementPolicyProvider;
 class SigninScreenPolicyProvider;
 }
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-namespace value_store {
-class ValueStoreFactory;
-class ValueStoreFactoryImpl;
-}  // namespace value_store
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 namespace extensions {
 
 class ExtensionSystemSharedFactory;
+class NavigationObserver;
 class UninstallPingSender;
 class InstallGate;
+class ValueStoreFactory;
+class ValueStoreFactoryImpl;
 class ExtensionsPermissionsTracker;
 
 // The ExtensionSystem for ProfileImpl and OffTheRecordProfileImpl.
@@ -45,10 +43,6 @@ class ExtensionSystemImpl : public ExtensionSystem {
   using InstallUpdateCallback = ExtensionSystem::InstallUpdateCallback;
 
   explicit ExtensionSystemImpl(Profile* profile);
-
-  ExtensionSystemImpl(const ExtensionSystemImpl&) = delete;
-  ExtensionSystemImpl& operator=(const ExtensionSystemImpl&) = delete;
-
   ~ExtensionSystemImpl() override;
 
   // KeyedService implementation.
@@ -57,16 +51,25 @@ class ExtensionSystemImpl : public ExtensionSystem {
   void InitForRegularProfile(bool extensions_enabled) override;
 
   ExtensionService* extension_service() override;  // shared
+  RuntimeData* runtime_data() override;            // shared
   ManagementPolicy* management_policy() override;  // shared
   ServiceWorkerManager* service_worker_manager() override;  // shared
   UserScriptManager* user_script_manager() override;        // shared
   StateStore* state_store() override;                              // shared
   StateStore* rules_store() override;                              // shared
-  StateStore* dynamic_user_scripts_store() override;               // shared
-  scoped_refptr<value_store::ValueStoreFactory> store_factory()
-      override;                            // shared
+  scoped_refptr<ValueStoreFactory> store_factory() override;       // shared
+  InfoMap* info_map() override;                                    // shared
   QuotaService* quota_service() override;  // shared
-  AppSorting* app_sorting() override;      // shared
+  AppSorting* app_sorting() override;  // shared
+
+  void RegisterExtensionWithRequestContexts(
+      const Extension* extension,
+      base::OnceClosure callback) override;
+
+  void UnregisterExtensionWithRequestContexts(
+      const std::string& extension_id,
+      const UnloadedExtensionReason reason) override;
+
   const base::OneShotEvent& ready() const override;
   bool is_ready() const override;
   ContentVerifier* content_verifier() override;  // shared
@@ -79,7 +82,7 @@ class ExtensionSystemImpl : public ExtensionSystem {
                      InstallUpdateCallback install_update_callback) override;
   void PerformActionBasedOnOmahaAttributes(
       const std::string& extension_id,
-      const base::Value::Dict& attributes) override;
+      const base::Value& attributes) override;
   bool FinishDelayedInstallationIfReady(const std::string& extension_id,
                                         bool install_immediately) override;
 
@@ -105,12 +108,13 @@ class ExtensionSystemImpl : public ExtensionSystem {
 
     StateStore* state_store();
     StateStore* rules_store();
-    StateStore* dynamic_user_scripts_store();
-    scoped_refptr<value_store::ValueStoreFactory> store_factory() const;
+    scoped_refptr<ValueStoreFactory> store_factory() const;
     ExtensionService* extension_service();
+    RuntimeData* runtime_data();
     ManagementPolicy* management_policy();
     ServiceWorkerManager* service_worker_manager();
     UserScriptManager* user_script_manager();
+    InfoMap* info_map();
     QuotaService* quota_service();
     AppSorting* app_sorting();
     const base::OneShotEvent& ready() const { return ready_; }
@@ -118,21 +122,24 @@ class ExtensionSystemImpl : public ExtensionSystem {
     ContentVerifier* content_verifier();
 
    private:
-    raw_ptr<Profile> profile_;
+    Profile* profile_;
 
     // The services that are shared between normal and incognito profiles.
 
     std::unique_ptr<StateStore> state_store_;
     std::unique_ptr<StateStore> rules_store_;
-    std::unique_ptr<StateStore> dynamic_user_scripts_store_;
-    scoped_refptr<value_store::ValueStoreFactoryImpl> store_factory_;
+    scoped_refptr<ValueStoreFactoryImpl> store_factory_;
+    std::unique_ptr<NavigationObserver> navigation_observer_;
     std::unique_ptr<ServiceWorkerManager> service_worker_manager_;
     // Shared memory region manager for scripts statically declared in extension
     // manifests. This region is shared between all extensions.
     std::unique_ptr<UserScriptManager> user_script_manager_;
-    // ExtensionService depends on StateStore and Blocklist.
+    std::unique_ptr<RuntimeData> runtime_data_;
+    // ExtensionService depends on StateStore, Blocklist and RuntimeData.
     std::unique_ptr<ExtensionService> extension_service_;
     std::unique_ptr<ManagementPolicy> management_policy_;
+    // extension_info_map_ needs to outlive process_manager_.
+    scoped_refptr<InfoMap> extension_info_map_;
     std::unique_ptr<QuotaService> quota_service_;
     std::unique_ptr<AppSorting> app_sorting_;
     std::unique_ptr<InstallGate> update_install_gate_;
@@ -142,7 +149,7 @@ class ExtensionSystemImpl : public ExtensionSystem {
 
     std::unique_ptr<UninstallPingSender> uninstall_ping_sender_;
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
     std::unique_ptr<chromeos::DeviceLocalAccountManagementPolicyProvider>
         device_local_account_management_policy_provider_;
     std::unique_ptr<chromeos::SigninScreenPolicyProvider>
@@ -155,9 +162,11 @@ class ExtensionSystemImpl : public ExtensionSystem {
     base::OneShotEvent ready_;
   };
 
-  raw_ptr<Profile> profile_;
+  Profile* profile_;
 
-  raw_ptr<Shared> shared_;
+  Shared* shared_;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionSystemImpl);
 };
 
 }  // namespace extensions

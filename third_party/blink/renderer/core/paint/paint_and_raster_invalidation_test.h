@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,17 +12,6 @@
 
 namespace blink {
 
-const RasterInvalidationTracking* GetRasterInvalidationTracking(
-    const LocalFrameView& root_frame_view,
-    wtf_size_t index,
-    const String& name_regex);
-
-inline const RasterInvalidationTracking* GetRasterInvalidationTracking(
-    const LocalFrameView& root_frame_view) {
-  return GetRasterInvalidationTracking(root_frame_view, 0,
-                                       "Scrolling background of LayoutView");
-}
-
 class PaintAndRasterInvalidationTest : public PaintControllerPaintTest {
  public:
   PaintAndRasterInvalidationTest()
@@ -30,23 +19,43 @@ class PaintAndRasterInvalidationTest : public PaintControllerPaintTest {
             MakeGarbageCollected<SingleChildLocalFrameClient>()) {}
 
  protected:
-  const RasterInvalidationTracking* GetRasterInvalidationTracking(
-      wtf_size_t index,
-      const String& name_regex) const {
-    return blink::GetRasterInvalidationTracking(*GetDocument().View(), index,
-                                                name_regex);
+  ContentLayerClientImpl* GetContentLayerClient(size_t index = 0) const {
+    DCHECK(RuntimeEnabledFeatures::CompositeAfterPaintEnabled());
+    const auto& clients = GetDocument()
+                              .View()
+                              ->GetPaintArtifactCompositor()
+                              ->ContentLayerClientsForTesting();
+    return index < clients.size() ? clients[index].get() : nullptr;
   }
 
-  const RasterInvalidationTracking* GetRasterInvalidationTracking() const {
-    return blink::GetRasterInvalidationTracking(*GetDocument().View());
+  const RasterInvalidationTracking* GetRasterInvalidationTracking(
+      size_t index = 0) const {
+    if (RuntimeEnabledFeatures::CompositeAfterPaintEnabled()) {
+      if (auto* client = GetContentLayerClient(index))
+        return client->GetRasterInvalidator().GetTracking();
+      return nullptr;
+    }
+    return GetLayoutView()
+        .Layer()
+        ->GraphicsLayerBacking()
+        ->GetRasterInvalidationTracking();
   }
 
   void SetUp() override {
     PaintControllerPaintTest::SetUp();
 
-    layer_tree_ = std::make_unique<LayerTreeHostEmbedder>();
-    layer_tree_->layer_tree_host()->SetRootLayer(
-        GetDocument().View()->GetPaintArtifactCompositor()->RootLayer());
+    if (RuntimeEnabledFeatures::CompositeAfterPaintEnabled()) {
+      layer_tree_ = std::make_unique<LayerTreeHostEmbedder>();
+      layer_tree_->layer_tree_host()->SetRootLayer(
+          GetDocument().View()->GetPaintArtifactCompositor()->RootLayer());
+    }
+  }
+
+  void SetPreferCompositingToLCDText(bool enable) {
+    GetDocument()
+        .GetFrame()
+        ->GetSettings()
+        ->SetPreferCompositingToLCDTextEnabled(enable);
   }
 
  private:

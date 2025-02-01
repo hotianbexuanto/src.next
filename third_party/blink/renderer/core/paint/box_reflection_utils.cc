@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,11 +18,8 @@ BoxReflection BoxReflectionForPaintLayer(const PaintLayer& layer,
                                          const ComputedStyle& style) {
   const StyleReflection* reflect_style = style.BoxReflect();
 
-  const LayoutBox* layout_box = layer.GetLayoutBox();
-  // TODO(crbug.com/962299): Only correct if the paint offset is correct.
-  gfx::Size frame_size = PhysicalRect(layout_box->FirstFragment().PaintOffset(),
-                                      layout_box->Size())
-                             .PixelSnappedSize();
+  LayoutRect frame_layout_rect = layer.GetLayoutBox()->FrameRect();
+  FloatRect frame_rect(frame_layout_rect);
   BoxReflection::ReflectionDirection direction =
       BoxReflection::kVerticalReflection;
   float offset = 0;
@@ -30,31 +27,31 @@ BoxReflection BoxReflectionForPaintLayer(const PaintLayer& layer,
     case kReflectionAbove:
       direction = BoxReflection::kVerticalReflection;
       offset =
-          -FloatValueForLength(reflect_style->Offset(), frame_size.height());
+          -FloatValueForLength(reflect_style->Offset(), frame_rect.Height());
       break;
     case kReflectionBelow:
       direction = BoxReflection::kVerticalReflection;
       offset =
-          2 * frame_size.height() +
-          FloatValueForLength(reflect_style->Offset(), frame_size.height());
+          2 * frame_rect.Height() +
+          FloatValueForLength(reflect_style->Offset(), frame_rect.Height());
       break;
     case kReflectionLeft:
       direction = BoxReflection::kHorizontalReflection;
       offset =
-          -FloatValueForLength(reflect_style->Offset(), frame_size.width());
+          -FloatValueForLength(reflect_style->Offset(), frame_rect.Width());
       break;
     case kReflectionRight:
       direction = BoxReflection::kHorizontalReflection;
-      offset = 2 * frame_size.width() +
-               FloatValueForLength(reflect_style->Offset(), frame_size.width());
+      offset = 2 * frame_rect.Width() +
+               FloatValueForLength(reflect_style->Offset(), frame_rect.Width());
       break;
   }
 
   const NinePieceImage& mask_nine_piece = reflect_style->Mask();
   if (!mask_nine_piece.HasImage())
-    return BoxReflection(direction, offset, PaintRecord(), gfx::RectF());
+    return BoxReflection(direction, offset, nullptr, FloatRect());
 
-  PhysicalRect mask_rect(PhysicalOffset(), layer.GetLayoutBox()->Size());
+  PhysicalRect mask_rect(PhysicalOffset(), frame_layout_rect.Size());
   PhysicalRect mask_bounding_rect(mask_rect);
   mask_bounding_rect.Expand(style.ImageOutsets(mask_nine_piece));
 
@@ -72,7 +69,7 @@ BoxReflection BoxReflectionForPaintLayer(const PaintLayer& layer,
                                  mask_rect, style, mask_nine_piece);
   }
   return BoxReflection(direction, offset, builder.EndRecording(),
-                       gfx::RectF(mask_bounding_rect));
+                       FloatRect(mask_bounding_rect));
 }
 
 }  // namespace blink

@@ -1,11 +1,6 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "chrome/browser/extensions/preinstalled_apps.h"
 
@@ -15,10 +10,12 @@
 #include <set>
 #include <string>
 
+#include "base/cxx17_backports.h"
 #include "base/lazy_instance.h"
 #include "base/strings/string_util.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/web_applications/preinstalled_app_install_features.h"
+#include "chrome/browser/web_applications/components/preinstalled_app_install_features.h"
 #include "chrome/browser/web_applications/preinstalled_web_app_utils.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/extensions/extension_constants.h"
@@ -26,7 +23,6 @@
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
 #include "components/version_info/version_info.h"
-#include "extensions/browser/extensions_browser_client.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
 
@@ -43,10 +39,9 @@ bool IsLocaleSupported() {
   // that they don't work.
   // TODO(rogerta): Do this check dynamically once the webstore can expose
   // an API. See http://crbug.com/101357
-  std::string locale =
-      extensions::ExtensionsBrowserClient::Get()->GetApplicationLocale();
-  static constexpr const char* unsupported_locales[] = {"CN", "TR", "IR"};
-  for (size_t i = 0; i < std::size(unsupported_locales); ++i) {
+  const std::string& locale = g_browser_process->GetApplicationLocale();
+  static const char* const unsupported_locales[] = {"CN", "TR", "IR"};
+  for (size_t i = 0; i < base::size(unsupported_locales); ++i) {
     if (base::EndsWith(locale, unsupported_locales[i],
                        base::CompareCase::INSENSITIVE_ASCII)) {
       return false;
@@ -88,14 +83,14 @@ void Provider::InitProfileState() {
   InstallState state = static_cast<InstallState>(
       profile_->GetPrefs()->GetInteger(prefs::kPreinstalledAppsInstallState));
 
-  std::optional<InstallState> new_install_state;
+  absl::optional<InstallState> new_install_state;
 
   switch (state) {
     case kUnknown: {
       // Pre-installed apps are only installed on profile creation or a new
       // chrome download.
       bool is_new_profile = profile_->WasCreatedByVersionOrLater(
-          std::string(version_info::GetVersionNumber()));
+          version_info::GetVersionNumber());
       if (is_new_profile && preinstalled_apps_enabled_) {
         new_install_state = kAlreadyInstalledPreinstalledApps;
         perform_new_installation_ = true;
@@ -155,14 +150,14 @@ void Provider::VisitRegisteredExtension() {
     // If pre-installed apps aren't enabled for the profile, we short-circuit
     // the flow to load them from the file (which happens as a result of
     // VisitRegisteredExtension()), and immediately set empty prefs.
-    ExternalProviderImpl::SetPrefs(base::Value::Dict());
+    ExternalProviderImpl::SetPrefs(std::make_unique<base::DictionaryValue>());
     return;
   }
 
   extensions::ExternalProviderImpl::VisitRegisteredExtension();
 }
 
-void Provider::SetPrefs(base::Value::Dict prefs) {
+void Provider::SetPrefs(std::unique_ptr<base::DictionaryValue> prefs) {
   DCHECK(preinstalled_apps_enabled_);
 
   // First, check if this is for a migration from around 2013. Likely not.
@@ -172,12 +167,12 @@ void Provider::SetPrefs(base::Value::Dict prefs) {
     // Filter out the new pre-installed apps for migrating users, so that we
     // don't randomly install them out of the blue. Two-pass to keep iterators
     // nice and happy.
-    for (auto entry : prefs) {
+    for (auto entry : prefs->DictItems()) {
       if (!IsOldPreinstalledApp(entry.first))
         keys_to_erase.insert(entry.first);
     }
     for (const auto& key : keys_to_erase)
-      prefs.Remove(key);
+      prefs->RemoveKey(key);
   }
 
   // Next, the more fun case. It's possible that these apps were uninstalled
@@ -190,7 +185,7 @@ void Provider::SetPrefs(base::Value::Dict prefs) {
       if (!pref.is_dict())
         return false;  // Invalid entry; it'll be ignored later.
       const std::string* web_app_flag =
-          pref.GetDict().FindString(kWebAppMigrationFlag);
+          pref.FindStringPath(kWebAppMigrationFlag);
       if (!web_app_flag)
         return false;  // Isn't migrating.
       if (web_app::IsPreinstalledAppInstallFeatureEnabled(*web_app_flag,
@@ -210,7 +205,7 @@ void Provider::SetPrefs(base::Value::Dict prefs) {
     };
 
     std::set<std::string> keys_to_erase;
-    for (auto entry : prefs) {
+    for (auto entry : prefs->DictItems()) {
       bool should_re_add = should_re_add_app(entry.first, entry.second);
       if (should_re_add) {
         // Since it will be re-added, mark it as no-longer-migrated.
@@ -221,7 +216,7 @@ void Provider::SetPrefs(base::Value::Dict prefs) {
     }
 
     for (const auto& key : keys_to_erase) {
-      prefs.Remove(key);
+      prefs->RemoveKey(key);
     }
   }
 

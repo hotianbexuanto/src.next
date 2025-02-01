@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,8 +14,7 @@ ScopedTabbedBrowserDisplayer::ScopedTabbedBrowserDisplayer(Profile* profile) {
   browser_ = FindTabbedBrowser(profile, false);
   if (!browser_ && Browser::GetCreationStatusForProfile(profile) ==
                        Browser::CreationStatus::kOk) {
-    Browser::CreateParams params(profile, /*user_gesture=*/true);
-    browser_ = Browser::Create(params);
+    browser_ = Browser::Create(Browser::CreateParams(profile, true));
   }
 }
 

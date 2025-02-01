@@ -1,11 +1,10 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/global_shortcut_listener.h"
 
 #include "base/check.h"
-#include "base/not_fatal_until.h"
 #include "base/notreached.h"
 #include "content/public/browser/browser_thread.h"
 #include "ui/base/accelerators/accelerator.h"
@@ -57,7 +56,7 @@ void GlobalShortcutListener::UnregisterAccelerator(
 
   auto it = accelerator_map_.find(accelerator);
   // We should never get asked to unregister something that we didn't register.
-  CHECK(it != accelerator_map_.end(), base::NotFatalUntil::M130);
+  DCHECK(it != accelerator_map_.end());
   // The caller should call this function with the right observer.
   DCHECK(it->second == observer);
 
@@ -113,6 +112,7 @@ void GlobalShortcutListener::NotifyKeyPressed(
     // This should never occur, because if it does, we have failed to unregister
     // or failed to clean up the map after unregistering the shortcut.
     NOTREACHED();
+    return;  // No-one is listening to this key.
   }
 
   iter->second->OnKeyPressed(accelerator);

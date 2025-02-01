@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,11 +6,10 @@
 
 #include <memory>
 
-#include "base/functional/callback.h"
+#include "base/callback.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/download/chrome_download_manager_delegate.h"
-#include "chrome/browser/download/download_core_service.h"
 #include "chrome/browser/download/download_history.h"
 #include "chrome/browser/download/download_offline_content_provider.h"
 #include "chrome/browser/download/download_offline_content_provider_factory.h"
@@ -29,7 +28,7 @@
 #include "chrome/browser/extensions/api/downloads/downloads_api.h"
 #endif
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(OS_ANDROID)
 #include "chrome/browser/download/android/download_utils.h"
 #endif
 
@@ -82,7 +81,7 @@ DownloadCoreServiceImpl::GetDownloadManagerDelegate() {
   download_ui_ = std::make_unique<DownloadUIController>(
       manager, std::unique_ptr<DownloadUIController::Delegate>());
 
-#if !BUILDFLAG(IS_ANDROID)
+#if !defined(OS_ANDROID)
   download_shelf_controller_ =
       std::make_unique<DownloadShelfController>(profile_);
 #endif
@@ -93,10 +92,6 @@ DownloadCoreServiceImpl::GetDownloadManagerDelegate() {
   g_browser_process->download_status_updater()->AddManager(manager);
 
   return manager_delegate_.get();
-}
-
-DownloadUIController* DownloadCoreServiceImpl::GetDownloadUIController() {
-  return download_ui_ ? download_ui_.get() : nullptr;
 }
 
 DownloadHistory* DownloadCoreServiceImpl::GetDownloadHistory() {
@@ -118,28 +113,22 @@ bool DownloadCoreServiceImpl::HasCreatedDownloadManager() {
   return download_manager_created_;
 }
 
-int DownloadCoreServiceImpl::BlockingShutdownCount() const {
+int DownloadCoreServiceImpl::NonMaliciousDownloadCount() const {
   if (!download_manager_created_)
     return 0;
-  return profile_->GetDownloadManager()->BlockingShutdownCount();
+  return profile_->GetDownloadManager()->NonMaliciousInProgressCount();
 }
 
-void DownloadCoreServiceImpl::CancelDownloads(
-    DownloadCoreService::CancelDownloadsTrigger trigger) {
-  if (!download_manager_created_) {
+void DownloadCoreServiceImpl::CancelDownloads() {
+  if (!download_manager_created_)
     return;
-  }
 
   DownloadManager* download_manager = profile_->GetDownloadManager();
   DownloadManager::DownloadVector downloads;
   download_manager->GetAllDownloads(&downloads);
-  for (auto& download : downloads) {
-    if (download->GetState() == download::DownloadItem::IN_PROGRESS) {
-      download->Cancel(/*user_cancel=*/false);
-      if (trigger == DownloadCoreService::CancelDownloadsTrigger::kShutdown) {
-        manager_delegate_->OnDownloadCanceledAtShutdown(download);
-      }
-    }
+  for (auto it = downloads.begin(); it != downloads.end(); ++it) {
+    if ((*it)->GetState() == download::DownloadItem::IN_PROGRESS)
+      (*it)->Cancel(false);
   }
 }
 
@@ -160,11 +149,11 @@ void DownloadCoreServiceImpl::SetDownloadHistoryForTesting(
   download_history_ = std::move(download_history);
 }
 
-bool DownloadCoreServiceImpl::IsDownloadUiEnabled() {
-#if BUILDFLAG(IS_ANDROID)
+bool DownloadCoreServiceImpl::IsShelfEnabled() {
+#if defined(OS_ANDROID)
   return true;
 #else
-  return !extension_event_router_ || extension_event_router_->IsUiEnabled();
+  return !extension_event_router_ || extension_event_router_->IsShelfEnabled();
 #endif
 }
 

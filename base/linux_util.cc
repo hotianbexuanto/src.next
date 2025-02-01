@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,9 +15,7 @@
 
 #include <iomanip>
 #include <memory>
-#include <string_view>
 
-#include "base/base_export.h"
 #include "base/files/dir_reader_posix.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_file.h"
@@ -89,24 +87,6 @@ class DistroNameGetter {
 };
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 
-bool GetThreadsFromProcessDir(const char* dir_path, std::vector<pid_t>* tids) {
-  DirReaderPosix dir_reader(dir_path);
-
-  if (!dir_reader.IsValid()) {
-    DLOG(WARNING) << "Cannot open " << dir_path;
-    return false;
-  }
-
-  while (dir_reader.Next()) {
-    pid_t tid;
-    if (StringToInt(dir_reader.name(), &tid)) {
-      tids->push_back(tid);
-    }
-  }
-
-  return true;
-}
-
 // Account for the terminating null character.
 constexpr int kDistroSize = 128 + 1;
 
@@ -117,7 +97,7 @@ constexpr int kDistroSize = 128 + 1;
 char g_linux_distro[kDistroSize] =
 #if BUILDFLAG(IS_CHROMEOS_ASH)
     "CrOS";
-#elif BUILDFLAG(IS_ANDROID)
+#elif defined(OS_ANDROID)
     "Android";
 #else
     "Unknown";
@@ -154,14 +134,25 @@ void SetLinuxDistro(const std::string& distro) {
 }
 
 bool GetThreadsForProcess(pid_t pid, std::vector<pid_t>* tids) {
-  // 25 > strlen("/proc//task") + strlen(base::NumberToString(INT_MAX)) + 1 = 22
+  // 25 > strlen("/proc//task") + strlen(std::to_string(INT_MAX)) + 1 = 22
   char buf[25];
   strings::SafeSPrintf(buf, "/proc/%d/task", pid);
-  return GetThreadsFromProcessDir(buf, tids);
-}
+  DirReaderPosix dir_reader(buf);
 
-bool GetThreadsForCurrentProcess(std::vector<pid_t>* tids) {
-  return GetThreadsFromProcessDir("/proc/self/task", tids);
+  if (!dir_reader.IsValid()) {
+    DLOG(WARNING) << "Cannot open " << buf;
+    return false;
+  }
+
+  while (dir_reader.Next()) {
+    char* endptr;
+    const unsigned long int tid_ul = strtoul(dir_reader.name(), &endptr, 10);
+    if (tid_ul == ULONG_MAX || *endptr)
+      continue;
+    tids->push_back(tid_ul);
+  }
+
+  return true;
 }
 
 pid_t FindThreadIDWithSyscall(pid_t pid, const std::string& expected_data,
@@ -182,9 +173,8 @@ pid_t FindThreadIDWithSyscall(pid_t pid, const std::string& expected_data,
       continue;
 
     *syscall_supported = true;
-    if (!ReadFromFD(fd.get(), syscall_data)) {
+    if (!ReadFromFD(fd.get(), syscall_data.data(), syscall_data.size()))
       continue;
-    }
 
     if (0 == strncmp(expected_data.c_str(), syscall_data.data(),
                      expected_data.size())) {
@@ -208,15 +198,14 @@ pid_t FindThreadID(pid_t pid, pid_t ns_tid, bool* ns_pid_supported) {
     if (!ReadFileToString(FilePath(buf), &status))
       return -1;
     StringTokenizer tokenizer(status, "\n");
-    while (std::optional<std::string_view> token =
-               tokenizer.GetNextTokenView()) {
-      if (!StartsWith(token.value(), "NSpid")) {
+    while (tokenizer.GetNext()) {
+      StringPiece value_str(tokenizer.token_piece());
+      if (!StartsWith(value_str, "NSpid"))
         continue;
-      }
 
       *ns_pid_supported = true;
-      std::vector<std::string_view> split_value_str = SplitStringPiece(
-          token.value(), "\t", TRIM_WHITESPACE, SPLIT_WANT_NONEMPTY);
+      std::vector<StringPiece> split_value_str = SplitStringPiece(
+          value_str, "\t", TRIM_WHITESPACE, SPLIT_WANT_NONEMPTY);
       DCHECK_GE(split_value_str.size(), 2u);
       int value;
       // The last value in the list is the PID in the namespace.

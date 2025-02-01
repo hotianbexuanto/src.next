@@ -1,28 +1,22 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "net/base/network_interfaces_win.h"
 
 #include <algorithm>
 #include <memory>
-#include <string_view>
 
-#include "base/containers/heap_array.h"
 #include "base/files/file_path.h"
 #include "base/lazy_instance.h"
-#include "base/strings/escape.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/scoped_blocking_call.h"
 #include "base/threading/scoped_thread_priority.h"
 #include "base/win/scoped_handle.h"
+#include "net/base/escape.h"
 #include "net/base/ip_endpoint.h"
 #include "net/base/net_errors.h"
 #include "url/gurl.h"
@@ -158,15 +152,6 @@ bool GetNetworkListImpl(NetworkInterfaceList* networks,
       continue;
     }
 
-    std::optional<Eui48MacAddress> mac_address;
-    mac_address.emplace();
-    if (adapter->PhysicalAddressLength == mac_address->size()) {
-      std::copy_n(reinterpret_cast<const uint8_t*>(adapter->PhysicalAddress),
-                  mac_address->size(), mac_address->begin());
-    } else {
-      mac_address.reset();
-    }
-
     for (IP_ADAPTER_UNICAST_ADDRESS* address = adapter->FirstUnicastAddress;
          address; address = address->Next) {
       int family = address->Address.lpSockaddr->sa_family;
@@ -203,7 +188,7 @@ bool GetNetworkListImpl(NetworkInterfaceList* networks,
               adapter->AdapterName,
               base::SysWideToNativeMB(adapter->FriendlyName), index,
               GetNetworkInterfaceType(adapter->IfType), endpoint.address(),
-              prefix_length, ip_address_attributes, mac_address));
+              prefix_length, ip_address_attributes));
         }
       }
     }
@@ -227,7 +212,7 @@ bool GetNetworkList(NetworkInterfaceList* networks, int policy) {
   // Initial buffer allocated on stack.
   char initial_buf[INITIAL_BUFFER_SIZE];
   // Dynamic buffer in case initial buffer isn't large enough.
-  base::HeapArray<char> buf;
+  std::unique_ptr<char[]> buf;
 
   IP_ADAPTER_ADDRESSES* adapters = nullptr;
   {
@@ -245,8 +230,8 @@ bool GetNetworkList(NetworkInterfaceList* networks, int policy) {
     for (int tries = 1; result == ERROR_BUFFER_OVERFLOW &&
                         tries < MAX_GETADAPTERSADDRESSES_TRIES;
          ++tries) {
-      buf = base::HeapArray<char>::Uninit(len);
-      adapters = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buf.data());
+      buf.reset(new char[len]);
+      adapters = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buf.get());
       result = GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, adapters, &len);
     }
 
@@ -260,6 +245,38 @@ bool GetNetworkList(NetworkInterfaceList* networks, int policy) {
   }
 
   return internal::GetNetworkListImpl(networks, policy, adapters);
+}
+
+WifiPHYLayerProtocol GetWifiPHYLayerProtocol() {
+  auto conn_info = GetConnectionAttributes();
+
+  if (!conn_info.get())
+    return WIFI_PHY_LAYER_PROTOCOL_NONE;
+
+  switch (conn_info->wlanAssociationAttributes.dot11PhyType) {
+    case dot11_phy_type_fhss:
+      return WIFI_PHY_LAYER_PROTOCOL_ANCIENT;
+    case dot11_phy_type_dsss:
+      return WIFI_PHY_LAYER_PROTOCOL_B;
+    case dot11_phy_type_irbaseband:
+      return WIFI_PHY_LAYER_PROTOCOL_ANCIENT;
+    case dot11_phy_type_ofdm:
+      return WIFI_PHY_LAYER_PROTOCOL_A;
+    case dot11_phy_type_hrdsss:
+      return WIFI_PHY_LAYER_PROTOCOL_B;
+    case dot11_phy_type_erp:
+      return WIFI_PHY_LAYER_PROTOCOL_G;
+    case dot11_phy_type_ht:
+      return WIFI_PHY_LAYER_PROTOCOL_N;
+    case dot11_phy_type_vht:
+      return WIFI_PHY_LAYER_PROTOCOL_AC;
+    case dot11_phy_type_dmg:
+      return WIFI_PHY_LAYER_PROTOCOL_AD;
+    case dot11_phy_type_he:
+      return WIFI_PHY_LAYER_PROTOCOL_AX;
+    default:
+      return WIFI_PHY_LAYER_PROTOCOL_UNKNOWN;
+  }
 }
 
 // Note: There is no need to explicitly set the options back
@@ -309,7 +326,7 @@ class WifiOptionSetter : public ScopedWifiOptions {
 };
 
 std::unique_ptr<ScopedWifiOptions> SetWifiOptions(int options) {
-  return std::make_unique<WifiOptionSetter>(options);
+  return std::unique_ptr<ScopedWifiOptions>(new WifiOptionSetter(options));
 }
 
 std::string GetWifiSSID() {

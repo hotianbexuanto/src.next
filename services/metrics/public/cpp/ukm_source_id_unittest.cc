@@ -1,11 +1,6 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "services/metrics/public/cpp/ukm_source_id.h"
 
@@ -50,8 +45,7 @@ TEST(UkmSourceIdTest, GetSourceIdType) {
   for (int64_t type_index = 0; type_index <= num_types; type_index++) {
     const SourceIdType expected_type = SourceIdType(type_index);
     if (expected_type == SourceIdType::WEBAPK_ID ||
-        expected_type == SourceIdType::PAYMENT_APP_ID ||
-        expected_type == SourceIdType::WEB_IDENTITY_ID) {
+        expected_type == SourceIdType::PAYMENT_APP_ID) {
       // See comment in ConvertToSourceId regarding these special cases.
       continue;
     }

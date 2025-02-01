@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_STYLE_RECALC_ROOT_H_
 
 #include "base/dcheck_is_on.h"
-#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/style_traversal_root.h"
 
 namespace blink {
@@ -16,7 +15,7 @@ class CORE_EXPORT StyleRecalcRoot : public StyleTraversalRoot {
 
  public:
   Element& RootElement() const;
-  void FlatTreePositionChanged(const Node& node);
+  void RemovedFromFlatTree(const Node& node);
   void SubtreeModified(ContainerNode& parent) final;
 
  private:

@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,11 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/weak_ptr.h"
 #include "chrome/browser/extensions/extension_service.h"
 
 namespace extensions {
-class CWSInfoServiceInterface;
 class CrxInstaller;
 class Extension;
 }  // namespace extensions
@@ -22,17 +20,14 @@ class Extension;
 // this and override the methods you care about.
 class TestExtensionService : public extensions::ExtensionServiceInterface {
  public:
-  TestExtensionService();
   ~TestExtensionService() override;
 
   // ExtensionServiceInterface implementation.
   extensions::PendingExtensionManager* pending_extension_manager() override;
-  extensions::CorruptedExtensionReinstaller* corrupted_extension_reinstaller()
-      override;
 
-  scoped_refptr<extensions::CrxInstaller> CreateUpdateInstaller(
-      const extensions::CRXFileInfo& file,
-      bool file_ownership_passed) override;
+  bool UpdateExtension(const extensions::CRXFileInfo& file,
+                       bool file_ownership_passed,
+                       extensions::CrxInstaller** out_crx_installer) override;
   const extensions::Extension* GetPendingExtensionUpdate(
       const std::string& extension_id) const override;
   bool FinishDelayedInstallationIfReady(const std::string& extension_id,
@@ -51,14 +46,6 @@ class TestExtensionService : public extensions::ExtensionServiceInterface {
 
   bool UserCanDisableInstalledExtension(
       const std::string& extension_id) override;
-
-  void ReinstallProviderExtensions() override;
-
-  base::WeakPtr<ExtensionServiceInterface> AsWeakPtr() override;
-
- private:
-  std::unique_ptr<extensions::CWSInfoServiceInterface> cws_info_service_;
-  base::WeakPtrFactory<TestExtensionService> weak_ptr_factory_{this};
 };
 
 #endif  // CHROME_BROWSER_EXTENSIONS_TEST_EXTENSION_SERVICE_H_

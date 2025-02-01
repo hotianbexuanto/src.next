@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,21 +6,15 @@ package org.chromium.chrome.browser.ui.appmenu;
 
 import android.os.Bundle;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.PopupMenu;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.test.util.CallbackHelper;
-import org.chromium.chrome.browser.ui.appmenu.AppMenuHandler.AppMenuItemType;
 import org.chromium.chrome.browser.ui.appmenu.test.R;
-import org.chromium.ui.modelutil.MVCListAdapter;
-import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
-import org.chromium.ui.modelutil.PropertyModel;
 
 import java.util.List;
 
@@ -37,55 +31,15 @@ class TestAppMenuPropertiesDelegate implements AppMenuPropertiesDelegate {
     @Override
     public void destroy() {}
 
+    @Override
+    public int getAppMenuLayoutId() {
+        return R.menu.test_menu;
+    }
+
     @Nullable
     @Override
     public List<CustomViewBinder> getCustomViewBinders() {
         return null;
-    }
-
-    @Override
-    public ModelList getMenuItems(
-            CustomItemViewTypeProvider customItemViewTypeProvider, AppMenuHandler handler) {
-        ModelList modelList = new ModelList();
-
-        PopupMenu popup = new PopupMenu(ContextUtils.getApplicationContext(), null);
-        Menu menu = popup.getMenu();
-        MenuInflater inflater = popup.getMenuInflater();
-        inflater.inflate(getAppMenuLayoutId(), menu);
-
-        prepareMenu(menu, handler);
-        for (int i = 0; i < menu.size(); ++i) {
-            MenuItem item = menu.getItem(i);
-            if (item.isVisible()) {
-                PropertyModel propertyModel = AppMenuUtil.menuItemToPropertyModel(item);
-                propertyModel.set(AppMenuItemProperties.POSITION, i);
-                propertyModel.set(AppMenuItemProperties.SUPPORT_ENTER_ANIMATION, true);
-                if (item.hasSubMenu()) {
-                    ModelList subList = new ModelList();
-                    for (int j = 0; j < item.getSubMenu().size(); ++j) {
-                        MenuItem subitem = item.getSubMenu().getItem(j);
-                        if (!subitem.isVisible()) continue;
-                        PropertyModel subModel = AppMenuUtil.menuItemToPropertyModel(subitem);
-                        subList.add(new MVCListAdapter.ListItem(0, subModel));
-                    }
-                    propertyModel.set(AppMenuItemProperties.SUBMENU, subList);
-                }
-                int menutype = AppMenuItemType.STANDARD;
-                if (item.getItemId() == R.id.icon_row_menu_id) {
-                    int viewCount = item.getSubMenu().size();
-                    if (viewCount == 3) {
-                        menutype = AppMenuItemType.THREE_BUTTON_ROW;
-                    } else if (viewCount == 4) {
-                        menutype = AppMenuItemType.FOUR_BUTTON_ROW;
-                    } else if (viewCount == 5) {
-                        menutype = AppMenuItemType.FIVE_BUTTON_ROW;
-                    }
-                }
-                modelList.add(new MVCListAdapter.ListItem(menutype, propertyModel));
-            }
-        }
-
-        return modelList;
     }
 
     @Override
@@ -95,27 +49,21 @@ class TestAppMenuPropertiesDelegate implements AppMenuPropertiesDelegate {
         menu.findItem(R.id.icon_row_menu_id).setVisible(enableAppIconRow);
         if (enableAppIconRow) {
             menu.findItem(R.id.icon_one)
-                    .setIcon(
-                            AppCompatResources.getDrawable(
-                                    ContextUtils.getApplicationContext(),
-                                    R.drawable.test_ic_arrow_forward_black_24dp));
+                    .setIcon(AppCompatResources.getDrawable(ContextUtils.getApplicationContext(),
+                            R.drawable.test_ic_arrow_forward_black_24dp));
             menu.findItem(R.id.icon_two)
-                    .setIcon(
-                            AppCompatResources.getDrawable(
-                                    ContextUtils.getApplicationContext(),
-                                    R.drawable.test_ic_arrow_forward_black_24dp));
+                    .setIcon(AppCompatResources.getDrawable(ContextUtils.getApplicationContext(),
+                            R.drawable.test_ic_arrow_forward_black_24dp));
             menu.findItem(R.id.icon_three)
-                    .setIcon(
-                            AppCompatResources.getDrawable(
-                                    ContextUtils.getApplicationContext(),
-                                    R.drawable.test_ic_arrow_forward_black_24dp));
+                    .setIcon(AppCompatResources.getDrawable(ContextUtils.getApplicationContext(),
+                            R.drawable.test_ic_arrow_forward_black_24dp));
             menu.findItem(R.id.icon_three).setEnabled(false);
         }
     }
 
     @Nullable
     @Override
-    public Bundle getBundleForMenuItem(int itemId) {
+    public Bundle getBundleForMenuItem(MenuItem item) {
         return null;
     }
 
@@ -167,15 +115,9 @@ class TestAppMenuPropertiesDelegate implements AppMenuPropertiesDelegate {
         return iconBeforeItem;
     }
 
-    protected int getAppMenuLayoutId() {
-        return R.menu.test_menu;
-    }
+    @Override
+    public void recordHighlightedMenuItemShown(Integer menuItemId) {}
 
     @Override
-    public boolean isMenuIconAtStart() {
-        return false;
-    }
-
-    @Override
-    public void onMenuShown() {}
+    public void recordHighlightedMenuItemClicked(Integer menuItemId) {}
 }

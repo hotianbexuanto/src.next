@@ -22,8 +22,6 @@
 
 #include "third_party/blink/renderer/core/dom/live_node_list.h"
 
-#include "third_party/blink/renderer/core/dom/document.h"
-
 namespace blink {
 
 namespace {
@@ -43,20 +41,6 @@ class IsMatch {
 };
 
 }  // namespace
-
-LiveNodeList::LiveNodeList(ContainerNode& owner_node,
-                           CollectionType collection_type,
-                           NodeListInvalidationType invalidation_type,
-                           NodeListSearchRoot search_root)
-    : LiveNodeListBase(owner_node,
-                       search_root,
-                       invalidation_type,
-                       collection_type) {
-  // Keep this in the child class because |registerNodeList| requires wrapper
-  // tracing and potentially calls virtual methods which is not allowed in a
-  // base class constructor.
-  GetDocument().RegisterNodeList(this);
-}
 
 Node* LiveNodeList::VirtualOwnerNode() const {
   return &ownerNode();

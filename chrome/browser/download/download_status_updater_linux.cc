@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -67,10 +67,8 @@ void EnsureLibUnityLoaded() {
   // The "icon-tasks" KDE task manager also honors Unity Launcher API.
   if (desktop_env != base::nix::DESKTOP_ENVIRONMENT_UNITY &&
       desktop_env != base::nix::DESKTOP_ENVIRONMENT_KDE4 &&
-      desktop_env != base::nix::DESKTOP_ENVIRONMENT_KDE5 &&
-      desktop_env != base::nix::DESKTOP_ENVIRONMENT_KDE6) {
+      desktop_env != base::nix::DESKTOP_ENVIRONMENT_KDE5)
     return;
-  }
 
   // Ubuntu still hasn't given us a nice libunity.so symlink.
   void* unity_lib = dlopen("libunity.so.4", RTLD_LAZY);

@@ -23,23 +23,11 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_HIT_TEST_REQUEST_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_HIT_TEST_REQUEST_H_
 
-#include <optional>
-
-#include "base/functional/callback.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
 namespace blink {
 
 class LayoutObject;
-class Node;
-
-// List-based hit test testing can continue even after a hit has been found.
-// This is used to support fuzzy matching with rect-based hit tests as well as
-// penetrating tests which collect all nodes (see:
-// HitTestRequest::RequestType).
-enum ListBasedHitTestBehavior { kContinueHitTesting, kStopHitTesting };
 
 class HitTestRequest {
   DISALLOW_NEW();
@@ -56,33 +44,25 @@ class HitTestRequest {
     kAllowChildFrameContent = 1 << 8,
     kChildFrameHitTest = 1 << 9,
     kIgnorePointerEventsNone = 1 << 10,
+    kRetargetForInert = 1 << 11,
     // Collect a list of nodes instead of just one.
     // (This is for elementsFromPoint and rect-based tests).
-    kListBased = 1 << 11,
+    kListBased = 1 << 12,
     // When using list-based testing, this flag causes us to continue hit
     // testing after a hit has been found.
-    kPenetratingList = 1 << 12,
-    kAvoidCache = 1 << 13,
-    kIgnoreZeroOpacityObjects = 1 << 14,
-    kHitTestVisualOverflow = 1 << 15,
+    kPenetratingList = 1 << 13,
+    kAvoidCache = 1 << 14,
+    kIgnoreZeroOpacityObjects = 1 << 15,
+    kHitTestVisualOverflow = 1 << 16,
   };
 
   typedef unsigned HitTestRequestType;
 
-  using HitNodeCb =
-      base::RepeatingCallback<ListBasedHitTestBehavior(const Node& node)>;
-
   HitTestRequest(HitTestRequestType request_type,
-                 const LayoutObject* stop_node = nullptr,
-                 std::optional<HitNodeCb> hit_node_cb = std::nullopt)
+                 const LayoutObject* stop_node = nullptr)
       : request_type_(request_type), stop_node_(stop_node) {
     // Penetrating lists should also be list-based.
     DCHECK(!(request_type & kPenetratingList) || (request_type & kListBased));
-    // A hit node callback can only be used with penetrating list-based and,
-    // cache avoiding hit testing.
-    DCHECK(!hit_node_cb ||
-           ((request_type & kPenetratingList) && (request_type & kAvoidCache)));
-    hit_node_cb_ = std::move(hit_node_cb);
   }
 
   bool ReadOnly() const { return request_type_ & kReadOnly; }
@@ -106,21 +86,16 @@ class HitTestRequest {
   bool IgnorePointerEventsNone() const {
     return request_type_ & kIgnorePointerEventsNone;
   }
+  bool RetargetForInert() const { return request_type_ & kRetargetForInert; }
   bool ListBased() const { return request_type_ & kListBased; }
   bool PenetratingList() const { return request_type_ & kPenetratingList; }
   bool AvoidCache() const { return request_type_ & kAvoidCache; }
-  bool UseHitNodeCb() const { return hit_node_cb_.has_value(); }
 
   // Convenience functions
   bool TouchMove() const { return Move() && TouchEvent(); }
 
   HitTestRequestType GetType() const { return request_type_; }
-  const LayoutObject* GetStopNode() const { return stop_node_.Get(); }
-
-  ListBasedHitTestBehavior RunHitNodeCb(const Node& node) const {
-    DCHECK(hit_node_cb_);
-    return hit_node_cb_->Run(node);
-  }
+  const LayoutObject* GetStopNode() const { return stop_node_; }
 
   // The Cacheability bits don't affect hit testing computation.
   // TODO(dtapuska): These bits really shouldn't be fields on the HitTestRequest
@@ -134,15 +109,10 @@ class HitTestRequest {
            stop_node_ == value.stop_node_;
   }
 
-  void Trace(Visitor*) const;
-
  private:
   HitTestRequestType request_type_;
   // If non-null, do not hit test the children of this object.
-  Member<const LayoutObject> stop_node_;
-  // Callback used to exit early, if needed, during penetrating list based hit
-  // testing.
-  std::optional<HitNodeCb> hit_node_cb_;
+  const LayoutObject* stop_node_;
 };
 
 }  // namespace blink

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright (c) 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,9 +6,9 @@
 
 #include <algorithm>
 
-#include "base/functional/bind.h"
-#include "base/task/task_runner.h"
-#include "base/task/thread_pool.h"
+#include "base/bind.h"
+#include "base/task_runner.h"
+#include "base/task_runner_util.h"
 
 namespace net {
 
@@ -23,7 +23,7 @@ PrioritizedTaskRunner::Job::Job(const base::Location& from_here,
       priority(priority),
       task_count(task_count) {}
 
-PrioritizedTaskRunner::Job::Job() = default;
+PrioritizedTaskRunner::Job::Job() {}
 
 PrioritizedTaskRunner::Job::~Job() = default;
 PrioritizedTaskRunner::Job::Job(Job&& other) = default;
@@ -31,8 +31,8 @@ PrioritizedTaskRunner::Job& PrioritizedTaskRunner::Job::operator=(Job&& other) =
     default;
 
 PrioritizedTaskRunner::PrioritizedTaskRunner(
-    const base::TaskTraits& task_traits)
-    : task_traits_(task_traits) {}
+    scoped_refptr<base::TaskRunner> task_runner)
+    : task_runner_(std::move(task_runner)) {}
 
 void PrioritizedTaskRunner::PostTaskAndReply(const base::Location& from_here,
                                              base::OnceClosure task,
@@ -40,16 +40,13 @@ void PrioritizedTaskRunner::PostTaskAndReply(const base::Location& from_here,
                                              uint32_t priority) {
   Job job(from_here, std::move(task), std::move(reply), priority,
           task_count_++);
-  task_jobs_.Push(std::move(job));
-
-  scoped_refptr<base::TaskRunner> task_runner;
-  if (task_runner_for_testing_) {
-    task_runner = task_runner_for_testing_;
-  } else {
-    task_runner = base::ThreadPool::CreateSequencedTaskRunner(task_traits_);
+  {
+    base::AutoLock lock(task_job_heap_lock_);
+    task_job_heap_.push_back(std::move(job));
+    std::push_heap(task_job_heap_.begin(), task_job_heap_.end(), JobComparer());
   }
 
-  task_runner->PostTaskAndReply(
+  task_runner_->PostTaskAndReply(
       from_here,
       base::BindOnce(&PrioritizedTaskRunner::RunTaskAndPostReply, this),
       base::BindOnce(&PrioritizedTaskRunner::RunReply, this));
@@ -59,47 +56,35 @@ PrioritizedTaskRunner::~PrioritizedTaskRunner() = default;
 
 void PrioritizedTaskRunner::RunTaskAndPostReply() {
   // Find the next job to run.
-  Job job = task_jobs_.Pop();
+  Job job;
+  {
+    base::AutoLock lock(task_job_heap_lock_);
+    std::pop_heap(task_job_heap_.begin(), task_job_heap_.end(), JobComparer());
+    job = std::move(task_job_heap_.back());
+    task_job_heap_.pop_back();
+  }
 
   std::move(job.task).Run();
 
   // Add the job to the reply priority queue.
-  reply_jobs_.Push(std::move(job));
+  base::AutoLock reply_lock(reply_job_heap_lock_);
+  reply_job_heap_.push_back(std::move(job));
+  std::push_heap(reply_job_heap_.begin(), reply_job_heap_.end(), JobComparer());
 }
 
 void PrioritizedTaskRunner::RunReply() {
   // Find the next job to run.
-  Job job = reply_jobs_.Pop();
+  Job job;
+  {
+    base::AutoLock lock(reply_job_heap_lock_);
+    std::pop_heap(reply_job_heap_.begin(), reply_job_heap_.end(),
+                  JobComparer());
+    job = std::move(reply_job_heap_.back());
+    reply_job_heap_.pop_back();
+  }
 
   // Run the job.
   std::move(job.reply).Run();
-}
-
-struct PrioritizedTaskRunner::JobComparer {
-  bool operator()(const Job& left, const Job& right) {
-    if (left.priority == right.priority) {
-      return left.task_count > right.task_count;
-    }
-    return left.priority > right.priority;
-  }
-};
-
-PrioritizedTaskRunner::JobPriorityQueue::JobPriorityQueue() = default;
-PrioritizedTaskRunner::JobPriorityQueue::~JobPriorityQueue() = default;
-
-void PrioritizedTaskRunner::JobPriorityQueue::Push(Job job) {
-  base::AutoLock auto_lock(lock_);
-  heap_.push_back(std::move(job));
-  std::push_heap(heap_.begin(), heap_.end(), JobComparer());
-}
-
-PrioritizedTaskRunner::Job PrioritizedTaskRunner::JobPriorityQueue::Pop() {
-  base::AutoLock auto_lock(lock_);
-  CHECK(!heap_.empty());
-  std::pop_heap(heap_.begin(), heap_.end(), JobComparer());
-  Job job = std::move(heap_.back());
-  heap_.pop_back();
-  return job;
 }
 
 }  // namespace net

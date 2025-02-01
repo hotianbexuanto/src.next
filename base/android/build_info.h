@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,9 +11,11 @@
 #include <vector>
 
 #include "base/base_export.h"
+#include "base/macros.h"
 #include "base/memory/singleton.h"
 
-namespace base::android {
+namespace base {
+namespace android {
 
 // This enumeration maps to the values returned by BuildInfo::sdk_int(),
 // indicating the Android release associated with a given SDK version.
@@ -33,11 +35,6 @@ enum SdkVersion {
   SDK_VERSION_P = 28,
   SDK_VERSION_Q = 29,
   SDK_VERSION_R = 30,
-  SDK_VERSION_S = 31,
-  SDK_VERSION_Sv2 = 32,
-  SDK_VERSION_T = 33,
-  SDK_VERSION_U = 34,
-  SDK_VERSION_V = 35,
 };
 
 // BuildInfo is a singleton class that stores android build and device
@@ -45,16 +42,18 @@ enum SdkVersion {
 // primarily in crash reporting.
 class BASE_EXPORT BuildInfo {
  public:
-  BuildInfo(const BuildInfo&) = delete;
-  BuildInfo& operator=(const BuildInfo&) = delete;
 
-  ~BuildInfo();
+  ~BuildInfo() {}
 
   // Static factory method for getting the singleton BuildInfo instance.
   // Note that ownership is not conferred on the caller and the BuildInfo in
   // question isn't actually freed until shutdown. This is ok because there
   // should only be one instance of BuildInfo ever created.
   static BuildInfo* GetInstance();
+
+  // Checks if the device is running on a pre-release version of Android S or a
+  // release version of Android S or newer.
+  bool IsAtLeastS();
 
   // Const char* is used instead of std::strings because these values must be
   // available even if the process is in a crash state. Sadly
@@ -88,28 +87,11 @@ class BASE_EXPORT BuildInfo {
     return gms_version_code_;
   }
 
-  void set_gms_version_code_for_test(const std::string& gms_version_code);
-
-  // The package name of the host app which has loaded WebView, retrieved from
-  // the application context. In the context of the SDK Runtime, the package
-  // name of the app that owns this particular instance of the SDK Runtime will
-  // also be included. e.g.
-  // com.google.android.sdksandbox:com:com.example.myappwithads
   const char* host_package_name() const { return host_package_name_; }
 
-  // The application name (e.g. "Chrome"). For WebView, this is name of the
-  // embedding app. In the context of the SDK Runtime, this is the name of the
-  // app that owns this particular instance of the SDK Runtime.
   const char* host_version_code() const { return host_version_code_; }
 
-  // By default: same as versionCode. For WebView: versionCode of the embedding
-  // app. In the context of the SDK Runtime, this is the versionCode of the app
-  // that owns this particular instance of the SDK Runtime.
   const char* host_package_label() const { return host_package_label_; }
-
-  // The SHA256 of the public certificate used to sign the host application.
-  // This will default to an empty string if we were unable to retrieve it.
-  std::string host_signing_cert_sha256();
 
   const char* package_version_code() const {
     return package_version_code_;
@@ -122,6 +104,9 @@ class BASE_EXPORT BuildInfo {
   const char* package_name() const {
     return package_name_;
   }
+
+  // Will be empty string if no app id is assigned.
+  const char* firebase_app_id() const { return firebase_app_id_; }
 
   const char* custom_themes() const { return custom_themes_; }
 
@@ -155,30 +140,6 @@ class BASE_EXPORT BuildInfo {
 
   const char* version_incremental() const { return version_incremental_; }
 
-  const char* hardware() const { return hardware_; }
-
-  bool is_at_least_t() const { return is_at_least_t_; }
-
-  bool is_automotive() const { return is_automotive_; }
-
-  bool is_at_least_u() const { return is_at_least_u_; }
-
-  bool targets_at_least_u() const { return targets_at_least_u_; }
-
-  const char* codename() const { return codename_; }
-
-  bool is_foldable() const { return is_foldable_; }
-
-  bool is_desktop() const { return is_desktop_; }
-
-  // Available only on Android T+.
-  int32_t vulkan_deqp_level() const { return vulkan_deqp_level_; }
-
-  // Available only on android S+. For S-, this method returns empty string.
-  const char* soc_manufacturer() const { return soc_manufacturer_; }
-
-  bool is_debug_app() const { return is_debug_app_; }
-
  private:
   friend struct BuildInfoSingletonTraits;
 
@@ -203,10 +164,10 @@ class BASE_EXPORT BuildInfo {
   const char* const package_version_code_;
   const char* const package_version_name_;
   const char* const android_build_fp_;
-  // Can be overridden in tests.
-  const char* gms_version_code_ = nullptr;
+  const char* const gms_version_code_;
   const char* const installer_package_name_;
   const char* const abi_name_;
+  const char* const firebase_app_id_;
   const char* const custom_themes_;
   const char* const resources_version_;
   // Not needed by breakpad.
@@ -214,19 +175,11 @@ class BASE_EXPORT BuildInfo {
   const bool is_debug_android_;
   const bool is_tv_;
   const char* const version_incremental_;
-  const char* const hardware_;
-  const bool is_at_least_t_;
-  const bool is_automotive_;
-  const bool is_at_least_u_;
-  const bool targets_at_least_u_;
-  const char* const codename_;
-  const int32_t vulkan_deqp_level_;
-  const bool is_foldable_;
-  const char* const soc_manufacturer_;
-  const bool is_debug_app_;
-  const bool is_desktop_;
+
+  DISALLOW_COPY_AND_ASSIGN(BuildInfo);
 };
 
-}  // namespace base::android
+}  // namespace android
+}  // namespace base
 
 #endif  // BASE_ANDROID_BUILD_INFO_H_

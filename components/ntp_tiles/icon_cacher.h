@@ -1,11 +1,11 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef COMPONENTS_NTP_TILES_ICON_CACHER_H_
 #define COMPONENTS_NTP_TILES_ICON_CACHER_H_
 
-#include "base/functional/callback.h"
+#include "base/callback.h"
 #include "components/ntp_tiles/popular_sites.h"
 
 namespace ntp_tiles {

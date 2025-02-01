@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,13 +10,13 @@
 #include <memory>
 #include <string>
 
-#include "base/memory/raw_ptr.h"
-#include "base/memory/scoped_refptr.h"
+#include "base/macros.h"
+#include "base/memory/ref_counted.h"
 #include "net/base/completion_once_callback.h"
 #include "net/base/completion_repeating_callback.h"
 #include "net/base/host_port_pair.h"
 #include "net/base/net_export.h"
-#include "net/base/proxy_chain.h"
+#include "net/base/proxy_server.h"
 #include "net/http/http_auth_controller.h"
 #include "net/http/http_request_headers.h"
 #include "net/http/http_request_info.h"
@@ -34,26 +34,21 @@ class IOBuffer;
 class ProxyDelegate;
 class StreamSocket;
 
-// Tunnels a stream socket over an HTTP/1.1 connection.
-//
-// This class handles only _tunneled_ proxy connections, using `CONNECT`.
-// Un-tunneled proxy requests are handled in the HTTP stream layer,
-// specifically in `HttpBasicStream`.
 class NET_EXPORT_PRIVATE HttpProxyClientSocket : public ProxyClientSocket {
  public:
   // Takes ownership of |socket|, which should already be connected by the time
-  // Connect() is called. |socket| is assumed to be a fresh socket.
+  // Connect() is called. |socket| is assumed to be a fresh socket. If tunnel
+  // is true then on Connect() this socket will establish an Http tunnel.
   HttpProxyClientSocket(std::unique_ptr<StreamSocket> socket,
                         const std::string& user_agent,
                         const HostPortPair& endpoint,
-                        const ProxyChain& proxy_chain,
-                        size_t proxy_chain_index,
-                        scoped_refptr<HttpAuthController> http_auth_controller,
+                        const ProxyServer& proxy_server,
+                        HttpAuthController* http_auth_controller,
+                        bool tunnel,
+                        bool using_spdy,
+                        NextProto negotiated_protocol,
                         ProxyDelegate* proxy_delegate,
                         const NetworkTrafficAnnotationTag& traffic_annotation);
-
-  HttpProxyClientSocket(const HttpProxyClientSocket&) = delete;
-  HttpProxyClientSocket& operator=(const HttpProxyClientSocket&) = delete;
 
   // On destruction Disconnect() is called.
   ~HttpProxyClientSocket() override;
@@ -62,6 +57,8 @@ class NET_EXPORT_PRIVATE HttpProxyClientSocket : public ProxyClientSocket {
   const HttpResponseInfo* GetConnectResponseInfo() const override;
   int RestartWithAuth(CompletionOnceCallback callback) override;
   const scoped_refptr<HttpAuthController>& GetAuthController() const override;
+  bool IsUsingSpdy() const override;
+  NextProto GetProxyNegotiatedProtocol() const override;
 
   // StreamSocket implementation.
   int Connect(CompletionOnceCallback callback) override;
@@ -70,8 +67,12 @@ class NET_EXPORT_PRIVATE HttpProxyClientSocket : public ProxyClientSocket {
   bool IsConnectedAndIdle() const override;
   const NetLogWithSource& NetLog() const override;
   bool WasEverUsed() const override;
+  bool WasAlpnNegotiated() const override;
   NextProto GetNegotiatedProtocol() const override;
   bool GetSSLInfo(SSLInfo* ssl_info) override;
+  void GetConnectionAttempts(ConnectionAttempts* out) const override;
+  void ClearConnectionAttempts() override {}
+  void AddConnectionAttempts(const ConnectionAttempts& attempts) override {}
   int64_t GetTotalReceivedBytes() const override;
   void ApplySocketTag(const SocketTag& tag) override;
 
@@ -131,44 +132,48 @@ class NET_EXPORT_PRIVATE HttpProxyClientSocket : public ProxyClientSocket {
   bool CheckDone();
 
   CompletionRepeatingCallback io_callback_;
-  State next_state_ = STATE_NONE;
+  State next_state_;
 
   // Stores the callback provided by the caller of async operations.
   CompletionOnceCallback user_callback_;
 
-  // Bogus request info. Only its url and method fields are used.
   HttpRequestInfo request_;
-
-  const std::string user_agent_;
   HttpResponseInfo response_;
 
   scoped_refptr<GrowableIOBuffer> parser_buf_;
-  scoped_refptr<IOBuffer> drain_buf_;
-  std::unique_ptr<StreamSocket> socket_;
   std::unique_ptr<HttpStreamParser> http_stream_parser_;
+  scoped_refptr<IOBuffer> drain_buf_;
+
+  std::unique_ptr<StreamSocket> socket_;
 
   // Whether or not |socket_| has been previously used. Once auth credentials
   // are sent, set to true.
-  bool is_reused_ = false;
+  bool is_reused_;
 
   // The hostname and port of the endpoint.  This is not necessarily the one
   // specified by the URL, due to Alternate-Protocol or fixed testing ports.
   const HostPortPair endpoint_;
   scoped_refptr<HttpAuthController> auth_;
+  const bool tunnel_;
+  // If true, then the connection to the proxy is a SPDY connection.
+  const bool using_spdy_;
+  // Protocol negotiated with the server.
+  NextProto negotiated_protocol_;
 
   std::string request_line_;
   HttpRequestHeaders request_headers_;
 
-  const ProxyChain proxy_chain_;
-  const size_t proxy_chain_index_;
+  const ProxyServer proxy_server_;
 
   // This delegate must outlive this proxy client socket.
-  raw_ptr<ProxyDelegate> proxy_delegate_;
+  ProxyDelegate* proxy_delegate_;
 
   // Network traffic annotation for handshaking and setup.
   const NetworkTrafficAnnotationTag traffic_annotation_;
 
   const NetLogWithSource net_log_;
+
+  DISALLOW_COPY_AND_ASSIGN(HttpProxyClientSocket);
 };
 
 }  // namespace net

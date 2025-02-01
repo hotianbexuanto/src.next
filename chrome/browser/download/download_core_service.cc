@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,27 +14,18 @@ DownloadCoreService::DownloadCoreService() = default;
 DownloadCoreService::~DownloadCoreService() = default;
 
 // static
-int DownloadCoreService::BlockingShutdownCountAllProfiles() {
+int DownloadCoreService::NonMaliciousDownloadCountAllProfiles() {
   std::vector<Profile*> profiles(
       g_browser_process->profile_manager()->GetLoadedProfiles());
 
   int count = 0;
   for (auto it = profiles.begin(); it < profiles.end(); ++it) {
-    // The download core service might not be available for some irregular
-    // profiles, like the System Profile.
-    if (DownloadCoreService* service =
-            DownloadCoreServiceFactory::GetForBrowserContext(*it)) {
-      count += service->BlockingShutdownCount();
-    }
-
+    count += DownloadCoreServiceFactory::GetForBrowserContext(*it)
+                 ->NonMaliciousDownloadCount();
     std::vector<Profile*> otr_profiles = (*it)->GetAllOffTheRecordProfiles();
     for (Profile* otr : otr_profiles) {
-      // The download core service might not be available for some irregular
-      // profiles, like the System Profile.
-      if (DownloadCoreService* otr_service =
-              DownloadCoreServiceFactory::GetForBrowserContext(otr)) {
-        count += otr_service->BlockingShutdownCount();
-      }
+      count += DownloadCoreServiceFactory::GetForBrowserContext(otr)
+                   ->NonMaliciousDownloadCount();
     }
   }
 
@@ -42,15 +33,12 @@ int DownloadCoreService::BlockingShutdownCountAllProfiles() {
 }
 
 // static
-void DownloadCoreService::CancelAllDownloads(CancelDownloadsTrigger trigger) {
+void DownloadCoreService::CancelAllDownloads() {
   std::vector<Profile*> profiles(
       g_browser_process->profile_manager()->GetLoadedProfiles());
   for (auto it = profiles.begin(); it < profiles.end(); ++it) {
-    // The download core service might not be available for some irregular
-    // profiles, like the System Profile.
-    if (DownloadCoreService* service =
-            DownloadCoreServiceFactory::GetForBrowserContext(*it)) {
-      service->CancelDownloads(trigger);
-    }
+    DownloadCoreService* service =
+        DownloadCoreServiceFactory::GetForBrowserContext(*it);
+    service->CancelDownloads();
   }
 }

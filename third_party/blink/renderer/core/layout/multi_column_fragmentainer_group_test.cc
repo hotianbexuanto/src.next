@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -28,15 +28,16 @@ class MultiColumnFragmentainerGroupTest : public RenderingTest {
   static int GroupCount(const MultiColumnFragmentainerGroupList&);
 
  private:
-  Persistent<LayoutMultiColumnFlowThread> flow_thread_;
-  Persistent<LayoutMultiColumnSet> column_set_;
+  LayoutMultiColumnFlowThread* flow_thread_;
+  LayoutMultiColumnSet* column_set_;
 };
 
 void MultiColumnFragmentainerGroupTest::SetUp() {
   RenderingTest::SetUp();
-  const ComputedStyle& style = GetDocument().GetStyleResolver().InitialStyle();
-  flow_thread_ =
-      LayoutMultiColumnFlowThread::CreateAnonymous(GetDocument(), style);
+  scoped_refptr<ComputedStyle> style =
+      GetDocument().GetStyleResolver().CreateComputedStyle();
+  flow_thread_ = LayoutMultiColumnFlowThread::CreateAnonymous(
+      GetDocument(), *style.get(), /* needs_paint_layer */ true);
   column_set_ = LayoutMultiColumnSet::CreateAnonymous(*flow_thread_,
                                                       *flow_thread_->Style());
 }
@@ -110,6 +111,7 @@ TEST_F(MultiColumnFragmentainerGroupTest, LotsOfContent) {
   for (int i = 0; i < 100; i++)
     builder.Append("line<br>");
   builder.Append("</div>");
+  String html;
   SetBodyInnerHTML(builder.ToString());
   const auto* multicol = GetLayoutObjectByElementId("multicol");
   ASSERT_TRUE(multicol);
@@ -121,7 +123,7 @@ TEST_F(MultiColumnFragmentainerGroupTest, LotsOfContent) {
       To<LayoutMultiColumnSet>(column_set)->FirstFragmentainerGroup();
   EXPECT_EQ(fragmentainer_group.ActualColumnCount(), 100U);
   EXPECT_EQ(fragmentainer_group.GroupLogicalHeight(), LayoutUnit(60));
-  auto overflow = To<LayoutBox>(multicol)->ScrollableOverflowRect();
+  auto overflow = To<LayoutBox>(multicol)->LayoutOverflowRect();
   EXPECT_EQ(To<LayoutBox>(multicol)->LogicalWidth(), LayoutUnit(101));
   EXPECT_EQ(To<LayoutBox>(multicol)->LogicalHeight(), LayoutUnit(60));
   EXPECT_EQ(overflow.Width(), LayoutUnit(3399));
@@ -140,6 +142,7 @@ TEST_F(MultiColumnFragmentainerGroupTest, LotsOfNestedBlocksWithText) {
   for (int i = 0; i < 1000; i++)
     builder.Append("<div><div><div>line</div></div></div>");
   builder.Append("</div>");
+  String html;
   SetBodyInnerHTML(builder.ToString());
   const auto* multicol = GetLayoutObjectByElementId("multicol");
   ASSERT_TRUE(multicol);
@@ -151,7 +154,7 @@ TEST_F(MultiColumnFragmentainerGroupTest, LotsOfNestedBlocksWithText) {
       To<LayoutMultiColumnSet>(column_set)->FirstFragmentainerGroup();
   EXPECT_EQ(fragmentainer_group.ActualColumnCount(), 250U);
   EXPECT_EQ(fragmentainer_group.GroupLogicalHeight(), LayoutUnit(200));
-  auto overflow = To<LayoutBox>(multicol)->ScrollableOverflowRect();
+  auto overflow = To<LayoutBox>(multicol)->LayoutOverflowRect();
   EXPECT_EQ(To<LayoutBox>(multicol)->LogicalWidth(), LayoutUnit(101));
   EXPECT_EQ(To<LayoutBox>(multicol)->LogicalHeight(), LayoutUnit(200));
   EXPECT_EQ(overflow.Width(), LayoutUnit(8499));
@@ -170,6 +173,7 @@ TEST_F(MultiColumnFragmentainerGroupTest, NestedBlocksWithLotsOfContent) {
   for (int i = 0; i < 100; i++)
     builder.Append("line<br>");
   builder.Append("</div></div></div></div>");
+  String html;
   SetBodyInnerHTML(builder.ToString());
   const auto* multicol = GetLayoutObjectByElementId("multicol");
   ASSERT_TRUE(multicol);
@@ -181,7 +185,7 @@ TEST_F(MultiColumnFragmentainerGroupTest, NestedBlocksWithLotsOfContent) {
       To<LayoutMultiColumnSet>(column_set)->FirstFragmentainerGroup();
   EXPECT_EQ(fragmentainer_group.ActualColumnCount(), 100U);
   EXPECT_EQ(fragmentainer_group.GroupLogicalHeight(), LayoutUnit(60));
-  auto overflow = To<LayoutBox>(multicol)->ScrollableOverflowRect();
+  auto overflow = To<LayoutBox>(multicol)->LayoutOverflowRect();
   EXPECT_EQ(To<LayoutBox>(multicol)->LogicalWidth(), LayoutUnit(101));
   EXPECT_EQ(To<LayoutBox>(multicol)->LogicalHeight(), LayoutUnit(60));
   EXPECT_EQ(overflow.Width(), LayoutUnit(3399));

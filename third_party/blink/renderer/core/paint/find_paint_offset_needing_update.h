@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,20 +9,17 @@
 
 #if DCHECK_IS_ON()
 
-#include <optional>
-
-#include "base/check_op.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/paint/fragment_data.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
-#include "ui/gfx/geometry/vector2d_f.h"
 
 namespace blink {
 
 // FindPaintOffsetNeedingUpdateScope catches cases where paint offset needed
 // an update but was not marked as such. If paint offset will change, the
 // object must be marked as such by
-// LayoutObject::SetShouldCheckLayoutForPaintInvalidation()
+// LayoutObject::SetShouldCheckGeometryForPaintInvalidation()
 // (which is a private function called by several public paint-invalidation-flag
 // setting functions).
 class FindPaintOffsetNeedingUpdateScope {
@@ -39,7 +36,7 @@ class FindPaintOffsetNeedingUpdateScope {
     if (const auto* properties = fragment_data.PaintProperties()) {
       if (const auto* translation = properties->PaintOffsetTranslation()) {
         old_parent_ = translation->Parent();
-        old_translation_ = translation->Get2dTranslation();
+        old_translation_ = translation->Translation2D();
       }
     }
   }
@@ -51,11 +48,11 @@ class FindPaintOffsetNeedingUpdateScope {
     DCHECK_EQ(old_paint_offset_, paint_offset) << object_;
 
     const TransformPaintPropertyNodeOrAlias* new_parent = nullptr;
-    std::optional<gfx::Vector2dF> new_translation;
+    absl::optional<FloatSize> new_translation;
     if (const auto* properties = fragment_data_.PaintProperties()) {
       if (const auto* translation = properties->PaintOffsetTranslation()) {
         new_parent = translation->Parent();
-        new_translation = translation->Get2dTranslation();
+        new_translation = translation->Translation2D();
       }
     }
     DCHECK_EQ(!!old_translation_, !!new_translation) << object_;
@@ -70,7 +67,7 @@ class FindPaintOffsetNeedingUpdateScope {
   const bool& is_actually_needed_;
   PhysicalOffset old_paint_offset_;
   const TransformPaintPropertyNodeOrAlias* old_parent_ = nullptr;
-  std::optional<gfx::Vector2dF> old_translation_;
+  absl::optional<FloatSize> old_translation_;
 };
 
 }  // namespace blink

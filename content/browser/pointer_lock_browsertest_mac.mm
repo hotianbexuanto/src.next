@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,42 +15,40 @@ class MockPointerLockRenderWidgetHostView : public RenderWidgetHostViewMac {
   MockPointerLockRenderWidgetHostView(RenderWidgetHost* host)
       : RenderWidgetHostViewMac(host) {}
   ~MockPointerLockRenderWidgetHostView() override {
-    if (pointer_locked_) {
-      UnlockPointer();
-    }
+    if (mouse_locked_)
+      UnlockMouse();
   }
 
-  blink::mojom::PointerLockResult LockPointer(
+  blink::mojom::PointerLockResult LockMouse(
       bool request_unadjusted_movement) override {
-    pointer_locked_ = true;
-    pointer_lock_unadjusted_movement_ = request_unadjusted_movement;
+    mouse_locked_ = true;
+    mouse_lock_unadjusted_movement_ = request_unadjusted_movement;
 
     return blink::mojom::PointerLockResult::kSuccess;
   }
 
-  blink::mojom::PointerLockResult ChangePointerLock(
+  blink::mojom::PointerLockResult ChangeMouseLock(
       bool request_unadjusted_movement) override {
-    pointer_lock_unadjusted_movement_ = request_unadjusted_movement;
+    mouse_lock_unadjusted_movement_ = request_unadjusted_movement;
 
     return blink::mojom::PointerLockResult::kSuccess;
   }
 
-  void UnlockPointer() override {
+  void UnlockMouse() override {
     if (RenderWidgetHostImpl* host =
             RenderWidgetHostImpl::From(GetRenderWidgetHost())) {
-      host->LostPointerLock();
+      host->LostMouseLock();
     }
-    pointer_locked_ = false;
-    pointer_lock_unadjusted_movement_ = false;
+    mouse_locked_ = false;
+    mouse_lock_unadjusted_movement_ = false;
   }
 
-  bool IsPointerLocked() override { return pointer_locked_; }
+  bool IsMouseLocked() override { return mouse_locked_; }
 
-  bool GetIsPointerLockedUnadjustedMovementForTesting() override {
-    return pointer_lock_unadjusted_movement_;
+  bool GetIsMouseLockedUnadjustedMovementForTesting() override {
+    return mouse_lock_unadjusted_movement_;
   }
   bool HasFocus() override { return true; }
-  bool CanBePointerLocked() override { return true; }
 };
 
 void InstallCreateHooksForPointerLockBrowserTests() {

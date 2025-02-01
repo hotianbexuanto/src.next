@@ -38,10 +38,29 @@ enum LoadStartType {
   kNavigationWithinSameDocument
 };
 
+enum SameDocumentNavigationSource {
+  kSameDocumentNavigationDefault,
+  kSameDocumentNavigationHistoryApi,
+  kSameDocumentNavigationAppHistoryRespondWith,
+};
+
 enum class SavePreviousDocumentResources {
   kNever,
   kUntilOnDOMContentLoaded,
   kUntilOnLoad
+};
+
+// This enum is used to index different kinds of single-page-application
+// navigations for UMA enum histogram. New enum values can be added, but
+// existing enums must never be renumbered or deleted and reused.
+// This enum should be consistent with SinglePageAppNavigationType in
+// tools/metrics/histograms/enums.xml.
+enum SinglePageAppNavigationType {
+  kSPANavTypeHistoryPushStateOrReplaceState = 0,
+  kSPANavTypeSameDocumentBackwardOrForward = 1,
+  kSPANavTypeOtherFragmentNavigation = 2,
+  kSPANavTypeAppHistoryRespondWith = 3,
+  kSPANavTypeCount
 };
 
 enum class ClientNavigationReason {
@@ -50,23 +69,10 @@ enum class ClientNavigationReason {
   kAnchorClick,
   kHttpHeaderRefresh,
   kFrameNavigation,
-  kInitialFrameNavigation,
   kMetaTagRefresh,
   kPageBlock,
   kReload,
   kNone
-};
-
-enum class CancelNavigationReason {
-  // The navigation was dropped, e.g. due to a 204, 205, or Content-Disposition:
-  // attachment.
-  kDropped,
-  // Navigate event is fired.
-  kNavigateEvent,
-  // New navigation is starting (e.g. form submission).
-  kNewNavigation,
-  // Anything else (including error cases that don't drop the navigation).
-  kOther
 };
 
 enum class CommitReason {
@@ -76,8 +82,6 @@ enum class CommitReason {
   kJavascriptUrl,
   // Committing a replacement document from XSLT.
   kXSLT,
-  // Committing a replacement empty document as a result of a discard operation.
-  kDiscard,
   // All other navigations.
   kRegular
 };

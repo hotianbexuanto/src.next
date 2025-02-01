@@ -1,13 +1,12 @@
-// Copyright 2017 The Chromium Authors
+// Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#include "extensions/browser/preload_check_group.h"
 
 #include <memory>
 #include <vector>
 
-#include "content/public/test/browser_task_environment.h"
+#include "base/test/task_environment.h"
+#include "extensions/browser/preload_check_group.h"
 #include "extensions/browser/preload_check_test_util.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -15,9 +14,9 @@
 namespace extensions {
 
 namespace {
-PreloadCheck::Error kDummyError1 = PreloadCheck::Error::kDisallowedByPolicy;
-PreloadCheck::Error kDummyError2 = PreloadCheck::Error::kBlocklistedId;
-PreloadCheck::Error kDummyError3 = PreloadCheck::Error::kBlocklistedUnknown;
+PreloadCheck::Error kDummyError1 = PreloadCheck::DISALLOWED_BY_POLICY;
+PreloadCheck::Error kDummyError2 = PreloadCheck::BLOCKLISTED_ID;
+PreloadCheck::Error kDummyError3 = PreloadCheck::BLOCKLISTED_UNKNOWN;
 }
 
 class PreloadCheckGroupTest : public testing::Test {
@@ -52,7 +51,7 @@ class PreloadCheckGroupTest : public testing::Test {
 
  private:
   // Required for the asynchronous tests.
-  content::BrowserTaskEnvironment task_environment_;
+  base::test::SingleThreadTaskEnvironment task_environment_;
 };
 
 // Tests multiple succeeding checks.
@@ -101,12 +100,9 @@ TEST_F(PreloadCheckGroupTest, FailFast) {
   runner_.Run(check_group_.get());
 
   // After the first check fails, the remaining checks should not be started.
+  EXPECT_TRUE(runner_.called());
   EXPECT_TRUE(checks_[0]->started());
   EXPECT_FALSE(checks_[1]->started());
-
-  // The callback of PreloadCheckGroup is called aynchronously.
-  runner_.WaitForComplete();
-  EXPECT_TRUE(runner_.called());
   EXPECT_THAT(runner_.errors(),
               testing::UnorderedElementsAre(kDummyError1, kDummyError2));
 }

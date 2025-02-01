@@ -1,10 +1,12 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.tabmodel;
 
-/** A {@link TabModel} which also emits events relevant to incognito tabs. */
+/**
+ * A {@link TabModel} which also emits events relevant to incognito tabs.
+ */
 public interface IncognitoTabModel extends TabModel {
     /**
      * Subscribes an {@link IncognitoTabModelObserver} to be notified about incognito events.

@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,12 +9,8 @@
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
 #include "base/android/scoped_java_ref.h"
-#include "base/debug/crash_logging.h"
-#include "base/debug/dump_without_crashing.h"
+#include "base/base_jni_headers/ApkAssets_jni.h"
 #include "base/file_descriptor_store.h"
-
-// Must come after all headers that specialize FromJniType() / ToJniType().
-#include "base/base_jni/ApkAssets_jni.h"
 
 namespace base {
 namespace android {
@@ -33,8 +29,7 @@ int OpenApkAsset(const std::string& file_path,
   CHECK_EQ(3U, results.size());
   int fd = static_cast<int>(results[0]);
   region->offset = results[1];
-  // Not a checked_cast because open() may return -1.
-  region->size = static_cast<size_t>(results[2]);
+  region->size = results[2];
   return fd;
 }
 
@@ -53,18 +48,6 @@ bool RegisterApkAssetWithFileDescriptorStore(const std::string& key,
   base::FileDescriptorStore::GetInstance().Set(key, base::ScopedFD(asset_fd),
                                                region);
   return true;
-}
-
-void DumpLastOpenApkAssetFailure() {
-  JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedJavaLocalRef<jstring> error =
-      Java_ApkAssets_takeLastErrorString(env);
-  if (!error) {
-    return;
-  }
-  SCOPED_CRASH_KEY_STRING256("base", "OpenApkAssetError",
-                             ConvertJavaStringToUTF8(env, error));
-  base::debug::DumpWithoutCrashing();
 }
 
 }  // namespace android

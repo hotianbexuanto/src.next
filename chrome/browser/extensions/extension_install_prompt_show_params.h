@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,28 +7,20 @@
 
 #include <memory>
 
-#include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
+#include "base/macros.h"
 #include "ui/gfx/native_widget_types.h"
 
+class NativeWindowTracker;
 class Profile;
 
 namespace content {
 class WebContents;
 }
 
-namespace views {
-class NativeWindowTracker;
-}
-
 // Parameters to show an install prompt dialog. The parameters control:
 // - The dialog's parent window
 // - The browser window to use to open a new tab if a user clicks a link in the
 //   dialog.
-//
-// This can either be created with a content::WebContents or a
-// gfx::NativeWindow. If this is created for WebContents, GetParentWindow() will
-// return the outermost window hosting the WebContents.
 class ExtensionInstallPromptShowParams {
  public:
   explicit ExtensionInstallPromptShowParams(content::WebContents* web_contents);
@@ -36,11 +28,6 @@ class ExtensionInstallPromptShowParams {
   // The most recently active browser window (or a new browser window if there
   // are no browser windows) is used if a new tab needs to be opened.
   ExtensionInstallPromptShowParams(Profile* profile, gfx::NativeWindow window);
-
-  ExtensionInstallPromptShowParams(const ExtensionInstallPromptShowParams&) =
-      delete;
-  ExtensionInstallPromptShowParams& operator=(
-      const ExtensionInstallPromptShowParams&) = delete;
 
   virtual ~ExtensionInstallPromptShowParams();
 
@@ -61,30 +48,20 @@ class ExtensionInstallPromptShowParams {
   bool WasParentDestroyed();
 
  private:
-  // Returns trues if the current object was configured for WebContents.
-  bool WasConfiguredForWebContents();
+  void WebContentsDestroyed();
 
-  raw_ptr<Profile, DanglingUntriaged> profile_;
-
-  // Only one of these will be non-null.
-  base::WeakPtr<content::WebContents> parent_web_contents_;
+  Profile* profile_;
+  content::WebContents* parent_web_contents_;
+  bool parent_web_contents_destroyed_;
   gfx::NativeWindow parent_window_;
 
-  // Used to track the parent_window_'s lifetime. We need to explicitly track it
-  // because aura::Window does not expose a WeakPtr like WebContents.
-  std::unique_ptr<views::NativeWindowTracker> native_window_tracker_;
+  class WebContentsDestructionObserver;
+  std::unique_ptr<WebContentsDestructionObserver>
+      web_contents_destruction_observer_;
+
+  std::unique_ptr<NativeWindowTracker> native_window_tracker_;
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionInstallPromptShowParams);
 };
-
-namespace test {
-
-// Unit test may use this to disable root window checking in
-// ExtensionInstallPromptShowParams.
-class ScopedDisableRootChecking {
- public:
-  ScopedDisableRootChecking();
-  ~ScopedDisableRootChecking();
-};
-
-}  // namespace test
 
 #endif  // CHROME_BROWSER_EXTENSIONS_EXTENSION_INSTALL_PROMPT_SHOW_PARAMS_H_

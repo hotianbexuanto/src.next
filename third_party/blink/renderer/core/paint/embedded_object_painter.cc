@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,10 +6,9 @@
 
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_object.h"
-#include "third_party/blink/renderer/core/layout/layout_theme_font_provider.h"
+#include "third_party/blink/renderer/core/layout/layout_theme.h"
 #include "third_party/blink/renderer/core/paint/box_painter.h"
 #include "third_party/blink/renderer/core/paint/embedded_content_painter.h"
-#include "third_party/blink/renderer/core/paint/paint_auto_dark_mode.h"
 #include "third_party/blink/renderer/core/paint/paint_info.h"
 #include "third_party/blink/renderer/platform/fonts/font.h"
 #include "third_party/blink/renderer/platform/fonts/font_selector.h"
@@ -27,17 +26,11 @@ static const float kReplacementTextRoundedRectRadius = 5;
 static const float kReplacementTextTextOpacity = 0.55f;
 
 static Font ReplacementTextFont(const Document* document) {
-  const AtomicString& family = LayoutThemeFontProvider::SystemFontFamily(
-      CSSValueID::kWebkitSmallControl);
-  const float size = LayoutThemeFontProvider::SystemFontSize(
-      CSSValueID::kWebkitSmallControl, document);
-
   FontDescription font_description;
-  font_description.SetFamily(
-      FontFamily(family, FontFamily::InferredTypeFor(family)));
-  font_description.SetWeight(kBoldWeightValue);
-  font_description.SetSpecifiedSize(size);
-  font_description.SetComputedSize(size);
+  LayoutTheme::GetTheme().SystemFont(CSSValueID::kWebkitSmallControl,
+                                     font_description, document);
+  font_description.SetWeight(BoldWeightValue());
+  font_description.SetComputedSize(font_description.SpecifiedSize());
   Font font(font_description);
   return font;
 }
@@ -70,36 +63,32 @@ void EmbeddedObjectPainter::PaintReplaced(const PaintInfo& paint_info,
     return;
 
   TextRun text_run(layout_embedded_object_.UnavailablePluginReplacementText());
-  gfx::SizeF text_geometry(font.Width(text_run),
-                           font_data->GetFontMetrics().Height());
+  FloatSize text_geometry(font.Width(text_run),
+                          font_data->GetFontMetrics().Height());
 
   PhysicalRect background_rect(
       LayoutUnit(), LayoutUnit(),
-      LayoutUnit(text_geometry.width() +
+      LayoutUnit(text_geometry.Width() +
                  2 * kReplacementTextRoundedRectLeftRightTextMargin),
       LayoutUnit(kReplacementTextRoundedRectHeight));
   background_rect.offset += content_rect.Center() - background_rect.Center();
-  FloatRoundedRect rounded_background_rect(
-      gfx::RectF(ToPixelSnappedRect(background_rect)),
-      kReplacementTextRoundedRectRadius);
-  Color color = Color::FromSkColor(
-      ScaleAlpha(SK_ColorWHITE, kReplacementTextRoundedRectOpacity));
-  AutoDarkMode auto_dark_mode(
-      PaintAutoDarkMode(layout_embedded_object_.StyleRef(),
-                        DarkModeFilter::ElementRole::kBackground));
-  context.FillRoundedRect(rounded_background_rect, color, auto_dark_mode);
+  background_rect = PhysicalRect(PixelSnappedIntRect(background_rect));
+  Path rounded_background_rect;
+  FloatRect float_background_rect(background_rect);
+  rounded_background_rect.AddRoundedRect(
+      float_background_rect, FloatSize(kReplacementTextRoundedRectRadius,
+                                       kReplacementTextRoundedRectRadius));
+  context.SetFillColor(
+      ScaleAlpha(Color::kWhite, kReplacementTextRoundedRectOpacity));
+  context.FillPath(rounded_background_rect);
 
-  gfx::RectF text_rect(gfx::PointF(), text_geometry);
-  text_rect.Offset(gfx::PointF(content_rect.Center()) -
-                   text_rect.CenterPoint());
+  FloatRect text_rect(FloatPoint(), text_geometry);
+  text_rect.Move(FloatPoint(content_rect.Center()) - text_rect.Center());
   TextRunPaintInfo run_info(text_run);
-  context.SetFillColor(Color::FromSkColor(
-      ScaleAlpha(SK_ColorBLACK, kReplacementTextTextOpacity)));
-  context.DrawBidiText(
-      font, run_info,
-      text_rect.origin() +
-          gfx::Vector2dF(0, font_data->GetFontMetrics().Ascent()),
-      auto_dark_mode);
+  context.SetFillColor(ScaleAlpha(Color::kBlack, kReplacementTextTextOpacity));
+  context.DrawBidiText(font, run_info,
+                       text_rect.Location() +
+                           FloatSize(0, font_data->GetFontMetrics().Ascent()));
 }
 
 }  // namespace blink

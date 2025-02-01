@@ -1,9 +1,8 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
+#include "base/bind.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -22,8 +21,7 @@ namespace extensions {
 
 namespace {
 
-const char kSubscribePageActionV2[] = "subscribe_page_action_v2/src";
-const char kSubscribePageActionV3[] = "subscribe_page_action_v3/src";
+const char kSubscribePageAction[] = "subscribe_page_action/src";
 const char kSubscribePage[] = "/subscribe.html";
 const char kFeedPageMultiRel[] = "/feeds/feed_multi_rel.html";
 const char kValidFeedNoLinks[] = "/feeds/feed_nolinks.xml";
@@ -42,21 +40,29 @@ const char kInvalidFeed2[] = "/feeds/feed_invalid2.xml";
 const char kFeedTripleEncoded[] = "/feeds/url%25255Fdecoding.html";
 
 static const char kScriptFeedTitle[] =
-    "document.getElementById('title') ? "
-    "  document.getElementById('title').textContent : "
-    "  \"element 'title' not found\"";
+    "window.domAutomationController.send("
+    "  document.getElementById('title') ? "
+    "    document.getElementById('title').textContent : "
+    "    \"element 'title' not found\""
+    ");";
 static const char kScriptAnchor[] =
-    "document.getElementById('anchor_0') ? "
-    "  document.getElementById('anchor_0').textContent : "
-    "  \"element 'anchor_0' not found\"";
+    "window.domAutomationController.send("
+    "  document.getElementById('anchor_0') ? "
+    "    document.getElementById('anchor_0').textContent : "
+    "    \"element 'anchor_0' not found\""
+    ");";
 static const char kScriptDesc[] =
-    "document.getElementById('desc_0') ? "
-    "  document.getElementById('desc_0').textContent : "
-    "  \"element 'desc_0' not found\"";
+    "window.domAutomationController.send("
+    "  document.getElementById('desc_0') ? "
+    "    document.getElementById('desc_0').textContent : "
+    "    \"element 'desc_0' not found\""
+    ");";
 static const char kScriptError[] =
-    "document.getElementById('error') ? "
-    "  document.getElementById('error').textContent : "
-    "  \"No error\"";
+    "window.domAutomationController.send("
+    "  document.getElementById('error') ? "
+    "    document.getElementById('error').textContent : "
+    "    \"No error\""
+    ");";
 
 GURL GetFeedUrl(net::EmbeddedTestServer* server,
                 const std::string& feed_page,
@@ -82,10 +88,6 @@ class NamedFrameCreatedObserver : public content::WebContentsObserver {
                             const std::string& frame_name)
       : WebContentsObserver(web_contents), frame_name_(frame_name) {}
 
-  NamedFrameCreatedObserver(const NamedFrameCreatedObserver&) = delete;
-  NamedFrameCreatedObserver& operator=(const NamedFrameCreatedObserver&) =
-      delete;
-
   content::RenderFrameHost* Wait() {
     if (!frame_) {
       run_loop_.Run();
@@ -97,33 +99,32 @@ class NamedFrameCreatedObserver : public content::WebContentsObserver {
  private:
   void RenderFrameCreated(
       content::RenderFrameHost* render_frame_host) override {
-    if (render_frame_host->GetFrameName() != frame_name_) {
+    if (render_frame_host->GetFrameName() != frame_name_)
       return;
-    }
 
     frame_ = render_frame_host;
     run_loop_.Quit();
   }
 
-  void RenderFrameDeleted(
-      content::RenderFrameHost* render_frame_host) override {
-    if (render_frame_host->GetFrameName() != frame_name_) {
-      return;
-    }
-
-    frame_ = nullptr;
-  }
-
   base::RunLoop run_loop_;
-  raw_ptr<content::RenderFrameHost> frame_ = nullptr;
+  content::RenderFrameHost* frame_ = nullptr;
   std::string frame_name_;
+
+  DISALLOW_COPY_AND_ASSIGN(NamedFrameCreatedObserver);
 };
 
 bool ValidatePageElement(content::RenderFrameHost* frame,
                          const std::string& javascript,
                          const std::string& expected_value) {
-  EXPECT_EQ(expected_value, content::EvalJs(frame, javascript));
-  return true;
+  std::string returned_value;
+
+  if (!content::ExecuteScriptAndExtractString(frame,
+                                              javascript,
+                                              &returned_value))
+    return false;
+
+  EXPECT_STREQ(expected_value.c_str(), returned_value.c_str());
+  return expected_value == returned_value;
 }
 
 // Navigates to a feed page and, if |sniff_xml_type| is set, wait for the
@@ -144,13 +145,14 @@ void NavigateToFeedAndValidate(net::EmbeddedTestServer* server,
     // TODO(finnur): Implement this is a non-flaky way.
   }
 
+  content::DOMMessageQueue message_queue;
+
   WebContents* tab = browser->tab_strip_model()->GetActiveWebContents();
-  content::DOMMessageQueue message_queue(tab);
   NamedFrameCreatedObserver subframe_observer(tab, "preview");
 
   // Navigate to the subscribe page directly.
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(
-      browser, GetFeedUrl(server, url, true, extension_id)));
+  ui_test_utils::NavigateToURL(browser,
+                               GetFeedUrl(server, url, true, extension_id));
   ASSERT_TRUE(subframe_observer.Wait() != nullptr);
 
   std::string message;
@@ -159,10 +161,9 @@ void NavigateToFeedAndValidate(net::EmbeddedTestServer* server,
   EXPECT_STREQ(expected_msg.c_str(), message.c_str());
 
   content::RenderFrameHost* frame = content::FrameMatchingPredicate(
-      tab->GetPrimaryPage(),
-      base::BindRepeating(&content::FrameMatchesName, "preview"));
-  ASSERT_TRUE(ValidatePageElement(tab->GetPrimaryMainFrame(), kScriptFeedTitle,
-                                  expected_feed_title));
+      tab, base::BindRepeating(&content::FrameMatchesName, "preview"));
+  ASSERT_TRUE(ValidatePageElement(
+      tab->GetMainFrame(), kScriptFeedTitle, expected_feed_title));
   ASSERT_TRUE(ValidatePageElement(frame, kScriptAnchor, expected_item_title));
   ASSERT_TRUE(ValidatePageElement(frame, kScriptDesc, expected_item_desc));
   ASSERT_TRUE(ValidatePageElement(frame, kScriptError, expected_error));
@@ -175,17 +176,14 @@ void NavigateToFeedAndValidate(net::EmbeddedTestServer* server,
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSMultiRelLink) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  ASSERT_TRUE(
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV2)));
+  ASSERT_TRUE(LoadExtension(
+    test_data_dir_.AppendASCII(kSubscribePageAction)));
 
-  // Note to future maintainer: This function only works with pageActions (which
-  // implies manifest version 2). Once we stop supporting v2, we can delete this
-  // test (and v2 of the extension along with it).
   ASSERT_TRUE(WaitForPageActionVisibilityChangeTo(0));
 
   // Navigate to the feed page.
   GURL feed_url = embedded_test_server()->GetURL(kFeedPageMultiRel);
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), feed_url));
+  ui_test_utils::NavigateToURL(browser(), feed_url);
   // We should now have one page action ready to go in the LocationBar.
   ASSERT_TRUE(WaitForPageActionVisibilityChangeTo(1));
 }
@@ -193,8 +191,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSMultiRelLink) {
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed1) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -206,8 +204,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed1) {
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed2) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -219,8 +217,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed2) {
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed3) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -233,8 +231,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed3) {
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed4) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -247,8 +245,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed4) {
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed0) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -259,12 +257,11 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed0) {
                             "Desc VIDEO", "No error", "PreviewReady");
 }
 
-// TODO(crbug.com/331144174): Re-enable this test
-IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, DISABLED_RSSParseFeedValidFeed5) {
+IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed5) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -278,8 +275,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, DISABLED_RSSParseFeedValidFeed5) {
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed6) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -297,8 +294,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeed6) {
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedInvalidFeed1) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -309,13 +306,11 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedInvalidFeed1) {
       "element 'desc_0' not found", "This feed contains no entries.", "Error");
 }
 
-// TODO(https://crbug.com/331144174): Test is flaky across multiple builders.
-IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest,
-                       DISABLED_RSSParseFeedInvalidFeed2) {
+IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedInvalidFeed2) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -326,17 +321,11 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest,
       "element 'desc_0' not found", "This feed contains no entries.", "Error");
 }
 
-// TODO(https://crbug.com/331144174): Flaky on ASan LSan.
-#if defined(ADDRESS_SANITIZER) && defined(LEAK_SANITIZER)
-#define MAYBE_RSSParseFeedInvalidFeed3 DISABLED_RSSParseFeedInvalidFeed3
-#else
-#define MAYBE_RSSParseFeedInvalidFeed3 RSSParseFeedInvalidFeed3
-#endif
-IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, MAYBE_RSSParseFeedInvalidFeed3) {
+IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedInvalidFeed3) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -350,8 +339,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, MAYBE_RSSParseFeedInvalidFeed3) {
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedInvalidFeed4) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
@@ -371,8 +360,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedInvalidFeed4) {
 IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest, RSSParseFeedValidFeedNoLinks) {
   ASSERT_TRUE(embedded_test_server()->Start());
 
-  const Extension* extension =
-      LoadExtension(test_data_dir_.AppendASCII(kSubscribePageActionV3));
+  const Extension* extension = LoadExtension(
+      test_data_dir_.AppendASCII(kSubscribePageAction));
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 

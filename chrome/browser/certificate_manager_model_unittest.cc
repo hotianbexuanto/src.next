@@ -1,14 +1,12 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/certificate_manager_model.h"
 
-#include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/run_loop.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/test/test_future.h"
 #include "build/chromeos_buildflags.h"
 #include "content/public/test/browser_task_environment.h"
 #include "crypto/scoped_test_nss_db.h"
@@ -21,16 +19,10 @@
 #include "net/test/test_data_directory.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "base/test/scoped_feature_list.h"
-#include "chrome/browser/certificate_provider/certificate_provider.h"
-#include "chromeos/ash/components/network/policy_certificate_provider.h"
-#include "chromeos/components/onc/certificate_scope.h"
-#include "chromeos/constants/chromeos_features.h"
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "ash/components/kcer/extra_instances.h"
+#include "chrome/browser/ash/certificate_provider/certificate_provider.h"
+#include "chromeos/network/onc/certificate_scope.h"
+#include "chromeos/network/policy_certificate_provider.h"
 #endif
 
 namespace {
@@ -73,10 +65,6 @@ class CertificateManagerModelTest : public testing::Test {
  public:
   CertificateManagerModelTest() {}
 
-  CertificateManagerModelTest(const CertificateManagerModelTest&) = delete;
-  CertificateManagerModelTest& operator=(const CertificateManagerModelTest&) =
-      delete;
-
  protected:
   void SetUp() override {
     ASSERT_TRUE(test_nssdb_.is_open());
@@ -90,7 +78,8 @@ class CertificateManagerModelTest : public testing::Test {
     fake_observer_ = std::make_unique<FakeObserver>();
     certificate_manager_model_ = std::make_unique<CertificateManagerModel>(
         GetCertificateManagerModelParams(), fake_observer_.get(),
-        nss_cert_db_.get());
+        nss_cert_db_.get(), true /* is_user_db_available */,
+        true /* bool is_tpm_available */);
   }
 
   void TearDown() override {
@@ -122,6 +111,9 @@ class CertificateManagerModelTest : public testing::Test {
   std::unique_ptr<net::NSSCertDatabase> nss_cert_db_;
   std::unique_ptr<FakeObserver> fake_observer_;
   std::unique_ptr<CertificateManagerModel> certificate_manager_model_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CertificateManagerModelTest);
 };
 
 // CertificateManagerModel correctly lists CA certificates from the platform NSS
@@ -210,10 +202,11 @@ TEST_F(CertificateManagerModelTest, ListsClientCertsFromPlatform) {
   EXPECT_FALSE(platform_cert_info->hardware_backed());
 }
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
 namespace {
 
-class FakePolicyCertificateProvider : public ash::PolicyCertificateProvider {
+class FakePolicyCertificateProvider
+    : public chromeos::PolicyCertificateProvider {
  public:
   void AddPolicyProvidedCertsObserver(Observer* observer) override {
     observer_list_.AddObserver(observer);
@@ -240,6 +233,7 @@ class FakePolicyCertificateProvider : public ash::PolicyCertificateProvider {
       const chromeos::onc::CertificateScope& scope) const override {
     // This function is not called by CertificateManagerModel.
     NOTREACHED();
+    return net::CertificateList();
   }
 
   net::CertificateList GetWebTrustedCertificates(
@@ -262,6 +256,7 @@ class FakePolicyCertificateProvider : public ash::PolicyCertificateProvider {
       const override {
     // This function is not called by CertificateManagerModel.
     NOTREACHED();
+    return kNoExtensions;
   }
 
   void SetPolicyProvidedCertificates(
@@ -302,11 +297,11 @@ class FakeExtensionCertificateProvider : public chromeos::CertificateProvider {
   }
 
  private:
-  raw_ptr<const net::CertificateList> extension_client_certificates_;
+  const net::CertificateList* extension_client_certificates_;
 
   // If *|extensions_hang| is true, the |FakeExtensionCertificateProvider| hangs
   // - it never calls the callbacks passed to |GetCertificates|.
-  raw_ptr<const bool> extensions_hang_;
+  const bool* extensions_hang_;
 };
 
 // Looks up a |CertInfo| in |org_grouping_map| corresponding to |cert|. Returns
@@ -334,9 +329,6 @@ class CertificateManagerModelChromeOSTest : public CertificateManagerModelTest {
     params->extension_certificate_provider =
         std::make_unique<FakeExtensionCertificateProvider>(
             &extension_client_certs_, &extensions_hang_);
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-    params->kcer = kcer::ExtraInstances::GetEmptyKcer();
-#endif
     return params;
   }
 
@@ -528,11 +520,7 @@ TEST_F(CertificateManagerModelChromeOSTest,
   // certificate should be visible afterwards.
   base::RunLoop run_loop;
   fake_observer_->RunOnNextRefresh(run_loop.QuitClosure());
-  base::test::TestFuture<bool> remove_result;
-  certificate_manager_model_->RemoveFromDatabase(
-      net::x509_util::DupCERTCertificate(platform_cert),
-      remove_result.GetCallback());
-  EXPECT_TRUE(remove_result.Get());
+  certificate_manager_model_->Delete(platform_cert);
   run_loop.Run();
 
   {
@@ -655,10 +643,7 @@ TEST_F(CertificateManagerModelChromeOSTest,
   // certificate should be visible afterwards.
   base::RunLoop run_loop;
   fake_observer_->RunOnNextRefresh(run_loop.QuitClosure());
-  base::test::TestFuture<bool> remove_result;
-  certificate_manager_model_->RemoveFromDatabase(
-      std::move(platform_client_cert), remove_result.GetCallback());
-  EXPECT_TRUE(remove_result.Get());
+  certificate_manager_model_->Delete(platform_client_cert.get());
   run_loop.Run();
 
   {
@@ -680,60 +665,4 @@ TEST_F(CertificateManagerModelChromeOSTest,
   }
 }
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-// Test that CertificateManagerModel handles PKCS#12 import correctly.
-// The test doesn't simulate a valid certificate, actual handling of PKCS#12
-// data is covered by the tests for NSSCertDatabase and/or Kcer, but it tests
-// that a meaningful result is returned to the caller.
-// TODO(miersh): When kEnablePkcs12ToChapsDualWrite is enabled and
-// is_extractable is true, PKCS#12 data is imported both into NSS and Kcer. That
-// is difficult to verify at the moment. Soon UMA counters should be added and
-// can be both tested here and used for the verification. And much later the
-// import into NSS will be removed and the result code will come from Kcer.
-TEST_F(CertificateManagerModelChromeOSTest, ImportFromPKCS12) {
-  std::string kInvalidPkcs12Data = "111";
-  std::u16string kPassword = u"222";
-
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      chromeos::features::kEnablePkcs12ToChapsDualWrite);
-
-  {
-    base::test::TestFuture<int> import_waiter;
-    certificate_manager_model_->ImportFromPKCS12(
-        test_nssdb_.slot(), kInvalidPkcs12Data, kPassword,
-        /*is_extractable=*/false, import_waiter.GetCallback());
-    EXPECT_EQ(import_waiter.Get(), net::ERR_PKCS12_IMPORT_INVALID_FILE);
-  }
-
-  {
-    base::test::TestFuture<int> import_waiter;
-    certificate_manager_model_->ImportFromPKCS12(
-        test_nssdb_.slot(), kInvalidPkcs12Data, kPassword,
-        /*is_extractable=*/true, import_waiter.GetCallback());
-    EXPECT_EQ(import_waiter.Get(), net::ERR_PKCS12_IMPORT_INVALID_FILE);
-  }
-
-  feature_list.Reset();
-  feature_list.InitAndEnableFeature(
-      chromeos::features::kEnablePkcs12ToChapsDualWrite);
-
-  {
-    base::test::TestFuture<int> import_waiter;
-    certificate_manager_model_->ImportFromPKCS12(
-        test_nssdb_.slot(), kInvalidPkcs12Data, kPassword,
-        /*is_extractable=*/false, import_waiter.GetCallback());
-    EXPECT_EQ(import_waiter.Get(), net::ERR_PKCS12_IMPORT_INVALID_FILE);
-  }
-
-  {
-    base::test::TestFuture<int> import_waiter;
-    certificate_manager_model_->ImportFromPKCS12(
-        test_nssdb_.slot(), kInvalidPkcs12Data, kPassword,
-        /*is_extractable=*/true, import_waiter.GetCallback());
-    EXPECT_EQ(import_waiter.Get(), net::ERR_PKCS12_IMPORT_INVALID_FILE);
-  }
-}
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-#endif  // BUILDFLAG(IS_CHROMEOS)

@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,15 +10,13 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/containers/span.h"
 #include "base/files/file_path.h"
-#include "base/memory/raw_span.h"
+#include "base/macros.h"
 #include "base/version.h"
 #include "extensions/browser/content_verifier/content_verifier_utils.h"
-#include "extensions/common/extension_id.h"
 
 namespace extensions {
 
@@ -30,9 +28,6 @@ using CanonicalRelativePath = content_verifier_utils::CanonicalRelativePath;
 // corruption of extension files on local disk.
 class VerifiedContents {
  public:
-  VerifiedContents(const VerifiedContents&) = delete;
-  VerifiedContents& operator=(const VerifiedContents&) = delete;
-
   ~VerifiedContents();
 
   // Returns verified contents after successfully parsing verified_contents.json
@@ -49,10 +44,10 @@ class VerifiedContents {
   // |public_key| must remain valid for the lifetime of the returned object.
   static std::unique_ptr<VerifiedContents> Create(
       base::span<const uint8_t> public_key,
-      std::string_view contents);
+      base::StringPiece contents);
 
   int block_size() const { return block_size_; }
-  const ExtensionId& extension_id() const { return extension_id_; }
+  const std::string& extension_id() const { return extension_id_; }
   const base::Version& version() const { return version_; }
 
   bool HasTreeHashRoot(const base::FilePath& relative_path) const;
@@ -74,7 +69,7 @@ class VerifiedContents {
 
   // Returns the base64url-decoded "payload" field from the |contents|, if
   // the signature was valid.
-  bool GetPayload(std::string_view contents, std::string* payload);
+  bool GetPayload(base::StringPiece contents, std::string* payload);
 
   // The |protected_value| and |payload| arguments should be base64url encoded
   // strings, and |signature_bytes| should be a byte array. See comments in the
@@ -85,7 +80,7 @@ class VerifiedContents {
                        const std::string& signature_bytes);
 
   // The public key we should use for signature verification.
-  base::raw_span<const uint8_t, DanglingUntriaged> public_key_;
+  base::span<const uint8_t> public_key_;
 
   // Indicates whether the signature was successfully validated or not.
   bool valid_signature_;
@@ -94,7 +89,7 @@ class VerifiedContents {
   int block_size_;
 
   // Information about which extension these signed hashes are for.
-  ExtensionId extension_id_;
+  std::string extension_id_;
   base::Version version_;
 
   // The expected treehash root hashes for each file.
@@ -107,11 +102,13 @@ class VerifiedContents {
   // might not have the exact right capitalization. Note that this doesn't
   // affect case-sensitive systems (linux, chromeos) as we use the exact cased
   // keys.
-  // TODO(crbug.com/40334716) - we should give developers client-side warnings
-  // in each of those cases, and have the webstore reject the cases they can
+  // TODO(crbug.com/29941) - we should give developers client-side warnings in
+  // each of those cases, and have the webstore reject the cases they can
   // statically detect.
   typedef std::multimap<CanonicalRelativePath, std::string> RootHashes;
   RootHashes root_hashes_;
+
+  DISALLOW_COPY_AND_ASSIGN(VerifiedContents);
 };
 
 }  // namespace extensions

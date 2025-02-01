@@ -1,17 +1,14 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_BOX_DECORATION_DATA_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAINT_BOX_DECORATION_DATA_H_
 
-#include <optional>
-
-#include "third_party/blink/renderer/core/css/properties/longhands.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/layout/background_bleed_avoidance.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
-#include "third_party/blink/renderer/core/layout/layout_replaced.h"
-#include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_physical_box_fragment.h"
 #include "third_party/blink/renderer/core/paint/paint_info.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
@@ -23,15 +20,14 @@ class BoxDecorationData {
   STACK_ALLOCATED();
 
  public:
-  BoxDecorationData(const PaintInfo& paint_info,
-                    const LayoutReplaced& layout_replaced)
+  BoxDecorationData(const PaintInfo& paint_info, const LayoutBox& layout_box)
       : BoxDecorationData(paint_info,
-                          layout_replaced,
-                          layout_replaced.StyleRef(),
-                          layout_replaced.StyleRef().HasBorderDecoration()) {}
+                          layout_box,
+                          layout_box.StyleRef(),
+                          layout_box.HasNonCollapsedBorderDecoration()) {}
 
   BoxDecorationData(const PaintInfo& paint_info,
-                    const PhysicalFragment& fragment,
+                    const NGPhysicalFragment& fragment,
                     const ComputedStyle& style)
       : BoxDecorationData(
             paint_info,
@@ -40,22 +36,11 @@ class BoxDecorationData {
             !fragment.HasCollapsedBorders() && style.HasBorderDecoration()) {}
 
   BoxDecorationData(const PaintInfo& paint_info,
-                    const PhysicalFragment& fragment)
+                    const NGPhysicalFragment& fragment)
       : BoxDecorationData(paint_info, fragment, fragment.Style()) {}
 
-  BoxDecorationData BackgroundOnly() const {
-    DCHECK(should_paint_background_);
-    return BoxDecorationData(*this, /*should_paint_background=*/true,
-                             /*should_paint_border=*/false);
-  }
-  BoxDecorationData BorderOnly() const {
-    DCHECK(should_paint_border_);
-    return BoxDecorationData(*this, /*should_paint_background=*/false,
-                             /*should_paint_border=*/true);
-  }
-
-  bool IsPaintingBackgroundInContentsSpace() const {
-    return paint_info_.IsPaintingBackgroundInContentsSpace();
+  bool IsPaintingScrollingBackground() const {
+    return is_painting_scrolling_background_;
   }
   bool HasAppearance() const { return has_appearance_; }
   bool ShouldPaintBackground() const { return should_paint_background_; }
@@ -78,6 +63,16 @@ class BoxDecorationData {
     return style_.VisitedDependentColor(GetCSSPropertyBackgroundColor());
   }
 
+  static bool IsPaintingScrollingBackground(const PaintInfo& paint_info,
+                                            const LayoutBox& layout_box) {
+    if (RuntimeEnabledFeatures::CompositeAfterPaintEnabled())
+      return paint_info.IsPaintingScrollingBackground();
+    return (paint_info.PaintFlags() & kPaintLayerPaintingOverflowContents) &&
+           !(paint_info.PaintFlags() &
+             kPaintLayerPaintingCompositingBackgroundPhase) &&
+           layout_box == paint_info.PaintContainer();
+  }
+
  private:
   BoxDecorationData(const PaintInfo& paint_info,
                     const LayoutBox& layout_box,
@@ -86,77 +81,51 @@ class BoxDecorationData {
       : paint_info_(paint_info),
         layout_box_(layout_box),
         style_(style),
+        is_painting_scrolling_background_(
+            IsPaintingScrollingBackground(paint_info, layout_box)),
         has_appearance_(style.HasEffectiveAppearance()),
         should_paint_background_(ComputeShouldPaintBackground()),
         should_paint_border_(
             ComputeShouldPaintBorder(has_non_collapsed_border_decoration)),
         should_paint_shadow_(ComputeShouldPaintShadow()) {}
 
-  // For BackgroundOnly() and BorderOnly().
-  BoxDecorationData(const BoxDecorationData& data,
-                    bool should_paint_background,
-                    bool should_paint_border)
-      : paint_info_(data.paint_info_),
-        layout_box_(data.layout_box_),
-        style_(data.style_),
-        has_appearance_(false),
-        should_paint_background_(should_paint_background),
-        should_paint_border_(should_paint_border),
-        should_paint_shadow_(false) {
-    DCHECK(!data.has_appearance_);
-    DCHECK(!data.should_paint_shadow_);
-  }
-
   bool ComputeShouldPaintBackground() const {
-    // The page border box fragment paints the document background, so we cannot
-    // trust its computed style when it comes to background properties.
-    //
-    // See https://drafts.csswg.org/css-page-3/#painting
-    //
-    // TODO(crbug.com/40286153): This is a false positive. We should be able to
-    // remove this once we have a better way to determine whether there is a
-    // background.
-    bool has_background =
-        style_.HasBackground() ||
-        GetBoxFragmentType() == PhysicalFragment::kPageBorderBox;
-    return has_background && !layout_box_.BackgroundTransfersToView() &&
-           !paint_info_.ShouldSkipBackground();
+    if (!style_.HasBackground())
+      return false;
+    if (layout_box_.BackgroundTransfersToView())
+      return false;
+    if (paint_info_.SkipRootBackground() &&
+        paint_info_.PaintContainer() == &layout_box_)
+      return false;
+    return true;
   }
 
   bool ComputeShouldPaintBorder(
       bool has_non_collapsed_border_decoration) const {
-    if (paint_info_.IsPaintingBackgroundInContentsSpace())
+    if (is_painting_scrolling_background_)
       return false;
     return has_non_collapsed_border_decoration;
   }
 
   bool ComputeShouldPaintShadow() const {
-    return !paint_info_.IsPaintingBackgroundInContentsSpace() &&
-           style_.BoxShadow();
+    return !is_painting_scrolling_background_ && style_.BoxShadow();
   }
 
   bool BorderObscuresBackgroundEdge() const;
   BackgroundBleedAvoidance ComputeBleedAvoidance() const;
 
-  PhysicalFragment::BoxType GetBoxFragmentType() const {
-    if (!layout_box_.PhysicalFragmentCount()) {
-      return PhysicalFragment::kNormalBox;
-    }
-    return layout_box_.GetPhysicalFragment(0)->GetBoxType();
-  }
-
   // Inputs.
   const PaintInfo& paint_info_;
   const LayoutBox& layout_box_;
   const ComputedStyle& style_;
-
   // Outputs that are initialized in the constructor.
+  const bool is_painting_scrolling_background_;
   const bool has_appearance_;
   const bool should_paint_background_;
   const bool should_paint_border_;
   const bool should_paint_shadow_;
   // This is lazily initialized.
-  mutable std::optional<BackgroundBleedAvoidance> bleed_avoidance_;
+  mutable absl::optional<BackgroundBleedAvoidance> bleed_avoidance_;
 };
 
 }  // namespace blink

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,7 +31,6 @@ void StyleTraversalRoot::Update(ContainerNode* common_ancestor,
              (!root_node_ && root_type_ == RootType::kSingleRoot));
     }
     root_node_ = dirty_node;
-    AssertRootNodeInvariants();
     return;
   }
 

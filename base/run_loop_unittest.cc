@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors
+// Copyright 2016 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,24 +8,25 @@
 #include <memory>
 #include <utility>
 
+#include "base/bind.h"
+#include "base/callback_helpers.h"
 #include "base/containers/queue.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/ref_counted.h"
+#include "base/single_thread_task_runner.h"
 #include "base/synchronization/lock.h"
 #include "base/synchronization/waitable_event.h"
-#include "base/task/sequenced_task_runner.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/gtest_util.h"
 #include "base/test/scoped_run_loop_timeout.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_timeouts.h"
 #include "base/threading/platform_thread.h"
+#include "base/threading/sequenced_task_runner_handle.h"
 #include "base/threading/thread.h"
 #include "base/threading/thread_checker_impl.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "build/build_config.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -43,12 +44,12 @@ void RunNestedLoopTask(int* counter) {
   RunLoop nested_run_loop(RunLoop::Type::kNestableTasksAllowed);
 
   // This task should quit |nested_run_loop| but not the main RunLoop.
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, BindOnce(&QuitWhenIdleTask, Unretained(&nested_run_loop),
                           Unretained(counter)));
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE), Days(1));
+  ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE), TimeDelta::FromDays(1));
 
   nested_run_loop.Run();
 
@@ -68,7 +69,7 @@ class SimpleSingleThreadTaskRunner : public SingleThreadTaskRunner {
   bool PostDelayedTask(const Location& from_here,
                        OnceClosure task,
                        base::TimeDelta delay) override {
-    if (delay.is_positive())
+    if (delay > base::TimeDelta())
       return false;
     AutoLock auto_lock(tasks_lock_);
     pending_tasks_.push(std::move(task));
@@ -145,11 +146,10 @@ class TestBoundDelegate final : public InjectableTestDelegate {
   TestBoundDelegate() = default;
 
   // Makes this TestBoundDelegate become the RunLoop::Delegate and
-  // SingleThreadTaskRunner::CurrentDefaultHandle for this thread.
+  // ThreadTaskRunnerHandle for this thread.
   void BindToCurrentThread() {
     thread_task_runner_handle_ =
-        std::make_unique<SingleThreadTaskRunner::CurrentDefaultHandle>(
-            simple_task_runner_);
+        std::make_unique<ThreadTaskRunnerHandle>(simple_task_runner_);
     RunLoop::RegisterDelegateForCurrentThread(this);
   }
 
@@ -191,8 +191,7 @@ class TestBoundDelegate final : public InjectableTestDelegate {
   scoped_refptr<SimpleSingleThreadTaskRunner> simple_task_runner_ =
       MakeRefCounted<SimpleSingleThreadTaskRunner>();
 
-  std::unique_ptr<SingleThreadTaskRunner::CurrentDefaultHandle>
-      thread_task_runner_handle_;
+  std::unique_ptr<ThreadTaskRunnerHandle> thread_task_runner_handle_;
 
   bool should_quit_ = false;
 };
@@ -248,13 +247,13 @@ class RunLoopTest : public testing::TestWithParam<RunLoopTestType> {
 
 TEST_P(RunLoopTest, QuitWhenIdle) {
   int counter = 0;
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, BindOnce(&QuitWhenIdleTask, Unretained(&run_loop_),
                           Unretained(&counter)));
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
-  SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE), Days(1));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE), TimeDelta::FromDays(1));
 
   run_loop_.Run();
   EXPECT_EQ(1, counter);
@@ -262,27 +261,27 @@ TEST_P(RunLoopTest, QuitWhenIdle) {
 
 TEST_P(RunLoopTest, QuitWhenIdleNestedLoop) {
   int counter = 0;
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, BindOnce(&RunNestedLoopTask, Unretained(&counter)));
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, BindOnce(&QuitWhenIdleTask, Unretained(&run_loop_),
                           Unretained(&counter)));
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
-  SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE), Days(1));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE), TimeDelta::FromDays(1));
 
   run_loop_.Run();
   EXPECT_EQ(3, counter);
 }
 
 TEST_P(RunLoopTest, QuitWhenIdleClosure) {
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, run_loop_.QuitWhenIdleClosure());
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
-  SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE), Days(1));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          run_loop_.QuitWhenIdleClosure());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE), TimeDelta::FromDays(1));
 
   run_loop_.Run();
 }
@@ -307,8 +306,8 @@ TEST_P(RunLoopTest, QuitFromOtherSequence) {
       other_thread.task_runner();
 
   // Always expected to run before asynchronous Quit() kicks in.
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
 
   WaitableEvent loop_was_quit(WaitableEvent::ResetPolicy::MANUAL,
                               WaitableEvent::InitialState::NOT_SIGNALED);
@@ -322,8 +321,8 @@ TEST_P(RunLoopTest, QuitFromOtherSequence) {
   // Anything that's posted after the Quit closure was posted back to this
   // sequence shouldn't get a chance to run.
   loop_was_quit.Wait();
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedNotRunClosure(FROM_HERE));
 
   run_loop_.Run();
 }
@@ -336,8 +335,8 @@ TEST_P(RunLoopTest, QuitFromOtherSequenceWithClosure) {
       other_thread.task_runner();
 
   // Always expected to run before asynchronous Quit() kicks in.
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
 
   WaitableEvent loop_was_quit(WaitableEvent::ResetPolicy::MANUAL,
                               WaitableEvent::InitialState::NOT_SIGNALED);
@@ -349,8 +348,8 @@ TEST_P(RunLoopTest, QuitFromOtherSequenceWithClosure) {
   // Anything that's posted after the Quit closure was posted back to this
   // sequence shouldn't get a chance to run.
   loop_was_quit.Wait();
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedNotRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedNotRunClosure(FROM_HERE));
 
   run_loop_.Run();
 }
@@ -364,8 +363,8 @@ TEST_P(RunLoopTest, QuitFromOtherSequenceRacy) {
       other_thread.task_runner();
 
   // Always expected to run before asynchronous Quit() kicks in.
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
 
   other_sequence->PostTask(FROM_HERE, run_loop_.QuitClosure());
 
@@ -381,8 +380,8 @@ TEST_P(RunLoopTest, QuitFromOtherSequenceRacyWithClosure) {
       other_thread.task_runner();
 
   // Always expected to run before asynchronous Quit() kicks in.
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
 
   other_sequence->PostTask(FROM_HERE, run_loop_.QuitClosure());
 
@@ -396,16 +395,16 @@ TEST_P(RunLoopTest, QuitWhenIdleFromOtherSequence) {
   scoped_refptr<SequencedTaskRunner> other_sequence =
       other_thread.task_runner();
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
 
   other_sequence->PostTask(
       FROM_HERE,
       base::BindOnce([](RunLoop* run_loop) { run_loop->QuitWhenIdle(); },
                      Unretained(&run_loop_)));
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
 
   run_loop_.Run();
 
@@ -420,13 +419,13 @@ TEST_P(RunLoopTest, QuitWhenIdleFromOtherSequenceWithClosure) {
   scoped_refptr<SequencedTaskRunner> other_sequence =
       other_thread.task_runner();
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
 
   other_sequence->PostTask(FROM_HERE, run_loop_.QuitWhenIdleClosure());
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, MakeExpectedRunClosure(FROM_HERE));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          MakeExpectedRunClosure(FROM_HERE));
 
   run_loop_.Run();
 
@@ -436,76 +435,72 @@ TEST_P(RunLoopTest, QuitWhenIdleFromOtherSequenceWithClosure) {
 
 TEST_P(RunLoopTest, IsRunningOnCurrentThread) {
   EXPECT_FALSE(RunLoop::IsRunningOnCurrentThread());
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
-      BindOnce([] { EXPECT_TRUE(RunLoop::IsRunningOnCurrentThread()); }));
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, run_loop_.QuitClosure());
+      BindOnce([]() { EXPECT_TRUE(RunLoop::IsRunningOnCurrentThread()); }));
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, run_loop_.QuitClosure());
   run_loop_.Run();
 }
 
 TEST_P(RunLoopTest, IsNestedOnCurrentThread) {
   EXPECT_FALSE(RunLoop::IsNestedOnCurrentThread());
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, BindOnce([] {
+  ThreadTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE, BindOnce([]() {
         EXPECT_FALSE(RunLoop::IsNestedOnCurrentThread());
 
         RunLoop nested_run_loop(RunLoop::Type::kNestableTasksAllowed);
 
-        SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-            FROM_HERE,
-            BindOnce([] { EXPECT_TRUE(RunLoop::IsNestedOnCurrentThread()); }));
-        SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-            FROM_HERE, nested_run_loop.QuitClosure());
+        ThreadTaskRunnerHandle::Get()->PostTask(
+            FROM_HERE, BindOnce([]() {
+              EXPECT_TRUE(RunLoop::IsNestedOnCurrentThread());
+            }));
+        ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                nested_run_loop.QuitClosure());
 
         EXPECT_FALSE(RunLoop::IsNestedOnCurrentThread());
         nested_run_loop.Run();
         EXPECT_FALSE(RunLoop::IsNestedOnCurrentThread());
       }));
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, run_loop_.QuitClosure());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, run_loop_.QuitClosure());
   run_loop_.Run();
 }
 
 TEST_P(RunLoopTest, CannotRunMoreThanOnce) {
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, run_loop_.QuitClosure());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, run_loop_.QuitClosure());
   run_loop_.Run();
   EXPECT_DCHECK_DEATH({ run_loop_.Run(); });
 }
 
 TEST_P(RunLoopTest, CanRunUntilIdleMoreThanOnce) {
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, DoNothing());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, DoNothing());
   run_loop_.RunUntilIdle();
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, DoNothing());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, DoNothing());
   run_loop_.RunUntilIdle();
   run_loop_.RunUntilIdle();
 }
 
 TEST_P(RunLoopTest, CanRunUntilIdleThenRunIfNotQuit) {
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, DoNothing());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, DoNothing());
   run_loop_.RunUntilIdle();
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, run_loop_.QuitClosure());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, run_loop_.QuitClosure());
   run_loop_.Run();
 }
 
 TEST_P(RunLoopTest, CannotRunUntilIdleThenRunIfQuit) {
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, run_loop_.QuitClosure());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, run_loop_.QuitClosure());
   run_loop_.RunUntilIdle();
 
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE, DoNothing());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, DoNothing());
   EXPECT_DCHECK_DEATH({ run_loop_.Run(); });
 }
 
 TEST_P(RunLoopTest, CannotRunAgainIfQuitWhenIdle) {
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, run_loop_.QuitWhenIdleClosure());
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                          run_loop_.QuitWhenIdleClosure());
   run_loop_.RunUntilIdle();
 
   EXPECT_DCHECK_DEATH({ run_loop_.RunUntilIdle(); });
@@ -542,10 +537,10 @@ TEST_P(RunLoopTest, NestingObservers) {
 
   RunLoop::AddNestingObserverOnCurrentThread(&nesting_observer);
 
-  const RepeatingClosure run_nested_loop = BindRepeating([] {
+  const RepeatingClosure run_nested_loop = BindRepeating([]() {
     RunLoop nested_run_loop(RunLoop::Type::kNestableTasksAllowed);
-    SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, nested_run_loop.QuitClosure());
+    ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                            nested_run_loop.QuitClosure());
     nested_run_loop.Run();
   });
 
@@ -554,14 +549,12 @@ TEST_P(RunLoopTest, NestingObservers) {
   // when exiting each nesting depth. Each one of these tasks is ahead of the
   // QuitClosures as those are only posted at the end of the queue when
   // |run_nested_loop| is executed.
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
-                                                        run_nested_loop);
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, run_nested_loop);
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&MockTask::Task, base::Unretained(&mock_task_a)));
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
-                                                        run_nested_loop);
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, run_nested_loop);
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&MockTask::Task, base::Unretained(&mock_task_b)));
 
@@ -579,12 +572,12 @@ TEST_P(RunLoopTest, NestingObservers) {
 }
 
 TEST_P(RunLoopTest, DisallowRunning) {
-  ScopedDisallowRunningRunLoop disallow_running;
+  RunLoop::ScopedDisallowRunning disallow_running;
   EXPECT_DCHECK_DEATH({ run_loop_.RunUntilIdle(); });
 }
 
 TEST_P(RunLoopTest, ExpiredDisallowRunning) {
-  { ScopedDisallowRunningRunLoop disallow_running; }
+  { RunLoop::ScopedDisallowRunning disallow_running; }
   // Running should be fine after |disallow_running| goes out of scope.
   run_loop_.RunUntilIdle();
 }
@@ -598,8 +591,7 @@ INSTANTIATE_TEST_SUITE_P(Mock,
 
 TEST(RunLoopDeathTest, MustRegisterBeforeInstantiating) {
   TestBoundDelegate unbound_test_delegate_;
-  // RunLoop::RunLoop() should CHECK fetching the
-  // SingleThreadTaskRunner::CurrentDefaultHandle.
+  // RunLoop::RunLoop() should CHECK fetching the ThreadTaskRunnerHandle.
   EXPECT_DEATH_IF_SUPPORTED({ RunLoop(); }, "");
 }
 
@@ -619,13 +611,13 @@ TEST(RunLoopDelegateTest, NestableTasksDontRunInDefaultNestedLoops) {
   // The first task on the main loop will result in a nested run loop. Since
   // it's not kNestableTasksAllowed, no further task should be processed until
   // it's quit.
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       BindOnce([](RunLoop* nested_run_loop) { nested_run_loop->Run(); },
                Unretained(&nested_run_loop)));
 
   // Post a task that will fail if it runs inside the nested run loop.
-  SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       BindOnce(
           [](const bool& nested_run_loop_ended,

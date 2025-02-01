@@ -1,16 +1,18 @@
-// Copyright 2014 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/process_manager.h"
 
-#include "build/android_buildflags.h"
+#include "base/macros.h"
 #include "content/public/browser/content_browser_client.h"
+#include "content/public/browser/notification_service.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/common/content_client.h"
 #include "content/public/test/test_browser_context.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extensions_test.h"
+#include "extensions/browser/notification_types.h"
 #include "extensions/browser/process_manager_delegate.h"
 #include "extensions/browser/test_extensions_browser_client.h"
 
@@ -55,9 +57,6 @@ class ProcessManagerTest : public ExtensionsTest {
  public:
   ProcessManagerTest() {}
 
-  ProcessManagerTest(const ProcessManagerTest&) = delete;
-  ProcessManagerTest& operator=(const ProcessManagerTest&) = delete;
-
   ~ProcessManagerTest() override {}
 
   void SetUp() override {
@@ -66,12 +65,6 @@ class ProcessManagerTest : public ExtensionsTest {
         std::make_unique<ExtensionRegistry>(browser_context());
     extensions_browser_client()->set_process_manager_delegate(
         &process_manager_delegate_);
-  }
-
-  void TearDown() override {
-    extensions_browser_client()->set_process_manager_delegate(nullptr);
-    extension_registry_.reset();
-    ExtensionsTest::TearDown();
   }
 
   // Use original_context() to make it clear it is a non-incognito context.
@@ -85,6 +78,8 @@ class ProcessManagerTest : public ExtensionsTest {
   std::unique_ptr<ExtensionRegistry>
       extension_registry_;  // Shared between BrowserContexts.
   TestProcessManagerDelegate process_manager_delegate_;
+
+  DISALLOW_COPY_AND_ASSIGN(ProcessManagerTest);
 };
 
 // Test that startup background hosts are created when the extension system
@@ -145,16 +140,9 @@ TEST_F(ProcessManagerTest, IsBackgroundHostAllowed) {
   EXPECT_FALSE(manager->startup_background_hosts_created_for_test());
 }
 
-// TODO(https://crbug.com/356905053):Strict site isolation is not enabled on
-// Android, so this test is disabled on desktop android.
-#if BUILDFLAG(IS_DESKTOP_ANDROID)
-#define MAYBE_ProcessGrouping DISABLED_ProcessGrouping
-#else
-#define MAYBE_ProcessGrouping ProcessGrouping
-#endif
 // Test that extensions get grouped in the right SiteInstance (and therefore
 // process) based on their URLs.
-TEST_F(ProcessManagerTest, MAYBE_ProcessGrouping) {
+TEST_F(ProcessManagerTest, ProcessGrouping) {
   // Extensions in different browser contexts should always be different
   // SiteInstances.
   std::unique_ptr<ProcessManager> manager1(ProcessManager::CreateForTesting(

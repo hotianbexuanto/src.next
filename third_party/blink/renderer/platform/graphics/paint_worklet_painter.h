@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,9 @@
 #include "cc/paint/paint_worklet_input.h"
 #include "cc/paint/paint_worklet_job.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_record.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
+#include "third_party/skia/include/core/SkRefCnt.h"
 
 namespace blink {
 
@@ -31,9 +32,10 @@ class PLATFORM_EXPORT PaintWorkletPainter : public GarbageCollectedMixin {
   virtual ~PaintWorkletPainter() = default;
 
   virtual int GetWorkletId() const = 0;
-  virtual PaintRecord Paint(const cc::PaintWorkletInput*,
-                            const cc::PaintWorkletJob::AnimatedPropertyValues&
-                                animated_property_values) = 0;
+  virtual sk_sp<PaintRecord> Paint(
+      const cc::PaintWorkletInput*,
+      const cc::PaintWorkletJob::AnimatedPropertyValues&
+          animated_property_values) = 0;
 };
 
 }  // namespace blink

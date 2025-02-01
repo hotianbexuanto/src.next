@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,29 +9,23 @@
 
 namespace blink {
 
-class BoxDecorationData;
-class PhysicalBoxFragment;
-struct FieldsetPaintInfo;
+class LayoutFieldset;
 struct PaintInfo;
 struct PhysicalOffset;
-struct PhysicalRect;
 
 class FieldsetPainter {
   STACK_ALLOCATED();
 
  public:
-  explicit FieldsetPainter(const PhysicalBoxFragment& fieldset)
-      : fieldset_(fieldset) {}
+  FieldsetPainter(const LayoutFieldset& layout_fieldset)
+      : layout_fieldset_(layout_fieldset) {}
 
   void PaintBoxDecorationBackground(const PaintInfo&,
-                                    const PhysicalRect&,
-                                    const BoxDecorationData&);
-  void PaintMask(const PaintInfo&, const PhysicalOffset&);
+                                    const PhysicalOffset& paint_offset);
+  void PaintMask(const PaintInfo&, const PhysicalOffset& paint_offset);
 
  private:
-  FieldsetPaintInfo CreateFieldsetPaintInfo() const;
-
-  const PhysicalBoxFragment& fieldset_;
+  const LayoutFieldset& layout_fieldset_;
 };
 
 }  // namespace blink

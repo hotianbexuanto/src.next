@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,17 +11,15 @@
 #include <string>
 #include <vector>
 
+#include "base/callback.h"
 #include "base/files/file_path.h"
-#include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
 #include "base/threading/thread_checker.h"
-#include "base/values.h"
 #include "chrome/browser/extensions/install_prompt_permissions.h"
-#include "chrome/browser/ui/extensions/extension_install_ui.h"
 #include "chrome/common/buildflags.h"
 #include "extensions/common/permissions/permission_message.h"
 #include "third_party/skia/include/core/SkBitmap.h"
@@ -31,6 +29,10 @@
 class ExtensionInstallPromptShowParams;
 class Profile;
 
+namespace base {
+class DictionaryValue;
+}  // namespace base
+
 namespace content {
 class BrowserContext;
 class WebContents;
@@ -39,6 +41,7 @@ class WebContents;
 namespace extensions {
 class CrxInstallError;
 class Extension;
+class ExtensionInstallUI;
 class PermissionSet;
 }  // namespace extensions
 
@@ -59,13 +62,13 @@ class ExtensionInstallPrompt {
     RE_ENABLE_PROMPT = 3,
     PERMISSIONS_PROMPT = 4,
     EXTERNAL_INSTALL_PROMPT = 5,
-    // POST_INSTALL_PERMISSIONS_PROMPT_DEPRECATED = 6,
+    POST_INSTALL_PERMISSIONS_PROMPT = 6,
     // LAUNCH_PROMPT_DEPRECATED = 7,
     REMOTE_INSTALL_PROMPT = 8,
     REPAIR_PROMPT = 9,
-    // DELEGATED_PERMISSIONS_PROMPT = 10,
+    DELEGATED_PERMISSIONS_PROMPT = 10,
     // DELEGATED_BUNDLE_PERMISSIONS_PROMPT_DEPRECATED = 11,
-    // WEBSTORE_WIDGET_PROMPT_DEPRECATED = 12,
+    WEBSTORE_WIDGET_PROMPT = 12,
     EXTENSION_REQUEST_PROMPT = 13,
     EXTENSION_PENDING_REQUEST_PROMPT = 14,
     NUM_PROMPT_TYPES = 15,
@@ -97,10 +100,6 @@ class ExtensionInstallPrompt {
   class Prompt {
    public:
     explicit Prompt(PromptType type);
-
-    Prompt(const Prompt&) = delete;
-    Prompt& operator=(const Prompt&) = delete;
-
     ~Prompt();
 
     void AddPermissionSet(const extensions::PermissionSet& permissions);
@@ -109,8 +108,7 @@ class ExtensionInstallPrompt {
     void SetWebstoreData(const std::string& localized_user_count,
                          bool show_user_count,
                          double average_rating,
-                         int rating_count,
-                         const std::string& localized_rating_count);
+                         int rating_count);
 
     PromptType type() const { return type_; }
 
@@ -121,7 +119,10 @@ class ExtensionInstallPrompt {
     std::u16string GetAcceptButtonLabel() const;
     std::u16string GetAbortButtonLabel() const;
     std::u16string GetPermissionsHeading() const;
+    std::u16string GetRetainedFilesHeading() const;
+    std::u16string GetRetainedDevicesHeading() const;
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
     void set_requires_parent_permission(bool requires_parent_permission) {
       requires_parent_permission_ = requires_parent_permission;
     }
@@ -129,10 +130,10 @@ class ExtensionInstallPrompt {
     bool requires_parent_permission() const {
       return requires_parent_permission_;
     }
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
-    // Returns whether the dialog should withheld permissions if the dialog is
-    // accepted.
-    bool ShouldWithheldPermissionsOnDialogAccept() const;
+    bool ShouldShowPermissions() const;
+    bool ShouldDisplayWithholdingUI() const;
 
     // Getters for webstore metadata. Only populated when the type is
     // INLINE_INSTALL_PROMPT, EXTERNAL_INSTALL_PROMPT, or REPAIR_PROMPT.
@@ -148,10 +149,30 @@ class ExtensionInstallPrompt {
     size_t GetPermissionCount() const;
     std::u16string GetPermission(size_t index) const;
     std::u16string GetPermissionsDetails(size_t index) const;
+    size_t GetRetainedFileCount() const;
+    std::u16string GetRetainedFile(size_t index) const;
+    size_t GetRetainedDeviceCount() const;
+    std::u16string GetRetainedDeviceMessageString(size_t index) const;
 
     const extensions::Extension* extension() const { return extension_; }
     void set_extension(const extensions::Extension* extension) {
       extension_ = extension;
+    }
+
+    // May be populated for POST_INSTALL_PERMISSIONS_PROMPT.
+    void set_retained_files(const std::vector<base::FilePath>& retained_files) {
+      retained_files_ = retained_files;
+    }
+    void set_retained_device_messages(
+        const std::vector<std::u16string>& retained_device_messages) {
+      retained_device_messages_ = retained_device_messages;
+    }
+
+    const std::string& delegated_username() const {
+      return delegated_username_;
+    }
+    void set_delegated_username(const std::string& delegated_username) {
+      delegated_username_ = delegated_username;
     }
 
     const gfx::Image& icon() const { return icon_; }
@@ -159,9 +180,6 @@ class ExtensionInstallPrompt {
 
     double average_rating() const { return average_rating_; }
     int rating_count() const { return rating_count_; }
-    const std::string& localized_rating_count() const {
-      return localized_rating_count_;
-    }
 
     bool has_webstore_data() const { return has_webstore_data_; }
 
@@ -178,20 +196,25 @@ class ExtensionInstallPrompt {
     void OnDialogCanceled();
 
    private:
+    bool ShouldDisplayRevokeButton() const;
+
     const PromptType type_;
 
     // Permissions that are being requested (may not be all of an extension's
     // permissions if only additional ones are being requested)
     extensions::InstallPromptPermissions prompt_permissions_;
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
     // True if the current user is a child.
     bool requires_parent_permission_ = false;
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
     bool is_requesting_host_permissions_;
 
     // The extension being installed.
-    raw_ptr<const extensions::Extension, AcrossTasksDanglingUntriaged>
-        extension_;
+    const extensions::Extension* extension_;
+
+    std::string delegated_username_;
 
     // The icon to be displayed.
     gfx::Image icon_;
@@ -202,10 +225,7 @@ class ExtensionInstallPrompt {
     std::string localized_user_count_;
     // Range is kMinExtensionRating to kMaxExtensionRating
     double average_rating_;
-    // The rating count for the extension, used for string pluralization.
     int rating_count_;
-    // The localized rating count for the extension, used as-is for display.
-    std::string localized_rating_count_;
 
     // Whether we should display the user count (we anticipate this will be
     // false if localized_user_count_ represents the number zero).
@@ -219,6 +239,8 @@ class ExtensionInstallPrompt {
     std::vector<std::u16string> retained_device_messages_;
 
     base::ObserverList<Observer> observers_;
+
+    DISALLOW_COPY_AND_ASSIGN(Prompt);
   };
 
   static const int kMinExtensionRating = 0;
@@ -226,7 +248,7 @@ class ExtensionInstallPrompt {
 
   enum class Result {
     ACCEPTED,
-    ACCEPTED_WITH_WITHHELD_PERMISSIONS,
+    ACCEPTED_AND_OPTION_CHECKED,
     USER_CANCELED,
     ABORTED,
   };
@@ -261,7 +283,7 @@ class ExtensionInstallPrompt {
   // Creates a dummy extension from the |manifest|, replacing the name and
   // description with the localizations if provided.
   static scoped_refptr<extensions::Extension> GetLocalizedExtensionForDisplay(
-      const base::Value::Dict& manifest,
+      const base::DictionaryValue* manifest,
       int flags,  // Extension::InitFromValueFlags
       const std::string& id,
       const std::string& localized_name,
@@ -276,12 +298,11 @@ class ExtensionInstallPrompt {
   // windows) is used if a new tab needs to be opened.
   ExtensionInstallPrompt(Profile* profile, gfx::NativeWindow native_window);
 
-  ExtensionInstallPrompt(const ExtensionInstallPrompt&) = delete;
-  ExtensionInstallPrompt& operator=(const ExtensionInstallPrompt&) = delete;
-
   virtual ~ExtensionInstallPrompt();
 
-  ExtensionInstallUI* install_ui() const { return install_ui_.get(); }
+  extensions::ExtensionInstallUI* install_ui() const {
+    return install_ui_.get();
+  }
 
   // Starts the process to show the install dialog. Loads the icon (if |icon| is
   // null), sets up the Prompt, and calls |show_dialog_callback| when ready to
@@ -347,7 +368,7 @@ class ExtensionInstallPrompt {
   // install and returns true. Otherwise returns false.
   bool AutoConfirmPromptIfEnabled();
 
-  raw_ptr<Profile, DanglingUntriaged> profile_;
+  Profile* profile_;
 
   base::ThreadChecker ui_thread_checker_;
 
@@ -362,7 +383,7 @@ class ExtensionInstallPrompt {
   std::unique_ptr<const extensions::PermissionSet> custom_permissions_;
 
   // The object responsible for doing the UI specific actions.
-  std::unique_ptr<ExtensionInstallUI> install_ui_;
+  std::unique_ptr<extensions::ExtensionInstallUI> install_ui_;
 
   // Parameters to show the confirmation UI.
   std::unique_ptr<ExtensionInstallPromptShowParams> show_params_;
@@ -380,6 +401,8 @@ class ExtensionInstallPrompt {
   bool did_call_show_dialog_;
 
   base::WeakPtrFactory<ExtensionInstallPrompt> weak_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionInstallPrompt);
 };
 
 #endif  // CHROME_BROWSER_EXTENSIONS_EXTENSION_INSTALL_PROMPT_H_

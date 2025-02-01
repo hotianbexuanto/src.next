@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,7 +15,9 @@ import org.chromium.content_public.browser.ImeEventObserver;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.EventForwarder;
 
-/** Bridges content and joystick device event conversion and forwarding. */
+/**
+ * Bridges content and joystick device event conversion and forwarding.
+ */
 public class JoystickHandler implements ImeEventObserver, UserData {
     private final EventForwarder mEventForwarder;
 
@@ -66,7 +68,9 @@ public class JoystickHandler implements ImeEventObserver, UserData {
         return true;
     }
 
-    /** Removes noise from joystick motion events. */
+    /**
+     * Removes noise from joystick motion events.
+     */
     private static float getVelocityFromJoystickAxis(MotionEvent event, int axis) {
         final float kJoystickScrollDeadzone = 0.2f;
         float axisValWithNoise = event.getAxisValue(axis);

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,16 +8,16 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.util.AttributeSet;
 
-import org.chromium.chrome.browser.toolbar.TabSwitcherDrawable.TabSwitcherDrawableLocation;
-import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
-import org.chromium.ui.listmenu.ListMenuButton;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuButton;
 
 /**
  * The Button used for switching tabs. Currently this class is only being used for the bottom
  * toolbar tab switcher button.
  */
 public class TabSwitcherButtonView extends ListMenuButton {
-    /** A drawable for the tab switcher icon. */
+    /**
+     * A drawable for the tab switcher icon.
+     */
     private TabSwitcherDrawable mTabSwitcherButtonDrawable;
 
     public TabSwitcherButtonView(Context context, AttributeSet attrs) {
@@ -29,10 +29,7 @@ public class TabSwitcherButtonView extends ListMenuButton {
         super.onFinishInflate();
 
         mTabSwitcherButtonDrawable =
-                TabSwitcherDrawable.createTabSwitcherDrawable(
-                        getContext(),
-                        BrandedColorScheme.APP_DEFAULT,
-                        TabSwitcherDrawableLocation.TAB_SWITCHER_TOOLBAR);
+                TabSwitcherDrawable.createTabSwitcherDrawable(getContext(), false);
         setImageDrawable(mTabSwitcherButtonDrawable);
     }
 
@@ -40,6 +37,9 @@ public class TabSwitcherButtonView extends ListMenuButton {
      * @param numberOfTabs The number of open tabs.
      */
     public void updateTabCountVisuals(int numberOfTabs) {
+        setContentDescription(getResources().getQuantityString(
+                R.plurals.accessibility_toolbar_btn_tabswitcher_toggle, numberOfTabs,
+                numberOfTabs));
         mTabSwitcherButtonDrawable.updateForTabCount(numberOfTabs, false);
     }
 

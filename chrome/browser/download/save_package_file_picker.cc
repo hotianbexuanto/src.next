@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,9 @@
 
 #include <memory>
 
+#include "base/bind.h"
 #include "base/command_line.h"
-#include "base/functional/bind.h"
+#include "base/feature_list.h"
 #include "base/i18n/file_util_icu.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/utf_string_conversions.h"
@@ -20,6 +21,7 @@
 #include "chrome/browser/platform_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/chrome_select_file_policy.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/prefs/pref_member.h"
@@ -30,8 +32,8 @@
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/save_page_type.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/content_features.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 
 using content::RenderProcessHost;
 using content::SavePageType;
@@ -73,6 +75,16 @@ void AddSingleFileFileTypeInfo(
           FILE_PATH_LITERAL("mhtml")});
 }
 
+// Adds "Webpage, Single File (Web Bundle)" type to FileTypeInfo.
+void AddWebBundleFileFileTypeInfo(
+    ui::SelectFileDialog::FileTypeInfo* file_type_info) {
+  file_type_info->extension_description_overrides.push_back(
+      l10n_util::GetStringUTF16(IDS_SAVE_PAGE_DESC_WEB_BUNDLE_FILE));
+  file_type_info->extensions.emplace_back(
+      std::initializer_list<base::FilePath::StringType>{
+          FILE_PATH_LITERAL("wbn")});
+}
+
 // Chrome OS doesn't support HTML-Complete. crbug.com/154823
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
 // Adds "Webpage, Complete" type to FileTypeInfo.
@@ -101,7 +113,7 @@ void AddCompleteFileTypeInfo(
 // error pages (failed DNS lookups, SSL errors, etc), which shouldn't affect
 // functionality.
 bool IsErrorPage(content::WebContents* web_contents) {
-  if (web_contents->GetController().GetActiveEntry() == nullptr)
+  if (web_contents->GetController().GetActiveEntry() == NULL)
     return false;
   return web_contents->GetController().GetLastCommittedEntry()->GetPageType() ==
          content::PAGE_TYPE_ERROR;
@@ -109,15 +121,15 @@ bool IsErrorPage(content::WebContents* web_contents) {
 
 }  // anonymous namespace
 
-// TODO(crbug.com/41439108): REMOVE DIRTY HACK
+// TODO(crbug/928323): REMOVE DIRTY HACK
 // To prevent access to blocked websites, we are temporarily disabling the
-// HTML-only download of error pages for child users only.
+// HTML-only download of error pages for supervised users only.
 // Note that MHTML is still available, so the save functionality is preserved.
 bool SavePackageFilePicker::ShouldSaveAsOnlyHTML(
     content::WebContents* web_contents) const {
   Profile* profile =
       Profile::FromBrowserContext(web_contents->GetBrowserContext());
-  return !profile->IsChild() || !IsErrorPage(web_contents);
+  return !profile->IsSupervised() || !IsErrorPage(web_contents);
 }
 
 bool SavePackageFilePicker::ShouldSaveAsMHTML() const {
@@ -136,8 +148,7 @@ SavePackageFilePicker::SavePackageFilePicker(
     bool can_save_as_complete,
     DownloadPrefs* download_prefs,
     content::SavePackagePathPickedCallback callback)
-    : render_process_id_(
-          web_contents->GetPrimaryMainFrame()->GetProcess()->GetID()),
+    : render_process_id_(web_contents->GetMainFrame()->GetProcess()->GetID()),
       can_save_as_complete_(can_save_as_complete),
       download_prefs_(download_prefs),
       callback_(std::move(callback)) {
@@ -168,6 +179,11 @@ SavePackageFilePicker::SavePackageFilePicker(
     if (can_save_as_complete_) {
       AddSingleFileFileTypeInfo(&file_type_info);
       save_types_.push_back(content::SAVE_PAGE_TYPE_AS_MHTML);
+
+      if (base::FeatureList::IsEnabled(features::kSavePageAsWebBundle)) {
+        AddWebBundleFileFileTypeInfo(&file_type_info);
+        save_types_.push_back(content::SAVE_PAGE_TYPE_AS_WEB_BUNDLE);
+      }
     }
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
@@ -223,32 +239,23 @@ SavePackageFilePicker::SavePackageFilePicker(
         ui::SelectFileDialog::SELECT_SAVEAS_FILE, std::u16string(),
         suggested_path_copy, &file_type_info, file_type_index,
         default_extension_copy,
-        platform_util::GetTopLevel(web_contents->GetNativeView()),
-        /*caller=*/
-        web_contents
-            ? &web_contents->GetPrimaryMainFrame()->GetLastCommittedURL()
-            : nullptr);
-    return;
+        platform_util::GetTopLevel(web_contents->GetNativeView()), NULL);
+  } else {
+    // Just use 'suggested_path_copy' instead of opening the dialog prompt.
+    // Go through FileSelected() for consistency.
+    FileSelected(suggested_path_copy, file_type_index, NULL);
   }
-
-  // If |g_should_prompt_for_filename| is unset or |select_file_dialog_| could
-  // not be instantiated for some reason, just use 'suggested_path_copy' instead
-  // of opening the dialog prompt. Go through FileSelected() for consistency.
-  FileSelected(ui::SelectedFileInfo(suggested_path_copy), file_type_index);
 }
 
 SavePackageFilePicker::~SavePackageFilePicker() {
-  if (select_file_dialog_) {
-    select_file_dialog_->ListenerDestroyed();
-  }
 }
 
 void SavePackageFilePicker::SetShouldPromptUser(bool should_prompt) {
   g_should_prompt_for_filename = should_prompt;
 }
 
-void SavePackageFilePicker::FileSelected(const ui::SelectedFileInfo& file,
-                                         int index) {
+void SavePackageFilePicker::FileSelected(
+    const base::FilePath& path, int index, void* unused_params) {
   std::unique_ptr<SavePackageFilePicker> delete_this(this);
   RenderProcessHost* process = RenderProcessHost::FromID(render_process_id_);
   if (!process)
@@ -258,30 +265,23 @@ void SavePackageFilePicker::FileSelected(const ui::SelectedFileInfo& file,
   if (can_save_as_complete_) {
     DCHECK_LT(index, static_cast<int>(save_types_.size()));
     save_type = save_types_[index];
-    if (select_file_dialog_ &&
-        select_file_dialog_->HasMultipleFileTypeChoices()) {
+    if (select_file_dialog_.get() &&
+        select_file_dialog_->HasMultipleFileTypeChoices())
       download_prefs_->SetSaveFileType(save_type);
-    }
   } else {
     // Use "HTML Only" type as a dummy.
     save_type = content::SAVE_PAGE_TYPE_AS_ONLY_HTML;
   }
 
-  base::FilePath path = file.path();
-  base::i18n::NormalizeFileNameEncoding(&path);
+  base::FilePath path_copy(path);
+  base::i18n::NormalizeFileNameEncoding(&path_copy);
 
-  download_prefs_->SetSaveFilePath(path.DirName());
+  download_prefs_->SetSaveFilePath(path_copy.DirName());
 
-  content::SavePackagePathPickedParams params;
-  params.file_path = path;
-  params.save_type = save_type;
-#if BUILDFLAG(IS_MAC)
-  params.file_tags = file.file_tags;
-#endif
-  std::move(callback_).Run(std::move(params),
+  std::move(callback_).Run(path_copy, save_type,
                            base::BindOnce(&OnSavePackageDownloadCreated));
 }
 
-void SavePackageFilePicker::FileSelectionCanceled() {
+void SavePackageFilePicker::FileSelectionCanceled(void* unused_params) {
   delete this;
 }

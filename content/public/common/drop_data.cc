@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,9 +11,11 @@
 
 namespace content {
 
+DropData::Metadata::Metadata() {}
+
 // static
 DropData::Metadata DropData::Metadata::CreateForMimeType(
-    Kind kind,
+    const Kind& kind,
     const std::u16string& mime_type) {
   Metadata metadata;
   metadata.kind = kind;
@@ -39,31 +41,26 @@ DropData::Metadata DropData::Metadata::CreateForFileSystemUrl(
   return metadata;
 }
 
-// static
-DropData::Metadata DropData::Metadata::CreateForBinary(
-    const GURL& file_contents_url) {
-  Metadata metadata;
-  metadata.kind = Kind::BINARY;
-  metadata.file_contents_url = file_contents_url;
-  return metadata;
-}
-
-DropData::Metadata::Metadata() = default;
 DropData::Metadata::Metadata(const DropData::Metadata& other) = default;
-DropData::Metadata::~Metadata() = default;
 
-DropData::DropData() = default;
+DropData::Metadata::~Metadata() {}
+
+DropData::DropData()
+    : did_originate_from_renderer(false),
+      referrer_policy(network::mojom::ReferrerPolicy::kDefault) {}
+
 DropData::DropData(const DropData& other) = default;
-DropData::~DropData() = default;
 
-std::optional<base::FilePath> DropData::GetSafeFilenameForImageFileContents()
+DropData::~DropData() {}
+
+absl::optional<base::FilePath> DropData::GetSafeFilenameForImageFileContents()
     const {
   base::FilePath file_name = net::GenerateFileName(
       file_contents_source_url, file_contents_content_disposition,
-      /*referrer_charset=*/std::string(),
-      /*suggested_name=*/std::string(),
-      /*mime_type=*/std::string(),
-      /*default_name=*/std::string());
+      std::string(),   // referrer_charset
+      std::string(),   // suggested_name
+      std::string(),   // mime_type
+      std::string());  // default_name
   std::string mime_type;
   if (net::GetWellKnownMimeTypeFromExtension(file_contents_filename_extension,
                                              &mime_type) &&
@@ -71,7 +68,7 @@ std::optional<base::FilePath> DropData::GetSafeFilenameForImageFileContents()
                        base::CompareCase::INSENSITIVE_ASCII)) {
     return file_name.ReplaceExtension(file_contents_filename_extension);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // static

@@ -1,12 +1,11 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/bind.h"
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
 #include "base/strings/stringprintf.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -28,9 +27,8 @@ namespace {
 // Returns a response whose body is request's origin.
 std::unique_ptr<net::test_server::HttpResponse> HandleEchoOrigin(
     const net::test_server::HttpRequest& request) {
-  if (request.relative_url != "/echo-origin") {
+  if (request.relative_url != "/echo-origin")
     return nullptr;
-  }
 
   auto response = std::make_unique<net::test_server::BasicHttpResponse>();
   response->set_code(net::HTTP_OK);
@@ -47,27 +45,16 @@ std::unique_ptr<net::test_server::HttpResponse> HandleEchoOrigin(
 }
 
 // JavaScript snippet which performs a fetch given a URL expression to be
-// substituted as %s, then sends back the fetched content using
-// chrome.test.sendScriptResult.
-constexpr char kFetchScript[] = R"(
-  fetch(%s).then(function(result) {
-    return result.text();
-  }).then(function(text) {
-    chrome.test.sendScriptResult(text);
-  }).catch(function(err) {
-    chrome.test.sendScriptResult(String(err));
-  });
-)";
-
-// JavaScript snippet which performs a fetch given a URL expression to be
-// substituted as %s.
-constexpr char kDOMFetchScript[] = R"(
-  fetch(%s).then(function(result) {
-    return result.text();
-  }).catch(function(err) {
-    return String(err);
-  });
-)";
+// substituted as %s, then sends back the fetched content using the
+// domAutomationController.
+const char* kFetchScript =
+    "fetch(%s).then(function(result) {\n"
+    "  return result.text();\n"
+    "}).then(function(text) {\n"
+    "  window.domAutomationController.send(text);\n"
+    "}).catch(function(err) {\n"
+    "  window.domAutomationController.send(String(err));\n"
+    "});\n";
 
 constexpr char kFetchPostScript[] = R"(
   fetch($1, {method: 'POST'}).then((result) => {
@@ -93,12 +80,6 @@ class ExtensionFetchTest : public ExtensionApiTest {
   // Returns |kFetchScript| with |url_expression| substituted as its test URL.
   std::string GetFetchScript(const std::string& url_expression) {
     return base::StringPrintf(kFetchScript, url_expression.c_str());
-  }
-
-  // Returns |kDOMFetchScript| with |url_expression| substituted as its test
-  // URL.
-  std::string GetDOMFetchScript(const std::string& url_expression) {
-    return base::StringPrintf(kDOMFetchScript, url_expression.c_str());
   }
 
   // Returns |url| as a string surrounded by single quotes, for passing to
@@ -135,7 +116,7 @@ class ExtensionFetchTest : public ExtensionApiTest {
 
 IN_PROC_BROWSER_TEST_F(ExtensionFetchTest, ExtensionCanFetchExtensionResource) {
   TestExtensionDir dir;
-  static constexpr char kManifest[] =
+  constexpr char kManifest[] =
       R"({
            "background": {"scripts": ["bg.js"]},
            "manifest_version": 2,
@@ -155,7 +136,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionFetchTest, ExtensionCanFetchExtensionResource) {
 IN_PROC_BROWSER_TEST_F(ExtensionFetchTest,
                        ExtensionCanFetchHostedResourceWithHostPermissions) {
   TestExtensionDir dir;
-  static constexpr char kManifest[] =
+  constexpr char kManifest[] =
       R"({
            "background": {"scripts": ["bg.js"]},
            "manifest_version": 2,
@@ -177,7 +158,7 @@ IN_PROC_BROWSER_TEST_F(
     ExtensionFetchTest,
     ExtensionCannotFetchHostedResourceWithoutHostPermissions) {
   TestExtensionDir dir;
-  static constexpr char kManifest[] =
+  constexpr char kManifest[] =
       R"({
            "background": {"scripts": ["bg.js"]},
            "manifest_version": 2,
@@ -200,7 +181,7 @@ IN_PROC_BROWSER_TEST_F(
 IN_PROC_BROWSER_TEST_F(ExtensionFetchTest,
                        HostCanFetchWebAccessibleExtensionResource) {
   TestExtensionDir dir;
-  static constexpr char kManifest[] =
+  constexpr char kManifest[] =
       R"({
            "background": {"scripts": ["bg.js"]},
            "manifest_version": 2,
@@ -216,10 +197,12 @@ IN_PROC_BROWSER_TEST_F(ExtensionFetchTest,
       embedded_test_server()->GetURL("example.com", "/empty.html"));
 
   // TODO(kalman): Test this from a content script too.
-  EXPECT_EQ(
-      "text content",
-      content::EvalJs(empty_tab, GetDOMFetchScript(GetQuotedURL(
-                                     extension->GetResourceURL("text")))));
+  std::string fetch_result;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractString(
+      empty_tab,
+      GetFetchScript(GetQuotedURL(extension->GetResourceURL("text"))),
+      &fetch_result));
+  EXPECT_EQ("text content", fetch_result);
 }
 
 // Calling fetch() from a http(s) service worker context to a
@@ -230,7 +213,7 @@ IN_PROC_BROWSER_TEST_F(
     ExtensionFetchTest,
     HostCanFetchWebAccessibleExtensionResource_FetchFromServiceWorker) {
   TestExtensionDir dir;
-  static constexpr char kManifest[] =
+  constexpr char kManifest[] =
       R"({
            "background": {"scripts": ["bg.js"]},
            "manifest_version": 2,
@@ -256,7 +239,7 @@ IN_PROC_BROWSER_TEST_F(
 IN_PROC_BROWSER_TEST_F(ExtensionFetchTest,
                        HostCannotFetchNonWebAccessibleExtensionResource) {
   TestExtensionDir dir;
-  static constexpr char kManifest[] =
+  constexpr char kManifest[] =
       R"({
            "background": {"scripts": ["bg.js"]},
            "manifest_version": 2,
@@ -271,23 +254,25 @@ IN_PROC_BROWSER_TEST_F(ExtensionFetchTest,
       embedded_test_server()->GetURL("example.com", "/empty.html"));
 
   // TODO(kalman): Test this from a content script too.
-  EXPECT_EQ(
-      "TypeError: Failed to fetch",
-      content::EvalJs(empty_tab, GetDOMFetchScript(GetQuotedURL(
-                                     extension->GetResourceURL("text")))));
+  std::string fetch_result;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractString(
+      empty_tab,
+      GetFetchScript(GetQuotedURL(extension->GetResourceURL("text"))),
+      &fetch_result));
+  EXPECT_EQ("TypeError: Failed to fetch", fetch_result);
 }
 
 IN_PROC_BROWSER_TEST_F(ExtensionFetchTest, FetchResponseType) {
   const std::string script = base::StringPrintf(
-      R"(fetch(%s).then((response) => {
-           chrome.test.sendScriptResult(response.type);
-         }).catch((err) => {
-           chrome.test.sendScriptResult(String(err));
-         });)",
+      "fetch(%s).then(function(response) {\n"
+      "  window.domAutomationController.send(response.type);\n"
+      "}).catch(function(err) {\n"
+      "  window.domAutomationController.send(String(err));\n"
+      "});\n",
       GetQuotedTestServerURL("example.com", "/extensions/test_file.txt")
           .data());
   TestExtensionDir dir;
-  static constexpr char kManifest[] =
+  constexpr char kManifest[] =
       R"({
            "background": {"scripts": ["bg.js"]},
            "manifest_version": 2,
@@ -320,7 +305,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionFetchTest, OriginOnPostWithPermissions) {
   std::string script = content::JsReplace(kFetchPostScript, destination_url);
   std::string origin_string = url::Origin::Create(extension->url()).Serialize();
   EXPECT_EQ(origin_string,
-            ExecuteScriptInBackgroundPageDeprecated(extension->id(), script));
+            ExecuteScriptInBackgroundPage(extension->id(), script));
 }
 
 IN_PROC_BROWSER_TEST_F(ExtensionFetchTest, OriginOnPostWithoutPermissions) {
@@ -340,7 +325,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionFetchTest, OriginOnPostWithoutPermissions) {
       kFetchPostScript,
       embedded_test_server()->GetURL("example.com", "/echo-origin"));
   EXPECT_EQ(url::Origin::Create(extension->url()).Serialize(),
-            ExecuteScriptInBackgroundPageDeprecated(extension->id(), script));
+            ExecuteScriptInBackgroundPage(extension->id(), script));
 }
 
 // An extension background script should be able to fetch resources contained in
@@ -353,7 +338,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionFetchTest, ExtensionResourceShouldNotBeOpaque) {
   const std::string script = base::StringPrintf(R"(
       const script = document.createElement('script');
       window.onerror = (message) => {
-        chrome.test.sendScriptResult('onerror: ' + message);
+        window.domAutomationController.send('onerror: ' + message);
       }
       script.src = 'error.js'
       document.body.appendChild(script);)");

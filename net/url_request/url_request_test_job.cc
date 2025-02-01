@@ -1,11 +1,6 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
-#pragma allow_unsafe_buffers
-#endif
 
 #include "net/url_request/url_request_test_job.h"
 
@@ -13,13 +8,15 @@
 #include <list>
 #include <memory>
 
+#include "base/bind.h"
 #include "base/compiler_specific.h"
-#include "base/functional/bind.h"
+#include "base/containers/cxx20_erase_list.h"
+#include "base/cxx17_backports.h"
 #include "base/lazy_instance.h"
 #include "base/location.h"
+#include "base/single_thread_task_runner.h"
 #include "base/strings/string_util.h"
-#include "base/task/single_thread_task_runner.h"
-#include "base/time/time.h"
+#include "base/threading/thread_task_runner_handle.h"
 #include "net/base/io_buffer.h"
 #include "net/base/net_errors.h"
 #include "net/http/http_response_headers.h"
@@ -88,7 +85,7 @@ std::string URLRequestTestJob::test_headers() {
       "HTTP/1.1 200 OK\n"
       "Content-type: text/html\n"
       "\n";
-  return std::string(kHeaders, std::size(kHeaders));
+  return std::string(kHeaders, base::size(kHeaders));
 }
 
 // static getter for redirect response headers
@@ -97,7 +94,7 @@ std::string URLRequestTestJob::test_redirect_headers() {
       "HTTP/1.1 302 MOVED\n"
       "Location: somewhere\n"
       "\n";
-  return std::string(kHeaders, std::size(kHeaders));
+  return std::string(kHeaders, base::size(kHeaders));
 }
 
 // static getter for redirect response headers
@@ -127,13 +124,19 @@ std::string URLRequestTestJob::test_error_headers() {
   static const char kHeaders[] =
       "HTTP/1.1 500 BOO HOO\n"
       "\n";
-  return std::string(kHeaders, std::size(kHeaders));
+  return std::string(kHeaders, base::size(kHeaders));
 }
 
 URLRequestTestJob::URLRequestTestJob(URLRequest* request, bool auto_advance)
     : URLRequestJob(request),
       auto_advance_(auto_advance),
-      response_headers_length_(0) {}
+      stage_(WAITING),
+      priority_(DEFAULT_PRIORITY),
+      offset_(0),
+      async_buf_(nullptr),
+      async_buf_size_(0),
+      response_headers_length_(0),
+      async_reads_(false) {}
 
 URLRequestTestJob::URLRequestTestJob(URLRequest* request,
                                      const std::string& response_headers,
@@ -141,13 +144,19 @@ URLRequestTestJob::URLRequestTestJob(URLRequest* request,
                                      bool auto_advance)
     : URLRequestJob(request),
       auto_advance_(auto_advance),
+      stage_(WAITING),
+      priority_(DEFAULT_PRIORITY),
       response_data_(response_data),
+      offset_(0),
+      async_buf_(nullptr),
+      async_buf_size_(0),
       response_headers_(base::MakeRefCounted<net::HttpResponseHeaders>(
           net::HttpUtil::AssembleRawHeaders(response_headers))),
-      response_headers_length_(response_headers.size()) {}
+      response_headers_length_(response_headers.size()),
+      async_reads_(false) {}
 
 URLRequestTestJob::~URLRequestTestJob() {
-  std::erase(g_pending_jobs.Get(), this);
+  base::Erase(g_pending_jobs.Get(), this);
 }
 
 bool URLRequestTestJob::GetMimeType(std::string* mime_type) const {
@@ -164,7 +173,7 @@ void URLRequestTestJob::SetPriority(RequestPriority priority) {
 void URLRequestTestJob::Start() {
   // Start reading asynchronously so that all error reporting and data
   // callbacks happen as they would for network requests.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+  base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, base::BindOnce(&URLRequestTestJob::StartAsync,
                                 weak_factory_.GetWeakPtr()));
 }
@@ -229,7 +238,7 @@ int URLRequestTestJob::ReadRawData(IOBuffer* buf, int buf_size) {
     async_buf_size_ = buf_size;
     if (stage_ != WAITING) {
       stage_ = WAITING;
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      base::ThreadTaskRunnerHandle::Get()->PostTask(
           FROM_HERE, base::BindOnce(&URLRequestTestJob::ProcessNextOperation,
                                     weak_factory_.GetWeakPtr()));
     }
@@ -279,7 +288,7 @@ void URLRequestTestJob::Kill() {
   stage_ = DONE;
   URLRequestJob::Kill();
   weak_factory_.InvalidateWeakPtrs();
-  std::erase(g_pending_jobs.Get(), this);
+  base::Erase(g_pending_jobs.Get(), this);
 }
 
 void URLRequestTestJob::ProcessNextOperation() {
@@ -291,10 +300,9 @@ void URLRequestTestJob::ProcessNextOperation() {
       stage_ = DATA_AVAILABLE;
       // OK if ReadRawData wasn't called yet.
       if (async_buf_) {
-        int result = CopyDataForRead(async_buf_.get(), async_buf_size_);
-        if (result < 0) {
+        int result = CopyDataForRead(async_buf_, async_buf_size_);
+        if (result < 0)
           NOTREACHED() << "Reads should not fail in DATA_AVAILABLE.";
-        }
         if (NextReadAsync()) {
           // Make all future reads return io pending until the next
           // ProcessNextOperation().
@@ -314,6 +322,7 @@ void URLRequestTestJob::ProcessNextOperation() {
       return;
     default:
       NOTREACHED() << "Invalid stage";
+      return;
   }
 }
 
@@ -323,7 +332,7 @@ bool URLRequestTestJob::NextReadAsync() {
 
 void URLRequestTestJob::AdvanceJob() {
   if (auto_advance_) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+    base::ThreadTaskRunnerHandle::Get()->PostTask(
         FROM_HERE, base::BindOnce(&URLRequestTestJob::ProcessNextOperation,
                                   weak_factory_.GetWeakPtr()));
     return;

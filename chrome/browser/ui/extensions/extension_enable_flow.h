@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,16 +8,20 @@
 #include <memory>
 #include <string>
 
-#include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
+#include "base/callback.h"
+#include "base/compiler_specific.h"
+#include "base/macros.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/extensions/extension_install_prompt.h"
 #include "chrome/browser/extensions/load_error_reporter.h"
+#include "chrome/common/buildflags.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_observer.h"
+
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
 #include "extensions/browser/supervised_user_extensions_delegate.h"
-#include "extensions/common/extension_id.h"
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
 class ExtensionEnableFlowDelegate;
 
@@ -38,10 +42,6 @@ class ExtensionEnableFlow : public extensions::LoadErrorReporter::Observer,
   ExtensionEnableFlow(Profile* profile,
                       const std::string& extension_id,
                       ExtensionEnableFlowDelegate* delegate);
-
-  ExtensionEnableFlow(const ExtensionEnableFlow&) = delete;
-  ExtensionEnableFlow& operator=(const ExtensionEnableFlow&) = delete;
-
   ~ExtensionEnableFlow() override;
 
   // Starts the flow and the logic continues on |delegate_| after enabling is
@@ -55,7 +55,7 @@ class ExtensionEnableFlow : public extensions::LoadErrorReporter::Observer,
   void StartForNativeWindow(gfx::NativeWindow parent_window);
   void Start();
 
-  const extensions::ExtensionId& extension_id() const { return extension_id_; }
+  const std::string& extension_id() const { return extension_id_; }
 
   // LoadErrorReporter::Observer:
   void OnLoadFailure(content::BrowserContext* browser_context,
@@ -78,10 +78,16 @@ class ExtensionEnableFlow : public extensions::LoadErrorReporter::Observer,
   // Creates an ExtensionInstallPrompt in |prompt_|.
   void CreatePrompt();
 
-  // Called when the extension approval flow is complete.
-  void OnExtensionApprovalDone(
-      extensions::SupervisedUserExtensionsDelegate::ExtensionApprovalResult
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+  // Called when the user dismisses the Parent Permission Dialog.
+  void OnParentPermissionDialogDone(
+      extensions::SupervisedUserExtensionsDelegate::ParentPermissionDialogResult
           result);
+
+  // Called when the user dismisses the Extension Install Blocked By Parent
+  // Dialog.
+  void OnBlockedByParentDialogDone();
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
   // Starts/stops observing extension load notifications.
   void StartObserving();
@@ -98,17 +104,17 @@ class ExtensionEnableFlow : public extensions::LoadErrorReporter::Observer,
 
   void InstallPromptDone(ExtensionInstallPrompt::DoneCallbackPayload payload);
 
-  const raw_ptr<Profile> profile_;
-  const extensions::ExtensionId extension_id_;
-  const raw_ptr<ExtensionEnableFlowDelegate> delegate_;  // Not owned.
+  Profile* const profile_;
+  const std::string extension_id_;
+  ExtensionEnableFlowDelegate* const delegate_;  // Not owned.
 
   // Parent web contents for ExtensionInstallPrompt that may be created during
   // the flow. Note this is mutually exclusive with |parent_window_| below.
-  raw_ptr<content::WebContents> parent_contents_ = nullptr;
+  content::WebContents* parent_contents_ = nullptr;
 
   // Parent native window for ExtensionInstallPrompt. Note this is mutually
   // exclusive with |parent_contents_| above.
-  gfx::NativeWindow parent_window_ = gfx::NativeWindow();
+  gfx::NativeWindow parent_window_ = nullptr;
 
   std::unique_ptr<ExtensionInstallPrompt> prompt_;
 
@@ -122,6 +128,8 @@ class ExtensionEnableFlow : public extensions::LoadErrorReporter::Observer,
       load_error_observation_{this};
 
   base::WeakPtrFactory<ExtensionEnableFlow> weak_ptr_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(ExtensionEnableFlow);
 };
 
 #endif  // CHROME_BROWSER_UI_EXTENSIONS_EXTENSION_ENABLE_FLOW_H_

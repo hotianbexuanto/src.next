@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors
+// Copyright (c) 2013 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 
 #include <map>
 
-#include "base/memory/raw_ptr.h"
+#include "base/macros.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
 namespace ui {
@@ -26,9 +26,6 @@ class GlobalShortcutListener {
     // Called when your global shortcut (|accelerator|) is struck.
     virtual void OnKeyPressed(const ui::Accelerator& accelerator) = 0;
   };
-
-  GlobalShortcutListener(const GlobalShortcutListener&) = delete;
-  GlobalShortcutListener& operator=(const GlobalShortcutListener&) = delete;
 
   virtual ~GlobalShortcutListener();
 
@@ -88,12 +85,13 @@ class GlobalShortcutListener {
 
   // The map of accelerators that have been successfully registered as global
   // shortcuts and their observer.
-  typedef std::map<ui::Accelerator, raw_ptr<Observer, CtnExperimental>>
-      AcceleratorMap;
+  typedef std::map<ui::Accelerator, Observer*> AcceleratorMap;
   AcceleratorMap accelerator_map_;
 
   // Keeps track of whether shortcut handling is currently suspended.
   bool shortcut_handling_suspended_;
+
+  DISALLOW_COPY_AND_ASSIGN(GlobalShortcutListener);
 };
 
 }  // namespace extensions

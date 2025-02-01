@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,7 +16,6 @@
 #include "base/command_line.h"
 #include "base/memory/ptr_util.h"
 #include "chrome/browser/ash/exo/chrome_data_exchange_delegate.h"
-#include "chrome/browser/ash/exo/chrome_security_delegate.h"
 #include "components/exo/server/wayland_server_controller.h"
 
 // static
@@ -39,7 +38,6 @@ ExoParts::ExoParts()
     : arc_overlay_manager_(std::make_unique<ash::ArcOverlayManager>()) {
   wayland_server_ = exo::WaylandServerController::CreateIfNecessary(
       std::make_unique<ash::ChromeDataExchangeDelegate>(),
-      std::make_unique<ash::ChromeSecurityDelegate>(),
       std::make_unique<ash::ArcNotificationSurfaceManagerImpl>(),
       std::make_unique<ash::ArcInputMethodSurfaceManager>(),
       std::make_unique<ash::ArcToastSurfaceManager>());
