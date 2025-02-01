@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,23 +7,28 @@
 
 #include <stddef.h>
 
+#include <optional>
+
 #include "base/check_op.h"
 #include "base/gtest_prod_util.h"
 #include "base/lazy_instance.h"
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "content/browser/isolation_context.h"
+#include "content/browser/security/coop/coop_related_group.h"
 #include "content/browser/site_instance_group_manager.h"
 #include "content/browser/web_exposed_isolation_info.h"
 #include "content/common/content_export.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/render_process_host_observer.h"
+#include "content/public/browser/storage_partition_config.h"
 #include "url/origin.h"
 
 class GURL;
 
 namespace content {
 class SiteInfo;
+class SiteInstanceGroup;
 class SiteInstanceImpl;
 struct UrlInfo;
 
@@ -49,16 +54,16 @@ struct UrlInfo;
 // Thus, they must be rendered in the same process.
 //
 // A BrowsingInstance is live as long as any SiteInstance has a reference to
-// it.  A SiteInstance is live as long as any NavigationEntry or RenderViewHost
-// have references to it.  Because both classes are RefCounted, they do not
-// need to be manually deleted.
+// it, and thus as long as any SiteInstanceGroup within it exists.  A
+// SiteInstance is live as long as any NavigationEntry or RenderFrameHost have
+// references to it.  Because both classes are RefCounted, they do not need to
+// be manually deleted.
 //
 // BrowsingInstance has no public members, as it is designed to be
-// visible only from the SiteInstance class.  To get a new
+// visible only from the SiteInstance and CoopRelatedGroup classes. To get a new
 // SiteInstance that is part of the same BrowsingInstance, use
-// SiteInstance::GetRelatedSiteInstance.  Because of this,
-// BrowsingInstances and SiteInstances are tested together in
-// site_instance_unittest.cc.
+// SiteInstance::GetRelatedSiteInstance. Because of this, BrowsingInstances and
+// SiteInstances are tested together in site_instance_unittest.cc.
 //
 // Note that a browsing instance in the browser is independently tracked in
 // the renderer inside blink::Page::RelatedPages() method (in theory the browser
@@ -67,9 +72,16 @@ struct UrlInfo;
 ///////////////////////////////////////////////////////////////////////////////
 class CONTENT_EXPORT BrowsingInstance final
     : public base::RefCounted<BrowsingInstance> {
+ public:
+  BrowsingInstance(const BrowsingInstance&) = delete;
+  BrowsingInstance& operator=(const BrowsingInstance&) = delete;
+
  private:
   friend class base::RefCounted<BrowsingInstance>;
+  friend class SiteInstanceGroup;
   friend class SiteInstanceImpl;
+  friend class CoopRelatedGroup;
+  FRIEND_TEST_ALL_PREFIXES(SiteInstanceGroupTest, BrowsingInstanceLifetime);
   FRIEND_TEST_ALL_PREFIXES(SiteInstanceTest, OneSiteInstancePerSite);
   FRIEND_TEST_ALL_PREFIXES(SiteInstanceTest,
                            OneSiteInstancePerSiteInBrowserContext);
@@ -82,14 +94,38 @@ class CONTENT_EXPORT BrowsingInstance final
   static BrowsingInstanceId NextBrowsingInstanceId();
 
   // Create a new BrowsingInstance.
-  // |web_exposed_isolation_info| indicates whether the BrowsingInstance
+  //
+  // `web_exposed_isolation_info` indicates whether the BrowsingInstance
   // should contain only cross-origin isolated pages, i.e. pages with
   // cross-origin-opener-policy set to same-origin and
   // cross-origin-embedder-policy set to require-corp, and if so, from which
   // top level origin.
+  //
+  // `is_guest` specifies whether this BrowsingInstance will
+  // be used in a <webview> guest; `is_fenced` specifies whether this
+  // BrowsingInstance is used inside a fenced frame.
+  // `is_fixed_storage_partition` indicates whether the current
+  // StoragePartition will apply to future navigations. It must be set to true
+  // if `is_guest` is true. Note that `is_guest`, `is_fenced`, and
+  // `is_fixed_storage_partition` cannot change over the lifetime of the
+  // BrowsingInstance.
+  //
+  // `coop_related_group` represents the CoopRelatedGroup to which this
+  // BrowsingInstance belongs. Pages that live in BrowsingInstances in the same
+  // group can communicate with each other through a subset of the WindowProxy
+  // APIs. This is only used for COOP logic and for all other cases should
+  // simply be nullptr. The constructor will take care of building a new group.
+  //
+  // If `common_coop_origin` is set, it indicates that all documents hosted by
+  // the BrowsingInstance have the same COOP value defined by the given origin.
   explicit BrowsingInstance(
       BrowserContext* context,
-      const WebExposedIsolationInfo& web_exposed_isolation_info);
+      const WebExposedIsolationInfo& web_exposed_isolation_info,
+      bool is_guest,
+      bool is_fenced,
+      bool is_fixed_storage_partition,
+      const scoped_refptr<CoopRelatedGroup>& coop_related_group,
+      std::optional<url::Origin> common_coop_origin);
 
   ~BrowsingInstance();
 
@@ -100,6 +136,11 @@ class CONTENT_EXPORT BrowsingInstance final
   // be used to track this BrowsingInstance in other areas of the code, along
   // with any other state needed to make isolation decisions.
   const IsolationContext& isolation_context() { return isolation_context_; }
+
+  // Return true if the StoragePartition should be preserved across future
+  // navigations in the frames belonging to this BrowsingInstance. For <webview>
+  // tags, this always returns true.
+  bool is_fixed_storage_partition() { return is_fixed_storage_partition_; }
 
   // Get the SiteInstanceGroupManager that controls all of the SiteInstance
   // groups associated with this BrowsingInstance.
@@ -125,15 +166,52 @@ class CONTENT_EXPORT BrowsingInstance final
       const UrlInfo& url_info,
       bool allow_default_instance);
 
+  // Same as above, but if a new SiteInstance needs to be created, it will be
+  // part of `creation_group`. A SiteInstance in a different group may be
+  // returned, if a matching SiteInstance already exists in this
+  // BrowsingInstance.
+  scoped_refptr<SiteInstanceImpl> GetSiteInstanceForURL(
+      const UrlInfo& url_info,
+      SiteInstanceGroup* creation_group,
+      bool allow_default_instance);
+
+  // This is the same as GetSiteInstanceForURL, but requires a valid
+  // `creation_group`. The returned SiteInstance could be in a different group
+  // if it exists already. If it is being created, the new SiteInstance will be
+  // in `creation_group`.
+  scoped_refptr<SiteInstanceImpl> GetMaybeGroupRelatedSiteInstanceForURL(
+      const UrlInfo& url_info,
+      SiteInstanceGroup* creation_group);
+
+  // Searches existing SiteInstances in the BrowsingInstance and returns a
+  // pointer to the (unique) SiteInstance that matches `site_info`, if any.
+  // If no matching SiteInstance is found, then a new SiteInstance is created
+  // in this BrowsingInstance with its site set to `site_info`.
+  scoped_refptr<SiteInstanceImpl> GetSiteInstanceForSiteInfo(
+      const SiteInfo& site_info);
+
+  // Return a SiteInstance in the same CoopRelatedGroup as this
+  // BrowsingInstance. It might or might not be in a new BrowsingInstance, and
+  // if it reuses an existing BrowsingInstance of the group, it might reuse an
+  // appropriate SiteInstance as well.
+  scoped_refptr<SiteInstanceImpl> GetCoopRelatedSiteInstanceForURL(
+      const UrlInfo& url_info,
+      bool allow_default_instance);
+
   // Returns a SiteInfo with site and process-lock URLs for |url_info| that are
   // identical with what these values would be if we called
-  // GetSiteInstanceForURL() with the same |url_info| and
-  // |allow_default_instance|. This method is used when we need this
+  // GetSiteInstanceForURL() with the same `url_info` and
+  // `allow_default_instance`. This method is used when we need this
   // information, but do not want to create a SiteInstance yet.
   //
   // Note: Unlike ComputeSiteInfoForURL() this method can return a SiteInfo for
-  // a default SiteInstance, if |url_info| can be placed in the default
-  // SiteInstance and |allow_default_instance| is true.
+  // a default SiteInstance, if `url_info` can be placed in the default
+  // SiteInstance and `allow_default_instance` is true.
+  //
+  // Note: Since we're asking to get a SiteInfo that would belong in this
+  // BrowsingInstance, it is mandatory that |url_info|'s
+  // web_exposed_isolation_info is compatible with the BrowsingInstance's
+  // internal WebExposedIsolationInfo value.
   SiteInfo GetSiteInfoForURL(const UrlInfo& url_info,
                              bool allow_default_instance);
 
@@ -159,13 +237,27 @@ class CONTENT_EXPORT BrowsingInstance final
   // BrowsingInstance.
   void UnregisterSiteInstance(SiteInstanceImpl* site_instance);
 
-  // Tracks the number of WebContents currently in this BrowsingInstance.
-  size_t active_contents_count() const { return active_contents_count_; }
-  void increment_active_contents_count() { active_contents_count_++; }
-  void decrement_active_contents_count() {
-    DCHECK_LT(0u, active_contents_count_);
-    active_contents_count_--;
+  // Returns the token uniquely identifying the CoopRelatedGroup this
+  // BrowsingInstance belongs to. This might be used in the renderer, as opposed
+  // to IDs.
+  base::UnguessableToken coop_related_group_token() const {
+    return coop_related_group_->token();
   }
+
+  // Returns the token uniquely identifying this BrowsingInstance. See member
+  // declaration for more context.
+  base::UnguessableToken token() const { return token_; }
+
+  // Returns the total number of WebContents either living in this
+  // BrowsingInstance or that can communicate with it via the CoopRelatedGroup.
+  size_t GetCoopRelatedGroupActiveContentsCount();
+
+  // Tracks the number of WebContents currently in this BrowsingInstance.
+  // Note: We also separately track the number of WebContents in the entire
+  // CoopRelatedGroup, and keep the per-BrowsingInstance counts for validity
+  // checks.
+  void IncrementActiveContentsCount();
+  void DecrementActiveContentsCount();
 
   bool HasDefaultSiteInstance() const {
     return default_site_instance_ != nullptr;
@@ -179,14 +271,25 @@ class CONTENT_EXPORT BrowsingInstance final
   // Note: This should not be used by code outside this class.
   SiteInfo ComputeSiteInfoForURL(const UrlInfo& url_info) const;
 
+  // Computes the number of extra SiteInstances for each site due to OAC's
+  // splitting a site into isolated origins.
+  int EstimateOriginAgentClusterOverhead();
+
   // Map of SiteInfo to SiteInstance, to ensure we only have one SiteInstance
   // per SiteInfo. See https://crbug.com/1085275#c2 for the rationale behind
   // why SiteInfo is the right class to key this on.
-  typedef std::map<SiteInfo, SiteInstanceImpl*> SiteInstanceMap;
+  typedef std::map<SiteInfo, raw_ptr<SiteInstanceImpl, CtnExperimental>>
+      SiteInstanceMap;
 
   // Returns the cross-origin isolation status of the BrowsingInstance.
   const WebExposedIsolationInfo& web_exposed_isolation_info() const {
     return web_exposed_isolation_info_;
+  }
+
+  SiteInstanceImpl* default_site_instance() { return default_site_instance_; }
+
+  const std::optional<url::Origin>& common_coop_origin() const {
+    return common_coop_origin_;
   }
 
   // The next available browser-global BrowsingInstance ID.
@@ -219,18 +322,74 @@ class CONTENT_EXPORT BrowsingInstance final
 
   // SiteInstance to use if a URL does not correspond to an instance in
   // |site_instance_map_| and it does not require a dedicated process.
-  // This field and |default_process_| are mutually exclusive and this field
-  // should only be set if kProcessSharingWithStrictSiteInstances is not
-  // enabled. This is a raw pointer to avoid a reference cycle between the
-  // BrowsingInstance and the SiteInstanceImpl.
-  SiteInstanceImpl* default_site_instance_;
+  // This field and site_instance_group_manager_.default_process_ are mutually
+  // exclusive and this field should only be set if
+  // kProcessSharingWithStrictSiteInstances is not enabled. This is a raw
+  // pointer to avoid a reference cycle between the BrowsingInstance and the
+  // SiteInstanceImpl. Note: This can hold cross-origin isolated SiteInstances.
+  // It will however only do so under certain specific circumstances (for
+  // example on a low memory device), which don't use the COOP isolation
+  // heuristic that normally prevents the use of default SiteInstances for
+  // cross-origin isolated pages.
+  raw_ptr<SiteInstanceImpl> default_site_instance_;
 
   // The cross-origin isolation status of the BrowsingInstance. This indicates
   // whether this BrowsingInstance is hosting only cross-origin isolated pages
   // and if so, from which top level origin.
   const WebExposedIsolationInfo web_exposed_isolation_info_;
 
-  DISALLOW_COPY_AND_ASSIGN(BrowsingInstance);
+  // The StoragePartitionConfig that must be used by all SiteInstances in this
+  // BrowsingInstance. This will be set to the StoragePartitionConfig of the
+  // first SiteInstance that has its SiteInfo assigned in this
+  // BrowsingInstance, and cannot be changed afterwards.
+  //
+  // See crbug.com/1212266 for more context on why we track the
+  // StoragePartitionConfig here.
+  std::optional<StoragePartitionConfig> storage_partition_config_;
+
+  // The CoopRelatedGroup this BrowsingInstance belongs to. BrowsingInstances in
+  // the same CoopRelatedGroup have limited window proxy access to each other.
+  // In most cases, a CoopRelatedGroup will only contain a single
+  // BrowsingInstance, unless pages that use COOP: restrict-properties headers
+  // are involved.
+  scoped_refptr<CoopRelatedGroup> coop_related_group_;
+
+  // If set, indicates that all documents in this BrowsingInstance share the
+  // same COOP value defined by the given origin. In practice, this can only be
+  // the case for COOP: same-origin and COOP: restrict-properties.
+  //
+  // For COOP: same-origin, this will be enforced by COOP swap rules and the
+  // value is recorded for invariant checking.
+  //
+  // For COOP: restrict-properties, this is also used to make sure that the
+  // BrowsingInstance is suitable when we're trying to put a new document into
+  // an existing BrowsingInstance that is part of the CoopRelatedGroup. To
+  // prevent unwanted access, a document with COOP: restrict-properties set from
+  // origin a.com should only be put in a BrowsingInstance that holds such
+  // documents. This would otherwise break the access guarantees that we have
+  // given, of only being able to DOM script same-origin same-COOP documents,
+  // and to have limited cross-origin communication with all other pages.
+  //
+  // TODO(crbug.com/40879437): This assumes that popups opened from
+  // cross-origin iframes are opened with no-opener. Once COOP inheritance for
+  // those cases is figured out, change the mentions of origin to "COOP origin".
+  std::optional<url::Origin> common_coop_origin_;
+
+  // Set to true if the StoragePartition should be preserved across future
+  // navigations in the frames belonging to this BrowsingInstance. For <webview>
+  // tags, this is always true.
+  //
+  // TODO(crbug.com/40943418): We actually always want this behavior. Remove
+  // this bit when we are ready.
+  const bool is_fixed_storage_partition_;
+
+  // A token uniquely identifying this BrowsingInstance. This is used in case we
+  // need this information available in the renderer process, rather than
+  // sending an ID. Both IDs and Tokens are necessary, because some parts of the
+  // process model use the ordering of the IDs, that cannot be provided by
+  // tokens alone. Also note that IDs are defined in IsolationContext while
+  // tokens are more conveniently defined here.
+  const base::UnguessableToken token_ = base::UnguessableToken::Create();
 };
 
 }  // namespace content

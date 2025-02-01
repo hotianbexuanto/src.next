@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,7 @@
 
 #include "base/format_macros.h"
 #include "third_party/blink/public/platform/platform.h"
-#include "third_party/blink/renderer/bindings/core/v8/scheduled_action.h"
-#include "third_party/blink/renderer/bindings/core/v8/source_location.h"
+#include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
 #include "third_party/blink/renderer/core/core_probe_sink.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/events/event_listener.h"
@@ -17,6 +16,7 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
+#include "third_party/blink/renderer/platform/bindings/source_location.h"
 #include "v8/include/v8-metrics.h"
 
 namespace blink {
@@ -81,15 +81,32 @@ PerformanceMonitor::~PerformanceMonitor() {
   DCHECK(!local_root_);
 }
 
+void PerformanceMonitor::Dispose() {
+  if (!was_shutdown_) {
+    // `PerformanceMonitor` should never be deleted without having been
+    // `Shutdown()`. As a temporary workaround for crbug.com/337200890,
+    // unregister as a `TaskTimeObserver` if `Shutdown()` wasn't called.
+    //
+    // TODO(crbug.com/337200890): Remove when the root cause of the bug has been
+    // addressed.
+    Thread::Current()->RemoveTaskTimeObserver(this);
+  }
+}
+
 void PerformanceMonitor::Subscribe(Violation violation,
                                    base::TimeDelta threshold,
                                    Client* client) {
   DCHECK(violation < kAfterLast);
-  ClientThresholds* client_thresholds = subscriptions_.at(violation);
-  if (!client_thresholds) {
+  ClientThresholds* client_thresholds = nullptr;
+
+  auto it = subscriptions_.find(violation);
+  if (it == subscriptions_.end()) {
     client_thresholds = MakeGarbageCollected<ClientThresholds>();
     subscriptions_.Set(violation, client_thresholds);
+  } else {
+    client_thresholds = it->value;
   }
+
   client_thresholds->Set(client, threshold);
   UpdateInstrumentation();
 }
@@ -108,6 +125,7 @@ void PerformanceMonitor::Shutdown() {
   Thread::Current()->RemoveTaskTimeObserver(this);
   local_root_->GetProbeSink()->RemovePerformanceMonitor(this);
   local_root_ = nullptr;
+  was_shutdown_ = true;
 }
 
 void PerformanceMonitor::UpdateInstrumentation() {
@@ -233,8 +251,9 @@ void PerformanceMonitor::Did(const probe::CallFunction& probe) {
                                     : String(user_callback->atomic_name);
   String text = String::Format("'%s' handler took %" PRId64 "ms",
                                name.Utf8().c_str(), duration.InMilliseconds());
-  InnerReportGenericViolation(probe.context, handler_type, text, duration,
-                              SourceLocation::FromFunction(probe.function));
+  InnerReportGenericViolation(
+      probe.context, handler_type, text, duration,
+      CaptureSourceLocation(probe.context->GetIsolate(), probe.function));
 }
 
 void PerformanceMonitor::Will(const probe::V8Compile& probe) {
@@ -300,13 +319,18 @@ void PerformanceMonitor::DidProcessTask(base::TimeTicks start_time,
   if (!thresholds_[kLongTask].is_zero()) {
     base::TimeDelta task_time = end_time - start_time;
     if (task_time > thresholds_[kLongTask]) {
-      ClientThresholds* client_thresholds = subscriptions_.at(kLongTask);
-      for (const auto& it : *client_thresholds) {
-        if (it.value < task_time) {
-          it.key->ReportLongTask(
-              start_time, end_time,
-              task_has_multiple_contexts_ ? nullptr : task_execution_context_,
-              task_has_multiple_contexts_);
+      auto subscriptions_it = subscriptions_.find(kLongTask);
+      if (subscriptions_it != subscriptions_.end()) {
+        ClientThresholds* client_thresholds = subscriptions_it->value;
+        DCHECK(client_thresholds);
+
+        for (const auto& it : *client_thresholds) {
+          if (it.value < task_time) {
+            it.key->ReportLongTask(
+                start_time, end_time,
+                task_has_multiple_contexts_ ? nullptr : task_execution_context_,
+                task_has_multiple_contexts_);
+          }
         }
       }
     }
@@ -333,11 +357,14 @@ void PerformanceMonitor::InnerReportGenericViolation(
     const String& text,
     base::TimeDelta time,
     std::unique_ptr<SourceLocation> location) {
-  ClientThresholds* client_thresholds = subscriptions_.at(violation);
-  if (!client_thresholds)
+  auto subscriptions_it = subscriptions_.find(violation);
+  if (subscriptions_it == subscriptions_.end())
     return;
+
   if (!location)
-    location = SourceLocation::Capture(context);
+    location = CaptureSourceLocation(context);
+
+  ClientThresholds* client_thresholds = subscriptions_it->value;
   for (const auto& it : *client_thresholds) {
     if (it.value < time)
       it.key->ReportGenericViolation(violation, text, time, location.get());

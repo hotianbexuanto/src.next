@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,38 +7,34 @@
 
 #include <stddef.h>
 
-#include <list>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "base/containers/unique_ptr_adapters.h"
 #include "base/gtest_prod_util.h"
-#include "base/macros.h"
-#include "base/memory/ref_counted.h"
+#include "base/memory/raw_ptr.h"
 #include "net/base/host_port_pair.h"
 #include "net/base/load_states.h"
 #include "net/base/net_export.h"
+#include "net/base/network_anonymization_key.h"
 #include "net/base/privacy_mode.h"
 #include "net/base/proxy_server.h"
 #include "net/base/request_priority.h"
+#include "net/dns/public/secure_dns_policy.h"
 #include "net/http/http_request_info.h"
 #include "net/http/http_server_properties.h"
 #include "net/http/http_stream_request.h"
 #include "net/log/net_log_source.h"
 #include "net/log/net_log_with_source.h"
 #include "net/proxy_resolution/proxy_info.h"
+#include "net/socket/socket_tag.h"
 #include "net/socket/ssl_client_socket.h"
 #include "net/spdy/spdy_session_key.h"
 #include "net/ssl/ssl_config.h"
 #include "net/websockets/websocket_handshake_stream_base.h"
-
-namespace base {
-namespace trace_event {
-class ProcessMemoryDump;
-}
-}
 
 namespace net {
 
@@ -53,17 +49,78 @@ class NET_EXPORT HttpStreamFactory {
   class NET_EXPORT_PRIVATE JobFactory;
 
   enum JobType {
+    // Job that will connect via HTTP/1 or HTTP/2. This may be paused for a
+    // while when ALTERNATIVE or DNS_ALPN_H3 job was created.
     MAIN,
+    // Job that will connect via HTTP/3 iff Chrome has received an Alt-Svc
+    // header from the origin.
     ALTERNATIVE,
+    // Job that will connect via HTTP/3 iff an "h3" value was found in the ALPN
+    // list of an HTTPS DNS record.
+    DNS_ALPN_H3,
+    // Job that will preconnect. This uses HTTP/3 iff Chrome has received an
+    // Alt-Svc header from the origin. Otherwise, it use HTTP/1 or HTTP/2.
     PRECONNECT,
+    // Job that will preconnect via HTTP/3 iff an "h3" value was found in the
+    // ALPN list of an HTTPS DNS record.
+    PRECONNECT_DNS_ALPN_H3,
   };
 
+  // This is the subset of HttpRequestInfo needed by the HttpStreamFactory
+  // layer. It's separated out largely to avoid dangling pointers when jobs are
+  // orphaned, though it also avoids creating multiple copies of fields that
+  // aren't needed, like HttpRequestHeaders.
+  //
+  // See HttpRequestInfo for description of most fields.
+  struct NET_EXPORT StreamRequestInfo {
+    StreamRequestInfo();
+    explicit StreamRequestInfo(const HttpRequestInfo& http_request_info);
+
+    StreamRequestInfo(const StreamRequestInfo& other);
+    StreamRequestInfo& operator=(const StreamRequestInfo& other);
+    StreamRequestInfo(StreamRequestInfo&& other);
+    StreamRequestInfo& operator=(StreamRequestInfo&& other);
+
+    ~StreamRequestInfo();
+
+    std::string method;
+    NetworkAnonymizationKey network_anonymization_key;
+    MutableNetworkTrafficAnnotationTag traffic_annotation;
+
+    // Whether HTTP/1.x can be used. Extracted from
+    // UploadDataStream::AllowHTTP1().
+    bool is_http1_allowed = true;
+
+    int load_flags = 0;
+    PrivacyMode privacy_mode = PRIVACY_MODE_DISABLED;
+    SecureDnsPolicy secure_dns_policy = SecureDnsPolicy::kAllow;
+    SocketTag socket_tag;
+  };
+
+  // Calculates an appropriate SPDY session key for the given parameters.
+  static SpdySessionKey GetSpdySessionKey(
+      const ProxyChain& proxy_chain,
+      const GURL& origin_url,
+      const StreamRequestInfo& request_info);
+
+  // Returns whether an appropriate SPDY session would correspond to either a
+  // connection to the last proxy server in the chain (for the traditional HTTP
+  // proxying behavior of sending a GET request to the proxy server) or a
+  // connection through the entire proxy chain (for tunneled requests). Note
+  // that for QUIC proxies we no longer support the former.
+  static bool IsGetToProxy(const ProxyChain& proxy_chain,
+                           const GURL& origin_url);
+
   explicit HttpStreamFactory(HttpNetworkSession* session);
+
+  HttpStreamFactory(const HttpStreamFactory&) = delete;
+  HttpStreamFactory& operator=(const HttpStreamFactory&) = delete;
+
   virtual ~HttpStreamFactory();
 
   void ProcessAlternativeServices(
       HttpNetworkSession* session,
-      const net::NetworkIsolationKey& network_isolation_key,
+      const NetworkAnonymizationKey& network_anonymization_key,
       const HttpResponseHeaders* headers,
       const url::SchemeHostPort& http_server);
 
@@ -72,8 +129,7 @@ class NET_EXPORT HttpStreamFactory {
   std::unique_ptr<HttpStreamRequest> RequestStream(
       const HttpRequestInfo& info,
       RequestPriority priority,
-      const SSLConfig& server_ssl_config,
-      const SSLConfig& proxy_ssl_config,
+      const std::vector<SSLConfig::CertAndStatus>& allowed_bad_certs,
       HttpStreamRequest::Delegate* delegate,
       bool enable_ip_based_pooling,
       bool enable_alternative_services,
@@ -85,8 +141,7 @@ class NET_EXPORT HttpStreamFactory {
   std::unique_ptr<HttpStreamRequest> RequestWebSocketHandshakeStream(
       const HttpRequestInfo& info,
       RequestPriority priority,
-      const SSLConfig& server_ssl_config,
-      const SSLConfig& proxy_ssl_config,
+      const std::vector<SSLConfig::CertAndStatus>& allowed_bad_certs,
       HttpStreamRequest::Delegate* delegate,
       WebSocketHandshakeStreamBase::CreateHelper* create_helper,
       bool enable_ip_based_pooling,
@@ -96,27 +151,23 @@ class NET_EXPORT HttpStreamFactory {
   // Request a BidirectionalStreamImpl.
   // Will call delegate->OnBidirectionalStreamImplReady on successful
   // completion.
-  // TODO(https://crbug.com/836823): This method is virtual to avoid cronet_test
+  // TODO(crbug.com/40573539): This method is virtual to avoid cronet_test
   // failure on iOS that is caused by Network Thread TLS getting the wrong slot.
   virtual std::unique_ptr<HttpStreamRequest> RequestBidirectionalStreamImpl(
       const HttpRequestInfo& info,
       RequestPriority priority,
-      const SSLConfig& server_ssl_config,
-      const SSLConfig& proxy_ssl_config,
+      const std::vector<SSLConfig::CertAndStatus>& allowed_bad_certs,
       HttpStreamRequest::Delegate* delegate,
       bool enable_ip_based_pooling,
       bool enable_alternative_services,
       const NetLogWithSource& net_log);
 
   // Requests that enough connections for |num_streams| be opened.
-  void PreconnectStreams(int num_streams, const HttpRequestInfo& info);
+  //
+  // TODO: Make this take StreamRequestInfo instead.
+  void PreconnectStreams(int num_streams, HttpRequestInfo& info);
 
   const HostMappingRules* GetHostMappingRules() const;
-
-  // Dumps memory allocation stats. |parent_dump_absolute_name| is the name
-  // used by the parent MemoryAllocatorDump in the memory dump hierarchy.
-  void DumpMemoryStats(base::trace_event::ProcessMemoryDump* pmd,
-                       const std::string& parent_absolute_name) const;
 
  private:
   FRIEND_TEST_ALL_PREFIXES(HttpStreamRequestTest, SetPriority);
@@ -142,8 +193,7 @@ class NET_EXPORT HttpStreamFactory {
   std::unique_ptr<HttpStreamRequest> RequestStreamInternal(
       const HttpRequestInfo& info,
       RequestPriority priority,
-      const SSLConfig& server_ssl_config,
-      const SSLConfig& proxy_ssl_config,
+      const std::vector<SSLConfig::CertAndStatus>& allowed_bad_certs,
       HttpStreamRequest::Delegate* delegate,
       WebSocketHandshakeStreamBase::CreateHelper* create_helper,
       HttpStreamRequest::StreamType stream_type,
@@ -152,11 +202,6 @@ class NET_EXPORT HttpStreamFactory {
       bool enable_alternative_services,
       const NetLogWithSource& net_log);
 
-  // Called when the Job detects that the endpoint indicated by the
-  // Alternate-Protocol does not work. Lets the factory update
-  // HttpAlternateProtocols with the failure and resets the SPDY session key.
-  void OnBrokenAlternateProtocol(const Job*, const HostPortPair& origin);
-
   // Called when the Preconnect completes. Used for testing.
   virtual void OnPreconnectsCompleteInternal() {}
 
@@ -164,7 +209,10 @@ class NET_EXPORT HttpStreamFactory {
   // from |job_controller_set_|.
   void OnJobControllerComplete(JobController* controller);
 
-  HttpNetworkSession* const session_;
+  const raw_ptr<HttpNetworkSession> session_;
+
+  // Factory used by job controllers for creating jobs.
+  std::unique_ptr<JobFactory> job_factory_;
 
   // All Requests/Preconnects are assigned with a JobController to manage
   // serving Job(s). JobController might outlive Request when Request
@@ -172,11 +220,6 @@ class NET_EXPORT HttpStreamFactory {
   // deleted from |job_controller_set_| when it determines the completion of
   // its work.
   JobControllerSet job_controller_set_;
-
-  // Factory used by job controllers for creating jobs.
-  std::unique_ptr<JobFactory> job_factory_;
-
-  DISALLOW_COPY_AND_ASSIGN(HttpStreamFactory);
 };
 
 }  // namespace net

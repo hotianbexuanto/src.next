@@ -28,16 +28,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/351564777): Remove this and convert code to safer constructs.
+#pragma allow_unsafe_buffers
+#endif
+
 #include "third_party/blink/renderer/platform/graphics/logging_canvas.h"
 
 #include <unicode/unistr.h>
 
-#include "base/cxx17_backports.h"
 #include "base/logging.h"
-#include "base/sys_byteorder.h"
 #include "build/build_config.h"
-#include "third_party/blink/renderer/platform/geometry/int_size.h"
-#include "third_party/blink/renderer/platform/graphics/skia/image_pixel_locker.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
 #include "third_party/blink/renderer/platform/image-encoders/image_encoder.h"
 #include "third_party/blink/renderer/platform/wtf/text/base64.h"
@@ -48,6 +49,7 @@
 #include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkRRect.h"
 #include "third_party/skia/include/core/SkRect.h"
+#include "ui/gfx/geometry/size.h"
 
 namespace blink {
 
@@ -84,7 +86,6 @@ String PointModeName(SkCanvas::PointMode mode) {
       return "Polygon";
     default:
       NOTREACHED();
-      return "?";
   };
 }
 
@@ -128,7 +129,6 @@ String RrectTypeName(SkRRect::Type type) {
       return "Complex";
     default:
       NOTREACHED();
-      return "?";
   };
 }
 
@@ -144,7 +144,6 @@ String RadiusName(SkRRect::Corner corner) {
       return "lowerLeftRadius";
     default:
       NOTREACHED();
-      return "?";
   }
 }
 
@@ -173,7 +172,6 @@ String FillTypeName(SkPathFillType type) {
       return "InverseEvenOdd";
     default:
       NOTREACHED();
-      return "?";
   };
 }
 
@@ -195,7 +193,6 @@ VerbParams SegmentParams(SkPath::Verb verb) {
       return VerbParams("Done", 0, 0);
     default:
       NOTREACHED();
-      return VerbParams("?", 0, 0);
   };
 }
 
@@ -213,7 +210,7 @@ std::unique_ptr<JSONObject> ObjectForSkPath(const SkPath& path) {
     auto path_point_item = std::make_unique<JSONObject>();
     path_point_item->SetString("verb", verb_params.name);
     DCHECK_LE(verb_params.point_count + verb_params.point_offset,
-              base::size(points));
+              std::size(points));
     path_point_item->SetArray(
         "points", ArrayForSkPoints(verb_params.point_count,
                                    points + verb_params.point_offset));
@@ -281,7 +278,6 @@ String StrokeCapName(SkPaint::Cap cap) {
       return "Square";
     default:
       NOTREACHED();
-      return "?";
   };
 }
 
@@ -295,7 +291,6 @@ String StrokeJoinName(SkPaint::Join join) {
       return "Bevel";
     default:
       NOTREACHED();
-      return "?";
   };
 }
 
@@ -307,7 +302,6 @@ String StyleName(SkPaint::Style style) {
       return "Stroke";
     default:
       NOTREACHED();
-      return "?";
   };
 }
 

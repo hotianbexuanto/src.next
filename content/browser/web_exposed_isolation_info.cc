@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,11 +6,13 @@
 
 #include <ostream>
 
+#include "base/notreached.h"
+
 namespace content {
 
 // static
 WebExposedIsolationInfo WebExposedIsolationInfo::CreateNonIsolated() {
-  return WebExposedIsolationInfo(absl::nullopt /* origin */,
+  return WebExposedIsolationInfo(std::nullopt /* origin */,
                                  false /* isolated_application */);
 }
 
@@ -24,8 +26,35 @@ WebExposedIsolationInfo WebExposedIsolationInfo::CreateIsolatedApplication(
   return WebExposedIsolationInfo(origin, true /* isolated_application */);
 }
 
+bool WebExposedIsolationInfo::AreCompatible(const WebExposedIsolationInfo& a,
+                                            const WebExposedIsolationInfo& b) {
+  return a == b;
+}
+
+bool WebExposedIsolationInfo::AreCompatible(
+    const std::optional<WebExposedIsolationInfo>& a,
+    const WebExposedIsolationInfo& b) {
+  if (!a.has_value())
+    return true;
+  return AreCompatible(a.value(), b);
+}
+
+bool WebExposedIsolationInfo::AreCompatible(
+    const WebExposedIsolationInfo& a,
+    const std::optional<WebExposedIsolationInfo>& b) {
+  return AreCompatible(b, a);
+}
+
+bool WebExposedIsolationInfo::AreCompatible(
+    const std::optional<WebExposedIsolationInfo>& a,
+    const std::optional<WebExposedIsolationInfo>& b) {
+  if (!a.has_value() || !b.has_value())
+    return true;
+  return AreCompatible(a.value(), b.value());
+}
+
 WebExposedIsolationInfo::WebExposedIsolationInfo(
-    const absl::optional<url::Origin>& origin,
+    const std::optional<url::Origin>& origin,
     bool isolated_application)
     : origin_(origin), isolated_application_(isolated_application) {}
 
@@ -80,6 +109,15 @@ bool WebExposedIsolationInfo::operator<(
   return false;
 }
 
+void WebExposedIsolationInfo::WriteIntoTrace(
+    perfetto::TracedProto<TraceProto> proto) const {
+  proto->set_is_isolated(is_isolated());
+  if (is_isolated()) {
+    proto->set_origin(origin_->GetDebugString());
+  }
+  proto->set_is_isolated_application(is_isolated_application());
+}
+
 std::ostream& operator<<(std::ostream& out,
                          const WebExposedIsolationInfo& info) {
   out << "{";
@@ -91,4 +129,5 @@ std::ostream& operator<<(std::ostream& out,
   out << "}";
   return out;
 }
+
 }  // namespace content

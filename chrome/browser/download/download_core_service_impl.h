@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,19 +7,19 @@
 
 #include <memory>
 
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
+#include "build/build_config.h"
 #include "chrome/browser/download/download_core_service.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "extensions/buildflags/buildflags.h"
 
-#if !defined(OS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/download/download_shelf_controller.h"
 #endif
 
 class ChromeDownloadManagerDelegate;
 class DownloadHistory;
 class DownloadUIController;
-class ExtensionDownloadsEventRouter;
 class Profile;
 
 namespace content {
@@ -34,6 +34,10 @@ class ExtensionDownloadsEventRouter;
 class DownloadCoreServiceImpl : public DownloadCoreService {
  public:
   explicit DownloadCoreServiceImpl(Profile* profile);
+
+  DownloadCoreServiceImpl(const DownloadCoreServiceImpl&) = delete;
+  DownloadCoreServiceImpl& operator=(const DownloadCoreServiceImpl&) = delete;
+
   ~DownloadCoreServiceImpl() override;
 
   // DownloadCoreService
@@ -43,11 +47,13 @@ class DownloadCoreServiceImpl : public DownloadCoreService {
   extensions::ExtensionDownloadsEventRouter* GetExtensionEventRouter() override;
 #endif
   bool HasCreatedDownloadManager() override;
-  int NonMaliciousDownloadCount() const override;
-  void CancelDownloads() override;
+  int BlockingShutdownCount() const override;
+  void CancelDownloads(
+      DownloadCoreService::CancelDownloadsTrigger trigger) override;
   void SetDownloadManagerDelegateForTesting(
       std::unique_ptr<ChromeDownloadManagerDelegate> delegate) override;
-  bool IsShelfEnabled() override;
+  bool IsDownloadUiEnabled() override;
+  DownloadUIController* GetDownloadUIController() override;
   void SetDownloadHistoryForTesting(
       std::unique_ptr<DownloadHistory> download_history) override;
 
@@ -56,7 +62,7 @@ class DownloadCoreServiceImpl : public DownloadCoreService {
 
  private:
   bool download_manager_created_;
-  Profile* profile_;
+  raw_ptr<Profile> profile_;
 
   // ChromeDownloadManagerDelegate may be the target of callbacks from
   // the history service/DB thread and must be kept alive for those
@@ -72,7 +78,7 @@ class DownloadCoreServiceImpl : public DownloadCoreService {
   // should be destroyed before the latter.
   std::unique_ptr<DownloadUIController> download_ui_;
 
-#if !defined(OS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID)
   std::unique_ptr<DownloadShelfController> download_shelf_controller_;
 #endif
 
@@ -90,8 +96,6 @@ class DownloadCoreServiceImpl : public DownloadCoreService {
   std::unique_ptr<extensions::ExtensionDownloadsEventRouter>
       extension_event_router_;
 #endif
-
-  DISALLOW_COPY_AND_ASSIGN(DownloadCoreServiceImpl);
 };
 
 #endif  // CHROME_BROWSER_DOWNLOAD_DOWNLOAD_CORE_SERVICE_IMPL_H_

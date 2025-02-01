@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,11 +14,6 @@
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 
 namespace blink {
-
-StaticRange::StaticRange(Document& document)
-    : owner_document_(document),
-      start_container_(document),
-      end_container_(document) {}
 
 StaticRange::StaticRange(Document& document,
                          Node* start_container,
@@ -62,32 +57,10 @@ StaticRange* StaticRange::Create(Document& document,
       static_range_init->endOffset());
 }
 
-namespace {
-
-// Returns the lowest ancestor of |node| in the tree that has a containment set.
-Node* GetLowestContainAncestor(const Node* node) {
-  for (Node& ancestor : NodeTraversal::InclusiveAncestorsOf(*node)) {
-    if (LayoutObject* node_layout_object = ancestor.GetLayoutObject()) {
-      if (node_layout_object->ShouldApplyAnyContainment()) {
-        return &ancestor;
-      }
-    }
-  }
-  return nullptr;
-}
-
-}  // namespace
-
-// Returns true if the range crosses any css-contain subtree boundary.
-bool StaticRange::CrossesContainBoundary() const {
-  return GetLowestContainAncestor(start_container_) !=
-         GetLowestContainAncestor(end_container_);
-}
-
 bool StaticRange::IsValid() const {
-  if (dom_tree_version_ == owner_document_->DomTreeVersion())
+  if (dom_tree_version_for_is_valid_ == owner_document_->DomTreeVersion())
     return is_valid_;
-  dom_tree_version_ = owner_document_->DomTreeVersion();
+  dom_tree_version_for_is_valid_ = owner_document_->DomTreeVersion();
 
   // The full list of checks is:
   //  1) The start offset is between 0 and the start container’s node length
@@ -106,16 +79,6 @@ bool StaticRange::IsValid() const {
                                 end_offset_) <= 0;
 
   return is_valid_;
-}
-
-void StaticRange::setStart(Node* container, unsigned offset) {
-  start_container_ = container;
-  start_offset_ = offset;
-}
-
-void StaticRange::setEnd(Node* container, unsigned offset) {
-  end_container_ = container;
-  end_offset_ = offset;
 }
 
 Range* StaticRange::toRange(ExceptionState& exception_state) const {

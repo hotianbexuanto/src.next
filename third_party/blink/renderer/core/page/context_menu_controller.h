@@ -31,7 +31,7 @@
 #include "third_party/blink/public/mojom/context_menu/context_menu.mojom-blink.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
-#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_receiver.h"
 
 namespace blink {
@@ -42,6 +42,7 @@ class LocalFrame;
 class MouseEvent;
 class Page;
 struct ContextMenuData;
+struct Impression;
 
 class CORE_EXPORT ContextMenuController final
     : public GarbageCollected<ContextMenuController>,
@@ -70,7 +71,8 @@ class CORE_EXPORT ContextMenuController final
 
   // mojom::blink::ContextMenuClient methods.
   void CustomContextMenuAction(uint32_t action) override;
-  void ContextMenuClosed(const KURL& link_followed) override;
+  void ContextMenuClosed(const KURL& link_followed,
+                         const std::optional<Impression>&) override;
 
   // These values are persisted to logs. Entries should not be renumbered and
   // numeric values should never be reused.  Keep in sync with enum in

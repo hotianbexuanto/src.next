@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium Authors. All rights reserved.
+# Copyright 2014 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,7 +11,6 @@ blink_core_output_dir = "$root_gen_dir/third_party/blink/renderer/core"
 # modify the default lists of configs set in the build as appropriate for core
 # targets. This avoids duplicating logic across many targets.
 core_config_add = [
-  "//build/config/compiler:wexit_time_destructors",
   "//third_party/blink/renderer:config",
   "//third_party/blink/renderer:non_test_config",
   "//third_party/blink/renderer/core:config",
@@ -91,33 +90,4 @@ set_defaults("blink_core_sources") {
   # is the list normally applied to static libraries and source sets.
   configs = default_compiler_configs - core_config_remove + core_config_add
   configs += [ "//third_party/blink/renderer/core:blink_core_pch" ]
-}
-
-template("blink_core_tests") {
-  source_set(target_name) {
-    # The visibility will get overridden by forward_variables_from below if the
-    # invoker defined it.
-    visibility = [ "//third_party/blink/renderer/core/*" ]
-    testonly = true
-
-    deps = [
-      "//testing/gmock",
-      "//testing/gtest",
-      "//third_party/blink/renderer/core",
-    ]
-    if (defined(invoker.deps)) {
-      deps += invoker.deps
-    }
-
-    # Take everything else not handled above from the invoker.
-    forward_variables_from(invoker, "*", [ "deps" ])
-  }
-}
-set_defaults("blink_core_tests") {
-  configs = default_compiler_configs
-  configs += [
-    "//third_party/blink/renderer:config",
-    "//third_party/blink/renderer/core:blink_core_pch",
-    "//third_party/blink/renderer:inside_blink",
-  ]
 }

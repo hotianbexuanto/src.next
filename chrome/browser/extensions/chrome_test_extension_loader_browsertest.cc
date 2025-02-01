@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,8 +24,8 @@ namespace extensions {
 
 class ChromeTestExtensionLoaderUnitTest : public ExtensionApiTest {
  public:
-  ChromeTestExtensionLoaderUnitTest() {}
-  ~ChromeTestExtensionLoaderUnitTest() override {}
+  ChromeTestExtensionLoaderUnitTest() = default;
+  ~ChromeTestExtensionLoaderUnitTest() override = default;
 
   void SetUpOnMainThread() override {
     ExtensionApiTest::SetUpOnMainThread();
@@ -84,8 +84,9 @@ IN_PROC_BROWSER_TEST_F(ChromeTestExtensionLoaderUnitTest,
                   ->HasLoadedScripts());
 
   // Sanity check: Test that the scripts inject.
-  ui_test_utils::NavigateToURL(
-      browser(), embedded_test_server()->GetURL("example.com", "/simple.html"));
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_test_server()->GetURL("example.com", "/simple.html")));
 
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();

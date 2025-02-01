@@ -1,9 +1,10 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
+
+#include "chrome/browser/ui/browser.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/web_contents.h"
@@ -26,12 +27,11 @@ class TabUIHelperWithPrerenderingTest : public InProcessBrowserTest {
       const TabUIHelperWithPrerenderingTest&) = delete;
 
   void SetUp() override {
-    feature_list_.InitAndEnableFeature(blink::features::kPrerender2);
+    prerender_test_helper_.RegisterServerRequestMonitor(embedded_test_server());
     InProcessBrowserTest::SetUp();
   }
 
   void SetUpOnMainThread() override {
-    prerender_test_helper_.SetUpOnMainThread(embedded_test_server());
     host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(embedded_test_server()->Start());
   }
@@ -46,7 +46,6 @@ class TabUIHelperWithPrerenderingTest : public InProcessBrowserTest {
 
  private:
   content::test::PrerenderTestHelper prerender_test_helper_;
-  base::test::ScopedFeatureList feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(TabUIHelperWithPrerenderingTest,
@@ -58,7 +57,7 @@ IN_PROC_BROWSER_TEST_F(TabUIHelperWithPrerenderingTest,
 
   TabUIHelper* tab_ui_helper = TabUIHelper::FromWebContents(GetWebContents());
   std::u16string primary_title = tab_ui_helper->GetTitle();
-  gfx::Image primary_favicon = tab_ui_helper->GetFavicon();
+  ui::ImageModel primary_favicon = tab_ui_helper->GetFavicon();
   bool primary_should_hide_throbber = tab_ui_helper->ShouldHideThrobber();
 
   // Set |create_by_session_restore_| to true to check if the value is changed

@@ -1,9 +1,11 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/barrier_closure.h"
-#include "base/bind.h"
+#include "base/containers/contains.h"
+#include "base/functional/bind.h"
+#include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "content/public/browser/content_browser_client.h"
@@ -12,6 +14,7 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/content_browser_test.h"
+#include "content/public/test/content_browser_test_content_browser_client.h"
 #include "content/public/test/content_browser_test_utils.h"
 #include "content/shell/browser/shell.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -19,7 +22,7 @@
 #include "net/test/embedded_test_server/http_response.h"
 #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
 
-#if defined(OS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
 #include "base/system/sys_info.h"
 #endif
 
@@ -27,7 +30,8 @@ namespace content {
 
 namespace {
 
-class MockContentBrowserClient final : public ContentBrowserClient {
+class MockContentBrowserClient final
+    : public ContentBrowserTestContentBrowserClient {
  public:
   void UpdateRendererPreferencesForWorker(
       BrowserContext*,
@@ -47,10 +51,10 @@ class MockContentBrowserClient final : public ContentBrowserClient {
 class DoNotTrackTest : public ContentBrowserTest {
  protected:
   void SetUpOnMainThread() override {
-#if defined(OS_ANDROID)
-    // TODO(crbug.com/864403): It seems that we call unsupported Android APIs on
-    // KitKat when we set a ContentBrowserClient. Don't call such APIs and make
-    // this test available on KitKat.
+#if BUILDFLAG(IS_ANDROID)
+    // TODO(crbug.com/40585282): It seems that we call unsupported Android APIs
+    // on KitKat when we set a ContentBrowserClient. Don't call such APIs and
+    // make this test available on KitKat.
     int32_t major_version = 0, minor_version = 0, bugfix_version = 0;
     base::SysInfo::OperatingSystemVersionNumbers(&major_version, &minor_version,
                                                  &bugfix_version);
@@ -58,19 +62,15 @@ class DoNotTrackTest : public ContentBrowserTest {
       return;
 #endif
 
-    original_client_ = SetBrowserClientForTesting(&client_);
+    client_ = std::make_unique<MockContentBrowserClient>();
   }
-  void TearDownOnMainThread() override {
-    if (original_client_)
-      SetBrowserClientForTesting(original_client_);
-  }
+
+  void TearDownOnMainThread() override { client_.reset(); }
 
   // Returns false if we cannot enable do not track. It happens only when
   // Android Kitkat or older systems.
   bool EnableDoNotTrack() {
-    if (!original_client_)
-      return false;
-    client_.EnableDoNotTrack();
+    client_->EnableDoNotTrack();
     blink::RendererPreferences* prefs =
         shell()->web_contents()->GetMutableRendererPrefs();
     EXPECT_FALSE(prefs->enable_do_not_track);
@@ -93,8 +93,7 @@ class DoNotTrackTest : public ContentBrowserTest {
   }
 
  private:
-  ContentBrowserClient* original_client_ = nullptr;
-  MockContentBrowserClient client_;
+  std::unique_ptr<MockContentBrowserClient> client_;
 };
 
 std::unique_ptr<net::test_server::HttpResponse>
@@ -172,7 +171,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest, Worker) {
       shell(), GetURL("/workers/create_worker.html?worker_url=/capture")));
   loop.Run();
 
-  EXPECT_TRUE(header_map.find("DNT") != header_map.end());
+  EXPECT_TRUE(base::Contains(header_map, "DNT"));
   EXPECT_EQ("1", header_map["DNT"]);
 
   // Wait until the worker script is loaded to stop the test from crashing
@@ -183,7 +182,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest, Worker) {
 // Checks that the DNT header is sent in a request for shared worker script.
 // Disabled on Android since a shared worker is not available on Android:
 // crbug.com/869745.
-#if defined(OS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
 #define MAYBE_SharedWorker DISABLED_SharedWorker
 #else
 #define MAYBE_SharedWorker SharedWorker
@@ -204,7 +203,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest, MAYBE_SharedWorker) {
       GetURL("/workers/create_shared_worker.html?worker_url=/capture")));
   loop.Run();
 
-  EXPECT_TRUE(header_map.find("DNT") != header_map.end());
+  EXPECT_TRUE(base::Contains(header_map, "DNT"));
   EXPECT_EQ("1", header_map["DNT"]);
 
   // Wait until the worker script is loaded to stop the test from crashing
@@ -230,7 +229,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest, ServiceWorker_Register) {
   EXPECT_EQ("DONE", EvalJs(shell(), "register('/capture');"));
   loop.Run();
 
-  EXPECT_TRUE(header_map.find("DNT") != header_map.end());
+  EXPECT_TRUE(base::Contains(header_map, "DNT"));
   EXPECT_EQ("1", header_map["DNT"]);
 
   // Service worker doesn't have to wait for onmessage event because
@@ -256,7 +255,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest, ModuleServiceWorker_Register) {
   EXPECT_EQ("DONE", EvalJs(shell(), "register('/capture', '', 'module');"));
   loop.Run();
 
-  EXPECT_TRUE(header_map.find("DNT") != header_map.end());
+  EXPECT_TRUE(base::Contains(header_map, "DNT"));
   EXPECT_EQ("1", header_map["DNT"]);
 
   // Module Service worker doesn't have to wait for onmessage event because
@@ -290,7 +289,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest,
             EvalJs(shell(), "register('/captureWorker','', 'module');"));
   loop.Run();
 
-  EXPECT_TRUE(header_map.find("DNT") != header_map.end());
+  EXPECT_TRUE(base::Contains(header_map, "DNT"));
   EXPECT_EQ("1", header_map["DNT"]);
 
   // Module Service worker doesn't have to wait for onmessage event because
@@ -320,7 +319,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest, ServiceWorker_Update) {
   EXPECT_EQ("DONE", EvalJs(shell(), "update();"));
   loop.Run();
 
-  EXPECT_TRUE(header_map.find("DNT") != header_map.end());
+  EXPECT_TRUE(base::Contains(header_map, "DNT"));
   EXPECT_EQ("1", header_map["DNT"]);
 
   // Service worker doesn't have to wait for onmessage event because
@@ -350,7 +349,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest, ModuleServiceWorker_Update) {
   EXPECT_EQ("DONE", EvalJs(shell(), "update();"));
   loop.Run();
 
-  EXPECT_TRUE(header_map.find("DNT") != header_map.end());
+  EXPECT_TRUE(base::Contains(header_map, "DNT"));
   EXPECT_EQ("1", header_map["DNT"]);
 
   // Module service worker doesn't have to wait for onmessage event because
@@ -383,7 +382,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest, StaticImportModuleServiceWorker_Update) {
   EXPECT_EQ("DONE", EvalJs(shell(), "update();"));
   loop.Run();
 
-  EXPECT_TRUE(header_map.find("DNT") != header_map.end());
+  EXPECT_TRUE(base::Contains(header_map, "DNT"));
   EXPECT_EQ("1", header_map["DNT"]);
 
   // Module service worker doesn't have to wait for onmessage event because
@@ -406,7 +405,7 @@ IN_PROC_BROWSER_TEST_F(DoNotTrackTest, FetchFromWorker) {
 //
 // Disabled on Android since a shared worker is not available on Android:
 // crbug.com/869745.
-#if defined(OS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
 #define MAYBE_FetchFromSharedWorker DISABLED_FetchFromSharedWorker
 #else
 #define MAYBE_FetchFromSharedWorker FetchFromSharedWorker

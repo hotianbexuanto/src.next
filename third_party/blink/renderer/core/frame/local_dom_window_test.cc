@@ -34,16 +34,22 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/loader/referrer_utils.h"
+#include "third_party/blink/public/mojom/devtools/console_message.mojom-blink-forward.h"
 #include "third_party/blink/renderer/bindings/core/v8/isolated_world_csp.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/inspector/console_message.h"
+#include "third_party/blink/renderer/core/inspector/console_message_storage.h"
+#include "third_party/blink/renderer/core/testing/mock_policy_container_host.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
-#include "third_party/blink/renderer/platform/heap/handle.h"
-#include "third_party/blink/renderer/platform/heap/heap.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
+#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
+#include "third_party/blink/renderer/platform/wtf/threading.h"
 
 namespace blink {
 
@@ -56,9 +62,12 @@ class LocalDOMWindowTest : public PageTestBase {
   void NavigateWithSandbox(
       const KURL& url,
       WebSandboxFlags sandbox_flags = WebSandboxFlags::kAll) {
-    auto params = WebNavigationParams::CreateWithHTMLStringForTesting(
-        /*html=*/"", url);
-    params->sandbox_flags = sandbox_flags;
+    auto params = WebNavigationParams::CreateWithEmptyHTMLForTesting(url);
+    MockPolicyContainerHost mock_policy_container_host;
+    params->policy_container = std::make_unique<blink::WebPolicyContainer>(
+        blink::WebPolicyContainerPolicies(),
+        mock_policy_container_host.BindNewEndpointAndPassDedicatedRemote());
+    params->policy_container->policies.sandbox_flags = sandbox_flags;
     GetFrame().Loader().CommitNavigation(std::move(params),
                                          /*extra_data=*/nullptr);
     test::RunPendingTasks();
@@ -192,6 +201,9 @@ TEST_F(LocalDOMWindowTest, EnforceSandboxFlags) {
   {
     url::ScopedSchemeRegistryForTests scoped_registry;
     url::AddStandardScheme("very-special-scheme", url::SCHEME_WITH_HOST);
+#if DCHECK_IS_ON()
+    WTF::SetIsBeforeThreadCreatedForTest();  // Required for next operation:
+#endif
     SchemeRegistry::RegisterURLSchemeBypassingSecureContextCheck(
         "very-special-scheme");
     NavigateWithSandbox(KURL("very-special-scheme://example.test"));
@@ -222,6 +234,11 @@ TEST_F(LocalDOMWindowTest, EnforceSandboxFlags) {
   }
 }
 
+TEST_F(LocalDOMWindowTest, UserAgent) {
+  EXPECT_EQ(GetFrame().DomWindow()->UserAgent(),
+            GetFrame().Loader().UserAgent());
+}
+
 // Tests ExecutionContext::GetContentSecurityPolicyForCurrentWorld().
 TEST_F(PageTestBase, CSPForWorld) {
   using ::testing::ElementsAre;
@@ -242,7 +259,7 @@ TEST_F(PageTestBase, CSPForWorld) {
   v8::Isolate* isolate = main_world_script_state->GetIsolate();
 
   constexpr int kIsolatedWorldWithoutCSPId = 1;
-  scoped_refptr<DOMWrapperWorld> world_without_csp =
+  DOMWrapperWorld* world_without_csp =
       DOMWrapperWorld::EnsureIsolatedWorld(isolate, kIsolatedWorldWithoutCSPId);
   ASSERT_TRUE(world_without_csp->IsIsolatedWorld());
   ScriptState* isolated_world_without_csp_script_state =
@@ -250,7 +267,7 @@ TEST_F(PageTestBase, CSPForWorld) {
 
   const char* kIsolatedWorldCSP = "script-src 'none';";
   constexpr int kIsolatedWorldWithCSPId = 2;
-  scoped_refptr<DOMWrapperWorld> world_with_csp =
+  DOMWrapperWorld* world_with_csp =
       DOMWrapperWorld::EnsureIsolatedWorld(isolate, kIsolatedWorldWithCSPId);
   ASSERT_TRUE(world_with_csp->IsIsolatedWorld());
   ScriptState* isolated_world_with_csp_script_state =
@@ -288,6 +305,59 @@ TEST_F(PageTestBase, CSPForWorld) {
     // We use the isolated world's CSP if it specified one.
     EXPECT_EQ(get_csp()[0]->header->header_value, kIsolatedWorldCSP);
   }
+}
+
+TEST_F(LocalDOMWindowTest, ConsoleMessageCategory) {
+  auto unknown_location = CaptureSourceLocation(String(), 0, 0);
+  auto* console_message = MakeGarbageCollected<ConsoleMessage>(
+      mojom::blink::ConsoleMessageSource::kJavaScript,
+      mojom::blink::ConsoleMessageLevel::kError, "Kaboom!",
+      std::move(unknown_location));
+  console_message->SetCategory(mojom::blink::ConsoleMessageCategory::Cors);
+  auto* window = GetFrame().DomWindow();
+  window->AddConsoleMessageImpl(console_message, false);
+  auto* message_storage = &GetFrame().GetPage()->GetConsoleMessageStorage();
+  EXPECT_EQ(1u, message_storage->size());
+  for (WTF::wtf_size_t i = 0; i < message_storage->size(); ++i) {
+    EXPECT_EQ(mojom::blink::ConsoleMessageCategory::Cors,
+              *message_storage->at(i)->Category());
+  }
+}
+TEST_F(LocalDOMWindowTest, NavigationId) {
+  String navigation_id1 = GetFrame().DomWindow()->GetNavigationId();
+  GetFrame().DomWindow()->GenerateNewNavigationId();
+  String navigation_id2 = GetFrame().DomWindow()->GetNavigationId();
+  GetFrame().DomWindow()->GenerateNewNavigationId();
+  String navigation_id3 = GetFrame().DomWindow()->GetNavigationId();
+  EXPECT_NE(navigation_id1, navigation_id2);
+  EXPECT_NE(navigation_id1, navigation_id3);
+  EXPECT_NE(navigation_id2, navigation_id3);
+}
+
+TEST_F(LocalDOMWindowTest, StorageAccessApiStatus) {
+  EXPECT_EQ(GetFrame().DomWindow()->GetStorageAccessApiStatus(),
+            net::StorageAccessApiStatus::kNone);
+  GetFrame().DomWindow()->SetStorageAccessApiStatus(
+      net::StorageAccessApiStatus::kAccessViaAPI);
+  EXPECT_EQ(GetFrame().DomWindow()->GetStorageAccessApiStatus(),
+            net::StorageAccessApiStatus::kAccessViaAPI);
+}
+
+TEST_F(LocalDOMWindowTest, CanExecuteScriptsDuringDetach) {
+  GetFrame().Loader().DetachDocument();
+  EXPECT_NE(GetFrame().DomWindow(), nullptr);
+
+  // When detach has started and FrameLoader::document_loader_ is nullptr, but
+  // the window hasn't been detached from its frame yet, CanExecuteScripts()
+  // should return false and not crash.
+  // This case is reachable when the only thing blocking a main frame's load
+  // event from firing is an iframe's load event, and that iframe is detached,
+  // thus unblocking the load event. If the detaching window is accessed inside
+  // a load event listener in that case, we may call CanExecuteScripts() in this
+  // partially-detached state.
+  // See crbug.com/350874762, crbug.com/41482536 and crbug.com/41484859.
+  EXPECT_FALSE(
+      GetFrame().DomWindow()->CanExecuteScripts(kAboutToExecuteScript));
 }
 
 }  // namespace blink

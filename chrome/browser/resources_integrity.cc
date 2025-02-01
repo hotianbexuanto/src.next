@@ -1,61 +1,66 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/resources_integrity.h"
-
-#include <array>
-
-#include "build/build_config.h"
-
-#if defined(OS_WIN)
-#include <windows.h>
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
+#pragma allow_unsafe_buffers
 #endif
 
-#include "base/bind.h"
+#include "chrome/browser/resources_integrity.h"
+
+#include <algorithm>
+#include <array>
+
 #include "base/files/file.h"
+#include "base/functional/bind.h"
 #include "base/memory/page_size.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/path_service.h"
-#include "base/ranges/algorithm.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
+#include "build/build_config.h"
 #include "chrome/common/chrome_paths.h"
 #include "crypto/secure_hash.h"
+#include "ui/base/buildflags.h"
 
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
+#include <windows.h>
+
 #include "chrome/app/chrome_exe_main_win.h"
 #else
 #include "chrome/app/packed_resources_integrity.h"  // nogncheck
-#endif                                              // defined(OS_WIN)
+#endif
 
 namespace {
 
 bool CheckResourceIntegrityInternal(
     const base::FilePath& path,
-    const base::span<const uint8_t, crypto::kSHA256Length> expected_signature) {
+    base::span<const uint8_t, crypto::kSHA256Length> expected_signature) {
   // Open the file for reading; allowing other consumers to also open it for
   // reading and deleting. Do not allow others to write to it.
   base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ |
-                            base::File::FLAG_EXCLUSIVE_WRITE |
-                            base::File::FLAG_SHARE_DELETE);
+                            base::File::FLAG_WIN_EXCLUSIVE_WRITE |
+                            base::File::FLAG_WIN_SHARE_DELETE);
   if (!file.IsValid())
     return false;
 
   auto hash = crypto::SecureHash::Create(crypto::SecureHash::SHA256);
-  std::vector<char> buffer(base::GetPageSize());
+  std::vector<uint8_t> buffer(base::GetPageSize());
 
-  int bytes_read = 0;
+  std::optional<size_t> bytes_read = 0;
   do {
-    bytes_read = file.ReadAtCurrentPos(buffer.data(), buffer.size());
-    if (bytes_read == -1)
+    bytes_read = file.ReadAtCurrentPos(buffer);
+    if (!bytes_read.has_value()) {
       return false;
-    hash->Update(buffer.data(), bytes_read);
-  } while (bytes_read > 0);
+    }
+    hash->Update(buffer.data(), *bytes_read);
+  } while (bytes_read.value_or(0) > 0);
 
   std::array<uint8_t, crypto::kSHA256Length> digest;
-  hash->Finish(digest.data(), digest.size());
+  hash->Finish(digest);
 
-  return base::ranges::equal(digest, expected_signature);
+  return std::ranges::equal(digest, expected_signature);
 }
 
 void ReportPakIntegrity(const std::string& histogram_name, bool hash_matches) {
@@ -66,7 +71,7 @@ void ReportPakIntegrity(const std::string& histogram_name, bool hash_matches) {
 
 void CheckResourceIntegrity(
     const base::FilePath& path,
-    const base::span<const uint8_t, crypto::kSHA256Length> expected_signature,
+    base::span<const uint8_t, crypto::kSHA256Length> expected_signature,
     scoped_refptr<base::SequencedTaskRunner> task_runner,
     base::OnceCallback<void(bool)> callback) {
   task_runner->PostTaskAndReplyWithResult(
@@ -84,7 +89,7 @@ void CheckPakFileIntegrity() {
   // with the Grit resource allow-list generation. Instead, the hashes are
   // embedded in chrome.exe, which provides an exported function to
   // access them.
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   auto get_pak_file_hashes = reinterpret_cast<decltype(&GetPakFileHashes)>(
       ::GetProcAddress(::GetModuleHandle(nullptr), "GetPakFileHashes"));
   if (!get_pak_file_hashes) {
@@ -98,20 +103,19 @@ void CheckPakFileIntegrity() {
   get_pak_file_hashes(&resources_hash_raw, &chrome_100_hash_raw,
                       &chrome_200_hash_raw);
 
-  base::span<const uint8_t, crypto::kSHA256Length> resources_hash(
-      resources_hash_raw, crypto::kSHA256Length);
-  base::span<const uint8_t, crypto::kSHA256Length> chrome_100_hash(
-      chrome_100_hash_raw, crypto::kSHA256Length);
-  base::span<const uint8_t, crypto::kSHA256Length> chrome_200_hash(
-      chrome_200_hash_raw, crypto::kSHA256Length);
+  base::span resources_hash(resources_hash_raw,
+                            base::fixed_extent<crypto::kSHA256Length>());
+  base::span chrome_100_hash(chrome_100_hash_raw,
+                             base::fixed_extent<crypto::kSHA256Length>());
+  base::span chrome_200_hash(chrome_200_hash_raw,
+                             base::fixed_extent<crypto::kSHA256Length>());
 #else
-  base::span<const uint8_t, crypto::kSHA256Length> resources_hash =
-      kSha256_resources_pak;
-  base::span<const uint8_t, crypto::kSHA256Length> chrome_100_hash =
-      kSha256_chrome_100_percent_pak;
-  base::span<const uint8_t, crypto::kSHA256Length> chrome_200_hash =
-      kSha256_chrome_200_percent_pak;
-#endif  // defined(OS_WIN)
+  base::span resources_hash = kSha256_resources_pak;
+  base::span chrome_100_hash = kSha256_chrome_100_percent_pak;
+#if BUILDFLAG(ENABLE_HIDPI)
+  base::span chrome_200_hash = kSha256_chrome_200_percent_pak;
+#endif
+#endif  // BUILDFLAG(IS_WIN)
 
   scoped_refptr<base::SequencedTaskRunner> task_runner =
       base::ThreadPool::CreateSequencedTaskRunner(
@@ -126,9 +130,11 @@ void CheckPakFileIntegrity() {
       chrome_100_hash, task_runner,
       base::BindOnce(&ReportPakIntegrity,
                      "SafeBrowsing.PakIntegrity.Chrome100"));
+#if BUILDFLAG(ENABLE_HIDPI)
   CheckResourceIntegrity(
       resources_pack_path.DirName().AppendASCII("chrome_200_percent.pak"),
       chrome_200_hash, task_runner,
       base::BindOnce(&ReportPakIntegrity,
                      "SafeBrowsing.PakIntegrity.Chrome200"));
+#endif
 }

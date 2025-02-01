@@ -29,19 +29,40 @@
 #include "third_party/blink/renderer/core/layout/layout_image_resource.h"
 
 #include "third_party/blink/public/resources/grit/blink_image_resources.h"
-#include "third_party/blink/renderer/core/dom/element.h"
+#include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
-#include "third_party/blink/renderer/core/page/page.h"
+#include "third_party/blink/renderer/core/layout/natural_sizing_info.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image_for_container.h"
-#include "third_party/blink/renderer/platform/graphics/placeholder_image.h"
-#include "ui/base/resource/scale_factor.h"
+#include "ui/base/resource/resource_scale_factor.h"
 
 namespace blink {
+
+namespace {
+
+gfx::SizeF ApplyClampedZoom(gfx::SizeF size, float multiplier) {
+  // Don't let images that have a width/height >= 1 shrink below 1 when zoomed.
+  gfx::SizeF minimum_size(size.width() > 0 ? 1 : 0, size.height() > 0 ? 1 : 0);
+  size.Scale(multiplier);
+  if (size.width() < minimum_size.width()) {
+    size.set_width(minimum_size.width());
+  }
+  if (size.height() < minimum_size.height()) {
+    size.set_height(minimum_size.height());
+  }
+  return size;
+}
+
+}  // namespace
 
 LayoutImageResource::LayoutImageResource()
     : layout_object_(nullptr), cached_image_(nullptr) {}
 
 LayoutImageResource::~LayoutImageResource() = default;
+
+void LayoutImageResource::Trace(Visitor* visitor) const {
+  visitor->Trace(layout_object_);
+  visitor->Trace(cached_image_);
+}
 
 void LayoutImageResource::Initialize(LayoutObject* layout_object) {
   DCHECK(!layout_object_);
@@ -80,6 +101,12 @@ void LayoutImageResource::SetImageResource(ImageResourceContent* new_image) {
   }
 }
 
+ResourcePriority LayoutImageResource::ComputeResourcePriority() const {
+  if (!layout_object_)
+    return ResourcePriority();
+  return layout_object_->ComputeResourcePriority();
+}
+
 void LayoutImageResource::ResetAnimation() {
   DCHECK(layout_object_);
 
@@ -99,49 +126,45 @@ RespectImageOrientationEnum LayoutImageResource::ImageOrientation() const {
   DCHECK(cached_image_);
   // Always respect the orientation of opaque origin images to avoid leaking
   // image data. Otherwise pull orientation from the layout object's style.
-  RespectImageOrientationEnum respect_orientation =
-      LayoutObject::ShouldRespectImageOrientation(layout_object_);
-  return cached_image_->ForceOrientationIfNecessary(respect_orientation);
+  return cached_image_->ForceOrientationIfNecessary(
+      layout_object_->StyleRef().ImageOrientation());
 }
 
-FloatSize LayoutImageResource::ImageSize(float multiplier) const {
-  if (!cached_image_)
-    return FloatSize();
-  FloatSize size(cached_image_->IntrinsicSize(
-      LayoutObject::ShouldRespectImageOrientation(layout_object_)));
-  if (multiplier != 1 && HasIntrinsicSize()) {
-    // Don't let images that have a width/height >= 1 shrink below 1 when
-    // zoomed.
-    FloatSize minimum_size(size.Width() > 0 ? 1 : 0, size.Height() > 0 ? 1 : 0);
-    size.Scale(multiplier);
-    if (size.Width() < minimum_size.Width())
-      size.SetWidth(minimum_size.Width());
-    if (size.Height() < minimum_size.Height())
-      size.SetHeight(minimum_size.Height());
+NaturalSizingInfo LayoutImageResource::GetNaturalDimensions(
+    float multiplier) const {
+  if (!cached_image_ || !cached_image_->IsSizeAvailable() ||
+      !cached_image_->HasImage()) {
+    return NaturalSizingInfo::None();
   }
-  if (layout_object_ && layout_object_->IsLayoutImage() && size.Width() &&
-      size.Height())
-    size.Scale(To<LayoutImage>(layout_object_)->ImageDevicePixelRatio());
-  return size;
+  NaturalSizingInfo sizing_info;
+  Image& image = *cached_image_->GetImage();
+  if (auto* svg_image = DynamicTo<SVGImage>(image)) {
+    const SVGImageViewInfo* view_info = SVGImageForContainer::CreateViewInfo(
+        *svg_image, layout_object_->GetNode());
+    if (!SVGImageForContainer::GetNaturalDimensions(*svg_image, view_info,
+                                                    sizing_info)) {
+      sizing_info = NaturalSizingInfo::None();
+    }
+  } else {
+    sizing_info.size = gfx::SizeF(image.Size(ImageOrientation()));
+    sizing_info.aspect_ratio = sizing_info.size;
+  }
+  if (multiplier != 1 && HasIntrinsicSize()) {
+    sizing_info.size = ApplyClampedZoom(sizing_info.size, multiplier);
+  }
+  if (auto* layout_image = DynamicTo<LayoutImage>(*layout_object_)) {
+    sizing_info.size.Scale(layout_image->ImageDevicePixelRatio());
+  }
+  return sizing_info;
 }
 
-FloatSize LayoutImageResource::ImageSizeWithDefaultSize(
-    float multiplier,
-    const FloatSize&) const {
-  return ImageSize(multiplier);
-}
-
-float LayoutImageResource::DeviceScaleFactor() const {
-  return DeviceScaleFactorDeprecated(layout_object_->GetFrame());
-}
-
-Image* LayoutImageResource::BrokenImage(float device_scale_factor) {
-  // TODO(schenney): Replace static resources with dynamically
+Image* LayoutImageResource::BrokenImage(double device_pixel_ratio) {
+  // TODO(rendering-core): Replace static resources with dynamically
   // generated ones, to support a wider range of device scale factors.
-  if (device_scale_factor >= 2) {
+  if (device_pixel_ratio >= 2) {
     DEFINE_STATIC_REF(
         Image, broken_image_hi_res,
-        (Image::LoadPlatformResource(IDR_BROKENIMAGE, ui::SCALE_FACTOR_200P)));
+        (Image::LoadPlatformResource(IDR_BROKENIMAGE, ui::k200Percent)));
     return broken_image_hi_res;
   }
 
@@ -150,45 +173,50 @@ Image* LayoutImageResource::BrokenImage(float device_scale_factor) {
   return broken_image_lo_res;
 }
 
+double LayoutImageResource::DevicePixelRatio() const {
+  if (!layout_object_)
+    return 1.0;
+  return layout_object_->GetDocument().DevicePixelRatio();
+}
+
 void LayoutImageResource::UseBrokenImage() {
-  SetImageResource(
-      ImageResourceContent::CreateLoaded(BrokenImage(DeviceScaleFactor())));
+  auto* broken_image =
+      ImageResourceContent::CreateLoaded(BrokenImage(DevicePixelRatio()));
+  broken_image->SetIsBroken();
+  SetImageResource(broken_image);
 }
 
 scoped_refptr<Image> LayoutImageResource::GetImage(
-    const IntSize& container_size) const {
-  return GetImage(FloatSize(container_size));
+    const gfx::Size& container_size) const {
+  return GetImage(gfx::SizeF(container_size));
 }
 
 scoped_refptr<Image> LayoutImageResource::GetImage(
-    const FloatSize& container_size) const {
+    const gfx::SizeF& container_size) const {
   if (!cached_image_)
     return Image::NullImage();
 
   if (cached_image_->ErrorOccurred())
-    return BrokenImage(DeviceScaleFactor());
+    return BrokenImage(DevicePixelRatio());
 
   if (!cached_image_->HasImage())
     return Image::NullImage();
 
   Image* image = cached_image_->GetImage();
-  if (image->IsPlaceholderImage()) {
-    static_cast<PlaceholderImage*>(image)->SetIconAndTextScaleFactor(
-        layout_object_->StyleRef().EffectiveZoom());
-  }
 
   auto* svg_image = DynamicTo<SVGImage>(image);
   if (!svg_image)
     return image;
 
-  KURL url;
-  if (auto* element = DynamicTo<Element>(layout_object_->GetNode())) {
-    const AtomicString& url_string = element->ImageSourceURL();
-    url = element->GetDocument().CompleteURL(url_string);
-  }
-  return SVGImageForContainer::Create(
-      svg_image, container_size, layout_object_->StyleRef().EffectiveZoom(),
-      url);
+  const ComputedStyle& style = layout_object_->StyleRef();
+  auto preferred_color_scheme = layout_object_->GetDocument()
+                                    .GetStyleEngine()
+                                    .ResolveColorSchemeForEmbedding(&style);
+  const SVGImageViewInfo* view_info = SVGImageForContainer::CreateViewInfo(
+      *svg_image, layout_object_->GetNode());
+  return SVGImageForContainer::Create(*svg_image, container_size,
+                                      style.EffectiveZoom(), view_info,
+                                      preferred_color_scheme);
 }
 
 bool LayoutImageResource::MaybeAnimated() const {

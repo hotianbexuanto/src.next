@@ -26,13 +26,14 @@
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/core/dom/document.h"
+#include "third_party/blink/renderer/core/execution_context/navigator_base.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
-#include "third_party/blink/renderer/core/frame/navigator_id.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/platform/instrumentation/memory_pressure_listener.h"
 #include "third_party/blink/renderer/platform/language.h"
 
@@ -61,34 +62,43 @@ String Navigator::platform() const {
   // the platform with a frozen platform to distinguish between
   // mobile and desktop when ReduceUserAgent is enabled.
   if (!DomWindow())
-    return NavigatorID::platform();
+    return NavigatorBase::platform();
   const String& platform_override =
       DomWindow()->GetFrame()->GetSettings()->GetNavigatorPlatformOverride();
-  return platform_override.IsEmpty() ? NavigatorID::platform()
-                                     : platform_override;
+  return platform_override.empty() ? NavigatorBase::platform()
+                                   : platform_override;
 }
 
 bool Navigator::cookieEnabled() const {
   if (!DomWindow())
     return false;
 
-  Settings* settings = DomWindow()->GetFrame()->GetSettings();
-  if (!settings || !settings->GetCookieEnabled())
-    return false;
+  if (DomWindow()->GetStorageKey().IsThirdPartyContext()) {
+    DomWindow()->CountUse(WebFeature::kNavigatorCookieEnabledThirdParty);
+  }
 
-  return DomWindow()->document()->CookiesEnabled();
+  Settings* settings = DomWindow()->GetFrame()->GetSettings();
+  return settings && settings->GetCookieEnabled();
+}
+
+bool Navigator::webdriver() const {
+  if (RuntimeEnabledFeatures::AutomationControlledEnabled())
+    return true;
+
+  bool automation_enabled = false;
+  probe::ApplyAutomationOverride(GetExecutionContext(), automation_enabled);
+  return automation_enabled;
 }
 
 String Navigator::GetAcceptLanguages() {
-  String accept_languages;
-  if (DomWindow()) {
-    accept_languages =
-        DomWindow()->GetFrame()->GetPage()->GetChromeClient().AcceptLanguages();
-  } else {
-    accept_languages = DefaultLanguage();
-  }
+  if (!DomWindow())
+    return DefaultLanguage();
 
-  return accept_languages;
+  return DomWindow()
+      ->GetFrame()
+      ->GetPage()
+      ->GetChromeClient()
+      .AcceptLanguages();
 }
 
 void Navigator::Trace(Visitor* visitor) const {

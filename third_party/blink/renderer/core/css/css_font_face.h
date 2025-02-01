@@ -31,9 +31,10 @@
 #include "third_party/blink/renderer/core/css/css_font_face_source.h"
 #include "third_party/blink/renderer/core/css/css_segmented_font_face.h"
 #include "third_party/blink/renderer/core/css/font_face.h"
-#include "third_party/blink/renderer/core/css/font_face_source.h"
 #include "third_party/blink/renderer/platform/fonts/segmented_font_data.h"
 #include "third_party/blink/renderer/platform/fonts/unicode_range_set.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_deque.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/deque.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -46,8 +47,8 @@ class SimpleFontData;
 
 class CORE_EXPORT CSSFontFace final : public GarbageCollected<CSSFontFace> {
  public:
-  CSSFontFace(FontFace* font_face, Vector<UnicodeRange>& ranges)
-      : ranges_(base::AdoptRef(new UnicodeRangeSet(ranges))),
+  CSSFontFace(FontFace* font_face, HeapVector<UnicodeRange>&& ranges)
+      : ranges_(MakeGarbageCollected<UnicodeRangeSet>(std::move(ranges))),
         font_face_(font_face) {
     DCHECK(font_face_);
   }
@@ -56,16 +57,16 @@ class CORE_EXPORT CSSFontFace final : public GarbageCollected<CSSFontFace> {
 
   // Front source is the first successfully loaded source.
   const CSSFontFaceSource* FrontSource() const {
-    return sources_.IsEmpty() ? nullptr : sources_.front();
+    return sources_.empty() ? nullptr : sources_.front().Get();
   }
-  FontFace* GetFontFace() const { return font_face_; }
+  FontFace* GetFontFace() const { return font_face_.Get(); }
 
-  scoped_refptr<UnicodeRangeSet> Ranges() { return ranges_; }
+  const UnicodeRangeSet* Ranges() { return ranges_.Get(); }
 
   void AddSegmentedFontFace(CSSSegmentedFontFace*);
   void RemoveSegmentedFontFace(CSSSegmentedFontFace*);
 
-  bool IsValid() const { return !sources_.IsEmpty(); }
+  bool IsValid() const { return !sources_.empty(); }
   size_t ApproximateBlankCharacterCount() const;
 
   void AddSource(CSSFontFaceSource*);
@@ -75,7 +76,7 @@ class CORE_EXPORT CSSFontFace final : public GarbageCollected<CSSFontFace> {
   bool FontLoaded(CSSFontFaceSource*);
   bool FallbackVisibilityChanged(RemoteFontFaceSource*);
 
-  scoped_refptr<SimpleFontData> GetFontData(const FontDescription&);
+  const SimpleFontData* GetFontData(const FontDescription&);
 
   FontFace::LoadStatusType LoadStatus() const {
     return font_face_->LoadStatus();
@@ -97,9 +98,9 @@ class CORE_EXPORT CSSFontFace final : public GarbageCollected<CSSFontFace> {
  private:
   void SetLoadStatus(FontFace::LoadStatusType);
 
-  scoped_refptr<UnicodeRangeSet> ranges_;
   HeapHashSet<Member<CSSSegmentedFontFace>> segmented_font_faces_;
   HeapDeque<Member<CSSFontFaceSource>> sources_;
+  Member<const UnicodeRangeSet> ranges_;
   Member<FontFace> font_face_;
 };
 

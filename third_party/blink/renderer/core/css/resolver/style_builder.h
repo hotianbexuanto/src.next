@@ -34,25 +34,27 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/css/properties/css_property.h"
-#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
 namespace blink {
 
 class CSSPropertyName;
-class ScopedCSSValue;
 class StyleResolverState;
 
 class CORE_EXPORT StyleBuilder {
   STATIC_ONLY(StyleBuilder);
 
  public:
+  using ValueMode = CSSProperty::ValueMode;
+
   // Apply a property/value pair to the ComputedStyle.
   //
   // If the incoming CSSPropertyName is a custom property, a temporary
   // CustomProperty instance is created to carry out the application.
   static void ApplyProperty(const CSSPropertyName&,
                             StyleResolverState&,
-                            const ScopedCSSValue&);
+                            const CSSValue&,
+                            ValueMode = ValueMode::kNormal);
 
   // Apply a property/value pair to the ComputedStyle.
   //
@@ -61,7 +63,17 @@ class CORE_EXPORT StyleBuilder {
   // instance. See Variable::IsStaticInstance.
   static void ApplyProperty(const CSSProperty&,
                             StyleResolverState&,
-                            const ScopedCSSValue&);
+                            const CSSValue&,
+                            ValueMode = ValueMode::kNormal);
+
+  // Apply a physical property and its value to the ComputedStyle.
+  //
+  // Physical properties are properties that are not surrogates (see
+  // "surrogate_for" in css_properties.json5).
+  static void ApplyPhysicalProperty(const CSSProperty&,
+                                    StyleResolverState&,
+                                    const CSSValue&,
+                                    ValueMode = ValueMode::kNormal);
 };
 
 }  // namespace blink

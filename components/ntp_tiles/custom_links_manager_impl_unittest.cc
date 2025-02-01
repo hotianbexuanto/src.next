@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+#include <array>
 #include <memory>
 
 #include "base/files/scoped_temp_dir.h"
@@ -15,6 +16,7 @@
 #include "components/history/core/test/history_service_test_util.h"
 #include "components/ntp_tiles/pref_names.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
+#include "extensions/buildflags/buildflags.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 using Link = ntp_tiles::CustomLinksManager::Link;
@@ -29,16 +31,17 @@ struct TestCaseItem {
   const char16_t* title;
 };
 
-const TestCaseItem kTestCase1[] = {{"http://foo1.com/", u"Foo1"}};
-const TestCaseItem kTestCase2[] = {
+const auto kTestCase1 =
+    std::to_array<TestCaseItem>({{"http://foo1.com/", u"Foo1"}});
+const auto kTestCase2 = std::to_array<TestCaseItem>({
     {"http://foo1.com/", u"Foo1"},
     {"http://foo2.com/", u"Foo2"},
-};
-const TestCaseItem kTestCase3[] = {
+});
+const auto kTestCase3 = std::to_array<TestCaseItem>({
     {"http://foo1.com/", u"Foo1"},
     {"http://foo2.com/", u"Foo2"},
     {"http://foo3.com/", u"Foo3"},
-};
+});
 const TestCaseItem kTestCaseMax[] = {
     {"http://foo1.com/", u"Foo1"}, {"http://foo2.com/", u"Foo2"},
     {"http://foo3.com/", u"Foo3"}, {"http://foo4.com/", u"Foo4"},
@@ -51,15 +54,21 @@ const char kTestTitle[] = "Test";
 const char16_t kTestTitle16[] = u"Test";
 const char kTestUrl[] = "http://test.com/";
 
-base::Value::ListStorage FillTestListStorage(const char* url,
-                                             const char* title,
-                                             const bool is_most_visited) {
-  base::Value::ListStorage new_link_list;
-  base::DictionaryValue new_link;
-  new_link.SetKey("url", base::Value(url));
-  new_link.SetKey("title", base::Value(title));
-  new_link.SetKey("isMostVisited", base::Value(is_most_visited));
-  new_link_list.push_back(std::move(new_link));
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+const char16_t kTestGmail16[] = u"Gmail";
+const char kTestGmailURL[] =
+    "chrome-extension://pjkljhegncpnkpknbcohdijeoejaedia/index.html";
+#endif
+
+base::Value::List FillTestList(const char* url,
+                               const char* title,
+                               const bool is_most_visited) {
+  base::Value::List new_link_list;
+  base::Value::Dict new_link;
+  new_link.Set("url", url);
+  new_link.Set("title", title);
+  new_link.Set("isMostVisited", is_most_visited);
+  new_link_list.Append(std::move(new_link));
   return new_link_list;
 }
 
@@ -92,7 +101,15 @@ class CustomLinksManagerImplTest : public testing::Test {
  public:
   CustomLinksManagerImplTest() {
     CustomLinksManagerImpl::RegisterProfilePrefs(prefs_.registry());
+    auto defaults =
+        base::Value::List().Append("pjkljhegncpnkpknbcohdijeoejaedia");
+    prefs_.registry()->RegisterListPref(
+        webapps::kWebAppsMigratedPreinstalledApps, std::move(defaults));
   }
+
+  CustomLinksManagerImplTest(const CustomLinksManagerImplTest&) = delete;
+  CustomLinksManagerImplTest& operator=(const CustomLinksManagerImplTest&) =
+      delete;
 
   void SetUp() override {
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
@@ -108,8 +125,6 @@ class CustomLinksManagerImplTest : public testing::Test {
   sync_preferences::TestingPrefServiceSyncable prefs_;
   std::unique_ptr<history::HistoryService> history_service_;
   std::unique_ptr<CustomLinksManagerImpl> custom_links_;
-
-  DISALLOW_COPY_AND_ASSIGN(CustomLinksManagerImplTest);
 };
 
 TEST_F(CustomLinksManagerImplTest, InitializeOnlyOnce) {
@@ -310,6 +325,38 @@ TEST_F(CustomLinksManagerImplTest, DeleteLink) {
   EXPECT_TRUE(custom_links_->GetLinks().empty());
 }
 
+// The following tests include a default chrome app; these tests are only
+// relevant if extensions and apps are enabled.
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+TEST_F(CustomLinksManagerImplTest, MigratedDefaultAppDeletedSingle) {
+  NTPTilesVector initial_tiles;
+  AddTile(&initial_tiles, kTestGmailURL, kTestGmail16);
+  // Initialize tile with Gmail URL and then remove them.
+  ASSERT_TRUE(custom_links_->Initialize(initial_tiles));
+  // Create new instance of CustomLinksManagerImpl to trigger the logic.
+  std::unique_ptr<CustomLinksManagerImpl> custom_links_test_ =
+      std::make_unique<CustomLinksManagerImpl>(&prefs_, history_service_.get());
+  // Should be empty as NTP Default App is Removed.
+  ASSERT_TRUE(custom_links_test_->GetLinks().empty());
+}
+
+TEST_F(CustomLinksManagerImplTest, DeletedMigratedDefaultAppMultiLink) {
+  // Initialize tiles vector with random links + Gmail.
+  NTPTilesVector initial_tiles = FillTestTiles(kTestCase2);
+  AddTile(&initial_tiles, kTestGmailURL, kTestGmail16);
+  // Initialize tiles and fill up custom links.
+  ASSERT_TRUE(custom_links_->Initialize(initial_tiles));
+  // Create new instance of CustomLinksManagerImpl to trigger the logic.
+  std::unique_ptr<CustomLinksManagerImpl> custom_links_test_ =
+      std::make_unique<CustomLinksManagerImpl>(&prefs_, history_service_.get());
+  // Verify that Gmail does not exist in the custom links.
+  ASSERT_EQ(std::vector<Link>(
+                {Link{GURL(kTestCase2[0].url), kTestCase2[0].title, true},
+                 Link{GURL(kTestCase2[1].url), kTestCase2[1].title, true}}),
+            custom_links_test_->GetLinks());
+}
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+
 TEST_F(CustomLinksManagerImplTest, DeleteLinkWhenUrlDoesNotExist) {
   // Initialize.
   ASSERT_TRUE(custom_links_->Initialize(NTPTilesVector()));
@@ -434,13 +481,13 @@ TEST_F(CustomLinksManagerImplTest, ShouldDeleteMostVisitedOnHistoryDeletion) {
   // Delete a specific Most Visited link.
   EXPECT_CALL(callback, Run());
   static_cast<history::HistoryServiceObserver*>(custom_links_.get())
-      ->OnURLsDeleted(
+      ->OnHistoryDeletions(
           history_service_.get(),
           history::DeletionInfo(history::DeletionTimeRange::Invalid(),
                                 /*expired=*/false,
                                 {history::URLRow(GURL(kTestCase2[1].url))},
                                 /*favicon_urls=*/std::set<GURL>(),
-                                /*restrict_urls=*/absl::nullopt));
+                                /*restrict_urls=*/std::nullopt));
   EXPECT_EQ(std::vector<Link>(
                 {Link{GURL(kTestCase2[0].url), kTestCase2[0].title, true}}),
             custom_links_->GetLinks());
@@ -462,12 +509,12 @@ TEST_F(CustomLinksManagerImplTest,
   // Delete all Most Visited links.
   EXPECT_CALL(callback, Run());
   static_cast<history::HistoryServiceObserver*>(custom_links_.get())
-      ->OnURLsDeleted(
+      ->OnHistoryDeletions(
           history_service_.get(),
           history::DeletionInfo(history::DeletionTimeRange::AllTime(),
                                 /*expired=*/false, history::URLRows(),
                                 /*favicon_urls=*/std::set<GURL>(),
-                                /*restrict_urls=*/absl::nullopt));
+                                /*restrict_urls=*/std::nullopt));
   EXPECT_TRUE(custom_links_->GetLinks().empty());
 
   task_environment_.RunUntilIdle();
@@ -491,12 +538,12 @@ TEST_F(CustomLinksManagerImplTest, ShouldDeleteOnHistoryDeletionAfterShutdown) {
   // Delete all Most Visited links.
   EXPECT_CALL(callback, Run());
   static_cast<history::HistoryServiceObserver*>(custom_links_.get())
-      ->OnURLsDeleted(
+      ->OnHistoryDeletions(
           history_service_.get(),
           history::DeletionInfo(history::DeletionTimeRange::AllTime(),
                                 /*expired=*/false, history::URLRows(),
                                 /*favicon_urls=*/std::set<GURL>(),
-                                /*restrict_urls=*/absl::nullopt));
+                                /*restrict_urls=*/std::nullopt));
   EXPECT_TRUE(custom_links_->GetLinks().empty());
 
   task_environment_.RunUntilIdle();
@@ -520,23 +567,24 @@ TEST_F(CustomLinksManagerImplTest, ShouldNotDeleteCustomLinkOnHistoryDeletion) {
 
   // Try to delete the added link. This should fail and not modify the list.
   static_cast<history::HistoryServiceObserver*>(custom_links_.get())
-      ->OnURLsDeleted(history_service_.get(),
-                      history::DeletionInfo(
-                          history::DeletionTimeRange::Invalid(),
-                          /*expired=*/false, {history::URLRow(GURL(kTestUrl))},
-                          /*favicon_urls=*/std::set<GURL>(),
-                          /*restrict_urls=*/absl::nullopt));
+      ->OnHistoryDeletions(
+          history_service_.get(),
+          history::DeletionInfo(history::DeletionTimeRange::Invalid(),
+                                /*expired=*/false,
+                                {history::URLRow(GURL(kTestUrl))},
+                                /*favicon_urls=*/std::set<GURL>(),
+                                /*restrict_urls=*/std::nullopt));
   EXPECT_EQ(links_after_add, custom_links_->GetLinks());
 
   // Delete all Most Visited links.
   EXPECT_CALL(callback, Run());
   static_cast<history::HistoryServiceObserver*>(custom_links_.get())
-      ->OnURLsDeleted(
+      ->OnHistoryDeletions(
           history_service_.get(),
           history::DeletionInfo(history::DeletionTimeRange::AllTime(),
                                 /*expired=*/false, history::URLRows(),
                                 /*favicon_urls=*/std::set<GURL>(),
-                                /*restrict_urls=*/absl::nullopt));
+                                /*restrict_urls=*/std::nullopt));
   EXPECT_EQ(std::vector<Link>({Link{GURL(kTestUrl), kTestTitle16, false}}),
             custom_links_->GetLinks());
 
@@ -556,21 +604,21 @@ TEST_F(CustomLinksManagerImplTest, ShouldIgnoreHistoryExpiredDeletions) {
 
   EXPECT_CALL(callback, Run()).Times(0);
   static_cast<history::HistoryServiceObserver*>(custom_links_.get())
-      ->OnURLsDeleted(
+      ->OnHistoryDeletions(
           history_service_.get(),
           history::DeletionInfo(history::DeletionTimeRange::AllTime(),
                                 /*expired=*/true, history::URLRows(),
                                 /*favicon_urls=*/std::set<GURL>(),
-                                /*restrict_urls=*/absl::nullopt));
+                                /*restrict_urls=*/std::nullopt));
   static_cast<history::HistoryServiceObserver*>(custom_links_.get())
-      ->OnURLsDeleted(
+      ->OnHistoryDeletions(
           // /*history_service=*/nullptr,
           history_service_.get(),
           history::DeletionInfo(history::DeletionTimeRange::Invalid(),
                                 /*expired=*/true,
                                 {history::URLRow(GURL(kTestCase1[0].url))},
                                 /*favicon_urls=*/std::set<GURL>(),
-                                /*restrict_urls=*/absl::nullopt));
+                                /*restrict_urls=*/std::nullopt));
 
   EXPECT_EQ(initial_links, custom_links_->GetLinks());
 
@@ -590,8 +638,8 @@ TEST_F(CustomLinksManagerImplTest, ShouldIgnoreEmptyHistoryDeletions) {
 
   EXPECT_CALL(callback, Run()).Times(0);
   static_cast<history::HistoryServiceObserver*>(custom_links_.get())
-      ->OnURLsDeleted(history_service_.get(),
-                      history::DeletionInfo::ForUrls({}, {}));
+      ->OnHistoryDeletions(history_service_.get(),
+                           history::DeletionInfo::ForUrls({}, {}));
 
   EXPECT_EQ(initial_links, custom_links_->GetLinks());
 
@@ -617,8 +665,8 @@ TEST_F(CustomLinksManagerImplTest, ShouldNotUndoAfterHistoryDeletion) {
   // Try an empty history deletion. This should do nothing.
   EXPECT_CALL(callback, Run()).Times(0);
   static_cast<history::HistoryServiceObserver*>(custom_links_.get())
-      ->OnURLsDeleted(history_service_.get(),
-                      history::DeletionInfo::ForUrls({}, {}));
+      ->OnHistoryDeletions(history_service_.get(),
+                           history::DeletionInfo::ForUrls({}, {}));
   EXPECT_EQ(links_after_add, custom_links_->GetLinks());
 
   // Try to undo. This should fail and not modify the list.
@@ -650,8 +698,7 @@ TEST_F(CustomLinksManagerImplTest, UpdateListAfterRemoteChange) {
   // links.
   EXPECT_CALL(callback, Run());
   prefs_.SetUserPref(prefs::kCustomLinksList,
-                     std::make_unique<base::Value>(
-                         FillTestListStorage(kTestUrl, kTestTitle, true)));
+                     base::Value(FillTestList(kTestUrl, kTestTitle, true)));
   EXPECT_EQ(std::vector<Link>({Link{GURL(kTestUrl), kTestTitle16, true}}),
             custom_links_->GetLinks());
 }
@@ -666,11 +713,9 @@ TEST_F(CustomLinksManagerImplTest, InitializeListAfterRemoteChange) {
 
   // Modify the preference. This should notify and initialize custom links.
   EXPECT_CALL(callback, Run()).Times(2);
-  prefs_.SetUserPref(prefs::kCustomLinksInitialized,
-                     std::make_unique<base::Value>(true));
+  prefs_.SetUserPref(prefs::kCustomLinksInitialized, base::Value(true));
   prefs_.SetUserPref(prefs::kCustomLinksList,
-                     std::make_unique<base::Value>(
-                         FillTestListStorage(kTestUrl, kTestTitle, false)));
+                     base::Value(FillTestList(kTestUrl, kTestTitle, false)));
   EXPECT_TRUE(custom_links_->IsInitialized());
   EXPECT_EQ(std::vector<Link>({Link{GURL(kTestUrl), kTestTitle16, false}}),
             custom_links_->GetLinks());
@@ -688,10 +733,8 @@ TEST_F(CustomLinksManagerImplTest, UninitializeListAfterRemoteChange) {
 
   // Modify the preference. This should notify and uninitialize custom links.
   EXPECT_CALL(callback, Run()).Times(2);
-  prefs_.SetUserPref(prefs::kCustomLinksInitialized,
-                     std::make_unique<base::Value>(false));
-  prefs_.SetUserPref(prefs::kCustomLinksList,
-                     std::make_unique<base::Value>(base::Value::ListStorage()));
+  prefs_.SetUserPref(prefs::kCustomLinksInitialized, base::Value(false));
+  prefs_.SetUserPref(prefs::kCustomLinksList, base::Value(base::Value::List()));
   EXPECT_FALSE(custom_links_->IsInitialized());
   EXPECT_EQ(std::vector<Link>(), custom_links_->GetLinks());
 }
@@ -710,12 +753,10 @@ TEST_F(CustomLinksManagerImplTest, ClearThenUninitializeListAfterRemoteChange) {
   // the initialized preference. This should notify and uninitialize custom
   // links.
   EXPECT_CALL(callback, Run()).Times(2);
-  prefs_.SetUserPref(prefs::kCustomLinksList,
-                     std::make_unique<base::Value>(base::Value::ListStorage()));
+  prefs_.SetUserPref(prefs::kCustomLinksList, base::Value(base::Value::List()));
   EXPECT_TRUE(custom_links_->IsInitialized());
   EXPECT_EQ(std::vector<Link>(), custom_links_->GetLinks());
-  prefs_.SetUserPref(prefs::kCustomLinksInitialized,
-                     std::make_unique<base::Value>(false));
+  prefs_.SetUserPref(prefs::kCustomLinksInitialized, base::Value(false));
   EXPECT_FALSE(custom_links_->IsInitialized());
   EXPECT_EQ(std::vector<Link>(), custom_links_->GetLinks());
 }

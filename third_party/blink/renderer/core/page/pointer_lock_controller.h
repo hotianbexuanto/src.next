@@ -32,11 +32,10 @@
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/platform/bindings/script_state.h"
-#include "third_party/blink/renderer/platform/geometry/float_point.h"
-#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
+#include "ui/gfx/geometry/point_f.h"
 
 namespace blink {
 
@@ -60,10 +59,9 @@ class CORE_EXPORT PointerLockController final
       base::OnceCallback<void(mojom::blink::PointerLockResult)>;
   bool RequestPointerLock(Element* target, ResultCallback callback);
 
-  ScriptPromise RequestPointerLock(ScriptPromiseResolver* resolver,
-                                   Element* target,
-                                   ExceptionState& exception_state,
-                                   const PointerLockOptions* options = nullptr);
+  void RequestPointerLock(ScriptPromiseResolver<IDLUndefined>* resolver,
+                          Element* target,
+                          const PointerLockOptions* options = nullptr);
   void ExitPointerLock();
   void ElementRemoved(Element*);
   void DocumentDetached(Document*);
@@ -80,8 +78,8 @@ class CORE_EXPORT PointerLockController final
 
   // Fetch the locked mouse position when pointer is locked. The values are not
   // changed if pointer is not locked.
-  void GetPointerLockPosition(FloatPoint* lock_position,
-                              FloatPoint* lock_screen_position);
+  void GetPointerLockPosition(gfx::PointF* lock_position,
+                              gfx::PointF* lock_screen_position);
   void Trace(Visitor*) const;
 
   static Element* GetPointerLockedElement(LocalFrame* frame);
@@ -104,13 +102,11 @@ class CORE_EXPORT PointerLockController final
                      bool unadjusted_movement_requested,
                      mojom::blink::PointerLockResult result);
 
-  static void ProcessResultScriptPromise(
-      ScriptPromiseResolver* resolver,
+  static void ProcessResultPromise(
+      ScriptPromiseResolver<IDLUndefined>* resolver,
       mojom::blink::PointerLockResult result);
   static DOMException* ConvertResultToException(
       mojom::blink::PointerLockResult result);
-  static void RejectIfPromiseEnabled(ScriptPromiseResolver* resolver,
-                                     DOMException* exception);
 
   Member<Page> page_;
   bool lock_pending_;
@@ -121,8 +117,8 @@ class CORE_EXPORT PointerLockController final
 
   // Store the locked position so that the event position keeps unchanged when
   // in locked states. These values only get set when entering lock states.
-  FloatPoint pointer_lock_position_;
-  FloatPoint pointer_lock_screen_position_;
+  gfx::PointF pointer_lock_position_;
+  gfx::PointF pointer_lock_screen_position_;
 
   bool current_unadjusted_movement_setting_ = false;
 };

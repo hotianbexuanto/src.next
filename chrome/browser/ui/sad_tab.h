@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include "base/memory/raw_ptr.h"
 #include "base/process/kill.h"
 #include "build/build_config.h"
 #include "chrome/browser/ui/sad_tab_types.h"
@@ -29,7 +30,10 @@ class SadTab {
   // Returns true if the sad tab should be shown.
   static bool ShouldShow(base::TerminationStatus status);
 
-  virtual ~SadTab() {}
+  SadTab(const SadTab&) = delete;
+  SadTab& operator=(const SadTab&) = delete;
+
+  virtual ~SadTab() = default;
 
   // Called when the sad tab needs to be reinstalled in its window,
   // for example because an inactive tab was activated, or because a tab was
@@ -65,16 +69,15 @@ class SadTab {
   content::WebContents* web_contents() const { return web_contents_; }
 
  private:
-  content::WebContents* web_contents_;
+  raw_ptr<content::WebContents> web_contents_;
   SadTabKind kind_;
   // True if a crash happened in the last ten seconds. Repeated crashes
   // may suggest additional troubleshooting steps.
   bool is_repeatedly_crashing_;
   // True if repeatedly crashing and the browser is Google Chrome branded.
+  // Always false for the ChromeOS kiosk mode.
   bool show_feedback_button_;
   bool recorded_paint_;
-
-  DISALLOW_COPY_AND_ASSIGN(SadTab);
 };
 
 #endif  // CHROME_BROWSER_UI_SAD_TAB_H_

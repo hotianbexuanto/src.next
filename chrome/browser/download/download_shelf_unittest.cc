@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,6 @@
 
 #include "base/compiler_specific.h"
 #include "base/run_loop.h"
-#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/download/download_core_service_factory.h"
 #include "chrome/browser/download/download_core_service_impl.h"
 #include "chrome/browser/download/download_item_model.h"
@@ -14,7 +13,6 @@
 #include "chrome/test/base/testing_profile.h"
 #include "components/download/public/common/mock_download_item.h"
 #include "content/public/browser/download_item_utils.h"
-#include "content/public/browser/notification_service.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/mock_download_manager.h"
 #include "extensions/common/extension.h"
@@ -58,8 +56,8 @@ DownloadShelfTest::DownloadShelfTest() {
   ON_CALL(*download_item(), IsTemporary()).WillByDefault(Return(false));
   ON_CALL(*download_item(), ShouldOpenFileBasedOnExtension())
       .WillByDefault(Return(false));
-  content::DownloadItemUtils::AttachInfo(download_item(), profile_.get(),
-                                         nullptr);
+  content::DownloadItemUtils::AttachInfoForTesting(download_item(),
+                                                   profile_.get(), nullptr);
 
   auto download_manager =
       std::make_unique<::testing::NiceMock<content::MockDownloadManager>>();

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,9 +7,8 @@
 
 #include <string>
 
-#include "base/callback_forward.h"
 #include "base/files/file_path.h"
-#include "base/macros.h"
+#include "base/functional/callback_forward.h"
 
 namespace content {
 class WebContents;
@@ -25,9 +24,12 @@ class DownloadOpenPrompt {
   // Creates the open confirmation dialog and returns this object.
   static DownloadOpenPrompt* CreateDownloadOpenConfirmationDialog(
       content::WebContents* web_contents,
-      const std::string& extension_name,
+      const std::u16string& extension_name,
       const base::FilePath& file_path,
       OpenCallback open_callback);
+
+  DownloadOpenPrompt(const DownloadOpenPrompt&) = delete;
+  DownloadOpenPrompt& operator=(const DownloadOpenPrompt&) = delete;
 
   // Called to accept the confirmation dialog for testing.
   static void AcceptConfirmationDialogForTesting(
@@ -36,8 +38,6 @@ class DownloadOpenPrompt {
  protected:
   DownloadOpenPrompt();
   ~DownloadOpenPrompt();
-
-  DISALLOW_COPY_AND_ASSIGN(DownloadOpenPrompt);
 };
 
 #endif  // CHROME_BROWSER_DOWNLOAD_DOWNLOAD_OPEN_PROMPT_H_

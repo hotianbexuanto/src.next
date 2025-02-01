@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,8 +7,8 @@
 
 #include <memory>
 
-#include "base/macros.h"
 #include "extensions/browser/component_extension_resource_manager.h"
+#include "extensions/common/extension_id.h"
 
 namespace extensions {
 
@@ -16,6 +16,12 @@ class ChromeComponentExtensionResourceManager
     : public ComponentExtensionResourceManager {
  public:
   ChromeComponentExtensionResourceManager();
+
+  ChromeComponentExtensionResourceManager(
+      const ChromeComponentExtensionResourceManager&) = delete;
+  ChromeComponentExtensionResourceManager& operator=(
+      const ChromeComponentExtensionResourceManager&) = delete;
+
   ~ChromeComponentExtensionResourceManager() override;
 
   // Overridden from ComponentExtensionResourceManager:
@@ -23,7 +29,7 @@ class ChromeComponentExtensionResourceManager
                                     const base::FilePath& resource_path,
                                     int* resource_id) const override;
   const ui::TemplateReplacements* GetTemplateReplacementsForExtension(
-      const std::string& extension_id) const override;
+      const ExtensionId& extension_id) const override;
 
  private:
   class Data;
@@ -32,8 +38,6 @@ class ChromeComponentExtensionResourceManager
 
   // Logically const. Initialized on demand to keep browser start-up fast.
   mutable std::unique_ptr<const Data> data_;
-
-  DISALLOW_COPY_AND_ASSIGN(ChromeComponentExtensionResourceManager);
 };
 
 }  // namespace extensions

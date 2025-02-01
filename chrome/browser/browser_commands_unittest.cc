@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -45,8 +45,9 @@ class BrowserCommandsTest : public BrowserWithTestWindowTest {
 
   // BrowserWithTestWindowTest overrides.
   TestingProfile::TestingFactories GetTestingFactories() override {
-    return {{BookmarkModelFactory::GetInstance(),
-             BookmarkModelFactory::GetDefaultFactory()}};
+    return {TestingProfile::TestingFactory{
+        BookmarkModelFactory::GetInstance(),
+        BookmarkModelFactory::GetDefaultFactory()}};
   }
 };
 
@@ -132,8 +133,10 @@ TEST_F(BrowserCommandsTest, ViewSource) {
   // Navigate to a URL and simulate a subframe committing.
   AddTab(browser(), url1);
   content::RenderFrameHostTester* rfh_tester =
-      content::RenderFrameHostTester::For(
-          browser()->tab_strip_model()->GetWebContentsAt(0)->GetMainFrame());
+      content::RenderFrameHostTester::For(browser()
+                                              ->tab_strip_model()
+                                              ->GetWebContentsAt(0)
+                                              ->GetPrimaryMainFrame());
   content::RenderFrameHost* subframe = rfh_tester->AppendChild("subframe");
   content::NavigationSimulator::NavigateAndCommitFromDocument(
       GURL(url1_subframe), subframe);
@@ -176,9 +179,10 @@ TEST_F(BrowserCommandsTest, BookmarkCurrentTab) {
   // Navigate to a url.
   GURL url1("http://foo/1");
   AddTab(browser(), url1);
-  browser()->OpenURL(OpenURLParams(url1, Referrer(),
-                                   WindowOpenDisposition::CURRENT_TAB,
-                                   ui::PAGE_TRANSITION_TYPED, false));
+  browser()->OpenURL(
+      OpenURLParams(url1, Referrer(), WindowOpenDisposition::CURRENT_TAB,
+                    ui::PAGE_TRANSITION_TYPED, false),
+      /*navigation_handle_callback=*/{});
 
   chrome::BookmarkCurrentTab(browser());
 
@@ -217,11 +221,12 @@ TEST_F(BrowserCommandsTest, BackForwardInNewTab) {
 
   // Select the second tab and make it go forward in a new background tab.
   browser()->tab_strip_model()->ActivateTabAt(
-      1, {TabStripModel::GestureType::kOther});
-  // TODO(crbug.com/11055): It should not be necessary to commit the load here,
-  // but because of this bug, it will assert later if we don't. When the bug is
-  // fixed, one of the three commits here related to this bug should be removed
-  // (to test both codepaths).
+      1, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
+  // TODO(crbug.com/40705856): It should not be necessary to commit the load
+  // here, but because of this bug, it will assert later if we don't. When the
+  // bug is fixed, one of the three commits here related to this bug should be
+  // removed (to test both codepaths).
   CommitPendingLoad(&first->GetController());
   EXPECT_EQ(1, browser()->tab_strip_model()->active_index());
   chrome::GoForward(browser(), WindowOpenDisposition::NEW_BACKGROUND_TAB);
@@ -244,8 +249,9 @@ TEST_F(BrowserCommandsTest, BackForwardInNewTab) {
   // Now do back in a new foreground tab. Don't bother re-checking every sngle
   // thing above, just validate that it's opening properly.
   browser()->tab_strip_model()->ActivateTabAt(
-      2, {TabStripModel::GestureType::kOther});
-  // TODO(crbug.com/11055): see the comment above about why we need this.
+      2, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
+  // TODO(crbug.com/40705856): see the comment above about why we need this.
   CommitPendingLoad(&second->GetController());
   chrome::GoBack(browser(), WindowOpenDisposition::NEW_FOREGROUND_TAB);
   ASSERT_EQ(3, browser()->tab_strip_model()->active_index());
@@ -254,7 +260,7 @@ TEST_F(BrowserCommandsTest, BackForwardInNewTab) {
                 GetVisibleURL());
 
   // Same thing again for forward.
-  // TODO(crbug.com/11055): see the comment above about why we need this.
+  // TODO(crbug.com/40705856): see the comment above about why we need this.
   CommitPendingLoad(&
       browser()->tab_strip_model()->GetActiveWebContents()->GetController());
   chrome::GoForward(browser(), WindowOpenDisposition::NEW_FOREGROUND_TAB);
@@ -269,6 +275,7 @@ TEST_F(BrowserCommandsTest, BackForwardInNewTab) {
 TEST_F(BrowserCommandsTest, BackForwardInNewTabWithGroup) {
   GURL url1("http://foo/1");
   GURL url2("http://foo/2");
+  ASSERT_TRUE(browser()->tab_strip_model()->SupportsTabGroups());
 
   // Make a tab with the two pages navigated in it.
   AddTab(browser(), url1);
@@ -288,8 +295,9 @@ TEST_F(BrowserCommandsTest, BackForwardInNewTabWithGroup) {
 
   // Select the second tab and make it go forward in a new background tab.
   browser()->tab_strip_model()->ActivateTabAt(
-      1, {TabStripModel::GestureType::kOther});
-  // TODO(crbug.com/11055): see the comment above about why we need this.
+      1, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
+  // TODO(crbug.com/40705856): see the comment above about why we need this.
   CommitPendingLoad(
       &browser()->tab_strip_model()->GetActiveWebContents()->GetController());
   chrome::GoForward(browser(), WindowOpenDisposition::NEW_BACKGROUND_TAB);
@@ -401,7 +409,9 @@ TEST_F(BrowserCommandsTest, OnZoomChangedForActiveTab) {
   // Add Second tab.
   WebContents* second_tab = tab_strip_model->GetWebContentsAt(1);
 
-  tab_strip_model->ActivateTabAt(1, {TabStripModel::GestureType::kOther});
+  tab_strip_model->ActivateTabAt(
+      1, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
   EXPECT_TRUE(tab_strip_model->IsTabSelected(1));
   zoom::PageZoom::Zoom(second_tab, content::PAGE_ZOOM_OUT);
 
@@ -421,7 +431,7 @@ TEST_F(BrowserCommandsTest, OnDefaultZoomLevelChanged) {
 
   // Set the default zoom level to 125.
   profile()->GetZoomLevelPrefs()->SetDefaultZoomLevelPref(
-      blink::PageZoomFactorToZoomLevel(1.25));
+      blink::ZoomFactorToZoomLevel(1.25));
   EXPECT_FLOAT_EQ(125.0f, zoom_controller->GetZoomPercent());
 
   // Actual Size from context menu should be disabled now.
@@ -446,7 +456,7 @@ TEST_F(BrowserCommandsTest, ToggleCaretBrowsing) {
   pref_service->SetBoolean(prefs::kCaretBrowsingEnabled, false);
   pref_service->SetBoolean(prefs::kShowCaretBrowsingDialog, false);
 
-#if defined(OS_MAC)
+#if BUILDFLAG(IS_MAC)
   // On Mac, caret browsing should be disabled unless focus is in web content.
   // Make sure it's disabled initially and doesn't toggle if executed.
   EXPECT_FALSE(chrome::IsCommandEnabled(browser(), IDC_CARET_BROWSING_TOGGLE));

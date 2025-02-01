@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright 2010 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,8 @@
 #include <string>
 
 #include "base/check_op.h"
+#include "base/memory/raw_ptr.h"
+#include "base/strings/string_util_win.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
@@ -59,7 +61,7 @@ struct MockCredential {
 };
 
 struct MockContext {
-  MockCredential* credential = nullptr;
+  raw_ptr<MockCredential> credential = nullptr;
   std::u16string target_principal;
   int uniquifier = ++uniquifier_;
   int rounds = 0;
@@ -86,9 +88,9 @@ struct MockContext {
 
   std::string ToString() const {
     return base::StringPrintf(
-        "%s's token #%d for %S",
+        "%s's token #%d for %s",
         base::UTF16ToUTF8(credential->source_principal).c_str(), rounds + 1,
-        base::as_wcstr(target_principal));
+        base::UTF16ToUTF8(target_principal).c_str());
   }
 
   static MockContext* FromHandle(PCtxtHandle handle) {

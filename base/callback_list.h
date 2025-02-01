@@ -1,24 +1,22 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_CALLBACK_LIST_H_
 #define BASE_CALLBACK_LIST_H_
 
+#include <algorithm>
 #include <list>
 #include <memory>
 #include <utility>
 
 #include "base/auto_reset.h"
 #include "base/base_export.h"
-#include "base/bind.h"
-#include "base/callback.h"
-#include "base/callback_helpers.h"
 #include "base/check.h"
-#include "base/compiler_specific.h"
-#include "base/containers/cxx20_erase_list.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
-#include "base/ranges/algorithm.h"
+#include "base/types/is_instantiation.h"
 
 // OVERVIEW:
 //
@@ -88,7 +86,7 @@ class RepeatingCallbackList;
 // returned by CallbackListBase::Add() does not outlive the bound object in the
 // callback. A typical way to do this is to bind a callback to a member function
 // on `this` and store the returned subscription as a member variable.
-class BASE_EXPORT CallbackListSubscription {
+class [[nodiscard]] BASE_EXPORT CallbackListSubscription {
  public:
   CallbackListSubscription();
   CallbackListSubscription(CallbackListSubscription&& subscription);
@@ -133,9 +131,8 @@ class CallbackListBase {
  public:
   using CallbackType =
       typename CallbackListTraits<CallbackListImpl>::CallbackType;
-  static_assert(IsBaseCallback<CallbackType>::value, "");
 
-  // TODO(crbug.com/1103086): Update references to use this directly and by
+  // TODO(crbug.com/40139093): Update references to use this directly and by
   // value, then remove.
   using Subscription = CallbackListSubscription;
 
@@ -150,7 +147,7 @@ class CallbackListBase {
 
   // Registers |cb| for future notifications. Returns a CallbackListSubscription
   // whose destruction will cancel |cb|.
-  CallbackListSubscription Add(CallbackType cb) WARN_UNUSED_RESULT {
+  [[nodiscard]] CallbackListSubscription Add(CallbackType cb) {
     DCHECK(!cb.is_null());
     return CallbackListSubscription(base::BindOnce(
         &CallbackListBase::CancelCallback, weak_ptr_factory_.GetWeakPtr(),
@@ -177,7 +174,7 @@ class CallbackListBase {
   // Returns whether the list of registered callbacks is empty (from an external
   // perspective -- meaning no remaining callbacks are live).
   bool empty() const {
-    return ranges::all_of(
+    return std::ranges::all_of(
         callbacks_, [](const auto& callback) { return callback.is_null(); });
   }
 
@@ -199,8 +196,9 @@ class CallbackListBase {
   // the reentrant Notify() call.
   template <typename... RunArgs>
   void Notify(RunArgs&&... args) {
-    if (empty())
+    if (empty()) {
       return;  // Nothing to do.
+    }
 
     {
       AutoReset<bool> iterating(&iterating_, true);
@@ -214,23 +212,25 @@ class CallbackListBase {
         });
       };
       for (auto it = next_valid(callbacks_.begin()); it != callbacks_.end();
-           it = next_valid(it))
+           it = next_valid(it)) {
         // NOTE: Intentionally does not call std::forward<RunArgs>(args)...,
         // since that would allow move-only arguments.
         static_cast<CallbackListImpl*>(this)->RunCallback(it++, args...);
+      }
     }
 
     // Re-entrant invocations shouldn't prune anything from the list. This can
     // invalidate iterators from underneath higher call frames. It's safe to
     // simply do nothing, since the outermost frame will continue through here
     // and prune all null callbacks below.
-    if (iterating_)
+    if (iterating_) {
       return;
+    }
 
     // Any null callbacks remaining in the list were canceled due to
     // Subscription destruction during iteration, and can safely be erased now.
     const size_t erased_callbacks =
-        EraseIf(callbacks_, [](const auto& cb) { return cb.is_null(); });
+        std::erase_if(callbacks_, [](const auto& cb) { return cb.is_null(); });
 
     // Run |removal_callback_| if any callbacks were canceled. Note that we
     // cannot simply compare list sizes before and after iterating, since
@@ -239,8 +239,9 @@ class CallbackListBase {
     // that were executed above have all been removed regardless of whether
     // they're counted in |erased_callbacks_|.
     if (removal_callback_ &&
-        (erased_callbacks || IsOnceCallback<CallbackType>::value))
+        (erased_callbacks || is_instantiation<OnceCallback, CallbackType>)) {
       removal_callback_.Run();  // May delete |this|!
+    }
   }
 
  protected:
@@ -252,8 +253,9 @@ class CallbackListBase {
  private:
   // Cancels the callback pointed to by |it|, which is guaranteed to be valid.
   void CancelCallback(const typename Callbacks::iterator& it) {
-    if (static_cast<CallbackListImpl*>(this)->CancelNullCallback(it))
+    if (static_cast<CallbackListImpl*>(this)->CancelNullCallback(it)) {
       return;
+    }
 
     if (iterating_) {
       // Calling erase() here is unsafe, since the loop in Notify() may be
@@ -263,8 +265,9 @@ class CallbackListBase {
       it->Reset();
     } else {
       callbacks_.erase(it);
-      if (removal_callback_)
+      if (removal_callback_) {
         removal_callback_.Run();  // May delete |this|!
+      }
     }
   }
 
@@ -341,9 +344,7 @@ class RepeatingCallbackList
   }
 };
 
-// Syntactic sugar to parallel that used for Callbacks.
-// ClosureList explicitly not provided since it is not used, and CallbackList
-// is deprecated. {Once,Repeating}ClosureList should instead be used.
+// Syntactic sugar to parallel that used for {Once,Repeating}Callbacks.
 using OnceClosureList = OnceCallbackList<void()>;
 using RepeatingClosureList = RepeatingCallbackList<void()>;
 

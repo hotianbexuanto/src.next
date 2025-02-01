@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,28 +6,26 @@
 
 #include <memory>
 
+#include "base/metrics/histogram_functions.h"
 #include "build/build_config.h"
 #include "chrome/browser/download/chrome_download_manager_delegate.h"
 #include "chrome/browser/download/download_commands.h"
+#include "chrome/browser/download/download_stats.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/download/public/common/download_danger_type.h"
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/common/content_features.h"
 #include "extensions/common/extension.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/models/simple_menu_model.h"
 #include "ui/gfx/color_palette.h"
+#include "ui/menus/simple_menu_model.h"
 
-#if defined(OS_WIN)
-#include "chrome/browser/ui/pdf/adobe_reader_info_win.h"
-#endif
-
-using MixedContentStatus = download::DownloadItem::MixedContentStatus;
+using InsecureDownloadStatus = download::DownloadItem::InsecureDownloadStatus;
 
 bool DownloadShelfContextMenu::WantsContextMenu(
     DownloadUIModel* download_model) {
   return !download_model->IsDangerous() || download_model->MightBeMalicious() ||
-         download_model->IsMixedContent();
+         download_model->IsInsecure();
 }
 
 DownloadShelfContextMenu::~DownloadShelfContextMenu() {
@@ -38,7 +36,30 @@ DownloadShelfContextMenu::DownloadShelfContextMenu(
     base::WeakPtr<DownloadUIModel> download)
     : download_(download), download_commands_(new DownloadCommands(download)) {
   DCHECK(download_);
-  download_->AddObserver(this);
+}
+
+void DownloadShelfContextMenu::RecordCommandsEnabled(
+    ui::SimpleMenuModel* model) {
+  // Meant to be kept up-to-date with DownloadCommands::Command
+
+  if (download_commands_enabled_recorded_) {
+    return;
+  }
+
+  for (int command_int = 0; command_int <= DownloadCommands::Command::kMaxValue;
+       command_int++) {
+    if (model->GetIndexOfCommandId(command_int).has_value() &&
+        IsCommandIdEnabled(command_int)) {
+      DownloadCommands::Command download_command =
+          static_cast<DownloadCommands::Command>(command_int);
+      base::UmaHistogramEnumeration(
+          "Download.ShelfContextMenuAction",
+          DownloadCommandToShelfAction(download_command,
+                                       /*clicked=*/false));
+    }
+  }
+
+  download_commands_enabled_recorded_ = true;
 }
 
 ui::SimpleMenuModel* DownloadShelfContextMenu::GetMenuModel() {
@@ -49,10 +70,10 @@ ui::SimpleMenuModel* DownloadShelfContextMenu::GetMenuModel() {
 
   DCHECK(WantsContextMenu(download_.get()));
 
-  bool is_download = download_->download() != nullptr;
+  bool is_download = download_->GetDownloadItem() != nullptr;
 
-  if (download_->IsMixedContent()) {
-    model = GetMixedContentDownloadMenuModel();
+  if (download_->IsInsecure()) {
+    model = GetInsecureDownloadMenuModel();
   } else if (ChromeDownloadManagerDelegate::IsDangerTypeBlocked(
                  download_->GetDangerType())) {
     model = GetInterruptedMenuModel(is_download);
@@ -72,7 +93,7 @@ ui::SimpleMenuModel* DownloadShelfContextMenu::GetMenuModel() {
   } else {
     model = GetInProgressMenuModel(is_download);
   }
-
+  RecordCommandsEnabled(model);
   return model;
 }
 
@@ -142,19 +163,10 @@ std::u16string DownloadShelfContextMenu::GetLabelForCommandId(
       if (download_commands_) {
         bool can_open_pdf_in_system_viewer =
             download_commands_->CanOpenPdfInSystemViewer();
-#if defined(OS_WIN)
-        if (can_open_pdf_in_system_viewer) {
-          id = IsAdobeReaderDefaultPDFViewer()
-                   ? IDS_DOWNLOAD_MENU_ALWAYS_OPEN_PDF_IN_READER
-                   : IDS_DOWNLOAD_MENU_PLATFORM_OPEN_ALWAYS;
-          break;
-        }
-#elif defined(OS_MAC) || defined(OS_LINUX) || defined(OS_CHROMEOS)
         if (can_open_pdf_in_system_viewer) {
           id = IDS_DOWNLOAD_MENU_PLATFORM_OPEN_ALWAYS;
           break;
         }
-#endif
       }
       id = IDS_DOWNLOAD_MENU_ALWAYS_OPEN_TYPE;
       break;
@@ -171,20 +183,28 @@ std::u16string DownloadShelfContextMenu::GetLabelForCommandId(
     case DownloadCommands::LEARN_MORE_INTERRUPTED:
       id = IDS_DOWNLOAD_MENU_LEARN_MORE_INTERRUPTED;
       break;
-    case DownloadCommands::LEARN_MORE_MIXED_CONTENT:
-      id = IDS_DOWNLOAD_MENU_LEARN_MORE_MIXED_CONTENT;
+    case DownloadCommands::LEARN_MORE_INSECURE_DOWNLOAD:
+      id = IDS_DOWNLOAD_MENU_LEARN_MORE_INSECURE;
       break;
     case DownloadCommands::COPY_TO_CLIPBOARD:
-    case DownloadCommands::ANNOTATE:
-      // These commands are implemented only for the Download notification.
+      // This command is implemented only for the Download notification.
       NOTREACHED();
-      break;
     case DownloadCommands::DEEP_SCAN:
       id = IDS_DOWNLOAD_MENU_DEEP_SCAN;
       break;
-    case DownloadCommands::BYPASS_DEEP_SCANNING:
+    case DownloadCommands::BYPASS_DEEP_SCANNING_AND_OPEN:
       id = IDS_OPEN_DOWNLOAD_NOW;
       break;
+    // These commands are not supported on the context menu.
+    case DownloadCommands::REVIEW:
+    case DownloadCommands::RETRY:
+    case DownloadCommands::CANCEL_DEEP_SCAN:
+    case DownloadCommands::LEARN_MORE_DOWNLOAD_BLOCKED:
+    case DownloadCommands::OPEN_SAFE_BROWSING_SETTING:
+    case DownloadCommands::BYPASS_DEEP_SCANNING:
+    case DownloadCommands::OPEN_WITH_MEDIA_APP:
+    case DownloadCommands::EDIT_WITH_MEDIA_APP:
+      NOTREACHED();
   }
   CHECK(id != -1);
   return l10n_util::GetStringUTF16(id);
@@ -195,7 +215,6 @@ void DownloadShelfContextMenu::DetachFromDownloadItem() {
     return;
 
   download_commands_.reset();
-  download_->RemoveObserver(this);
   download_ = nullptr;
 }
 
@@ -312,7 +331,7 @@ ui::SimpleMenuModel* DownloadShelfContextMenu::GetInterruptedMenuModel(
 
   interrupted_download_menu_model_->AddItem(
       DownloadCommands::RESUME, GetLabelForCommandId(DownloadCommands::RESUME));
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   // The Help Center article is currently Windows specific.
   // TODO(asanka): Enable this for other platforms when the article is expanded
   // for other platforms.
@@ -372,8 +391,8 @@ ui::SimpleMenuModel* DownloadShelfContextMenu::GetDeepScanningMenuModel(
       GetLabelForCommandId(DownloadCommands::DISCARD));
 
   deep_scanning_menu_model_->AddItem(
-      DownloadCommands::BYPASS_DEEP_SCANNING,
-      GetLabelForCommandId(DownloadCommands::BYPASS_DEEP_SCANNING));
+      DownloadCommands::BYPASS_DEEP_SCANNING_AND_OPEN,
+      GetLabelForCommandId(DownloadCommands::BYPASS_DEEP_SCANNING_AND_OPEN));
 
   deep_scanning_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
 
@@ -390,29 +409,27 @@ ui::SimpleMenuModel* DownloadShelfContextMenu::GetDeepScanningMenuModel(
   return deep_scanning_menu_model_.get();
 }
 
-ui::SimpleMenuModel*
-DownloadShelfContextMenu::GetMixedContentDownloadMenuModel() {
-  if (mixed_content_download_menu_model_)
-    return mixed_content_download_menu_model_.get();
+ui::SimpleMenuModel* DownloadShelfContextMenu::GetInsecureDownloadMenuModel() {
+  if (insecure_download_menu_model_)
+    return insecure_download_menu_model_.get();
 
-  mixed_content_download_menu_model_ =
-      std::make_unique<ui::SimpleMenuModel>(this);
+  insecure_download_menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
 
-  if (download_->GetMixedContentStatus() == MixedContentStatus::WARN) {
-    mixed_content_download_menu_model_->AddItem(
+  if (download_->GetInsecureDownloadStatus() == InsecureDownloadStatus::WARN) {
+    insecure_download_menu_model_->AddItem(
         DownloadCommands::DISCARD,
         GetLabelForCommandId(DownloadCommands::DISCARD));
   } else {
-    mixed_content_download_menu_model_->AddItem(
+    insecure_download_menu_model_->AddItem(
         DownloadCommands::KEEP, GetLabelForCommandId(DownloadCommands::KEEP));
   }
 
-  mixed_content_download_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
-  mixed_content_download_menu_model_->AddItem(
-      DownloadCommands::LEARN_MORE_MIXED_CONTENT,
-      GetLabelForCommandId(DownloadCommands::LEARN_MORE_MIXED_CONTENT));
+  insecure_download_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
+  insecure_download_menu_model_->AddItem(
+      DownloadCommands::LEARN_MORE_INSECURE_DOWNLOAD,
+      GetLabelForCommandId(DownloadCommands::LEARN_MORE_INSECURE_DOWNLOAD));
 
-  return mixed_content_download_menu_model_.get();
+  return insecure_download_menu_model_.get();
 }
 
 void DownloadShelfContextMenu::AddAutoOpenToMenu(ui::SimpleMenuModel* menu) {
@@ -424,7 +441,7 @@ void DownloadShelfContextMenu::AddAutoOpenToMenu(ui::SimpleMenuModel* menu) {
         DownloadCommands::ALWAYS_OPEN_TYPE,
         GetLabelForCommandId(DownloadCommands::ALWAYS_OPEN_TYPE),
         ui::ImageModel::FromVectorIcon(vector_icons::kBusinessIcon,
-                                       gfx::kChromeIconGrey,
+                                       ui::kColorIcon,
                                        ui::SimpleMenuModel::kDefaultIconSize));
   } else {
     menu->AddCheckItem(

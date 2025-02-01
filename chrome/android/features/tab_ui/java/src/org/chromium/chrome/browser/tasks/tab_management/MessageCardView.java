@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,14 +8,17 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.util.AttributeSet;
+import android.view.View;
 import android.widget.LinearLayout;
 
-import org.chromium.base.ApiCompatibilityUtils;
+import org.chromium.base.Callback;
 import org.chromium.chrome.tab_ui.R;
-import org.chromium.components.browser_ui.widget.text.TemplatePreservingTextView;
+import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.ui.widget.ButtonCompat;
 import org.chromium.ui.widget.ChromeImageView;
+import org.chromium.ui.widget.TextViewWithLeading;
 
 import java.lang.ref.WeakReference;
 
@@ -26,25 +29,23 @@ import java.lang.ref.WeakReference;
 class MessageCardView extends LinearLayout {
     private static WeakReference<Bitmap> sCloseButtonBitmapWeakRef;
 
-    /**
-     * An interface to get the icon to be shown inside the message card.
-     */
-    public interface IconProvider { Drawable getIconDrawable(); }
+    /** An interface to get the icon to be shown inside the message card. */
+    public interface IconProvider {
+        void fetchIconDrawable(Callback<Drawable> drawable);
+    }
 
-    /**
-     * An interface to handle the review action.
-     */
-    public interface ReviewActionProvider { void review(); }
+    /** An interface to handle the review action. */
+    public interface ReviewActionProvider {
+        void review();
+    }
 
-    /**
-     * An interface to handle the dismiss action.
-     */
+    /** An interface to handle the dismiss action. */
     public interface DismissActionProvider {
         void dismiss(@MessageService.MessageType int messageType);
     }
 
     private ChromeImageView mIcon;
-    private TemplatePreservingTextView mDescription;
+    private TextViewWithLeading mDescription;
     private ButtonCompat mActionButton;
     private ChromeImageView mCloseButton;
 
@@ -63,24 +64,18 @@ class MessageCardView extends LinearLayout {
 
         if (sCloseButtonBitmapWeakRef == null || sCloseButtonBitmapWeakRef.get() == null) {
             int closeButtonSize =
-                    (int) getResources().getDimension(R.dimen.tab_grid_close_button_size);
+                    (int) getResources().getDimension(R.dimen.message_card_close_button_size);
             Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.btn_close);
-            sCloseButtonBitmapWeakRef = new WeakReference<>(
-                    Bitmap.createScaledBitmap(bitmap, closeButtonSize, closeButtonSize, true));
+            sCloseButtonBitmapWeakRef =
+                    new WeakReference<>(
+                            Bitmap.createScaledBitmap(
+                                    bitmap, closeButtonSize, closeButtonSize, true));
         }
         mCloseButton.setImageBitmap(sCloseButtonBitmapWeakRef.get());
     }
 
     /**
-     * @see TemplatePreservingTextView#setTemplate(String), setDescriptionText() must be called
-     * after calling this method for the new template text to take effect.
-     */
-    void setDescriptionTextTemplate(String template) {
-        mDescription.setTemplate(template);
-    }
-
-    /**
-     * @see TemplatePreservingTextView#setText(CharSequence).
+     * @see TextView#setText(CharSequence).
      */
     void setDescriptionText(CharSequence text) {
         mDescription.setText(text);
@@ -96,9 +91,11 @@ class MessageCardView extends LinearLayout {
 
     /**
      * Set icon drawable.
+     *
      * @param iconDrawable Drawable to be shown.
      */
     void setIcon(Drawable iconDrawable) {
+        mIcon.setVisibility(View.VISIBLE);
         mIcon.setImageDrawable(iconDrawable);
     }
 
@@ -111,7 +108,17 @@ class MessageCardView extends LinearLayout {
     }
 
     /**
+     * Sets the action button visibility.
+     *
+     * @param visible Whether the action button is visible.
+     */
+    void setActionButtonVisible(boolean visible) {
+        mActionButton.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    /**
      * Set content description for dismiss button.
+     *
      * @param description The content description.
      */
     void setDismissButtonContentDescription(String description) {
@@ -139,8 +146,11 @@ class MessageCardView extends LinearLayout {
                 params.setMargins(0, 0, 0, 0);
             }
         } else {
-            int margin = (int) getContext().getResources().getDimension(
-                    R.dimen.tab_grid_iph_item_description_margin);
+            int margin =
+                    (int)
+                            getContext()
+                                    .getResources()
+                                    .getDimension(R.dimen.tab_grid_iph_item_description_margin);
             removeView(mIcon);
             params.setMargins(margin, 0, 0, 0);
         }
@@ -152,34 +162,15 @@ class MessageCardView extends LinearLayout {
      */
     private void setBackground(boolean isIncognito) {
         setBackgroundResource(TabUiThemeProvider.getMessageCardBackgroundResourceId(isIncognito));
-    }
-
-    /**
-     * Set text appearance for description.
-     * @param isIncognito Whether the text appearance is used for incognito mode.
-     */
-    private void setDescriptionTextAppearance(boolean isIncognito) {
-        ApiCompatibilityUtils.setTextAppearance(mDescription,
-                TabUiThemeProvider.getMessageCardDescriptionTextAppearance(isIncognito));
-    }
-
-    /**
-     * Set text appearance for action button.
-     * @param isIncognito Whether the text appearance is used for incognito mode.
-     */
-    private void setActionButtonTextAppearance(boolean isIncognito) {
-        ApiCompatibilityUtils.setTextAppearance(mActionButton,
-                TabUiThemeProvider.getMessageCardActionButtonTextAppearance(isIncognito));
-    }
-
-    /**
-     * Set tint for close button.
-     * @param isIncognito Whether the tint is used for incognito mode.
-     */
-    private void setCloseButtonTint(boolean isIncognito) {
-        ApiCompatibilityUtils.setImageTintList(mCloseButton,
-                TabUiThemeProvider.getMessageCardCloseButtonTintList(
-                        mCloseButton.getContext(), isIncognito));
+        // Incognito colors should follow baseline.
+        // Use the color defined in drawable.
+        if (isIncognito) {
+            return;
+        }
+        // Set dynamic color.
+        GradientDrawable gradientDrawable = (GradientDrawable) getBackground();
+        gradientDrawable.setColor(
+                ChromeColors.getSurfaceColor(getContext(), R.dimen.default_elevation_2));
     }
 
     /**
@@ -188,9 +179,10 @@ class MessageCardView extends LinearLayout {
      */
     void updateMessageCardColor(boolean isIncognito) {
         setBackground(isIncognito);
-        setDescriptionTextAppearance(isIncognito);
-        setActionButtonTextAppearance(isIncognito);
-        // TODO(crbug.com/1139194): Set action button ripple color.
-        setCloseButtonTint(isIncognito);
+        MessageCardViewUtils.setDescriptionTextAppearance(
+                mDescription, isIncognito, /* isLargeMessageCard= */ false);
+        MessageCardViewUtils.setActionButtonTextAppearance(
+                mActionButton, isIncognito, /* isLargeMessageCard= */ false);
+        MessageCardViewUtils.setCloseButtonTint(mCloseButton, isIncognito);
     }
 }

@@ -29,10 +29,8 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/notreached.h"
 #include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink-forward.h"
-#include "third_party/blink/renderer/platform/geometry/float_point.h"
-#include "third_party/blink/renderer/platform/geometry/float_size.h"
-#include "third_party/blink/renderer/platform/geometry/int_rect.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/image_observer.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
@@ -43,7 +41,11 @@
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
 #include "third_party/blink/renderer/platform/wtf/thread_safe_ref_counted.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
-#include "ui/base/resource/scale_factor.h"
+#include "ui/base/resource/resource_scale_factor.h"
+#include "ui/gfx/geometry/point_f.h"
+#include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/geometry/rect_f.h"
+#include "ui/gfx/geometry/size_f.h"
 
 class SkMatrix;
 
@@ -55,7 +57,6 @@ class ImageDecodeCache;
 
 namespace blink {
 
-class FloatRect;
 class GraphicsContext;
 class Image;
 class WebGraphicsContext3DProvider;
@@ -63,6 +64,7 @@ class WebGraphicsContext3DProviderWrapper;
 class DarkModeImageCache;
 
 struct ImageTilingInfo;
+struct ImageDrawOptions;
 
 class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
   friend class GeneratedImage;
@@ -79,20 +81,29 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
 
   static scoped_refptr<Image> LoadPlatformResource(
       int resource_id,
-      ui::ResourceScaleFactor scale_factor = ui::SCALE_FACTOR_100P);
+      ui::ResourceScaleFactor scale_factor = ui::k100Percent);
 
+  // Resize and reorient the specified PaintImage. The resulting image will have
+  // color type kN32_SkColorType. The resulting image will have the same color
+  // space as the input PaintImage, unless a non-nullptr SkColorSpace is
+  // specified, in which case the resulting image will have the specified color
+  // space.
   static PaintImage ResizeAndOrientImage(
       const PaintImage&,
       ImageOrientation,
-      FloatSize image_scale = FloatSize(1, 1),
+      gfx::Vector2dF image_scale = gfx::Vector2dF(1, 1),
       float opacity = 1.0,
       InterpolationQuality = kInterpolationNone);
+  static PaintImage ResizeAndOrientImage(const PaintImage&,
+                                         ImageOrientation,
+                                         gfx::Vector2dF image_scale,
+                                         float opacity,
+                                         InterpolationQuality,
+                                         sk_sp<SkColorSpace> color_space);
 
   virtual bool IsSVGImage() const { return false; }
   virtual bool IsBitmapImage() const { return false; }
   virtual bool IsStaticBitmapImage() const { return false; }
-  virtual bool IsPlaceholderImage() const { return false; }
-  virtual bool IsGradientGeneratedImage() const { return false; }
 
   virtual bool CurrentFrameKnownToBeOpaque() = 0;
 
@@ -106,7 +117,7 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
   virtual bool CurrentFrameHasSingleSecurityOrigin() const { return false; }
 
   static Image* NullImage();
-  bool IsNull() const { return Size().IsEmpty(); }
+  bool IsNull() const { return this == NullImage(); }
 
   virtual bool HasIntrinsicSize() const { return true; }
 
@@ -119,16 +130,16 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
   };
 
   // Size of the Image optionally modified per the provided SizeConfig.
-  virtual IntSize SizeWithConfig(SizeConfig) const = 0;
-  virtual FloatSize SizeWithConfigAsFloat(SizeConfig config) const {
-    return FloatSize(SizeWithConfig(config));
+  virtual gfx::Size SizeWithConfig(SizeConfig) const = 0;
+  virtual gfx::SizeF SizeWithConfigAsFloat(SizeConfig config) const {
+    return gfx::SizeF(SizeWithConfig(config));
   }
 
   // Size of the Image.
-  IntSize Size() const { return SizeWithConfig({}); }
+  gfx::Size Size() const { return SizeWithConfig({}); }
 
   // Size of the Image with density correction applied.
-  IntSize DensityCorrectedSize() const {
+  gfx::Size DensityCorrectedSize() const {
     SizeConfig config;
     config.apply_density = true;
     return SizeWithConfig(config);
@@ -136,7 +147,7 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
 
   // Size of the Image with density correction and orientation applied
   // regardless of any settings or style affecting orientation.
-  IntSize PreferredDisplaySize() const {
+  gfx::Size PreferredDisplaySize() const {
     SizeConfig config;
     config.apply_density = true;
     config.apply_orientation = true;
@@ -145,7 +156,7 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
 
   // Size of the Image with density correction applied. If the argument is
   // kRespectImageOrientation orientation is applied as well.
-  IntSize Size(RespectImageOrientationEnum respect_orientation) const {
+  gfx::Size Size(RespectImageOrientationEnum respect_orientation) const {
     SizeConfig config;
     config.apply_density = true;
     config.apply_orientation = respect_orientation == kRespectImageOrientation;
@@ -155,20 +166,21 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
   // Same as Size(RespectImageOrientationEnum) above, but returns a floating
   // point representation of the size. For subclasses of Image that can have a
   // fractional size this will return the unrounded size.
-  FloatSize SizeAsFloat(RespectImageOrientationEnum respect_orientation) const {
+  gfx::SizeF SizeAsFloat(
+      RespectImageOrientationEnum respect_orientation) const {
     SizeConfig config;
     config.apply_density = true;
     config.apply_orientation = respect_orientation == kRespectImageOrientation;
     return SizeWithConfigAsFloat(config);
   }
 
-  IntRect Rect() const { return IntRect(IntPoint(), Size()); }
-  int width() const { return Size().Width(); }
-  int height() const { return Size().Height(); }
+  gfx::Rect Rect() const { return gfx::Rect(Size()); }
+  int width() const { return Size().width(); }
+  int height() const { return Size().height(); }
 
-  virtual bool GetHotSpot(IntPoint&) const { return false; }
+  virtual bool GetHotSpot(gfx::Point&) const { return false; }
 
-  enum SizeAvailability {
+  enum SizeAvailability : uint8_t {
     kSizeUnavailable,
     kSizeAvailableAndLoadingAsynchronously,
     kSizeAvailable,
@@ -187,8 +199,11 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
     return kSizeUnavailable;
   }
 
-  // null string if unknown
+  // Returns null string if unknown.
   virtual String FilenameExtension() const;
+
+  // Returns WTF::g_null_atom if unknown.
+  virtual const AtomicString& MimeType() const;
 
   virtual void DestroyDecodedData() = 0;
 
@@ -263,7 +278,6 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
     }
 
     NOTREACHED();
-    return PaintImage::DecodingMode::kUnspecified;
   }
 
   virtual PaintImage PaintImageForCurrentFrame() = 0;
@@ -282,8 +296,8 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
   // to call this method. The image_size is the oriented size of the image (i.e.
   // after orientation has been applied). src_rect may be a subset of the image,
   // also oriented.
-  FloatRect CorrectSrcRectForImageOrientation(FloatSize image_size,
-                                              FloatRect src_rect) const;
+  gfx::RectF CorrectSrcRectForImageOrientation(gfx::SizeF image_size,
+                                               gfx::RectF src_rect) const;
 
   enum ImageClampingMode {
     kClampImageToSourceRect,
@@ -292,17 +306,17 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
 
   virtual void Draw(cc::PaintCanvas*,
                     const cc::PaintFlags&,
-                    const FloatRect& dst_rect,
-                    const FloatRect& src_rect,
-                    const SkSamplingOptions&,
-                    RespectImageOrientationEnum,
-                    ImageClampingMode,
-                    ImageDecodingMode) = 0;
+                    const gfx::RectF& dst_rect,
+                    const gfx::RectF& src_rect,
+                    const ImageDrawOptions& draw_options) = 0;
 
   // Apply this Image as a shader to the passed PaintFlags. This is currently
   // only used by GraphicsContext::DrawImageRRect() and to match the semantics
   // of that function the shader should use a clamping tile mode if possible.
-  virtual bool ApplyShader(cc::PaintFlags&, const SkMatrix& local_matrix);
+  virtual bool ApplyShader(cc::PaintFlags&,
+                           const SkMatrix& local_matrix,
+                           const gfx::RectF& src_rect,
+                           const ImageDrawOptions& draw_options);
 
   // Use ContextProvider() for immediate use only, use
   // ContextProviderWrapper() to obtain a retainable reference. Note:
@@ -327,9 +341,9 @@ class PLATFORM_EXPORT Image : public ThreadSafeRefCounted<Image> {
 
   virtual void DrawPattern(GraphicsContext&,
                            const cc::PaintFlags&,
-                           const FloatRect& dest_rect,
+                           const gfx::RectF& dest_rect,
                            const ImageTilingInfo& tiling_info,
-                           RespectImageOrientationEnum);
+                           const ImageDrawOptions& draw_options);
 
   // Creates and initializes a PaintImageBuilder with the metadata flags for the
   // PaintImage.

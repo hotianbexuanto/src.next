@@ -21,6 +21,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_QUALIFIED_NAME_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_QUALIFIED_NAME_H_
 
+#include "base/containers/span.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/hash_table_deleted_value_type.h"
@@ -46,7 +47,22 @@ struct QualifiedNameData {
   bool is_static_;
 };
 
-CORE_EXPORT extern const class QualifiedName& g_null_name;
+class CORE_EXPORT QualifiedName;
+
+}  // namespace blink
+
+// `QualifiedName`'s only field is an interned pointer, so it's safe to hash;
+// allow conversion to a byte span to facilitate this.
+namespace base {
+template <>
+inline constexpr bool kCanSafelyConvertToByteSpan<::blink::QualifiedName> =
+    true;
+}
+
+namespace blink {
+
+CORE_EXPORT extern const QualifiedName& g_any_name;
+CORE_EXPORT extern const QualifiedName& g_null_name;
 
 class CORE_EXPORT QualifiedName {
   USING_FAST_MALLOC(QualifiedName);
@@ -54,11 +70,10 @@ class CORE_EXPORT QualifiedName {
  public:
   class CORE_EXPORT QualifiedNameImpl : public RefCounted<QualifiedNameImpl> {
    public:
-    static scoped_refptr<QualifiedNameImpl> Create(
-        const AtomicString& prefix,
-        const AtomicString& local_name,
-        const AtomicString& namespace_uri,
-        bool is_static) {
+    static scoped_refptr<QualifiedNameImpl> Create(StringImpl* prefix,
+                                                   StringImpl* local_name,
+                                                   StringImpl* namespace_uri,
+                                                   bool is_static) {
       return base::AdoptRef(
           new QualifiedNameImpl(prefix, local_name, namespace_uri, is_static));
     }
@@ -67,46 +82,62 @@ class CORE_EXPORT QualifiedName {
 
     unsigned ComputeHash() const;
 
+    bool IsStatic() const {
+      return is_static_and_html_attribute_triggers_index_ != kNotStatic;
+    }
+
     void AddRef() {
-      if (is_static_)
+      if (IsStatic()) {
         return;
+      }
       RefCounted<QualifiedNameImpl>::AddRef();
     }
 
     void Release() {
-      if (is_static_)
+      if (IsStatic()) {
         return;
+      }
       RefCounted<QualifiedNameImpl>::Release();
     }
 
-    // We rely on StringHasher's HashMemory clearing out the top 8 bits when
+    enum StaticAndAttributeTriggersConstants {
+      kLargestAllowedIndex = 253,
+      kNotStatic = 254,
+      kStaticWithNoIndex = 255
+    };
+
+    // We rely on HashComponents() clearing out the top 8 bits when
     // doing hashing and use one of the bits for the is_static_ value.
     mutable unsigned existing_hash_ : 24;
-    unsigned is_static_ : 1;
+    mutable unsigned is_static_and_html_attribute_triggers_index_ : 8;
     const AtomicString prefix_;
     const AtomicString local_name_;
     const AtomicString namespace_;
     mutable AtomicString local_name_upper_;
 
    private:
-    QualifiedNameImpl(const AtomicString& prefix,
-                      const AtomicString& local_name,
-                      const AtomicString& namespace_uri,
+    QualifiedNameImpl(StringImpl* prefix,
+                      StringImpl* local_name,
+                      StringImpl* namespace_uri,
                       bool is_static)
         : existing_hash_(0),
-          is_static_(is_static),
+          is_static_and_html_attribute_triggers_index_(
+              is_static ? kStaticWithNoIndex : kNotStatic),
           prefix_(prefix),
           local_name_(local_name),
           namespace_(namespace_uri)
 
     {
-      DCHECK(!namespace_uri.IsEmpty() || namespace_uri.IsNull());
+      DCHECK(!namespace_.empty() || namespace_.IsNull());
     }
   };
 
   QualifiedName(const AtomicString& prefix,
                 const AtomicString& local_name,
                 const AtomicString& namespace_uri);
+  // Creates a QualifiedName instance with null prefix, the specified local
+  // name, and null namespace.
+  explicit QualifiedName(const AtomicString& local_name);
   ~QualifiedName();
 
   QualifiedName(const QualifiedName& other) = default;
@@ -114,6 +145,8 @@ class CORE_EXPORT QualifiedName {
     impl_ = other.impl_;
     return *this;
   }
+  QualifiedName(QualifiedName&& other) = default;
+  QualifiedName& operator=(QualifiedName&& other) = default;
 
   bool operator==(const QualifiedName& other) const {
     return impl_ == other.impl_;
@@ -145,6 +178,28 @@ class CORE_EXPORT QualifiedName {
 
   const AtomicString& LocalNameUpperSlow() const;
 
+  void RegisterHTMLAttributeTriggersIndex(unsigned index) const {
+    using enum QualifiedNameImpl::StaticAndAttributeTriggersConstants;
+    CHECK_EQ(impl_->is_static_and_html_attribute_triggers_index_,
+             kStaticWithNoIndex);
+    CHECK_LE(index, kLargestAllowedIndex);
+    impl_->is_static_and_html_attribute_triggers_index_ = index;
+    CHECK_EQ(*HTMLAttributeTriggersIndex(), index);
+  }
+
+  std::optional<unsigned> HTMLAttributeTriggersIndex() const {
+    using enum QualifiedNameImpl::StaticAndAttributeTriggersConstants;
+    if (impl_->is_static_and_html_attribute_triggers_index_ >
+        kLargestAllowedIndex) {
+      return std::nullopt;
+    }
+    return unsigned{impl_->is_static_and_html_attribute_triggers_index_};
+  }
+
+  // Returns true if this is a built-in name. That is, one of the names defined
+  // at build time (such as <img>).
+  bool IsDefinedName() const { return impl_ && impl_->IsStatic(); }
+
   String ToString() const;
 
   QualifiedNameImpl* Impl() const { return impl_.get(); }
@@ -174,7 +229,6 @@ class CORE_EXPORT QualifiedName {
   scoped_refptr<QualifiedNameImpl> impl_;
 };
 
-extern const QualifiedName& g_any_name;
 inline const QualifiedName& AnyQName() {
   return g_any_name;
 }
@@ -193,31 +247,8 @@ inline bool operator!=(const QualifiedName& q, const AtomicString& a) {
 }
 
 inline unsigned HashComponents(const QualifiedNameComponents& buf) {
-  return StringHasher::HashMemory<sizeof(QualifiedNameComponents)>(&buf);
+  return StringHasher::HashMemory(base::byte_span_from_ref(buf)) & 0xFFFFFF;
 }
-
-struct CORE_EXPORT QualifiedNameHash {
-  STATIC_ONLY(QualifiedNameHash);
-  static unsigned GetHash(const QualifiedName& name) {
-    return GetHash(name.Impl());
-  }
-
-  static unsigned GetHash(const QualifiedName::QualifiedNameImpl* name) {
-    if (!name->existing_hash_)
-      name->existing_hash_ = name->ComputeHash();
-    return name->existing_hash_;
-  }
-
-  static bool Equal(const QualifiedName& a, const QualifiedName& b) {
-    return a == b;
-  }
-  static bool Equal(const QualifiedName::QualifiedNameImpl* a,
-                    const QualifiedName::QualifiedNameImpl* b) {
-    return a == b;
-  }
-
-  static const bool safe_to_compare_to_empty_or_deleted = false;
-};
 
 CORE_EXPORT std::ostream& operator<<(std::ostream&, const QualifiedName&);
 
@@ -228,33 +259,38 @@ WTF_ALLOW_MOVE_INIT_AND_COMPARE_WITH_MEM_FUNCTIONS(blink::QualifiedName)
 namespace WTF {
 
 template <>
-struct DefaultHash<blink::QualifiedName> {
-  typedef blink::QualifiedNameHash Hash;
+struct HashTraits<blink::QualifiedName::QualifiedNameImpl*>
+    : GenericHashTraits<blink::QualifiedName::QualifiedNameImpl*> {
+  static unsigned GetHash(const blink::QualifiedName::QualifiedNameImpl* name) {
+    if (!name->existing_hash_) {
+      name->existing_hash_ = name->ComputeHash();
+    }
+    return name->existing_hash_;
+  }
+  static constexpr bool kSafeToCompareToEmptyOrDeleted = false;
 };
 
 template <>
 struct HashTraits<blink::QualifiedName>
-    : SimpleClassHashTraits<blink::QualifiedName> {
-  static const bool kEmptyValueIsZero = false;
-  static const bool kHasIsEmptyValueFunction = true;
-  static bool IsEmptyValue(const blink::QualifiedName& value) {
-    return value == EmptyValue();
+    : GenericHashTraits<blink::QualifiedName> {
+  using QualifiedNameImpl = blink::QualifiedName::QualifiedNameImpl;
+  static unsigned GetHash(const blink::QualifiedName& name) {
+    return WTF::GetHash(name.Impl());
   }
+  static constexpr bool kSafeToCompareToEmptyOrDeleted = false;
+
+  static constexpr bool kEmptyValueIsZero = false;
   static const blink::QualifiedName& EmptyValue() {
     return blink::QualifiedName::Null();
   }
 
   static bool IsDeletedValue(const blink::QualifiedName& value) {
-    using QualifiedNameImpl = blink::QualifiedName::QualifiedNameImpl;
     return HashTraits<scoped_refptr<QualifiedNameImpl>>::IsDeletedValue(
         value.impl_);
   }
-
-  static void ConstructDeletedValue(blink::QualifiedName& slot,
-                                    bool zero_value) {
-    using QualifiedNameImpl = blink::QualifiedName::QualifiedNameImpl;
+  static void ConstructDeletedValue(blink::QualifiedName& slot) {
     HashTraits<scoped_refptr<QualifiedNameImpl>>::ConstructDeletedValue(
-        slot.impl_, zero_value);
+        slot.impl_);
   }
 };
 

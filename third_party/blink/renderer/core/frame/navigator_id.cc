@@ -29,6 +29,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
+
 #include "third_party/blink/renderer/core/frame/navigator_id.h"
 
 #include "base/feature_list.h"
@@ -36,7 +41,7 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
-#if !defined(OS_MAC) && !defined(OS_WIN)
+#if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN)
 #include <sys/utsname.h>
 #include "third_party/blink/renderer/platform/wtf/thread_specific.h"
 #include "third_party/blink/renderer/platform/wtf/threading.h"
@@ -59,28 +64,10 @@ String NavigatorID::appVersion() {
 }
 
 String NavigatorID::platform() const {
-  // Call userAgent() so the usage can be reported
-  userAgent();
-
-  // If the User-Agent string is frozen, platform should be a value
-  // matching the frozen string per https://github.com/WICG/ua-client-hints. See
-  // content::frozen_user_agent_strings.
-  if (base::FeatureList::IsEnabled(features::kReduceUserAgent)) {
-#if defined(OS_ANDROID)
-    return "Linux armv81";
-#elif defined(OS_MAC)
-    return "MacIntel";
-#elif defined(OS_WIN)
-    return "Win32";
-#else
-    return "Linux x86_64";
-#endif
-  }
-
-#if defined(OS_MAC)
+#if BUILDFLAG(IS_MAC)
   // Match Safari and Mozilla on Mac x86.
   return "MacIntel";
-#elif defined(OS_WIN)
+#elif BUILDFLAG(IS_WIN)
   // Match Safari and Mozilla on Windows.
   return "Win32";
 #else  // Unix-like systems

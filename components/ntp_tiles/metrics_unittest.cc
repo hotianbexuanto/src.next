@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,9 +7,7 @@
 #include <stddef.h>
 
 #include <string>
-#include <vector>
 
-#include "base/macros.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -38,7 +36,7 @@ MATCHER_P3(IsBucketBetween, lower_bound, upper_bound, count, "") {
 // Builder for instances of NTPTileImpression that uses sensible defaults.
 class Builder {
  public:
-  Builder() {}
+  Builder() = default;
 
   Builder& WithIndex(int index) {
     impression_.index = index;
@@ -229,16 +227,6 @@ TEST(RecordTileImpressionTest, ShouldRecordUmaForIconType) {
                            .WithVisualType(ICON_REAL)
                            .WithIconType(IconType::kWebManifestIcon)
                            .Build());
-
-  EXPECT_THAT(
-      histogram_tester.GetAllSamples("NewTabPage.TileFaviconType.IconsColor"),
-      ElementsAre(base::Bucket(/*min=*/2, /*count=*/1)));
-  EXPECT_THAT(
-      histogram_tester.GetAllSamples("NewTabPage.TileFaviconType.IconsReal"),
-      ElementsAre(base::Bucket(/*min=*/4, /*count=*/1)));
-  EXPECT_THAT(histogram_tester.GetAllSamples("NewTabPage.TileFaviconType"),
-              ElementsAre(base::Bucket(/*min=*/2, /*count=*/1),
-                          base::Bucket(/*min=*/4, /*count=*/1)));
 }
 
 TEST(RecordTileClickTest, ShouldRecordUmaForIcon) {
@@ -352,17 +340,6 @@ TEST(RecordTileClickTest, ShouldRecordClicksForIconType) {
                       .WithVisualType(ICON_REAL)
                       .WithIconType(IconType::kWebManifestIcon)
                       .Build());
-
-  EXPECT_THAT(histogram_tester.GetAllSamples(
-                  "NewTabPage.TileFaviconTypeClicked.IconsColor"),
-              ElementsAre(base::Bucket(/*min=*/2, /*count=*/1)));
-  EXPECT_THAT(histogram_tester.GetAllSamples(
-                  "NewTabPage.TileFaviconTypeClicked.IconsReal"),
-              ElementsAre(base::Bucket(/*min=*/4, /*count=*/1)));
-  EXPECT_THAT(
-      histogram_tester.GetAllSamples("NewTabPage.TileFaviconTypeClicked"),
-      ElementsAre(base::Bucket(/*min=*/2, /*count=*/1),
-                  base::Bucket(/*min=*/4, /*count=*/1)));
 }
 
 }  // namespace

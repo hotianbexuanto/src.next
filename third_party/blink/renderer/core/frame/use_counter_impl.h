@@ -27,14 +27,15 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_USE_COUNTER_IMPL_H_
 
 #include <bitset>
+
+#include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink-forward.h"
 #include "third_party/blink/public/common/use_counter/use_counter_feature_tracker.h"
-#include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser_mode.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/heap/handle.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 
@@ -87,6 +88,13 @@ class CORE_EXPORT UseCounterImpl final {
   // distinguish them.
   enum class CSSPropertyType { kDefault, kAnimation };
 
+  enum class PermissionsPolicyUsageType {
+    kViolation,  // Feature request denied by permissions policy.
+    kHeader,     // Feature used in either Permissions-Policy or Feature-Policy
+                 // HTTP header.
+    kIframeAttribute,  // Feature used in 'allow' attribute on iframe element.
+  };
+
   explicit UseCounterImpl(Context = kDefaultContext, CommitState = kPreCommit);
   UseCounterImpl(const UseCounterImpl&) = delete;
   UseCounterImpl& operator=(const UseCounterImpl&) = delete;
@@ -107,13 +115,16 @@ class CORE_EXPORT UseCounterImpl final {
   // Repeated calls are ignored.
   void Count(CSSPropertyID, CSSPropertyType, const LocalFrame*);
   void Count(WebFeature, const LocalFrame*);
-  void CountPermissionsPolicyViolation(mojom::blink::PermissionsPolicyFeature,
-                                       const LocalFrame&);
+  void CountWebDXFeature(WebDXFeature, const LocalFrame*);
+  void CountPermissionsPolicyUsage(network::mojom::PermissionsPolicyFeature,
+                                   PermissionsPolicyUsageType,
+                                   const LocalFrame&);
 
   // Return whether the feature has been seen since the last page load
   // (except when muted).  Does include features seen in documents which have
   // reporting disabled.
   bool IsCounted(WebFeature) const;
+  bool IsWebDXFeatureCounted(WebDXFeature) const;
   bool IsCounted(CSSPropertyID unresolved_property, CSSPropertyType) const;
 
   // Retains a reference to the observer to notify of UseCounterImpl changes.
@@ -127,6 +138,7 @@ class CORE_EXPORT UseCounterImpl final {
   void UnmuteForInspector();
 
   void ClearMeasurementForTesting(WebFeature);
+  void ClearMeasurementForTesting(WebDXFeature);
 
   void Trace(Visitor*) const;
 

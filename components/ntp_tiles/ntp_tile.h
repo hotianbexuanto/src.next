@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "base/files/file_path.h"
-#include "base/macros.h"
 #include "base/time/time.h"
 #include "components/ntp_tiles/tile_source.h"
 #include "components/ntp_tiles/tile_title_source.h"
@@ -24,11 +22,6 @@ struct NTPTile {
   TileTitleSource title_source;
   TileSource source;
 
-  // Empty unless allowlists are enabled and this site is in an allowlist.
-  // However, may be non-empty even if |source| is not |ALLOWLIST|, if this tile
-  // is also available from another, higher-priority source.
-  base::FilePath allowlist_icon_path;
-
   // This won't be empty, but might 404 etc.
   GURL favicon_url;
 
@@ -39,6 +32,15 @@ struct NTPTile {
   // True if this tile is a custom link and was initialized from a Most Visited
   // item. Used for debugging.
   bool from_most_visited = false;
+
+  // The visit count of a Most Visited item. Used for debugging.
+  int visit_count = 0;
+
+  // The last visit time of a Most Visited item. Used for debugging.
+  base::Time last_visit_time;
+
+  // The score of a Most Visited item. Used for tweaking algorithm.
+  double score = -1;
 
   NTPTile();
   NTPTile(const NTPTile&);

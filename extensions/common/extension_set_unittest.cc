@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,25 +22,25 @@ namespace {
 scoped_refptr<Extension> CreateTestExtension(const std::string& name,
                                              const std::string& launch_url,
                                              const std::string& extent) {
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   base::FilePath path(FILE_PATH_LITERAL("c:\\"));
 #else
   base::FilePath path(FILE_PATH_LITERAL("/"));
 #endif
   path = path.AppendASCII(name);
 
-  base::DictionaryValue manifest;
-  manifest.SetString("name", name);
-  manifest.SetString("version", "1");
-  manifest.SetInteger("manifest_version", 2);
+  auto manifest = base::Value::Dict()
+                      .Set("name", name)
+                      .Set("version", "1")
+                      .Set("manifest_version", 2);
 
   if (!launch_url.empty())
-    manifest.SetString("app.launch.web_url", launch_url);
+    manifest.SetByDottedPath("app.launch.web_url", launch_url);
 
   if (!extent.empty()) {
-    base::Value urls(base::Value::Type::LIST);
+    base::Value::List urls;
     urls.Append(extent);
-    manifest.SetPath("app.urls", std::move(urls));
+    manifest.SetByDottedPath("app.urls", std::move(urls));
   }
 
   std::string error;
@@ -124,7 +124,7 @@ TEST(ExtensionSetTest, ExtensionSet) {
                             GURL("filesystem:http://dev.chromium.org/foo")));
   EXPECT_EQ(nullptr, extensions.GetExtensionOrAppByURL(
                          GURL("filesystem:http://code.google.com/foo")));
-  // TODO(crbug/852162): Support blob URLs. This should return ext3.
+  // TODO(crbug.com/41394231): Support blob URLs. This should return ext3.
   EXPECT_EQ(nullptr, extensions.GetExtensionOrAppByURL(
                          GURL("blob:http://dev.chromium.org/abcd")));
 

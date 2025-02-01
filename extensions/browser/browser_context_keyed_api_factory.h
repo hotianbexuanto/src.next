@@ -1,11 +1,10 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef EXTENSIONS_BROWSER_BROWSER_CONTEXT_KEYED_API_FACTORY_H_
 #define EXTENSIONS_BROWSER_BROWSER_CONTEXT_KEYED_API_FACTORY_H_
 
-#include "base/macros.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/content/browser_context_keyed_service_factory.h"
 #include "components/keyed_service/core/keyed_service.h"
@@ -34,6 +33,12 @@ class BrowserContextKeyedAPI : public KeyedService {
   // is true, it returns a separate instance.
   static const bool kServiceRedirectedInIncognito = false;
   static const bool kServiceHasOwnInstanceInIncognito = false;
+
+  // This value forces the Guest profile to set its `ProfileSelection` with the
+  // same value set for the Regular Profile.
+  // If the value is false, then `ProfileSelection::kNone` will be used, and the
+  // service will not be created for Guest profiles.
+  static const bool kServiceIsCreatedInGuestMode = true;
 
   // If set to false, don't start the service at BrowserContext creation time.
   // (The default differs from the BrowserContextKeyedServiceFactory default,
@@ -90,8 +95,10 @@ template <typename T>
 struct BrowserContextFactoryDependencies {
   static void DeclareFactoryDependencies(
       BrowserContextKeyedAPIFactory<T>* factory) {
-    factory->DependsOn(
-        ExtensionsBrowserClient::Get()->GetExtensionSystemFactory());
+    if (ExtensionsBrowserClient::Get()) {
+      factory->DependsOn(
+          ExtensionsBrowserClient::Get()->GetExtensionSystemFactory());
+    }
   }
 };
 
@@ -101,6 +108,7 @@ struct BrowserContextFactoryDependencies {
 template <typename T>
 class BrowserContextKeyedAPIFactory : public BrowserContextKeyedServiceFactory {
  public:
+  using PassKey = base::PassKey<BrowserContextKeyedAPIFactory<T>>;
   static T* Get(content::BrowserContext* context) {
     return static_cast<T*>(
         T::GetFactoryInstance()->GetServiceForBrowserContext(context, true));
@@ -126,28 +134,40 @@ class BrowserContextKeyedAPIFactory : public BrowserContextKeyedServiceFactory {
     DeclareFactoryDependencies();
   }
 
+  BrowserContextKeyedAPIFactory(const BrowserContextKeyedAPIFactory&) = delete;
+  BrowserContextKeyedAPIFactory& operator=(
+      const BrowserContextKeyedAPIFactory&) = delete;
+
   ~BrowserContextKeyedAPIFactory() override {}
 
  private:
   friend struct BrowserContextFactoryDependencies<T>;
 
-  // BrowserContextKeyedServiceFactory implementation.
-  KeyedService* BuildServiceInstanceFor(
+  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
       content::BrowserContext* context) const override {
-    return new T(context);
+    return std::make_unique<T>(context);
   }
 
   // BrowserContextKeyedServiceFactory implementation.
   // These can be effectively overridden with template specializations.
   content::BrowserContext* GetBrowserContextToUse(
       content::BrowserContext* context) const override {
-    if (T::kServiceRedirectedInIncognito)
-      return ExtensionsBrowserClient::Get()->GetOriginalContext(context);
+    // The GetContext...() implementations below treat guest sessions like
+    // normal ones, so explicitly exclude guest sessions here if necessary.
+    auto* const client = ExtensionsBrowserClient::Get();
+    if constexpr (!T::kServiceIsCreatedInGuestMode) {
+      if (client->IsGuestSession(context)) {
+        return nullptr;
+      }
+    }
 
-    if (T::kServiceHasOwnInstanceInIncognito)
-      return context;
-
-    return BrowserContextKeyedServiceFactory::GetBrowserContextToUse(context);
+    if constexpr (T::kServiceRedirectedInIncognito) {
+      return client->GetContextRedirectedToOriginal(context);
+    } else if constexpr (T::kServiceHasOwnInstanceInIncognito) {
+      return client->GetContextOwnInstance(context);
+    } else {
+      return client->GetContextForOriginalOnly(context);
+    }
   }
 
   bool ServiceIsCreatedWithBrowserContext() const override {
@@ -157,8 +177,6 @@ class BrowserContextKeyedAPIFactory : public BrowserContextKeyedServiceFactory {
   bool ServiceIsNULLWhileTesting() const override {
     return T::kServiceIsNULLWhileTesting;
   }
-
-  DISALLOW_COPY_AND_ASSIGN(BrowserContextKeyedAPIFactory);
 };
 
 }  // namespace extensions

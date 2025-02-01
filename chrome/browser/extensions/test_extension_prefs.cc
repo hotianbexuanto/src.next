@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,15 +7,14 @@
 #include <memory>
 #include <utility>
 
-#include "base/bind.h"
-#include "base/callback_helpers.h"
 #include "base/files/file_util.h"
-#include "base/macros.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/run_loop.h"
-#include "base/sequenced_task_runner.h"
 #include "base/synchronization/waitable_event.h"
-#include "base/threading/thread_task_runner_handle.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/time/clock.h"
+#include "base/time/time.h"
 #include "base/values.h"
 #include "chrome/browser/extensions/chrome_app_sorting.h"
 #include "chrome/browser/extensions/test_extension_system.h"
@@ -50,17 +49,18 @@ class TestExtensionPrefs::IncrementalClock : public base::Clock {
  public:
   IncrementalClock() : current_time_(base::Time::Now()) {}
 
-  ~IncrementalClock() override {}
+  IncrementalClock(const IncrementalClock&) = delete;
+  IncrementalClock& operator=(const IncrementalClock&) = delete;
+
+  ~IncrementalClock() override = default;
 
   base::Time Now() const override {
-    current_time_ += base::TimeDelta::FromSeconds(10);
+    current_time_ += base::Seconds(10);
     return current_time_;
   }
 
  private:
   mutable base::Time current_time_;
-
-  DISALLOW_COPY_AND_ASSIGN(IncrementalClock);
 };
 
 TestExtensionPrefs::TestExtensionPrefs(
@@ -77,8 +77,7 @@ TestExtensionPrefs::TestExtensionPrefs(
   RecreateExtensionPrefs();
 }
 
-TestExtensionPrefs::~TestExtensionPrefs() {
-}
+TestExtensionPrefs::~TestExtensionPrefs() = default;
 
 ExtensionPrefs* TestExtensionPrefs::prefs() {
   return ExtensionPrefs::Get(&profile_);
@@ -121,9 +120,12 @@ void TestExtensionPrefs::RecreateExtensionPrefs() {
   factory.SetUserPrefsFile(preferences_file_, task_runner_.get());
   factory.set_extension_prefs(
       new ExtensionPrefStore(extension_pref_value_map_.get(), false));
-  pref_service_ = factory.CreateSyncable(pref_registry_.get());
+  // Don't replace `pref_service_` until after re-assigning the `ExtensionPrefs`
+  // testing instance to avoid a dangling pointer.
+  std::unique_ptr<sync_preferences::PrefServiceSyncable> new_pref_service =
+      factory.CreateSyncable(pref_registry_.get());
   std::unique_ptr<ExtensionPrefs> prefs(ExtensionPrefs::Create(
-      &profile_, pref_service_.get(), temp_dir_.GetPath(),
+      &profile_, new_pref_service.get(), temp_dir_.GetPath(),
       extension_pref_value_map_.get(), extensions_disabled_,
       std::vector<EarlyExtensionPrefsObserver*>(),
       // Guarantee that no two extensions get the same installation time
@@ -131,6 +133,7 @@ void TestExtensionPrefs::RecreateExtensionPrefs() {
       clock_.get()));
   ExtensionPrefsFactory::GetInstance()->SetInstanceForTesting(&profile_,
                                                               std::move(prefs));
+  pref_service_ = std::move(new_pref_service);
   // Hack: After recreating ExtensionPrefs, the AppSorting also needs to be
   // recreated. (ExtensionPrefs is never recreated in non-test code.)
   static_cast<TestExtensionSystem*>(ExtensionSystem::Get(&profile_))
@@ -143,41 +146,44 @@ scoped_refptr<Extension> TestExtensionPrefs::AddExtension(
 }
 
 scoped_refptr<Extension> TestExtensionPrefs::AddApp(const std::string& name) {
-  base::DictionaryValue dictionary;
-  AddDefaultManifestKeys(name, &dictionary);
-  dictionary.SetString(manifest_keys::kApp, "true");
-  dictionary.SetString(manifest_keys::kLaunchWebURL, "http://example.com");
+  base::Value::Dict dictionary;
+  AddDefaultManifestKeys(name, dictionary);
+
+  dictionary.SetByDottedPath(manifest_keys::kLaunchWebURL,
+                             "http://example.com");
+
   return AddExtensionWithManifest(dictionary, ManifestLocation::kInternal);
 }
 
 scoped_refptr<Extension> TestExtensionPrefs::AddExtensionWithLocation(
     const std::string& name,
     ManifestLocation location) {
-  base::DictionaryValue dictionary;
-  AddDefaultManifestKeys(name, &dictionary);
+  base::Value::Dict dictionary;
+  AddDefaultManifestKeys(name, dictionary);
   return AddExtensionWithManifest(dictionary, location);
 }
 
 scoped_refptr<Extension> TestExtensionPrefs::AddExtensionWithManifest(
-    const base::DictionaryValue& manifest,
+    const base::Value::Dict& manifest,
     ManifestLocation location) {
   return AddExtensionWithManifestAndFlags(manifest, location,
                                           Extension::NO_FLAGS);
 }
 
 scoped_refptr<Extension> TestExtensionPrefs::AddExtensionWithManifestAndFlags(
-    const base::DictionaryValue& manifest,
+    const base::Value::Dict& manifest,
     ManifestLocation location,
     int extra_flags) {
-  std::string name;
-  EXPECT_TRUE(manifest.GetString(manifest_keys::kName, &name));
-  base::FilePath path =  extensions_dir_.AppendASCII(name);
+  const std::string* name = manifest.FindString(manifest_keys::kName);
+  EXPECT_TRUE(name);
+  base::FilePath path = extensions_dir_.AppendASCII(*name);
   std::string errors;
   scoped_refptr<Extension> extension =
       Extension::Create(path, location, manifest, extra_flags, &errors);
   EXPECT_TRUE(extension.get()) << errors;
-  if (!extension.get())
+  if (!extension.get()) {
     return nullptr;
+  }
 
   EXPECT_TRUE(crx_file::id_util::IdIsValid(extension->id()));
   prefs()->OnExtensionInstalled(extension.get(),
@@ -217,11 +223,10 @@ ChromeAppSorting* TestExtensionPrefs::app_sorting() {
 }
 
 void TestExtensionPrefs::AddDefaultManifestKeys(const std::string& name,
-                                                base::DictionaryValue* dict) {
-  DCHECK(dict);
-  dict->SetString(manifest_keys::kName, name);
-  dict->SetString(manifest_keys::kVersion, "0.1");
-  dict->SetInteger(manifest_keys::kManifestVersion, 2);
+                                                base::Value::Dict& dict) {
+  dict.Set(manifest_keys::kName, name);
+  dict.Set(manifest_keys::kVersion, "0.1");
+  dict.Set(manifest_keys::kManifestVersion, 2);
 }
 
 }  // namespace extensions

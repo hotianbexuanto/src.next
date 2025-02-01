@@ -1,14 +1,15 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef COMPONENTS_HISTORY_CORE_BROWSER_VISIT_DATABASE_H_
 #define COMPONENTS_HISTORY_CORE_BROWSER_VISIT_DATABASE_H_
 
+#include <string>
 #include <vector>
 
-#include "base/macros.h"
 #include "components/history/core/browser/history_types.h"
+#include "url/origin.h"
 
 namespace sql {
 class Database;
@@ -27,6 +28,10 @@ class VisitDatabase {
   // Must call InitVisitTable() before using to make sure the database is
   // initialized.
   VisitDatabase();
+
+  VisitDatabase(const VisitDatabase&) = delete;
+  VisitDatabase& operator=(const VisitDatabase&) = delete;
+
   virtual ~VisitDatabase();
 
   // Deletes the visit table. Used for rapidly clearing all visits. In this
@@ -44,13 +49,39 @@ class VisitDatabase {
   // doesn't exist, it will not do anything.
   void DeleteVisit(const VisitRow& visit);
 
-  // Query a VisitInfo giving an visit id, filling the given VisitRow.
+  // Query a VisitRow given a visit id, filling the given VisitRow.
   // Returns true on success.
   bool GetRowForVisit(VisitID visit_id, VisitRow* out_visit);
 
+  // Query a VisitRow given a visit time, filling the given VisitRow. If there
+  // are multiple visits with the given visit time (which happens in case of
+  // redirects), returns the one with the largest ID, i.e. the most recently
+  // added one, i.e. the end of the redirect chain.
+  // Returns true on success.
+  bool GetLastRowForVisitByVisitTime(base::Time visit_time,
+                                     VisitRow* out_visit);
+
+  // Query a VisitRow given `originator_cache_guid` and `originator_visit_id`.
+  // If found, returns true and writes the visit into `visit_row`; otherwise
+  // returns false.
+  bool GetRowForForeignVisit(const std::string& originator_cache_guid,
+                             VisitID originator_visit_id,
+                             VisitRow* out_visit);
+
   // Updates an existing row. The new information is set on the row, using the
   // VisitID as the key. The visit must exist. Returns true on success.
+  // WARNING: when a VisitRow is created, it is assigned a VisitedLinkID
+  // corresponding to its url and referring top-level and frame urls. Other than
+  // sync code (crbug.com/1476511), callers should carefully consider what
+  // columns are being updated, and if that update causes the visit's
+  // VisitedLinkID to be incorrect going forward.
   bool UpdateVisitRow(const VisitRow& visit);
+
+  // Marks ALL visits as NOT known to sync. This is called when Sync is turned
+  // off by the user or disabled via feature flag. Visits can be marked as known
+  // to sync again when Sync is re-enabled. This is used to flag which visits
+  // have permission to fetch URL-keyed metadata.
+  bool SetAllVisitsAsNotKnownToSync();
 
   // Fills in the given vector with all of the visits for the given page ID,
   // sorted in ascending order of date. Returns true on success (although there
@@ -77,7 +108,8 @@ class VisitDatabase {
 
   // Fills all visits in the time range [begin, end) to the given vector. Either
   // time can be is_null(), in which case the times in that direction are
-  // unbounded.
+  // unbounded. If app_id is present, restrict the results to those matching
+  // the app_id only.
   //
   // If `max_results` is non-zero, up to that many results will be returned. If
   // there are more results than that, the oldest ones will be returned. (This
@@ -86,6 +118,7 @@ class VisitDatabase {
   // The results will be in increasing order of date.
   bool GetAllVisitsInRange(base::Time begin_time,
                            base::Time end_time,
+                           std::optional<std::string> app_id,
                            int max_results,
                            VisitVector* visits);
 
@@ -104,10 +137,23 @@ class VisitDatabase {
                                      ui::PageTransition transition,
                                      VisitVector* visits);
 
+  // Fills some foreign visits (i.e. with a non-empty `originator_cache_guid`)
+  // into `visits` - at most `max_visits` of them, and only those with a (local)
+  // visit_id <= `max_visit_id`. Returns true on success and false otherwise.
+  // NOTE: This returns only redirect-chain-ends (including individual visits
+  // without redirects).
+  bool GetSomeForeignVisits(VisitID max_visit_id,
+                            int max_results,
+                            VisitVector* visits);
+
   // Looks up URLIDs for all visits with specified transition. Returns true on
   // success and false otherwise.
   bool GetAllURLIDsForTransition(ui::PageTransition transition,
                                  std::vector<URLID>* urls);
+
+  // Looks up all the app IDs found in the database entries. Returns a struct
+  // containing the list of the IDs.
+  GetAllAppIdsResult GetAllAppIds();
 
   // Fills all visits in the given time range into the given vector that should
   // be user-visible, which excludes things like redirects and subframes. The
@@ -157,7 +203,8 @@ class VisitDatabase {
                             GURL* to_url);
 
   // Similar to the above function except finds a redirect going to a given
-  // `to_visit`.
+  // `to_visit`; or, if there is no such redirect, finds the referral going to
+  // the given `to_visit`.
   bool GetRedirectToVisit(VisitID to_visit,
                           VisitID* from_visit,
                           GURL* from_url);
@@ -187,10 +234,16 @@ class VisitDatabase {
   // visited in the given time range, this will return true and `last_visit`
   // will be set to base::Time(). False will be returned if the host is not a
   // valid HTTP or HTTPS url or for other database errors.
-  bool GetLastVisitToHost(const GURL& host,
+  bool GetLastVisitToHost(const std::string& host,
                           base::Time begin_time,
                           base::Time end_time,
                           base::Time* last_visit);
+
+  // Same as the above, but for the given origin instead of host.
+  bool GetLastVisitToOrigin(const url::Origin& origin,
+                            base::Time begin_time,
+                            base::Time end_time,
+                            base::Time* last_visit);
 
   // Gets the last time `url` was visited before `end_time`. If the given `url`
   // has no past visits, this will return true and `last_visit` will be set to
@@ -209,8 +262,15 @@ class VisitDatabase {
   // Get the time of the first item in our database.
   bool GetStartDate(base::Time* first_visit);
 
-  // Get the source information about the given visits.
+  // Returns the maximum VisitID that is currently used in the DB. Due to
+  // AUTOINCREMENT, any VisitIDs created after this call are guaranteed to be
+  // larger than the returned value.
+  // If there are no visits in the table, returns `kInvalidVisitId` (aka 0).
+  VisitID GetMaxVisitIDInUse();
+
+  // Get the source information about the given visit(s).
   void GetVisitsSource(const VisitVector& visits, VisitSourceMap* sources);
+  VisitSource GetVisitSource(const VisitID visit_id);
 
   // Returns the list of Google domain visits of the user based on the Google
   // searches issued in the specified time interval.
@@ -218,6 +278,10 @@ class VisitDatabase {
   std::vector<DomainVisit> GetGoogleDomainVisitsFromSearchesInRange(
       base::Time begin_time,
       base::Time end_time);
+
+  // Gets whether the URL is known to sync. A URL is considered known to sync
+  // if there is at least one visit with the URL that is known to sync.
+  bool GetIsUrlKnownToSync(URLID url_id, bool* is_known_to_sync);
 
  protected:
   // Returns the database for the functions in this interface.
@@ -260,18 +324,58 @@ class VisitDatabase {
   // "publicly_routable" in the schema) column to another table.
   bool CanMigrateFlocAllowed();
 
+  // Called by the derived classes to migrate the older visits table which
+  // which doesn't have `opener_visit` column and also drops `publicly_routable`
+  // column which is no longer used.
+  bool MigrateVisitsWithoutOpenerVisitColumnAndDropPubliclyRoutableColumn();
+
+  // Called by the derived classes to migrate the older visits table which
+  // which aren't ready to accommodate Sync. It sets `id` to AUTOINCREMENT, and
+  // ensures the existence of the `originator_cache_guid` and
+  // `originator_visit_id` columns.
+  bool MigrateVisitsAutoincrementIdAndAddOriginatorColumns();
+
+  // Called by the derived classes to migrate the older visits table which
+  // doesn't have the `originator_from_visit` and `originator_opener_visit`
+  // columns.
+  bool MigrateVisitsAddOriginatorFromVisitAndOpenerVisitColumns();
+
+  // Return true if the visits table's schema contains "AUTOINCREMENT".
+  // false if table do not contain AUTOINCREMENT, or the table is not created.
+  bool VisitTableContainsAutoincrement();
+
   // A subprocedure in the process of migration to version 40.
   bool GetAllVisitedURLRowidsForMigrationToVersion40(
       std::vector<URLID>* visited_url_rowids_sorted);
 
- private:
-  DISALLOW_COPY_AND_ASSIGN(VisitDatabase);
+  // Called by the derived classes to migrate the older visits table which
+  // doesn't have the `is_known_to_sync` column.
+  bool MigrateVisitsAddIsKnownToSyncColumn();
+
+  // Called by the derived classes to migrate the older visits table which
+  // doesn't have the `consider_for_ntp_most_visited` column.
+  bool MigrateVisitsAddConsiderForNewTabPageMostVisitedColumn();
+
+  // Called by the derived classes to migrate the older visits table which
+  // doesn't have the `external_referrer_url` column.
+  bool MigrateVisitsAddExternalReferrerUrlColumn();
+
+  // Called by the derived classes to migrate the older visits table which
+  // doesn't have the `visited_link_id` column.
+  bool MigrateVisitsAddVisitedLinkIdColumn();
+
+  // Called by the derived classes to migrate the older visits table which
+  // doesn't have the `app_id` column.
+  bool MigrateVisitsAddAppId();
 };
 
 // Columns, in order, of the visit table.
-#define HISTORY_VISIT_ROW_FIELDS                                        \
-  " id,url,visit_time,from_visit,transition,segment_id,visit_duration," \
-  "incremented_omnibox_typed_score,publicly_routable "
+#define HISTORY_VISIT_ROW_FIELDS                                    \
+  " id,url,visit_time,from_visit,external_referrer_url,transition," \
+  "segment_id,visit_duration,incremented_omnibox_typed_score,"      \
+  "opener_visit,originator_cache_guid,originator_visit_id,"         \
+  "originator_from_visit,originator_opener_visit,is_known_to_sync," \
+  "consider_for_ntp_most_visited,visited_link_id,app_id "
 
 }  // namespace history
 

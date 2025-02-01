@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,14 +9,14 @@
 
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
-#include "base/memory/singleton.h"
-#include "base/sequenced_task_runner.h"
-#include "base/single_thread_task_runner.h"
+#include "base/memory/raw_ptr.h"
+#include "base/no_destructor.h"
+#include "base/task/sequenced_task_runner.h"
+#include "base/task/single_thread_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "chrome/browser/ash/plugin_vm/plugin_vm_image_download_client.h"
 #include "chrome/browser/download/deferred_client_wrapper.h"
 #include "chrome/browser/download/download_manager_utils.h"
 #include "chrome/browser/download/simple_download_manager_coordinator_factory.h"
@@ -38,7 +38,6 @@
 #include "components/download/public/common/simple_download_manager_coordinator.h"
 #include "components/keyed_service/core/simple_dependency_manager.h"
 #include "components/leveldb_proto/public/proto_database_provider.h"
-#include "components/offline_pages/buildflags/buildflags.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -47,12 +46,12 @@
 #include "content/public/browser/network_service_instance.h"
 #include "content/public/browser/storage_partition.h"
 
-#if defined(OS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/download/android/service/download_task_scheduler.h"
 #endif
 
-#if BUILDFLAG(ENABLE_OFFLINE_PAGES)
-#include "chrome/browser/offline_pages/prefetch/offline_prefetch_download_client.h"
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chrome/browser/ash/plugin_vm/plugin_vm_image_download_client.h"
 #endif
 
 namespace {
@@ -90,6 +89,12 @@ class DownloadBlobContextGetterFactory
   explicit DownloadBlobContextGetterFactory(SimpleFactoryKey* key) : key_(key) {
     DCHECK(key_);
   }
+
+  DownloadBlobContextGetterFactory(const DownloadBlobContextGetterFactory&) =
+      delete;
+  DownloadBlobContextGetterFactory& operator=(
+      const DownloadBlobContextGetterFactory&) = delete;
+
   ~DownloadBlobContextGetterFactory() override = default;
 
  private:
@@ -100,8 +105,7 @@ class DownloadBlobContextGetterFactory
         key_, base::BindOnce(&DownloadOnProfileCreated, std::move(callback)));
   }
 
-  SimpleFactoryKey* key_;
-  DISALLOW_COPY_AND_ASSIGN(DownloadBlobContextGetterFactory);
+  raw_ptr<SimpleFactoryKey> key_;
 };
 
 }  // namespace
@@ -109,7 +113,8 @@ class DownloadBlobContextGetterFactory
 // static
 BackgroundDownloadServiceFactory*
 BackgroundDownloadServiceFactory::GetInstance() {
-  return base::Singleton<BackgroundDownloadServiceFactory>::get();
+  static base::NoDestructor<BackgroundDownloadServiceFactory> instance;
+  return instance.get();
 }
 
 // static
@@ -133,15 +138,6 @@ BackgroundDownloadServiceFactory::BuildServiceInstanceFor(
     SimpleFactoryKey* key) const {
   auto clients = std::make_unique<download::DownloadClientMap>();
   ProfileKey* profile_key = ProfileKey::FromSimpleFactoryKey(key);
-
-#if BUILDFLAG(ENABLE_OFFLINE_PAGES)
-  // Offline prefetch doesn't support incognito.
-  if (!key->IsOffTheRecord()) {
-    clients->insert(std::make_pair(
-        download::DownloadClient::OFFLINE_PAGE_PREFETCH,
-        std::make_unique<offline_pages::OfflinePrefetchDownloadClient>(key)));
-  }
-#endif  // BUILDFLAG(ENABLE_OFFLINE_PAGES)
 
   clients->insert(std::make_pair(
       download::DownloadClient::BACKGROUND_FETCH,
@@ -192,7 +188,7 @@ BackgroundDownloadServiceFactory::BuildServiceInstanceFor(
             {base::MayBlock(), base::TaskPriority::BEST_EFFORT});
 
     std::unique_ptr<download::TaskScheduler> task_scheduler;
-#if defined(OS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
     task_scheduler =
         std::make_unique<download::android::DownloadTaskScheduler>();
 #else

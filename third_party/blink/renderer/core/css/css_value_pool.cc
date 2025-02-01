@@ -25,7 +25,7 @@
 
 #include "third_party/blink/renderer/core/css/css_value_pool.h"
 
-#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/threading.h"
 
 namespace blink {
@@ -46,6 +46,7 @@ CSSValuePool::CSSValuePool()
       initial_value_(MakeGarbageCollected<CSSInitialValue>()),
       unset_value_(MakeGarbageCollected<CSSUnsetValue>(PassKey())),
       revert_value_(MakeGarbageCollected<CSSRevertValue>(PassKey())),
+      revert_layer_value_(MakeGarbageCollected<CSSRevertLayerValue>(PassKey())),
       invalid_variable_value_(MakeGarbageCollected<CSSInvalidVariableValue>()),
       cyclic_variable_value_(
           MakeGarbageCollected<CSSCyclicVariableValue>(PassKey())),
@@ -55,7 +56,7 @@ CSSValuePool::CSSValuePool()
           MakeGarbageCollected<cssvalue::CSSColor>(Color::kTransparent)),
       color_white_(MakeGarbageCollected<cssvalue::CSSColor>(Color::kWhite)),
       color_black_(MakeGarbageCollected<cssvalue::CSSColor>(Color::kBlack)) {
-  identifier_value_cache_.resize(numCSSValueKeywords);
+  identifier_value_cache_.resize(kNumCSSValueKeywords);
   pixel_value_cache_.resize(kMaximumCacheableIntegerValue + 1);
   percent_value_cache_.resize(kMaximumCacheableIntegerValue + 1);
   number_value_cache_.resize(kMaximumCacheableIntegerValue + 1);
@@ -66,6 +67,7 @@ void CSSValuePool::Trace(Visitor* visitor) const {
   visitor->Trace(initial_value_);
   visitor->Trace(unset_value_);
   visitor->Trace(revert_value_);
+  visitor->Trace(revert_layer_value_);
   visitor->Trace(invalid_variable_value_);
   visitor->Trace(cyclic_variable_value_);
   visitor->Trace(initial_color_value_);

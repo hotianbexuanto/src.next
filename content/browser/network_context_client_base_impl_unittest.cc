@@ -1,21 +1,30 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "content/public/browser/network_context_client_base.h"
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
 
-#include "base/bind.h"
+#include <string_view>
+
+#include "base/compiler_specific.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/functional/bind.h"
 #include "base/path_service.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_file_util.h"
+#include "base/types/fixed_array.h"
 #include "build/build_config.h"
 #include "content/browser/child_process_security_policy_impl.h"
+#include "content/public/browser/network_context_client_base.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_browser_context.h"
+#include "net/base/net_errors.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace content {
@@ -27,9 +36,9 @@ struct UploadResponse {
       : callback(base::BindOnce(&UploadResponse::OnComplete,
                                 base::Unretained(this))) {}
 
-  void OnComplete(int error_code, std::vector<base::File> opened_files) {
-    this->error_code = error_code;
-    this->opened_files = std::move(opened_files);
+  void OnComplete(int error, std::vector<base::File> opened) {
+    error_code = error;
+    opened_files = std::move(opened);
   }
 
   network::mojom::NetworkContextClient::OnFileUploadRequestedCallback callback;
@@ -45,17 +54,16 @@ void CreateFile(const base::FilePath& path, const char* content) {
   base::File file(path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(file.IsValid());
   int content_size = strlen(content);
-  int bytes_written = file.Write(0, content, content_size);
+  int bytes_written = UNSAFE_TODO(file.Write(0, content, content_size));
   EXPECT_EQ(bytes_written, content_size);
 }
 
-void ValidateFileContents(base::File& file,
-                          base::StringPiece expected_content) {
+void ValidateFileContents(base::File& file, std::string_view expected_content) {
   int expected_length = expected_content.size();
   ASSERT_EQ(file.GetLength(), expected_length);
-  char content[expected_length];
-  file.Read(0, content, expected_length);
-  EXPECT_EQ(0, strncmp(content, expected_content.data(), expected_length));
+  base::FixedArray<unsigned char> content(expected_length);
+  file.ReadAtCurrentPosAndCheck(content);
+  EXPECT_EQ(base::as_string_view(content), expected_content);
 }
 
 const int kBrowserProcessId = 0;
@@ -89,6 +97,7 @@ class NetworkContextClientBaseTest : public testing::Test {
 TEST_F(NetworkContextClientBaseTest, UploadNoFiles) {
   UploadResponse response;
   client_.OnFileUploadRequested(kRendererProcessId, true, {},
+                                /*destination_url=*/GURL(),
                                 std::move(response.callback));
   task_environment_.RunUntilIdle();
   EXPECT_EQ(net::OK, response.error_code);
@@ -102,6 +111,7 @@ TEST_F(NetworkContextClientBaseTest, UploadOneValidAsyncFile) {
 
   UploadResponse response;
   client_.OnFileUploadRequested(kRendererProcessId, true, {path},
+                                /*destination_url=*/GURL(),
                                 std::move(response.callback));
   task_environment_.RunUntilIdle();
   EXPECT_EQ(net::OK, response.error_code);
@@ -116,6 +126,7 @@ TEST_F(NetworkContextClientBaseTest, UploadOneValidFile) {
 
   UploadResponse response;
   client_.OnFileUploadRequested(kRendererProcessId, false, {path},
+                                /*destination_url=*/GURL(),
                                 std::move(response.callback));
   task_environment_.RunUntilIdle();
   EXPECT_EQ(net::OK, response.error_code);
@@ -124,12 +135,13 @@ TEST_F(NetworkContextClientBaseTest, UploadOneValidFile) {
   ValidateFileContents(response.opened_files[0], kFileContent1);
 }
 
-#if defined(OS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
 // Flakily fails on Android bots. See http://crbug.com/1027790
 TEST_F(NetworkContextClientBaseTest,
        DISABLED_UploadOneValidFileWithContentUri) {
   base::FilePath image_path;
-  EXPECT_TRUE(base::PathService::Get(base::DIR_SOURCE_ROOT, &image_path));
+  EXPECT_TRUE(
+      base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &image_path));
   image_path = image_path.AppendASCII("content")
                    .AppendASCII("test")
                    .AppendASCII("data")
@@ -142,6 +154,7 @@ TEST_F(NetworkContextClientBaseTest,
 
   UploadResponse response;
   client_.OnFileUploadRequested(kRendererProcessId, false, {content_path},
+                                /*destination_url=*/GURL(),
                                 std::move(response.callback));
   task_environment_.RunUntilIdle();
   EXPECT_EQ(net::OK, response.error_code);
@@ -163,6 +176,7 @@ TEST_F(NetworkContextClientBaseTest, UploadTwoValidFiles) {
 
   UploadResponse response;
   client_.OnFileUploadRequested(kRendererProcessId, false, {path1, path2},
+                                /*destination_url=*/GURL(),
                                 std::move(response.callback));
   task_environment_.RunUntilIdle();
   EXPECT_EQ(net::OK, response.error_code);
@@ -177,6 +191,7 @@ TEST_F(NetworkContextClientBaseTest, UploadOneUnauthorizedFile) {
 
   UploadResponse response;
   client_.OnFileUploadRequested(kRendererProcessId, false, {path},
+                                /*destination_url=*/GURL(),
                                 std::move(response.callback));
   task_environment_.RunUntilIdle();
   EXPECT_EQ(net::ERR_ACCESS_DENIED, response.error_code);
@@ -192,6 +207,7 @@ TEST_F(NetworkContextClientBaseTest, UploadOneValidFileAndOneUnauthorized) {
 
   UploadResponse response;
   client_.OnFileUploadRequested(kRendererProcessId, false, {path1, path2},
+                                /*destination_url=*/GURL(),
                                 std::move(response.callback));
   task_environment_.RunUntilIdle();
   EXPECT_EQ(net::ERR_ACCESS_DENIED, response.error_code);
@@ -207,6 +223,7 @@ TEST_F(NetworkContextClientBaseTest, UploadOneValidFileAndOneNotFound) {
 
   UploadResponse response;
   client_.OnFileUploadRequested(kRendererProcessId, false, {path1, path2},
+                                /*destination_url=*/GURL(),
                                 std::move(response.callback));
   task_environment_.RunUntilIdle();
   EXPECT_EQ(net::ERR_FILE_NOT_FOUND, response.error_code);
@@ -220,6 +237,7 @@ TEST_F(NetworkContextClientBaseTest, UploadFromBrowserProcess) {
 
   UploadResponse response;
   client_.OnFileUploadRequested(kBrowserProcessId, false, {path},
+                                /*destination_url=*/GURL(),
                                 std::move(response.callback));
   task_environment_.RunUntilIdle();
   EXPECT_EQ(net::OK, response.error_code);

@@ -1,11 +1,10 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef EXTENSIONS_BROWSER_URL_LOADER_FACTORY_MANAGER_H_
 #define EXTENSIONS_BROWSER_URL_LOADER_FACTORY_MANAGER_H_
 
-#include "base/macros.h"
 #include "base/types/pass_key.h"
 #include "content/public/browser/navigation_handle.h"
 #include "extensions/common/extension.h"
@@ -24,10 +23,10 @@ class Origin;
 
 namespace extensions {
 
-class ContentScriptTracker;
+class ScriptInjectionTracker;
 
 // This class manages URLLoaderFactory objects that handle network requests that
-// require extension-specific permissions (related to relaxed CORB and CORS).
+// require extension-specific permissions (related to relaxed ORB and CORS).
 //
 // See also https://crbug.com/846346 for motivation for having separate
 // URLLoaderFactory objects for content scripts.
@@ -35,13 +34,15 @@ class URLLoaderFactoryManager {
  public:
   // Only static methods.
   URLLoaderFactoryManager() = delete;
+  URLLoaderFactoryManager(const URLLoaderFactoryManager&) = delete;
+  URLLoaderFactoryManager& operator=(const URLLoaderFactoryManager&) = delete;
 
   // Invoked when `navigation` is ready to commit with the set of `extensions`
   // asked to inject content script into the target frame using
   // declarations in the extension manifest approach:
   // https://developer.chrome.com/docs/extensions/mv2/content_scripts/#declaratively
   static void WillInjectContentScriptsWhenNavigationCommits(
-      base::PassKey<ContentScriptTracker> pass_key,
+      base::PassKey<ScriptInjectionTracker> pass_key,
       content::NavigationHandle* navigation,
       const std::vector<const Extension*>& extensions);
 
@@ -54,7 +55,7 @@ class URLLoaderFactoryManager {
   // and
   // https://developer.chrome.com/docs/extensions/reference/declarativeContent/#type-RequestContentScript
   static void WillProgrammaticallyInjectContentScript(
-      base::PassKey<ContentScriptTracker> pass_key,
+      base::PassKey<ScriptInjectionTracker> pass_key,
       content::RenderFrameHost* frame,
       const Extension& extension);
 
@@ -89,16 +90,13 @@ class URLLoaderFactoryManager {
   // URLLoaderFactoryParams:         |           |             |
   // - request_initiator_origin_lock |    web    |  extension  |     web
   // - overridden properties?        |    no     |     yes     |  if needed
-  //    - is_corb_enabled            | secure-   |  ext-based  | ext-based for
+  //    - is_orb_enabled             | secure-   |  ext-based  | ext-based for
   //    - ..._access_patterns        |  -default |             | platform apps
   static void OverrideURLLoaderFactoryParams(
       content::BrowserContext* browser_context,
       const url::Origin& origin,
       bool is_for_isolated_world,
       network::mojom::URLLoaderFactoryParams* factory_params);
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(URLLoaderFactoryManager);
 };
 
 }  // namespace extensions

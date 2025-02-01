@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,10 +8,10 @@
 #include "base/json/string_escape.h"
 #include "base/logging.h"
 #include "base/memory/ref_counted_memory.h"
+#include "base/strings/escape.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include "net/base/escape.h"
 #include "net/base/net_module.h"
 #include "net/grit/net_resources.h"
 
@@ -24,8 +24,9 @@ std::string GetDirectoryListingHeader(const std::u16string& title) {
   DLOG_IF(WARNING, !header) << "Missing resource: directory listing header";
 
   std::string result;
-  if (header)
-    result.assign(header->front_as<char>(), header->size());
+  if (header) {
+    result = base::as_string_view(*header);
+  }
 
   result.append("<script>start(");
   base::EscapeJSONString(title, true, &result);
@@ -44,9 +45,10 @@ std::string GetDirectoryListingEntry(const std::u16string& name,
   base::EscapeJSONString(name, true, &result);
   result.append(",");
   if (raw_bytes.empty()) {
-    base::EscapeJSONString(EscapePath(base::UTF16ToUTF8(name)), true, &result);
+    base::EscapeJSONString(base::EscapePath(base::UTF16ToUTF8(name)), true,
+                           &result);
   } else {
-    base::EscapeJSONString(EscapePath(raw_bytes), true, &result);
+    base::EscapeJSONString(base::EscapePath(raw_bytes), true, &result);
   }
 
   if (is_dir) {
@@ -75,7 +77,7 @@ std::string GetDirectoryListingEntry(const std::u16string& name,
     std::stringstream raw_time_string_stream;
     // Certain access paths can only get up to seconds resolution, so here we
     // output the raw time value in seconds for consistency.
-    raw_time_string_stream << modified.ToJavaTime() /
+    raw_time_string_stream << modified.InMillisecondsSinceUnixEpoch() /
                                   base::Time::kMillisecondsPerSecond
                            << ",";
     result.append(raw_time_string_stream.str());

@@ -30,15 +30,34 @@
 #include "third_party/blink/renderer/platform/graphics/path.h"
 
 #include <math.h>
-#include "third_party/blink/renderer/platform/geometry/float_point.h"
-#include "third_party/blink/renderer/platform/geometry/float_rect.h"
-#include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
+#include "third_party/blink/renderer/platform/graphics/stroke_data.h"
 #include "third_party/blink/renderer/platform/transforms/affine_transform.h"
 #include "third_party/blink/renderer/platform/wtf/math_extras.h"
 #include "third_party/skia/include/pathops/SkPathOps.h"
+#include "ui/gfx/geometry/point_f.h"
+#include "ui/gfx/geometry/quad_f.h"
+#include "ui/gfx/geometry/rect_f.h"
+#include "ui/gfx/geometry/skia_conversions.h"
 
 namespace blink {
+
+namespace {
+
+bool PathQuadIntersection(const SkPath& path, const gfx::QuadF& quad) {
+  SkPath quad_path, intersection;
+  quad_path.moveTo(FloatPointToSkPoint(quad.p1()))
+      .lineTo(FloatPointToSkPoint(quad.p2()))
+      .lineTo(FloatPointToSkPoint(quad.p3()))
+      .lineTo(FloatPointToSkPoint(quad.p4()))
+      .close();
+  if (!Op(path, quad_path, kIntersect_SkPathOp, &intersection)) {
+    return false;
+  }
+  return !intersection.isEmpty();
+}
+
+}  // namespace
 
 Path::Path() : path_() {}
 
@@ -62,17 +81,17 @@ bool Path::operator==(const Path& other) const {
   return path_ == other.path_;
 }
 
-bool Path::Contains(const FloatPoint& point) const {
-  if (!std::isfinite(point.X()) || !std::isfinite(point.Y()))
+bool Path::Contains(const gfx::PointF& point) const {
+  if (!std::isfinite(point.x()) || !std::isfinite(point.y()))
     return false;
-  return path_.contains(SkScalar(point.X()), SkScalar(point.Y()));
+  return path_.contains(SkScalar(point.x()), SkScalar(point.y()));
 }
 
-bool Path::Contains(const FloatPoint& point, WindRule rule) const {
-  if (!std::isfinite(point.X()) || !std::isfinite(point.Y()))
+bool Path::Contains(const gfx::PointF& point, WindRule rule) const {
+  if (!std::isfinite(point.x()) || !std::isfinite(point.y()))
     return false;
-  SkScalar x = point.X();
-  SkScalar y = point.Y();
+  SkScalar x = point.x();
+  SkScalar y = point.y();
   SkPathFillType fill_type = WebCoreWindRuleToSkFillType(rule);
   if (path_.getFillType() != fill_type) {
     SkPath tmp(path_);
@@ -82,16 +101,30 @@ bool Path::Contains(const FloatPoint& point, WindRule rule) const {
   return path_.contains(x, y);
 }
 
+bool Path::Intersects(const gfx::QuadF& quad) const {
+  return PathQuadIntersection(path_, quad);
+}
+
+bool Path::Intersects(const gfx::QuadF& quad, WindRule rule) const {
+  SkPathFillType fill_type = WebCoreWindRuleToSkFillType(rule);
+  if (path_.getFillType() != fill_type) {
+    SkPath tmp(path_);
+    tmp.setFillType(fill_type);
+    return PathQuadIntersection(tmp, quad);
+  }
+  return PathQuadIntersection(path_, quad);
+}
+
 SkPath Path::StrokePath(const StrokeData& stroke_data,
                         const AffineTransform& transform) const {
-  float stroke_precision = clampTo<float>(
+  float stroke_precision = ClampTo<float>(
       sqrt(std::max(transform.XScaleSquared(), transform.YScaleSquared())));
   return StrokePath(stroke_data, stroke_precision);
 }
 
 SkPath Path::StrokePath(const StrokeData& stroke_data,
                         float stroke_precision) const {
-  PaintFlags flags;
+  cc::PaintFlags flags;
   stroke_data.SetupPaint(&flags);
 
   SkPath stroke_path;
@@ -100,97 +133,105 @@ SkPath Path::StrokePath(const StrokeData& stroke_data,
   return stroke_path;
 }
 
-bool Path::StrokeContains(const FloatPoint& point,
+bool Path::StrokeContains(const gfx::PointF& point,
                           const StrokeData& stroke_data,
                           const AffineTransform& transform) const {
-  if (!std::isfinite(point.X()) || !std::isfinite(point.Y()))
+  if (!std::isfinite(point.x()) || !std::isfinite(point.y()))
     return false;
   return StrokePath(stroke_data, transform)
-      .contains(SkScalar(point.X()), SkScalar(point.Y()));
+      .contains(SkScalar(point.x()), SkScalar(point.y()));
 }
 
-FloatRect Path::TightBoundingRect() const {
-  return path_.computeTightBounds();
+gfx::RectF Path::TightBoundingRect() const {
+  return gfx::SkRectToRectF(path_.computeTightBounds());
 }
 
-FloatRect Path::BoundingRect() const {
-  return path_.getBounds();
+gfx::RectF Path::BoundingRect() const {
+  return gfx::SkRectToRectF(path_.getBounds());
 }
 
-FloatRect Path::StrokeBoundingRect(const StrokeData& stroke_data) const {
+gfx::RectF Path::StrokeBoundingRect(const StrokeData& stroke_data) const {
   // Skia stroke resolution scale for reduced-precision requirements.
   constexpr float kStrokePrecision = 0.3f;
-  return StrokePath(stroke_data, kStrokePrecision).computeTightBounds();
+  return gfx::SkRectToRectF(
+      StrokePath(stroke_data, kStrokePrecision).computeTightBounds());
 }
 
-static FloatPoint* ConvertPathPoints(FloatPoint dst[],
-                                     const SkPoint src[],
-                                     int count) {
-  for (int i = 0; i < count; i++) {
-    dst[i].SetX(SkScalarToFloat(src[i].fX));
-    dst[i].SetY(SkScalarToFloat(src[i].fY));
+static base::span<gfx::PointF> ConvertPathPoints(
+    std::array<gfx::PointF, 3>& dst,
+    base::span<const SkPoint> src) {
+  for (size_t i = 0; i < src.size(); ++i) {
+    const SkPoint& src_point = src[i];
+    dst[i].set_x(SkScalarToFloat(src_point.fX));
+    dst[i].set_y(SkScalarToFloat(src_point.fY));
   }
-  return dst;
+  return base::span(dst).first(src.size());
 }
 
 void Path::Apply(void* info, PathApplierFunction function) const {
   SkPath::RawIter iter(path_);
-  SkPoint pts[4];
+  std::array<SkPoint, 4> pts;
+  std::array<gfx::PointF, 3> path_points;
   PathElement path_element;
-  FloatPoint path_points[3];
 
   for (;;) {
-    switch (iter.next(pts)) {
+    switch (iter.next(pts.data())) {
       case SkPath::kMove_Verb:
         path_element.type = kPathElementMoveToPoint;
-        path_element.points = ConvertPathPoints(path_points, &pts[0], 1);
+        path_element.points =
+            ConvertPathPoints(path_points, base::span(pts).first(1u));
         break;
       case SkPath::kLine_Verb:
         path_element.type = kPathElementAddLineToPoint;
-        path_element.points = ConvertPathPoints(path_points, &pts[1], 1);
+        path_element.points =
+            ConvertPathPoints(path_points, base::span(pts).subspan<1, 1>());
         break;
       case SkPath::kQuad_Verb:
         path_element.type = kPathElementAddQuadCurveToPoint;
-        path_element.points = ConvertPathPoints(path_points, &pts[1], 2);
+        path_element.points =
+            ConvertPathPoints(path_points, base::span(pts).subspan<1, 2>());
         break;
       case SkPath::kCubic_Verb:
         path_element.type = kPathElementAddCurveToPoint;
-        path_element.points = ConvertPathPoints(path_points, &pts[1], 3);
+        path_element.points =
+            ConvertPathPoints(path_points, base::span(pts).subspan<1, 3>());
         break;
       case SkPath::kConic_Verb: {
         // Approximate with quads.  Use two for now, increase if more precision
         // is needed.
         const int kPow2 = 1;
         const unsigned kQuadCount = 1 << kPow2;
-        SkPoint quads[1 + 2 * kQuadCount];
+        std::array<SkPoint, 1 + 2 * kQuadCount> quads;
         SkPath::ConvertConicToQuads(pts[0], pts[1], pts[2], iter.conicWeight(),
-                                    quads, kPow2);
+                                    quads.data(), kPow2);
 
         path_element.type = kPathElementAddQuadCurveToPoint;
         for (unsigned i = 0; i < kQuadCount; ++i) {
-          path_element.points =
-              ConvertPathPoints(path_points, &quads[1 + 2 * i], 2);
-          function(info, &path_element);
+          path_element.points = ConvertPathPoints(
+              path_points, base::span(quads).subspan(1 + 2 * i, 2u));
+          function(info, path_element);
         }
         continue;
       }
       case SkPath::kClose_Verb:
         path_element.type = kPathElementCloseSubpath;
-        path_element.points = ConvertPathPoints(path_points, nullptr, 0);
+        path_element.points = ConvertPathPoints(path_points, {});
         break;
       case SkPath::kDone_Verb:
         return;
     }
-    function(info, &path_element);
+    function(info, path_element);
   }
 }
 
-void Path::Transform(const AffineTransform& xform) {
+Path& Path::Transform(const AffineTransform& xform) {
   path_.transform(AffineTransformToSkMatrix(xform));
+  return *this;
 }
 
-void Path::Transform(const TransformationMatrix& transformation_matrix) {
-  path_.transform(TransformationMatrixToSkMatrix(transformation_matrix));
+Path& Path::Transform(const gfx::Transform& transform) {
+  path_.transform(gfx::TransformToFlattenedSkMatrix(transform));
+  return *this;
 }
 
 float Path::length() const {
@@ -204,11 +245,11 @@ float Path::length() const {
   return SkScalarToFloat(length);
 }
 
-FloatPoint Path::PointAtLength(float length) const {
+gfx::PointF Path::PointAtLength(float length) const {
   return PointAndNormalAtLength(length).point;
 }
 
-static absl::optional<PointAndTangent> CalculatePointAndNormalOnPath(
+static std::optional<PointAndTangent> CalculatePointAndNormalOnPath(
     SkPathMeasure& measure,
     SkScalar& contour_start,
     SkScalar length) {
@@ -221,24 +262,25 @@ static absl::optional<PointAndTangent> CalculatePointAndNormalOnPath(
       SkScalar pos_in_contour = length - contour_start;
       if (measure.getPosTan(pos_in_contour, &position, &tangent)) {
         PointAndTangent result;
-        result.point = FloatPoint(position);
+        result.point = gfx::SkPointToPointF(position);
         result.tangent_in_degrees =
-            rad2deg(SkScalarToFloat(SkScalarATan2(tangent.fY, tangent.fX)));
+            Rad2deg(SkScalarToFloat(SkScalarATan2(tangent.fY, tangent.fX)));
         return result;
       }
     }
     contour_start = contour_end;
   } while (measure.nextContour());
-  return absl::nullopt;
+  return std::nullopt;
 }
 
 PointAndTangent Path::PointAndNormalAtLength(float length) const {
   SkPathMeasure measure(path_, false);
   SkScalar start = 0;
-  if (absl::optional<PointAndTangent> result = CalculatePointAndNormalOnPath(
-          measure, start, WebCoreFloatToSkScalar(length)))
+  if (std::optional<PointAndTangent> result = CalculatePointAndNormalOnPath(
+          measure, start, WebCoreFloatToSkScalar(length))) {
     return *result;
-  return {FloatPoint(path_.getPoint(0)), 0};
+  }
+  return {gfx::SkPointToPointF(path_.getPoint(0)), 0};
 }
 
 Path::PositionCalculator::PositionCalculator(const Path& path)
@@ -255,12 +297,12 @@ PointAndTangent Path::PositionCalculator::PointAndNormalAtLength(float length) {
       accumulated_length_ = 0;
     }
 
-    absl::optional<PointAndTangent> result = CalculatePointAndNormalOnPath(
+    std::optional<PointAndTangent> result = CalculatePointAndNormalOnPath(
         path_measure_, accumulated_length_, sk_length);
     if (result)
       return *result;
   }
-  return {FloatPoint(path_.getPoint(0)), 0};
+  return {gfx::SkPointToPointF(path_.getPoint(0)), 0};
 }
 
 void Path::Clear() {
@@ -275,6 +317,11 @@ bool Path::IsClosed() const {
   return path_.isLastContourClosed();
 }
 
+bool Path::IsLine() const {
+  SkPoint dummy_line[2];
+  return path_.isLine(dummy_line);
+}
+
 void Path::SetIsVolatile(bool is_volatile) {
   path_.setIsVolatile(is_volatile);
 }
@@ -283,67 +330,70 @@ bool Path::HasCurrentPoint() const {
   return path_.getPoints(nullptr, 0);
 }
 
-FloatPoint Path::CurrentPoint() const {
+gfx::PointF Path::CurrentPoint() const {
   if (path_.countPoints() > 0) {
     SkPoint sk_result;
     path_.getLastPt(&sk_result);
-    FloatPoint result;
-    result.SetX(SkScalarToFloat(sk_result.fX));
-    result.SetY(SkScalarToFloat(sk_result.fY));
+    gfx::PointF result;
+    result.set_x(SkScalarToFloat(sk_result.fX));
+    result.set_y(SkScalarToFloat(sk_result.fY));
     return result;
   }
 
   // FIXME: Why does this return quietNaN? Other ports return 0,0.
   float quiet_na_n = std::numeric_limits<float>::quiet_NaN();
-  return FloatPoint(quiet_na_n, quiet_na_n);
+  return gfx::PointF(quiet_na_n, quiet_na_n);
 }
 
 void Path::SetWindRule(const WindRule rule) {
   path_.setFillType(WebCoreWindRuleToSkFillType(rule));
 }
 
-void Path::MoveTo(const FloatPoint& point) {
-  path_.moveTo(FloatPointToSkPoint(point));
+void Path::MoveTo(const gfx::PointF& point) {
+  path_.moveTo(gfx::PointFToSkPoint(point));
 }
 
-void Path::AddLineTo(const FloatPoint& point) {
-  path_.lineTo(FloatPointToSkPoint(point));
+void Path::AddLineTo(const gfx::PointF& point) {
+  path_.lineTo(gfx::PointFToSkPoint(point));
 }
 
-void Path::AddQuadCurveTo(const FloatPoint& cp, const FloatPoint& ep) {
-  path_.quadTo(FloatPointToSkPoint(cp), FloatPointToSkPoint(ep));
+void Path::AddQuadCurveTo(const gfx::PointF& cp, const gfx::PointF& ep) {
+  path_.quadTo(gfx::PointFToSkPoint(cp), gfx::PointFToSkPoint(ep));
 }
 
-void Path::AddBezierCurveTo(const FloatPoint& p1,
-                            const FloatPoint& p2,
-                            const FloatPoint& ep) {
-  path_.cubicTo(FloatPointToSkPoint(p1), FloatPointToSkPoint(p2),
-                FloatPointToSkPoint(ep));
+void Path::AddBezierCurveTo(const gfx::PointF& p1,
+                            const gfx::PointF& p2,
+                            const gfx::PointF& ep) {
+  path_.cubicTo(gfx::PointFToSkPoint(p1), gfx::PointFToSkPoint(p2),
+                gfx::PointFToSkPoint(ep));
 }
 
-void Path::AddArcTo(const FloatPoint& p1, const FloatPoint& p2, float radius) {
-  path_.arcTo(FloatPointToSkPoint(p1), FloatPointToSkPoint(p2),
+void Path::AddArcTo(const gfx::PointF& p1,
+                    const gfx::PointF& p2,
+                    float radius) {
+  path_.arcTo(gfx::PointFToSkPoint(p1), gfx::PointFToSkPoint(p2),
               WebCoreFloatToSkScalar(radius));
 }
 
-void Path::AddArcTo(const FloatPoint& p,
-                    const FloatSize& r,
+void Path::AddArcTo(const gfx::PointF& p,
+                    float radius_x,
+                    float radius_y,
                     float x_rotate,
                     bool large_arc,
                     bool sweep) {
-  path_.arcTo(WebCoreFloatToSkScalar(r.Width()),
-              WebCoreFloatToSkScalar(r.Height()),
+  path_.arcTo(WebCoreFloatToSkScalar(radius_x),
+              WebCoreFloatToSkScalar(radius_y),
               WebCoreFloatToSkScalar(x_rotate),
               large_arc ? SkPath::kLarge_ArcSize : SkPath::kSmall_ArcSize,
               sweep ? SkPathDirection::kCW : SkPathDirection::kCCW,
-              WebCoreFloatToSkScalar(p.X()), WebCoreFloatToSkScalar(p.Y()));
+              WebCoreFloatToSkScalar(p.x()), WebCoreFloatToSkScalar(p.y()));
 }
 
 void Path::CloseSubpath() {
   path_.close();
 }
 
-void Path::AddEllipse(const FloatPoint& p,
+void Path::AddEllipse(const gfx::PointF& p,
                       float radius_x,
                       float radius_y,
                       float start_angle,
@@ -352,8 +402,8 @@ void Path::AddEllipse(const FloatPoint& p,
   DCHECK_GE(start_angle, 0);
   DCHECK_LT(start_angle, kTwoPiFloat);
 
-  SkScalar cx = WebCoreFloatToSkScalar(p.X());
-  SkScalar cy = WebCoreFloatToSkScalar(p.Y());
+  SkScalar cx = WebCoreFloatToSkScalar(p.x());
+  SkScalar cy = WebCoreFloatToSkScalar(p.y());
   SkScalar radius_x_scalar = WebCoreFloatToSkScalar(radius_x);
   SkScalar radius_y_scalar = WebCoreFloatToSkScalar(radius_y);
 
@@ -373,6 +423,9 @@ void Path::AddEllipse(const FloatPoint& p,
   // nothing.
   SkScalar s180 = SkIntToScalar(180);
   if (SkScalarNearlyEqual(sweep_degrees, s360)) {
+    // incReserve() results in a single allocation instead of multiple as is
+    // done by multiple calls to arcTo().
+    path_.incReserve(10, 5, 4);
     // SkPath::arcTo can't handle the sweepAngle that is equal to or greater
     // than 2Pi.
     path_.arcTo(oval, start_degrees, s180, false);
@@ -380,6 +433,9 @@ void Path::AddEllipse(const FloatPoint& p,
     return;
   }
   if (SkScalarNearlyEqual(sweep_degrees, -s360)) {
+    // incReserve() results in a single allocation instead of multiple as is
+    // done by multiple calls to arcTo().
+    path_.incReserve(10, 5, 4);
     path_.arcTo(oval, start_degrees, -s180, false);
     path_.arcTo(oval, start_degrees - s180, -s180, false);
     return;
@@ -388,19 +444,26 @@ void Path::AddEllipse(const FloatPoint& p,
   path_.arcTo(oval, start_degrees, sweep_degrees, false);
 }
 
-void Path::AddArc(const FloatPoint& p,
+void Path::AddArc(const gfx::PointF& p,
                   float radius,
                   float start_angle,
                   float end_angle) {
   AddEllipse(p, radius, radius, start_angle, end_angle);
 }
 
-void Path::AddRect(const FloatRect& rect) {
+void Path::AddRect(const gfx::RectF& rect) {
   // Start at upper-left, add clock-wise.
-  path_.addRect(rect, SkPathDirection::kCW, 0);
+  path_.addRect(gfx::RectFToSkRect(rect), SkPathDirection::kCW, 0);
 }
 
-void Path::AddEllipse(const FloatPoint& p,
+void Path::AddRect(const gfx::PointF& origin,
+                   const gfx::PointF& opposite_point) {
+  path_.addRect(SkRect::MakeLTRB(origin.x(), origin.y(), opposite_point.x(),
+                                 opposite_point.y()),
+                SkPathDirection::kCW, 0);
+}
+
+void Path::AddEllipse(const gfx::PointF& p,
                       float radius_x,
                       float radius_y,
                       float rotation,
@@ -411,108 +474,45 @@ void Path::AddEllipse(const FloatPoint& p,
   DCHECK_LT(start_angle, kTwoPiFloat);
 
   if (!rotation) {
-    AddEllipse(FloatPoint(p.X(), p.Y()), radius_x, radius_y, start_angle,
-               end_angle);
+    AddEllipse(p, radius_x, radius_y, start_angle, end_angle);
     return;
   }
 
   // Add an arc after the relevant transform.
   AffineTransform ellipse_transform =
-      AffineTransform::Translation(p.X(), p.Y()).RotateRadians(rotation);
+      AffineTransform::Translation(p.x(), p.y()).RotateRadians(rotation);
   DCHECK(ellipse_transform.IsInvertible());
   AffineTransform inverse_ellipse_transform = ellipse_transform.Inverse();
   Transform(inverse_ellipse_transform);
-  AddEllipse(FloatPoint::Zero(), radius_x, radius_y, start_angle, end_angle);
+  AddEllipse(gfx::PointF(), radius_x, radius_y, start_angle, end_angle);
   Transform(ellipse_transform);
 }
 
-void Path::AddEllipse(const FloatRect& rect) {
+void Path::AddEllipse(const gfx::PointF& center,
+                      float radius_x,
+                      float radius_y) {
   // Start at 3 o'clock, add clock-wise.
-  path_.addOval(rect, SkPathDirection::kCW, 1);
+  path_.addOval(SkRect::MakeLTRB(center.x() - radius_x, center.y() - radius_y,
+                                 center.x() + radius_x, center.y() + radius_y),
+                SkPathDirection::kCW, 1);
 }
 
-void Path::AddRoundedRect(const FloatRoundedRect& r) {
-  AddRoundedRect(r.Rect(), r.GetRadii().TopLeft(), r.GetRadii().TopRight(),
-                 r.GetRadii().BottomLeft(), r.GetRadii().BottomRight());
-}
-
-void Path::AddRoundedRect(const FloatRect& rect,
-                          const FloatSize& rounding_radii) {
+void Path::AddRoundedRect(const FloatRoundedRect& rect, bool clockwise) {
   if (rect.IsEmpty())
     return;
 
-  FloatSize radius(rounding_radii);
-  FloatSize half_size(rect.Width() / 2, rect.Height() / 2);
-
-  // Apply the SVG corner radius constraints, per the rect section of the SVG
-  // shapes spec: if one of rx,ry is negative, then the other corner radius
-  // value is used. If both values are negative then rx = ry = 0. If rx is
-  // greater than half of the width of the rectangle then set rx to half of the
-  // width; ry is handled similarly.
-
-  if (radius.Width() < 0)
-    radius.SetWidth((radius.Height() < 0) ? 0 : radius.Height());
-
-  if (radius.Height() < 0)
-    radius.SetHeight(radius.Width());
-
-  if (radius.Width() > half_size.Width())
-    radius.SetWidth(half_size.Width());
-
-  if (radius.Height() > half_size.Height())
-    radius.SetHeight(half_size.Height());
-
-  const bool clockwise = true;
-  AddPathForRoundedRect(rect, radius, radius, radius, radius, clockwise);
-}
-
-void Path::AddRoundedRect(const FloatRect& rect,
-                          const FloatSize& top_left_radius,
-                          const FloatSize& top_right_radius,
-                          const FloatSize& bottom_left_radius,
-                          const FloatSize& bottom_right_radius) {
-  if (rect.IsEmpty())
-    return;
-
-  if (rect.Width() < top_left_radius.Width() + top_right_radius.Width() ||
-      rect.Width() < bottom_left_radius.Width() + bottom_right_radius.Width() ||
-      rect.Height() < top_left_radius.Height() + bottom_left_radius.Height() ||
-      rect.Height() <
-          top_right_radius.Height() + bottom_right_radius.Height()) {
-    // If all the radii cannot be accommodated, return a rect.
-    // FIXME: Is this an error scenario, given that it appears the code in
-    // FloatRoundedRect::constrainRadii() should be always called first? Should
-    // we assert that this code is not reached? This fallback is very bad, since
-    // it means that radii that are just barely too big due to rounding or
-    // snapping will get completely ignored.
-    AddRect(rect);
-    return;
-  }
-
-  const bool clockwise = true;
-  AddPathForRoundedRect(rect, top_left_radius, top_right_radius,
-                        bottom_left_radius, bottom_right_radius, clockwise);
-}
-
-void Path::AddPathForRoundedRect(const FloatRect& rect,
-                                 const FloatSize& top_left_radius,
-                                 const FloatSize& top_right_radius,
-                                 const FloatSize& bottom_left_radius,
-                                 const FloatSize& bottom_right_radius,
-                                 bool clockwise) {
-  // Start at upper-left (after corner radius).
-  path_.addRRect(FloatRoundedRect(rect, top_left_radius, top_right_radius,
-                                  bottom_left_radius, bottom_right_radius),
-                 clockwise ? SkPathDirection::kCW : SkPathDirection::kCCW, 0);
+  path_.addRRect(SkRRect(rect),
+                 clockwise ? SkPathDirection::kCW : SkPathDirection::kCCW,
+                 /* start at upper-left after corner radius */ 0);
 }
 
 void Path::AddPath(const Path& src, const AffineTransform& transform) {
   path_.addPath(src.GetSkPath(), AffineTransformToSkMatrix(transform));
 }
 
-void Path::Translate(const FloatSize& size) {
-  path_.offset(WebCoreFloatToSkScalar(size.Width()),
-               WebCoreFloatToSkScalar(size.Height()));
+void Path::Translate(const gfx::Vector2dF& offset) {
+  path_.offset(WebCoreFloatToSkScalar(offset.x()),
+               WebCoreFloatToSkScalar(offset.y()));
 }
 
 bool Path::SubtractPath(const Path& other) {

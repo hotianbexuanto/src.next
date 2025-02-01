@@ -1,8 +1,10 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "content/browser/data_url_loader_factory.h"
+
+#include <string_view>
 
 #include "base/memory/ref_counted.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -11,6 +13,7 @@
 #include "net/base/data_url.h"
 #include "net/base/net_errors.h"
 #include "net/http/http_response_headers.h"
+#include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/url_loader.mojom.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
 
@@ -79,8 +82,6 @@ void DataURLLoaderFactory::CreateLoaderAndStart(
     return;
   }
 
-  client_remote->OnReceiveResponse(std::move(response));
-
   mojo::ScopedDataPipeProducerHandle producer;
   mojo::ScopedDataPipeConsumerHandle consumer;
   if (CreateDataPipe(nullptr, producer, consumer) != MOJO_RESULT_OK) {
@@ -89,7 +90,8 @@ void DataURLLoaderFactory::CreateLoaderAndStart(
     return;
   }
 
-  client_remote->OnStartLoadingResponseBody(std::move(consumer));
+  client_remote->OnReceiveResponse(std::move(response), std::move(consumer),
+                                   std::nullopt);
 
   auto write_data = std::make_unique<WriteData>();
   write_data->client = std::move(client_remote);
@@ -98,7 +100,7 @@ void DataURLLoaderFactory::CreateLoaderAndStart(
       std::make_unique<mojo::DataPipeProducer>(std::move(producer));
 
   mojo::DataPipeProducer* producer_ptr = write_data->producer.get();
-  base::StringPiece string_piece(write_data->data);
+  std::string_view string_piece(write_data->data);
 
   producer_ptr->Write(
       std::make_unique<mojo::StringDataSource>(

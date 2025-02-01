@@ -1,17 +1,18 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_CASCADE_RESOLVER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_CASCADE_RESOLVER_H_
 
-#include "base/auto_reset.h"
+#include "base/containers/adapters.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_property_name.h"
 #include "third_party/blink/renderer/core/css/properties/css_property.h"
 #include "third_party/blink/renderer/core/css/resolver/cascade_filter.h"
 #include "third_party/blink/renderer/core/css/resolver/cascade_origin.h"
 #include "third_party/blink/renderer/core/css/rule_set.h"
+#include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 
 namespace blink {
 
@@ -32,17 +33,24 @@ class CORE_EXPORT CascadeResolver {
   STACK_ALLOCATED();
 
  public:
+  using CycleElem = absl::variant<const CSSProperty*, const String*>;
   // TODO(crbug.com/985047): Probably use a HashMap for this.
-  using PropertyStack = Vector<const CSSProperty*, 8>;
+  using CycleStack = Vector<CycleElem, 8>;
 
   // A 'locked' property is a property we are in the process of applying.
   // In other words, once a property is locked, locking it again would form
   // a cycle, and is therefore an error.
   bool IsLocked(const CSSProperty&) const;
+  bool IsLocked(const String& attribute) const;
 
   // Returns the property we're currently applying.
   const CSSProperty* CurrentProperty() const {
-    return stack_.size() ? stack_.back() : nullptr;
+    for (const CycleElem& elem : base::Reversed(stack_)) {
+      if (absl::holds_alternative<const CSSProperty*>(elem)) {
+        return absl::get<const CSSProperty*>(elem);
+      }
+    }
+    return nullptr;
   }
 
   // We do not allow substitution of animation-tainted values into
@@ -51,13 +59,29 @@ class CORE_EXPORT CascadeResolver {
   // https://drafts.csswg.org/css-variables/#animation-tainted
   bool AllowSubstitution(CSSVariableData*) const;
 
-  // If the incoming origin is kAuthor, collect flags from 'property'.
-  // AuthorFlags() can then later be used to see which flags have been observed.
-  void CollectAuthorFlags(const CSSProperty& property, CascadeOrigin origin) {
-    author_flags_ |=
-        (origin == CascadeOrigin::kAuthor ? property.GetFlags() : 0);
+  bool Rejects(const CSSProperty& property) {
+    if (!filter_.Rejects(property)) {
+      return false;
+    }
+    rejected_flags_ |= property.GetFlags();
+    return true;
   }
+
+  // Collects CSSProperty::Flags from the given property. The Flags() function
+  // can then be used to see which flags have been observed..
+  void CollectFlags(const CSSProperty& property, CascadeOrigin origin) {
+    CSSProperty::Flags flags = property.GetFlags();
+    author_flags_ |= (origin == CascadeOrigin::kAuthor ? flags : 0);
+    flags_ |= flags;
+  }
+
+  CSSProperty::Flags Flags() const { return flags_; }
+
+  // Like Flags, but for the author origin only.
   CSSProperty::Flags AuthorFlags() const { return author_flags_; }
+
+  // The CSSProperty::Flags of all properties rejected by the CascadeFilter.
+  CSSProperty::Flags RejectedFlags() const { return rejected_flags_; }
 
   // Automatically locks and unlocks the given property. (See
   // CascadeResolver::IsLocked).
@@ -66,6 +90,7 @@ class CORE_EXPORT CascadeResolver {
 
    public:
     AutoLock(const CSSProperty&, CascadeResolver&);
+    AutoLock(const String& attribute, CascadeResolver&);
     ~AutoLock();
 
    private:
@@ -89,6 +114,8 @@ class CORE_EXPORT CascadeResolver {
   // The marked range of the stack shrinks during ~AutoLock, such that we won't
   // be InCycle whenever we move outside that of that range.
   bool DetectCycle(const CSSProperty&);
+  bool DetectCycle(const String& attribute);
+  bool DetectCycle(wtf_size_t index);
   // Returns true whenever the CascadeResolver is in a cycle state.
   // This DOES NOT detect cycles; the caller must call DetectCycle first.
   bool InCycle() const;
@@ -96,8 +123,9 @@ class CORE_EXPORT CascadeResolver {
   // CSSPropertyName), or kNotFound if the property (name) is not present in
   // stack_.
   wtf_size_t Find(const CSSProperty&) const;
+  wtf_size_t Find(const String& attribute) const;
 
-  PropertyStack stack_;
+  CycleStack stack_;
   // If we're in a cycle, cycle_start_ is the index of the stack_ item that
   // "started" the cycle, i.e. the item in the cycle with the smallest index.
   wtf_size_t cycle_start_ = kNotFound;
@@ -108,6 +136,8 @@ class CORE_EXPORT CascadeResolver {
   CascadeFilter filter_;
   const uint8_t generation_ = 0;
   CSSProperty::Flags author_flags_ = 0;
+  CSSProperty::Flags flags_ = 0;
+  CSSProperty::Flags rejected_flags_ = 0;
 
   // A very simple cache for CSSPendingSubstitutionValues. We cache only the
   // most recently parsed CSSPendingSubstitutionValue, such that consecutive
@@ -118,7 +148,7 @@ class CORE_EXPORT CascadeResolver {
 
    public:
     const cssvalue::CSSPendingSubstitutionValue* value = nullptr;
-    HeapVector<CSSPropertyValue, 256> parsed_properties;
+    HeapVector<CSSPropertyValue, 64> parsed_properties;
   } shorthand_cache_;
 };
 

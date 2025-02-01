@@ -1,11 +1,13 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/browser/blocklist_extension_prefs.h"
 
+#include "base/memory/raw_ptr.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_service_test_base.h"
+#include "chrome/browser/profiles/profile.h"
 #include "extensions/browser/blocklist_state.h"
 #include "extensions/browser/extension_prefs.h"
 
@@ -29,7 +31,7 @@ class BlocklistExtensionPrefsUnitTest : public ExtensionServiceTestBase {
   ExtensionPrefs* extension_prefs() { return extension_prefs_; }
 
  private:
-  ExtensionPrefs* extension_prefs_;
+  raw_ptr<ExtensionPrefs> extension_prefs_;
 };
 
 TEST_F(BlocklistExtensionPrefsUnitTest, OmahaBlocklistState) {
@@ -105,12 +107,19 @@ TEST_F(BlocklistExtensionPrefsUnitTest, AcknowledgedBlocklistState) {
   EXPECT_TRUE(blocklist_prefs::HasAcknowledgedBlocklistState(
       kExtensionId, state1, extension_prefs()));
 
-  blocklist_prefs::ClearAcknowledgedBlocklistStates(kExtensionId,
-                                                    extension_prefs());
+  blocklist_prefs::AddAcknowledgedBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_MALWARE,
+      extension_prefs());
+  blocklist_prefs::ClearAcknowledgedGreylistStates(kExtensionId,
+                                                   extension_prefs());
   EXPECT_FALSE(blocklist_prefs::HasAcknowledgedBlocklistState(
       kExtensionId, state1, extension_prefs()));
   EXPECT_FALSE(blocklist_prefs::HasAcknowledgedBlocklistState(
       kExtensionId, state2, extension_prefs()));
+  // The malware acknowledged state should not be cleared.
+  EXPECT_TRUE(blocklist_prefs::HasAcknowledgedBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_MALWARE,
+      extension_prefs()));
 }
 
 TEST_F(BlocklistExtensionPrefsUnitTest,
@@ -121,8 +130,9 @@ TEST_F(BlocklistExtensionPrefsUnitTest,
   blocklist_prefs::AddAcknowledgedBlocklistState(
       kExtensionId, BitMapBlocklistState::BLOCKLISTED_SECURITY_VULNERABILITY,
       extension_prefs());
-  extension_prefs()->SetExtensionBlocklistState(
-      kExtensionId, BLOCKLISTED_POTENTIALLY_UNWANTED);
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_POTENTIALLY_UNWANTED,
+      extension_prefs());
   blocklist_prefs::AddOmahaBlocklistState(
       kExtensionId, BitMapBlocklistState::BLOCKLISTED_CWS_POLICY_VIOLATION,
       extension_prefs());
@@ -151,8 +161,9 @@ TEST_F(BlocklistExtensionPrefsUnitTest,
       kExtensionId, BitMapBlocklistState::BLOCKLISTED_MALWARE,
       extension_prefs()));
 
-  extension_prefs()->SetExtensionBlocklistState(
-      kExtensionId, BLOCKLISTED_SECURITY_VULNERABILITY);
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_SECURITY_VULNERABILITY,
+      extension_prefs());
   blocklist_prefs::UpdateCurrentGreylistStatesAsAcknowledged(kExtensionId,
                                                              extension_prefs());
 
@@ -178,8 +189,9 @@ TEST_F(BlocklistExtensionPrefsUnitTest, GetExtensionBlocklistState) {
             blocklist_prefs::GetExtensionBlocklistState(kExtensionId,
                                                         extension_prefs()));
 
-  extension_prefs()->SetExtensionBlocklistState(
-      kExtensionId, BLOCKLISTED_POTENTIALLY_UNWANTED);
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_POTENTIALLY_UNWANTED,
+      extension_prefs());
   blocklist_prefs::AddOmahaBlocklistState(
       kExtensionId, BitMapBlocklistState::BLOCKLISTED_SECURITY_VULNERABILITY,
       extension_prefs());
@@ -198,12 +210,87 @@ TEST_F(BlocklistExtensionPrefsUnitTest, GetExtensionBlocklistState) {
             blocklist_prefs::GetExtensionBlocklistState(kExtensionId,
                                                         extension_prefs()));
 
-  extension_prefs()->SetExtensionBlocklistState(kExtensionId,
-                                                BLOCKLISTED_MALWARE);
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_MALWARE,
+      extension_prefs());
   // BLOCKLISTED_MALWARE has the highest precedence.
   EXPECT_EQ(BitMapBlocklistState::BLOCKLISTED_MALWARE,
             blocklist_prefs::GetExtensionBlocklistState(kExtensionId,
                                                         extension_prefs()));
+}
+
+TEST_F(BlocklistExtensionPrefsUnitTest, SafeBrowsingExtensionBlocklistState) {
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_MALWARE,
+      extension_prefs());
+
+  EXPECT_EQ(BitMapBlocklistState::BLOCKLISTED_MALWARE,
+            blocklist_prefs::GetSafeBrowsingExtensionBlocklistState(
+                kExtensionId, extension_prefs()));
+
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::NOT_BLOCKLISTED, extension_prefs());
+
+  EXPECT_EQ(BitMapBlocklistState::NOT_BLOCKLISTED,
+            blocklist_prefs::GetSafeBrowsingExtensionBlocklistState(
+                kExtensionId, extension_prefs()));
+}
+
+TEST_F(BlocklistExtensionPrefsUnitTest, IsExtensionBlocklisted) {
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_MALWARE,
+      extension_prefs());
+  EXPECT_TRUE(
+      blocklist_prefs::IsExtensionBlocklisted(kExtensionId, extension_prefs()));
+
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_POTENTIALLY_UNWANTED,
+      extension_prefs());
+  EXPECT_FALSE(
+      blocklist_prefs::IsExtensionBlocklisted(kExtensionId, extension_prefs()));
+
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_MALWARE,
+      extension_prefs());
+  EXPECT_TRUE(
+      blocklist_prefs::IsExtensionBlocklisted(kExtensionId, extension_prefs()));
+
+  blocklist_prefs::SetSafeBrowsingExtensionBlocklistState(
+      kExtensionId, BitMapBlocklistState::NOT_BLOCKLISTED, extension_prefs());
+  EXPECT_FALSE(
+      blocklist_prefs::IsExtensionBlocklisted(kExtensionId, extension_prefs()));
+}
+
+TEST_F(BlocklistExtensionPrefsUnitTest,
+       ExtensionTelemetryServiceBlocklistState) {
+  blocklist_prefs::SetExtensionTelemetryServiceBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_MALWARE,
+      extension_prefs());
+
+  EXPECT_EQ(BitMapBlocklistState::BLOCKLISTED_MALWARE,
+            blocklist_prefs::GetExtensionTelemetryServiceBlocklistState(
+                kExtensionId, extension_prefs()));
+
+  blocklist_prefs::SetExtensionTelemetryServiceBlocklistState(
+      kExtensionId, BitMapBlocklistState::NOT_BLOCKLISTED, extension_prefs());
+
+  EXPECT_EQ(BitMapBlocklistState::NOT_BLOCKLISTED,
+            blocklist_prefs::GetExtensionTelemetryServiceBlocklistState(
+                kExtensionId, extension_prefs()));
+}
+
+TEST_F(BlocklistExtensionPrefsUnitTest,
+       IsExtensionBlocklisted_ExtensionTelemetryService) {
+  blocklist_prefs::SetExtensionTelemetryServiceBlocklistState(
+      kExtensionId, BitMapBlocklistState::BLOCKLISTED_MALWARE,
+      extension_prefs());
+  EXPECT_TRUE(
+      blocklist_prefs::IsExtensionBlocklisted(kExtensionId, extension_prefs()));
+
+  blocklist_prefs::SetExtensionTelemetryServiceBlocklistState(
+      kExtensionId, BitMapBlocklistState::NOT_BLOCKLISTED, extension_prefs());
+  EXPECT_FALSE(
+      blocklist_prefs::IsExtensionBlocklisted(kExtensionId, extension_prefs()));
 }
 
 }  // namespace extensions

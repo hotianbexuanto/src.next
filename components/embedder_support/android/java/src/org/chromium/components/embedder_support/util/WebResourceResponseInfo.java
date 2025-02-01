@@ -1,28 +1,30 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.components.embedder_support.util;
 
-import org.chromium.base.annotations.CalledByNative;
-import org.chromium.base.annotations.JNINamespace;
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JNINamespace;
+
+import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 
 import java.io.InputStream;
 import java.util.Map;
 
-/**
- * The response information that is to be returned for a particular resource fetch.
- */
+/** The response information that is to be returned for a particular resource fetch. */
 @JNINamespace("embedder_support")
+@NullMarked
 public class WebResourceResponseInfo {
     private String mMimeType;
     private String mCharset;
     private InputStream mData;
     private int mStatusCode;
-    private String mReasonPhrase;
-    private Map<String, String> mResponseHeaders;
-    private String[] mResponseHeaderNames;
-    private String[] mResponseHeaderValues;
+    private @Nullable String mReasonPhrase;
+    private @Nullable Map<String, String> mResponseHeaders;
+    private String @Nullable [] mResponseHeaderNames;
+    private String @Nullable [] mResponseHeaderValues;
 
     public WebResourceResponseInfo(String mimeType, String encoding, InputStream data) {
         mMimeType = mimeType;
@@ -30,8 +32,13 @@ public class WebResourceResponseInfo {
         mData = data;
     }
 
-    public WebResourceResponseInfo(String mimeType, String encoding, InputStream data,
-            int statusCode, String reasonPhrase, Map<String, String> responseHeaders) {
+    public WebResourceResponseInfo(
+            String mimeType,
+            String encoding,
+            InputStream data,
+            int statusCode,
+            String reasonPhrase,
+            Map<String, String> responseHeaders) {
         this(mimeType, encoding, data);
 
         mStatusCode = statusCode;
@@ -72,22 +79,22 @@ public class WebResourceResponseInfo {
     }
 
     @CalledByNative
-    public String getReasonPhrase() {
+    public @Nullable String getReasonPhrase() {
         return mReasonPhrase;
     }
 
-    public Map<String, String> getResponseHeaders() {
+    public @Nullable Map<String, String> getResponseHeaders() {
         return mResponseHeaders;
     }
 
     @CalledByNative
-    private String[] getResponseHeaderNames() {
+    private String @Nullable [] getResponseHeaderNames() {
         fillInResponseHeaderNamesAndValuesIfNeeded();
         return mResponseHeaderNames;
     }
 
     @CalledByNative
-    private String[] getResponseHeaderValues() {
+    private String @Nullable [] getResponseHeaderValues() {
         fillInResponseHeaderNamesAndValuesIfNeeded();
         return mResponseHeaderValues;
     }

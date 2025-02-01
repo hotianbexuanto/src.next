@@ -1,17 +1,16 @@
-// Copyright (c) 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/extension_assets_manager.h"
 
-#include "base/macros.h"
 #include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/file_util.h"
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/extensions/extension_assets_manager_chromeos.h"
 #endif
 
@@ -20,6 +19,10 @@ namespace {
 
 class ExtensionAssetsManagerImpl :  public ExtensionAssetsManager {
  public:
+  ExtensionAssetsManagerImpl(const ExtensionAssetsManagerImpl&) = delete;
+  ExtensionAssetsManagerImpl& operator=(const ExtensionAssetsManagerImpl&) =
+      delete;
+
   static ExtensionAssetsManagerImpl* GetInstance() {
     return base::Singleton<ExtensionAssetsManagerImpl>::get();
   }
@@ -38,31 +41,31 @@ class ExtensionAssetsManagerImpl :  public ExtensionAssetsManager {
   }
 
   void UninstallExtension(const std::string& id,
-                          Profile* profile,
-                          const base::FilePath& local_install_dir,
-                          const base::FilePath& extension_root) override {
-    file_util::UninstallExtension(local_install_dir, id);
+                          const std::string& profile_user_name,
+                          const base::FilePath& extensions_install_dir,
+                          const base::FilePath& extension_dir_to_delete,
+                          const base::FilePath& profile_dir) override {
+    file_util::UninstallExtension(profile_dir, extensions_install_dir,
+                                  extension_dir_to_delete);
   }
 
  private:
   friend struct base::DefaultSingletonTraits<ExtensionAssetsManagerImpl>;
 
-  ExtensionAssetsManagerImpl() {}
-  ~ExtensionAssetsManagerImpl() override {}
-
-  DISALLOW_COPY_AND_ASSIGN(ExtensionAssetsManagerImpl);
+  ExtensionAssetsManagerImpl() = default;
+  ~ExtensionAssetsManagerImpl() override = default;
 };
 
 }  // namespace
 
 // static
 ExtensionAssetsManager* ExtensionAssetsManager::GetInstance() {
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
   return ExtensionAssetsManagerChromeOS::GetInstance();
 #else
   // If not Chrome OS, use trivial implementation that doesn't share anything.
   return ExtensionAssetsManagerImpl::GetInstance();
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // BUILDFLAG(IS_CHROMEOS)
 }
 
 }  // namespace extensions

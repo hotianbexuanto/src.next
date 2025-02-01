@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,7 @@
 
 namespace blink {
 
+class Document;
 class Node;
 
 class CORE_EXPORT AbstractRange : public ScriptWrappable {
@@ -26,6 +27,7 @@ class CORE_EXPORT AbstractRange : public ScriptWrappable {
                                         Node* end_root_container);
   static unsigned LengthOfContents(const Node*);
   virtual bool IsStaticRange() const = 0;
+  virtual Document& OwnerDocument() const = 0;
 
  protected:
   AbstractRange();

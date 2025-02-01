@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,6 @@
 #include "ash/wm/desks/desk.h"
 #include "ash/wm/desks/desks_controller.h"
 #include "ash/wm/desks/desks_test_util.h"
-#include "base/macros.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -18,6 +17,11 @@ namespace {
 class BrowserFinderWithDesksTest : public InProcessBrowserTest {
  public:
   BrowserFinderWithDesksTest() = default;
+
+  BrowserFinderWithDesksTest(const BrowserFinderWithDesksTest&) = delete;
+  BrowserFinderWithDesksTest& operator=(const BrowserFinderWithDesksTest&) =
+      delete;
+
   ~BrowserFinderWithDesksTest() override = default;
 
   // InProcessBrowserTest:
@@ -37,9 +41,6 @@ class BrowserFinderWithDesksTest : public InProcessBrowserTest {
     ActivateBrowser(new_browser);
     return new_browser;
   }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(BrowserFinderWithDesksTest);
 };
 
 }  // namespace
@@ -121,7 +122,34 @@ IN_PROC_BROWSER_TEST_F(BrowserFinderWithDesksTest, FindTabbedBrowser) {
   Browser* browser_2 = CreateTestBrowser();
   EXPECT_EQ(browser_2, chrome::FindTabbedBrowser(browser()->profile(), true));
 
+  // Switch to desk_3, and expect there is no tabbed browser.
   ash::ActivateDesk(desk_3);
   EXPECT_TRUE(desk_3->is_active());
   EXPECT_FALSE(chrome::FindTabbedBrowser(browser()->profile(), true));
+
+  // Create a browser on desk_3
+  Browser* browser_3 = CreateTestBrowser();
+
+  // Since browser_3 is not closing, FindTabbedBrowser with
+  // ignore_closing_browsers=true should return it.
+  EXPECT_EQ(browser_3,
+            chrome::FindTabbedBrowser(browser()->profile(), true,
+                                      display::kInvalidDisplayId, true));
+  // FindTabbedBrowser with ignore_closing_browsers=false should also return
+  // browser_3.
+  EXPECT_EQ(browser_3,
+            chrome::FindTabbedBrowser(browser()->profile(), true,
+                                      display::kInvalidDisplayId, false));
+
+  // Start closing the browser
+  CloseBrowserAsynchronously(browser_3);
+
+  // Since browser_3 is closing at this point, FindTabbedBrowser should always
+  // return nullptr.
+  EXPECT_EQ(nullptr,
+            chrome::FindTabbedBrowser(browser()->profile(), true,
+                                      display::kInvalidDisplayId, true));
+  EXPECT_EQ(nullptr,
+            chrome::FindTabbedBrowser(browser()->profile(), true,
+                                      display::kInvalidDisplayId, false));
 }

@@ -1,13 +1,12 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <stddef.h>
 
-#include "base/bind.h"
-#include "base/callback.h"
 #include "base/command_line.h"
-#include "base/macros.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
 #include "base/run_loop.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
@@ -19,12 +18,14 @@
 #include "chrome/browser/profiles/profile_attributes_entry.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/profiles/profile_test_util.h"
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_util_win.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/ui/webui/signin/dice_turn_sync_on_helper.h"
+#include "chrome/browser/ui/webui/signin/signin_utils.h"
+#include "chrome/browser/ui/webui/signin/turn_sync_on_helper.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/credential_provider/common/gcp_strings.h"
@@ -41,21 +42,21 @@ class SigninUIError;
 
 namespace {
 
-class TestDiceTurnSyncOnHelperDelegate : public DiceTurnSyncOnHelper::Delegate {
-  ~TestDiceTurnSyncOnHelperDelegate() override {}
+class TestTurnSyncOnHelperDelegate : public TurnSyncOnHelper::Delegate {
+  ~TestTurnSyncOnHelperDelegate() override = default;
 
-  // DiceTurnSyncOnHelper::Delegate:
+  // TurnSyncOnHelper::Delegate:
   void ShowLoginError(const SigninUIError& error) override {}
   void ShowMergeSyncDataConfirmation(
       const std::string& previous_email,
       const std::string& new_email,
-      DiceTurnSyncOnHelper::SigninChoiceCallback callback) override {
-    std::move(callback).Run(DiceTurnSyncOnHelper::SIGNIN_CHOICE_CONTINUE);
+      signin::SigninChoiceCallback callback) override {
+    std::move(callback).Run(signin::SIGNIN_CHOICE_CONTINUE);
   }
   void ShowEnterpriseAccountConfirmation(
-      const std::string& email,
-      DiceTurnSyncOnHelper::SigninChoiceCallback callback) override {
-    std::move(callback).Run(DiceTurnSyncOnHelper::SIGNIN_CHOICE_CONTINUE);
+      const AccountInfo& account_info,
+      signin::SigninChoiceCallback callback) override {
+    std::move(callback).Run(signin::SIGNIN_CHOICE_CONTINUE);
   }
   void ShowSyncConfirmation(
       base::OnceCallback<void(LoginUIService::SyncConfirmationUIClosedResult)>
@@ -214,9 +215,9 @@ class SigninUtilWinBrowserTest
   bool SetUpUserDataDirectory() override {
     registry_override_.OverrideRegistry(HKEY_CURRENT_USER);
 
-    signin_util::SetDiceTurnSyncOnHelperDelegateForTesting(
-        std::unique_ptr<DiceTurnSyncOnHelper::Delegate>(
-            new TestDiceTurnSyncOnHelperDelegate()));
+    signin_util::SetTurnSyncOnHelperDelegateForTesting(
+        std::unique_ptr<TurnSyncOnHelper::Delegate>(
+            new TestTurnSyncOnHelperDelegate()));
 
     SetSigninUtilRegistry();
 
@@ -276,8 +277,7 @@ IN_PROC_BROWSER_TEST_P(SigninUtilWinBrowserTest, NoReauthAfterSignout) {
         IdentityManagerFactory::GetForProfile(profile)
             ->GetPrimaryAccountMutator();
     primary_account_mutator->RevokeSyncConsent(
-        signin_metrics::FORCE_SIGNOUT_ALWAYS_ALLOWED_FOR_TEST,
-        signin_metrics::SignoutDelete::kDeleted);
+        signin_metrics::ProfileSignout::kForceSignoutAlwaysAllowedForTest);
 
     // Even with a refresh token available, no reauth happens if the profile
     // is signed out.
@@ -400,9 +400,9 @@ class ExistingWinBrowserSigninUtilTest
   bool SetUpUserDataDirectory() override {
     registry_override_.OverrideRegistry(HKEY_CURRENT_USER);
 
-    signin_util::SetDiceTurnSyncOnHelperDelegateForTesting(
-        std::unique_ptr<DiceTurnSyncOnHelper::Delegate>(
-            new TestDiceTurnSyncOnHelperDelegate()));
+    signin_util::SetTurnSyncOnHelperDelegateForTesting(
+        std::unique_ptr<TurnSyncOnHelper::Delegate>(
+            new TestTurnSyncOnHelperDelegate()));
     if (!IsPreTest())
       SetSigninUtilRegistry();
 
@@ -486,32 +486,14 @@ INSTANTIATE_TEST_SUITE_P(AllowProfileWithPrimaryAccount_SameUser,
                              /*existing_email=*/L"foo@gmail.com",
                              /*expect_is_started=*/true)));
 
-void UnblockOnProfileInitialized(base::OnceClosure quit_closure,
-                                 Profile* profile,
-                                 Profile::CreateStatus status) {
-  // If the status is CREATE_STATUS_CREATED, then the function will be called
-  // again with CREATE_STATUS_INITIALIZED.
-  if (status == Profile::CREATE_STATUS_CREATED)
-    return;
-
-  EXPECT_EQ(Profile::CREATE_STATUS_INITIALIZED, status);
-  std::move(quit_closure).Run();
-}
-
 void CreateAndSwitchToProfile(const std::string& basepath) {
   ProfileManager* profile_manager = g_browser_process->profile_manager();
   ASSERT_TRUE(profile_manager);
 
   base::FilePath path = profile_manager->user_data_dir().AppendASCII(basepath);
-  base::RunLoop run_loop;
-  profile_manager->CreateProfileAsync(
-      path, base::BindRepeating(&UnblockOnProfileInitialized,
-                                run_loop.QuitClosure()));
-  // Run the message loop to allow profile initialization to take place; the
-  // loop is terminated by UnblockOnProfileInitialized.
-  run_loop.Run();
+  profiles::testing::CreateProfileSync(profile_manager, path);
 
-  profiles::SwitchToProfile(path, false, ProfileManager::CreateCallback());
+  profiles::SwitchToProfile(path, false);
 }
 
 struct ExistingWinBrowserProfilesSigninUtilTestParams {
@@ -549,9 +531,9 @@ class ExistingWinBrowserProfilesSigninUtilTest
   bool SetUpUserDataDirectory() override {
     registry_override_.OverrideRegistry(HKEY_CURRENT_USER);
 
-    signin_util::SetDiceTurnSyncOnHelperDelegateForTesting(
-        std::unique_ptr<DiceTurnSyncOnHelper::Delegate>(
-            new TestDiceTurnSyncOnHelperDelegate()));
+    signin_util::SetTurnSyncOnHelperDelegateForTesting(
+        std::unique_ptr<TurnSyncOnHelper::Delegate>(
+            new TestTurnSyncOnHelperDelegate()));
     if (!IsPreTest()) {
       SetSigninUtilRegistry();
     } else if (IsPrePreTest() && GetParam().cred_provider_used_other_profile) {

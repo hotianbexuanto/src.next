@@ -1,11 +1,12 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/test/run_until.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
-#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/login/login_handler.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
 #include "chrome/common/url_constants.h"
@@ -22,8 +23,12 @@ using web_modal::WebContentsModalDialogManager;
 
 class RepostFormWarningTest : public DialogBrowserTest {
  public:
-  RepostFormWarningTest() {}
-  ~RepostFormWarningTest() override {}
+  RepostFormWarningTest() = default;
+
+  RepostFormWarningTest(const RepostFormWarningTest&) = delete;
+  RepostFormWarningTest& operator=(const RepostFormWarningTest&) = delete;
+
+  ~RepostFormWarningTest() override = default;
 
   // BrowserTestBase:
   void SetUpOnMainThread() override;
@@ -33,9 +38,6 @@ class RepostFormWarningTest : public DialogBrowserTest {
 
  protected:
   content::WebContents* TryReload();
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(RepostFormWarningTest);
 };
 
 void RepostFormWarningTest::SetUpOnMainThread() {
@@ -43,11 +45,11 @@ void RepostFormWarningTest::SetUpOnMainThread() {
   ASSERT_TRUE(embedded_test_server()->Start());
 
   // Load a form.
-  ui_test_utils::NavigateToURL(browser(),
-                               embedded_test_server()->GetURL("/form.html"));
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/form.html")));
   // Submit it.
-  ui_test_utils::NavigateToURL(
-      browser(), GURL("javascript:document.getElementById('form').submit()"));
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL("javascript:document.getElementById('form').submit()")));
 }
 
 void RepostFormWarningTest::ShowUi(const std::string& name) {
@@ -74,8 +76,8 @@ IN_PROC_BROWSER_TEST_F(RepostFormWarningTest, TestDoubleReload) {
   EXPECT_TRUE(web_contents_modal_dialog_manager->IsDialogActive());
 
   // Navigate away from the page (this is when the test usually crashes).
-  ui_test_utils::NavigateToURL(browser(),
-                               embedded_test_server()->GetURL("/bar"));
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/bar")));
 
   // The dialog should've been closed.
   EXPECT_FALSE(web_contents_modal_dialog_manager->IsDialogActive());
@@ -88,14 +90,13 @@ IN_PROC_BROWSER_TEST_F(RepostFormWarningTest, TestLoginAfterRepost) {
 
   // Navigate to a page that requires authentication, bringing up another
   // tab-modal sheet.
-  content::NavigationController& controller = web_contents->GetController();
-  content::WindowedNotificationObserver observer(
-      chrome::NOTIFICATION_AUTH_NEEDED,
-      content::Source<content::NavigationController>(&controller));
-  browser()->OpenURL(content::OpenURLParams(
-      embedded_test_server()->GetURL("/auth-basic"), content::Referrer(),
-      WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_TYPED, false));
-  observer.Wait();
+  browser()->OpenURL(
+      content::OpenURLParams(
+          embedded_test_server()->GetURL("/auth-basic"), content::Referrer(),
+          WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_TYPED, false),
+      /*navigation_handle_callback=*/{});
+  ASSERT_TRUE(base::test::RunUntil(
+      []() { return LoginHandler::GetAllLoginHandlersForTest().size() == 1; }));
 
   // Try to reload it again.
   web_contents->GetController().Reload(content::ReloadType::NORMAL, true);
@@ -104,15 +105,17 @@ IN_PROC_BROWSER_TEST_F(RepostFormWarningTest, TestLoginAfterRepost) {
   // because that waits for the current page to stop loading first, which won't
   // happen while the auth dialog is up.
   content::TestNavigationObserver navigation_observer(web_contents);
-  browser()->OpenURL(content::OpenURLParams(
-      embedded_test_server()->GetURL("/bar"), content::Referrer(),
-      WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_TYPED, false));
+  browser()->OpenURL(
+      content::OpenURLParams(
+          embedded_test_server()->GetURL("/bar"), content::Referrer(),
+          WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_TYPED, false),
+      /*navigation_handle_callback=*/{});
   navigation_observer.Wait();
 }
 
 // Disable on Mac OS until dialogs are using toolkit-views for MacViews project.
 // https://crbug.com/683356
-#if !defined(OS_MAC)
+#if !BUILDFLAG(IS_MAC)
 IN_PROC_BROWSER_TEST_F(RepostFormWarningTest, InvokeUi_TestRepostWarning) {
   ShowAndVerifyUi();
 }

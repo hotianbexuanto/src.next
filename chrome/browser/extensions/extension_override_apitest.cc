@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,15 +10,10 @@
 #include "base/threading/thread_restrictions.h"
 #include "base/values.h"
 #include "build/build_config.h"
-#include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_web_ui.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/extensions/chrome_manifest_url_handlers.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/test/base/ui_test_utils.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/browser/navigation_entry.h"
@@ -33,36 +28,53 @@
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/extensions/extension_platform_apitest.h"
+#else
+#include "chrome/browser/extensions/extension_apitest.h"
+#include "chrome/browser/extensions/extension_service.h"
+#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/test/base/ui_test_utils.h"
+#endif
+
 using content::WebContents;
 
 namespace extensions {
 
-class ExtensionOverrideTest : public ExtensionApiTest {
+#if BUILDFLAG(IS_ANDROID)
+using ExtensionApiTestBase = ExtensionPlatformApiTest;
+#else
+using ExtensionApiTestBase = ExtensionApiTest;
+#endif
+
+class ExtensionOverrideTest : public ExtensionApiTestBase {
  protected:
   void SetUpOnMainThread() override {
-    ExtensionApiTest::SetUpOnMainThread();
+    ExtensionApiTestBase::SetUpOnMainThread();
     host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(embedded_test_server()->Start());
   }
 
   bool CheckHistoryOverridesContainsNoDupes() {
     // There should be no duplicate entries in the preferences.
-    const base::DictionaryValue* overrides =
-        browser()->profile()->GetPrefs()->GetDictionary(
-            ExtensionWebUI::kExtensionURLOverrides);
+    const base::Value::Dict& overrides =
+        profile()->GetPrefs()->GetDict(ExtensionWebUI::kExtensionURLOverrides);
 
-    const base::ListValue* values = nullptr;
-    if (!overrides->GetList("history", &values))
+    const base::Value::List* values = overrides.FindList("history");
+    if (!values)
       return false;
 
     std::set<std::string> seen_overrides;
-    for (const auto& val : values->GetList()) {
-      const base::DictionaryValue* dict = nullptr;
-      std::string entry;
-      if (!val.GetAsDictionary(&dict) || !dict->GetString("entry", &entry) ||
-          seen_overrides.count(entry) != 0)
+    for (const auto& val : *values) {
+      if (!val.is_dict()) {
         return false;
-      seen_overrides.insert(entry);
+      }
+      const base::Value::Dict& dict = val.GetDict();
+      const std::string* entry = dict.FindString("entry");
+      if (!entry || seen_overrides.count(*entry) != 0)
+        return false;
+      seen_overrides.insert(*entry);
     }
 
     return true;
@@ -96,17 +108,20 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, OverrideNewTab) {
   {
     // Navigate to the new tab page.  The overridden new tab page
     // will call chrome.test.sendMessage('controlled by first').
-    ExtensionTestMessageListener listener(false);
-    ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/"));
-    EXPECT_TRUE(ExtensionControlsPage(
-        browser()->tab_strip_model()->GetActiveWebContents(),
-        extension->id()));
+    ExtensionTestMessageListener listener;
+    ASSERT_TRUE(content::NavigateToURL(GetActiveWebContents(),
+                                       GURL("chrome://newtab/")));
+    EXPECT_TRUE(ExtensionControlsPage(GetActiveWebContents(), extension->id()));
     EXPECT_TRUE(listener.WaitUntilSatisfied());
     EXPECT_EQ("controlled by first", listener.message());
   }
 }
 
+#if !BUILDFLAG(IS_ANDROID)
 // Check having multiple extensions with the same override.
+// TODO(crbug.com/391920604,crbug.com/391920206): Port to desktop Android when
+// our test framework supports reloading/unloading extensions. Right now this
+// requires ExtensionService, which is unsupported on Android.
 IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, OverrideNewTabMultiple) {
   base::ScopedAllowBlockingForTesting allow_blocking;
 
@@ -134,8 +149,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, OverrideNewTabMultiple) {
   {
     // Navigate to the new tab page. Last extension installed wins, so
     // the new tab page should be controlled by the second extension.
-    ExtensionTestMessageListener listener(false);
-    ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/"));
+    ExtensionTestMessageListener listener;
+    ASSERT_TRUE(
+        ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/")));
     EXPECT_TRUE(ExtensionControlsPage(
         browser()->tab_strip_model()->GetActiveWebContents(),
         extension2_id));
@@ -149,8 +165,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, OverrideNewTabMultiple) {
 
   {
     // The page should still be controlled by the second extension.
-    ExtensionTestMessageListener listener(false);
-    ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/"));
+    ExtensionTestMessageListener listener;
+    ASSERT_TRUE(
+        ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/")));
     EXPECT_TRUE(ExtensionControlsPage(
         browser()->tab_strip_model()->GetActiveWebContents(),
         extension2_id));
@@ -177,8 +194,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, OverrideNewTabMultiple) {
 
   {
     // The page should still be controlled by the second extension.
-    ExtensionTestMessageListener listener(false);
-    ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/"));
+    ExtensionTestMessageListener listener;
+    ASSERT_TRUE(
+        ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/")));
     EXPECT_TRUE(ExtensionControlsPage(
         browser()->tab_strip_model()->GetActiveWebContents(), extension2_id));
     EXPECT_TRUE(listener.WaitUntilSatisfied());
@@ -190,8 +208,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, OverrideNewTabMultiple) {
   UnloadExtension(extension2_id);
 
   {
-    ExtensionTestMessageListener listener(false);
-    ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/"));
+    ExtensionTestMessageListener listener;
+    ASSERT_TRUE(
+        ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/")));
     EXPECT_TRUE(ExtensionControlsPage(
         browser()->tab_strip_model()->GetActiveWebContents(),
         extension1_id));
@@ -202,6 +221,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, OverrideNewTabMultiple) {
 
 // Test that unloading an extension overriding the page reloads the page with
 // the proper url.
+// TODO(crbug.com/391920604,crbug.com/391920206): Port to desktop Android when
+// our test framework supports reloading/unloading extensions. Right now this
+// requires ExtensionService, which is unsupported on Android.
 IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest,
                        OverridingExtensionUnloadedWithPageOpen) {
   // Prefer IDs because loading/unloading invalidates the extension ptrs.
@@ -212,8 +234,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest,
   {
     // Navigate to the new tab page. Last extension installed wins, so
     // the new tab page should be controlled by the second extension.
-    ExtensionTestMessageListener listener(false);
-    ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/"));
+    ExtensionTestMessageListener listener;
+    ASSERT_TRUE(
+        ui_test_utils::NavigateToURL(browser(), GURL("chrome://newtab/")));
     EXPECT_TRUE(ExtensionControlsPage(
         browser()->tab_strip_model()->GetActiveWebContents(),
         extension2_id));
@@ -224,7 +247,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest,
   {
     // Unload the controlling extension. The page should be automatically
     // reloaded with the new controlling extension.
-    ExtensionTestMessageListener listener(false);
+    ExtensionTestMessageListener listener;
     UnloadExtension(extension2_id);
     EXPECT_TRUE(listener.WaitUntilSatisfied());
     EXPECT_EQ("controlled by first", listener.message());
@@ -239,15 +262,15 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest,
   EXPECT_TRUE(content::WaitForLoadStop(active_tab));
   EXPECT_FALSE(ExtensionControlsPage(active_tab, extension1_id));
 }
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, OverrideNewTabIncognito) {
   LoadExtension(data_dir().AppendASCII("newtab"));
 
   // Navigate an incognito tab to the new tab page.  We should get the actual
   // new tab page because we can't load chrome-extension URLs in incognito.
-  Browser* otr_browser =
-      OpenURLOffTheRecord(browser()->profile(), GURL("chrome://newtab/"));
-  WebContents* tab = otr_browser->tab_strip_model()->GetActiveWebContents();
+  WebContents* tab =
+      PlatformOpenURLOffTheRecord(profile(), GURL("chrome://newtab/"));
   ASSERT_TRUE(tab->GetController().GetVisibleEntry());
   EXPECT_FALSE(tab->GetController().GetVisibleEntry()->GetURL().
                SchemeIs(kExtensionScheme));
@@ -256,16 +279,26 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, OverrideNewTabIncognito) {
 // Check that when an overridden new tab page has focus, a subframe navigation
 // on that page does not steal the focus away by focusing the omnibox.
 // See https://crbug.com/700124.
-IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest,
-                       SubframeNavigationInOverridenNTPDoesNotAffectFocus) {
+// TODO(crbug.com/40804036): Flaky on Linux.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_SubframeNavigationInOverridenNTPDoesNotAffectFocus \
+  DISABLED_SubframeNavigationInOverridenNTPDoesNotAffectFocus
+#else
+#define MAYBE_SubframeNavigationInOverridenNTPDoesNotAffectFocus \
+  SubframeNavigationInOverridenNTPDoesNotAffectFocus
+#endif  // BUILDFLAG(IS_LINUX)
+IN_PROC_BROWSER_TEST_F(
+    ExtensionOverrideTest,
+    MAYBE_SubframeNavigationInOverridenNTPDoesNotAffectFocus) {
   // Load an extension that overrides the new tab page.
   const Extension* extension = LoadExtension(data_dir().AppendASCII("newtab"));
 
   // Navigate to the new tab page.  The overridden new tab page
   // will call chrome.test.sendMessage('controlled by first').
-  ExtensionTestMessageListener listener("controlled by first", false);
-  ui_test_utils::NavigateToURL(browser(), GURL(chrome::kChromeUINewTabURL));
-  WebContents* contents = browser()->tab_strip_model()->GetActiveWebContents();
+  ExtensionTestMessageListener listener("controlled by first");
+  WebContents* contents = GetActiveWebContents();
+  ASSERT_TRUE(
+      content::NavigateToURL(contents, GURL(chrome::kChromeUINewTabURL)));
   EXPECT_TRUE(ExtensionControlsPage(contents, extension->id()));
   EXPECT_TRUE(listener.WaitUntilSatisfied());
 
@@ -279,7 +312,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest,
   std::string script = "var f = document.createElement('iframe');\n"
                        "f.src = '" + cross_site_url.spec() + "';\n"
                        "document.body.appendChild(f);\n";
-  EXPECT_TRUE(ExecuteScript(contents, script));
+  EXPECT_TRUE(ExecJs(contents, script));
   EXPECT_TRUE(WaitForLoadStop(contents));
 
   // The page should still have focus.  The cross-process subframe navigation
@@ -288,11 +321,11 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest,
 }
 
 // Times out consistently on Win, http://crbug.com/45173.
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
 #define MAYBE_OverrideHistory DISABLED_OverrideHistory
 #else
 #define MAYBE_OverrideHistory OverrideHistory
-#endif  // defined(OS_WIN)
+#endif  // BUILDFLAG(IS_WIN)
 
 IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, MAYBE_OverrideHistory) {
   ASSERT_TRUE(RunExtensionTest("override/history")) << message_;
@@ -300,7 +333,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, MAYBE_OverrideHistory) {
     ResultCatcher catcher;
     // Navigate to the history page.  The overridden history page
     // will call chrome.test.notifyPass() .
-    ui_test_utils::NavigateToURL(browser(), GURL("chrome://history/"));
+    ASSERT_TRUE(content::NavigateToURL(GetActiveWebContents(),
+                                       GURL("chrome://history/")));
     ASSERT_TRUE(catcher.GetNextResult());
   }
 }
@@ -315,8 +349,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, ShouldNotCreateDuplicateEntries) {
   // a preferences file without corresponding UnloadExtension() calls.
   for (size_t i = 0; i < 3; ++i) {
     ExtensionWebUI::RegisterOrActivateChromeURLOverrides(
-        browser()->profile(),
-        URLOverrides::GetChromeURLOverrides(extension));
+        profile(), URLOverrides::GetChromeURLOverrides(extension));
   }
 
   ASSERT_TRUE(CheckHistoryOverridesContainsNoDupes());
@@ -329,18 +362,18 @@ IN_PROC_BROWSER_TEST_F(ExtensionOverrideTest, ShouldCleanUpDuplicateEntries) {
   // a preferences file without corresponding UnloadExtension() calls. This is
   // the same as the above test, except for that it is testing the case where
   // the file already contains dupes when an extension is loaded.
-  base::Value list(base::Value::Type::LIST);
+  base::Value::List list;
   for (size_t i = 0; i < 3; ++i) {
-    std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue());
-    dict->SetString("entry", "http://www.google.com/");
-    dict->SetBoolean("active", true);
-    list.Append(std::move(*dict));
+    base::Value::Dict dict;
+    dict.Set("entry", "http://www.google.com/");
+    dict.Set("active", true);
+    list.Append(std::move(dict));
   }
 
   {
-    DictionaryPrefUpdate update(browser()->profile()->GetPrefs(),
+    ScopedDictPrefUpdate update(profile()->GetPrefs(),
                                 ExtensionWebUI::kExtensionURLOverrides);
-    update.Get()->SetKey("history", std::move(list));
+    update->Set("history", std::move(list));
   }
 
   ASSERT_FALSE(CheckHistoryOverridesContainsNoDupes());

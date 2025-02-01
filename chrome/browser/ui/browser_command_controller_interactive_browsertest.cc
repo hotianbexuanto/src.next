@@ -1,23 +1,21 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/macros.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/fullscreen_keyboard_browsertest_base.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "content/public/test/browser_test.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
-#if defined(OS_MAC)
+#if BUILDFLAG(IS_MAC)
 #include "base/mac/mac_util.h"
 #endif
 
 using BrowserCommandControllerInteractiveTest =
     FullscreenKeyboardBrowserTestBase;
-#if defined(OS_MAC)
+#if BUILDFLAG(IS_MAC)
 // Flaky http://crbug.com/852285
 #define MAYBE_ShortcutsShouldTakeEffectInWindowMode \
   DISABLED_ShortcutsShouldTakeEffectInWindowMode
@@ -52,7 +50,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerInteractiveTest,
   ASSERT_NO_FATAL_FAILURE(FinishTestAndVerifyResult());
 }
 
-#if defined(OS_MAC)
+#if BUILDFLAG(IS_MAC)
 // TODO(zijiehe): Figure out why this test crashes on Mac OSX. The suspicious
 // command is "SendFullscreenShortcutAndWait()". See, http://crbug.com/738949.
 #define MAYBE_KeyEventsShouldBeConsumedByWebPageInBrowserFullscreen \
@@ -80,7 +78,7 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_FALSE(IsInBrowserFullscreen());
 }
 
-#if defined(OS_MAC)
+#if BUILDFLAG(IS_MAC)
 // https://crbug.com/850594
 #define MAYBE_KeyEventsShouldBeConsumedByWebPageInJsFullscreenExceptForEsc \
   DISABLED_KeyEventsShouldBeConsumedByWebPageInJsFullscreenExceptForEsc
@@ -101,7 +99,7 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_NO_FATAL_FAILURE(FinishTestAndVerifyResult());
 }
 
-#if defined(OS_MAC)
+#if BUILDFLAG(IS_MAC)
 // Triggers a DCHECK in MacViews: http://crbug.com/823478
 #define MAYBE_KeyEventsShouldBeConsumedByWebPageInJsFullscreenExceptForF11 \
   DISABLED_KeyEventsShouldBeConsumedByWebPageInJsFullscreenExceptForF11
@@ -125,9 +123,10 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_NO_FATAL_FAILURE(FinishTestAndVerifyResult());
 }
 
-#if defined(OS_MAC)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 // TODO(zijiehe): Figure out why this test crashes on Mac OSX. The suspicious
 // command is "SendFullscreenShortcutAndWait()". See, http://crbug.com/738949.
+// Flaky on multiple Linxu bots: https://crbug.com/1120315
 #define MAYBE_ShortcutsShouldTakeEffectInBrowserFullscreen \
   DISABLED_ShortcutsShouldTakeEffectInBrowserFullscreen
 #else
@@ -139,7 +138,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerInteractiveTest,
   ASSERT_NO_FATAL_FAILURE(SendShortcutsAndExpectNotPrevented(false));
 }
 
-#if !defined(OS_MAC)
+#if !BUILDFLAG(IS_MAC)
 // HTML fullscreen is automatically exited after some commands are executed,
 // such as Ctrl + T (new tab). But some commands won't have this effect, such as
 // Ctrl + N (new window).
@@ -150,8 +149,10 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerInteractiveTest,
 // the page to exit fullscreen mode. So we need to maintain a list of exiting /
 // non-exiting commands, which is not the goal of this test.
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-// This test is flaky on ChromeOS, see http://crbug.com/754878.
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
+// This test is flaky on ChromeOS and Linux, see http://crbug.com/754878 and
+// http://crbug.com/759704 respectively.
+// TODO(zijiehe): Find out the root cause.
 #define MAYBE_ShortcutsShouldTakeEffectInJsFullscreen \
   DISABLED_ShortcutsShouldTakeEffectInJsFullscreen
 #else
@@ -160,11 +161,6 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerInteractiveTest,
 #endif
 IN_PROC_BROWSER_TEST_F(BrowserCommandControllerInteractiveTest,
                        MAYBE_ShortcutsShouldTakeEffectInJsFullscreen) {
-// This test is flaky. See http://crbug.com/759704.
-// TODO(zijiehe): Find out the root cause.
-#if defined(OS_LINUX) || defined(OS_CHROMEOS)
-  return;
-#endif
   ASSERT_NO_FATAL_FAILURE(SendShortcutsAndExpectNotPrevented(true));
 }
 

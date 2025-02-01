@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,12 +7,12 @@
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/core/paint/paint_controller_paint_test.h"
-#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
 
 class ClipPaintPropertyNode;
+class GeometryMapperTransformCache;
 class ScrollPaintPropertyNode;
 class TransformPaintPropertyNode;
 struct PhysicalOffset;
@@ -34,6 +34,7 @@ class PaintPropertyTreeBuilderTest : public PaintControllerPaintTest {
       const Document* = nullptr);
   const ClipPaintPropertyNode* DocContentClip(const Document* = nullptr);
   const ScrollPaintPropertyNode* DocScroll(const Document* = nullptr);
+  const EffectPaintPropertyNode* DocEffect(const Document* = nullptr);
 
   // Return the local border box's paint offset. For more details, see
   // ObjectPaintProperties::localBorderBoxProperties().
@@ -41,29 +42,33 @@ class PaintPropertyTreeBuilderTest : public PaintControllerPaintTest {
 
   const ObjectPaintProperties* PaintPropertiesForElement(const char* name);
 
+  const GeometryMapperTransformCache& GetTransformCache(
+      const TransformPaintPropertyNode&);
+
   static unsigned NumFragments(const LayoutObject* obj) {
-    unsigned count = 0;
-    auto* fragment = &obj->FirstFragment();
-    while (fragment) {
-      count++;
-      fragment = fragment->NextFragment();
-    }
-    return count;
+    return obj->FragmentList().size();
   }
 
   static const FragmentData& FragmentAt(const LayoutObject* obj,
-                                        unsigned count) {
-    auto* fragment = &obj->FirstFragment();
-    while (count > 0) {
-      count--;
-      fragment = fragment->NextFragment();
-    }
-    return *fragment;
+                                        unsigned index) {
+    return obj->FragmentList().at(index);
   }
 
  private:
   void SetUp() override;
 };
+
+// Used when LayoutClipRect and PaintClipRect are the same.
+// |expected_arg| can be gfx::RectF or FloatRoundedRect.
+#define EXPECT_CLIP_RECT(expected_arg, clip_node)                     \
+  do {                                                                \
+    FloatRoundedRect expected((expected_arg));                        \
+    ASSERT_TRUE(clip_node);                                           \
+    EXPECT_EQ(expected.Rect(), (clip_node)->LayoutClipRect().Rect()); \
+    EXPECT_EQ(expected.IsRounded(),                                   \
+              (clip_node)->LayoutClipRect().HasRadius());             \
+    EXPECT_EQ(expected, (clip_node)->PaintClipRect());                \
+  } while (false)
 
 }  // namespace blink
 

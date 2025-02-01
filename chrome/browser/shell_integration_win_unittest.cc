@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,15 +12,14 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/macros.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/test_shortcut_win.h"
 #include "base/win/scoped_com_initializer.h"
 #include "chrome/browser/shell_integration.h"
-#include "chrome/browser/web_applications/components/web_app_helpers.h"
-#include "chrome/browser/web_applications/components/web_app_shortcut_win.h"
+#include "chrome/browser/shortcuts/platform_util_win.h"
+#include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_paths_internal.h"
 #include "chrome/install_static/install_util.h"
@@ -40,8 +39,14 @@ struct ShortcutTestObject {
 };
 
 class ShellIntegrationWinMigrateShortcutTest : public testing::Test {
+ public:
+  ShellIntegrationWinMigrateShortcutTest(
+      const ShellIntegrationWinMigrateShortcutTest&) = delete;
+  ShellIntegrationWinMigrateShortcutTest& operator=(
+      const ShellIntegrationWinMigrateShortcutTest&) = delete;
+
  protected:
-  ShellIntegrationWinMigrateShortcutTest() {}
+  ShellIntegrationWinMigrateShortcutTest() = default;
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -94,7 +99,7 @@ class ShellIntegrationWinMigrateShortcutTest : public testing::Test {
     shortcuts_.push_back(shortcut_test_object);
     ASSERT_TRUE(base::win::CreateOrUpdateShortcutLink(
         shortcut_path, *shortcut_properties,
-        base::win::SHORTCUT_CREATE_ALWAYS));
+        base::win::ShortcutOperation::kCreateAlways));
     shortcut_properties->options = 0U;
   }
 
@@ -263,9 +268,6 @@ class ShellIntegrationWinMigrateShortcutTest : public testing::Test {
 
   // The app id of the example app for the non-default profile.
   std::wstring non_default_profile_extension_app_id_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ShellIntegrationWinMigrateShortcutTest);
 };
 
 }  // namespace
@@ -313,11 +315,11 @@ TEST_F(ShellIntegrationWinMigrateShortcutTest, MigrateChromeProxyTest) {
   // using the default profile, with the AppModelId not containing the
   // profile name.
   base::win::ShortcutProperties temp_properties;
-  temp_properties.set_target(web_app::GetChromeProxyPath());
+  temp_properties.set_target(shortcuts::GetChromeProxyPath());
   temp_properties.set_app_id(L"Dumbo.Default");
   ASSERT_NO_FATAL_FAILURE(
       AddTestShortcutAndResetProperties(temp_dir_.GetPath(), &temp_properties));
-  temp_properties.set_target(web_app::GetChromeProxyPath());
+  temp_properties.set_target(shortcuts::GetChromeProxyPath());
   temp_properties.set_app_id(L"Dumbo2.Default");
   ASSERT_NO_FATAL_FAILURE(AddTestShortcutAndResetProperties(
       temp_dir_sub_dir_.GetPath(), &temp_properties));
@@ -326,7 +328,7 @@ TEST_F(ShellIntegrationWinMigrateShortcutTest, MigrateChromeProxyTest) {
   // id has its AUMI migrated to start with the browser's app_id.
   // It technically doesn't matter what ShortcutProperties's app_id is,
   // since the migration is based on ShortcutProperties.arguments.
-  temp_properties.set_target(web_app::GetChromeProxyPath());
+  temp_properties.set_target(shortcuts::GetChromeProxyPath());
   temp_properties.set_app_id(L"Dumbo3.Default");
   base::CommandLine cmd_line = shell_integration::CommandLineArgsForLauncher(
       GURL(), base::WideToUTF8(extension_id_), base::FilePath(), "");
@@ -337,7 +339,7 @@ TEST_F(ShellIntegrationWinMigrateShortcutTest, MigrateChromeProxyTest) {
 
   // Check that a chrome proxy shortcut with a kApp url in its command line
   // has its AUMI migrated to start with the browser's app_id.
-  temp_properties.set_target(web_app::GetChromeProxyPath());
+  temp_properties.set_target(shortcuts::GetChromeProxyPath());
   temp_properties.set_app_id(L"Dumbo4.Default");
   GURL url("http://www.example.com");
   cmd_line = shell_integration::CommandLineArgsForLauncher(
@@ -370,7 +372,7 @@ TEST_F(ShellIntegrationWinMigrateShortcutTest, MigrateChromeProxyTest) {
 // comparison when comparing the shortcut target with the chrome exe path.
 TEST_F(ShellIntegrationWinMigrateShortcutTest, MigrateMixedCaseDirTest) {
   base::win::ShortcutProperties temp_properties;
-  base::FilePath chrome_proxy_path(web_app::GetChromeProxyPath());
+  base::FilePath chrome_proxy_path(shortcuts::GetChromeProxyPath());
   ASSERT_EQ(chrome_proxy_path.Extension(), FILE_PATH_LITERAL(".exe"));
   temp_properties.set_target(
       chrome_proxy_path.ReplaceExtension(FILE_PATH_LITERAL("EXE")));

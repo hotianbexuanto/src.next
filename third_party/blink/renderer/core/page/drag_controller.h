@@ -30,11 +30,16 @@
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/core/page/drag_actions.h"
-#include "third_party/blink/renderer/platform/geometry/int_point.h"
-#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
-#include "ui/base/dragdrop/mojom/drag_drop_types.mojom-blink-forward.h"
+#include "ui/base/dragdrop/mojom/drag_drop_types.mojom-blink.h"
+#include "ui/gfx/geometry/point.h"
+#include "ui/gfx/geometry/rect.h"
+
+namespace gfx {
+class RectF;
+}
 
 namespace blink {
 
@@ -44,7 +49,6 @@ class DragData;
 class DragImage;
 class DragState;
 class LocalFrame;
-class FloatRect;
 class FrameSelection;
 class HTMLInputElement;
 class Node;
@@ -59,8 +63,23 @@ class CORE_EXPORT DragController final
   DragController(const DragController&) = delete;
   DragController& operator=(const DragController&) = delete;
 
-  ui::mojom::blink::DragOperation DragEnteredOrUpdated(DragData*,
-                                                       LocalFrame& local_root);
+  // Holds the drag operation and whether the document is handling it.  Also see
+  // DragTargetDragEnter() in widget.mojom for further details.
+  struct Operation {
+    // The current drag operation as negotiated by the source and destination.
+    // When not equal to DragOperationNone, the drag data can be dropped onto
+    // the current drop target in this WebView (the drop target can accept the
+    // drop).
+    ui::mojom::blink::DragOperation operation =
+        ui::mojom::blink::DragOperation::kNone;
+
+    // True if the document intends to handle the drag.  This means the drag
+    // controller will pass the data to the document, but the document might
+    // still decide not to handle it by not calling preventDefault().
+    bool document_is_handling_drag = false;
+  };
+
+  Operation DragEnteredOrUpdated(DragData*, LocalFrame& local_root);
   void DragExited(DragData*, LocalFrame& local_root);
   void PerformDrag(DragData*, LocalFrame& local_root);
 
@@ -70,18 +89,24 @@ class CORE_EXPORT DragController final
   };
   Node* DraggableNode(const LocalFrame*,
                       Node*,
-                      const IntPoint&,
+                      const gfx::Point&,
                       SelectionDragPolicy,
                       DragSourceAction&) const;
   void DragEnded();
 
   bool PopulateDragDataTransfer(LocalFrame* src,
                                 const DragState&,
-                                const IntPoint& drag_origin);
-  bool StartDrag(LocalFrame* src,
+                                const gfx::Point& drag_origin);
+
+  // The parameter `drag_event` is the event that triggered the drag operation,
+  // and `drag_initiation_location` is the where the drag originated.  The
+  // event's location does NOT match the initiation location for a mouse-drag:
+  // the drag is triggered by a mouse-move event but the initiation location is
+  // that of a mouse-down event.
+  bool StartDrag(LocalFrame*,
                  const DragState&,
                  const WebMouseEvent& drag_event,
-                 const IntPoint& drag_origin);
+                 const gfx::Point& drag_initiation_location);
 
   DragState& GetDragState();
 
@@ -89,7 +114,7 @@ class CORE_EXPORT DragController final
 
   // Return the selection bounds in absolute coordinates for the frame, clipped
   // to the visual viewport.
-  static FloatRect ClippedSelection(const LocalFrame&);
+  static gfx::RectF ClippedSelection(const LocalFrame&);
 
   // ExecutionContextLifecycleObserver.
   void ContextDestroyed() final;
@@ -117,14 +142,11 @@ class CORE_EXPORT DragController final
 
   void MouseMovedIntoDocument(Document*);
 
-  // drag_location and drag_origin should be in the coordinate space of the
-  // LocalFrame's contents.
   void DoSystemDrag(DragImage*,
-                    const IntPoint& drag_location,
-                    const IntPoint& drag_origin,
+                    const gfx::Rect& drag_obj_rect,
+                    const gfx::Point& drag_initiation_location,
                     DataTransfer*,
-                    LocalFrame*,
-                    bool for_link);
+                    LocalFrame*);
 
   Member<Page> page_;
 

@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 #include "base/run_loop.h"
 #include "base/values.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/themes/theme_syncable_service.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -26,10 +27,9 @@ class NtpCustomBackgroundEnabledPolicyHandlerTest
     : public InProcessBrowserTest {
  public:
   void SetUp() override {
-    ON_CALL(policy_provider_, IsInitializationComplete(testing::_))
-        .WillByDefault(testing::Return(true));
-    ON_CALL(policy_provider_, IsFirstPolicyLoadComplete(testing::_))
-        .WillByDefault(testing::Return(true));
+    policy_provider_.SetDefaultReturns(
+        /*is_initialization_complete_return=*/true,
+        /*is_first_policy_load_complete_return=*/true);
     policy::BrowserPolicyConnector::SetPolicyProviderForTesting(
         &policy_provider_);
     InProcessBrowserTest::SetUp();
@@ -43,8 +43,12 @@ IN_PROC_BROWSER_TEST_F(NtpCustomBackgroundEnabledPolicyHandlerTest, Override) {
   PrefService* prefs = browser()->profile()->GetPrefs();
 
   // Check initial states.
-  EXPECT_FALSE(prefs->GetDictionary(prefs::kNtpCustomBackgroundDict)->DictEmpty());
-  EXPECT_FALSE(prefs->IsManagedPreference(prefs::kNtpCustomBackgroundDict));
+  EXPECT_FALSE(prefs
+                   ->GetDict(GetThemePrefNameInMigration(
+                       ThemePrefInMigration::kNtpCustomBackgroundDict))
+                   .empty());
+  EXPECT_FALSE(prefs->IsManagedPreference(GetThemePrefNameInMigration(
+      ThemePrefInMigration::kNtpCustomBackgroundDict)));
 
   // Check if updated policy is reflected.
   policy::PolicyMap policies;
@@ -53,8 +57,12 @@ IN_PROC_BROWSER_TEST_F(NtpCustomBackgroundEnabledPolicyHandlerTest, Override) {
                policy::POLICY_SOURCE_CLOUD, base::Value(false), nullptr);
   policy_provider_.UpdateChromePolicy(policies);
 
-  EXPECT_TRUE(prefs->GetDictionary(prefs::kNtpCustomBackgroundDict)->DictEmpty());
-  EXPECT_TRUE(prefs->IsManagedPreference(prefs::kNtpCustomBackgroundDict));
+  EXPECT_TRUE(prefs
+                  ->GetDict(GetThemePrefNameInMigration(
+                      ThemePrefInMigration::kNtpCustomBackgroundDict))
+                  .empty());
+  EXPECT_TRUE(prefs->IsManagedPreference(GetThemePrefNameInMigration(
+      ThemePrefInMigration::kNtpCustomBackgroundDict)));
 
   // Flip the value, and check again.
   policies.Set(policy::key::kNTPCustomBackgroundEnabled,
@@ -62,11 +70,19 @@ IN_PROC_BROWSER_TEST_F(NtpCustomBackgroundEnabledPolicyHandlerTest, Override) {
                policy::POLICY_SOURCE_CLOUD, base::Value(true), nullptr);
   policy_provider_.UpdateChromePolicy(policies);
 
-  EXPECT_FALSE(prefs->GetDictionary(prefs::kNtpCustomBackgroundDict)->DictEmpty());
-  EXPECT_FALSE(prefs->IsManagedPreference(prefs::kNtpCustomBackgroundDict));
+  EXPECT_FALSE(prefs
+                   ->GetDict(GetThemePrefNameInMigration(
+                       ThemePrefInMigration::kNtpCustomBackgroundDict))
+                   .empty());
+  EXPECT_FALSE(prefs->IsManagedPreference(GetThemePrefNameInMigration(
+      ThemePrefInMigration::kNtpCustomBackgroundDict)));
 
   policy_provider_.UpdateChromePolicy(policy::PolicyMap());
 
-  EXPECT_FALSE(prefs->GetDictionary(prefs::kNtpCustomBackgroundDict)->DictEmpty());
-  EXPECT_FALSE(prefs->IsManagedPreference(prefs::kNtpCustomBackgroundDict));
+  EXPECT_FALSE(prefs
+                   ->GetDict(GetThemePrefNameInMigration(
+                       ThemePrefInMigration::kNtpCustomBackgroundDict))
+                   .empty());
+  EXPECT_FALSE(prefs->IsManagedPreference(GetThemePrefNameInMigration(
+      ThemePrefInMigration::kNtpCustomBackgroundDict)));
 }

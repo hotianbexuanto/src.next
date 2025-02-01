@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,12 +10,11 @@
 #include <memory>
 #include <vector>
 
-#include "base/macros.h"
-#include "base/memory/ref_counted.h"
+#include "base/memory/scoped_refptr.h"
 #include "net/base/load_timing_info.h"
 #include "net/base/net_export.h"
 #include "net/socket/next_proto.h"
-#include "net/third_party/quiche/src/spdy/core/spdy_header_block.h"
+#include "net/third_party/quiche/src/quiche/common/http/http_header_block.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
 
 namespace base {
@@ -41,6 +40,9 @@ class NET_EXPORT_PRIVATE BidirectionalStreamImpl {
    public:
     Delegate();
 
+    Delegate(const Delegate&) = delete;
+    Delegate& operator=(const Delegate&) = delete;
+
     // Called when the stream is ready for reading and writing.
     // The delegate may call BidirectionalStreamImpl::ReadData to start reading,
     // call BidirectionalStreamImpl::SendData to send data,
@@ -57,7 +59,7 @@ class NET_EXPORT_PRIVATE BidirectionalStreamImpl {
     // reading, call BidirectionalStreamImpl::SendData to send data,
     // or call BidirectionalStreamImpl::Cancel to cancel the stream.
     virtual void OnHeadersReceived(
-        const spdy::Http2HeaderBlock& response_headers) = 0;
+        const quiche::HttpHeaderBlock& response_headers) = 0;
 
     // Called when read is completed asynchronously. |bytes_read| specifies how
     // much data is available.
@@ -77,7 +79,8 @@ class NET_EXPORT_PRIVATE BidirectionalStreamImpl {
     // are received, which can happen before a read completes.
     // The delegate is able to continue reading if there is no pending read and
     // EOF has not been received, or to send data if there is no pending send.
-    virtual void OnTrailersReceived(const spdy::Http2HeaderBlock& trailers) = 0;
+    virtual void OnTrailersReceived(
+        const quiche::HttpHeaderBlock& trailers) = 0;
 
     // Called when an error occurred. Do not call into the stream after this
     // point. No other delegate functions will be called after this.
@@ -85,12 +88,12 @@ class NET_EXPORT_PRIVATE BidirectionalStreamImpl {
 
    protected:
     virtual ~Delegate();
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(Delegate);
   };
 
   BidirectionalStreamImpl();
+
+  BidirectionalStreamImpl(const BidirectionalStreamImpl&) = delete;
+  BidirectionalStreamImpl& operator=(const BidirectionalStreamImpl&) = delete;
 
   // |this| should not be destroyed during Delegate::OnHeadersSent or
   // Delegate::OnDataSent.
@@ -160,9 +163,6 @@ class NET_EXPORT_PRIVATE BidirectionalStreamImpl {
   // Fills in |details| if it is available; leaves |details| unchanged if it
   // is unavailable.
   virtual void PopulateNetErrorDetails(NetErrorDetails* details) = 0;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(BidirectionalStreamImpl);
 };
 
 }  // namespace net

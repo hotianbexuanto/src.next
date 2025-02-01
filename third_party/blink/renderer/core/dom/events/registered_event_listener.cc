@@ -36,7 +36,8 @@ RegisteredEventListener::RegisteredEventListener()
       once_(false),
       blocked_event_warning_emitted_(false),
       passive_forced_for_document_target_(false),
-      passive_specified_(false) {}
+      passive_specified_(false),
+      removed_(false) {}
 
 RegisteredEventListener::RegisteredEventListener(
     EventListener* listener,
@@ -48,13 +49,8 @@ RegisteredEventListener::RegisteredEventListener(
       blocked_event_warning_emitted_(false),
       passive_forced_for_document_target_(
           options->PassiveForcedForDocumentTarget()),
-      passive_specified_(options->PassiveSpecified()) {}
-
-RegisteredEventListener::RegisteredEventListener(
-    const RegisteredEventListener& that) = default;
-
-RegisteredEventListener& RegisteredEventListener::operator=(
-    const RegisteredEventListener& that) = default;
+      passive_specified_(options->PassiveSpecified()),
+      removed_(false) {}
 
 void RegisteredEventListener::Trace(Visitor* visitor) const {
   visitor->Trace(callback_);
@@ -87,16 +83,16 @@ bool RegisteredEventListener::Matches(
 
 bool RegisteredEventListener::ShouldFire(const Event& event) const {
   if (event.FireOnlyCaptureListenersAtTarget()) {
-    DCHECK_EQ(event.eventPhase(), Event::kAtTarget);
+    DCHECK_EQ(event.eventPhase(), Event::PhaseType::kAtTarget);
     return Capture();
   }
   if (event.FireOnlyNonCaptureListenersAtTarget()) {
-    DCHECK_EQ(event.eventPhase(), Event::kAtTarget);
+    DCHECK_EQ(event.eventPhase(), Event::PhaseType::kAtTarget);
     return !Capture();
   }
-  if (event.eventPhase() == Event::kCapturingPhase)
+  if (event.eventPhase() == Event::PhaseType::kCapturingPhase)
     return Capture();
-  if (event.eventPhase() == Event::kBubblingPhase)
+  if (event.eventPhase() == Event::PhaseType::kBubblingPhase)
     return !Capture();
   return true;
 }

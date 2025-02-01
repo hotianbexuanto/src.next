@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,29 +6,28 @@
 #define EXTENSIONS_BROWSER_SANDBOXED_UNPACKER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 
 #include "base/files/file_path.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/macros.h"
 #include "base/memory/ref_counted_delete_on_sequence.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/strings/string_piece.h"
 #include "base/values.h"
-#include "extensions/browser/api/declarative_net_request/index_helper.h"
-#include "extensions/browser/api/declarative_net_request/ruleset_install_pref.h"
+#include "extensions/browser/api/declarative_net_request/install_index_helper.h"
 #include "extensions/browser/content_verifier/content_verifier_key.h"
 #include "extensions/browser/crx_file_info.h"
 #include "extensions/browser/image_sanitizer.h"
 #include "extensions/browser/install/crx_install_error.h"
 #include "extensions/browser/json_file_sanitizer.h"
+#include "extensions/common/extension_id.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/mojom/manifest.mojom-shared.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/data_decoder/public/cpp/data_decoder.h"
 #include "services/data_decoder/public/mojom/json_parser.mojom.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class SkBitmap;
 
@@ -44,6 +43,7 @@ namespace extensions {
 class Extension;
 enum class SandboxedUnpackerFailureReason;
 enum class InstallationStage;
+struct RulesetParseResult;
 
 namespace declarative_net_request {
 struct IndexAndPersistJSONRulesetResult;
@@ -91,10 +91,10 @@ class SandboxedUnpackerClient
   virtual void OnUnpackSuccess(
       const base::FilePath& temp_dir,
       const base::FilePath& extension_root,
-      std::unique_ptr<base::DictionaryValue> original_manifest,
+      std::unique_ptr<base::Value::Dict> original_manifest,
       const Extension* extension,
       const SkBitmap& install_icon,
-      declarative_net_request::RulesetInstallPrefs ruleset_install_prefs) = 0;
+      base::Value::Dict ruleset_install_prefs) = 0;
   virtual void OnUnpackFailure(const CrxInstallError& error) = 0;
 
   // Called after stage of installation is changed.
@@ -116,17 +116,7 @@ class SandboxedUnpackerClient
 // transcoding all images to PNG, parsing all message catalogs, and rewriting
 // the manifest JSON. As such, it should not be used when the output is not
 // intended to be given back to the author.
-//
-// Lifetime management:
-//
-// This class is ref-counted by each call it makes to itself on another thread.
-//
-// Additionally, we hold a reference to our own client so that the client lives
-// long enough to receive the result of unpacking.
-//
-// NOTE: This class should only be used on the FILE thread.
-//
-class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
+class SandboxedUnpacker : public ImageSanitizer::Client {
  public:
   // Overrides the required verifier format for testing purposes. Only one
   // ScopedVerifierFormatOverrideForTest may exist at a time.
@@ -135,6 +125,9 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
     explicit ScopedVerifierFormatOverrideForTest(
         crx_file::VerifierFormat format);
     ~ScopedVerifierFormatOverrideForTest();
+
+   private:
+    THREAD_CHECKER(thread_checker_);
   };
 
   // Creates a SandboxedUnpacker that will do work to unpack an extension,
@@ -154,21 +147,23 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
       const scoped_refptr<base::SequencedTaskRunner>& unpacker_io_task_runner,
       SandboxedUnpackerClient* client);
 
+  SandboxedUnpacker(const SandboxedUnpacker&) = delete;
+  SandboxedUnpacker& operator=(const SandboxedUnpacker&) = delete;
+
   // Start processing the extension, either from a CRX file or already unzipped
   // in a directory. The client is called with the results. The directory form
   // requires the id and base64-encoded public key (for insertion into the
   // 'key' field of the manifest.json file).
   void StartWithCrx(const CRXFileInfo& crx_info);
-  void StartWithDirectory(const std::string& extension_id,
+  void StartWithDirectory(const ExtensionId& extension_id,
                           const std::string& public_key_base64,
                           const base::FilePath& directory);
 
  private:
-  friend class base::RefCountedThreadSafe<SandboxedUnpacker>;
-
   friend class SandboxedUnpackerTest;
+  class IOThreadState;
 
-  ~SandboxedUnpacker();
+  ~SandboxedUnpacker() override;
 
   // Create |temp_dir_| used to unzip or unpack the extension in.
   bool CreateTempDirectory();
@@ -194,7 +189,7 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
   // Callback which is called after the verified contents are uncompressed.
   void OnVerifiedContentsUncompressed(
       const base::FilePath& unzip_dir,
-      data_decoder::DataDecoder::ResultOrError<mojo_base::BigBuffer> result);
+      base::expected<mojo_base::BigBuffer, std::string> result);
 
   // Verifies the decompressed verified contents fetched from the header of CRX
   // and stores them if the verification of these contents is successful.
@@ -205,16 +200,18 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
 
   // Unpacks the extension in directory and returns the manifest.
   void Unpack(const base::FilePath& directory);
-  void ReadManifestDone(absl::optional<base::Value> manifest,
-                        const absl::optional<std::string>& error);
-  void UnpackExtensionSucceeded(base::Value manifest);
+  void ReadManifestDone(std::optional<base::Value> manifest,
+                        const std::optional<std::string>& error);
+  void UnpackExtensionSucceeded(base::Value::Dict manifest);
 
   // Helper which calls ReportFailure.
-  void ReportUnpackExtensionFailed(base::StringPiece error);
+  void ReportUnpackExtensionFailed(std::string_view error);
 
-  void ImageSanitizationDone(ImageSanitizer::Status status,
-                             const base::FilePath& path);
-  void ImageSanitizerDecodedImage(const base::FilePath& path, SkBitmap image);
+  // Implementation of ImageSanitizer::Client:
+  data_decoder::DataDecoder* GetDataDecoder() override;
+  void OnImageSanitizationDone(ImageSanitizer::Status status,
+                               const base::FilePath& path) override;
+  void OnImageDecoded(const base::FilePath& path, SkBitmap image) override;
 
   void ReadMessageCatalogs();
 
@@ -234,7 +231,8 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
 
   // Overwrites original manifest with safe result from utility process.
   // Returns nullopt on error.
-  absl::optional<base::Value> RewriteManifestFile(const base::Value& manifest);
+  std::optional<base::Value::Dict> RewriteManifestFile(
+      const base::Value::Dict& manifest);
 
   // Cleans up temp directory artifacts.
   void Cleanup();
@@ -244,8 +242,7 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
   // rulesets.
   void IndexAndPersistJSONRulesetsIfNeeded();
 
-  void OnJSONRulesetsIndexed(
-      declarative_net_request::IndexHelper::Result result);
+  void OnJSONRulesetsIndexed(RulesetParseResult result);
 
   // Computed hashes: if requested (via ShouldComputeHashes callback in
   // SandbloxedUnpackerClient), calculate hashes of all extensions' resources
@@ -283,10 +280,10 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
   // Parsed original manifest of the extension. Set after unpacking the
   // extension and working with its manifest, so after UnpackExtensionSucceeded
   // is called.
-  absl::optional<base::Value> manifest_;
+  std::optional<base::Value::Dict> manifest_;
 
   // Install prefs needed for the Declarative Net Request API.
-  declarative_net_request::RulesetInstallPrefs ruleset_install_prefs_;
+  base::Value::Dict ruleset_install_prefs_;
 
   // Represents the extension we're unpacking.
   scoped_refptr<Extension> extension_;
@@ -299,7 +296,7 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
 
   // The extension's ID. This will be calculated from the public key
   // in the CRX header.
-  std::string extension_id_;
+  ExtensionId extension_id_;
 
   // Location to use for the unpacked extension.
   mojom::ManifestLocation location_;
@@ -307,6 +304,9 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
   // Creation flags to use for the extension. These flags will be used
   // when calling Extension::Create() by the CRX installer.
   int creation_flags_;
+
+  // Overridden value of VerifierFormat that is used from StartWithCrx().
+  std::optional<crx_file::VerifierFormat> format_verifier_override_;
 
   // Sequenced task runner where file I/O operations will be performed.
   scoped_refptr<base::SequencedTaskRunner> unpacker_io_task_runner_;
@@ -317,22 +317,8 @@ class SandboxedUnpacker : public base::RefCountedThreadSafe<SandboxedUnpacker> {
   // The decoded install icon.
   SkBitmap install_icon_;
 
-  // Controls our own lazily started, isolated instance of the Data Decoder
-  // service so that multiple decode operations related to this
-  // SandboxedUnpacker can share a single instance.
-  data_decoder::DataDecoder data_decoder_;
-
-  // The JSONParser remote from the data decoder service.
-  mojo::Remote<data_decoder::mojom::JsonParser> json_parser_;
-
-  // The ImageSanitizer used to clean-up images.
-  std::unique_ptr<ImageSanitizer> image_sanitizer_;
-
-  // Used during the message catalog rewriting phase to sanitize the extension
-  // provided message catalogs.
-  std::unique_ptr<JsonFileSanitizer> json_file_sanitizer_;
-
-  DISALLOW_COPY_AND_ASSIGN(SandboxedUnpacker);
+  // TODO(crbug.com/40232388): Consider to wrap it in base::SequenceBound
+  std::unique_ptr<IOThreadState> io_thread_state_;
 };
 
 }  // namespace extensions

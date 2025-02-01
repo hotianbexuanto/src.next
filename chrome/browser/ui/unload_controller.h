@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,11 +8,13 @@
 #include <memory>
 #include <set>
 
-#include "base/callback.h"
-#include "base/macros.h"
+#include "base/functional/callback.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/tab_contents/web_contents_collection.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+
+enum class BrowserClosingStatus;
 
 class Browser;
 class TabStripModel;
@@ -25,6 +27,10 @@ class UnloadController : public WebContentsCollection::Observer,
                          public TabStripModelObserver {
  public:
   explicit UnloadController(Browser* browser);
+
+  UnloadController(const UnloadController&) = delete;
+  UnloadController& operator=(const UnloadController&) = delete;
+
   ~UnloadController() override;
 
   // Returns true if |contents| can be cleanly closed. When |browser_| is being
@@ -53,9 +59,10 @@ class UnloadController : public WebContentsCollection::Observer,
     return is_attempting_to_close_browser_;
   }
 
-  // Called in response to a request to close |browser_|'s window. Returns true
-  // when there are no remaining beforeunload handlers to be run.
-  bool ShouldCloseWindow();
+  // Called in response to a request to close |browser_|'s window. Returns
+  // `BrowserClosingStatus::kPermitted` if the window can be closed (or other
+  // enum values if closure is not permitted for a given reason).
+  BrowserClosingStatus GetBrowserClosingStatus();
 
   // Begins the process of confirming whether the associated browser can be
   // closed. Beforeunload events won't be fired if |skip_beforeunload|
@@ -75,14 +82,15 @@ class UnloadController : public WebContentsCollection::Observer,
   //             AreAllBrowsersCloseable() in application_lifetime.cc. It seems
   //             very similar to ShouldCloseWindow() and some consolidation
   //             could be pursued.
-  bool TabsNeedBeforeUnloadFired();
+  bool TabsNeedBeforeUnloadFired() const;
 
   // Clears all the state associated with processing tabs' beforeunload/unload
   // events since the user cancelled closing the window.
   void CancelWindowClose();
 
  private:
-  typedef std::set<content::WebContents*> UnloadListenerSet;
+  typedef std::set<raw_ptr<content::WebContents, SetExperimental>>
+      UnloadListenerSet;
 
   // WebContentsCollection::Observer:
   void RenderProcessGone(content::WebContents* web_contents,
@@ -97,6 +105,8 @@ class UnloadController : public WebContentsCollection::Observer,
 
   void TabAttachedImpl(content::WebContents* contents);
   void TabDetachedImpl(content::WebContents* contents);
+
+  UnloadListenerSet GetTabsNeedingBeforeUnloadFired() const;
 
   // Processes the next tab that needs it's beforeunload/unload event fired.
   void ProcessPendingTabs(bool skip_beforeunload);
@@ -120,19 +130,21 @@ class UnloadController : public WebContentsCollection::Observer,
   // the state of the stack), pass in false.
   void ClearUnloadState(content::WebContents* web_contents, bool process_now);
 
+  bool IsUnclosableApp() const;
+
   bool is_calling_before_unload_handlers() {
     return !on_close_confirmed_.is_null();
   }
 
-  Browser* const browser_;
+  const raw_ptr<Browser> browser_;
 
   WebContentsCollection web_contents_collection_;
 
-  // Tracks tabs that need there beforeunload event fired before we can
+  // Tracks tabs that need their beforeunload event fired before we can
   // close the browser. Only gets populated when we try to close the browser.
   UnloadListenerSet tabs_needing_before_unload_fired_;
 
-  // Tracks tabs that need there unload event fired before we can
+  // Tracks tabs that need their unload event fired before we can
   // close the browser. Only gets populated when we try to close the browser.
   UnloadListenerSet tabs_needing_unload_fired_;
 
@@ -153,8 +165,6 @@ class UnloadController : public WebContentsCollection::Observer,
   base::RepeatingCallback<void(bool)> on_close_confirmed_;
 
   base::WeakPtrFactory<UnloadController> weak_factory_{this};
-
-  DISALLOW_COPY_AND_ASSIGN(UnloadController);
 };
 
 #endif  // CHROME_BROWSER_UI_UNLOAD_CONTROLLER_H_

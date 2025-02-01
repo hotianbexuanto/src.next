@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
 #include "extensions/browser/disable_reason.h"
 #include "extensions/common/extension.h"
 
@@ -45,6 +45,10 @@ class ManagementPolicy {
   class Provider {
    public:
     Provider() {}
+
+    Provider(const Provider&) = delete;
+    Provider& operator=(const Provider&) = delete;
+
     virtual ~Provider() {}
 
     // A human-readable name for this provider, for use in debug messages.
@@ -55,9 +59,9 @@ class ManagementPolicy {
 
     // Providers should return false if a user may not install the |extension|,
     // or load or run it if it has already been installed.
-    // TODO(crbug.com/461747): The method name is misleading, since this applies
-    // to all extension installations, not just user-initiated ones. Fix either
-    // the name or the semantics.
+    // TODO(crbug.com/41159442): The method name is misleading, since this
+    // applies to all extension installations, not just user-initiated ones. Fix
+    // either the name or the semantics.
     virtual bool UserMayLoad(const Extension* extension,
                              std::u16string* error) const;
 
@@ -70,9 +74,9 @@ class ManagementPolicy {
     // Providers should return false if a user may not enable, disable, or
     // uninstall the |extension|, or change its usage options (incognito
     // permission, file access, etc.).
-    // TODO(crbug.com/461747): The method name is misleading, since this applies
-    // to all setting modifications, not just user-initiated ones. Fix either
-    // the name or the semantics.
+    // TODO(crbug.com/41159442): The method name is misleading, since this
+    // applies to all setting modifications, not just user-initiated ones. Fix
+    // either the name or the semantics.
     virtual bool UserMayModifySettings(const Extension* extension,
                                        std::u16string* error) const;
 
@@ -91,10 +95,10 @@ class ManagementPolicy {
                                    std::u16string* error) const;
 
     // Similar to MustRemainEnabled, but for whether an extension must remain
-    // disabled, and returns an error and/or reason if the caller needs it.
-    virtual bool MustRemainDisabled(const Extension* extension,
-                                    disable_reason::DisableReason* reason,
-                                    std::u16string* error) const;
+    // disabled, and populates the reason, if any.
+    virtual bool MustRemainDisabled(
+        const Extension* extension,
+        disable_reason::DisableReason* reason) const;
 
     // Similar to MustRemainEnabled, but for whether an extension must remain
     // installed, and returns an error and/or reason if the caller needs it.
@@ -105,12 +109,13 @@ class ManagementPolicy {
     // uninstalled.
     virtual bool ShouldForceUninstall(const Extension* extension,
                                       std::u16string* error) const;
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(Provider);
   };
 
   ManagementPolicy();
+
+  ManagementPolicy(const ManagementPolicy&) = delete;
+  ManagementPolicy& operator=(const ManagementPolicy&) = delete;
+
   ~ManagementPolicy();
 
   // Registers or unregisters a provider, causing it to be added to or removed
@@ -124,11 +129,11 @@ class ManagementPolicy {
       const std::vector<std::unique_ptr<Provider>>& providers);
 
   // Returns true if the user is permitted to install, load, and run the given
-  // extension. If not, |error| may be set to an appropriate message.
+  // extension.
   // Installed extensions failing this check are disabled with the reason
   // DISABLE_BLOCKED_BY_POLICY.
-  // TODO(crbug.com/461747): Misleading name; see comment in Provider.
-  bool UserMayLoad(const Extension* extension, std::u16string* error) const;
+  // TODO(crbug.com/41159442): Misleading name; see comment in Provider.
+  bool UserMayLoad(const Extension* extension) const;
 
   // Returns false if the user should not be allowed to install the given
   // |extension|. By default, this forwards to UserMayLoad() (since a user
@@ -138,7 +143,7 @@ class ManagementPolicy {
   // Returns true if the user is permitted to enable, disable, or uninstall the
   // given extension, or change the extension's usage options (incognito mode,
   // file access, etc.). If not, |error| may be set to an appropriate message.
-  // TODO(crbug.com/461747): Misleading name; see comment in Provider.
+  // TODO(crbug.com/41159442): Misleading name; see comment in Provider.
   bool UserMayModifySettings(const Extension* extension,
                              std::u16string* error) const;
 
@@ -157,8 +162,7 @@ class ManagementPolicy {
   // Returns true immediately if any registered provider's UserMayLoad() returns
   // false or MustRemainDisabled() returns true.
   bool MustRemainDisabled(const Extension* extension,
-                          disable_reason::DisableReason* reason,
-                          std::u16string* error) const;
+                          disable_reason::DisableReason* reason) const;
 
   // Returns true immediately if any registered provider's MustRemainInstalled
   // function returns true.
@@ -184,7 +188,7 @@ class ManagementPolicy {
   typedef bool (Provider::*ProviderFunction)(const Extension*,
                                              std::u16string*) const;
 
-  typedef std::set<Provider*> ProviderList;
+  typedef std::set<raw_ptr<Provider, SetExperimental>> ProviderList;
 
   // This is a helper to apply a method in the Provider interface to each of
   // the Provider objects in |providers_|. The return value of this function
@@ -200,8 +204,6 @@ class ManagementPolicy {
   // This stores raw pointers to Provider.
   // TODO(lazyboy): Consider making ManagementPolicy own these providers.
   ProviderList providers_;
-
-  DISALLOW_COPY_AND_ASSIGN(ManagementPolicy);
 };
 
 }  // namespace extensions

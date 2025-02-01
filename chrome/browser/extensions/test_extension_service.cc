@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,26 +9,33 @@
 
 using extensions::Extension;
 
-TestExtensionService::~TestExtensionService() {}
+TestExtensionService::TestExtensionService() = default;
+
+TestExtensionService::~TestExtensionService() = default;
 
 extensions::PendingExtensionManager*
 TestExtensionService::pending_extension_manager() {
   ADD_FAILURE();
-  return NULL;
+  return nullptr;
 }
 
-bool TestExtensionService::UpdateExtension(
-    const extensions::CRXFileInfo& file,
-    bool file_ownership_passed,
-    extensions::CrxInstaller** out_crx_installer) {
+extensions::CorruptedExtensionReinstaller*
+TestExtensionService::corrupted_extension_reinstaller() {
   ADD_FAILURE();
-  return false;
+  return nullptr;
+}
+
+scoped_refptr<extensions::CrxInstaller>
+TestExtensionService::CreateUpdateInstaller(const extensions::CRXFileInfo& file,
+                                            bool file_ownership_passed) {
+  ADD_FAILURE();
+  return nullptr;
 }
 
 const Extension* TestExtensionService::GetPendingExtensionUpdate(
     const std::string& id) const {
   ADD_FAILURE();
-  return NULL;
+  return nullptr;
 }
 
 bool TestExtensionService::FinishDelayedInstallationIfReady(
@@ -75,4 +82,13 @@ bool TestExtensionService::UserCanDisableInstalledExtension(
     const std::string& extension_id) {
   ADD_FAILURE();
   return false;
+}
+
+void TestExtensionService::ReinstallProviderExtensions() {
+  ADD_FAILURE();
+}
+
+base::WeakPtr<extensions::ExtensionServiceInterface>
+TestExtensionService::AsWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
 }

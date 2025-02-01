@@ -30,8 +30,6 @@
 
 #include <memory>
 #include "base/memory/scoped_refptr.h"
-#include "third_party/blink/renderer/platform/geometry/float_rect.h"
-#include "third_party/blink/renderer/platform/geometry/int_size.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
@@ -39,6 +37,8 @@
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
+#include "ui/gfx/geometry/rect_f.h"
+#include "ui/gfx/geometry/size.h"
 
 namespace blink {
 
@@ -57,15 +57,12 @@ class PLATFORM_EXPORT ImageDataBuffer {
                    Vector<unsigned char>* encoded_image) const;
 
   const unsigned char* Pixels() const;
-  const IntSize& size() const { return size_; }
-  int Height() const { return size_.Height(); }
-  int Width() const { return size_.Width(); }
+  const gfx::Size& size() const { return size_; }
+  int Height() const { return size_.height(); }
+  int Width() const { return size_.width(); }
   size_t ComputeByteSize() const { return pixmap_.computeByteSize(); }
 
  private:
-  ImageDataBuffer(const IntSize&,
-                  const unsigned char*,
-                  const CanvasColorParams&);
   ImageDataBuffer(const SkPixmap&);
   ImageDataBuffer(scoped_refptr<StaticBitmapImage>);
 
@@ -79,7 +76,7 @@ class PLATFORM_EXPORT ImageDataBuffer {
   sk_sp<SkImage> retained_image_;
   SkPixmap pixmap_;
   bool is_valid_ = false;
-  IntSize size_;
+  gfx::Size size_;
 };
 
 }  // namespace blink

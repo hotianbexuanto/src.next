@@ -24,13 +24,16 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_RESOLVER_STYLE_ADJUSTER_H_
 
 #include "third_party/blink/renderer/core/core_export.h"
+#include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
 namespace blink {
 
 class Element;
 class ComputedStyle;
+class ComputedStyleBuilder;
 class StyleResolverState;
+class SVGElement;
 
 // Certain CSS Properties/Values do not apply to certain elements
 // and the web expects that we expose "adjusted" values when
@@ -40,13 +43,28 @@ class StyleAdjuster {
 
  public:
   CORE_EXPORT static void AdjustComputedStyle(StyleResolverState&, Element*);
-  static void AdjustStyleForCombinedText(ComputedStyle&);
-  static void AdjustStyleForEditing(ComputedStyle&);
-  static void AdjustStyleForTextCombine(ComputedStyle&);
+  static void AdjustStyleForCombinedText(ComputedStyleBuilder&);
+  static void AdjustStyleForEditing(ComputedStyleBuilder&, Element*);
+  static void AdjustStyleForTextCombine(ComputedStyleBuilder&);
+  static void AdjustStyleForSvgElement(
+      const SVGElement& element,
+      ComputedStyleBuilder& builder,
+      const ComputedStyle& layout_parent_style);
+  static void AdjustStyleForDisplay(ComputedStyleBuilder&,
+                                    const ComputedStyle& layout_parent_style,
+                                    const Element*,
+                                    Document*);
 
  private:
-  static void AdjustOverflow(ComputedStyle& style, Element* element);
-  static void AdjustForForcedColorsMode(ComputedStyle& style);
+  static bool IsEditableElement(Element*, const ComputedStyleBuilder&);
+  static bool IsPasswordFieldWithUnrevealedPassword(Element*);
+  static void AdjustEffectiveTouchAction(ComputedStyleBuilder&,
+                                         const ComputedStyle& parent_style,
+                                         Element* element,
+                                         bool is_svg_root);
+  static void AdjustOverflow(ComputedStyleBuilder&, Element* element);
+  static void AdjustForForcedColorsMode(ComputedStyleBuilder&, Document&);
+  static void AdjustForSVGTextElement(ComputedStyleBuilder&);
 };
 
 }  // namespace blink

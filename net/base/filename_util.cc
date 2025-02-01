@@ -1,6 +1,11 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
 
 #include "net/base/filename_util.h"
 
@@ -9,12 +14,13 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/path_service.h"
+#include "base/strings/escape.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
-#include "net/base/escape.h"
 #include "net/base/filename_util_internal.h"
 #include "net/base/net_string_util.h"
 #include "net/base/url_util.h"
@@ -40,14 +46,12 @@ GURL FilePathToFileURL(const base::FilePath& path) {
 
   for (auto c : utf8_path) {
     if (c == '%' || c == ';' || c == '#' || c == '?' ||
-#if defined(OS_POSIX) || defined(OS_FUCHSIA)
+#if BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
         c == '\\' ||
 #endif
         c <= ' ') {
-      static const char kHexChars[] = "0123456789ABCDEF";
       url_string += '%';
-      url_string += kHexChars[(c >> 4) & 0xf];
-      url_string += kHexChars[c & 0xf];
+      base::AppendHexEncodedByte(static_cast<uint8_t>(c), url_string);
     } else {
       url_string += c;
     }
@@ -69,7 +73,7 @@ bool FileURLToFilePath(const GURL& url, base::FilePath* file_path) {
   if (!url.SchemeIsFile())
     return false;
 
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   std::string path;
   std::string host = url.host();
   if (host.empty()) {
@@ -88,7 +92,7 @@ bool FileURLToFilePath(const GURL& url, base::FilePath* file_path) {
     path.append(url.path());
   }
   std::replace(path.begin(), path.end(), '/', '\\');
-#else  // defined(OS_WIN)
+#else   // BUILDFLAG(IS_WIN)
   // On POSIX, there's no obvious interpretation of file:// URLs with a host.
   // Usually, remote mounts are still mounted onto the local filesystem.
   // Therefore, we discard all URLs that are not obviously local to prevent
@@ -97,7 +101,7 @@ bool FileURLToFilePath(const GURL& url, base::FilePath* file_path) {
     return false;
   }
   std::string path = url.path();
-#endif  // !defined(OS_WIN)
+#endif  // !BUILDFLAG(IS_WIN)
 
   if (path.empty())
     return false;
@@ -109,9 +113,13 @@ bool FileURLToFilePath(const GURL& url, base::FilePath* file_path) {
   // https://crbug.com/585422 that this represents a potential security risk).
   // It isn't correct to keep it as "%2F", so this just fails. This is fine,
   // because '/' is not a valid filename character on either POSIX or Windows.
-  std::set<unsigned char> illegal_encoded_bytes{'/'};
+  //
+  // A valid URL may include "%00" (NULL) in its path (see
+  // https://crbug.com/1400251), which is considered an illegal filename and
+  // results in failure.
+  std::set<unsigned char> illegal_encoded_bytes{'/', '\0'};
 
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   // "%5C" ('\\') on Windows results in failure, for the same reason as '/'
   // above. On POSIX, "%5C" simply decodes as '\\', a valid filename character.
   illegal_encoded_bytes.insert('\\');
@@ -125,7 +133,7 @@ bool FileURLToFilePath(const GURL& url, base::FilePath* file_path) {
   // Percent-encoded bytes are not meaningful in a file system.
   path = base::UnescapeBinaryURLComponent(path);
 
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   if (base::IsStringUTF8(path)) {
     file_path_str.assign(base::UTF8ToWide(path));
     // We used to try too hard and see if |path| made up entirely of
@@ -141,7 +149,7 @@ bool FileURLToFilePath(const GURL& url, base::FilePath* file_path) {
     // string back. We detect this and report failure.
     file_path_str = base::SysNativeMBToWide(path);
   }
-#else  // defined(OS_WIN)
+#else   // BUILDFLAG(IS_WIN)
   // Collapse multiple path slashes into a single path slash.
   std::string new_path;
   do {
@@ -151,7 +159,7 @@ bool FileURLToFilePath(const GURL& url, base::FilePath* file_path) {
   } while (new_path != path);
 
   file_path_str.assign(path);
-#endif  // !defined(OS_WIN)
+#endif  // !BUILDFLAG(IS_WIN)
 
   return !file_path_str.empty();
 }
@@ -162,7 +170,7 @@ void GenerateSafeFileName(const std::string& mime_type,
   // Make sure we get the right file extension
   EnsureSafeExtension(mime_type, ignore_extension, file_path);
 
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   // Prepend "_" to the file name if it's a reserved name
   base::FilePath::StringType leaf_name = file_path->BaseName().value();
   DCHECK(!leaf_name.empty());
@@ -187,19 +195,17 @@ bool IsReservedNameOnWindows(const base::FilePath::StringType& filename) {
       "con",  "prn",  "aux",  "nul",  "com1", "com2", "com3",  "com4",
       "com5", "com6", "com7", "com8", "com9", "lpt1", "lpt2",  "lpt3",
       "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9", "clock$"};
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   std::string filename_lower = base::ToLowerASCII(base::WideToUTF8(filename));
-#elif defined(OS_POSIX) || defined(OS_FUCHSIA)
+#elif BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
   std::string filename_lower = base::ToLowerASCII(filename);
 #endif
 
   for (const char* const device : known_devices) {
-    // Exact match.
-    if (filename_lower == device)
-      return true;
-    // Starts with "DEVICE.".
-    if (base::StartsWith(filename_lower, std::string(device) + ".",
-                         base::CompareCase::SENSITIVE)) {
+    // Check for an exact match, or a "DEVICE." prefix.
+    size_t len = strlen(device);
+    if (filename_lower.starts_with(device) &&
+        (filename_lower.size() == len || filename_lower[len] == '.')) {
       return true;
     }
   }

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,9 +7,8 @@
 #include <memory>
 #include <utility>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "base/strings/utf_string_conversions.h"
-#include "chrome/browser/ui/browser_dialogs.h"
 #include "chrome/browser/ui/tab_modal_confirm_dialog.h"
 #include "chrome/browser/ui/tab_modal_confirm_dialog_delegate.h"
 #include "chrome/grit/generated_resources.h"
@@ -24,9 +23,15 @@ class DownloadOpenConfirmationDialog : public DownloadOpenPrompt,
  public:
   DownloadOpenConfirmationDialog(
       content::WebContents* web_contents,
-      const std::string& extension_name,
+      const std::u16string& extension_name,
       const base::FilePath& file_path,
       DownloadOpenPrompt::OpenCallback open_callback);
+
+  DownloadOpenConfirmationDialog(const DownloadOpenConfirmationDialog&) =
+      delete;
+  DownloadOpenConfirmationDialog& operator=(
+      const DownloadOpenConfirmationDialog&) = delete;
+
   ~DownloadOpenConfirmationDialog() override;
 
   std::u16string GetTitle() override;
@@ -41,25 +46,20 @@ class DownloadOpenConfirmationDialog : public DownloadOpenPrompt,
 
   DownloadOpenPrompt::OpenCallback open_callback_;
 
-  std::string extension_name_;
+  std::u16string extension_name_;
 
   base::FilePath file_path_;
-
-  DISALLOW_COPY_AND_ASSIGN(DownloadOpenConfirmationDialog);
 };
 
 DownloadOpenConfirmationDialog::DownloadOpenConfirmationDialog(
     content::WebContents* web_contents,
-    const std::string& extension_name,
+    const std::u16string& extension_name,
     const base::FilePath& file_path,
     DownloadOpenPrompt::OpenCallback open_callback)
     : TabModalConfirmDialogDelegate(web_contents),
       open_callback_(std::move(open_callback)),
       extension_name_(extension_name),
-      file_path_(file_path) {
-  chrome::RecordDialogCreation(
-      chrome::DialogIdentifier::DOWNLOAD_OPEN_CONFIRMATION);
-}
+      file_path_(file_path) {}
 
 DownloadOpenConfirmationDialog::~DownloadOpenConfirmationDialog() = default;
 
@@ -69,8 +69,7 @@ std::u16string DownloadOpenConfirmationDialog::GetTitle() {
 
 std::u16string DownloadOpenConfirmationDialog::GetDialogMessage() {
   return l10n_util::GetStringFUTF16(
-      IDS_DOWNLOAD_OPEN_CONFIRMATION_DIALOG_MESSAGE,
-      base::UTF8ToUTF16(extension_name_),
+      IDS_DOWNLOAD_OPEN_CONFIRMATION_DIALOG_MESSAGE, extension_name_,
       file_path_.BaseName().AsUTF16Unsafe());
 }
 
@@ -102,7 +101,7 @@ DownloadOpenPrompt::~DownloadOpenPrompt() = default;
 
 DownloadOpenPrompt* DownloadOpenPrompt::CreateDownloadOpenConfirmationDialog(
     content::WebContents* web_contents,
-    const std::string& extension_name,
+    const std::u16string& extension_name,
     const base::FilePath& file_path,
     DownloadOpenPrompt::OpenCallback open_callback) {
   auto prompt = std::make_unique<DownloadOpenConfirmationDialog>(

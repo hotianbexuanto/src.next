@@ -29,6 +29,7 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/layout/layout_image_resource.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
+#include "third_party/blink/renderer/core/layout/natural_sizing_info.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_client.h"
 
 namespace blink {
@@ -50,8 +51,11 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
  public:
   LayoutImage(Element*);
   ~LayoutImage() override;
+  void Trace(Visitor*) const override;
 
-  static LayoutImage* CreateAnonymous(PseudoElement&);
+  static LayoutImage* CreateAnonymous(Document&);
+
+  bool IsUnsizedImage() const;
 
   void SetImageResource(LayoutImageResource*);
 
@@ -104,20 +108,31 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
     return "LayoutImage";
   }
 
-  void UpdateAfterLayout() override;
+  class MutableForPainting : public LayoutObject::MutableForPainting {
+   public:
+    void UpdatePaintedRect(const PhysicalRect& paint_rect);
+
+   private:
+    friend class LayoutImage;
+    explicit MutableForPainting(const LayoutImage& image)
+        : LayoutObject::MutableForPainting(image) {}
+  };
+  MutableForPainting GetMutableForPainting() const {
+    NOT_DESTROYED();
+    return MutableForPainting(*this);
+  }
 
  protected:
-  bool NeedsPreferredWidthsRecalculation() const final;
   SVGImage* EmbeddedSVGImage() const;
-  void ComputeIntrinsicSizingInfo(IntrinsicSizingInfo&) const override;
+  PhysicalNaturalSizingInfo GetNaturalDimensions() const override;
 
   void ImageChanged(WrappedImagePtr, CanDeferInvalidation) override;
 
   void Paint(const PaintInfo&) const final;
 
-  bool IsOfType(LayoutObjectType type) const override {
+  bool IsLayoutImage() const final {
     NOT_DESTROYED();
-    return type == kLayoutObjectImage || LayoutReplaced::IsOfType(type);
+    return true;
   }
 
   void WillBeDestroyed() override;
@@ -148,21 +163,17 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
     return true;
   }
 
-  LayoutUnit MinimumReplacedHeight() const override;
-
   bool NodeAtPoint(HitTestResult&,
                    const HitTestLocation&,
                    const PhysicalOffset& accumulated_offset,
-                   HitTestAction) final;
+                   HitTestPhase) final;
 
   void InvalidatePaintAndMarkForLayoutIfNeeded(CanDeferInvalidation);
-  void UpdateIntrinsicSizeIfNeeded(const LayoutSize&);
-  bool NeedsLayoutOnIntrinsicSizeChange() const;
-  // Override intrinsic sizing info to default if "unsized-media"
-  // is disabled and the element has no sizing info.
-  bool OverrideIntrinsicSizingInfo(IntrinsicSizingInfo&) const;
-  bool HasOverriddenIntrinsicSize() const;
-  FloatSize ImageSizeOverriddenByIntrinsicSize(float multiplier) const;
+  bool UpdateNaturalSizeIfNeeded();
+  bool NeedsLayoutOnNaturalSizeChange() const;
+
+  // The natural dimensions for the image.
+  PhysicalNaturalSizingInfo natural_dimensions_;
 
   // This member wraps the associated decoded image.
   //
@@ -173,12 +184,15 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
   // * For generated content, the resource is loaded during style resolution
   // and thus is stored in ComputedStyle (see ContentData::image) that gets
   // propagated to the anonymous LayoutImage in LayoutObject::createObject.
-  Persistent<LayoutImageResource> image_resource_;
-  bool did_increment_visually_non_empty_pixel_count_;
+  Member<LayoutImageResource> image_resource_;
+  float image_device_pixel_ratio_ = 1.0f;
+  bool did_increment_visually_non_empty_pixel_count_ = false;
 
   // This field stores whether this image is generated with 'content'.
-  bool is_generated_content_;
-  float image_device_pixel_ratio_;
+  bool is_generated_content_ = false;
+
+  friend class MutableForPainting;
+  PhysicalRect last_paint_rect_;
 };
 
 template <>

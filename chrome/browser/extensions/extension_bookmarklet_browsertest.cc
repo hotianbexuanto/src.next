@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -35,7 +35,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest,
 
   // Navigate to the extension's page.
   const GURL extension_file_url(extension->GetResourceURL("file.html"));
-  ui_test_utils::NavigateToURL(browser(), extension_file_url);
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), extension_file_url));
 
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
@@ -47,12 +47,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowserTest,
   const GURL script_url("javascript:void(document.title='Bad Title')");
   NavigateToURLWithDisposition(browser(), script_url,
                                WindowOpenDisposition::CURRENT_TAB,
-                               ui_test_utils::BROWSER_TEST_NONE);
+                               ui_test_utils::BROWSER_TEST_NO_WAIT);
   // Force serialization with the renderer by executing a no-op script.
-  bool result = false;
-  ASSERT_TRUE(content::ExecuteScriptAndExtractBool(
-      web_contents, "domAutomationController.send(true)", &result));
-  EXPECT_TRUE(result);
+  EXPECT_EQ(true, content::EvalJs(web_contents, "true"));
 
   // Expect the title hasn't changed since the javascript URL was blocked
   // from executing.

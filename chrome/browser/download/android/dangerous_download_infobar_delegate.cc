@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "base/memory/ptr_util.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/android/android_theme_resources.h"
 #include "chrome/grit/generated_resources.h"
@@ -19,8 +20,9 @@
 void DangerousDownloadInfoBarDelegate::Create(
     infobars::ContentInfoBarManager* infobar_manager,
     download::DownloadItem* download_item) {
-  infobar_manager->AddInfoBar(std::make_unique<infobars::ConfirmInfoBar>(
-      base::WrapUnique(new DangerousDownloadInfoBarDelegate(download_item))));
+  if (infobar_manager->AddInfoBar(
+          std::make_unique<infobars::ConfirmInfoBar>(base::WrapUnique(
+              new DangerousDownloadInfoBarDelegate(download_item))))) {}
 }
 
 DangerousDownloadInfoBarDelegate::DangerousDownloadInfoBarDelegate(

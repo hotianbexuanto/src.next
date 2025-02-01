@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,11 +8,13 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include "base/gtest_prod_util.h"
-#include "base/macros.h"
-#include "base/memory/ref_counted.h"
+#include "base/memory/raw_ptr.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
 #include "build/buildflag.h"
 #include "crypto/ec_private_key.h"
@@ -20,7 +22,7 @@
 #include "net/base/completion_repeating_callback.h"
 #include "net/base/net_error_details.h"
 #include "net/base/net_export.h"
-#include "net/base/network_isolation_key.h"
+#include "net/base/network_anonymization_key.h"
 #include "net/base/request_priority.h"
 #include "net/http/http_auth.h"
 #include "net/http/http_request_headers.h"
@@ -32,7 +34,8 @@
 #include "net/net_buildflags.h"
 #include "net/proxy_resolution/proxy_resolution_service.h"
 #include "net/socket/connection_attempts.h"
-#include "net/ssl/ssl_config_service.h"
+#include "net/ssl/ssl_config.h"
+#include "net/third_party/quiche/src/quiche/quic/core/quic_versions.h"
 #include "net/websockets/websocket_handshake_stream_base.h"
 
 namespace net {
@@ -50,8 +53,10 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
     : public HttpTransaction,
       public HttpStreamRequest::Delegate {
  public:
-  HttpNetworkTransaction(RequestPriority priority,
-                         HttpNetworkSession* session);
+  HttpNetworkTransaction(RequestPriority priority, HttpNetworkSession* session);
+
+  HttpNetworkTransaction(const HttpNetworkTransaction&) = delete;
+  HttpNetworkTransaction& operator=(const HttpNetworkTransaction&) = delete;
 
   ~HttpNetworkTransaction() override;
 
@@ -73,6 +78,7 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   void StopCaching() override;
   int64_t GetTotalReceivedBytes() const override;
   int64_t GetTotalSentBytes() const override;
+  int64_t GetReceivedBodyBytes() const override;
   void DoneReading() override;
   const HttpResponseInfo* GetResponseInfo() const override;
   LoadState GetLoadState() const override;
@@ -90,43 +96,54 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   void SetEarlyResponseHeadersCallback(
       ResponseHeadersCallback callback) override;
   void SetResponseHeadersCallback(ResponseHeadersCallback callback) override;
+  void SetModifyRequestHeadersCallback(
+      base::RepeatingCallback<void(HttpRequestHeaders*)> callback) override;
+  void SetIsSharedDictionaryReadAllowedCallback(
+      base::RepeatingCallback<bool()> callback) override;
   int ResumeNetworkStart() override;
   void CloseConnectionOnDestruction() override;
+  bool IsMdlMatchForMetrics() const override;
 
   // HttpStreamRequest::Delegate methods:
-  void OnStreamReady(const SSLConfig& used_ssl_config,
-                     const ProxyInfo& used_proxy_info,
+  void OnStreamReady(const ProxyInfo& used_proxy_info,
                      std::unique_ptr<HttpStream> stream) override;
   void OnBidirectionalStreamImplReady(
-      const SSLConfig& used_ssl_config,
       const ProxyInfo& used_proxy_info,
       std::unique_ptr<BidirectionalStreamImpl> stream) override;
   void OnWebSocketHandshakeStreamReady(
-      const SSLConfig& used_ssl_config,
       const ProxyInfo& used_proxy_info,
       std::unique_ptr<WebSocketHandshakeStreamBase> stream) override;
   void OnStreamFailed(int status,
                       const NetErrorDetails& net_error_details,
-                      const SSLConfig& used_ssl_config,
                       const ProxyInfo& used_proxy_info,
                       ResolveErrorInfo resolve_error_info) override;
-  void OnCertificateError(int status,
-                          const SSLConfig& used_ssl_config,
-                          const SSLInfo& ssl_info) override;
+  void OnCertificateError(int status, const SSLInfo& ssl_info) override;
   void OnNeedsProxyAuth(const HttpResponseInfo& response_info,
-                        const SSLConfig& used_ssl_config,
                         const ProxyInfo& used_proxy_info,
                         HttpAuthController* auth_controller) override;
-  void OnNeedsClientAuth(const SSLConfig& used_ssl_config,
-                         SSLCertRequestInfo* cert_info) override;
+  void OnNeedsClientAuth(SSLCertRequestInfo* cert_info) override;
 
   void OnQuicBroken() override;
-  void GetConnectionAttempts(ConnectionAttempts* out) const override;
+
+  void OnSwitchesToHttpStreamPool(
+      HttpStreamPoolRequestInfo request_info) override;
+
+  ConnectionAttempts GetConnectionAttempts() const override;
 
  private:
   FRIEND_TEST_ALL_PREFIXES(HttpNetworkTransactionTest, ResetStateForRestart);
   FRIEND_TEST_ALL_PREFIXES(HttpNetworkTransactionTest,
                            CreateWebSocketHandshakeStream);
+  FRIEND_TEST_ALL_PREFIXES(HttpNetworkTransactionTest,
+                           SetProxyInfoInResponse_Direct);
+  FRIEND_TEST_ALL_PREFIXES(HttpNetworkTransactionTest,
+                           SetProxyInfoInResponse_Proxied);
+  FRIEND_TEST_ALL_PREFIXES(HttpNetworkTransactionTest,
+                           SetProxyInfoInResponse_Empty);
+  FRIEND_TEST_ALL_PREFIXES(HttpNetworkTransactionTest,
+                           SetProxyInfoInResponse_IpProtectionProxied);
+  FRIEND_TEST_ALL_PREFIXES(HttpNetworkTransactionTest,
+                           SetProxyInfoInResponse_IpProtectionDirect);
   FRIEND_TEST_ALL_PREFIXES(SpdyNetworkTransactionTest, WindowUpdateReceived);
   FRIEND_TEST_ALL_PREFIXES(SpdyNetworkTransactionTest, WindowUpdateSent);
   FRIEND_TEST_ALL_PREFIXES(SpdyNetworkTransactionTest, WindowUpdateOverflow);
@@ -142,6 +159,7 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
     STATE_CREATE_STREAM_COMPLETE,
     STATE_INIT_STREAM,
     STATE_INIT_STREAM_COMPLETE,
+    STATE_CONNECTED_CALLBACK,
     STATE_CONNECTED_CALLBACK_COMPLETE,
     STATE_GENERATE_PROXY_AUTH_TOKEN,
     STATE_GENERATE_PROXY_AUTH_TOKEN_COMPLETE,
@@ -183,7 +201,8 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   int DoCreateStreamComplete(int result);
   int DoInitStream();
   int DoInitStreamComplete(int result);
-  int DoConnectedCallbackComplete(int results);
+  int DoConnectedCallback();
+  int DoConnectedCallbackComplete(int result);
   int DoGenerateProxyAuthToken();
   int DoGenerateProxyAuthTokenComplete(int result);
   int DoGenerateServerAuthToken();
@@ -204,11 +223,6 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   int BuildRequestHeaders(bool using_http_proxy_without_tunnel);
 
 #if BUILDFLAG(ENABLE_REPORTING)
-  // Processes the Reporting-Endpoints header specified in document reporting
-  // spec, if one exists. This header configures where the Reporting API (in
-  // net/reporting) will send reports for the document.
-  void ProcessReportingEndpointsHeader();
-
   // Processes the Report-To header, if one exists. This header configures where
   // the Reporting API (in //net/reporting) will send reports for the origin.
   void ProcessReportToHeader();
@@ -261,9 +275,33 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   // proceed.
   bool CheckMaxRestarts();
 
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class RetryReason {
+    kHttpRequestTimeout = 0,
+    kHttpMisdirectedRequest = 1,
+    kHttp11Required = 2,
+    kSslClientAuthSignatureFailed = 3,
+    kConnectionReset = 4,
+    kConnectionClosed = 5,
+    kConnectionAborted = 6,
+    kSocketNotConnected = 7,
+    kEmptyResponse = 8,
+    kEarlyDataRejected = 9,
+    kWrongVersionOnEarlyData = 10,
+    kHttp2PingFailed = 11,
+    kHttp2ServerRefusedStream = 12,
+    // Entries 13, 14, 15 are removed.
+    kQuicHandshakeFailed = 16,
+    kQuicGoawayRequestCanBeRetried = 17,
+    kQuicProtocolError = 18,
+    kMaxValue = kQuicProtocolError,
+  };
+  static std::optional<RetryReason> GetRetryReasonForIOError(int error);
+
   // Resets the connection and the request headers for resend.  Called when
   // ShouldResendRequest() is true.
-  void ResetConnectionAndRequestForResend();
+  void ResetConnectionAndRequestForResend(RetryReason retry_reason);
 
   // Sets up the state machine to restart the transaction with auth.
   void PrepareForAuthRestart(HttpAuth::Target target);
@@ -312,23 +350,41 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
 
   void ResumeAfterConnected(int result);
 
+  void RecordStreamRequestResult(int result);
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class QuicProtocolErrorRetryStatus {
+    kNoRetryExceededMaxRetries = 0,
+    kNoRetryHeaderReceived = 1,
+    kNoRetryNoAlternativeService = 2,
+    kRetryAltServiceBroken = 3,
+    kRetryAltServiceNotBroken = 4,
+    kMaxValue = kRetryAltServiceNotBroken,
+  };
+
+  static void SetProxyInfoInResponse(const ProxyInfo& proxy_info,
+                                     HttpResponseInfo* response_info);
+
   scoped_refptr<HttpAuthController>
       auth_controllers_[HttpAuth::AUTH_NUM_TARGETS];
 
   // Whether this transaction is waiting for proxy auth, server auth, or is
   // not waiting for any auth at all. |pending_auth_target_| is read and
   // cleared by RestartWithAuth().
-  HttpAuth::Target pending_auth_target_;
+  HttpAuth::Target pending_auth_target_ = HttpAuth::AUTH_NONE;
 
   CompletionRepeatingCallback io_callback_;
   CompletionOnceCallback callback_;
 
-  HttpNetworkSession* session_;
+  raw_ptr<HttpNetworkSession> session_;
 
   NetLogWithSource net_log_;
 
+  base::TimeTicks start_timeticks_;
+
   // Reset to null at the start of the Read state machine.
-  const HttpRequestInfo* request_;
+  raw_ptr<const HttpRequestInfo> request_ = nullptr;
 
   // The requested URL.
   GURL url_;
@@ -337,7 +393,7 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
 
   // Copied from |request_|, as it's needed after the response body has been
   // read.
-  NetworkIsolationKey network_isolation_key_;
+  NetworkAnonymizationKey network_anonymization_key_;
 
   // |proxy_info_| is the ProxyInfo used by the HttpStreamRequest.
   ProxyInfo proxy_info_;
@@ -346,37 +402,31 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   std::unique_ptr<HttpStream> stream_;
 
   // True if we've validated the headers that the stream parser has returned.
-  bool headers_valid_;
+  bool headers_valid_ = false;
 
   // True if we can send the request over early data.
-  bool can_send_early_data_;
+  bool can_send_early_data_ = false;
 
   // True if the client certificate for the server (rather than the proxy) was
   // configured in this transaction.
-  bool configured_client_cert_for_server_;
+  bool configured_client_cert_for_server_ = false;
 
-  // SSL configuration used for the server and proxy, respectively. Note
-  // |server_ssl_config_| may be updated from the HttpStreamFactory, which will
-  // be applied on retry.
-  //
-  // TODO(davidben): Mutating it is weird and relies on HttpStreamFactory
-  // modifications being idempotent. Address this as part of other work to make
-  // sense of SSLConfig (related to https://crbug.com/488043).
-  SSLConfig server_ssl_config_;
-  SSLConfig proxy_ssl_config_;
+  // Previously observed bad certs when establishing a connection. If the caller
+  // chooses to retry despite the error, future connection attempts will be
+  // configured to ignore these errors.
+  std::vector<SSLConfig::CertAndStatus> observed_bad_certs_;
 
   HttpRequestHeaders request_headers_;
 #if BUILDFLAG(ENABLE_REPORTING)
   // Whether a NEL report has already been generated. Reset when restarting.
-  bool network_error_logging_report_generated_;
+  bool network_error_logging_report_generated_ = false;
   // Cache some fields from |request_| that we'll need to construct a NEL
   // report about the request.  (NEL report construction happens after we've
   // cleared the |request_| pointer.)
   std::string request_method_;
   std::string request_referrer_;
   std::string request_user_agent_;
-  int request_reporting_upload_depth_;
-  base::TimeTicks start_timeticks_;
+  int request_reporting_upload_depth_ = 0;
 #endif
 
   // The size in bytes of the buffer we use to drain the response body that
@@ -386,34 +436,42 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
 
   // User buffer and length passed to the Read method.
   scoped_refptr<IOBuffer> read_buf_;
-  int read_buf_len_;
+  int read_buf_len_ = 0;
 
   // Total number of bytes received on all destroyed HttpStreams for this
   // transaction.
-  int64_t total_received_bytes_;
+  int64_t total_received_bytes_ = 0;
 
   // Total number of bytes sent on all destroyed HttpStreams for this
   // transaction.
-  int64_t total_sent_bytes_;
+  int64_t total_sent_bytes_ = 0;
+
+  // When the transaction started creating a stream.
+  base::TimeTicks create_stream_start_time_;
 
   // When the transaction started / finished sending the request, including
-  // the body, if present.
+  // the body, if present. |send_start_time_| is set to |base::TimeTicks()|
+  // until |SendRequest()| is called on |stream_|, and reset for auth restarts.
   base::TimeTicks send_start_time_;
   base::TimeTicks send_end_time_;
 
+  // When the connection and request headers are reset, and the request is
+  // resent.
+  base::TimeTicks reset_connection_and_request_for_resend_start_time_;
+
   // The next state in the state machine.
-  State next_state_;
+  State next_state_ = STATE_NONE;
 
   // True when the tunnel is in the process of being established - we can't
   // read from the socket until the tunnel is done.
-  bool establishing_tunnel_;
+  bool establishing_tunnel_ = false;
 
   // Enable pooling to a SpdySession with matching IP and certificate
   // even if the SpdySessionKey is different.
-  bool enable_ip_based_pooling_;
+  bool enable_ip_based_pooling_ = true;
 
   // Enable using alternative services for the request.
-  bool enable_alternative_services_;
+  bool enable_alternative_services_ = true;
 
   // When a request is retried because of errors with the alternative service,
   // this will store the alternative service used.
@@ -421,8 +479,8 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
 
   // The helper object to use to create WebSocketHandshakeStreamBase
   // objects. Only relevant when establishing a WebSocket connection.
-  WebSocketHandshakeStreamBase::CreateHelper*
-      websocket_handshake_stream_base_create_helper_;
+  raw_ptr<WebSocketHandshakeStreamBase::CreateHelper>
+      websocket_handshake_stream_base_create_helper_ = nullptr;
 
   BeforeNetworkStartCallback before_network_start_callback_;
   ConnectedCallback connected_callback_;
@@ -430,10 +488,15 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   ResponseHeadersCallback early_response_headers_callback_;
   ResponseHeadersCallback response_headers_callback_;
 
+  // The callback to modify the request header. They will be called just before
+  // sending the request to the network.
+  base::RepeatingCallback<void(HttpRequestHeaders*)> modify_headers_callbacks_;
+
   ConnectionAttempts connection_attempts_;
   IPEndPoint remote_endpoint_;
   // Network error details for this transaction.
   NetErrorDetails net_error_details_;
+  NextProto negotiated_protocol_ = NextProto::kProtoUnknown;
 
   // Number of retries made for network errors like ERR_HTTP2_PING_FAILED,
   // ERR_HTTP2_SERVER_REFUSED_STREAM, ERR_QUIC_HANDSHAKE_FAILED and
@@ -442,14 +505,27 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   // This count excludes retries on reused sockets since a well
   // behaved server may time those out and thus the number
   // of times we can retry a request on reused sockets is limited.
-  size_t retry_attempts_;
+  size_t retry_attempts_ = 0;
 
   // Number of times the transaction was restarted via a RestartWith* call.
-  size_t num_restarts_;
+  size_t num_restarts_ = 0;
 
   bool close_connection_on_destruction_ = false;
 
-  DISALLOW_COPY_AND_ASSIGN(HttpNetworkTransaction);
+  // Set to true when the server required HTTP/1.1 fallback.
+  bool http_1_1_was_required_ = false;
+
+  // If set, these values are used as DNS resolution times, rather than
+  // using DNS times coming from the established stream.
+  base::TimeTicks dns_resolution_start_time_override_;
+  base::TimeTicks dns_resolution_end_time_override_;
+
+  base::TimeTicks blocked_initialize_stream_start_time_;
+  base::TimeTicks blocked_generate_proxy_auth_token_start_time_;
+  base::TimeTicks blocked_generate_server_auth_token_start_time_;
+
+  // The number of bytes of the body received from network.
+  int64_t received_body_bytes_ = 0;
 };
 
 }  // namespace net

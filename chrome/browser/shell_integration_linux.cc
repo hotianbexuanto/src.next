@@ -1,6 +1,11 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
+#pragma allow_unsafe_buffers
+#endif
 
 #include "chrome/browser/shell_integration_linux.h"
 
@@ -12,6 +17,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -23,6 +29,7 @@
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/files/safe_base_name.h"
 #include "base/i18n/file_util_icu.h"
 #include "base/logging.h"
 #include "base/memory/ref_counted_memory.h"
@@ -31,8 +38,8 @@
 #include "base/posix/eintr_wrapper.h"
 #include "base/process/kill.h"
 #include "base/process/launch.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/strings/string_tokenizer.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -43,14 +50,22 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/shell_integration.h"
+#include "chrome/browser/web_applications/os_integration/web_app_shortcut.h"
+#include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_switches.h"
+#include "chrome/grit/branded_strings.h"
 #include "chrome/grit/chrome_unscaled_resources.h"
 #include "components/version_info/version_info.h"
+#include "third_party/libxml/chromium/xml_writer.h"
+#include "third_party/re2/src/re2/re2.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/gfx/image/image_family.h"
+#include "ui/ozone/public/ozone_platform.h"
+#include "ui/ozone/public/platform_utils.h"
 #include "url/gurl.h"
 
 #if defined(USE_GLIB)
@@ -105,9 +120,9 @@ const int EXIT_XDG_SETTINGS_SYNTAX_ERROR = 1;
 // system fails, as the system copy may be missing capabilities of the Chrome
 // copy.
 
-// If |protocol| is empty this function sets Chrome as the default browser,
-// otherwise it sets Chrome as the default handler application for |protocol|.
-bool SetDefaultWebClient(const std::string& protocol) {
+// If |scheme| is empty this function sets Chrome as the default browser,
+// otherwise it sets Chrome as the default handler application for |scheme|.
+bool SetDefaultWebClient(const std::string& scheme) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   return true;
 #else
@@ -116,11 +131,11 @@ bool SetDefaultWebClient(const std::string& protocol) {
   std::vector<std::string> argv;
   argv.push_back(kXdgSettings);
   argv.push_back("set");
-  if (protocol.empty()) {
+  if (scheme.empty()) {
     argv.push_back(kXdgSettingsDefaultBrowser);
   } else {
     argv.push_back(kXdgSettingsDefaultSchemeHandler);
-    argv.push_back(protocol);
+    argv.push_back(scheme);
   }
   argv.push_back(chrome::GetDesktopName(env.get()));
 
@@ -136,11 +151,11 @@ bool SetDefaultWebClient(const std::string& protocol) {
 #endif
 }
 
-// If |protocol| is empty this function checks if Chrome is the default browser,
+// If |scheme| is empty this function checks if Chrome is the default browser,
 // otherwise it checks if Chrome is the default handler application for
-// |protocol|.
+// |scheme|.
 shell_integration::DefaultWebClientState GetIsDefaultWebClient(
-    const std::string& protocol) {
+    const std::string& scheme) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   return shell_integration::UNKNOWN_DEFAULT;
 #else
@@ -152,11 +167,11 @@ shell_integration::DefaultWebClientState GetIsDefaultWebClient(
   std::vector<std::string> argv;
   argv.push_back(kXdgSettings);
   argv.push_back("check");
-  if (protocol.empty()) {
+  if (scheme.empty()) {
     argv.push_back(kXdgSettingsDefaultBrowser);
   } else {
     argv.push_back(kXdgSettingsDefaultSchemeHandler);
-    argv.push_back(protocol);
+    argv.push_back(scheme);
   }
   argv.push_back(chrome::GetDesktopName(env.get()));
 
@@ -251,14 +266,108 @@ std::string QuoteCommandLineForDesktopFileExec(
 #if defined(USE_GLIB)
 const char kDesktopEntry[] = "Desktop Entry";
 const char kXdgOpenShebang[] = "#!/usr/bin/env xdg-open";
+
+void SetActionsForDesktopApplication(
+    const base::CommandLine& command_line,
+    GKeyFile* key_file,
+    std::set<web_app::DesktopActionInfo> action_info) {
+  if (action_info.empty())
+    return;
+
+  std::vector<std::string> action_ids;
+  for (const auto& info : action_info) {
+    action_ids.push_back(info.id);
+  }
+
+  std::string joined_action_ids = base::JoinString(action_ids, ";");
+  g_key_file_set_string(key_file, kDesktopEntry, "Actions",
+                        joined_action_ids.c_str());
+
+  for (const auto& info : action_info) {
+    std::string section_title = "Desktop Action " + info.id;
+    g_key_file_set_string(key_file, section_title.c_str(), "Name",
+                          info.name.c_str());
+
+    std::string launch_url_str = info.exec_launch_url.spec();
+    // Escape % as %%.
+    RE2::GlobalReplace(&launch_url_str, "%", "%%");
+    base::CommandLine current_cmd(command_line);
+    current_cmd.AppendSwitchASCII(switches::kAppLaunchUrlForShortcutsMenuItem,
+                                  launch_url_str);
+
+    g_key_file_set_string(
+        key_file, section_title.c_str(), "Exec",
+        QuoteCommandLineForDesktopFileExec(current_cmd).c_str());
+  }
+}
 #endif
+
+base::FilePath GetDesktopFileForDefaultSchemeHandler(base::Environment* env,
+                                                     const GURL& url) {
+  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
+                                                base::BlockingType::MAY_BLOCK);
+
+  std::vector<std::string> argv;
+  argv.push_back(shell_integration_linux::kXdgSettings);
+  argv.push_back("get");
+  argv.push_back(shell_integration_linux::kXdgSettingsDefaultSchemeHandler);
+  argv.push_back(url.scheme());
+  argv.push_back(chrome::GetDesktopName(env));
+
+  std::string desktop_file_name;
+  if (base::GetAppOutput(base::CommandLine(argv), &desktop_file_name) &&
+      desktop_file_name.find(".desktop") != std::string::npos) {
+    // Remove trailing newline
+    desktop_file_name.erase(desktop_file_name.length() - 1, 1);
+    return base::FilePath(desktop_file_name);
+  }
+
+  return base::FilePath();
+}
+
+std::string GetDesktopEntryStringValueFromFromDesktopFile(
+    const std::string& key,
+    const std::string& shortcut_contents) {
+  std::string key_value;
+#if defined(USE_GLIB)
+  // An empty file causes a crash with glib <= 2.32, so special case here.
+  if (shortcut_contents.empty())
+    return key_value;
+
+  GKeyFile* key_file = g_key_file_new();
+  GError* err = nullptr;
+  if (!g_key_file_load_from_data(key_file, shortcut_contents.c_str(),
+                                 shortcut_contents.size(), G_KEY_FILE_NONE,
+                                 &err)) {
+    LOG(WARNING) << "Unable to read desktop file template: " << err->message;
+    g_error_free(err);
+    g_key_file_free(key_file);
+    return key_value;
+  }
+
+  char* key_c_string =
+      g_key_file_get_string(key_file, kDesktopEntry, key.c_str(), &err);
+  if (key_c_string) {
+    key_value = key_c_string;
+    g_free(key_c_string);
+  } else {
+    g_error_free(err);
+  }
+
+  g_key_file_free(key_file);
+#else
+  NOTIMPLEMENTED();
+#endif
+
+  return key_value;
+}
 
 }  // namespace
 
 // Allows LaunchXdgUtility to join a process.
 // thread_restrictions.h assumes it to be in shell_integration_linux namespace.
-class LaunchXdgUtilityScopedAllowBaseSyncPrimitives
-    : public base::ScopedAllowBaseSyncPrimitives {};
+class [[maybe_unused, nodiscard]] LaunchXdgUtilityScopedAllowBaseSyncPrimitives
+    : public base::ScopedAllowBaseSyncPrimitives{};
 
 bool LaunchXdgUtility(const std::vector<std::string>& argv, int* exit_code) {
   // xdg-settings internally runs xdg-mime, which uses mv to move newly-created
@@ -288,70 +397,31 @@ std::string GetWMClassFromAppName(std::string app_name) {
   return app_name;
 }
 
-base::FilePath GetDataWriteLocation(base::Environment* env) {
-  return base::nix::GetXDGDirectory(env, "XDG_DATA_HOME", ".local/share");
-}
-
-std::vector<base::FilePath> GetDataSearchLocations(base::Environment* env) {
-  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
-                                                base::BlockingType::MAY_BLOCK);
-
-  std::vector<base::FilePath> search_paths;
-  base::FilePath write_location = GetDataWriteLocation(env);
-  search_paths.push_back(write_location);
-
-  std::string xdg_data_dirs;
-  if (env->GetVar("XDG_DATA_DIRS", &xdg_data_dirs) && !xdg_data_dirs.empty()) {
-    base::StringTokenizer tokenizer(xdg_data_dirs, ":");
-    while (tokenizer.GetNext()) {
-      search_paths.emplace_back(tokenizer.token_piece());
-    }
-  } else {
-    search_paths.push_back(base::FilePath("/usr/local/share"));
-    search_paths.push_back(base::FilePath("/usr/share"));
-  }
-
-  return search_paths;
+std::string GetXdgAppIdForWebApp(std::string app_name,
+                                 const base::FilePath& profile_path) {
+  if (base::StartsWith(app_name, web_app::kCrxAppPrefix))
+    app_name = app_name.substr(strlen(web_app::kCrxAppPrefix));
+  return GetDesktopBaseName(
+      web_app::GetAppDesktopShortcutFilename(profile_path, app_name)
+          .AsUTF8Unsafe());
 }
 
 namespace internal {
 
+std::string GetDesktopEntryStringValueFromFromDesktopFileForTest(
+    const std::string& key,
+    const std::string& shortcut_contents) {
+  return shell_integration_linux::GetDesktopEntryStringValueFromFromDesktopFile(
+      key, shortcut_contents);
+}
+
 // Get the value of NoDisplay from the [Desktop Entry] section of a .desktop
 // file, given in |shortcut_contents|. If the key is not found, returns false.
 bool GetNoDisplayFromDesktopFile(const std::string& shortcut_contents) {
-#if defined(USE_GLIB)
-  // An empty file causes a crash with glib <= 2.32, so special case here.
-  if (shortcut_contents.empty())
-    return false;
-
-  GKeyFile* key_file = g_key_file_new();
-  GError* err = NULL;
-  if (!g_key_file_load_from_data(key_file, shortcut_contents.c_str(),
-                                 shortcut_contents.size(), G_KEY_FILE_NONE,
-                                 &err)) {
-    LOG(WARNING) << "Unable to read desktop file template: " << err->message;
-    g_error_free(err);
-    g_key_file_free(key_file);
-    return false;
-  }
-
-  bool nodisplay = false;
-  char* nodisplay_c_string = g_key_file_get_string(key_file, kDesktopEntry,
-                                                   "NoDisplay", &err);
-  if (nodisplay_c_string) {
-    if (!g_strcmp0(nodisplay_c_string, "true"))
-      nodisplay = true;
-    g_free(nodisplay_c_string);
-  } else {
-    g_error_free(err);
-  }
-
-  g_key_file_free(key_file);
-  return nodisplay;
-#else
-  NOTIMPLEMENTED();
-  return false;
-#endif
+  std::string nodisplay_value =
+      shell_integration_linux::GetDesktopEntryStringValueFromFromDesktopFile(
+          "NoDisplay", shortcut_contents);
+  return nodisplay_value == "true";
 }
 
 // Gets the path to the Chrome executable or wrapper script.
@@ -388,12 +458,16 @@ std::string GetProgramClassClass(const base::CommandLine& command_line,
                                  const std::string& desktop_file_name) {
   if (command_line.HasSwitch(switches::kWmClass))
     return command_line.GetSwitchValueASCII(switches::kWmClass);
-  std::string class_class = GetDesktopBaseName(desktop_file_name);
-  if (!class_class.empty()) {
-    // Capitalize the first character like gtk does.
-    class_class[0] = base::ToUpperASCII(class_class[0]);
+  std::string desktop_base_name = GetDesktopBaseName(desktop_file_name);
+  if (auto* platform_utils =
+          ui::OzonePlatform::GetInstance()->GetPlatformUtils()) {
+    return platform_utils->GetWmWindowClass(desktop_base_name);
   }
-  return class_class;
+  if (!desktop_base_name.empty()) {
+    // Capitalize the first character like gtk does.
+    desktop_base_name[0] = base::ToUpperASCII(desktop_base_name[0]);
+  }
+  return desktop_base_name;
 }
 
 }  // namespace internal
@@ -424,7 +498,8 @@ bool GetExistingShortcutContents(base::Environment* env,
   base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
                                                 base::BlockingType::MAY_BLOCK);
 
-  std::vector<base::FilePath> search_paths = GetDataSearchLocations(env);
+  std::vector<base::FilePath> search_paths =
+      base::nix::GetXDGDataSearchLocations(env);
 
   for (std::vector<base::FilePath>::const_iterator i = search_paths.begin();
        i != search_paths.end(); ++i) {
@@ -439,28 +514,33 @@ bool GetExistingShortcutContents(base::Environment* env,
   return false;
 }
 
-base::FilePath GetWebShortcutFilename(const GURL& url) {
+std::optional<base::SafeBaseName> GetUniqueWebShortcutFilename(
+    const std::string& name) {
   // Use a prefix, because xdg-desktop-menu requires it.
   std::string filename =
-      std::string(chrome::kBrowserProcessExecutableName) + "-" + url.spec();
+      base::StrCat({chrome::kBrowserProcessExecutableName, "-", name});
   base::i18n::ReplaceIllegalCharactersInPath(&filename, '_');
+  base::ReplaceChars(filename, " \n\r", "_", &filename);
+  std::optional<base::SafeBaseName> opt_base_name_no_extension =
+      base::SafeBaseName::Create(filename);
+  // There should never be any path separators, as
+  // `ReplaceIllegalCharactersInPath` removes them.
+  CHECK(opt_base_name_no_extension);
+  base::FilePath base_name_no_extension = opt_base_name_no_extension->path();
 
   base::FilePath desktop_path;
-  if (!base::PathService::Get(base::DIR_USER_DESKTOP, &desktop_path))
-    return base::FilePath();
-
-  base::FilePath filepath = desktop_path.Append(filename);
-  base::FilePath alternative_filepath(filepath.value() + ".desktop");
-  for (size_t i = 1; i < 100; ++i) {
-    if (base::PathExists(base::FilePath(alternative_filepath))) {
-      alternative_filepath = base::FilePath(
-          filepath.value() + "_" + base::NumberToString(i) + ".desktop");
-    } else {
-      return base::FilePath(alternative_filepath).BaseName();
-    }
+  if (!base::PathService::Get(base::DIR_USER_DESKTOP, &desktop_path)) {
+    return std::nullopt;
   }
 
-  return base::FilePath();
+  // Using DCHECK because this is a slightly expensive check. This should be
+  // guaranteed by `ReplaceIllegalCharactersInPath`.
+  DCHECK(base::i18n::IsFilenameLegal(base_name_no_extension.AsUTF16Unsafe()));
+
+  base::FilePath filepath =
+      desktop_path.Append(base_name_no_extension.AddExtension(".desktop"));
+  return base::SafeBaseName::Create(
+      base::GetUniquePathWithSuffixFormat(filepath, "_%d"));
 }
 
 std::vector<base::FilePath> GetExistingProfileShortcutFilenames(
@@ -491,23 +571,25 @@ std::vector<base::FilePath> GetExistingProfileShortcutFilenames(
   return shortcut_paths;
 }
 
-std::string GetDesktopFileContents(const base::FilePath& chrome_exe_path,
-                                   const std::string& app_name,
-                                   const GURL& url,
-                                   const std::string& extension_id,
-                                   const std::u16string& title,
-                                   const std::string& icon_name,
-                                   const base::FilePath& profile_path,
-                                   const std::string& categories,
-                                   const std::string& mime_type,
-                                   bool no_display,
-                                   const std::string& run_on_os_login_mode) {
+std::string GetDesktopFileContents(
+    const base::FilePath& chrome_exe_path,
+    const std::string& app_name,
+    const GURL& url,
+    const std::string& extension_id,
+    const std::u16string& title,
+    const std::string& icon_name,
+    const base::FilePath& profile_path,
+    const std::string& categories,
+    const std::string& mime_type,
+    bool no_display,
+    const std::string& run_on_os_login_mode,
+    std::set<web_app::DesktopActionInfo> action_info) {
   base::CommandLine cmd_line = shell_integration::CommandLineArgsForLauncher(
       url, extension_id, profile_path, run_on_os_login_mode);
   cmd_line.SetProgram(chrome_exe_path);
   return GetDesktopFileContentsForCommand(cmd_line, app_name, url, title,
                                           icon_name, categories, mime_type,
-                                          no_display);
+                                          no_display, std::move(action_info));
 }
 
 std::string GetDesktopFileContentsForCommand(
@@ -518,7 +600,8 @@ std::string GetDesktopFileContentsForCommand(
     const std::string& icon_name,
     const std::string& categories,
     const std::string& mime_type,
-    bool no_display) {
+    bool no_display,
+    std::set<web_app::DesktopActionInfo> action_info) {
 #if defined(USE_GLIB)
   // Although not required by the spec, Nautilus on Ubuntu Karmic creates its
   // launchers with an xdg-open shebang. Follow that convention.
@@ -587,6 +670,9 @@ std::string GetDesktopFileContentsForCommand(
   g_key_file_set_string(key_file, kDesktopEntry, "StartupWMClass",
                         wmclass.c_str());
 
+  SetActionsForDesktopApplication(command_line, key_file,
+                                  std::move(action_info));
+
   gsize length = 0;
   gchar* data_dump = g_key_file_to_data(key_file, &length, NULL);
   if (data_dump) {
@@ -605,6 +691,76 @@ std::string GetDesktopFileContentsForCommand(
   return output_buffer;
 #else
   NOTIMPLEMENTED();
+  return std::string();
+#endif
+}
+
+std::string GetDesktopFileContentsForUrlShortcut(
+    const std::string& title,
+    const GURL& url,
+    const base::FilePath& icon_path,
+    const base::FilePath& profile_path) {
+  CHECK(url.is_valid());
+  CHECK(!profile_path.empty());
+  CHECK(!icon_path.empty());
+#if defined(USE_GLIB)
+  base::FilePath chrome_exe_path =
+      shell_integration_linux::internal::GetChromeExePath();
+  base::CommandLine command_line =
+      shell_integration::CommandLineArgsForUrlShortcut(chrome_exe_path,
+                                                       profile_path, url);
+
+  // Although not required by the spec, Nautilus on Ubuntu Karmic creates its
+  // launchers with an xdg-open shebang. Follow that convention.
+  std::string output_buffer = std::string(kXdgOpenShebang) + "\n";
+
+  // See http://standards.freedesktop.org/desktop-entry-spec/latest/
+  GKeyFile* key_file = g_key_file_new();
+
+  // Set keys with fixed values.
+  g_key_file_set_string(key_file, kDesktopEntry, "Version", "1.0");
+  g_key_file_set_string(key_file, kDesktopEntry, "Type", "Application");
+
+  std::string final_title;
+  // Make sure no endline characters can slip in and possibly introduce
+  // additional lines (like Exec, which makes it a security risk).
+  base::ReplaceChars(title, "\n\r", "", &final_title);
+  if (final_title.empty()) {
+    final_title = url.spec();
+  }
+  g_key_file_set_string(key_file, kDesktopEntry, "Name", final_title.c_str());
+
+  std::string final_path = QuoteCommandLineForDesktopFileExec(command_line);
+  g_key_file_set_string(key_file, kDesktopEntry, "Exec", final_path.c_str());
+
+  // Set the "Icon" key.
+  g_key_file_set_string(key_file, kDesktopEntry, "Icon",
+                        icon_path.value().c_str());
+
+  g_key_file_set_string(key_file, kDesktopEntry, "URL", url.spec().c_str());
+
+  std::string comment = l10n_util::GetStringFUTF8(
+      IDS_DESKTOP_SHORTCUT_COMMENT, base::UTF8ToUTF16(url.spec()));
+  g_key_file_set_string(key_file, kDesktopEntry, "Comment", comment.c_str());
+
+  gsize length = 0;
+  gchar* data_dump = g_key_file_to_data(key_file, &length, nullptr);
+  if (data_dump) {
+    std::string_view contents(data_dump, length);
+    if (contents.starts_with('\n')) {
+      // Older versions of glib produce a leading newline. If this is the case,
+      // remove it to avoid double-newline after the shebang.
+      output_buffer += contents.substr(1);
+    } else {
+      output_buffer += contents;
+    }
+    g_free(data_dump);
+  }
+
+  g_key_file_free(key_file);
+  return output_buffer;
+#else
+  NOTREACHED();
   return std::string();
 #endif
 }
@@ -651,7 +807,7 @@ std::string GetDirectoryFileContents(const std::u16string& title,
 
 base::FilePath GetMimeTypesRegistrationFilename(
     const base::FilePath& profile_path,
-    const web_app::AppId& app_id) {
+    const webapps::AppId& app_id) {
   DCHECK(!profile_path.empty() && !app_id.empty());
 
   // Use a prefix to clearly group files created by Chrome.
@@ -668,22 +824,34 @@ base::FilePath GetMimeTypesRegistrationFilename(
 
 std::string GetMimeTypesRegistrationFileContents(
     const apps::FileHandlers& file_handlers) {
-  std::stringstream ss;
-  ss << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-        "<mime-info "
-        "xmlns=\"http://www.freedesktop.org/standards/shared-mime-info\">\n";
+  XmlWriter writer;
+
+  writer.StartWriting();
+  writer.StartElement("mime-info");
+  writer.AddAttribute("xmlns",
+                      "http://www.freedesktop.org/standards/shared-mime-info");
 
   for (const auto& file_handler : file_handlers) {
     for (const auto& accept_entry : file_handler.accept) {
-      ss << "  <mime-type type=\"" << accept_entry.mime_type + "\">\n";
-      for (const auto& file_extension : accept_entry.file_extensions)
-        ss << "    <glob pattern=\"*" << file_extension << "\"/>\n";
-      ss << "  </mime-type>\n";
+      writer.StartElement("mime-type");
+      writer.AddAttribute("type", accept_entry.mime_type);
+
+      if (!file_handler.display_name.empty()) {
+        writer.WriteElement("comment",
+                            base::UTF16ToUTF8(file_handler.display_name));
+      }
+      for (const auto& file_extension : accept_entry.file_extensions) {
+        writer.StartElement("glob");
+        writer.AddAttribute("pattern", "*" + file_extension);
+        writer.EndElement();  // "glob"
+      }
+      writer.EndElement();  // "mime-type"
     }
   }
 
-  ss << "</mime-info>\n";
-  return ss.str();
+  writer.EndElement();  // "mime-info"
+  writer.StopWriting();
+  return writer.GetWrittenString();
 }
 
 }  // namespace shell_integration_linux
@@ -694,16 +862,27 @@ bool SetAsDefaultBrowser() {
   return shell_integration_linux::SetDefaultWebClient(std::string());
 }
 
-bool SetAsDefaultProtocolClient(const std::string& protocol) {
-  return shell_integration_linux::SetDefaultWebClient(protocol);
+bool SetAsDefaultClientForScheme(const std::string& scheme) {
+  return shell_integration_linux::SetDefaultWebClient(scheme);
 }
 
-DefaultWebClientSetPermission GetDefaultWebClientSetPermission() {
-  return SET_DEFAULT_UNATTENDED;
-}
+std::u16string GetApplicationNameForScheme(const GURL& url) {
+  std::unique_ptr<base::Environment> env(base::Environment::Create());
 
-std::u16string GetApplicationNameForProtocol(const GURL& url) {
-  return u"xdg-open";
+  std::string desktop_file_contents;
+  std::string application_name;
+  base::FilePath desktop_filepath =
+      shell_integration_linux::GetDesktopFileForDefaultSchemeHandler(env.get(),
+                                                                     url);
+  if (shell_integration_linux::GetExistingShortcutContents(
+          env.get(), desktop_filepath, &desktop_file_contents)) {
+    application_name =
+        shell_integration_linux::GetDesktopEntryStringValueFromFromDesktopFile(
+            "Name", desktop_file_contents);
+  }
+
+  return application_name.empty() ? u"xdg-open"
+                                  : base::UTF8ToUTF16(application_name);
 }
 
 DefaultWebClientState GetDefaultBrowser() {
@@ -722,8 +901,17 @@ bool IsFirefoxDefaultBrowser() {
   return browser.find("irefox") != std::string::npos;
 }
 
-DefaultWebClientState IsDefaultProtocolClient(const std::string& protocol) {
-  return shell_integration_linux::GetIsDefaultWebClient(protocol);
+DefaultWebClientState IsDefaultClientForScheme(const std::string& scheme) {
+  return shell_integration_linux::GetIsDefaultWebClient(scheme);
 }
+
+namespace internal {
+
+DefaultWebClientSetPermission GetPlatformSpecificDefaultWebClientSetPermission(
+    WebClientSetMethod method) {
+  return SET_DEFAULT_UNATTENDED;
+}
+
+}  // namespace internal
 
 }  // namespace shell_integration

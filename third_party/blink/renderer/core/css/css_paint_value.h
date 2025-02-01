@@ -1,16 +1,18 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PAINT_VALUE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_PAINT_VALUE_H_
 
+#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_custom_ident_value.h"
 #include "third_party/blink/renderer/core/css/css_image_generator_value.h"
 #include "third_party/blink/renderer/core/css/css_paint_image_generator.h"
 #include "third_party/blink/renderer/core/css/css_variable_data.h"
 #include "third_party/blink/renderer/core/css/cssom/cross_thread_style_value.h"
-#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
@@ -21,7 +23,7 @@ class CORE_EXPORT CSSPaintValue : public CSSImageGeneratorValue {
   explicit CSSPaintValue(CSSCustomIdentValue* name);
   CSSPaintValue(CSSCustomIdentValue* name, bool threaded_compositing_enabled);
   CSSPaintValue(CSSCustomIdentValue* name,
-                Vector<scoped_refptr<CSSVariableData>>&);
+                HeapVector<Member<CSSVariableData>>&&);
   ~CSSPaintValue();
 
   String CustomCSSText() const;
@@ -33,7 +35,7 @@ class CORE_EXPORT CSSPaintValue : public CSSImageGeneratorValue {
   scoped_refptr<Image> GetImage(const ImageResourceObserver&,
                                 const Document&,
                                 const ComputedStyle&,
-                                const FloatSize& target_size);
+                                const gfx::SizeF& target_size);
 
   bool KnownToBeOpaque(const Document&, const ComputedStyle&) const;
 
@@ -45,7 +47,7 @@ class CORE_EXPORT CSSPaintValue : public CSSImageGeneratorValue {
       const Document&) const;
 
   const CSSStyleValueVector* GetParsedInputArgumentsForTesting() {
-    return parsed_input_arguments_;
+    return parsed_input_arguments_.Get();
   }
   void BuildInputArgumentValuesForTesting(
       Vector<std::unique_ptr<CrossThreadStyleValue>>& style_value) {
@@ -100,7 +102,7 @@ class CORE_EXPORT CSSPaintValue : public CSSImageGeneratorValue {
       generators_;
   Member<Observer> paint_image_generator_observer_;
   Member<CSSStyleValueVector> parsed_input_arguments_;
-  Vector<scoped_refptr<CSSVariableData>> argument_variable_data_;
+  HeapVector<Member<CSSVariableData>> argument_variable_data_;
   enum class OffThreadPaintState { kUnknown, kOffThread, kMainThread };
   // Indicates whether this paint worklet is composited or not. kUnknown
   // indicates that it has not been decided yet.

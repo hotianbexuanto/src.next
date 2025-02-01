@@ -1,6 +1,11 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
 
 #include "chrome/browser/ui/browser_navigator_browsertest.h"
 
@@ -9,9 +14,8 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/app/chrome_command_ids.h"
-#include "chrome/browser/autocomplete/chrome_autocomplete_provider_client.h"
+#include "chrome/browser/file_system_access/file_system_access_features.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/renderer_host/chrome_navigation_ui_data.h"
@@ -19,42 +23,55 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
+#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
+#include "chrome/browser/ui/page_info/chrome_page_info_delegate.h"
 #include "chrome/browser/ui/search/ntp_test_utils.h"
 #include "chrome/browser/ui/singleton_tabs.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/web_applications/components/web_app_helpers.h"
-#include "chrome/browser/web_applications/components/web_application_info.h"
-#include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/captive_portal/core/buildflags.h"
 #include "components/omnibox/browser/omnibox_edit_model.h"
 #include "components/omnibox/browser/omnibox_view.h"
+#include "components/omnibox/browser/tab_matcher.h"
+#include "components/policy/core/common/policy_pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/navigation_handle.h"
-#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/bindings_policy.h"
+#include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/no_renderer_crashes_assertion.h"
 #include "content/public/test/test_frame_navigation_observer.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "content/public/test/test_utils.h"
+#include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
+#include "net/test/embedded_test_server/request_handler_util.h"
+#include "net/test/scoped_mutually_exclusive_feature_list.h"
 #include "services/network/public/cpp/resource_request_body.h"
+#include "third_party/blink/public/common/features.h"
+#include "ui/display/screen_base.h"
 
 #if BUILDFLAG(ENABLE_CAPTIVE_PORTAL_DETECTION)
 #include "components/captive_portal/content/captive_portal_tab_helper.h"
 #endif
+
+#if BUILDFLAG(IS_CHROMEOS)
+#include "ash/shell.h"
+#include "ui/display/test/display_manager_test_api.h"
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 using content::WebContents;
 
@@ -72,14 +89,6 @@ GURL GetSettingsURL() {
   return GURL(chrome::kChromeUISettingsURL);
 }
 
-GURL GetWebUINewTabPage() {
-  return GURL(chrome::kChromeUINewTabPageURL);
-}
-
-GURL GetWebUINewTabPageThirdParty() {
-  return GURL(chrome::kChromeUINewTabPageThirdPartyURL);
-}
-
 GURL GetContentSettingsURL() {
   return GetSettingsURL().Resolve(chrome::kContentSettingsSubPage);
 }
@@ -95,7 +104,46 @@ void ShowSettings(Browser* browser) {
   chrome::ShowSettingsSubPageInTabbedBrowser(browser, std::string());
 }
 
+// Intercepts requests and makes them 302 to the 'redirect' query parameter
+// if it's set. If the 'popin-policy' query parameter is set, it sets the
+// 'Popin-Policy' response header to that value.
+std::unique_ptr<net::test_server::HttpResponse> PopinRequestHandler(
+    const net::test_server::HttpRequest& request) {
+  auto response = std::make_unique<net::test_server::BasicHttpResponse>();
+  response->set_content_type("text/html");
+  response->set_content("<html></html");
+  net::test_server::RequestQuery query =
+      net::test_server::ParseQuery(request.GetURL());
+  if (query.find("redirect") != query.end()) {
+    response->AddCustomHeader("Location", query["redirect"][0]);
+    response->set_code(net::HTTP_FOUND);
+  } else {
+    response->set_code(net::HTTP_OK);
+  }
+  if (query.find("popin_policy") != query.end()) {
+    std::string proposed_policy = query["popin_policy"][0];
+    // We need to fixup the dynamic port so that the policies can match.
+    base::ReplaceSubstringsAfterOffset(&proposed_policy, 0, "a.test",
+                                       "a.test:" + request.GetURL().port());
+    response->AddCustomHeader("Popin-Policy", "partitioned=" + proposed_policy);
+  }
+  return response;
+}
+
 }  // namespace
+
+BrowserNavigatorTest::BrowserNavigatorTest() {
+  scoped_feature_list_.InitWithFeatures(
+      {
+          features::kFileSystemAccessPersistentPermissions,
+          blink::features::kPartitionedPopins,
+      },
+      {});
+}
+
+void BrowserNavigatorTest::SetUpOnMainThread() {
+  host_resolver()->AddRule("*", "127.0.0.1");
+}
 
 NavigateParams BrowserNavigatorTest::MakeNavigateParams() const {
   return MakeNavigateParams(browser());
@@ -118,12 +166,13 @@ bool BrowserNavigatorTest::OpenPOSTURLInNewForegroundTabAndGetTitle(
   param.url = url;
   param.initiator_origin = url::Origin();
   param.is_renderer_initiated = !is_browser_initiated;
-  param.post_data = network::ResourceRequestBody::CreateFromBytes(
-      post_data.data(), post_data.size());
+  param.post_data = network::ResourceRequestBody::CreateFromCopyOfBytes(
+      base::as_byte_span(post_data));
 
   ui_test_utils::NavigateToURL(&param);
-  if (!param.navigated_or_inserted_contents)
+  if (!param.navigated_or_inserted_contents) {
     return false;
+  }
 
   // Navigate() should have opened the contents in new foreground tab in the
   // current Browser.
@@ -207,11 +256,13 @@ void BrowserNavigatorTest::RunDoNothingIfIncognitoIsForcedTest(
 
   // Set kIncognitoModeAvailability to FORCED.
   PrefService* prefs1 = browser->profile()->GetPrefs();
-  prefs1->SetInteger(prefs::kIncognitoModeAvailability,
-                     IncognitoModePrefs::FORCED);
+  prefs1->SetInteger(
+      policy::policy_prefs::kIncognitoModeAvailability,
+      static_cast<int>(policy::IncognitoModeAvailability::kForced));
   PrefService* prefs2 = browser->profile()->GetOriginalProfile()->GetPrefs();
-  prefs2->SetInteger(prefs::kIncognitoModeAvailability,
-                     IncognitoModePrefs::FORCED);
+  prefs2->SetInteger(
+      policy::policy_prefs::kIncognitoModeAvailability,
+      static_cast<int>(policy::IncognitoModeAvailability::kForced));
 
   // Navigate to the page.
   NavigateParams params(MakeNavigateParams(browser));
@@ -256,10 +307,23 @@ class TestNavigationUIDataObserver : public content::TestNavigationObserver {
 Browser* BrowserNavigatorTest::NavigateHelper(const GURL& url,
                                               Browser* browser,
                                               WindowOpenDisposition disposition,
-                                              bool wait_for_navigation) {
-  content::WindowedNotificationObserver observer(
-      content::NOTIFICATION_LOAD_STOP,
-      content::NotificationService::AllSources());
+                                              bool wait_for_navigation,
+                                              WebContents* expected_contents) {
+  // If this should navigate the current tab, than assume that the WebContents
+  // will be the same one.  This is a convenience for the common case.
+  if (disposition == WindowOpenDisposition::CURRENT_TAB) {
+    EXPECT_FALSE(expected_contents);
+    expected_contents = browser->tab_strip_model()->GetActiveWebContents();
+  }
+  std::optional<content::CreateAndLoadWebContentsObserver> new_tab_observer;
+  std::optional<content::LoadStopObserver> load_stop_observer;
+  if (wait_for_navigation) {
+    if (expected_contents) {
+      load_stop_observer.emplace(expected_contents);
+    } else {
+      new_tab_observer.emplace();
+    }
+  }
 
   NavigateParams params(MakeNavigateParams(browser));
   params.disposition = disposition;
@@ -267,8 +331,12 @@ Browser* BrowserNavigatorTest::NavigateHelper(const GURL& url,
   params.window_action = NavigateParams::SHOW_WINDOW;
   Navigate(&params);
 
-  if (wait_for_navigation)
-    observer.Wait();
+  if (load_stop_observer) {
+    load_stop_observer->Wait();
+  }
+  if (new_tab_observer) {
+    new_tab_observer->Wait();
+  }
 
   return params.browser;
 }
@@ -280,7 +348,7 @@ namespace {
 // Note that network URLs are not actually loaded in tests, so this also tests
 // that error pages leave the intended URL in the address bar.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_CurrentTab) {
-  ui_test_utils::NavigateToURL(browser(), GetGoogleURL());
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetGoogleURL()));
   EXPECT_EQ(GetGoogleURL(),
             browser()->tab_strip_model()->GetActiveWebContents()->GetURL());
   // We should have one window with one tab.
@@ -440,7 +508,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopup) {
   NavigateParams params(MakeNavigateParams());
   params.disposition = WindowOpenDisposition::NEW_POPUP;
-  params.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   // Wait for new popup to to load and gain focus.
   ui_test_utils::NavigateToURL(&params);
 
@@ -465,8 +533,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopup) {
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopup_ExtensionId) {
   NavigateParams params(MakeNavigateParams());
   params.disposition = WindowOpenDisposition::NEW_POPUP;
-  params.extension_app_id = "extensionappid";
-  params.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params.app_id = "extensionappid";
+  params.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   // Wait for new popup to to load and gain focus.
   ui_test_utils::NavigateToURL(&params);
 
@@ -489,12 +557,12 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopupFromPopup) {
   // Open a popup.
   NavigateParams params1(MakeNavigateParams());
   params1.disposition = WindowOpenDisposition::NEW_POPUP;
-  params1.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params1.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   Navigate(&params1);
   // Open another popup.
   NavigateParams params2(MakeNavigateParams(params1.browser));
   params2.disposition = WindowOpenDisposition::NEW_POPUP;
-  params2.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params2.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   Navigate(&params2);
 
   // Navigate() should have opened a new normal popup window.
@@ -517,7 +585,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   Browser* app_browser = CreateEmptyBrowserForApp(browser()->profile());
   NavigateParams params(MakeNavigateParams(app_browser));
   params.disposition = WindowOpenDisposition::NEW_POPUP;
-  params.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   Navigate(&params);
 
   // Navigate() should have opened a new TYPE_APP_POPUP window with no toolbar.
@@ -541,12 +609,12 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopupFromAppPopup) {
   // Open an app popup.
   NavigateParams params1(MakeNavigateParams(app_browser));
   params1.disposition = WindowOpenDisposition::NEW_POPUP;
-  params1.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params1.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   Navigate(&params1);
   // Now open another app popup.
   NavigateParams params2(MakeNavigateParams(params1.browser));
   params2.disposition = WindowOpenDisposition::NEW_POPUP;
-  params2.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params2.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   Navigate(&params2);
 
   // Navigate() should have opened a new popup app window.
@@ -576,7 +644,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopupUnfocused) {
   NavigateParams params(MakeNavigateParams());
   params.disposition = WindowOpenDisposition::NEW_POPUP;
-  params.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   params.window_action = NavigateParams::SHOW_WINDOW_INACTIVE;
   // Wait for new popup to load (and gain focus if the test fails).
   ui_test_utils::NavigateToURL(&params);
@@ -598,7 +666,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopupTrusted) {
   NavigateParams params(MakeNavigateParams());
   params.disposition = WindowOpenDisposition::NEW_POPUP;
   params.trusted_source = true;
-  params.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   // Wait for new popup to to load and gain focus.
   ui_test_utils::NavigateToURL(&params);
 
@@ -612,14 +680,15 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopupTrusted) {
 
 #if BUILDFLAG(ENABLE_CAPTIVE_PORTAL_DETECTION)
 // This test verifies that navigating with WindowOpenDisposition = NEW_POPUP
-// and is_captive_portal_popup = true results in a new WebContents where
-// is_captive_portal_window() is true.
+// and NavigateParams::CaptivePortalWindowType::kPopup results in a new
+// WebContents where is_captive_portal_window() is true.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                        Disposition_NewPopupCaptivePortal) {
   NavigateParams params(MakeNavigateParams());
   params.disposition = WindowOpenDisposition::NEW_POPUP;
-  params.is_captive_portal_popup = true;
-  params.window_bounds = gfx::Rect(0, 0, 200, 200);
+  params.captive_portal_window_type =
+      captive_portal::CaptivePortalWindowType::kPopup;
+  params.window_features.bounds = gfx::Rect(0, 0, 200, 200);
   // Wait for new popup to to load and gain focus.
   ui_test_utils::NavigateToURL(&params);
 
@@ -633,6 +702,33 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                   ->is_captive_portal_window());
 }
 #endif
+
+// This test verifies that navigating with WindowOpenDisposition = NEW_POPUP
+// and is_tab_modal_popup = true results in a new WebContents that is a popup
+// and behaves like a tab modal.
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Disposition_NewPopupTabModal) {
+  NavigateParams params(MakeNavigateParams());
+  params.disposition = WindowOpenDisposition::NEW_POPUP;
+  params.is_tab_modal_popup = true;
+  params.window_features.bounds = gfx::Rect(0, 0, 200, 200);
+  // Wait for new popup to to load and gain focus.
+  ui_test_utils::NavigateToURL(&params);
+
+  // Add a new tab.
+  chrome::AddTabAt(browser(), GURL("about:blank"), -1, true);
+
+  // Switch to the new tab.
+  browser()->tab_strip_model()->ActivateTabAt(1);
+
+  // Verify the popup window is hidden.
+  EXPECT_FALSE(params.browser->window()->IsVisible());
+
+  // Switch back to the original tab.
+  browser()->tab_strip_model()->ActivateTabAt(0);
+
+  // Verify the popup window is visible again.
+  EXPECT_TRUE(params.browser->window()->IsVisible());
+}
 
 // This test verifies that navigating with WindowOpenDisposition = NEW_WINDOW
 // always opens a new window.
@@ -661,12 +757,14 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, OutOfOrderTabSwitchTest) {
 
   NavigateHelper(singleton_url, browser(),
                  WindowOpenDisposition::NEW_FOREGROUND_TAB, true);
+  WebContents* new_tab = browser()->tab_strip_model()->GetActiveWebContents();
 
   browser()->tab_strip_model()->ActivateTabAt(
-      0, {TabStripModel::GestureType::kOther});
+      0, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
 
   NavigateHelper(singleton_url, browser(), WindowOpenDisposition::SWITCH_TO_TAB,
-                 false);
+                 false, new_tab);
 }
 
 // This test verifies the two cases of attempting to switch to a tab that no
@@ -675,43 +773,43 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, OutOfOrderTabSwitchTest) {
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, NavigateOnTabSwitchLostTest) {
   const GURL singleton_url("chrome://dino");
 
+  WebContents* tab = browser()->tab_strip_model()->GetActiveWebContents();
   NavigateHelper(singleton_url, browser(), WindowOpenDisposition::SWITCH_TO_TAB,
-                 true);
+                 true, tab);
   EXPECT_EQ(1, browser()->tab_strip_model()->count());
 
   NavigateHelper(GURL("chrome://about"), browser(),
                  WindowOpenDisposition::NEW_FOREGROUND_TAB, true);
+  int previous_tab_count = browser()->tab_strip_model()->count();
   browser()->tab_strip_model()->CloseWebContentsAt(0,
-                                                   TabStripModel::CLOSE_NONE);
+                                                   TabCloseTypes::CLOSE_NONE);
+  EXPECT_EQ(previous_tab_count - 1, browser()->tab_strip_model()->count());
+  // This expects a new WebContents, since we just closed the tab.
   NavigateHelper(singleton_url, browser(), WindowOpenDisposition::SWITCH_TO_TAB,
-                 true);
+                 true, nullptr /* expected_contents */);
   EXPECT_EQ(2, browser()->tab_strip_model()->count());
 }
 
-// This test verifies that IsTabOpenWithURL() and GetIndexOfExistingTab()
-// will not discriminate between http and https.
+// This test verifies that SWITCH_TO_TAB will switch to a tab even if the scheme
+// mismatches, as long as the rest of the URL does.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SchemeMismatchTabSwitchTest) {
-  GURL navigate_url("https://maps.google.com/");
-  GURL search_url("http://maps.google.com/");
+  GURL navigate_url("https://www.chromium.org/");
+  GURL search_url("http://www.chromium.org/");
+  GURL dino_url("chrome://dino");
 
-  // Generate history so the tab isn't closed.
-  NavigateHelper(GURL("chrome://dino/"), browser(),
-                 WindowOpenDisposition::CURRENT_TAB, true);
-
-  NavigateHelper(navigate_url, browser(),
-                 WindowOpenDisposition::NEW_BACKGROUND_TAB, true);
+  NavigateHelper(navigate_url, browser(), WindowOpenDisposition::CURRENT_TAB,
+                 true);
+  NavigateHelper(dino_url, browser(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+                 true);
 
   // We must be on another tab than the target for it to be found and
-  // switched to.
-  EXPECT_EQ(0, browser()->tab_strip_model()->active_index());
-
-  ChromeAutocompleteProviderClient client(browser()->profile());
-  EXPECT_TRUE(client.IsTabOpenWithURL(search_url, nullptr));
+  // switched to. To meet that requirement, ensure the dino tab is currently
+  // active.
+  EXPECT_EQ(1, browser()->tab_strip_model()->active_index());
 
   NavigateHelper(search_url, browser(), WindowOpenDisposition::SWITCH_TO_TAB,
                  false);
-
-  EXPECT_EQ(1, browser()->tab_strip_model()->active_index());
+  EXPECT_EQ(0, browser()->tab_strip_model()->active_index());
 }
 
 // Make sure that switching tabs preserves the post-focus state (of the
@@ -734,7 +832,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SaveAfterFocusTabSwitchTest) {
                  false);
 
   browser()->tab_strip_model()->ActivateTabAt(
-      1, {TabStripModel::GestureType::kOther});
+      1, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
 
   OmniboxView* omnibox_view = location_bar->GetOmniboxView();
   EXPECT_EQ(omnibox_view->model()->focus_state(),
@@ -743,43 +842,36 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SaveAfterFocusTabSwitchTest) {
 
 // This test verifies that we're picking the correct browser and tab to
 // switch to. It verifies that we don't recommend the active tab, and that,
-// when switching, we don't mistakenly pick the current browser.
+// when switching, we don't mistakenly pick the current browser. Note that this
+// test checks which window the new tab was created in, but does not check
+// whether the target window was activated - that would require a much slower
+// interactive UI test, since we'd have to wait for the async window activation
+// to complete to avoid flakes.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SwitchToTabCorrectWindow) {
-  const GURL singleton_url("http://maps.google.com/");
+  const GURL url1("http://example1.chromium.org");
+  const GURL url2("http://example2.chromium.org");
 
   // Make singleton tab.
-  Browser* orig_browser = NavigateHelper(
-      singleton_url, browser(), WindowOpenDisposition::CURRENT_TAB, true);
+  Browser* browser1 =
+      NavigateHelper(url1, browser(), WindowOpenDisposition::CURRENT_TAB, true);
 
   // Make a new window with different URL.
-  Browser* middle_browser =
-      NavigateHelper(GURL("http://www.google.com/"), orig_browser,
-                     WindowOpenDisposition::NEW_WINDOW, true);
-  EXPECT_NE(orig_browser, middle_browser);
+  Browser* browser2 =
+      NavigateHelper(url2, browser1, WindowOpenDisposition::NEW_WINDOW, true);
+  EXPECT_NE(browser1, browser2);
 
-  ChromeAutocompleteProviderClient client(browser()->profile());
-  // We avoid recommending the active tab, because during navigation, we
-  // actively avoid it (because the user almost certainly doesn't want to
-  // switch to the tab they're already on). While we are not on the target
-  // tab, make sure the provider client recommends our other window.
-  EXPECT_TRUE(client.IsTabOpenWithURL(singleton_url, nullptr));
-
-  // Navigate to the singleton again.
-  Browser* test_browser =
-      NavigateHelper(singleton_url, middle_browser,
-                     WindowOpenDisposition::SWITCH_TO_TAB, false);
-
-  // Make sure we chose the browser with the tab, not simply the current
-  // browser.
-  EXPECT_EQ(orig_browser, test_browser);
-  // Now that we're on the tab, make sure the provider client doesn't
-  // recommend it.
-  EXPECT_FALSE(client.IsTabOpenWithURL(singleton_url, nullptr));
+  EXPECT_EQ(browser1,
+            NavigateHelper(url1, browser2, WindowOpenDisposition::SWITCH_TO_TAB,
+                           false));
+  EXPECT_EQ(browser2,
+            NavigateHelper(url2, browser1, WindowOpenDisposition::SWITCH_TO_TAB,
+                           false));
 }
 
+// TODO(crbug.com/40806044): Reactivate the test.
 // This test verifies that "switch to tab" prefers the latest used browser,
 // if multiple exist.
-IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SwitchToTabLatestWindow) {
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, DISABLED_SwitchToTabLatestWindow) {
   // Navigate to a site.
   NavigateHelper(GURL("http://maps.google.com/"), browser(),
                  WindowOpenDisposition::CURRENT_TAB, true);
@@ -804,11 +896,9 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SwitchToTabLatestWindow) {
 // Tests that a disposition of SINGLETON_TAB cannot see outside its
 // window.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SingletonWindowLeak) {
-  Browser* browser1;
-
   // Navigate to a site.
-  browser1 = NavigateHelper(GURL("chrome://dino"), browser(),
-                            WindowOpenDisposition::CURRENT_TAB, true);
+  NavigateHelper(GURL("chrome://dino"), browser(),
+                 WindowOpenDisposition::CURRENT_TAB, true);
 
   // Navigate to a new window.
   Browser* browser2 = NavigateHelper(GURL("chrome://about"), browser(),
@@ -931,7 +1021,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SwitchToTabIncognitoLeak) {
   EXPECT_EQ(browser(), test_browser);
 }
 
-#if defined(OS_MAC) && defined(ADDRESS_SANITIZER)
+#if BUILDFLAG(IS_MAC) && defined(ADDRESS_SANITIZER)
 // Flaky on ASAN on Mac. See https://crbug.com/674497.
 #define MAYBE_Disposition_Incognito DISABLED_Disposition_Incognito
 #else
@@ -1012,13 +1102,13 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, TargetContents_ForegroundTab) {
   EXPECT_EQ(2, browser()->tab_strip_model()->count());
 }
 
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
 // This tests adding a popup with a predefined WebContents.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, DISABLED_TargetContents_Popup) {
   NavigateParams params(MakeNavigateParams());
   params.disposition = WindowOpenDisposition::NEW_POPUP;
   params.contents_to_insert = CreateWebContents(false);
-  params.window_bounds = gfx::Rect(10, 10, 500, 500);
+  params.window_features.bounds = gfx::Rect(10, 10, 500, 500);
   Navigate(&params);
 
   // Navigate() should have opened a new popup window.
@@ -1027,20 +1117,20 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, DISABLED_TargetContents_Popup) {
   EXPECT_TRUE(params.browser->window()->IsToolbarVisible());
 
   // The web platform is weird. The window bounds specified in
-  // |params.window_bounds| are used as follows:
+  // `params.window_features.bounds` are used as follows:
   // - the origin is used to position the window
   // - the size is used to size the WebContents of the window.
   // As such the position of the resulting window will always match
-  // params.window_bounds.origin(), but its size will not. We need to match
-  // the size against the selected tab's view's container size.
+  // `params.window_features.bounds.origin()`, but its size will not. We need to
+  // match the size against the selected tab's view's container size.
   // Only Windows positions the window according to
-  // |params.window_bounds.origin()| - on Mac the window is offset from the
-  // opener and on Linux it always opens at 0,0.
-  EXPECT_EQ(params.window_bounds.origin(),
+  // `params.window_features.bounds.origin()` - on Mac the window is offset from
+  // the opener and on Linux it always opens at 0,0.
+  EXPECT_EQ(params.window_features.bounds.origin(),
             params.browser->window()->GetRestoredBounds().origin());
   // All platforms should respect size however provided width > 400 (Mac has a
   // minimum window width of 400).
-  EXPECT_EQ(params.window_bounds.size(),
+  EXPECT_EQ(params.window_features.bounds.size(),
             params.navigated_or_inserted_contents->GetContainerBounds().size());
 
   // We should have two windows, the new popup and the browser() provided by the
@@ -1063,12 +1153,14 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   // There is no navigation (to about:blank or something like that).
   EXPECT_FALSE(params.contents_to_insert->IsLoading());
 
-  ASSERT_TRUE(params.contents_to_insert->GetMainFrame());
-  EXPECT_TRUE(params.contents_to_insert->GetMainFrame()->IsRenderFrameLive());
+  ASSERT_TRUE(params.contents_to_insert->GetPrimaryMainFrame());
+  EXPECT_TRUE(
+      params.contents_to_insert->GetPrimaryMainFrame()->IsRenderFrameLive());
   EXPECT_TRUE(
       params.contents_to_insert->GetController().IsInitialBlankNavigation());
-  int renderer_id =
-      params.contents_to_insert->GetMainFrame()->GetProcess()->GetID();
+  int renderer_id = params.contents_to_insert->GetPrimaryMainFrame()
+                        ->GetProcess()
+                        ->GetDeprecatedID();
 
   // We should have one window, with one tab of WebContents differ from
   // params.target_contents.
@@ -1084,9 +1176,10 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   EXPECT_EQ(browser(), params.browser);
   EXPECT_EQ(browser()->tab_strip_model()->GetActiveWebContents(),
             params.navigated_or_inserted_contents);
-  EXPECT_EQ(renderer_id, params.navigated_or_inserted_contents->GetMainFrame()
-                             ->GetProcess()
-                             ->GetID());
+  EXPECT_EQ(renderer_id,
+            params.navigated_or_inserted_contents->GetPrimaryMainFrame()
+                ->GetProcess()
+                ->GetDeprecatedID());
 
   // We should have one window, with two tabs.
   EXPECT_EQ(1u, chrome::GetTotalBrowserCount());
@@ -1102,7 +1195,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Tabstrip_InsertAtIndex) {
   NavigateParams params(MakeNavigateParams());
   params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
   params.tabstrip_index = 0;
-  params.tabstrip_add_types = TabStripModel::ADD_FORCE_INDEX;
+  params.tabstrip_add_types = AddTabTypes::ADD_FORCE_INDEX;
   Navigate(&params);
 
   // Navigate() should have inserted a new tab at slot 0 in the tabstrip.
@@ -1279,24 +1372,6 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
       GetSettingsURL(), ui::PageTransition::PAGE_TRANSITION_AUTO_BOOKMARK);
 }
 
-// This test verifies that chrome://new-tab-page isn't opened in the incognito
-// window.
-IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
-                       Disposition_WebUINewTabPage_UseNonIncognitoWindow) {
-  RunUseNonIncognitoWindowTest(
-      GetWebUINewTabPage(), ui::PageTransition::PAGE_TRANSITION_AUTO_BOOKMARK);
-}
-
-// This test verifies that chrome://new-tab-page-third-party isn't opened in the
-// incognito window.
-IN_PROC_BROWSER_TEST_F(
-    BrowserNavigatorTest,
-    Disposition_WebUINewTabPageThirdParty_UseNonIncognitoWindow) {
-  RunUseNonIncognitoWindowTest(
-      GetWebUINewTabPageThirdParty(),
-      ui::PageTransition::PAGE_TRANSITION_AUTO_BOOKMARK);
-}
-
 // This test verifies that the view-source settings page isn't opened in the
 // incognito window.
 IN_PROC_BROWSER_TEST_F(
@@ -1328,9 +1403,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                         ui::PAGE_TRANSITION_AUTO_BOOKMARK);
   params.disposition = WindowOpenDisposition::OFF_THE_RECORD;
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::CreateAndLoadWebContentsObserver observer;
     Navigate(&params);
     observer.Wait();
   }
@@ -1383,8 +1456,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, NavigateToCrashedSingletonTab) {
     content::ScopedAllowRendererCrashes scoped_allow_renderer_crashes;
 
     content::RenderFrameDeletedObserver crash_observer(
-        web_contents->GetMainFrame());
-    web_contents->GetMainFrame()->GetProcess()->Shutdown(1);
+        web_contents->GetPrimaryMainFrame());
+    web_contents->GetPrimaryMainFrame()->GetProcess()->Shutdown(1);
     crash_observer.WaitUntilDeleted();
   }
   EXPECT_TRUE(web_contents->IsCrashed());
@@ -1403,9 +1476,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, NavigateToCrashedSingletonTab) {
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                        NavigateFromDefaultToOptionsInSameTab) {
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     ShowSettings(browser());
     observer.Wait();
   }
@@ -1414,8 +1486,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
             browser()->tab_strip_model()->GetActiveWebContents()->GetURL());
 }
 
-// TODO(1024166): Timing out on linux-chromeos-dbg.
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+// TODO(crbug.com/40107334): Timing out on linux-chromeos-dbg.
+#if BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_NavigateFromBlankToOptionsInSameTab \
   DISABLED_NavigateFromBlankToOptionsInSameTab
 #else
@@ -1429,9 +1501,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   ui_test_utils::NavigateToURL(&params);
 
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     ShowSettings(browser());
     observer.Wait();
   }
@@ -1440,8 +1511,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
             browser()->tab_strip_model()->GetActiveWebContents()->GetURL());
 }
 
-// TODO(1024166): Timing out on linux-chromeos-dbg.
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+// TODO(crbug.com/40107334): Timing out on linux-chromeos-dbg.
+#if BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_NavigateFromNTPToOptionsInSameTab \
   DISABLED_NavigateFromNTPToOptionsInSameTab
 #else
@@ -1461,9 +1532,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                 ->GetLastCommittedURL());
 
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     ShowSettings(browser());
     observer.Wait();
   }
@@ -1482,9 +1552,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   EXPECT_EQ(1, browser()->tab_strip_model()->count());
 
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::CreateAndLoadWebContentsObserver observer;
     ShowSettings(browser());
     observer.Wait();
   }
@@ -1496,9 +1564,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                        NavigateFromNTPToOptionsSingleton) {
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     ShowSettings(browser());
     observer.Wait();
   }
@@ -1508,9 +1575,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   EXPECT_EQ(2, browser()->tab_strip_model()->count());
 
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     ShowSettings(browser());
     observer.Wait();
   }
@@ -1519,9 +1585,9 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
             browser()->tab_strip_model()->GetActiveWebContents()->GetURL());
 }
 
-// TODO(crbug.com/1171245): This is disabled for Mac OS due to flakiness.
-// TODO(1024166): Timing out on linux-chromeos-dbg.
-#if BUILDFLAG(IS_CHROMEOS_ASH) || defined(OS_MAC)
+// TODO(crbug.com/40166082): This is disabled for Mac OS due to flakiness.
+// TODO(crbug.com/40107334): Timing out on linux-chromeos-dbg.
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC)
 #define MAYBE_NavigateFromNTPToOptionsPageInSameTab \
   DISABLED_NavigateFromNTPToOptionsPageInSameTab
 #else
@@ -1531,9 +1597,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                        MAYBE_NavigateFromNTPToOptionsPageInSameTab) {
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     chrome::ShowSettingsSubPageInTabbedBrowser(
         browser(), chrome::kClearBrowserDataSubPage);
     observer.Wait();
@@ -1546,9 +1611,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   EXPECT_EQ(2, browser()->tab_strip_model()->count());
 
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     chrome::ShowSettingsSubPageInTabbedBrowser(
         browser(), chrome::kClearBrowserDataSubPage);
     observer.Wait();
@@ -1558,19 +1622,57 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
             browser()->tab_strip_model()->GetActiveWebContents()->GetURL());
 }
 
+#if !BUILDFLAG(IS_ANDROID)
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+                       NavigateFromPageInfoToSiteSettingsInNewTab) {
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ChromePageInfoDelegate delegate(web_contents);
+  delegate.ShowSiteSettings(web_contents->GetVisibleURL());
+  content::LoadStopObserver observer(
+      browser()->tab_strip_model()->GetActiveWebContents());
+  observer.Wait();
+
+  // Site settings opens in a new tab.
+  EXPECT_EQ(2, browser()->tab_strip_model()->count());
+  EXPECT_EQ(chrome::GetSettingsUrl(chrome::kContentSettingsSubPage),
+            browser()
+                ->tab_strip_model()
+                ->GetActiveWebContents()
+                ->GetLastCommittedURL());
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+                       NavigateFromPageInfoToSiteSettingsFileSystemInNewTab) {
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ChromePageInfoDelegate delegate(web_contents);
+  delegate.OpenContentSettingsExceptions(
+      ContentSettingsType::FILE_SYSTEM_WRITE_GUARD);
+  content::LoadStopObserver observer(
+      browser()->tab_strip_model()->GetActiveWebContents());
+  observer.Wait();
+
+  // File system site settings opens in a new tab.
+  EXPECT_EQ(2, browser()->tab_strip_model()->count());
+  EXPECT_EQ(chrome::GetSettingsUrl(chrome::kFileSystemSettingsSubpage),
+            browser()
+                ->tab_strip_model()
+                ->GetActiveWebContents()
+                ->GetLastCommittedURL());
+}
+#endif
+
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                        NavigateFromOtherTabToSingletonOptions) {
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     ShowSettings(browser());
     observer.Wait();
   }
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::CreateAndLoadWebContentsObserver observer;
     chrome::AddSelectedTabWithURL(browser(), GetGoogleURL(),
                                   ui::PAGE_TRANSITION_LINK);
     observer.Wait();
@@ -1587,16 +1689,13 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                        NavigateFromNoTabStripWindowToOptions) {
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     ShowSettings(browser());
     observer.Wait();
   }
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::CreateAndLoadWebContentsObserver observer;
     chrome::AddSelectedTabWithURL(browser(), GetGoogleURL(),
                                   ui::PAGE_TRANSITION_LINK);
     observer.Wait();
@@ -1611,44 +1710,43 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
             browser()->tab_strip_model()->GetActiveWebContents()->GetURL());
 }
 
-// TODO(1024166): Timing out on linux-chromeos-dbg.
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+// TODO(crbug.com/40107334): Timing out on linux-chromeos-dbg.
+#if BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_CloseSingletonTab DISABLED_CloseSingletonTab
 #else
 #define MAYBE_CloseSingletonTab CloseSingletonTab
 #endif
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, MAYBE_CloseSingletonTab) {
   for (int i = 0; i < 2; ++i) {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::CreateAndLoadWebContentsObserver observer;
     chrome::AddSelectedTabWithURL(browser(), GetGoogleURL(),
                                   ui::PAGE_TRANSITION_TYPED);
     observer.Wait();
   }
 
   browser()->tab_strip_model()->ActivateTabAt(
-      0, {TabStripModel::GestureType::kOther});
+      0, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
 
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     ShowSettings(browser());
     observer.Wait();
   }
 
-  EXPECT_TRUE(browser()->tab_strip_model()->CloseWebContentsAt(
-      2, TabStripModel::CLOSE_USER_GESTURE));
+  int previous_tab_count = browser()->tab_strip_model()->count();
+  browser()->tab_strip_model()->CloseWebContentsAt(
+      2, TabCloseTypes::CLOSE_USER_GESTURE);
+  EXPECT_EQ(previous_tab_count - 1, browser()->tab_strip_model()->count());
   EXPECT_EQ(0, browser()->tab_strip_model()->active_index());
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                        NavigateFromDefaultToHistoryInSameTab) {
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     chrome::ShowHistory(browser());
     observer.Wait();
   }
@@ -1657,20 +1755,11 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
             browser()->tab_strip_model()->GetActiveWebContents()->GetURL());
 }
 
-// TODO(linux_aura) http://crbug.com/163931
-#if (defined(OS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)) && defined(USE_AURA)
-#define MAYBE_NavigateFromDefaultToBookmarksInSameTab \
-  DISABLED_NavigateFromDefaultToBookmarksInSameTab
-#else
-#define MAYBE_NavigateFromDefaultToBookmarksInSameTab \
-  NavigateFromDefaultToBookmarksInSameTab
-#endif
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
-                       MAYBE_NavigateFromDefaultToBookmarksInSameTab) {
+                       NavigateFromDefaultToBookmarksInSameTab) {
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     chrome::ShowBookmarkManager(browser());
     observer.Wait();
   }
@@ -1683,9 +1772,8 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
                        NavigateFromDefaultToDownloadsInSameTab) {
   {
-    content::WindowedNotificationObserver observer(
-        content::NOTIFICATION_LOAD_STOP,
-        content::NotificationService::AllSources());
+    content::LoadStopObserver observer(
+        browser()->tab_strip_model()->GetActiveWebContents());
     chrome::ShowDownloads(browser());
     observer.Wait();
   }
@@ -1726,9 +1814,98 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, ViewSourceIsntSingleton) {
   EXPECT_EQ(-1, GetIndexOfExistingTab(browser(), singleton_params));
 }
 
+// Ensure that an incognito window invoking |view-source:| on a url forbidden in
+// incognito loads the correct url in the non-incognito window.
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, ViewSourceUrlMatching) {
+  // Open chrome://settings in the main window.
+  NavigateParams settings_params(browser(), GURL(chrome::kChromeUISettingsURL),
+                                 ui::PAGE_TRANSITION_LINK);
+  ui_test_utils::NavigateToURL(&settings_params);
+
+  // Create a new incognito window.
+  Browser* incognito_browser = CreateIncognitoBrowser();
+  EXPECT_EQ(2u, chrome::GetTotalBrowserCount());
+  EXPECT_EQ(1, browser()->tab_strip_model()->count());
+  EXPECT_EQ(1, incognito_browser->tab_strip_model()->count());
+
+  // In the Incognito window, start a navigation to the view-source page.
+  const std::string viewsource_settings_url =
+      std::string(content::kViewSourceScheme) + ":" +
+      chrome::kChromeUISettingsURL;
+  NavigateParams params(MakeNavigateParams(incognito_browser));
+  params.disposition = WindowOpenDisposition::SINGLETON_TAB;
+  params.url = GURL(viewsource_settings_url);
+  params.window_action = NavigateParams::SHOW_WINDOW;
+  params.transition = ui::PAGE_TRANSITION_AUTO_BOOKMARK;
+  Navigate(&params);
+
+  // The view-source page should be opened as a new tab in the non-incognito
+  // browser window.
+  EXPECT_NE(incognito_browser, params.browser);
+  EXPECT_EQ(browser(), params.browser);
+  EXPECT_EQ(2, browser()->tab_strip_model()->count());
+  EXPECT_EQ(viewsource_settings_url,
+            browser()->tab_strip_model()->GetActiveWebContents()->GetURL());
+}
+
+enum class SplitCacheTestCase {
+  kEnabledTripleKeyed,
+  kEnabledTriplePlusCrossSiteMainFrameNavBool,
+  kEnabledTriplePlusMainFrameNavInitiator,
+  kEnabledTriplePlusNavInitiator
+};
+const struct {
+  const SplitCacheTestCase test_case;
+  base::test::FeatureRef feature;
+} kTestCaseToFeatureMapping[] = {
+    {SplitCacheTestCase::kEnabledTriplePlusCrossSiteMainFrameNavBool,
+     net::features::kSplitCacheByCrossSiteMainFrameNavigationBoolean},
+    {SplitCacheTestCase::kEnabledTriplePlusMainFrameNavInitiator,
+     net::features::kSplitCacheByMainFrameNavigationInitiator},
+    {SplitCacheTestCase::kEnabledTriplePlusNavInitiator,
+     net::features::kSplitCacheByNavigationInitiator}};
+
+class BrowserNavigatorSplitHttpCacheTest
+    : public BrowserNavigatorTest,
+      public testing::WithParamInterface<SplitCacheTestCase> {
+ protected:
+  BrowserNavigatorSplitHttpCacheTest()
+      : split_cache_experiment_feature_list_(GetParam(),
+                                             kTestCaseToFeatureMapping) {
+    split_cache_always_enabled_feature_list_.InitAndEnableFeature(
+        net::features::kSplitCacheByNetworkIsolationKey);
+  }
+
+ private:
+  net::test::ScopedMutuallyExclusiveFeatureList
+      split_cache_experiment_feature_list_;
+  base::test::ScopedFeatureList split_cache_always_enabled_feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    BrowserNavigatorSplitHttpCacheTest,
+    testing::ValuesIn(
+        {SplitCacheTestCase::kEnabledTripleKeyed,
+         SplitCacheTestCase::kEnabledTriplePlusCrossSiteMainFrameNavBool,
+         SplitCacheTestCase::kEnabledTriplePlusMainFrameNavInitiator,
+         SplitCacheTestCase::kEnabledTriplePlusNavInitiator}),
+    [](const testing::TestParamInfo<SplitCacheTestCase>& info) {
+      switch (info.param) {
+        case (SplitCacheTestCase::kEnabledTripleKeyed):
+          return "TripleKeyed";
+        case (SplitCacheTestCase::kEnabledTriplePlusCrossSiteMainFrameNavBool):
+          return "TriplePlusCrossSiteMainFrameNavigationBool";
+        case (SplitCacheTestCase::kEnabledTriplePlusMainFrameNavInitiator):
+          return "TriplePlusMainFrameNavigationInitiator";
+        case (SplitCacheTestCase::kEnabledTriplePlusNavInitiator):
+          return "TriplePlusNavigationInitiator";
+      }
+    });
+
 // This test verifies that browser initiated navigations can send requests
 // using POST.
-IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+IN_PROC_BROWSER_TEST_P(BrowserNavigatorSplitHttpCacheTest,
                        SendBrowserInitiatedRequestUsingPOST) {
   // Uses a test sever to verify POST request.
   ASSERT_TRUE(embedded_test_server()->Start());
@@ -1745,7 +1922,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
 
 // This test verifies that renderer initiated navigations can also send requests
 // using POST.
-IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+IN_PROC_BROWSER_TEST_P(BrowserNavigatorSplitHttpCacheTest,
                        SendRendererInitiatedRequestUsingPOST) {
   // Uses a test sever to verify POST request.
   ASSERT_TRUE(embedded_test_server()->Start());
@@ -1796,62 +1973,6 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   EXPECT_EQ(base::UTF8ToUTF16(expected_url), omnibox_view->GetText());
 }
 
-#if defined(OS_LINUX) || defined(OS_CHROMEOS) || defined(OS_WIN)
-// Flaky on Win and Linux. See https://crbug.com/1044335.
-#define MAYBE_ReuseRVHWithWebUI DISABLED_ReuseRVHWithWebUI
-#else
-#define MAYBE_ReuseRVHWithWebUI ReuseRVHWithWebUI
-#endif
-
-// Test that there's no crash when a navigation to a WebUI page reuses an
-// existing swapped out RenderViewHost.  Previously, this led to a browser
-// process crash in WebUI pages that use MojoWebUIController, which tried to
-// use the RenderViewHost's GetMainFrame() when it was invalid in
-// RenderViewCreated(). See https://crbug.com/627027.
-IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, MAYBE_ReuseRVHWithWebUI) {
-  ASSERT_TRUE(embedded_test_server()->Start());
-
-  // Visit a WebUI page with bindings.
-  GURL webui_url(chrome::kChromeUIOmniboxURL);
-  ui_test_utils::NavigateToURL(browser(), webui_url);
-
-  // window.open a new tab.  This will keep the chrome://omnibox process alive
-  // once we navigate away from it.
-  content::WindowedNotificationObserver windowed_observer(
-      content::NOTIFICATION_LOAD_STOP,
-      content::NotificationService::AllSources());
-  ASSERT_TRUE(content::ExecuteScript(
-      browser()->tab_strip_model()->GetActiveWebContents(),
-      "window.open('" + webui_url.spec() + "');"));
-  windowed_observer.Wait();
-  content::NavigationController* controller =
-      content::Source<content::NavigationController>(windowed_observer.source())
-          .ptr();
-  WebContents* popup = controller->DeprecatedGetWebContents();
-  ASSERT_TRUE(popup);
-  EXPECT_EQ(2, browser()->tab_strip_model()->count());
-  content::RenderViewHost* webui_rvh =
-      popup->GetMainFrame()->GetRenderViewHost();
-  content::RenderFrameHost* webui_rfh = popup->GetMainFrame();
-  EXPECT_TRUE(content::BINDINGS_POLICY_MOJO_WEB_UI &
-              webui_rfh->GetEnabledBindings());
-
-  // Navigate to another page in the popup.
-  GURL nonwebui_url(embedded_test_server()->GetURL("a.com", "/title1.html"));
-  ui_test_utils::NavigateToURL(browser(), nonwebui_url);
-  EXPECT_NE(webui_rvh, popup->GetMainFrame()->GetRenderViewHost());
-
-  // Go back in the popup.  This should finish without crashing and should
-  // reuse the old RenderViewHost.
-  content::TestNavigationObserver back_load_observer(popup);
-  controller->GoBack();
-  back_load_observer.Wait();
-  EXPECT_EQ(webui_rvh, popup->GetMainFrame()->GetRenderViewHost());
-  EXPECT_TRUE(webui_rvh->IsRenderViewLive());
-  EXPECT_TRUE(content::BINDINGS_POLICY_MOJO_WEB_UI &
-              webui_rvh->GetMainFrame()->GetEnabledBindings());
-}
-
 // Test that main frame navigations generate a NavigationUIData with the
 // correct disposition.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, MainFrameNavigationUIData) {
@@ -1886,6 +2007,7 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, MainFrameNavigationUIData) {
   }
 }
 
+// TODO(crbug.com/40806044): Reactivate the test.
 // Test that subframe navigations generate a NavigationUIData with no
 // disposition.
 IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SubFrameNavigationUIData) {
@@ -1895,18 +2017,12 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SubFrameNavigationUIData) {
 
   // Load page with iframe.
   const GURL url1 = embedded_test_server()->GetURL("/iframe.html");
-  ui_test_utils::NavigateToURL(browser(), url1);
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
 
   // Retrieve the iframe.
-  const auto all_frames = tab->GetAllFrames();
-  const content::RenderFrameHost* main_frame = tab->GetMainFrame();
-  DCHECK_EQ(2u, all_frames.size());
-  auto it = std::find_if(all_frames.begin(), all_frames.end(),
-                         [main_frame](content::RenderFrameHost* frame) {
-                           return main_frame != frame;
-                         });
-  DCHECK(it != all_frames.end());
-  content::RenderFrameHost* iframe = *it;
+  content::RenderFrameHost* main_frame = tab->GetPrimaryMainFrame();
+  content::RenderFrameHost* iframe = ChildFrameAt(main_frame, 0);
+  ASSERT_TRUE(iframe);
 
   // Navigate the iframe with a disposition.
   NavigateParams params(browser(),
@@ -1924,6 +2040,800 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, SubFrameNavigationUIData) {
   // navigations.
   EXPECT_EQ(WindowOpenDisposition::CURRENT_TAB,
             observer.last_navigation_ui_data()->window_open_disposition());
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+                       Disposition_PictureInPicture_Open) {
+  // Create the params for the PiP request.
+  auto pip_options = blink::mojom::PictureInPictureWindowOptions::New();
+
+  // The WebContents holds the parameters from the PiP request.
+  WebContents::CreateParams web_contents_params(browser()->profile());
+  web_contents_params.picture_in_picture_options = *pip_options;
+
+  // Opening a picture in picture window should create a new browser.
+  NavigateParams params = MakeNavigateParams(browser());
+  params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
+
+  // Navigate to https:// page
+  // TODO: Extract the navigation logic to a helper function?
+  net::EmbeddedTestServer https_server(net::EmbeddedTestServer::TYPE_HTTPS);
+  ASSERT_TRUE(https_server.Start());
+  WebContents* tab = browser()->tab_strip_model()->GetActiveWebContents();
+  const GURL url = https_server.GetURL("/simple.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  params.source_contents = tab;
+  params.contents_to_insert = WebContents::Create(web_contents_params);
+  Navigate(&params);
+
+  // Should not re-use the browser.
+  EXPECT_NE(browser(), params.browser);
+  EXPECT_TRUE(params.browser->is_type_picture_in_picture());
+  EXPECT_EQ(params.browser->app_name(), std::string());
+
+  // The window should have respected the initial aspect ratio.
+  const gfx::Rect override_bounds = params.browser->override_bounds();
+  const double aspect_ratio = static_cast<double>(override_bounds.width()) /
+                              static_cast<double>(override_bounds.height());
+  EXPECT_DOUBLE_EQ(1.0, aspect_ratio);
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+                       Disposition_PictureInPicture_OpenWithWidthAndHeight) {
+  // Set width/height with equivalent aspect ratio of 1.0.
+  auto pip_options = blink::mojom::PictureInPictureWindowOptions::New();
+  pip_options->width = 500;
+  pip_options->height = 500;
+  WebContents::CreateParams web_contents_params(browser()->profile());
+  web_contents_params.picture_in_picture_options = *pip_options;
+
+  // Opening a picture in picture window should create a new browser.
+  NavigateParams params = MakeNavigateParams(browser());
+  params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
+
+  // Navigate to https:// page
+  net::EmbeddedTestServer https_server(net::EmbeddedTestServer::TYPE_HTTPS);
+  ASSERT_TRUE(https_server.Start());
+  WebContents* tab = browser()->tab_strip_model()->GetActiveWebContents();
+  const GURL url = https_server.GetURL("/simple.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  params.source_contents = tab;
+  params.contents_to_insert = WebContents::Create(web_contents_params);
+  Navigate(&params);
+
+  // The bounds may have small adjustments for window decorations, since the
+  // requested size is the inner size.  We can't get the inner size easily here,
+  // so just verify that the aspect ratio is closer to 1.0 than 0.5.
+  const gfx::Rect override_bounds = params.browser->override_bounds();
+  float expected_aspect_ratio =
+      static_cast<float>(override_bounds.width()) / override_bounds.height();
+  EXPECT_NEAR(expected_aspect_ratio, 1.0f, 0.2);
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+                       Disposition_PictureInPicture_CantFromAnotherPip) {
+  // Make sure that attempting to open a picture in picture window from a
+  // picture in picture window fails.
+  Browser* pip = CreateEmptyBrowserForType(Browser::TYPE_PICTURE_IN_PICTURE,
+                                           browser()->profile());
+  NavigateParams params = MakeNavigateParams(pip);
+  params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
+
+  // Navigate to https:// page
+  net::EmbeddedTestServer https_server(net::EmbeddedTestServer::TYPE_HTTPS);
+  ASSERT_TRUE(https_server.Start());
+  WebContents* tab = browser()->tab_strip_model()->GetActiveWebContents();
+  const GURL url = https_server.GetURL("/simple.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  params.source_contents = tab;
+  Navigate(&params);
+
+  EXPECT_EQ(params.browser, nullptr);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    BrowserNavigatorTest,
+    Disposition_PictureInPicture_CantWithoutASourceContents) {
+  // Opening a picture-in-picture window without a source contents should fail.
+  Browser* pip = CreateEmptyBrowserForType(Browser::TYPE_PICTURE_IN_PICTURE,
+                                           browser()->profile());
+  NavigateParams params = MakeNavigateParams(pip);
+  params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
+  params.source_contents = nullptr;
+
+  EXPECT_EQ(nullptr, Navigate(&params));
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+                       Disposition_PictureInPicture_CantFromAboutBlank) {
+  // Disallow document PiP windows from opening from a window with about:blank
+  // in the omnibox
+  Browser* pip = CreateEmptyBrowserForType(Browser::TYPE_PICTURE_IN_PICTURE,
+                                           browser()->profile());
+  NavigateParams params = MakeNavigateParams(pip);
+  params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
+
+  WebContents* tab = browser()->tab_strip_model()->GetActiveWebContents();
+  EXPECT_TRUE(tab->GetLastCommittedURL().IsAboutBlank());
+  params.source_contents = tab;
+  EXPECT_EQ(nullptr, Navigate(&params));
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+                       Disposition_PictureInPicture_OpenFromWebApp) {
+  // Create the params for the PiP request that looks like it's from an app.
+  auto pip_options = blink::mojom::PictureInPictureWindowOptions::New();
+
+  // The WebContents holds the parameters from the PiP request.
+  WebContents::CreateParams web_contents_params(browser()->profile());
+  web_contents_params.picture_in_picture_options = *pip_options;
+
+  // Opening a picture in picture window should create a new browser.
+  NavigateParams params = MakeNavigateParams(browser());
+  params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
+  params.app_id = "extensionappid";
+
+  // Navigate to https:// page
+  net::EmbeddedTestServer https_server(net::EmbeddedTestServer::TYPE_HTTPS);
+  ASSERT_TRUE(https_server.Start());
+  WebContents* tab = browser()->tab_strip_model()->GetActiveWebContents();
+  const GURL url = https_server.GetURL("/simple.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  params.source_contents = tab;
+  params.contents_to_insert = WebContents::Create(web_contents_params);
+  Navigate(&params);
+
+  // Should be PiP, with an app name.
+  EXPECT_TRUE(params.browser->is_type_picture_in_picture());
+  EXPECT_NE(params.browser->app_name(), std::string());
+}
+
+// Test typical popin UX flow.
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, Popin) {
+  // Setup server.
+  embedded_https_test_server().SetSSLConfig(
+      net::EmbeddedTestServer::CERT_TEST_NAMES);
+  embedded_https_test_server().RegisterRequestHandler(
+      base::BindRepeating(&PopinRequestHandler));
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  // Navigate to a.test.
+  const GURL url = embedded_https_test_server().GetURL("a.test", "/empty.html");
+  content::WebContents* tab_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+  chrome::AddTabAt(browser(), GURL("about:blank"), -1, false);
+
+  // Open popin and verify it's visible.
+  content::WebContentsAddedObserver new_tab_observer;
+  EXPECT_TRUE(content::ExecJs(
+      tab_web_contents,
+      "window.open('" + url.spec() + "?popin_policy=*', '_blank', 'popin')"));
+  content::WebContents* popin_web_contents = new_tab_observer.GetWebContents();
+  BrowserWindow* popin_browser_window =
+      BrowserWindow::FindBrowserWindowWithWebContents(popin_web_contents);
+  EXPECT_NE(popin_browser_window, browser()->window());
+  EXPECT_TRUE(popin_browser_window->IsVisible());
+
+  // Focus new tab and verify popin is hidden.
+  browser()->tab_strip_model()->ActivateTabAt(1);
+  EXPECT_FALSE(popin_browser_window->IsVisible());
+
+  // Switch back to original tab and verify popin is visible.
+  browser()->tab_strip_model()->ActivateTabAt(0);
+  EXPECT_TRUE(popin_browser_window->IsVisible());
+}
+
+// Verify that a popin must not be insecure nor opened from an insecure context.
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, PopinContext) {
+  // Setup servers.
+  embedded_https_test_server().SetSSLConfig(
+      net::EmbeddedTestServer::CERT_TEST_NAMES);
+  embedded_https_test_server().RegisterRequestHandler(
+      base::BindRepeating(&PopinRequestHandler));
+  ASSERT_TRUE(embedded_https_test_server().Start());
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  // Navigate to a.test.
+  const GURL secure_url =
+      embedded_https_test_server().GetURL("a.test", "/empty.html");
+  const GURL insecure_url =
+      embedded_test_server()->GetURL("a.test", "/empty.html");
+  content::WebContents* tab_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  // Insecure context and insecure popin fails.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), insecure_url));
+  auto result = content::ExecJs(tab_web_contents,
+                                "window.open('" + insecure_url.spec() +
+                                    "?popin_policy=*', '_blank', 'popin')");
+  EXPECT_TRUE(strstr(result.message(),
+                     "Partitioned popins must be opened from https URLs."));
+
+  // Secure context and insecure popin fails.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), secure_url));
+  result = content::ExecJs(tab_web_contents,
+                           "window.open('" + insecure_url.spec() +
+                               "?popin_policy=*', '_blank', 'popin')");
+  EXPECT_TRUE(
+      strstr(result.message(), "Partitioned popins can only open https URLs."));
+
+  // Insecure context and secure popin fails.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), insecure_url));
+  result = content::ExecJs(tab_web_contents,
+                           "window.open('" + secure_url.spec() +
+                               "?popin_policy=*', '_blank', 'popin')");
+  EXPECT_TRUE(strstr(result.message(),
+                     "Partitioned popins must be opened from https URLs."));
+
+  // Secure context and secure popin succeeds.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), secure_url));
+  EXPECT_TRUE(content::ExecJs(tab_web_contents,
+                              "window.open('" + secure_url.spec() +
+                                  "?popin_policy=*', '_blank', 'popin')"));
+}
+
+// Test that a popin cannot be opened from a popin
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, PopinRecursion) {
+  // Setup server.
+  embedded_https_test_server().SetSSLConfig(
+      net::EmbeddedTestServer::CERT_TEST_NAMES);
+  embedded_https_test_server().RegisterRequestHandler(
+      base::BindRepeating(&PopinRequestHandler));
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  // Navigate to a.test.
+  const GURL url = embedded_https_test_server().GetURL("a.test", "/empty.html");
+  content::WebContents* tab_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  // Open popin and verify it's visible.
+  content::WebContentsAddedObserver new_tab_observer;
+  EXPECT_TRUE(content::ExecJs(
+      tab_web_contents,
+      "window.open('" + url.spec() + "?popin_policy=*', '_blank', 'popin')"));
+  content::WebContents* popin_web_contents = new_tab_observer.GetWebContents();
+  BrowserWindow* popin_browser_window =
+      BrowserWindow::FindBrowserWindowWithWebContents(popin_web_contents);
+  EXPECT_NE(popin_browser_window, browser()->window());
+  EXPECT_TRUE(popin_browser_window->IsVisible());
+
+  // Opening a popin from a popin fails.
+  const auto& result = content::ExecJs(
+      popin_web_contents,
+      "window.open('" + url.spec() + "?popin_policy=*', '_blank', 'popin')");
+  EXPECT_TRUE(strstr(result.message(),
+                     "Partitioned popins cannot open their own popin."));
+}
+
+// Test only one popin can be opened by a given context.
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, PopinLimit) {
+  // Setup server.
+  embedded_https_test_server().SetSSLConfig(
+      net::EmbeddedTestServer::CERT_TEST_NAMES);
+  embedded_https_test_server().RegisterRequestHandler(
+      base::BindRepeating(&PopinRequestHandler));
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  // Navigate to a.test.
+  const GURL url = embedded_https_test_server().GetURL("a.test", "/empty.html");
+  content::WebContents* tab_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  // Open popin and succeed.
+  content::WebContents* popin_web_contents;
+  {
+    content::WebContentsAddedObserver new_tab_observer;
+    EXPECT_TRUE(content::ExecJs(
+        tab_web_contents,
+        "window.open('" + url.spec() + "?popin_policy=*', '_blank', 'popin')"));
+    popin_web_contents = new_tab_observer.GetWebContents();
+    EXPECT_TRUE(popin_web_contents);
+  }
+
+  // Try to open second popin and fail.
+  content::WebContentsConsoleObserver console_observer(tab_web_contents);
+  console_observer.SetPattern(
+      "Only one partitioned popin can be active at a time.");
+  EXPECT_FALSE(
+      content::EvalJs(tab_web_contents,
+                      "window.open('" + url.spec() +
+                          "?popin_policy=*', '_blank', 'popin') != null")
+          .ExtractBool());
+  ASSERT_TRUE(console_observer.Wait());
+
+  // Close first popin and verify second can be opened.
+  BrowserWindow::FindBrowserWindowWithWebContents(popin_web_contents)->Close();
+  EXPECT_TRUE(
+      content::EvalJs(tab_web_contents,
+                      "window.open('" + url.spec() +
+                          "?popin_policy=*', '_blank', 'popin') != null")
+          .ExtractBool());
+}
+
+// Test that a popin cannot navigate to an HTTP page
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, PopinHttpNavigation) {
+  // Setup servers.
+  embedded_https_test_server().SetSSLConfig(
+      net::EmbeddedTestServer::CERT_TEST_NAMES);
+  embedded_https_test_server().RegisterRequestHandler(
+      base::BindRepeating(&PopinRequestHandler));
+  ASSERT_TRUE(embedded_https_test_server().Start());
+  embedded_test_server()->RegisterRequestHandler(
+      base::BindRepeating(&PopinRequestHandler));
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  // Navigate to a.test.
+  const GURL secure_url =
+      embedded_https_test_server().GetURL("a.test", "/empty.html");
+  const GURL insecure_url =
+      embedded_test_server()->GetURL("a.test", "/empty.html");
+  content::WebContents* tab_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), secure_url));
+
+  // Open popin and verify it's visible.
+  content::WebContentsAddedObserver new_tab_observer;
+  EXPECT_TRUE(content::ExecJs(tab_web_contents,
+                              "window.open('" + secure_url.spec() +
+                                  "?popin_policy=*', '_blank', 'popin')"));
+  content::WebContents* popin_web_contents = new_tab_observer.GetWebContents();
+  BrowserWindow* popin_browser_window =
+      BrowserWindow::FindBrowserWindowWithWebContents(popin_web_contents);
+  EXPECT_NE(popin_browser_window, browser()->window());
+  EXPECT_TRUE(popin_browser_window->IsVisible());
+
+  // Navigating to HTTP page fails.
+  content::TestNavigationObserver nav_observer(popin_web_contents);
+  EXPECT_TRUE(content::ExecJs(
+      popin_web_contents,
+      "window.location = '" + insecure_url.spec() + "?popin_policy=*';"));
+  nav_observer.Wait();
+  EXPECT_EQ("chrome-error://chromewebdata/",
+            content::EvalJs(popin_web_contents, "window.location.href")
+                .ExtractString());
+}
+
+struct PopinPolicyTestParams {
+  std::string description;
+  std::string relative_url;
+  bool policy_allows;
+};
+
+class BrowserNavigatorPopinPolicyTest
+    : public BrowserNavigatorTest,
+      public testing::WithParamInterface<
+          std::tuple<PopinPolicyTestParams, PopinPolicyTestParams>> {
+ public:
+  PopinPolicyTestParams redirect_case() { return std::get<0>(GetParam()); }
+  PopinPolicyTestParams target_case() { return std::get<1>(GetParam()); }
+};
+
+// Test that the HTTP response header `Popin-Policy` is respected.
+IN_PROC_BROWSER_TEST_P(BrowserNavigatorPopinPolicyTest, PopinPolicy) {
+  // Setup server.
+  embedded_https_test_server().SetSSLConfig(
+      net::EmbeddedTestServer::CERT_TEST_NAMES);
+  embedded_https_test_server().RegisterRequestHandler(
+      base::BindRepeating(&PopinRequestHandler));
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  // Navigate to a.test.
+  const GURL url = embedded_https_test_server().GetURL("a.test", "/empty.html");
+  content::WebContents* tab_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  // Open the popin and ensure the target page only loads if both the redirect
+  // and the target policy permit it.
+  SCOPED_TRACE(redirect_case().description + " -> " +
+               target_case().description);
+  content::WebContentsAddedObserver new_tab_observer;
+  content::TestNavigationObserver nav_observer(nullptr);
+  nav_observer.StartWatchingNewWebContents();
+  EXPECT_TRUE(content::ExecJs(
+      tab_web_contents, "window.open('" +
+                            embedded_https_test_server()
+                                .GetURL("a.test", redirect_case().relative_url)
+                                .spec() +
+                            embedded_https_test_server()
+                                .GetURL("a.test", target_case().relative_url)
+                                .spec() +
+                            "', '_blank', 'popin')"));
+  content::WebContents* popin_web_contents = new_tab_observer.GetWebContents();
+  EXPECT_TRUE(popin_web_contents);
+  nav_observer.Wait();
+  EXPECT_EQ((redirect_case().policy_allows && target_case().policy_allows)
+                ? "a.test"
+                : "chromewebdata",
+            content::EvalJs(popin_web_contents, "window.location.hostname")
+                .ExtractString());
+  BrowserWindow::FindBrowserWindowWithWebContents(popin_web_contents)->Close();
+}
+
+// Test all policy combinations.
+INSTANTIATE_TEST_SUITE_P(
+    /*no prefix*/,
+    BrowserNavigatorPopinPolicyTest,
+    testing::Combine(
+        testing::ValuesIn(std::vector<PopinPolicyTestParams>{
+            {
+                "unset policy",
+                "/empty.html?redirect=",
+                /*policy_allows*/ false,
+            },
+            {
+                "wildcard policy",
+                "/empty.html?popin_policy=*&redirect=",
+                /*policy_allows*/ true,
+            },
+            {
+                "none policy",
+                "/empty.html?popin_policy=()&redirect=",
+                /*policy_allows*/ false,
+            },
+            {
+                "origin a policy",
+                "/empty.html?popin_policy=(\"https://a.test/\")&redirect=",
+                /*policy_allows*/ true,
+            },
+            {
+                "origin b policy",
+                "/empty.html?popin_policy=(\"https://b.test/\")&redirect=",
+                /*policy_allows*/ false,
+            },
+            {
+                "origins policy",
+                "/empty.html?popin_policy=(\"https://a.test/\" "
+                "\"https://b.test/\")&redirect=",
+                /*policy_allows*/ true,
+            },
+        }),
+        testing::ValuesIn(std::vector<PopinPolicyTestParams>{
+            {
+                "unset policy",
+                "/empty.html",
+                /*policy_allows*/ false,
+            },
+            {
+                "wildcard policy",
+                "/empty.html?popin_policy=*",
+                /*policy_allows*/ true,
+            },
+            {
+                "none policy",
+                "/empty.html?popin_policy=()",
+                /*policy_allows*/ false,
+            },
+            {
+                "origin a policy",
+                "/empty.html?popin_policy=(\"https://a.test/\")",
+                /*policy_allows*/ true,
+            },
+            {
+                "origin b policy",
+                "/empty.html?popin_policy=(\"https://b.test/\")",
+                /*policy_allows*/ false,
+            },
+            {
+                "origins policy",
+                "/empty.html?popin_policy=(\"https://a.test/\" "
+                "\"https://b.test/\")",
+                /*policy_allows*/ true,
+            },
+        })));
+
+class BrowserNavigatorPopinPolicyBypassTest
+    : public BrowserNavigatorTest,
+      public testing::WithParamInterface<bool> {
+ public:
+  BrowserNavigatorPopinPolicyBypassTest() {
+    scoped_feature_list_.InitWithFeatureStates({
+        {blink::features::kPartitionedPopins, true},
+        {features::kPartitionedPopinsHeaderPolicyBypass,
+         PartitionedPopinsHeaderPolicyBypass()},
+    });
+  }
+  bool PartitionedPopinsHeaderPolicyBypass() const { return GetParam(); }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// kPartitionedPopinsHeaderPolicyBypass allows `Popin-Policy` to be bypassed.
+IN_PROC_BROWSER_TEST_P(BrowserNavigatorPopinPolicyBypassTest,
+                       PopinPolicyBypass) {
+  // Setup server.
+  embedded_https_test_server().SetSSLConfig(
+      net::EmbeddedTestServer::CERT_TEST_NAMES);
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  // Navigate to a.test.
+  const GURL url = embedded_https_test_server().GetURL("a.test", "/empty.html");
+  content::WebContents* tab_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  // Open the popin to a page without the policy and see it succeed if the
+  // feature was enabled.
+  content::WebContentsAddedObserver new_tab_observer;
+  content::TestNavigationObserver nav_observer(nullptr);
+  nav_observer.StartWatchingNewWebContents();
+  EXPECT_TRUE(content::ExecJs(tab_web_contents, "window.open('" + url.spec() +
+                                                    "', '_blank', 'popin')"));
+  content::WebContents* popin_web_contents = new_tab_observer.GetWebContents();
+  EXPECT_TRUE(popin_web_contents);
+  nav_observer.Wait();
+  EXPECT_EQ(PartitionedPopinsHeaderPolicyBypass() ? "a.test" : "chromewebdata",
+            content::EvalJs(popin_web_contents, "window.location.hostname")
+                .ExtractString());
+  BrowserWindow::FindBrowserWindowWithWebContents(popin_web_contents)->Close();
+}
+
+// Test all policy combinations.
+INSTANTIATE_TEST_SUITE_P(
+    /*no prefix*/,
+    BrowserNavigatorPopinPolicyBypassTest,
+    testing::Bool());
+
+// Test that a popin cannot navigate to an HTTP page
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest, PopinHttpRedirectNavigation) {
+  // Setup servers.
+  embedded_https_test_server().SetSSLConfig(
+      net::EmbeddedTestServer::CERT_TEST_NAMES);
+  embedded_https_test_server().RegisterRequestHandler(
+      base::BindRepeating(&PopinRequestHandler));
+  ASSERT_TRUE(embedded_https_test_server().Start());
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  // Navigate to a.test.
+  const GURL secure_url =
+      embedded_https_test_server().GetURL("a.test", "/empty.html");
+  const GURL insecure_url =
+      embedded_test_server()->GetURL("a.test", "/empty.html");
+  content::WebContents* tab_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), secure_url));
+
+  // Open popin and verify it's visible.
+  content::WebContentsAddedObserver new_tab_observer;
+  EXPECT_TRUE(content::ExecJs(tab_web_contents,
+                              "window.open('" + secure_url.spec() +
+                                  "?popin_policy=*', '_blank', 'popin')"));
+  content::WebContents* popin_web_contents = new_tab_observer.GetWebContents();
+  BrowserWindow* popin_browser_window =
+      BrowserWindow::FindBrowserWindowWithWebContents(popin_web_contents);
+  EXPECT_NE(popin_browser_window, browser()->window());
+  EXPECT_TRUE(popin_browser_window->IsVisible());
+
+  // Navigating to HTTPS page that redirects to HTTP which fails.
+  content::TestNavigationObserver nav_observer(popin_web_contents);
+  EXPECT_TRUE(content::ExecJs(
+      popin_web_contents,
+      "window.location = '" + secure_url.spec() +
+          "?popin_policy=*&redirect=" + insecure_url.spec() + "';"));
+  nav_observer.Wait();
+  EXPECT_EQ("chrome-error://chromewebdata/",
+            content::EvalJs(popin_web_contents, "window.location.href")
+                .ExtractString());
+}
+
+// Verify that a popin can access cookies when opened from a cross-site context.
+// This scenario was crashing before crrev.com/c/5845330
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+                       PopinFromCrossSiteContextAccessCookies) {
+  // Setup server.
+  embedded_https_test_server().SetSSLConfig(
+      net::EmbeddedTestServer::CERT_TEST_NAMES);
+  embedded_https_test_server().ServeFilesFromSourceDirectory(
+      "content/test/data");
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  // Navigate to a.test.
+  const GURL url_a = embedded_https_test_server().GetURL(
+      "a.test", "/partitioned_popins/iframe_allow_popins.html");
+  content::WebContents* tab_web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url_a));
+
+  // Set a cookie for a.test.
+  const GURL url_a_root = embedded_https_test_server().GetURL("a.test", "/");
+  ASSERT_TRUE(
+      content::SetCookie(tab_web_contents->GetBrowserContext(), url_a_root,
+                         "site_a=cookie;Partitioned;SameSite=None;Secure"));
+
+  // Navigate the iframe to b.test and set a cookie.
+  const GURL url_b =
+      embedded_https_test_server().GetURL("b.test", "/empty.html");
+  ASSERT_TRUE(NavigateIframeToURL(tab_web_contents, "test", url_b));
+  const GURL url_b_root = embedded_https_test_server().GetURL("b.test", "/");
+  ASSERT_TRUE(
+      content::SetCookie(tab_web_contents->GetBrowserContext(), url_b_root,
+                         "site_b=cookie;Partitioned;SameSite=None;Secure"));
+
+  // Open popin from the iframe and succeed.
+  content::RenderFrameHost* iframe =
+      ChildFrameAt(tab_web_contents->GetPrimaryMainFrame(), 0);
+  ASSERT_TRUE(iframe);
+  content::WebContentsAddedObserver new_tab_observer;
+  content::TestNavigationObserver nav_observer(nullptr);
+  nav_observer.StartWatchingNewWebContents();
+  EXPECT_TRUE(content::ExecJs(
+      iframe, "window.open('" + url_a.spec() + "', '_blank', 'popin')"));
+  content::WebContents* popin_web_contents = new_tab_observer.GetWebContents();
+  EXPECT_TRUE(popin_web_contents);
+  nav_observer.Wait();
+
+  // Read cookies from the popin. Only site A's cookie should be accessible.
+  EXPECT_EQ(content::EvalJs(popin_web_contents, "document.cookie"),
+            "site_a=cookie");
+}
+
+#if !BUILDFLAG(IS_CHROMEOS)
+// This class extends the basic logic in display::ScreenBase to allow us to mock
+// the call to `GetDisplayNearestWindow`. This provides a way to ensure that the
+// opener window is on a specific display, since the display::ScreenBase
+// implementation only ever returns the primary display. This is not needed on
+// Ash since Ash uses DisplayManagerTestApi.
+class MockScreen : public display::ScreenBase {
+ public:
+  MockScreen() = default;
+  MockScreen(const MockScreen&) = delete;
+  const MockScreen& operator=(const MockScreen&) = delete;
+  ~MockScreen() override { display::Screen::SetScreenInstance(nullptr); }
+
+  void Init() { display::Screen::SetScreenInstance(this); }
+
+  // display::ScreenBase:
+  display::Display GetDisplayNearestWindow(
+      gfx::NativeWindow window) const override {
+    return display_nearest_window_.value_or(
+        display::ScreenBase::GetDisplayNearestWindow(window));
+  }
+
+  void set_display_nearest_window(display::Display display) {
+    display_nearest_window_ = display;
+  }
+
+ private:
+  std::optional<display::Display> display_nearest_window_;
+};
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+
+// Windows has assumptions that the screen is a ScreenWin, which causes a crash
+// when we inject the MockScreen.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_BrowserNavigatorTestWithMockScreen \
+  DISABLED_BrowserNavigatorTestWithMockScreen
+#else
+#define MAYBE_BrowserNavigatorTestWithMockScreen \
+  BrowserNavigatorTestWithMockScreen
+#endif
+class MAYBE_BrowserNavigatorTestWithMockScreen : public BrowserNavigatorTest {
+ public:
+  void SetScreenInstance() override {
+#if BUILDFLAG(IS_CHROMEOS)
+    // Use the default. See `SetUpOnMainThread`.
+    BrowserNavigatorTest::SetScreenInstance();
+#else
+    mock_screen_.Init();
+    mock_screen_.display_list().AddDisplay({1, gfx::Rect(0, 0, 800, 700)},
+                                           display::DisplayList::Type::PRIMARY);
+    mock_screen_.display_list().AddDisplay(
+        {2, gfx::Rect(800, 0, 800, 700)},
+        display::DisplayList::Type::NOT_PRIMARY);
+    ASSERT_EQ(2, display::Screen::GetScreen()->GetNumDisplays());
+#endif  // BUILDFLAG(IS_CHROMEOS)
+  }
+
+  void SetUpOnMainThread() override {
+#if BUILDFLAG(IS_CHROMEOS)
+    // This has to happen later than `SetScreenInstance` as the Ash shell does
+    // not exist yet.
+    display::test::DisplayManagerTestApi(ash::Shell::Get()->display_manager())
+        .UpdateDisplay("0+0-800x700,800+0-800x700");
+    ASSERT_EQ(2, display::Screen::GetScreen()->GetNumDisplays());
+#endif  // BUILDFLAG(IS_CHROMEOS)
+  }
+
+#if !BUILDFLAG(IS_CHROMEOS)
+ protected:
+  MockScreen& mock_screen() { return mock_screen_; }
+
+ private:
+  MockScreen mock_screen_;
+#endif  // !BUILDFLAG(IS_CHROMEOS)
+};
+
+IN_PROC_BROWSER_TEST_F(MAYBE_BrowserNavigatorTestWithMockScreen,
+                       Disposition_PictureInPicture_OpensInSameDisplay) {
+  // Create the params for the PiP request.
+  auto pip_options = blink::mojom::PictureInPictureWindowOptions::New();
+  pip_options->width = 500;
+  pip_options->height = 400;
+  WebContents::CreateParams web_contents_params(browser()->profile());
+  web_contents_params.picture_in_picture_options = *pip_options;
+
+  // Ensure we have the two displays.
+  ASSERT_EQ(2, display::Screen::GetScreen()->GetNumDisplays());
+  auto display1 = display::Screen::GetScreen()->GetAllDisplays()[0];
+  auto display2 = display::Screen::GetScreen()->GetAllDisplays()[1];
+
+  {
+#if BUILDFLAG(IS_CHROMEOS)
+    // Put the opener on display 1.
+    browser()->window()->SetBounds(display1.work_area());
+#else
+    // Make the MockScreen report the opener as being on display 1.
+    mock_screen().set_display_nearest_window(display1);
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
+    // Ensure that the opener is on display 1.
+    const auto opener_display =
+        display::Screen::GetScreen()->GetDisplayNearestWindow(
+            browser()->window()->GetNativeWindow());
+    ASSERT_EQ(display1.id(), opener_display.id());
+
+    // Open the PiP window.
+    NavigateParams params = MakeNavigateParams(browser());
+    params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
+
+    // Navigate to https:// page
+    net::EmbeddedTestServer https_server(net::EmbeddedTestServer::TYPE_HTTPS);
+    ASSERT_TRUE(https_server.Start());
+    WebContents* tab = browser()->tab_strip_model()->GetActiveWebContents();
+    const GURL url = https_server.GetURL("/simple.html");
+    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+    params.source_contents = tab;
+    params.contents_to_insert = WebContents::Create(web_contents_params);
+    Navigate(&params);
+
+    // The PiP window should also be on display 1.
+    EXPECT_TRUE(
+        display1.work_area().Contains(params.browser->window()->GetBounds()));
+  }
+
+  {
+#if BUILDFLAG(IS_CHROMEOS)
+    // Put the opener on display 2.
+    browser()->window()->SetBounds(display2.work_area());
+#else
+    // Make the MockScreen report the opener as being on display 2.
+    mock_screen().set_display_nearest_window(display2);
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
+    // Ensure that the opener is on display 2.
+    const auto opener_display =
+        display::Screen::GetScreen()->GetDisplayNearestWindow(
+            browser()->window()->GetNativeWindow());
+    ASSERT_EQ(display2.id(), opener_display.id());
+
+    // Open the PiP window.
+    NavigateParams params = MakeNavigateParams(browser());
+    params.disposition = WindowOpenDisposition::NEW_PICTURE_IN_PICTURE;
+
+    // Navigate to https:// page
+    net::EmbeddedTestServer https_server(net::EmbeddedTestServer::TYPE_HTTPS);
+    ASSERT_TRUE(https_server.Start());
+    WebContents* tab = browser()->tab_strip_model()->GetActiveWebContents();
+    const GURL url = https_server.GetURL("/simple.html");
+    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+    params.source_contents = tab;
+    params.contents_to_insert = WebContents::Create(web_contents_params);
+    Navigate(&params);
+
+    // The PiP window should also be on display 2.
+    EXPECT_TRUE(
+        display2.work_area().Contains(params.browser->window()->GetBounds()));
+  }
 }
 
 }  // namespace

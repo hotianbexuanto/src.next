@@ -1,16 +1,14 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/external_registry_loader_win.h"
 
 #include "base/compiler_specific.h"
-#include "base/macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/run_loop.h"
 #include "base/values.h"
 #include "content/public/test/browser_task_environment.h"
-#include "extensions/common/value_builder.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -22,7 +20,11 @@ const char kDummyRegistryKey[] = "dummyId";
 
 class TestExternalRegistryLoader : public ExternalRegistryLoader {
  public:
-  TestExternalRegistryLoader() {}
+  TestExternalRegistryLoader() = default;
+
+  TestExternalRegistryLoader(const TestExternalRegistryLoader&) = delete;
+  TestExternalRegistryLoader& operator=(const TestExternalRegistryLoader&) =
+      delete;
 
   using ExternalRegistryLoader::StartLoading;
 
@@ -34,48 +36,50 @@ class TestExternalRegistryLoader : public ExternalRegistryLoader {
   std::vector<int> GetPrefsTestIds() { return prefs_test_ids_; }
 
  private:
-  ~TestExternalRegistryLoader() override {}
+  ~TestExternalRegistryLoader() override = default;
 
-  std::unique_ptr<base::DictionaryValue> LoadPrefsOnBlockingThread() override {
-    return DictionaryBuilder().Set(kDummyRegistryKey, id_++).Build();
+  base::Value::Dict LoadPrefsOnBlockingThread() override {
+    return base::Value::Dict().Set(kDummyRegistryKey, id_++);
   }
-  void LoadFinished(std::unique_ptr<base::DictionaryValue> prefs) override {
+  void LoadFinished(base::Value::Dict prefs) override {
     ++load_finished_count_;
     ASSERT_LE(load_finished_count_, 2);
 
-    ASSERT_TRUE(prefs);
-    int prefs_test_id = -1;
-    EXPECT_TRUE(prefs->GetInteger(kDummyRegistryKey, &prefs_test_id));
-    prefs_test_ids_.push_back(prefs_test_id);
+    auto prefs_test_id = prefs.FindInt(kDummyRegistryKey);
+    ASSERT_TRUE(prefs_test_id.has_value());
+    prefs_test_ids_.push_back(*prefs_test_id);
 
     ExternalRegistryLoader::LoadFinished(std::move(prefs));
 
-    if (load_finished_count_ == 2)
+    if (load_finished_count_ == 2) {
       run_loop_.Quit();
+    }
   }
 
   base::RunLoop run_loop_;
   int load_finished_count_ = 0;
   int id_ = 0;
   std::vector<int> prefs_test_ids_;
-
-  DISALLOW_COPY_AND_ASSIGN(TestExternalRegistryLoader);
 };
 
 }  // namespace
 
 class ExternalRegistryLoaderUnittest : public testing::Test {
  public:
-  ExternalRegistryLoaderUnittest() {}
-  ~ExternalRegistryLoaderUnittest() override {}
+  ExternalRegistryLoaderUnittest() = default;
+
+  ExternalRegistryLoaderUnittest(const ExternalRegistryLoaderUnittest&) =
+      delete;
+  ExternalRegistryLoaderUnittest& operator=(
+      const ExternalRegistryLoaderUnittest&) = delete;
+
+  ~ExternalRegistryLoaderUnittest() override = default;
 
  protected:
   void RunUntilIdle() { task_environment_.RunUntilIdle(); }
 
  private:
   content::BrowserTaskEnvironment task_environment_;
-
-  DISALLOW_COPY_AND_ASSIGN(ExternalRegistryLoaderUnittest);
 };
 
 // Tests that calling StartLoading() more than once doesn't fail DCHECK.

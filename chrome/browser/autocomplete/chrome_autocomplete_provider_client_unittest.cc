@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,14 +21,15 @@ namespace {
 class TestSchemeClassifier : public AutocompleteSchemeClassifier {
  public:
   TestSchemeClassifier() = default;
+
+  TestSchemeClassifier(const TestSchemeClassifier&) = delete;
+  TestSchemeClassifier& operator=(const TestSchemeClassifier&) = delete;
+
   ~TestSchemeClassifier() override = default;
 
   // Overridden from AutocompleteInputSchemeClassifier:
   metrics::OmniboxInputType GetInputTypeForScheme(
       const std::string& scheme) const override;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(TestSchemeClassifier);
 };
 
 metrics::OmniboxInputType TestSchemeClassifier::GetInputTypeForScheme(

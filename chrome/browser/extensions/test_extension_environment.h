@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,13 +8,13 @@
 #include <memory>
 #include <string>
 
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "extensions/common/extension.h"
 
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
 #include "ui/base/win/scoped_ole_initializer.h"
 #endif
 
@@ -54,9 +54,33 @@ class TestExtensionEnvironment {
     kInheritExistingTaskEnvironment,
   };
 
-  explicit TestExtensionEnvironment(Type type = Type::kWithTaskEnvironment);
+  enum class ProfileCreationType {
+    kNoCreate,
+    kCreate,
+  };
+
+#if BUILDFLAG(IS_CHROMEOS)
+  enum class OSSetupType {
+    kNoSetUp,
+    kSetUp,
+  };
+#endif
+
+  explicit TestExtensionEnvironment(
+      Type type = Type::kWithTaskEnvironment,
+      ProfileCreationType profile_creation_type = ProfileCreationType::kCreate
+#if BUILDFLAG(IS_CHROMEOS)
+      ,
+      OSSetupType os_setup_type = OSSetupType::kSetUp
+#endif
+  );
+
+  TestExtensionEnvironment(const TestExtensionEnvironment&) = delete;
+  TestExtensionEnvironment& operator=(const TestExtensionEnvironment&) = delete;
 
   ~TestExtensionEnvironment();
+
+  void SetProfile(TestingProfile* profile);
 
   TestingProfile* profile() const;
 
@@ -75,11 +99,11 @@ class TestExtensionEnvironment {
   // The Extension has a default manifest of {name: "Extension",
   // version: "1.0", manifest_version: 2}, and values in
   // manifest_extra override these defaults.
-  const Extension* MakeExtension(const base::Value& manifest_extra);
+  const Extension* MakeExtension(const base::Value::Dict& manifest_extra);
 
   // Use a specific extension ID instead of the default generated in
   // Extension::Create.
-  const Extension* MakeExtension(const base::Value& manifest_extra,
+  const Extension* MakeExtension(const base::Value::Dict& manifest_extra,
                                  const std::string& id);
 
   // Generates a valid packaged app manifest with the given ID. If |install|
@@ -102,18 +126,24 @@ class TestExtensionEnvironment {
   // |profile_| and destroyed after |profile_|.
   const std::unique_ptr<content::BrowserTaskEnvironment> task_environment_;
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if BUILDFLAG(IS_CHROMEOS)
   const std::unique_ptr<ChromeOSEnv> chromeos_env_;
 #endif
 
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   ui::ScopedOleInitializer ole_initializer_;
 #endif
 
+  // TestingProfile may be created or not, depending on the caller's
+  // configuration passed to the constructor. This member keeps the ownership
+  // if the mode is kCreate.
   std::unique_ptr<TestingProfile> profile_;
-  ExtensionService* extension_service_ = nullptr;
 
-  DISALLOW_COPY_AND_ASSIGN(TestExtensionEnvironment);
+  // Unowned pointer of Profile for this test environment. May be the pointer
+  // to `profile_`, or may be injected by SetProfile().
+  raw_ptr<TestingProfile, DanglingUntriaged> profile_ptr_;
+
+  raw_ptr<ExtensionService, DanglingUntriaged> extension_service_ = nullptr;
 };
 
 }  // namespace extensions

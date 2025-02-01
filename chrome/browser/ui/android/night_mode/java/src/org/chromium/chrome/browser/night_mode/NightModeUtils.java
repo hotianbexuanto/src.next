@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,13 +14,13 @@ import android.view.ContextThemeWrapper;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.StyleRes;
-import androidx.annotation.VisibleForTesting;
 
-import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
+import org.chromium.base.ResettersForTesting;
+import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 
-/**
- * Helper methods for supporting night mode.
- */
+import java.util.LinkedHashSet;
+
+/** Helper methods for supporting night mode. */
 public class NightModeUtils {
     private static Boolean sNightModeSupportedForTest;
 
@@ -42,26 +42,27 @@ public class NightModeUtils {
      * @param inNightMode Whether night mode should be set on the activity.
      * @param newConfig The new {@link Configuration} from
      *                  {@link Activity#onConfigurationChanged(Configuration)}.
-     * @param themeResId The {@link StyleRes} for the theme of the specified activity.
+     * @param themeResIds An ordered set of {@link StyleRes} of the themes applied to the activity.
      */
-    public static void updateConfigurationForNightMode(Activity activity, boolean inNightMode,
-            Configuration newConfig, @StyleRes int themeResId) {
+    public static void updateConfigurationForNightMode(
+            Activity activity,
+            boolean inNightMode,
+            Configuration newConfig,
+            LinkedHashSet<Integer> themeResIds) {
         final int uiNightMode =
                 inNightMode ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO;
 
         if (uiNightMode == (newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK)) return;
 
-        // This is to fix styles on floating action bar when the new configuration UI mode doesn't
-        // match the actual UI mode we need, and NightModeStateProvider#shouldOverrideConfiguration
-        // returns false. May check if this is needed on newer version of support library.
-        // See https://crbug.com/935731.
-        if (themeResId != 0) {
-            // Re-apply theme so that the correct configuration is used.
-            activity.setTheme(themeResId);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                // On M+ setTheme only applies if the themeResId actually changes. Force applying
-                // the styles so that the correct styles are used.
+        // Rebase the theme against the new configuration, so the attributes get resolved to the
+        // correct colors based on the night mode setting. See https://crbug.com/1280540.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            activity.getTheme().rebase();
+        } else {
+            // Theme#rebase() is only available on APIs 29+ and the support library of the method
+            // isn't guaranteed to succeed on older versions. So, we manually re-apply all the
+            // cached styles.
+            for (Integer themeResId : themeResIds) {
                 activity.getTheme().applyStyle(themeResId, true);
             }
         }
@@ -81,8 +82,10 @@ public class NightModeUtils {
         // Override uiMode so that UIs created by the DecorView (e.g. context menu, floating
         // action bar) get the correct theme. May check if this is needed on newer version
         // of support library. See https://crbug.com/935731.
-        final int nightMode = provider.isInNightMode() ? Configuration.UI_MODE_NIGHT_YES
-                                                       : Configuration.UI_MODE_NIGHT_NO;
+        final int nightMode =
+                provider.isInNightMode()
+                        ? Configuration.UI_MODE_NIGHT_YES
+                        : Configuration.UI_MODE_NIGHT_NO;
         config.uiMode = nightMode | (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK);
         return true;
     }
@@ -115,7 +118,7 @@ public class NightModeUtils {
      * @return The current theme setting. See {@link ThemeType}.
      */
     public static @ThemeType int getThemeSetting() {
-        int userSetting = SharedPreferencesManager.getInstance().readInt(UI_THEME_SETTING, -1);
+        int userSetting = ChromeSharedPreferences.getInstance().readInt(UI_THEME_SETTING, -1);
         if (userSetting == -1) {
             return isNightModeDefaultToLight() ? ThemeType.LIGHT : ThemeType.SYSTEM_DEFAULT;
         } else {
@@ -123,9 +126,9 @@ public class NightModeUtils {
         }
     }
 
-    @VisibleForTesting
     public static void setNightModeSupportedForTesting(@Nullable Boolean nightModeSupported) {
         sNightModeSupportedForTest = nightModeSupported;
+        ResettersForTesting.register(() -> sNightModeSupportedForTest = null);
     }
 
     /**

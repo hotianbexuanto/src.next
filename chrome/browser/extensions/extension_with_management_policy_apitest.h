@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,9 +23,16 @@ struct ManagementPolicyRequestLog {
 class ExtensionApiTestWithManagementPolicy
     : public extensions::ExtensionApiTest {
  public:
-  ExtensionApiTestWithManagementPolicy();
+  explicit ExtensionApiTestWithManagementPolicy(
+      ContextType context_type = ContextType::kFromManifest);
+
+  ExtensionApiTestWithManagementPolicy(
+      const ExtensionApiTestWithManagementPolicy&) = delete;
+  ExtensionApiTestWithManagementPolicy& operator=(
+      const ExtensionApiTestWithManagementPolicy&) = delete;
+
   ~ExtensionApiTestWithManagementPolicy() override;
-  void SetUpInProcessBrowserTestFixture() override;
+  void SetUp() override;
   void SetUpOnMainThread() override;
 
  protected:
@@ -36,8 +43,6 @@ class ExtensionApiTestWithManagementPolicy
 
  private:
   std::vector<ManagementPolicyRequestLog> request_log_;
-
-  DISALLOW_COPY_AND_ASSIGN(ExtensionApiTestWithManagementPolicy);
 };
 
 #endif  // CHROME_BROWSER_EXTENSIONS_EXTENSION_WITH_MANAGEMENT_POLICY_APITEST_H_

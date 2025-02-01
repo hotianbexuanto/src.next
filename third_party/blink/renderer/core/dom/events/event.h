@@ -25,11 +25,14 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_EVENTS_EVENT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_EVENTS_EVENT_H_
 
+#include "base/check_op.h"
+#include "base/time/time.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/events/event_dispatch_result.h"
-#include "third_party/blink/renderer/core/probe/async_task_id.h"
+#include "third_party/blink/renderer/core/probe/async_task_context.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
-#include "third_party/blink/renderer/platform/heap/handle.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 namespace blink {
@@ -41,7 +44,6 @@ class EventPath;
 class EventTarget;
 class Node;
 class ScriptState;
-class ScriptValue;
 
 class CORE_EXPORT Event : public ScriptWrappable {
   DEFINE_WRAPPERTYPEINFO();
@@ -57,17 +59,11 @@ class CORE_EXPORT Event : public ScriptWrappable {
     kNo,
   };
 
-  enum PhaseType {
+  enum class PhaseType : uint8_t {
     kNone = 0,
     kCapturingPhase = 1,
     kAtTarget = 2,
     kBubblingPhase = 3
-  };
-
-  enum RailsMode {
-    kRailsModeFree = 0,
-    kRailsModeHorizontal = 1,
-    kRailsModeVertical = 2
   };
 
   enum class ComposedMode {
@@ -75,7 +71,7 @@ class CORE_EXPORT Event : public ScriptWrappable {
     kScoped,
   };
 
-  enum class PassiveMode {
+  enum class PassiveMode : uint8_t {
     // Not passive, default initialized.
     kNotPassiveDefault,
     // Not passive, explicitly specified.
@@ -106,6 +102,14 @@ class CORE_EXPORT Event : public ScriptWrappable {
 
   static Event* Create(const AtomicString& type, const EventInit* initializer) {
     return MakeGarbageCollected<Event>(type, initializer);
+  }
+
+  // Creates event objects for use with fenced frames. Because timestamps are
+  // a potential privacy leak from the frame to its embedder, clamp all of them
+  // to the epoch.
+  static Event* CreateFenced(const AtomicString& type) {
+    return MakeGarbageCollected<Event>(type, Bubbles::kYes, Cancelable::kYes,
+                                       base::TimeTicks::UnixEpoch());
   }
 
   Event();
@@ -154,19 +158,19 @@ class CORE_EXPORT Event : public ScriptWrappable {
 
   void SetRelatedTargetIfExists(EventTarget* related_target);
 
-  uint8_t eventPhase() const { return event_phase_; }
-  void SetEventPhase(uint8_t event_phase) { event_phase_ = event_phase; }
+  PhaseType eventPhase() const { return event_phase_; }
+  void SetEventPhase(PhaseType event_phase) { event_phase_ = event_phase; }
 
   void SetFireOnlyCaptureListenersAtTarget(
       bool fire_only_capture_listeners_at_target) {
-    DCHECK_EQ(event_phase_, kAtTarget);
+    DCHECK_EQ(event_phase_, PhaseType::kAtTarget);
     fire_only_capture_listeners_at_target_ =
         fire_only_capture_listeners_at_target;
   }
 
   void SetFireOnlyNonCaptureListenersAtTarget(
       bool fire_only_non_capture_listeners_at_target) {
-    DCHECK_EQ(event_phase_, kAtTarget);
+    DCHECK_EQ(event_phase_, PhaseType::kAtTarget);
     fire_only_non_capture_listeners_at_target_ =
         fire_only_non_capture_listeners_at_target;
   }
@@ -217,6 +221,7 @@ class CORE_EXPORT Event : public ScriptWrappable {
   virtual bool IsGestureEvent() const;
   virtual bool IsWheelEvent() const;
   virtual bool IsPointerEvent() const;
+  virtual bool IsHighlightPointerEvent() const;
   virtual bool IsInputEvent() const;
   virtual bool IsCompositionEvent() const;
 
@@ -253,17 +258,16 @@ class CORE_EXPORT Event : public ScriptWrappable {
   const Event* UnderlyingEvent() const { return underlying_event_.Get(); }
   void SetUnderlyingEvent(const Event*);
 
-  bool HasEventPath() { return event_path_; }
+  bool HasEventPath() const { return static_cast<bool>(event_path_); }
   EventPath& GetEventPath() const {
     DCHECK(event_path_);
     return *event_path_;
   }
   void InitEventPath(Node&);
 
-  ScriptValue path(ScriptState*) const;
   HeapVector<Member<EventTarget>> composedPath(ScriptState*) const;
 
-  bool IsBeingDispatched() const { return eventPhase(); }
+  bool IsBeingDispatched() const { return eventPhase() != PhaseType::kNone; }
 
   // Events that must not leak across isolated world, similar to how
   // ErrorEvent behaves, can override this method.
@@ -273,6 +277,15 @@ class CORE_EXPORT Event : public ScriptWrappable {
 
   bool isTrusted() const { return is_trusted_; }
   void SetTrusted(bool value) { is_trusted_ = value; }
+
+  // The spec (https://www.w3.org/TR/uievents/#legacy-uievent-event-order)
+  // says that `click` events and `keydown` events should generated *trusted*
+  // `DOMActivate` and `click` synthetic events. That is so support legacy
+  // behavior that click events would run default event handler behavior.
+  // This function checks whether the provided event is "actually" trusted,
+  // in that its underlying events are all trusted, including the originating
+  // event.
+  bool IsFullyTrusted() const;
 
   void SetComposed(bool composed) {
     DCHECK(!IsBeingDispatched());
@@ -306,7 +319,7 @@ class CORE_EXPORT Event : public ScriptWrappable {
 
   virtual DispatchEventResult DispatchEvent(EventDispatcher&);
 
-  probe::AsyncTaskId* async_task_id() { return &async_task_id_; }
+  probe::AsyncTaskContext* async_task_context() { return &async_task_context_; }
 
   void Trace(Visitor*) const override;
 
@@ -318,40 +331,35 @@ class CORE_EXPORT Event : public ScriptWrappable {
   PassiveMode HandlingPassive() const { return handling_passive_; }
 
  private:
-  enum EventPathMode { kEmptyAfterDispatch, kNonEmptyAfterDispatch };
-
-  HeapVector<Member<EventTarget>> PathInternal(ScriptState*,
-                                               EventPathMode) const;
-
   AtomicString type_;
-  unsigned bubbles_ : 1;
-  unsigned cancelable_ : 1;
-  unsigned composed_ : 1;
+  bool bubbles_ : 1;
+  bool cancelable_ : 1;
+  bool composed_ : 1;
 
-  unsigned propagation_stopped_ : 1;
-  unsigned immediate_propagation_stopped_ : 1;
-  unsigned default_prevented_ : 1;
-  unsigned default_handled_ : 1;
-  unsigned was_initialized_ : 1;
-  unsigned is_trusted_ : 1;
+  bool propagation_stopped_ : 1;
+  bool immediate_propagation_stopped_ : 1;
+  bool default_prevented_ : 1;
+  bool default_handled_ : 1;
+  bool was_initialized_ : 1;
+  bool is_trusted_ : 1;
 
   // Whether preventDefault was called on uncancelable event.
-  unsigned prevent_default_called_on_uncancelable_event_ : 1;
+  bool prevent_default_called_on_uncancelable_event_ : 1;
 
   // Whether any of listeners have thrown an exception or not.
   // Corresponds to |legacyOutputDidListenersThrowFlag| in DOM standard.
   // https://dom.spec.whatwg.org/#dispatching-events
   // https://dom.spec.whatwg.org/#concept-event-listener-inner-invoke
-  unsigned legacy_did_listeners_throw_flag_ : 1;
+  bool legacy_did_listeners_throw_flag_ : 1;
 
-  unsigned fire_only_capture_listeners_at_target_ : 1;
-  unsigned fire_only_non_capture_listeners_at_target_ : 1;
+  bool fire_only_capture_listeners_at_target_ : 1;
+  bool fire_only_non_capture_listeners_at_target_ : 1;
 
-  unsigned copy_event_path_from_underlying_event_ : 1;
+  bool copy_event_path_from_underlying_event_ : 1;
 
   PassiveMode handling_passive_;
-  uint8_t event_phase_;
-  probe::AsyncTaskId async_task_id_;
+  PhaseType event_phase_;
+  probe::AsyncTaskContext async_task_context_;
 
   Member<EventTarget> current_target_;
   Member<EventTarget> target_;

@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,10 +8,11 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "net/base/completion_once_callback.h"
 #include "net/base/completion_repeating_callback.h"
@@ -22,14 +23,14 @@
 #include "net/base/privacy_mode.h"
 #include "net/base/request_priority.h"
 #include "net/cookies/canonical_cookie.h"
+#include "net/cookies/cookie_setting_override.h"
+#include "net/cookies/cookie_util.h"
 #include "net/filter/source_stream.h"
 #include "net/http/http_raw_request_headers.h"
 #include "net/http/http_response_headers.h"
 #include "net/socket/connection_attempts.h"
-#include "net/url_request/redirect_info.h"
 #include "net/url_request/referrer_policy.h"
 #include "net/url_request/url_request.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace net {
@@ -41,7 +42,7 @@ class HttpRequestHeaders;
 class HttpResponseInfo;
 class IOBuffer;
 struct LoadTimingInfo;
-class ProxyServer;
+class ProxyChain;
 class SSLCertRequestInfo;
 class SSLInfo;
 class SSLPrivateKey;
@@ -52,6 +53,10 @@ class X509Certificate;
 class NET_EXPORT URLRequestJob {
  public:
   explicit URLRequestJob(URLRequest* request);
+
+  URLRequestJob(const URLRequestJob&) = delete;
+  URLRequestJob& operator=(const URLRequestJob&) = delete;
+
   virtual ~URLRequestJob();
 
   // Returns the request that owns this job.
@@ -111,6 +116,9 @@ class NET_EXPORT URLRequestJob {
   // Get the number of bytes sent over the network. The values returned by this
   // will never decrease over the lifetime of the URLRequestJob.
   virtual int64_t GetTotalSentBytes() const;
+
+  // Get the number of bytes of the body received from network.
+  virtual int64_t GetReceivedBodyBytes() const;
 
   // Called to fetch the current load state for the job.
   virtual LoadState GetLoadState() const;
@@ -190,10 +198,6 @@ class NET_EXPORT URLRequestJob {
   // Continue processing the request ignoring the last error.
   virtual void ContinueDespiteLastError();
 
-  void FollowDeferredRedirect(
-      const absl::optional<std::vector<std::string>>& removed_headers,
-      const absl::optional<net::HttpRequestHeaders>& modified_headers);
-
   // Returns true if the Job is done producing response data and has called
   // NotifyDone on the request.
   bool is_done() const { return done_; }
@@ -227,10 +231,10 @@ class NET_EXPORT URLRequestJob {
   // canceled by an explicit NetworkDelegate::NotifyURLRequestDestroyed() call.
   virtual void NotifyURLRequestDestroyed();
 
-  // Populates |out| with the connection attempts made at the socket layer in
-  // the course of executing the URLRequestJob. Should be called after the job
-  // has failed or the response headers have been received.
-  virtual void GetConnectionAttempts(ConnectionAttempts* out) const;
+  // Returns the connection attempts made at the socket layer in the course of
+  // executing the URLRequestJob. Should be called after the job has failed or
+  // the response headers have been received.
+  virtual ConnectionAttempts GetConnectionAttempts() const;
 
   // Sets a callback that will be invoked each time the request is about to
   // be actually sent and will receive actual request headers that are about
@@ -238,7 +242,7 @@ class NET_EXPORT URLRequestJob {
   virtual void SetRequestHeadersCallback(RequestHeadersCallback callback) {}
 
   // Sets a callback that will be invoked each time the response is received
-  // from the remote party with the actual response headers recieved.
+  // from the remote party with the actual response headers received.
   virtual void SetResponseHeadersCallback(ResponseHeadersCallback callback) {}
 
   // Sets a callback that will be invoked each time a 103 Early Hints response
@@ -247,9 +251,23 @@ class NET_EXPORT URLRequestJob {
   virtual void SetEarlyResponseHeadersCallback(
       ResponseHeadersCallback callback) {}
 
+  // Set a callback that will be invoked when a matching shared dictionary is
+  // available to determine whether it is allowed to use the dictionary.
+  virtual void SetIsSharedDictionaryReadAllowedCallback(
+      base::RepeatingCallback<bool()> callback) {}
+
   // Causes the current transaction always close its active socket on
   // destruction. Does not close H2/H3 sessions.
   virtual void CloseConnectionOnDestruction();
+
+  // Returns true if the request should be retried after activating Storage
+  // Access.
+  virtual bool NeedsRetryWithStorageAccess();
+
+  // Set a SharedDictionaryGetter which will be used to get a shared
+  // dictionary for this request.
+  virtual void SetSharedDictionaryGetter(
+      SharedDictionaryGetter dictionary_getter) {}
 
   // Given |policy|, |original_referrer|, and |destination|, returns the
   // referrer URL mandated by |request|'s referrer policy.
@@ -279,16 +297,10 @@ class NET_EXPORT URLRequestJob {
                                  bool fatal);
 
   // Delegates to URLRequest.
-  void AnnotateAndMoveUserBlockedCookies(
-      CookieAccessResultList& maybe_included_cookies,
-      CookieAccessResultList& excluded_cookies) const;
-
-  // Delegates to URLRequest.
   bool CanSetCookie(const net::CanonicalCookie& cookie,
-                    CookieOptions* options) const;
-
-  // Delegates to URLRequest.
-  PrivacyMode privacy_mode() const;
+                    CookieOptions* options,
+                    const net::FirstPartySetMetadata& first_party_set_metadata,
+                    CookieInclusionStatus* inclusion_status) const;
 
   // Notifies the job that headers have been received.
   void NotifyHeadersComplete();
@@ -332,13 +344,17 @@ class NET_EXPORT URLRequestJob {
   // bodies are never read.
   virtual void DoneReadingRedirectResponse();
 
+  // Called to tell the job that the body won't be read (and headers won't be
+  // cached) because we're going to retry the request.
+  virtual void DoneReadingRetryResponse();
+
   // Called to set up a SourceStream chain for this request.
   // Subclasses should return the appropriate last SourceStream of the chain,
   // or nullptr on error.
   virtual std::unique_ptr<SourceStream> SetUpSourceStream();
 
-  // Set the proxy server that was used, if any.
-  void SetProxyServer(const ProxyServer& proxy_server);
+  // Set the proxy chain that was used, if any.
+  void SetProxyChain(const ProxyChain& proxy_chain);
 
   // The number of bytes read after passing through the filter. This value
   // reflects bytes read even when there is no filter.
@@ -357,7 +373,7 @@ class NET_EXPORT URLRequestJob {
   void ReadRawDataComplete(int bytes_read);
 
   // The request that initiated this job. This value will never be nullptr.
-  URLRequest* const request_;
+  const raw_ptr<URLRequest> request_;
 
  private:
   class URLRequestJobSourceStream;
@@ -376,14 +392,6 @@ class NET_EXPORT URLRequestJob {
   // Returns OK if |new_url| is a valid redirect target and an error code
   // otherwise.
   int CanFollowRedirect(const GURL& new_url);
-
-  // Called in response to a redirect that was not canceled to follow the
-  // redirect. The current job will be replaced with a new job loading the
-  // given redirect destination.
-  void FollowRedirect(
-      const RedirectInfo& redirect_info,
-      const absl::optional<std::vector<std::string>>& removed_headers,
-      const absl::optional<net::HttpRequestHeaders>& modified_headers);
 
   // Called after every raw read. If |bytes_read| is > 0, this indicates
   // a successful read of |bytes_read| unfiltered bytes. If |bytes_read|
@@ -412,13 +420,13 @@ class NET_EXPORT URLRequestJob {
   // Indicates that the job is done producing data, either it has completed
   // all the data or an error has been encountered. Set exclusively by
   // NotifyDone so that it is kept in sync with the request.
-  bool done_;
+  bool done_ = false;
 
   // Number of raw network bytes read from job subclass.
-  int64_t prefilter_bytes_read_;
+  int64_t prefilter_bytes_read_ = 0;
 
   // Number of bytes after applying |source_stream_| filters.
-  int64_t postfilter_bytes_read_;
+  int64_t postfilter_bytes_read_ = 0;
 
   // The first SourceStream of the SourceStream chain used.
   std::unique_ptr<SourceStream> source_stream_;
@@ -433,22 +441,16 @@ class NET_EXPORT URLRequestJob {
 
   // Used by HandleResponseIfNecessary to track whether we've sent the
   // OnResponseStarted callback and potentially redirect callbacks as well.
-  bool has_handled_response_;
+  bool has_handled_response_ = false;
 
   // Expected content size
-  int64_t expected_content_size_;
-
-  // Set when a redirect is deferred. Redirects are deferred after validity
-  // checks are performed, so this field must not be modified.
-  absl::optional<RedirectInfo> deferred_redirect_info_;
+  int64_t expected_content_size_ = -1;
 
   // Non-null if ReadRawData() returned ERR_IO_PENDING, and the read has not
   // completed.
   CompletionOnceCallback read_raw_callback_;
 
   base::WeakPtrFactory<URLRequestJob> weak_factory_{this};
-
-  DISALLOW_COPY_AND_ASSIGN(URLRequestJob);
 };
 
 }  // namespace net

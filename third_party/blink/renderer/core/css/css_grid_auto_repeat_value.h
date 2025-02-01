@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,10 @@
 #include "third_party/blink/renderer/core/css/css_value_list.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
+
+namespace WTF {
+class String;
+}  // namespace WTF
 
 namespace blink {
 namespace cssvalue {
@@ -20,7 +24,7 @@ namespace cssvalue {
 // <line-names>? )
 //
 // meaning that only one fixed size track is allowed. It could be argued that a
-// different class storing two CSSGridLineNamesValue and one CSSValue (for the
+// different class storing two CSSBracketedValueList and one CSSValue (for the
 // track size) fits better but the CSSWG has left the door open to allow more
 // than one track in the future. That's why we're using a list, it's prepared
 // for future changes and it also allows us to keep the parsing algorithm almost
@@ -33,7 +37,7 @@ class CSSGridAutoRepeatValue : public CSSValueList {
     DCHECK(id == CSSValueID::kAutoFill || id == CSSValueID::kAutoFit);
   }
 
-  String CustomCSSText() const;
+  WTF::String CustomCSSText() const;
   bool Equals(const CSSGridAutoRepeatValue&) const;
 
   CSSValueID AutoRepeatID() const { return auto_repeat_id_; }

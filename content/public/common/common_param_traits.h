@@ -1,6 +1,11 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/390223051): Remove C-library calls to fix the errors.
+#pragma allow_unsafe_libc_calls
+#endif
 
 // This file is used to define IPC::ParamTraits<> specializations for a number
 // of types so that they can be serialized over IPC.  IPC::ParamTraits<>
@@ -18,7 +23,7 @@
 
 #include <string>
 
-#include "base/memory/ref_counted.h"
+#include "base/notreached.h"
 #include "build/build_config.h"
 #include "content/common/content_export.h"
 #include "content/public/common/common_param_traits_macros.h"
@@ -27,7 +32,7 @@
 #include "ui/surface/transport_dib.h"
 #include "url/ipc/url_param_traits.h"
 
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
 #include "base/win/win_util.h"
 #endif
 
@@ -51,7 +56,7 @@ template <>
 struct ParamTraits<gfx::NativeWindow> {
   typedef gfx::NativeWindow param_type;
   static void Write(base::Pickle* m, const param_type& p) {
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
     m->WriteUInt32(base::win::HandleToUint32(p));
 #else
     m->WriteData(reinterpret_cast<const char*>(&p), sizeof(p));
@@ -60,11 +65,11 @@ struct ParamTraits<gfx::NativeWindow> {
   static bool Read(const base::Pickle* m,
                    base::PickleIterator* iter,
                    param_type* r) {
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
     return iter->ReadUInt32(reinterpret_cast<uint32_t*>(r));
 #else
     const char *data;
-    int data_size = 0;
+    size_t data_size = 0;
     bool result = iter->ReadData(&data, &data_size);
     if (result && data_size == sizeof(gfx::NativeWindow)) {
       memcpy(r, data, sizeof(gfx::NativeWindow));

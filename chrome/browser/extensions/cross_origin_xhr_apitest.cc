@@ -1,13 +1,10 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "content/public/test/browser_test.h"
 #include "net/dns/mock_host_resolver.h"
-
-const base::FilePath::CharType kFtpDocRoot[] =
-    FILE_PATH_LITERAL("chrome/test/data");
 
 class CrossOriginXHR : public extensions::ExtensionApiTest {
  public:
@@ -19,12 +16,10 @@ class CrossOriginXHR : public extensions::ExtensionApiTest {
 };
 
 IN_PROC_BROWSER_TEST_F(CrossOriginXHR, BackgroundPage) {
-  ASSERT_TRUE(StartFTPServer(base::FilePath(kFtpDocRoot)));
   ASSERT_TRUE(RunExtensionTest("cross_origin_xhr/background_page")) << message_;
 }
 
 IN_PROC_BROWSER_TEST_F(CrossOriginXHR, ContentScript) {
-  ASSERT_TRUE(StartFTPServer(base::FilePath(kFtpDocRoot)));
   ASSERT_TRUE(RunExtensionTest("cross_origin_xhr/content_script")) << message_;
 }
 
@@ -46,9 +41,9 @@ IN_PROC_BROWSER_TEST_F(CrossOriginXHR, NoFileAccessAllURLs) {
 // Ensures that an extension tab having no corresponding background page can xhr
 // a file URL. Regression test for crbug.com/1179732.
 IN_PROC_BROWSER_TEST_F(CrossOriginXHR, FileAccessNoBackgroundPage) {
-  ASSERT_TRUE(
-      RunExtensionTest("cross_origin_xhr/file_access_no_background_page",
-                       {.page_url = "test.html"}, {.allow_file_access = true}))
+  ASSERT_TRUE(RunExtensionTest(
+      "cross_origin_xhr/file_access_no_background_page",
+      {.extension_url = "test.html"}, {.allow_file_access = true}))
       << message_;
 }
 

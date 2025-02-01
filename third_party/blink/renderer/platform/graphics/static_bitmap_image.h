@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,10 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_STATIC_BITMAP_IMAGE_H_
 
 #include "base/memory/weak_ptr.h"
+#include "base/notreached.h"
+#include "gpu/command_buffer/client/client_shared_image.h"
 #include "gpu/command_buffer/common/mailbox_holder.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_color_params.h"
+#include "gpu/command_buffer/common/shared_image_usage.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
@@ -41,11 +43,7 @@ class PLATFORM_EXPORT StaticBitmapImage : public Image {
   // Methods overridden by all sub-classes
   ~StaticBitmapImage() override = default;
 
-  IntSize SizeWithConfig(SizeConfig) const final;
-
-  virtual scoped_refptr<StaticBitmapImage> ConvertToColorSpace(
-      sk_sp<SkColorSpace>,
-      SkColorType = kN32_SkColorType) = 0;
+  gfx::Size SizeWithConfig(SizeConfig) const final;
 
   // Methods have common implementation for all sub-classes
   bool CurrentFrameIsComplete() override { return true; }
@@ -69,24 +67,28 @@ class PLATFORM_EXPORT StaticBitmapImage : public Image {
                              GLint,
                              bool,
                              bool,
-                             const IntPoint&,
-                             const IntRect&) {
+                             const gfx::Point&,
+                             const gfx::Rect&) {
     NOTREACHED();
-    return false;
   }
 
-  virtual bool CopyToResourceProvider(CanvasResourceProvider*) {
-    NOTREACHED();
-    return false;
-  }
+  virtual bool CopyToResourceProvider(CanvasResourceProvider* resource_provider,
+                                      const gfx::Rect& copy_rect) = 0;
 
   virtual void EnsureSyncTokenVerified() { NOTREACHED(); }
-  virtual gpu::MailboxHolder GetMailboxHolder() const {
+  virtual gpu::MailboxHolder GetMailboxHolder() const { NOTREACHED(); }
+  virtual scoped_refptr<gpu::ClientSharedImage> GetSharedImage() const {
     NOTREACHED();
-    return gpu::MailboxHolder();
+  }
+  virtual gpu::SyncToken GetSyncToken() const {
+    NOTREACHED();
   }
   virtual void UpdateSyncToken(const gpu::SyncToken&) { NOTREACHED(); }
-  virtual bool IsPremultiplied() const { return true; }
+
+  bool IsPremultiplied() const {
+    return GetSkImageInfo().alphaType() == SkAlphaType::kPremul_SkAlphaType;
+  }
+  SkColorInfo GetSkColorInfo() const { return GetSkImageInfo().colorInfo(); }
 
   // Methods have exactly the same implementation for all sub-classes
   bool OriginClean() const { return is_origin_clean_; }
@@ -103,18 +105,25 @@ class PLATFORM_EXPORT StaticBitmapImage : public Image {
     orientation_ = orientation;
   }
 
+  // This function results in a readback due to using SkImage::readPixels().
+  // Returns transparent black pixels if the input SkImageInfo.bounds() does
+  // not intersect with the input image boundaries. When `apply_orientation`
+  // is true this method will orient the data according to the source's EXIF
+  // information.
+  Vector<uint8_t> CopyImageData(const SkImageInfo& info,
+                                bool apply_orientation);
+
+  // Return the SkImageInfo of the internal representation of this image.
+  virtual SkImageInfo GetSkImageInfo() const = 0;
+
  protected:
   // Helper for sub-classes
   void DrawHelper(cc::PaintCanvas*,
                   const cc::PaintFlags&,
-                  const FloatRect&,
-                  const FloatRect&,
-                  const SkSamplingOptions&,
-                  ImageClampingMode,
-                  RespectImageOrientationEnum,
+                  const gfx::RectF&,
+                  const gfx::RectF&,
+                  const ImageDrawOptions&,
                   const PaintImage&);
-
-  virtual IntSize SizeInternal() const = 0;
 
   // The image orientation is stored here because it is only available when the
   // static image is created and the underlying representations do not store

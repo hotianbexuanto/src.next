@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/macros.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/testing_profile.h"
 #include "content/public/browser/navigation_controller.h"
@@ -62,10 +61,6 @@ TEST_F(BrowserAboutHandlerTest, HandleChromeAboutAndChromeSyncRewrite) {
         GURL(chrome_prefix + chrome::kChromeUIChromeURLsHost)},
        {GURL(chrome_prefix + chrome::kChromeUISignInInternalsHost),
         GURL(chrome_prefix + chrome::kChromeUISignInInternalsHost)},
-       {GURL(chrome_prefix + chrome::kChromeUISyncHost),
-        GURL(chrome_prefix + chrome::kChromeUISyncInternalsHost)},
-       {GURL(chrome_prefix + chrome::kChromeUIInvalidationsHost),
-        GURL(chrome_prefix + chrome::kChromeUIInvalidationsHost)},
        {
            GURL(chrome_prefix + "host/path?query#ref"),
            GURL(chrome_prefix + "host/path?query#ref"),
@@ -113,8 +108,16 @@ TEST_F(BrowserAboutHandlerTest, NoVirtualURLForFixup) {
   TestingProfile profile;
   std::unique_ptr<NavigationEntry> entry(
       NavigationController::CreateNavigationEntry(
-          url, Referrer(), absl::nullopt, ui::PAGE_TRANSITION_RELOAD, false,
-          std::string(), &profile, nullptr /* blob_url_loader_factory */));
+          url, Referrer(), /* initiator_origin= */ std::nullopt,
+          /* initiator_base_url= */ std::nullopt, ui::PAGE_TRANSITION_RELOAD,
+          false, std::string(), &profile,
+          nullptr /* blob_url_loader_factory */));
   EXPECT_EQ(expected_virtual_url, entry->GetVirtualURL());
   EXPECT_EQ(expected_url, entry->GetURL());
+}
+
+TEST_F(BrowserAboutHandlerTest, HandleNonNavigationAboutURL_Invalid) {
+  GURL invalid_url("https:");
+  ASSERT_FALSE(invalid_url.is_valid());
+  EXPECT_FALSE(HandleNonNavigationAboutURL(invalid_url));
 }

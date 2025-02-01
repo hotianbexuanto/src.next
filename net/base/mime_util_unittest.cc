@@ -1,17 +1,64 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/base/mime_util.h"
 
+#include <vector>
+
 #include "base/containers/contains.h"
+#include "base/files/file_path.h"
 #include "base/strings/string_split.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace net {
+
+using testing::Contains;
+
+TEST(MimeUtilTest, GetWellKnownMimeTypeFromExtension) {
+  // String: png\0css
+  base::FilePath::StringType containsNullByte;
+  containsNullByte.append(FILE_PATH_LITERAL("png"));
+  containsNullByte.append(1, FILE_PATH_LITERAL('\0'));
+  containsNullByte.append(FILE_PATH_LITERAL("css"));
+
+  const struct {
+    const base::FilePath::StringType extension;
+    const char* const mime_type;
+  } tests[] = {
+      {FILE_PATH_LITERAL("png"), "image/png"},
+      {FILE_PATH_LITERAL("PNG"), "image/png"},
+      {FILE_PATH_LITERAL("css"), "text/css"},
+      {FILE_PATH_LITERAL("pjp"), "image/jpeg"},
+      {FILE_PATH_LITERAL("pjpeg"), "image/jpeg"},
+      {FILE_PATH_LITERAL("json"), "application/json"},
+      {FILE_PATH_LITERAL("js"), "text/javascript"},
+      {FILE_PATH_LITERAL("webm"), "video/webm"},
+      {FILE_PATH_LITERAL("weba"), "audio/webm"},
+      {FILE_PATH_LITERAL("avif"), "image/avif"},
+      {FILE_PATH_LITERAL("epub"), "application/epub+zip"},
+      {FILE_PATH_LITERAL("apk"), "application/vnd.android.package-archive"},
+      {FILE_PATH_LITERAL("cer"), "application/x-x509-ca-cert"},
+      {FILE_PATH_LITERAL("crt"), "application/x-x509-ca-cert"},
+      {FILE_PATH_LITERAL("zip"), "application/zip"},
+      {FILE_PATH_LITERAL("ics"), "text/calendar"},
+      {FILE_PATH_LITERAL("m3u8"), "application/x-mpegurl"},
+      {FILE_PATH_LITERAL("csv"), "text/csv"},
+      {FILE_PATH_LITERAL("not an extension / for sure"), nullptr},
+      {containsNullByte, nullptr}};
+
+  for (const auto& test : tests) {
+    std::string mime_type;
+    if (GetWellKnownMimeTypeFromExtension(test.extension, &mime_type))
+      EXPECT_EQ(test.mime_type, mime_type);
+    else
+      EXPECT_EQ(test.mime_type, nullptr);
+  }
+}
 
 TEST(MimeUtilTest, ExtensionTest) {
   // String: png\0css
@@ -22,44 +69,53 @@ TEST(MimeUtilTest, ExtensionTest) {
 
   const struct {
     const base::FilePath::StringType extension;
-    const char* const mime_type;
-    bool valid;
+    const std::vector<std::string> mime_types;
   } tests[] = {
-    {FILE_PATH_LITERAL("png"), "image/png", true},
-    {FILE_PATH_LITERAL("PNG"), "image/png", true},
-    {FILE_PATH_LITERAL("css"), "text/css", true},
-    {FILE_PATH_LITERAL("pjp"), "image/jpeg", true},
-    {FILE_PATH_LITERAL("pjpeg"), "image/jpeg", true},
-    {FILE_PATH_LITERAL("json"), "application/json", true},
-    {FILE_PATH_LITERAL("js"), "text/javascript", true},
-    {FILE_PATH_LITERAL("webm"), "video/webm", true},
-    {FILE_PATH_LITERAL("weba"), "audio/webm", true},
-    {FILE_PATH_LITERAL("avif"), "image/avif", true},
-    {FILE_PATH_LITERAL("jxl"), "image/jxl", true},
+    {FILE_PATH_LITERAL("png"), {"image/png"}},
+    {FILE_PATH_LITERAL("PNG"), {"image/png"}},
+    {FILE_PATH_LITERAL("css"), {"text/css"}},
+    {FILE_PATH_LITERAL("pjp"), {"image/jpeg"}},
+    {FILE_PATH_LITERAL("pjpeg"), {"image/jpeg"}},
+    {FILE_PATH_LITERAL("json"), {"application/json"}},
+    {FILE_PATH_LITERAL("js"), {"text/javascript"}},
+    {FILE_PATH_LITERAL("webm"), {"video/webm"}},
+    {FILE_PATH_LITERAL("weba"), {"audio/webm"}},
+    {FILE_PATH_LITERAL("avif"), {"image/avif"}},
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-    // These are test cases for testing platform mime types on Chrome OS.
-    {FILE_PATH_LITERAL("epub"), "application/epub+zip", true},
-    {FILE_PATH_LITERAL("apk"), "application/vnd.android.package-archive", true},
-    {FILE_PATH_LITERAL("cer"), "application/x-x509-ca-cert", true},
-    {FILE_PATH_LITERAL("crt"), "application/x-x509-ca-cert", true},
-    {FILE_PATH_LITERAL("zip"), "application/zip", true},
-    {FILE_PATH_LITERAL("ics"), "text/calendar", true},
+    // These are test cases for testing platform mime types on ChromeOS.
+    {FILE_PATH_LITERAL("epub"), {"application/epub+zip"}},
+    {FILE_PATH_LITERAL("apk"), {"application/vnd.android.package-archive"}},
+    {FILE_PATH_LITERAL("cer"),
+     {
+         "application/x-x509-ca-cert",
+         "application/pkix-cert",  // System override for ChromeOS.
+     }},
+    {FILE_PATH_LITERAL("crt"),
+     {
+         "application/x-x509-ca-cert",
+         "application/pkix-cert",  // System override for ChromeOS.
+     }},
+    {FILE_PATH_LITERAL("zip"), {"application/zip"}},
+    {FILE_PATH_LITERAL("ics"), {"text/calendar"}},
 #endif
-#if defined(OS_ANDROID)
-    {FILE_PATH_LITERAL("m3u8"), "application/x-mpegurl", true},
-#endif
-    {FILE_PATH_LITERAL("not an extension / for sure"), "", false},
-    {containsNullByte, "", false}
+    {FILE_PATH_LITERAL("m3u8"),
+     {
+         "application/x-mpegurl",  // Chrome's secondary mapping.
+         "audio/x-mpegurl",  // https://crbug.com/1273061, system override for
+                             // android-arm[64]-test and Linux. Possibly more.
+         "audio/mpegurl",                  // System override for mac.
+     }},
+    {FILE_PATH_LITERAL("csv"), {"text/csv"}},
+    {FILE_PATH_LITERAL("not an extension / for sure"), {}},
+    {containsNullByte, {}}
   };
 
-  std::string mime_type;
-  bool rv;
-
   for (const auto& test : tests) {
-    rv = GetMimeTypeFromExtension(test.extension, &mime_type);
-    EXPECT_EQ(test.valid, rv);
-    if (rv)
-      EXPECT_EQ(test.mime_type, mime_type);
+    std::string mime_type;
+    if (GetMimeTypeFromExtension(test.extension, &mime_type))
+      EXPECT_THAT(test.mime_types, Contains(mime_type));
+    else
+      EXPECT_TRUE(test.mime_types.empty());
   }
 }
 
@@ -265,7 +321,7 @@ TEST(MimeUtilTest, TestParseMimeType) {
 TEST(MimeUtilTest, TestParseMimeTypeWithoutParameter) {
   std::string nonAscii("application/nonutf8");
   EXPECT_TRUE(ParseMimeTypeWithoutParameter(nonAscii, nullptr, nullptr));
-#if defined(OS_WIN)
+#if BUILDFLAG(IS_WIN)
   nonAscii.append(base::WideToUTF8(L"\u2603"));
 #else
   nonAscii.append("\u2603");  // unicode snowman
@@ -338,8 +394,65 @@ TEST(MimeUtilTest, TestParseMimeTypeWithoutParameter) {
   EXPECT_FALSE(ParseMimeTypeWithoutParameter("text\n/plain", nullptr, nullptr));
   EXPECT_FALSE(
       ParseMimeTypeWithoutParameter("text/\nplain ", nullptr, nullptr));
+}
 
-  //EXPECT_TRUE(ParseMimeTypeWithoutParameter("video/mime;parameter"));
+class ExtractMIMETypeTestInvalid : public testing::TestWithParam<std::string> {
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidMediaTypes,
+    ExtractMIMETypeTestInvalid,
+    testing::Values(
+        // Fails because it doesn't contain '/'.
+        "a",
+        "application",
+        // Space is not HTTP token code point.
+        //  https://mimesniff.spec.whatwg.org/#http-token-code-point
+        // U+2003, EM SPACE (UTF-8: E2 80 83).
+        "\xE2\x80\x83text/html",
+        "text\xE2\x80\x83/html",
+        "text / html",
+        "t e x t / h t m l",
+        "text\r\n/\nhtml",
+        "text\n/\nhtml",
+        ", text/html",
+        "; text/html"));
+
+TEST_P(ExtractMIMETypeTestInvalid, MustFail) {
+  // Parsing is expected to fail.
+  EXPECT_EQ(std::nullopt, net::ExtractMimeTypeFromMediaType(GetParam(), true));
+}
+
+class ExtractMIMETypeTestValid : public testing::TestWithParam<std::string> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    ValidMediaTypes,
+    ExtractMIMETypeTestValid,
+    testing::Values("text/html",
+                    "text/html; charset=iso-8859-1",
+                    // Quoted charset parameter.
+                    "text/html; charset=\"quoted\"",
+                    // Multiple parameters.
+                    "text/html; charset=x; foo=bar",
+                    // OWSes are trimmed.
+                    " text/html   ",
+                    "\ttext/html \t",
+                    "text/html ; charset=iso-8859-1"
+                    // Non-standard multiple type/subtype listing using a comma
+                    // as a separator is accepted.
+                    "text/html,text/plain",
+                    "text/html , text/plain",
+                    "text/html\t,\ttext/plain",
+                    "text/html,text/plain;charset=iso-8859-1",
+                    "\r\ntext/html\r\n",
+                    "text/html;wow",
+                    "text/html;;;;;;",
+                    "text/html; = = = "));
+
+TEST_P(ExtractMIMETypeTestValid, MustSucceed) {
+  //  net::ExtractMIMETypeFromMediaType parses well-formed headers correctly.
+  EXPECT_EQ("text/html",
+            net::ExtractMimeTypeFromMediaType(GetParam(), true).value_or(""));
 }
 
 TEST(MimeUtilTest, TestIsValidTopLevelMimeType) {
@@ -384,7 +497,6 @@ TEST(MimeUtilTest, TestGetExtensionsForMimeType) {
       {"MeSsAge/*", 1, "eml"},
       {"message/", 0, nullptr, true},
       {"image/avif", 1, "avif"},
-      {"image/jxl", 1, "jxl"},
       {"image/bmp", 1, "bmp"},
       {"video/*", 6, "mp4"},
       {"video/*", 6, "mpeg"},
@@ -401,12 +513,8 @@ TEST(MimeUtilTest, TestGetExtensionsForMimeType) {
       ASSERT_EQ(0u, extensions.size());
 
     if (test.contained_result) {
-      // Convert ASCII to FilePath::StringType.
-      base::FilePath::StringType contained_result(
-          test.contained_result,
-          test.contained_result + strlen(test.contained_result));
-
-      bool found = base::Contains(extensions, contained_result);
+      bool found = base::Contains(
+          extensions, base::FilePath::FromASCII(test.contained_result).value());
 
       ASSERT_TRUE(found) << "Must find at least the contained result within "
                          << test.mime_type;
@@ -478,4 +586,41 @@ TEST(MimeUtilTest, TestAddMultipartValueForUploadWithFileName) {
   AddMultipartFinalDelimiterForUpload("boundary", &post_data);
   EXPECT_STREQ(ref_output, post_data.c_str());
 }
+
+TEST(MimeUtilTest, ScopedOverrideGetMimeTypeForTesting) {
+  // Checks the behavior for a png file.
+  auto verify_expectations = [](const std::string& expected_mime_type) {
+    std::string mime_type;
+    EXPECT_TRUE(GetWellKnownMimeTypeFromExtension(FILE_PATH_LITERAL("png"),
+                                                  &mime_type));
+    EXPECT_EQ(mime_type, expected_mime_type);
+    EXPECT_TRUE(GetMimeTypeFromExtension(FILE_PATH_LITERAL("png"), &mime_type));
+    EXPECT_EQ(mime_type, expected_mime_type);
+    EXPECT_TRUE(GetMimeTypeFromFile(
+        base::FilePath(FILE_PATH_LITERAL("c:\\foo\\bar.png")), &mime_type));
+    EXPECT_EQ(mime_type, expected_mime_type);
+
+    // Behavior other than "get a mime type" should be unaffected by the
+    // override.
+    base::FilePath::StringType extension;
+    EXPECT_TRUE(
+        GetPreferredExtensionForMimeType("text/javascript", &extension));
+    EXPECT_EQ(extension, FILE_PATH_LITERAL("js"));
+
+    EXPECT_EQ("text/html", ExtractMimeTypeFromMediaType("text/html", true));
+  };
+
+  // Normal state, without override.
+  verify_expectations("image/png");
+
+  {
+    std::string overriding_mime_type = "text/not-a-real-mime-type";
+    ScopedOverrideGetMimeTypeForTesting override(overriding_mime_type);
+    verify_expectations(overriding_mime_type);
+  }
+
+  // Reset after override is destroyed.
+  verify_expectations("image/png");
+}
+
 }  // namespace net

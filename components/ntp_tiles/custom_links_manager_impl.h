@@ -1,23 +1,24 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef COMPONENTS_NTP_TILES_CUSTOM_LINKS_MANAGER_IMPL_H_
 #define COMPONENTS_NTP_TILES_CUSTOM_LINKS_MANAGER_IMPL_H_
 
+#include <optional>
 #include <utility>
 #include <vector>
 
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/browser/history_service_observer.h"
 #include "components/ntp_tiles/custom_links_manager.h"
 #include "components/ntp_tiles/custom_links_store.h"
+#include "components/ntp_tiles/most_visited_sites.h"
 #include "components/ntp_tiles/ntp_tile.h"
 #include "components/prefs/pref_change_registrar.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefService;
 
@@ -35,6 +36,9 @@ class CustomLinksManagerImpl : public CustomLinksManager,
   CustomLinksManagerImpl(PrefService* prefs,
                          // Can be nullptr in unittests.
                          history::HistoryService* history_service);
+
+  CustomLinksManagerImpl(const CustomLinksManagerImpl&) = delete;
+  CustomLinksManagerImpl& operator=(const CustomLinksManagerImpl&) = delete;
 
   ~CustomLinksManagerImpl() override;
 
@@ -67,14 +71,18 @@ class CustomLinksManagerImpl : public CustomLinksManager,
   // |OnPreferenceChanged|.
   void StoreLinks();
 
+  // Checks during instantiation to remove custom shortcut links
+  // created through preinstalled apps.
+  void RemoveCustomLinksForPreinstalledApps();
+
   // Returns an iterator into |custom_links_|.
   std::vector<Link>::iterator FindLinkWithUrl(const GURL& url);
 
   // history::HistoryServiceObserver implementation.
   // Deletes any Most Visited links whose URL is in |deletion_info|. Clears
   // |previous_links_|. Does not delete entries expired by HistoryService.
-  void OnURLsDeleted(history::HistoryService* history_service,
-                     const history::DeletionInfo& deletion_info) override;
+  void OnHistoryDeletions(history::HistoryService* history_service,
+                          const history::DeletionInfo& deletion_info) override;
   void HistoryServiceBeingDeleted(
       history::HistoryService* history_service) override;
 
@@ -83,12 +91,12 @@ class CustomLinksManagerImpl : public CustomLinksManager,
   // and notifies |closure_list_|.
   void OnPreferenceChanged();
 
-  PrefService* const prefs_;
+  const raw_ptr<PrefService> prefs_;
   CustomLinksStore store_;
   std::vector<Link> current_links_;
   // The state of the current list of links before the last action was
   // performed.
-  absl::optional<std::vector<Link>> previous_links_;
+  std::optional<std::vector<Link>> previous_links_;
 
   // List of closures to be invoked when custom links are updated by outside
   // sources.
@@ -107,8 +115,6 @@ class CustomLinksManagerImpl : public CustomLinksManager,
   bool updating_preferences_ = false;
 
   base::WeakPtrFactory<CustomLinksManagerImpl> weak_ptr_factory_{this};
-
-  DISALLOW_COPY_AND_ASSIGN(CustomLinksManagerImpl);
 };
 
 }  // namespace ntp_tiles

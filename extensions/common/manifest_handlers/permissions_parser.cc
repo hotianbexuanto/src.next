@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -87,28 +87,29 @@ bool CanSpecifyHostPermission(const Extension* extension,
   return true;
 }
 
-// Parses hosts from the |keys::kHostPermissions| key in the extension's
-// manifest into |hosts|.
+// Parses hosts from `key` in the extension's manifest into |hosts|.
 bool ParseHostsFromJSON(Extension* extension,
+                        const char* key,
                         std::vector<std::string>* hosts,
                         std::u16string* error) {
-  if (!extension->manifest()->HasKey(keys::kHostPermissions))
+  if (!extension->manifest()->FindKey(key))
     return true;
 
   const base::Value* permissions = nullptr;
-  if (!extension->manifest()->GetList(keys::kHostPermissions, &permissions)) {
-    *error = base::UTF8ToUTF16(errors::kInvalidHostPermissions);
+  if (!extension->manifest()->GetList(key, &permissions)) {
+    *error = ErrorUtils::FormatErrorMessageUTF16(
+        errors::kInvalidHostPermissions, key);
     return false;
   }
 
   // Add all permissions parsed from the manifest to |hosts|.
-  base::Value::ConstListView list_view = permissions->GetList();
-  for (size_t i = 0; i < list_view.size(); ++i) {
-    if (list_view[i].is_string()) {
-      hosts->push_back(list_view[i].GetString());
+  const base::Value::List& list = permissions->GetList();
+  for (size_t i = 0; i < list.size(); ++i) {
+    if (list[i].is_string()) {
+      hosts->push_back(list[i].GetString());
     } else {
       *error = ErrorUtils::FormatErrorMessageUTF16(
-          errors::kInvalidHostPermission, base::NumberToString(i));
+          errors::kInvalidHostPermission, key, base::NumberToString(i));
       return false;
     }
   }
@@ -178,8 +179,8 @@ void ParseHostPermissions(Extension* extension,
       }
 
       host_permissions->AddPattern(pattern);
-      // We need to make sure all_urls matches chrome://favicon and (maybe)
-      // chrome://thumbnail, so add them back in to host_permissions separately.
+      // We need to make sure all_urls matches any allowed Chrome-schemed hosts,
+      // so add them back in to host_permissions separately.
       if (pattern.match_all_urls()) {
         host_permissions->AddPatterns(
             ExtensionsClient::Get()->GetPermittedChromeSchemeHosts(
@@ -190,10 +191,13 @@ void ParseHostPermissions(Extension* extension,
 
     // It's probably an unknown API permission. Do not throw an error so
     // extensions can retain backwards compatibility (http://crbug.com/42742).
-    extension->AddInstallWarning(InstallWarning(
-        ErrorUtils::FormatErrorMessage(
-            manifest_errors::kPermissionUnknownOrMalformed, permission_str),
-        key, permission_str));
+    extension->AddInstallWarning(
+        InstallWarning(ErrorUtils::FormatErrorMessage(
+                           extension->manifest_version() >= 3
+                               ? manifest_errors::kPatternMalformed
+                               : manifest_errors::kPermissionUnknownOrMalformed,
+                           permission_str),
+                       key, permission_str));
   }
 }
 
@@ -204,12 +208,12 @@ bool ParseHelper(Extension* extension,
                  APIPermissionSet* api_permissions,
                  URLPatternSet* host_permissions,
                  std::u16string* error) {
-  if (!extension->manifest()->HasKey(key))
+  if (!extension->manifest()->FindKey(key))
     return true;
 
   const base::Value* permissions = nullptr;
   if (!extension->manifest()->GetList(key, &permissions)) {
-    *error = base::UTF8ToUTF16(errors::kInvalidPermissions);
+    *error = errors::kInvalidPermissions;
     return false;
   }
 
@@ -219,11 +223,9 @@ bool ParseHelper(Extension* extension,
 
   std::vector<std::string> host_data;
   if (!APIPermissionSet::ParseFromJSON(
-          permissions,
-          APIPermissionSet::kDisallowInternalPermissions,
-          api_permissions,
-          error,
-          &host_data)) {
+          permissions->GetList(),
+          APIPermissionSet::kDisallowInternalPermissions, api_permissions,
+          error, &host_data)) {
     return false;
   }
 
@@ -234,6 +236,9 @@ bool ParseHelper(Extension* extension,
   for (APIPermissionSet::const_iterator iter = api_permissions->begin();
        iter != api_permissions->end();
        ++iter) {
+    // All internal permissions should have been filtered out above.
+    DCHECK(!iter->info()->is_internal()) << iter->name();
+
     const Feature* feature = permission_features->GetFeature(iter->name());
 
     // The feature should exist since we just got an APIPermission for it. The
@@ -246,7 +251,7 @@ bool ParseHelper(Extension* extension,
     }
 
     // Sneaky check for "experimental", which we always allow for extensions
-    // installed from the Webstore. This way we can whitelist extensions to
+    // installed from the Webstore. This way we can allowlist extensions to
     // have access to experimental in just the store, and not have to push a
     // new version of the client. Otherwise, experimental goes through the
     // usual features check.
@@ -282,8 +287,8 @@ bool ParseHelper(Extension* extension,
     // warning for each.
     for (const auto& permission_str : host_data) {
       extension->AddInstallWarning(InstallWarning(
-          ErrorUtils::FormatErrorMessage(
-              manifest_errors::kPermissionUnknownOrMalformed, permission_str),
+          ErrorUtils::FormatErrorMessage(manifest_errors::kPermissionUnknown,
+                                         permission_str),
           key, permission_str));
     }
   }
@@ -359,6 +364,9 @@ void RemoveOverlappingHostPermissions(
     URLPatternSet* optional_host_permissions) {
   URLPatternSet new_optional_host_permissions;
   std::vector<InstallWarning> install_warnings;
+  const char* key = extension->manifest_version() >= 3
+                        ? keys::kOptionalHostPermissions
+                        : keys::kOptionalPermissions;
 
   for (const URLPattern& host_permission : *optional_host_permissions) {
     if (required_host_permissions.ContainsPattern(host_permission)) {
@@ -369,7 +377,7 @@ void RemoveOverlappingHostPermissions(
           ErrorUtils::FormatErrorMessage(
               manifest_errors::kPermissionMarkedOptionalAndRequired,
               host_permission.GetAsString()),
-          keys::kOptionalPermissions);
+          key);
     } else {
       new_optional_host_permissions.AddPattern(host_permission);
     }
@@ -406,24 +414,35 @@ bool PermissionsParser::Parse(Extension* extension, std::u16string* error) {
     return false;
   }
 
+  initial_optional_permissions_ = std::make_unique<InitialPermissions>();
+  if (!ParseHelper(extension, keys::kOptionalPermissions,
+                   &initial_optional_permissions_->api_permissions,
+                   &initial_optional_permissions_->host_permissions, error)) {
+    return false;
+  }
+
   if (extension->manifest_version() >= 3) {
     std::vector<std::string> manifest_hosts;
-    if (!ParseHostsFromJSON(extension, &manifest_hosts, error))
+    std::vector<std::string> manifest_optional_hosts;
+    if (!ParseHostsFromJSON(extension, keys::kHostPermissions, &manifest_hosts,
+                            error)) {
       return false;
+    }
+
+    if (!ParseHostsFromJSON(extension, keys::kOptionalHostPermissions,
+                            &manifest_optional_hosts, error)) {
+      return false;
+    }
 
     // TODO(kelvinjiang): Remove the dependency for |api_permissions| here.
     ParseHostPermissions(extension, keys::kHostPermissions, manifest_hosts,
                          initial_required_permissions_->api_permissions,
                          &initial_required_permissions_->host_permissions);
-  }
 
-  initial_optional_permissions_ = std::make_unique<InitialPermissions>();
-  if (!ParseHelper(extension,
-                   keys::kOptionalPermissions,
-                   &initial_optional_permissions_->api_permissions,
-                   &initial_optional_permissions_->host_permissions,
-                   error)) {
-    return false;
+    ParseHostPermissions(extension, keys::kOptionalHostPermissions,
+                         manifest_optional_hosts,
+                         initial_optional_permissions_->api_permissions,
+                         &initial_optional_permissions_->host_permissions);
   }
 
   // Remove and add install warnings for specified optional API permissions

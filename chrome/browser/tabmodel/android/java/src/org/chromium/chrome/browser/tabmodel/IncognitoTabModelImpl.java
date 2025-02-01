@@ -1,62 +1,113 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.tabmodel;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import org.chromium.base.Callback;
 import org.chromium.base.ObserverList;
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.supplier.ObservableSupplier;
+import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabCreationState;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 
-import java.util.List;
-
 /**
  * A TabModel implementation that handles off the record tabs.
  *
- * <p>
- * This is not thread safe and must only be operated on the UI thread.
+ * <p>This is not thread safe and must only be operated on the UI thread.
  *
- * <p>
- * The lifetime of this object is not tied to that of the native TabModel.  This ensures the
- * native TabModel is present when at least one incognito Tab has been created and added.  When
- * no Tabs remain, the native model will be destroyed and only rebuilt when a new incognito Tab
- * is created.
+ * <p>The lifetime of this object is not tied to that of the native TabModel. This ensures the
+ * native TabModel is present when at least one incognito Tab has been created and added. When no
+ * Tabs remain, the native model will be destroyed and only rebuilt when a new incognito Tab is
+ * created.
  */
-class IncognitoTabModelImpl implements IncognitoTabModel {
+class IncognitoTabModelImpl implements IncognitoTabModelInternal {
     /** Creates TabModels for use in IncognitoModel. */
     public interface IncognitoTabModelDelegate {
         /** Creates a fully working TabModel to delegate calls to. */
-        TabModel createTabModel();
+        TabModelInternal createTabModel();
+
+        /** Returns the tab creator for incognito tabs. */
+        TabCreator getIncognitoTabCreator();
     }
 
     private final IncognitoTabModelDelegate mDelegate;
     private final ObserverList<TabModelObserver> mObservers = new ObserverList<>();
     private final ObserverList<IncognitoTabModelObserver> mIncognitoObservers =
             new ObserverList<>();
-    private TabModel mDelegateModel;
+    private final Callback<Tab> mDelegateModelCurrentTabSupplierObserver;
+    private final ObservableSupplierImpl<Tab> mCurrentTabSupplier = new ObservableSupplierImpl<>();
+    private final Callback<Integer> mDelegateModelTabCountSupplierObserver;
+    private final ObservableSupplierImpl<Integer> mTabCountSupplier =
+            new ObservableSupplierImpl<>();
+    private final TabRemover mTabRemoverProxy =
+            new TabRemover() {
+                @Override
+                public void closeTabs(
+                        @NonNull TabClosureParams tabClosureParams,
+                        boolean allowDialog,
+                        @Nullable TabModelActionListener listener) {
+                    mDelegateModel
+                            .getTabRemover()
+                            .closeTabs(tabClosureParams, allowDialog, listener);
+                }
+
+                @Override
+                public void prepareCloseTabs(
+                        @NonNull TabClosureParams tabClosureParams,
+                        boolean allowDialog,
+                        @Nullable TabModelActionListener listener,
+                        @NonNull Callback<TabClosureParams> onPreparedCallback) {
+                    mDelegateModel
+                            .getTabRemover()
+                            .prepareCloseTabs(
+                                    tabClosureParams, allowDialog, listener, onPreparedCallback);
+                }
+
+                @Override
+                public void forceCloseTabs(@NonNull TabClosureParams tabClosureParams) {
+                    mDelegateModel.getTabRemover().forceCloseTabs(tabClosureParams);
+                }
+
+                @Override
+                public void removeTab(
+                        @NonNull Tab tab,
+                        boolean allowDialog,
+                        @Nullable TabModelActionListener listener) {
+                    mDelegateModel.getTabRemover().removeTab(tab, allowDialog, listener);
+                }
+            };
+
+    private TabModelInternal mDelegateModel;
     private int mCountOfAddingOrClosingTabs;
     private boolean mActive;
 
-    /**
-     * Constructor for IncognitoTabModel.
-     */
+    /** Constructor for IncognitoTabModel. */
     IncognitoTabModelImpl(IncognitoTabModelDelegate tabModelCreator) {
         mDelegate = tabModelCreator;
-        mDelegateModel = EmptyTabModel.getInstance();
+        mDelegateModel = EmptyTabModel.getInstance(true);
+        mDelegateModelCurrentTabSupplierObserver = mCurrentTabSupplier::set;
+        mDelegateModelTabCountSupplierObserver = mTabCountSupplier::set;
+        mTabCountSupplier.set(0);
     }
 
-    /**
-     * Ensures that the real TabModel has been created.
-     */
+    /** Ensures that the real TabModel has been created. */
     protected void ensureTabModelImpl() {
         ThreadUtils.assertOnUiThread();
         if (!(mDelegateModel instanceof EmptyTabModel)) return;
 
         mDelegateModel = mDelegate.createTabModel();
+        mDelegateModel
+                .getCurrentTabSupplier()
+                .addObserver(mDelegateModelCurrentTabSupplierObserver);
+        mDelegateModel.getTabCountSupplier().addObserver(mDelegateModelTabCountSupplierObserver);
         for (TabModelObserver observer : mObservers) {
             mDelegateModel.addObserver(observer);
         }
@@ -68,7 +119,8 @@ class IncognitoTabModelImpl implements IncognitoTabModel {
      */
     protected void destroyIncognitoIfNecessary() {
         ThreadUtils.assertOnUiThread();
-        if (!isEmpty() || mDelegateModel instanceof EmptyTabModel
+        if (!isEmpty()
+                || mDelegateModel instanceof EmptyTabModel
                 || mCountOfAddingOrClosingTabs != 0) {
             return;
         }
@@ -77,9 +129,15 @@ class IncognitoTabModelImpl implements IncognitoTabModel {
             observer.didBecomeEmpty();
         }
 
+        mDelegateModel
+                .getCurrentTabSupplier()
+                .removeObserver(mDelegateModelCurrentTabSupplierObserver);
+        mDelegateModel.getTabCountSupplier().removeObserver(mDelegateModelTabCountSupplierObserver);
         mDelegateModel.destroy();
+        mCurrentTabSupplier.set(null);
+        mTabCountSupplier.set(0);
 
-        mDelegateModel = EmptyTabModel.getInstance();
+        mDelegateModel = EmptyTabModel.getInstance(true);
     }
 
     private boolean isEmpty() {
@@ -108,61 +166,32 @@ class IncognitoTabModelImpl implements IncognitoTabModel {
     }
 
     @Override
-    public boolean closeTab(Tab tab) {
+    public boolean isOffTheRecord() {
+        return mDelegateModel.isOffTheRecord();
+    }
+
+    @Override
+    public boolean isIncognitoBranded() {
+        return mDelegateModel.isIncognitoBranded();
+    }
+
+    @Override
+    public @NonNull TabRemover getTabRemover() {
+        return mTabRemoverProxy;
+    }
+
+    @Override
+    public boolean closeTabs(TabClosureParams tabClosureParams) {
         mCountOfAddingOrClosingTabs++;
-        boolean retVal = mDelegateModel.closeTab(tab);
+        boolean retVal = mDelegateModel.closeTabs(tabClosureParams);
         mCountOfAddingOrClosingTabs--;
         destroyIncognitoIfNecessary();
         return retVal;
     }
 
     @Override
-    public boolean closeTab(Tab tab, boolean animate, boolean uponExit, boolean canUndo) {
-        mCountOfAddingOrClosingTabs++;
-        boolean retVal = mDelegateModel.closeTab(tab, animate, uponExit, canUndo);
-        mCountOfAddingOrClosingTabs--;
-        destroyIncognitoIfNecessary();
-        return retVal;
-    }
-
-    @Override
-    public boolean closeTab(
-            Tab tab, Tab recommendedNextTab, boolean animate, boolean uponExit, boolean canUndo) {
-        mCountOfAddingOrClosingTabs++;
-        boolean retVal =
-                mDelegateModel.closeTab(tab, recommendedNextTab, animate, uponExit, canUndo);
-        mCountOfAddingOrClosingTabs--;
-        destroyIncognitoIfNecessary();
-        return retVal;
-    }
-
-    @Override
-    public Tab getNextTabIfClosed(int id) {
-        return mDelegateModel.getNextTabIfClosed(id);
-    }
-
-    @Override
-    public void closeMultipleTabs(List<Tab> tabs, boolean canUndo) {
-        mCountOfAddingOrClosingTabs++;
-        mDelegateModel.closeMultipleTabs(tabs, canUndo);
-        mCountOfAddingOrClosingTabs--;
-        destroyIncognitoIfNecessary();
-    }
-
-    @Override
-    public void closeAllTabs() {
-        mCountOfAddingOrClosingTabs++;
-        mDelegateModel.closeAllTabs();
-        mCountOfAddingOrClosingTabs--;
-        destroyIncognitoIfNecessary();
-    }
-
-    @Override
-    public void closeAllTabs(boolean allowDelegation, boolean uponExit) {
-        mCountOfAddingOrClosingTabs++;
-        mDelegateModel.closeAllTabs(allowDelegation, uponExit);
-        mCountOfAddingOrClosingTabs--;
-        destroyIncognitoIfNecessary();
+    public Tab getNextTabIfClosed(int id, boolean uponExit) {
+        return mDelegateModel.getNextTabIfClosed(id, uponExit);
     }
 
     @Override
@@ -176,6 +205,11 @@ class IncognitoTabModelImpl implements IncognitoTabModel {
     }
 
     @Override
+    public @Nullable Tab getTabById(int tabId) {
+        return mDelegateModel.getTabById(tabId);
+    }
+
+    @Override
     public int indexOf(Tab tab) {
         return mDelegateModel.indexOf(tab);
     }
@@ -183,6 +217,11 @@ class IncognitoTabModelImpl implements IncognitoTabModel {
     @Override
     public int index() {
         return mDelegateModel.index();
+    }
+
+    @Override
+    public @NonNull ObservableSupplier<Tab> getCurrentTabSupplier() {
+        return mCurrentTabSupplier;
     }
 
     @Override
@@ -241,6 +280,21 @@ class IncognitoTabModelImpl implements IncognitoTabModel {
     }
 
     @Override
+    public void notifyAllTabsClosureUndone() {
+        mDelegateModel.notifyAllTabsClosureUndone();
+    }
+
+    @Override
+    public @NonNull ObservableSupplier<Integer> getTabCountSupplier() {
+        return mTabCountSupplier;
+    }
+
+    @Override
+    public @NonNull TabCreator getTabCreator() {
+        return mDelegate.getIncognitoTabCreator();
+    }
+
+    @Override
     public void addTab(
             Tab tab, int index, @TabLaunchType int type, @TabCreationState int creationState) {
         mCountOfAddingOrClosingTabs++;
@@ -264,11 +318,14 @@ class IncognitoTabModelImpl implements IncognitoTabModel {
     }
 
     @Override
-    public void setActive(boolean active) {
-        mActive = active;
-        if (active) ensureTabModelImpl();
-        mDelegateModel.setActive(active);
-        if (!active) destroyIncognitoIfNecessary();
+    public int getTabCountNavigatedInTimeWindow(long beginTimeMs, long endTimeMs) {
+        assert false : "Not reached.";
+        return 0;
+    }
+
+    @Override
+    public void closeTabsNavigatedInTimeWindow(long beginTimeMs, long endTimeMs) {
+        assert false : "Not reached.";
     }
 
     @Override
@@ -292,5 +349,13 @@ class IncognitoTabModelImpl implements IncognitoTabModel {
     }
 
     @Override
-    public void openMostRecentlyClosedTab() {}
+    public void openMostRecentlyClosedEntry() {}
+
+    @Override
+    public void setActive(boolean active) {
+        mActive = active;
+        if (active) ensureTabModelImpl();
+        mDelegateModel.setActive(active);
+        if (!active) destroyIncognitoIfNecessary();
+    }
 }

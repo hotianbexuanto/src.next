@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,8 +10,7 @@
 #include <vector>
 
 #include "base/files/file_path.h"
-#include "base/macros.h"
-#include "base/memory/ref_counted.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/version.h"
 #include "extensions/browser/computed_hashes.h"
 #include "extensions/browser/content_verifier/content_verifier_key.h"
@@ -33,16 +32,15 @@ class ContentHashReader {
     // Extension has hashes files, but they are unreadable or corrupted.
     HASHES_DAMAGED,
 
-    // Resource doesn't have entry in hashes, and this is as expected since
-    // extension doesn't have such resource.
-    NO_HASHES_FOR_NON_EXISTING_RESOURCE,
-
-    // Resource doesn't have entry in hashes, but it should be there.
+    // Resource doesn't have entry in hashes.
     NO_HASHES_FOR_RESOURCE,
 
     // Ready to verify resource's content.
     SUCCESS
   };
+
+  ContentHashReader(const ContentHashReader&) = delete;
+  ContentHashReader& operator=(const ContentHashReader&) = delete;
 
   ~ContentHashReader();
 
@@ -75,8 +73,6 @@ class ContentHashReader {
   int block_size_ = 0;
 
   std::vector<std::string> hashes_;
-
-  DISALLOW_COPY_AND_ASSIGN(ContentHashReader);
 };
 
 }  // namespace extensions

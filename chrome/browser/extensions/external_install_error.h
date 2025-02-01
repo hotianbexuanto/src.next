@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,10 +8,13 @@
 #include <memory>
 #include <string>
 
-#include "base/macros.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/values.h"
+#include "chrome/browser/extensions/cws_item_service.pb.h"
 #include "chrome/browser/extensions/extension_install_prompt.h"
 #include "chrome/browser/extensions/webstore_data_fetcher_delegate.h"
+#include "extensions/common/extension_id.h"
 
 class Browser;
 class ExtensionInstallPromptShowParams;
@@ -43,18 +46,14 @@ class ExternalInstallError : public WebstoreDataFetcherDelegate {
     MENU_ALERT
   };
 
-  // The possible dialog button configurations to use in the error bubble.
-  enum DefaultDialogButtonSetting {
-    NOT_SPECIFIED,
-    DIALOG_BUTTON_OK,
-    DIALOG_BUTTON_CANCEL,
-    NO_DEFAULT_DIALOG_BUTTON
-  };
-
   ExternalInstallError(content::BrowserContext* browser_context,
                        const std::string& extension_id,
                        AlertType error_type,
                        ExternalInstallManager* manager);
+
+  ExternalInstallError(const ExternalInstallError&) = delete;
+  ExternalInstallError& operator=(const ExternalInstallError&) = delete;
+
   ~ExternalInstallError() override;
 
   void OnInstallPromptDone(ExtensionInstallPrompt::DoneCallbackPayload payload);
@@ -69,28 +68,22 @@ class ExternalInstallError : public WebstoreDataFetcherDelegate {
   // Return the associated extension, or NULL.
   const Extension* GetExtension() const;
 
-  const std::string& extension_id() const { return extension_id_; }
+  const ExtensionId& extension_id() const { return extension_id_; }
   AlertType alert_type() const { return alert_type_; }
 
-  // Returns the setting specified by the following optional sources, by order
-  // of priority:
-  // 1. The webstore response's |kExternalInstallDefaultButtonKey| parameter.
-  // 2. The |kExternalExtensionDefaultButtonControl| field trial parameter's
-  //    |kExternalInstallDefaultButtonKey| value.
-  // If not specified by either optional source, returns |NOT_SPECIFIED|.
-  static DefaultDialogButtonSetting GetDefaultDialogButton(
-      const base::Value& webstore_response);
-
-  DefaultDialogButtonSetting default_dialog_button_setting() const {
-    return default_dialog_button_setting_;
+  ExtensionInstallPrompt::Prompt* GetPromptForTesting() const {
+    return prompt_.get();
   }
 
  private:
   // WebstoreDataFetcherDelegate implementation.
   void OnWebstoreRequestFailure(const std::string& extension_id) override;
-  void OnWebstoreResponseParseSuccess(
+  void OnWebstoreItemJSONAPIResponseParseSuccess(
       const std::string& extension_id,
-      std::unique_ptr<base::DictionaryValue> webstore_data) override;
+      const base::Value::Dict& webstore_data) override;
+  void OnFetchItemSnippetParseSuccess(
+      const std::string& extension_id,
+      FetchItemSnippetResponse item_snippet) override;
   void OnWebstoreResponseParseFailure(const std::string& extension_id,
                                       const std::string& error) override;
 
@@ -108,22 +101,19 @@ class ExternalInstallError : public WebstoreDataFetcherDelegate {
   void RemoveError();
 
   // The associated BrowserContext.
-  content::BrowserContext* browser_context_;
+  raw_ptr<content::BrowserContext> browser_context_;
 
   // The id of the external extension.
-  std::string extension_id_;
+  ExtensionId extension_id_;
 
   // The type of alert to show the user.
   AlertType alert_type_;
 
-  // The dialog button configuration to use in the error bubble.
-  DefaultDialogButtonSetting default_dialog_button_setting_ = NOT_SPECIFIED;
-
   // The owning ExternalInstallManager.
-  ExternalInstallManager* manager_;
+  raw_ptr<ExternalInstallManager> manager_;
 
   // The associated GlobalErrorService.
-  GlobalErrorService* error_service_;
+  raw_ptr<GlobalErrorService> error_service_;
 
   // The UI for showing the error.
   std::unique_ptr<ExtensionInstallPrompt> install_ui_;
@@ -138,8 +128,6 @@ class ExternalInstallError : public WebstoreDataFetcherDelegate {
   std::unique_ptr<WebstoreDataFetcher> webstore_data_fetcher_;
 
   base::WeakPtrFactory<ExternalInstallError> weak_factory_{this};
-
-  DISALLOW_COPY_AND_ASSIGN(ExternalInstallError);
 };
 
 }  // namespace extensions

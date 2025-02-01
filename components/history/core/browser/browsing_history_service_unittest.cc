@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,27 +6,27 @@
 
 #include <utility>
 
-#include "base/callback_helpers.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/macros.h"
+#include "base/functional/callback_helpers.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/run_loop.h"
 #include "base/task/cancelable_task_tracker.h"
 #include "base/test/task_environment.h"
+#include "base/time/time.h"
 #include "base/timer/mock_timer.h"
 #include "base/values.h"
 #include "components/history/core/browser/browsing_history_driver.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/test/fake_web_history_service.h"
 #include "components/history/core/test/history_service_test_util.h"
-#include "components/sync/driver/fake_sync_service.h"
-#include "components/sync/driver/sync_service_observer.h"
+#include "components/sync/service/sync_service_observer.h"
+#include "components/sync/test/mock_sync_service.h"
 #include "net/http/http_status_code.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 
 using base::Time;
-using base::TimeDelta;
 
 namespace history {
 
@@ -41,6 +41,9 @@ const char kUrl4[] = "http://www.four.com";
 const char kUrl5[] = "http://www.five.com";
 const char kUrl6[] = "http://www.six.com";
 const char kUrl7[] = "http://www.seven.com";
+const char kUrl8[] = "http://eight.com";
+const char kUrl9[] = "http://nine.com/eight.com";
+const char kUrl10[] = "http://ten.com/eight";
 const char kIconUrl1[] = "http://www.one.com/favicon.ico";
 
 const HistoryEntry::EntryType kLocal = HistoryEntry::LOCAL_ENTRY;
@@ -52,21 +55,6 @@ struct TestResult {
   int64_t hour_offset;  // Visit time in hours past the baseline time.
   HistoryEntry::EntryType type;
   std::string remote_icon_url_for_uma;
-};
-
-class TestSyncService : public syncer::FakeSyncService {
- public:
-  int GetObserverCount() { return observer_count_; }
-
- private:
-  void AddObserver(syncer::SyncServiceObserver* observer) override {
-    observer_count_++;
-  }
-  void RemoveObserver(syncer::SyncServiceObserver* observer) override {
-    observer_count_--;
-  }
-
-  int observer_count_ = 0;
 };
 
 class TestBrowsingHistoryDriver : public BrowsingHistoryDriver {
@@ -116,7 +104,7 @@ class TestBrowsingHistoryDriver : public BrowsingHistoryDriver {
   int history_deleted_count_ = 0;
   std::vector<QueryResult> query_results_;
   base::OnceClosure continuation_closure_;
-  WebHistoryService* web_history_;
+  raw_ptr<WebHistoryService> web_history_;
 };
 
 class TestWebHistoryService : public FakeWebHistoryService {
@@ -190,8 +178,7 @@ class BrowsingHistoryServiceTest : public ::testing::Test {
   // before Time::UnixEpoch() that cannot be represented. By adding 1 day we
   // ensure all test data is after Time::UnixEpoch().
   BrowsingHistoryServiceTest()
-      : baseline_time_(Time::UnixEpoch().LocalMidnight() +
-                       TimeDelta::FromDays(1)),
+      : baseline_time_(Time::UnixEpoch().LocalMidnight() + base::Days(1)),
         driver_(&web_history_) {
     EXPECT_TRUE(history_dir_.CreateUniqueTempDir());
     local_history_ = CreateHistoryService(history_dir_.GetPath(), true);
@@ -213,7 +200,7 @@ class BrowsingHistoryServiceTest : public ::testing::Test {
   }
 
   Time OffsetToTime(int64_t hour_offset) {
-    return baseline_time_ + TimeDelta::FromHours(hour_offset);
+    return baseline_time_ + base::Hours(hour_offset);
   }
 
   void AddHistory(const std::vector<TestResult>& data,
@@ -253,8 +240,14 @@ class BrowsingHistoryServiceTest : public ::testing::Test {
 
   TestBrowsingHistoryDriver::QueryResult QueryHistory(
       const QueryOptions& options) {
+    return QueryHistory(std::u16string(), options);
+  }
+
+  TestBrowsingHistoryDriver::QueryResult QueryHistory(
+      const std::u16string& query_text,
+      const QueryOptions& options) {
     size_t previous_results_count = driver()->GetQueryResults().size();
-    service()->QueryHistory(std::u16string(), options);
+    service()->QueryHistory(query_text, options);
     BlockUntilHistoryProcessesPendingRequests();
     const std::vector<TestBrowsingHistoryDriver::QueryResult> all_results =
         driver()->GetQueryResults();
@@ -287,7 +280,7 @@ class BrowsingHistoryServiceTest : public ::testing::Test {
 
   HistoryService* local_history() { return local_history_.get(); }
   TestWebHistoryService* web_history() { return &web_history_; }
-  TestSyncService* sync() { return &sync_service_; }
+  syncer::MockSyncService* sync() { return &sync_service_; }
   TestBrowsingHistoryDriver* driver() { return &driver_; }
   base::MockOneShotTimer* timer() { return timer_; }
   TestBrowsingHistoryService* service() {
@@ -304,9 +297,9 @@ class BrowsingHistoryServiceTest : public ::testing::Test {
   base::ScopedTempDir history_dir_;
   std::unique_ptr<HistoryService> local_history_;
   TestWebHistoryService web_history_;
-  TestSyncService sync_service_;
+  syncer::MockSyncService sync_service_;
   TestBrowsingHistoryDriver driver_;
-  base::MockOneShotTimer* timer_;
+  raw_ptr<base::MockOneShotTimer, DanglingUntriaged> timer_;
   std::unique_ptr<TestBrowsingHistoryService> browsing_history_service_;
 };
 
@@ -403,6 +396,23 @@ TEST_F(BrowsingHistoryServiceTest, QueryHistoryRemoteTimeRanges) {
   VerifyQueryResult(
       /*reached_beginning*/ true, /*has_synced_results*/ true,
       {{kUrl3, 3, kRemote}, {kUrl2, 2, kRemote}}, QueryHistory(options));
+}
+
+TEST_F(BrowsingHistoryServiceTest, QueryHistoryHostOnlyRemote) {
+  AddHistory({{kUrl8, 1, kRemote}, {kUrl9, 2, kRemote}, {kUrl10, 3, kRemote}});
+
+  QueryOptions options;
+  options.max_count = 0;
+  options.host_only = false;
+  VerifyQueryResult(
+      /*reached_beginning*/ true,
+      /*has_synced_results*/ true,
+      {{kUrl10, 3, kRemote}, {kUrl9, 2, kRemote}, {kUrl8, 1, kRemote}},
+      QueryHistory(u"eight.com", options));
+  options.host_only = true;
+  VerifyQueryResult(/*reached_beginning*/ true,
+                    /*has_synced_results*/ true, {{kUrl8, 1, kRemote}},
+                    QueryHistory(u"eight.com", options));
 }
 
 TEST_F(BrowsingHistoryServiceTest, QueryHistoryLocalPagingPartial) {
@@ -660,25 +670,26 @@ TEST_F(BrowsingHistoryServiceTest, WebHistoryTimeout) {
 }
 
 TEST_F(BrowsingHistoryServiceTest, ObservingWebHistory) {
-  ResetService(driver(), nullptr, sync());
-
   // No need to observe SyncService since we have a WebHistory already.
-  EXPECT_EQ(0, sync()->GetObserverCount());
+  EXPECT_CALL(*sync(), AddObserver).Times(0);
+  EXPECT_CALL(*sync(), RemoveObserver).Times(0);
+
+  ResetService(driver(), nullptr, sync());
 
   web_history()->TriggerOnWebHistoryDeleted();
   EXPECT_EQ(1, driver()->GetHistoryDeletedCount());
 }
 
 TEST_F(BrowsingHistoryServiceTest, ObservingWebHistoryDelayedWeb) {
+  // Since there's no WebHistory, observations should be set up on Sync.
+  EXPECT_CALL(*sync(), AddObserver);
+  EXPECT_CALL(*sync(), RemoveObserver).Times(0);
+
   driver()->SetWebHistory(nullptr);
   ResetService(driver(), nullptr, sync());
 
-  // Since there's no WebHistory, observations should have been setup on Sync.
-  EXPECT_EQ(1, sync()->GetObserverCount());
-
   // OnStateChanged() is a no-op if WebHistory is still inaccessible.
   service()->OnStateChanged(sync());
-  EXPECT_EQ(1, sync()->GetObserverCount());
 
   driver()->SetWebHistory(web_history());
   // Since WebHistory is currently not being observed, triggering a history
@@ -689,8 +700,10 @@ TEST_F(BrowsingHistoryServiceTest, ObservingWebHistoryDelayedWeb) {
   // Once OnStateChanged() gets called, the BrowsingHistoryService switches from
   // observing SyncService to WebHistoryService. As such, RemoveObserver should
   // have been called on SyncService, so lets verify.
+  testing::Mock::VerifyAndClearExpectations(sync());
+  EXPECT_CALL(*sync(), AddObserver).Times(0);
+  EXPECT_CALL(*sync(), RemoveObserver);
   service()->OnStateChanged(sync());
-  EXPECT_EQ(0, sync()->GetObserverCount());
 
   // Only now should deletion should be propagated through.
   web_history()->TriggerOnWebHistoryDeleted();

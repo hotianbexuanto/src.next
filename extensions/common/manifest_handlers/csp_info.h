@@ -1,14 +1,14 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef EXTENSIONS_COMMON_MANIFEST_HANDLERS_CSP_INFO_H_
 #define EXTENSIONS_COMMON_MANIFEST_HANDLERS_CSP_INFO_H_
 
+#include <optional>
 #include <string>
+#include <string_view>
 
-#include "base/macros.h"
-#include "base/strings/string_piece_forward.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest_handler.h"
 
@@ -37,15 +37,18 @@ struct CSPInfo : public Extension::ManifestData {
   // shouldn't be returned for those cases.
   static const std::string& GetExtensionPagesCSP(const Extension* extension);
 
-  // Returns the default CSP (if any) to append for the `extension`'s resource
+  // Returns the minimum CSP (if any) to append for the `extension`'s resource
   // at the given `relative_path`.
-  static const std::string* GetDefaultCSPToAppend(
+  static const std::string* GetMinimumCSPToAppend(
       const Extension& extension,
       const std::string& relative_path);
 
   // Returns the Content Security Policy to be used for extension isolated
-  // worlds or null if there is no defined CSP.
-  static const std::string* GetIsolatedWorldCSP(const Extension& extension);
+  // worlds or nullopt if there is no defined CSP.
+  // Note that a non-nullopt, empty string is different from a nullopt result,
+  // since an empty CSP permits everything.
+  static std::optional<std::string> GetIsolatedWorldCSP(
+      const Extension& extension);
 
   // Returns the extension's Content Security Policy for the sandboxed pages.
   static const std::string& GetSandboxContentSecurityPolicy(
@@ -63,10 +66,18 @@ struct CSPInfo : public Extension::ManifestData {
 class CSPHandler : public ManifestHandler {
  public:
   CSPHandler();
+
+  CSPHandler(const CSPHandler&) = delete;
+  CSPHandler& operator=(const CSPHandler&) = delete;
+
   ~CSPHandler() override;
 
   // ManifestHandler override:
   bool Parse(Extension* extension, std::u16string* error) override;
+
+  // Returns the minimum CSP to use in MV3 extensions. Only exposed for testing.
+  static const char* GetMinimumMV3CSPForTesting();
+  static const char* GetMinimumUnpackedMV3CSPForTesting();
 
  private:
   // Parses the "content_security_policy" dictionary in the manifest.
@@ -76,21 +87,22 @@ class CSPHandler : public ManifestHandler {
   // pages.
   bool ParseExtensionPagesCSP(Extension* extension,
                               std::u16string* error,
-                              base::StringPiece manifest_key,
-                              bool secure_only,
+                              std::string_view manifest_key,
                               const base::Value* content_security_policy);
 
   // Parses the content security policy specified in the manifest for sandboxed
-  // pages. This should be called after ParseExtensionPagesCSP.
+  // pages. This should be called after ParseExtensionPagesCSP. If
+  // `allow_remote_sources` is true, this allows the extension to specify remote
+  // sources in the sandbox CSP.
   bool ParseSandboxCSP(Extension* extension,
                        std::u16string* error,
-                       base::StringPiece manifest_key,
-                       const base::Value* sandbox_csp);
+                       std::string_view manifest_key,
+                       const base::Value* sandbox_csp,
+                       bool allow_remote_sources);
 
   // Helper to set the extension pages content security policy manifest data.
   bool SetExtensionPagesCSP(Extension* extension,
-                            base::StringPiece manifest_key,
-                            bool secure_only,
+                            std::string_view manifest_key,
                             std::string content_security_policy);
 
   // Helper to set the sandbox content security policy manifest data.
@@ -99,8 +111,6 @@ class CSPHandler : public ManifestHandler {
   // ManifestHandler overrides:
   bool AlwaysParseForType(Manifest::Type type) const override;
   base::span<const char* const> Keys() const override;
-
-  DISALLOW_COPY_AND_ASSIGN(CSPHandler);
 };
 
 }  // namespace extensions

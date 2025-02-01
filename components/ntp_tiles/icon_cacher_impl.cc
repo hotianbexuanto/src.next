@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,10 +6,9 @@
 
 #include <utility>
 
-#include "base/bind.h"
+#include "base/functional/bind.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_macros.h"
-#include "base/strings/string_piece.h"
 #include "components/favicon/core/favicon_service.h"
 #include "components/favicon/core/favicon_util.h"
 #include "components/favicon/core/large_icon_service.h"
@@ -20,6 +19,7 @@
 #include "components/image_fetcher/core/image_fetcher.h"
 #include "components/ntp_tiles/features.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
+#include "services/data_decoder/public/cpp/data_decoder.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/image/image.h"
@@ -69,10 +69,12 @@ int GetMinimumFetchingSizeForChromeSuggestionsFaviconsFromServer() {
 IconCacherImpl::IconCacherImpl(
     favicon::FaviconService* favicon_service,
     favicon::LargeIconService* large_icon_service,
-    std::unique_ptr<image_fetcher::ImageFetcher> image_fetcher)
+    std::unique_ptr<image_fetcher::ImageFetcher> image_fetcher,
+    std::unique_ptr<data_decoder::DataDecoder> data_decoder)
     : favicon_service_(favicon_service),
       large_icon_service_(large_icon_service),
-      image_fetcher_(std::move(image_fetcher)) {}
+      image_fetcher_(std::move(image_fetcher)),
+      data_decoder_(std::move(data_decoder)) {}
 
 IconCacherImpl::~IconCacherImpl() = default;
 
@@ -129,6 +131,9 @@ void IconCacherImpl::OnGetFaviconImageForPageURLFinished(
                                            kImageFetcherUmaClient);
   // For images with multiple frames, prefer one of size 128x128px.
   params.set_frame_size(gfx::Size(kDesiredFrameSize, kDesiredFrameSize));
+  if (data_decoder_) {
+    params.set_data_decoder(data_decoder_.get());
+  }
   image_fetcher_->FetchImage(
       IconURL(site),
       base::BindOnce(&IconCacherImpl::OnPopularSitesFaviconDownloaded,
@@ -168,13 +173,8 @@ void IconCacherImpl::SaveAndNotifyDefaultIconForSite(
 
 void IconCacherImpl::SaveIconForSite(const PopularSites::Site& site,
                                      const gfx::Image& image) {
-  // Although |SetFaviconColorSpace| affects OSX only, copies of gfx::Images are
-  // just copies of the reference to the image and therefore cheap.
-  gfx::Image img(image);
-  favicon_base::SetFaviconColorSpace(&img);
-
   favicon_service_->SetFavicons({site.url}, IconURL(site), IconType(site),
-                                std::move(img));
+                                image);
 }
 
 std::unique_ptr<IconCacherImpl::CancelableImageCallback>
@@ -192,7 +192,7 @@ IconCacherImpl::MaybeProvideDefaultIcon(
   image_fetcher_->GetImageDecoder()->DecodeImage(
       std::string(ui::ResourceBundle::GetSharedInstance().GetRawDataResource(
           site.default_icon_resource)),
-      gfx::Size(kDesiredFrameSize, kDesiredFrameSize),
+      gfx::Size(kDesiredFrameSize, kDesiredFrameSize), data_decoder_.get(),
       preliminary_callback->callback());
   return preliminary_callback;
 }
@@ -255,8 +255,7 @@ void IconCacherImpl::OnGetLargeIconOrFallbackStyleFinished(
   large_icon_service_
       ->GetLargeIconOrFallbackStyleFromGoogleServerSkippingLocalCache(
           page_url,
-          /*may_page_url_be_private=*/true, /*should_trim_page_url_path=*/false,
-          traffic_annotation,
+          /*should_trim_page_url_path=*/false, traffic_annotation,
           base::BindOnce(&IconCacherImpl::OnMostLikelyFaviconDownloaded,
                          weak_ptr_factory_.GetWeakPtr(), page_url));
 }
